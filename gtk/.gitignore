@@ -1,0 +1,11 @@
+*.o
+*.lo
+*.la
+.libs
+.deps
+generated_*marshallers*.c
+spice-marshal.c
+spice-marshal.h
+vncdisplaykeymap_*.c
+snappy
+spicy
