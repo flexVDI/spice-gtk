@@ -693,14 +693,9 @@ static void spice_channel_recv_msg(SpiceChannel *channel)
         spice_msg_in *sub_in;
         int i;
 
-        fprintf(stderr, "msg: %s serial %ld type %d size %d sub-list %d\n",
-                c->name, in->header.serial, in->header.type,
-                in->header.size, in->header.sub_list);
         sub_list = (SpiceSubMessageList *)(in->data + in->header.sub_list);
-        fprintf(stderr, "sub-list size: %d\n",sub_list->size);
         for (i = 0; i < sub_list->size; i++) {
             sub = (SpiceSubMessage *)(in->data + sub_list->sub_messages[i]);
-            fprintf(stderr, "  #%d: type %d size %d\n", i, sub->type, sub->size);
             sub_in = spice_msg_in_sub_new(channel, in, sub);
             sub_in->parsed = c->parser(sub_in->data, sub_in->data + sub_in->dpos,
                                        sub_in->header.type, c->peer_hdr.minor_version,
