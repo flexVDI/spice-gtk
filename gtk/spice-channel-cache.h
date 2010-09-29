@@ -63,8 +63,10 @@ static inline display_cache_item *cache_find(display_cache *cache, uint64_t id)
             return item;
         }
     }
+#if 0
     fprintf(stderr, "%s: %s %" PRIx64 " [not found]\n", __FUNCTION__,
             cache->name, id);
+#endif
     return NULL;
 }
 

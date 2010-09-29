@@ -107,11 +107,10 @@ static void image_put(SpiceImageCache *cache, uint64_t id, pixman_image_t *image
         SPICE_CONTAINEROF(cache, spice_display_channel, image_cache);
     display_cache_item *item;
 
-    if (c->images.nitems == 256) {
-        item = cache_get_lru(&c->images);
-        pixman_image_unref(item->ptr);
-        cache_del(&c->images, item);
-    }
+#if 1 /* temporary sanity check */
+    item = cache_find(&c->images, id);
+    assert(item == NULL);
+#endif
 
     item = cache_add(&c->images, id);
     item->ptr = pixman_image_ref(image);
@@ -382,7 +381,24 @@ static void display_handle_copy_bits(SpiceChannel *channel, spice_msg_in *in)
 
 static void display_handle_inv_list(SpiceChannel *channel, spice_msg_in *in)
 {
-    fprintf(stderr, "%s: TODO\n", __FUNCTION__);
+    spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
+    SpiceResourceList *list = spice_msg_in_parsed(in);
+    display_cache_item *item;
+    int i;
+
+    for (i = 0; i < list->count; i++) {
+        switch (list->resources[i].type) {
+        case SPICE_RES_TYPE_PIXMAP:
+            item = cache_find(&c->images, list->resources[i].id);
+            assert(item != NULL);
+            pixman_image_unref(item->ptr);
+            cache_del(&c->images, item);
+            break;
+        default:
+            PANIC("invalid res type");
+            break;
+        }
+    }
 }
 
 static void display_handle_inv_pixmap_all(SpiceChannel *channel, spice_msg_in *in)
