@@ -12,6 +12,7 @@ struct spice_msg_in {
     uint8_t               *parsed;
     size_t                psize;
     message_destructor_t  pfree;
+    spice_msg_in          *parent;
 };
 
 enum spice_channel_state {

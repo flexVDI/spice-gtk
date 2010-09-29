@@ -88,6 +88,8 @@ void spice_main_set_display(SpiceChannel *channel, int id,
                             int x, int y, int width, int height);
 
 spice_msg_in *spice_msg_in_new(SpiceChannel *channel);
+spice_msg_in *spice_msg_in_sub_new(SpiceChannel *channel, spice_msg_in *parent,
+                                   SpiceSubMessage *sub);
 void spice_msg_in_get(spice_msg_in *in);
 void spice_msg_in_put(spice_msg_in *in);
 int spice_msg_in_type(spice_msg_in *in);

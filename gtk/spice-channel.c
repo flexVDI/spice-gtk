@@ -229,6 +229,21 @@ spice_msg_in *spice_msg_in_new(SpiceChannel *channel)
     return in;
 }
 
+spice_msg_in *spice_msg_in_sub_new(SpiceChannel *channel, spice_msg_in *parent,
+                                   SpiceSubMessage *sub)
+{
+    spice_msg_in *in;
+
+    in = spice_msg_in_new(channel);
+    in->header.type = sub->type;
+    in->header.size = sub->size;
+    in->data = (uint8_t*)(sub+1);
+    in->dpos = sub->size;
+    in->parent = parent;
+    spice_msg_in_get(parent);
+    return in;
+}
+
 void spice_msg_in_get(spice_msg_in *in)
 {
     in->refcount++;
@@ -241,7 +256,11 @@ void spice_msg_in_put(spice_msg_in *in)
         return;
     if (in->parsed)
         in->pfree(in->parsed);
-    free(in->data);
+    if (in->parent) {
+        spice_msg_in_put(in->parent);
+    } else {
+        free(in->data);
+    }
     free(in);
 }
 
@@ -669,9 +688,29 @@ static void spice_channel_recv_msg(SpiceChannel *channel)
     }
 
     if (in->header.sub_list) {
+        SpiceSubMessageList *sub_list;
+        SpiceSubMessage *sub;
+        spice_msg_in *sub_in;
+        int i;
+
         fprintf(stderr, "msg: %s serial %ld type %d size %d sub-list %d\n",
                 c->name, in->header.serial, in->header.type,
                 in->header.size, in->header.sub_list);
+        sub_list = (SpiceSubMessageList *)(in->data + in->header.sub_list);
+        fprintf(stderr, "sub-list size: %d\n",sub_list->size);
+        for (i = 0; i < sub_list->size; i++) {
+            sub = (SpiceSubMessage *)(in->data + sub_list->sub_messages[i]);
+            fprintf(stderr, "  #%d: type %d size %d\n", i, sub->type, sub->size);
+            sub_in = spice_msg_in_sub_new(channel, in, sub);
+            sub_in->parsed = c->parser(sub_in->data, sub_in->data + sub_in->dpos,
+                                       sub_in->header.type, c->peer_hdr.minor_version,
+                                       &sub_in->psize, &sub_in->pfree);
+            if (sub_in->parsed == NULL)
+                PANIC("failed to parse sub-message: %s type %d",
+                      c->name, sub_in->header.type);
+            SPICE_CHANNEL_GET_CLASS(channel)->handle_msg(channel, sub_in);
+            spice_msg_in_put(sub_in);
+        }
     }
 
     /* ack message */
@@ -686,9 +725,6 @@ static void spice_channel_recv_msg(SpiceChannel *channel)
     }
 
     /* parse message */
-    if (in->header.sub_list) {
-        PANIC("sub lists not handled");
-    }
     in->parsed = c->parser(in->data, in->data + in->dpos, in->header.type,
                            c->peer_hdr.minor_version, &in->psize, &in->pfree);
     if (in->parsed == NULL)
