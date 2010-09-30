@@ -21,6 +21,7 @@ struct spice_display {
     bool                    keyboard_grab_enable;
     bool                    mouse_grab_enable;
     bool                    resize_guest_enable;
+    bool                    auto_clipboard_enable;
 
     /* state */
     enum SpiceSurfaceFmt    format;
@@ -37,6 +38,10 @@ struct spice_display {
     XImage                  *ximage;
     XShmSegmentInfo         *shminfo;
     GC                      gc;
+
+    GtkClipboard            *clipboard;
+    bool                    clip_hasdata;
+    bool                    clip_grabbed;
 
     SpiceSession            *session;
     SpiceChannel            *main;
@@ -70,6 +75,7 @@ enum {
     PROP_KEYBOARD_GRAB,
     PROP_MOUSE_GRAB,
     PROP_RESIZE_GUEST,
+    PROP_AUTO_CLIPBOARD,
 };
 
 #if 0
@@ -89,6 +95,8 @@ static void try_keyboard_ungrab(GtkWidget *widget);
 static void try_mouse_grab(GtkWidget *widget);
 static void try_mouse_ungrab(GtkWidget *widget);
 static void recalc_geometry(GtkWidget *widget);
+static void clipboard_owner_change(GtkClipboard *clipboard,
+                                   GdkEventOwnerChange *event, gpointer user_data);
 
 /* ---------------------------------------------------------------- */
 
@@ -143,6 +151,9 @@ static void spice_display_get_property(GObject    *object,
     case PROP_RESIZE_GUEST:
         g_value_set_boolean(value, d->resize_guest_enable);
 	break;
+    case PROP_AUTO_CLIPBOARD:
+        g_value_set_boolean(value, d->auto_clipboard_enable);
+	break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
 	break;
@@ -182,6 +193,9 @@ static void spice_display_set_property(GObject      *object,
                                         d->width, d->height);
         }
         break;
+    case PROP_AUTO_CLIPBOARD:
+        d->auto_clipboard_enable = g_value_get_boolean(value);
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
         break;
@@ -219,6 +233,10 @@ static void spice_display_init(SpiceDisplay *display)
     gtk_widget_set_can_focus(widget, true);
 
     d->keycode_map = vnc_display_keymap_gdk2xtkbd_table(&d->keycode_maplen);
+
+    d->clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
+    g_signal_connect(G_OBJECT(d->clipboard), "owner-change",
+                     G_CALLBACK(clipboard_owner_change), display);
 
     d->have_mitshm = true;
 }
@@ -784,6 +802,55 @@ static gboolean configure_event(GtkWidget *widget, GdkEventConfigure *conf)
     return true;
 }
 
+/* ---------------------------------------------------------------- */
+
+static void clipboard_get_targets(GtkClipboard *clipboard,
+                                  GdkAtom *atoms,
+                                  gint n_atoms,
+                                  gpointer data)
+{
+    SpiceDisplay *display = data;
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    int i;
+
+#if 1 /* debug */
+    fprintf(stderr, "%s:", __FUNCTION__);
+    for (i = 0; i < n_atoms; i++) {
+        fprintf(stderr, " %s",gdk_atom_name(atoms[i]));
+    }
+    fprintf(stderr, "\n");
+#endif
+
+    fprintf(stderr, "%s: TODO: send vdagent grab\n", __FUNCTION__);
+    d->clip_grabbed = 1;
+}
+
+static void clipboard_owner_change(GtkClipboard        *clipboard,
+                                   GdkEventOwnerChange *event,
+                                   gpointer            data)
+{
+    SpiceDisplay *display = data;
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    if (d->clip_grabbed) {
+        fprintf(stderr, "%s: TODO: send vdagent release\n", __FUNCTION__);
+        d->clip_grabbed = 0;
+    }
+
+    switch (event->reason) {
+    case GDK_OWNER_CHANGE_NEW_OWNER:
+        d->clip_hasdata = 1;
+        if (d->auto_clipboard_enable)
+            gtk_clipboard_request_targets(clipboard, clipboard_get_targets, data);
+        break;
+    default:
+        d->clip_hasdata = 0;
+        break;
+    }
+}
+
+/* ---------------------------------------------------------------- */
+
 static void spice_display_class_init(SpiceDisplayClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
@@ -801,9 +868,6 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
     gtkwidget_class->button_press_event = button_event;
     gtkwidget_class->button_release_event = button_event;
     gtkwidget_class->configure_event = configure_event;
-#if 0
-    gtkwidget_class->scroll_event = scroll_event;
-#endif
 
     gtkobject_class->destroy = spice_display_destroy;
 
@@ -841,6 +905,19 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                               "Resize guest",
                               "Try to adapt guest display on window resize. "
                               "Requires guest cooperation.",
+                              FALSE,
+                              G_PARAM_READWRITE |
+                              G_PARAM_CONSTRUCT |
+                              G_PARAM_STATIC_NAME |
+                              G_PARAM_STATIC_NICK |
+                              G_PARAM_STATIC_BLURB));
+
+    g_object_class_install_property
+        (gobject_class, PROP_AUTO_CLIPBOARD,
+         g_param_spec_boolean("auto-clipboard",
+                              "Auto clipboard",
+                              "Automatically relay clipboard changes between "
+                              "host and guest.",
                               FALSE,
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
@@ -1042,4 +1119,19 @@ GtkWidget *spice_display_new(SpiceSession *session, int id)
 void spice_display_mouse_ungrab(GtkWidget *widget)
 {
     try_mouse_ungrab(widget);
+}
+
+void spice_display_copy_to_guest(GtkWidget *widget)
+{
+    SpiceDisplay *display = SPICE_DISPLAY(widget);
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    if (d->clip_hasdata) {
+        gtk_clipboard_request_targets(d->clipboard, clipboard_get_targets, display);
+    }
+}
+
+void spice_display_paste_from_guest(GtkWidget *widget)
+{
+    fprintf(stderr, "%s: TODO\n");
 }

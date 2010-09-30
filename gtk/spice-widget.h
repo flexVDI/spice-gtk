@@ -35,5 +35,7 @@ G_END_DECLS
 
 GtkWidget* spice_display_new(SpiceSession *session, int id);
 void spice_display_mouse_ungrab(GtkWidget *widget);
+void spice_display_copy_to_guest(GtkWidget *widget);
+void spice_display_paste_from_guest(GtkWidget *widget);
 
 #endif /* __SPICE_CLIENT_WIDGET_H__ */

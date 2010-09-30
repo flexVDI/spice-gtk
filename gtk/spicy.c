@@ -88,6 +88,20 @@ static void menu_cb_quit(GtkAction *action, void *data)
     gtk_widget_destroy(win->toplevel);
 }
 
+static void menu_cb_copy(GtkAction *action, void *data)
+{
+    struct spice_window *win = data;
+
+    spice_display_copy_to_guest(win->spice);
+}
+
+static void menu_cb_paste(GtkAction *action, void *data)
+{
+    struct spice_window *win = data;
+
+    spice_display_paste_from_guest(win->spice);
+}
+
 static void menu_cb_fullscreen(GtkAction *action, void *data)
 {
     struct spice_window *win = data;
@@ -175,6 +189,9 @@ static const GtkActionEntry entries[] = {
 	.name        = "FileMenu",
 	.label       = "_File",
     },{
+	.name        = "EditMenu",
+	.label       = "_Edit",
+    },{
 	.name        = "ViewMenu",
 	.label       = "_View",
     },{
@@ -193,6 +210,20 @@ static const GtkActionEntry entries[] = {
 	.stock_id    = GTK_STOCK_QUIT,
 	.label       = "_Quit",
 	.callback    = G_CALLBACK(menu_cb_quit),
+        .accelerator = "", /* none (disable default "<control>Q") */
+    },{
+
+	/* Edit menu */
+	.name        = "CopyToGuest",
+	.stock_id    = GTK_STOCK_COPY,
+	.label       = "_Copy to guest",
+	.callback    = G_CALLBACK(menu_cb_copy),
+        .accelerator = "", /* none (disable default "<control>Q") */
+    },{
+	.name        = "PasteFromGuest",
+	.stock_id    = GTK_STOCK_PASTE,
+	.label       = "_Paste from guest",
+	.callback    = G_CALLBACK(menu_cb_paste),
         .accelerator = "", /* none (disable default "<control>Q") */
     },{
 
@@ -232,6 +263,10 @@ static const GtkToggleActionEntry tentries[] = {
 	.name        = "resize-guest",
 	.label       = "Resize guest",
 	.callback    = G_CALLBACK(menu_cb_bool_prop),
+    },{
+	.name        = "auto-clipboard",
+	.label       = "Automagic clipboard relay",
+	.callback    = G_CALLBACK(menu_cb_bool_prop),
     }
 };
 
@@ -240,6 +275,10 @@ static char ui_xml[] =
 "  <menubar action='MainMenu'>\n"
 "    <menu action='FileMenu'>\n"
 "      <menuitem action='Quit'/>\n"
+"    </menu>\n"
+"    <menu action='EditMenu'>\n"
+"      <menuitem action='CopyToGuest'/>\n"
+"      <menuitem action='PasteFromGuest'/>\n"
 "    </menu>\n"
 "    <menu action='ViewMenu'>\n"
 "      <menuitem action='Fullscreen'/>\n"
@@ -251,6 +290,7 @@ static char ui_xml[] =
 "      <menuitem action='grab-keyboard'/>\n"
 "      <menuitem action='grab-mouse'/>\n"
 "      <menuitem action='resize-guest'/>\n"
+"      <menuitem action='auto-clipboard'/>\n"
 "    </menu>\n"
 "    <menu action='HelpMenu'>\n"
 "      <menuitem action='About'/>\n"
