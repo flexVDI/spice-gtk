@@ -11,6 +11,8 @@
 
 #include <gdk/gdkx.h>
 
+#include <spice/vd_agent.h>
+
 #define SPICE_DISPLAY_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_DISPLAY, spice_display))
 
@@ -804,6 +806,28 @@ static gboolean configure_event(GtkWidget *widget, GdkEventConfigure *conf)
 
 /* ---------------------------------------------------------------- */
 
+static const struct {
+    const char  *x;
+    int         s;
+} atom2agent[] = {
+    { .s = VD_AGENT_CLIPBOARD_UTF8_TEXT,  .x = "UTF8_STRING"              },
+    { .s = VD_AGENT_CLIPBOARD_UTF8_TEXT,  .x = "text/plain;charset=utf-8" },
+    { .s = VD_AGENT_CLIPBOARD_UTF8_TEXT,  .x = "STRING"                   },
+    { .s = VD_AGENT_CLIPBOARD_UTF8_TEXT,  .x = "TEXT"                     },
+    { .s = VD_AGENT_CLIPBOARD_UTF8_TEXT,  .x = "text/plain"               },
+
+#if 0 /* gimp */
+    { .s = VD_AGENT_CLIPBOARD_BITMAP,     .x = "image/bmp"                },
+    { .s = VD_AGENT_CLIPBOARD_BITMAP,     .x = "image/x-bmp"              },
+    { .s = VD_AGENT_CLIPBOARD_BITMAP,     .x = "image/x-MS-bmp"           },
+    { .s = VD_AGENT_CLIPBOARD_BITMAP,     .x = "image/x-win-bitmap"       },
+#endif
+
+#if 0 /* firefox */
+    { .s = VD_AGENT_CLIPBOARD_HTML,       .x = "text/html"                },
+#endif
+};
+
 static void clipboard_get_targets(GtkClipboard *clipboard,
                                   GdkAtom *atoms,
                                   gint n_atoms,
@@ -811,18 +835,49 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
 {
     SpiceDisplay *display = data;
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    int i;
+    int types[SPICE_N_ELEMENTS(atom2agent)];
+    char *name;
+    int a, m, t;
 
 #if 1 /* debug */
     fprintf(stderr, "%s:", __FUNCTION__);
-    for (i = 0; i < n_atoms; i++) {
-        fprintf(stderr, " %s",gdk_atom_name(atoms[i]));
+    for (a = 0; a < n_atoms; a++) {
+        fprintf(stderr, " %s",gdk_atom_name(atoms[a]));
     }
     fprintf(stderr, "\n");
 #endif
 
-    fprintf(stderr, "%s: TODO: send vdagent grab\n", __FUNCTION__);
-    d->clip_grabbed = 1;
+    memset(types, 0, sizeof(types));
+    for (a = 0; a < n_atoms; a++) {
+        name = gdk_atom_name(atoms[a]);
+        for (m = 0; m < SPICE_N_ELEMENTS(atom2agent); m++) {
+            if (strcasecmp(name, atom2agent[m].x) != 0) {
+                continue;
+            }
+            /* found match */
+            for (t = 0; t < SPICE_N_ELEMENTS(atom2agent); t++) {
+                if (types[t] == atom2agent[m].s) {
+                    /* type already in list */
+                    break;
+                }
+                if (types[t] == 0) {
+                    /* add type to empty slot */
+                    types[t] = atom2agent[m].s;
+                    break;
+                }
+            }
+            break;
+        }
+    }
+    for (t = 0; t < SPICE_N_ELEMENTS(atom2agent); t++) {
+        if (types[t] == 0) {
+            break;
+        }
+    }
+    if (!d->clip_grabbed && t > 0) {
+        d->clip_grabbed = true;
+        spice_main_clipboard_grab(d->main, types, t);
+    }
 }
 
 static void clipboard_owner_change(GtkClipboard        *clipboard,
@@ -833,8 +888,8 @@ static void clipboard_owner_change(GtkClipboard        *clipboard,
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     if (d->clip_grabbed) {
-        fprintf(stderr, "%s: TODO: send vdagent release\n", __FUNCTION__);
-        d->clip_grabbed = 0;
+        d->clip_grabbed = false;
+        spice_main_clipboard_release(d->main);
     }
 
     switch (event->reason) {
@@ -1126,12 +1181,12 @@ void spice_display_copy_to_guest(GtkWidget *widget)
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
-    if (d->clip_hasdata) {
+    if (d->clip_hasdata && !d->clip_grabbed) {
         gtk_clipboard_request_targets(d->clipboard, clipboard_get_targets, display);
     }
 }
 
 void spice_display_paste_from_guest(GtkWidget *widget)
 {
-    fprintf(stderr, "%s: TODO\n");
+    fprintf(stderr, "%s: TODO\n", __FUNCTION__);
 }

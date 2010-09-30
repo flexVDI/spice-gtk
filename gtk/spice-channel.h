@@ -83,10 +83,6 @@ gboolean spice_channel_connect(SpiceChannel *channel);
 void spice_channel_disconnect(SpiceChannel *channel, enum SpiceChannelEvent event);
 int spice_channel_id(SpiceChannel *channel);
 
-enum SpiceMouseMode spice_main_get_mouse_mode(SpiceChannel *channel);
-void spice_main_set_display(SpiceChannel *channel, int id,
-                            int x, int y, int width, int height);
-
 spice_msg_in *spice_msg_in_new(SpiceChannel *channel);
 spice_msg_in *spice_msg_in_sub_new(SpiceChannel *channel, spice_msg_in *parent,
                                    SpiceSubMessage *sub);

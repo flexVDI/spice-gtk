@@ -34,6 +34,13 @@ struct _SpiceMainChannelClass {
 
 GType	        spice_main_channel_get_type(void);
 
+enum SpiceMouseMode spice_main_get_mouse_mode(SpiceChannel *channel);
+void spice_main_set_display(SpiceChannel *channel, int id,
+                            int x, int y, int width, int height);
+
+void spice_main_clipboard_grab(SpiceChannel *channel, int *types, int ntypes);
+void spice_main_clipboard_release(SpiceChannel *channel);
+
 G_END_DECLS
 
 #endif /* __SPICE_CLIENT_MAIN_CHANNEL_H__ */

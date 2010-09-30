@@ -343,3 +343,13 @@ void spice_main_set_display(SpiceChannel *channel, int id,
         agent_monitors_config(channel);
     }
 }
+
+void spice_main_clipboard_grab(SpiceChannel *channel, int *types, int ntypes)
+{
+    fprintf(stderr, "%s: TODO (%d types)\n", __FUNCTION__, ntypes);
+}
+
+void spice_main_clipboard_release(SpiceChannel *channel)
+{
+    fprintf(stderr, "%s: TODO\n", __FUNCTION__);
+}
