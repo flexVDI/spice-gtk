@@ -1,5 +1,5 @@
 #include "spice-widget.h"
-#include "spice-pulse.h"
+#include "spice-audio.h"
 #include "spice-common.h"
 
 typedef struct spice_window spice_window;
@@ -26,7 +26,7 @@ static bool fullscreen = false;
 static GMainLoop    *mainloop;
 static SpiceSession *session;
 static spice_window *wins[4];
-static SpicePulse   *pulse;
+static GObject      *audio;
 
 /* ------------------------------------------------------------------ */
 
@@ -442,9 +442,9 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer *data)
     }
 
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
-        if (pulse != NULL)
+        if (audio != NULL)
             return;
-        pulse = spice_pulse_new(s, mainloop, "spice");
+        audio = spice_audio_new(s, mainloop, "spice");
         return;
     }
 }

@@ -8,7 +8,6 @@ EXTRA_DIST = spice-marshall.txt keymap-gen.pl keymaps.csv
 bin_PROGRAMS = spicy snappy
 lib_LTLIBRARIES = \
 	libspice-client-gtk.la		\
-	libspice-client-pulse.la	\
 	libspice-client-glib.la
 
 KEYMAP_GEN = $(srcdir)/keymap-gen.pl
@@ -49,6 +48,7 @@ libspice_client_gtk_la_LDFLAGS =	\
 
 libspice_client_gtk_la_LIBADD =		\
 	$(GTK2_LIBS)			\
+	$(PULSE_LIBS)			\
 	$(NULL)
 
 libspice_client_gtk_la_SOURCES =	\
@@ -56,31 +56,16 @@ libspice_client_gtk_la_SOURCES =	\
 	spice-widget.h			\
 	vncdisplaykeymap.c		\
 	vncdisplaykeymap.h		\
+	spice-audio.c			\
+	spice-audio.h			\
+	spice-pulse.c			\
+	spice-pulse.h			\
 	$(NULL)
 
 libspice_client_gtkincludedir = $(includedir)/spice-client
 libspice_client_gtkinclude_HEADERS =	\
 	spice-widget.h			\
-	$(NULL)
-
-
-libspice_client_pulse_la_LDFLAGS =	\
-	-version-number 0:0:1		\
-	-no-undefined			\
-	$(NULL)
-
-libspice_client_pulse_la_LIBADD =	\
-	$(PULSE_LIBS)			\
-	$(NULL)
-
-libspice_client_pulse_la_SOURCES =	\
-	spice-pulse.c			\
-	spice-pulse.h			\
-	$(NULL)
-
-libspice_client_pulseincludedir = $(includedir)/spice-client
-libspice_client_pulseinclude_HEADERS =	\
-	spice-pulse.h			\
+	spice-audio.h			\
 	$(NULL)
 
 
@@ -159,8 +144,8 @@ libspice_client_glib_la_SOURCES =	\
 	$(COMMON_DIR)/lz.h		\
 	$(NULL)
 
-libspice_client_gtkincludedir = $(includedir)/spice-client
-libspice_client_gtkinclude_HEADERS =	\
+libspice_client_glibincludedir = $(includedir)/spice-client
+libspice_client_glibinclude_HEADERS =	\
 	spice-client.h			\
 	spice-types.h			\
 	spice-session.h			\
@@ -184,7 +169,6 @@ spicy_DEPENDENCIES =			\
 
 spicy_LDFLAGS =				\
 	-lspice-client-gtk		\
-	-lspice-client-pulse		\
 	-lspice-client-glib		\
 	$(NULL)
 
