@@ -3,8 +3,8 @@
 #include "spice-cmdline.h"
 
 static char *host      = "localhost";
-static char *port      = "5920";
-static char *tls_port  = "5921";
+static char *port;
+static char *tls_port;
 static char *password;
 static char *ca_file;
 

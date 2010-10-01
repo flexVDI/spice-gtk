@@ -72,12 +72,21 @@ static int ask_user(GtkWidget *parent, char *title, char *message,
     return retval;
 }
 
-static int connect_dialog(GtkWidget *parent)
+static int connect_dialog(GtkWidget *parent, SpiceSession *session)
 {
+    static const struct {
+        const char *text;
+        const char *prop;
+    } entries[] = {
+        { .text = "Hostname",   .prop = "host"      },
+        { .text = "Port",       .prop = "port"      },
+        { .text = "TLS Port",   .prop = "tls-port"  },
+    };
+    GtkWidget *we[SPICE_N_ELEMENTS(entries)];
     GtkWidget *dialog, *area, *label;
-    GtkWidget *whost, *wport, *wsport;
     GtkTable *table;
-    int retval;
+    const gchar *txt;
+    int i, retval;
 
     /* Create the widgets */
     dialog = gtk_dialog_new_with_buttons("Connect",
@@ -95,29 +104,26 @@ static int connect_dialog(GtkWidget *parent)
     gtk_table_set_row_spacings(table, 5);
     gtk_table_set_col_spacings(table, 5);
 
-    label = gtk_label_new("Hostname");
-    gtk_misc_set_alignment(GTK_MISC(label), 0, 0.5);
-    gtk_table_attach_defaults(table, label, 0, 1, 0, 1);
-    whost = gtk_entry_new();
-    gtk_table_attach_defaults(table, whost, 1, 2, 0, 1);
-
-    label = gtk_label_new("Port");
-    gtk_misc_set_alignment(GTK_MISC(label), 0, 0.5);
-    gtk_table_attach_defaults(table, label, 0, 1, 1, 2);
-    wport = gtk_entry_new();
-    gtk_table_attach_defaults(table, wport, 1, 2, 1, 2);
-
-    label = gtk_label_new("TLS Port");
-    gtk_misc_set_alignment(GTK_MISC(label), 0, 0.5);
-    gtk_table_attach_defaults(table, label, 0, 1, 2, 3);
-    wsport = gtk_entry_new();
-    gtk_table_attach_defaults(table, wsport, 1, 2, 2, 3);
+    for (i = 0; i < SPICE_N_ELEMENTS(entries); i++) {
+        label = gtk_label_new(entries[i].text);
+        gtk_misc_set_alignment(GTK_MISC(label), 0, 0.5);
+        gtk_table_attach_defaults(table, label, 0, 1, i, i+1);
+        we[i] = gtk_entry_new();
+        gtk_table_attach_defaults(table, we[i], 1, 2, i, i+1);
+        g_object_get(session, entries[i].prop, &txt, NULL);
+        if (txt) {
+            gtk_entry_set_text(GTK_ENTRY(we[i]), txt);
+        }
+    }
 
     /* show and wait for response */
     gtk_widget_show_all(dialog);
     switch (gtk_dialog_run(GTK_DIALOG(dialog))) {
     case GTK_RESPONSE_ACCEPT:
-        /* do stuff */
+        for (i = 0; i < SPICE_N_ELEMENTS(entries); i++) {
+            txt = gtk_entry_get_text(GTK_ENTRY(we[i]));
+            g_object_set(session, entries[i].prop, txt, NULL);
+        }
 	retval = 0;
 	break;
     default:
@@ -445,6 +451,15 @@ static void main_channel_event(SpiceChannel *channel, enum SpiceChannelEvent eve
         fprintf(stderr, "main channel: closed\n");
         g_main_loop_quit(mainloop);
         break;
+    case SPICE_CHANNEL_ERROR_CONNECT:
+        fprintf(stderr, "main channel: failed to connect\n");
+        rc = connect_dialog(NULL, session);
+        if (rc == 0) {
+            spice_session_connect(session);
+        } else {
+            g_main_loop_quit(mainloop);
+        }
+        break;
     case SPICE_CHANNEL_ERROR_AUTH:
         fprintf(stderr, "main channel: auth failure (wrong password?)\n");
         strcpy(password, "");
@@ -532,12 +547,7 @@ int main(int argc, char *argv[])
     g_signal_connect(session, "spice-session-channel-new",
                      G_CALLBACK(channel_new), NULL);
     spice_cmdline_session_setup(session);
-
-    if (!spice_session_connect(session)) {
-        fprintf(stderr, "spice_session_connect failed\n");
-        connect_dialog(NULL);
-        exit(1);
-    }
+    spice_session_connect(session);
 
     g_main_loop_run(mainloop);
     return 0;
