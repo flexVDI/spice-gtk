@@ -1,6 +1,7 @@
 #include "spice-widget.h"
 #include "spice-audio.h"
 #include "spice-common.h"
+#include "spice-cmdline.h"
 
 typedef struct spice_window spice_window;
 struct spice_window {
@@ -46,17 +47,14 @@ static int ask_user(GtkWidget *parent, char *title, char *message,
 
     label = gtk_label_new(message);
     gtk_misc_set_alignment(GTK_MISC(label), 0, 0.5);
-    gtk_container_add(GTK_CONTAINER(area), label);
+    gtk_box_pack_start(GTK_BOX(area), label, FALSE, FALSE, 5);
 
     entry = gtk_entry_new();
     gtk_entry_set_text(GTK_ENTRY(entry), dest);
     gtk_entry_set_activates_default(GTK_ENTRY(entry), TRUE);
     if (hide)
 	gtk_entry_set_visibility(GTK_ENTRY(entry), FALSE);
-    gtk_container_add(GTK_CONTAINER(area), entry);
-
-    gtk_box_set_spacing(GTK_BOX(area), 10);
-    gtk_container_set_border_width(GTK_CONTAINER(area), 10);
+    gtk_box_pack_start(GTK_BOX(area), entry, FALSE, FALSE, 5);
 
     /* show and wait for response */
     gtk_widget_show_all(dialog);
@@ -64,6 +62,62 @@ static int ask_user(GtkWidget *parent, char *title, char *message,
     case GTK_RESPONSE_ACCEPT:
 	txt = gtk_entry_get_text(GTK_ENTRY(entry));
 	snprintf(dest, dlen, "%s", txt);
+	retval = 0;
+	break;
+    default:
+	retval = -1;
+	break;
+    }
+    gtk_widget_destroy(dialog);
+    return retval;
+}
+
+static int connect_dialog(GtkWidget *parent)
+{
+    GtkWidget *dialog, *area, *label;
+    GtkWidget *whost, *wport, *wsport;
+    GtkTable *table;
+    int retval;
+
+    /* Create the widgets */
+    dialog = gtk_dialog_new_with_buttons("Connect",
+					 parent ? GTK_WINDOW(parent) : NULL,
+                                         GTK_DIALOG_DESTROY_WITH_PARENT,
+					 GTK_STOCK_OK,
+					 GTK_RESPONSE_ACCEPT,
+					 GTK_STOCK_CANCEL,
+					 GTK_RESPONSE_REJECT,
+                                         NULL);
+    gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_ACCEPT);
+    area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    table = GTK_TABLE(gtk_table_new(3, 2, 0));
+    gtk_box_pack_start(GTK_BOX(area), GTK_WIDGET(table), TRUE, TRUE, 0);
+    gtk_table_set_row_spacings(table, 5);
+    gtk_table_set_col_spacings(table, 5);
+
+    label = gtk_label_new("Hostname");
+    gtk_misc_set_alignment(GTK_MISC(label), 0, 0.5);
+    gtk_table_attach_defaults(table, label, 0, 1, 0, 1);
+    whost = gtk_entry_new();
+    gtk_table_attach_defaults(table, whost, 1, 2, 0, 1);
+
+    label = gtk_label_new("Port");
+    gtk_misc_set_alignment(GTK_MISC(label), 0, 0.5);
+    gtk_table_attach_defaults(table, label, 0, 1, 1, 2);
+    wport = gtk_entry_new();
+    gtk_table_attach_defaults(table, wport, 1, 2, 1, 2);
+
+    label = gtk_label_new("TLS Port");
+    gtk_misc_set_alignment(GTK_MISC(label), 0, 0.5);
+    gtk_table_attach_defaults(table, label, 0, 1, 2, 3);
+    wsport = gtk_entry_new();
+    gtk_table_attach_defaults(table, wsport, 1, 2, 2, 3);
+
+    /* show and wait for response */
+    gtk_widget_show_all(dialog);
+    switch (gtk_dialog_run(GTK_DIALOG(dialog))) {
+    case GTK_RESPONSE_ACCEPT:
+        /* do stuff */
 	retval = 0;
 	break;
     default:
@@ -481,6 +535,7 @@ int main(int argc, char *argv[])
 
     if (!spice_session_connect(session)) {
         fprintf(stderr, "spice_session_connect failed\n");
+        connect_dialog(NULL);
         exit(1);
     }
 
