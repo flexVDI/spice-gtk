@@ -253,19 +253,19 @@ static const GtkActionEntry entries[] = {
 static const GtkToggleActionEntry tentries[] = {
     {
 	.name        = "grab-keyboard",
-	.label       = "Grab keyboard",
+	.label       = "Grab keyboard when active and focused",
 	.callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
 	.name        = "grab-mouse",
-	.label       = "Grab mouse",
+	.label       = "Grab mouse in server mode (no tabled/vdagent)",
 	.callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
 	.name        = "resize-guest",
-	.label       = "Resize guest",
+	.label       = "Resize guest to match window size",
 	.callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
 	.name        = "auto-clipboard",
-	.label       = "Automagic clipboard relay",
+	.label       = "Automagic clipboard sharing between host and guest",
 	.callback    = G_CALLBACK(menu_cb_bool_prop),
     }
 };
