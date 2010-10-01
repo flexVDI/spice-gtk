@@ -66,7 +66,7 @@ static void send_motion(SpiceInputsChannel *channel)
                             SPICE_MSGC_INPUTS_MOUSE_MOTION);
     msg->marshallers->msgc_inputs_mouse_motion(msg->marshaller, &motion);
     spice_msg_out_send(msg);
-    spice_msg_out_put(msg);
+    spice_msg_out_unref(msg);
 
     c->motion_count++;
     c->dx = 0;
@@ -93,7 +93,7 @@ static void send_position(SpiceInputsChannel *channel)
                             SPICE_MSGC_INPUTS_MOUSE_POSITION);
     msg->marshallers->msgc_inputs_mouse_position(msg->marshaller, &position);
     spice_msg_out_send(msg);
-    spice_msg_out_put(msg);
+    spice_msg_out_unref(msg);
 
     c->motion_count++;
     c->dpy = -1;
@@ -182,7 +182,7 @@ void spice_inputs_button_press(SpiceInputsChannel *channel, gint button,
                             SPICE_MSGC_INPUTS_MOUSE_PRESS);
     msg->marshallers->msgc_inputs_mouse_press(msg->marshaller, &press);
     spice_msg_out_send(msg);
-    spice_msg_out_put(msg);
+    spice_msg_out_unref(msg);
 }
 
 void spice_inputs_button_release(SpiceInputsChannel *channel, gint button,
@@ -204,7 +204,7 @@ void spice_inputs_button_release(SpiceInputsChannel *channel, gint button,
                             SPICE_MSGC_INPUTS_MOUSE_RELEASE);
     msg->marshallers->msgc_inputs_mouse_release(msg->marshaller, &release);
     spice_msg_out_send(msg);
-    spice_msg_out_put(msg);
+    spice_msg_out_unref(msg);
 }
 
 void spice_inputs_key_press(SpiceInputsChannel *channel, guint scancode)
@@ -225,7 +225,7 @@ void spice_inputs_key_press(SpiceInputsChannel *channel, guint scancode)
                             SPICE_MSGC_INPUTS_KEY_DOWN);
     msg->marshallers->msgc_inputs_key_down(msg->marshaller, &down);
     spice_msg_out_send(msg);
-    spice_msg_out_put(msg);
+    spice_msg_out_unref(msg);
 }
 
 void spice_inputs_key_release(SpiceInputsChannel *channel, guint scancode)
@@ -246,5 +246,5 @@ void spice_inputs_key_release(SpiceInputsChannel *channel, guint scancode)
                             SPICE_MSGC_INPUTS_KEY_UP);
     msg->marshallers->msgc_inputs_key_up(msg->marshaller, &up);
     spice_msg_out_send(msg);
-    spice_msg_out_put(msg);
+    spice_msg_out_unref(msg);
 }

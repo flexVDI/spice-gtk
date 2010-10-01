@@ -240,16 +240,16 @@ spice_msg_in *spice_msg_in_sub_new(SpiceChannel *channel, spice_msg_in *parent,
     in->data = (uint8_t*)(sub+1);
     in->dpos = sub->size;
     in->parent = parent;
-    spice_msg_in_get(parent);
+    spice_msg_in_ref(parent);
     return in;
 }
 
-void spice_msg_in_get(spice_msg_in *in)
+void spice_msg_in_ref(spice_msg_in *in)
 {
     in->refcount++;
 }
 
-void spice_msg_in_put(spice_msg_in *in)
+void spice_msg_in_unref(spice_msg_in *in)
 {
     in->refcount--;
     if (in->refcount > 0)
@@ -257,7 +257,7 @@ void spice_msg_in_put(spice_msg_in *in)
     if (in->parsed)
         in->pfree(in->parsed);
     if (in->parent) {
-        spice_msg_in_put(in->parent);
+        spice_msg_in_unref(in->parent);
     } else {
         free(in->data);
     }
@@ -339,12 +339,12 @@ spice_msg_out *spice_msg_out_new(SpiceChannel *channel, int type)
     return out;
 }
 
-void spice_msg_out_get(spice_msg_out *out)
+void spice_msg_out_ref(spice_msg_out *out)
 {
     out->refcount++;
 }
 
-void spice_msg_out_put(spice_msg_out *out)
+void spice_msg_out_unref(spice_msg_out *out)
 {
     out->refcount--;
     if (out->refcount > 0)
@@ -704,7 +704,7 @@ static void spice_channel_recv_msg(SpiceChannel *channel)
                 PANIC("failed to parse sub-message: %s type %d",
                       c->name, sub_in->header.type);
             SPICE_CHANNEL_GET_CLASS(channel)->handle_msg(channel, sub_in);
-            spice_msg_in_put(sub_in);
+            spice_msg_in_unref(sub_in);
         }
     }
 
@@ -714,7 +714,7 @@ static void spice_channel_recv_msg(SpiceChannel *channel)
         if (!c->message_ack_count) {
             spice_msg_out *out = spice_msg_out_new(channel, SPICE_MSGC_ACK);
             spice_msg_out_send(out);
-            spice_msg_out_put(out);
+            spice_msg_out_unref(out);
             c->message_ack_count = c->message_ack_window;
         }
     }
@@ -730,7 +730,7 @@ static void spice_channel_recv_msg(SpiceChannel *channel)
     SPICE_CHANNEL_GET_CLASS(channel)->handle_msg(channel, in);
 
     /* release message */
-    spice_msg_in_put(c->msg_in);
+    spice_msg_in_unref(c->msg_in);
     c->msg_in = NULL;
 }
 

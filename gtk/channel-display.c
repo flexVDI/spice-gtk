@@ -314,7 +314,7 @@ static void spice_display_channel_up(SpiceChannel *channel)
     out = spice_msg_out_new(channel, SPICE_MSGC_DISPLAY_INIT);
     out->marshallers->msgc_display_init(out->marshaller, &init);
     spice_msg_out_send(out);
-    spice_msg_out_put(out);
+    spice_msg_out_unref(out);
 }
 
 #define DRAW(type) {                                                    \
@@ -437,7 +437,7 @@ static void display_handle_stream_create(SpiceChannel *channel, spice_msg_in *in
     st = c->streams[op->id];
 
     st->msg_create = in;
-    spice_msg_in_get(in);
+    spice_msg_in_ref(in);
     st->clip = &op->clip;
     st->codec = op->codec_type;
     st->surface = find_surface(channel, op->surface_id);
@@ -492,9 +492,9 @@ static void display_handle_stream_clip(SpiceChannel *channel, spice_msg_in *in)
     display_stream *st = c->streams[op->id];
 
     if (st->msg_clip) {
-        spice_msg_in_put(st->msg_clip);
+        spice_msg_in_unref(st->msg_clip);
     }
-    spice_msg_in_get(in);
+    spice_msg_in_ref(in);
     st->msg_clip = in;
     st->clip = &op->clip;
     fprintf(stderr, "%s: TODO (id %d)\n", __FUNCTION__, op->id);
@@ -515,8 +515,8 @@ static void destroy_stream(SpiceChannel *channel, int id)
     }
 
     if (st->msg_clip)
-        spice_msg_in_put(st->msg_clip);
-    spice_msg_in_put(st->msg_create);
+        spice_msg_in_unref(st->msg_clip);
+    spice_msg_in_unref(st->msg_create);
     free(st);
     c->streams[id] = NULL;
 }

@@ -15,7 +15,7 @@ void spice_channel_handle_set_ack(SpiceChannel *channel, spice_msg_in *in)
     c->message_ack_window = c->message_ack_count = ack->window;
     c->marshallers->msgc_ack_sync(out->marshaller, &sync);
     spice_msg_out_send(out);
-    spice_msg_out_put(out);
+    spice_msg_out_unref(out);
 }
 
 void spice_channel_handle_ping(SpiceChannel *channel, spice_msg_in *in)
@@ -26,7 +26,7 @@ void spice_channel_handle_ping(SpiceChannel *channel, spice_msg_in *in)
 
     c->marshallers->msgc_pong(pong->marshaller, ping);
     spice_msg_out_send(pong);
-    spice_msg_out_put(pong);
+    spice_msg_out_unref(pong);
 }
 
 void spice_channel_handle_notify(SpiceChannel *channel, spice_msg_in *in)
