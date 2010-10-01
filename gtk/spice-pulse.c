@@ -161,8 +161,7 @@ SpicePulse *spice_pulse_new(SpiceSession *session, GMainLoop *mainloop,
 {
     SpicePulse *pulse;
     spice_pulse *p;
-    SpiceChannel *channels[16];
-    int i, n;
+    GList *list;
 
     pulse = g_object_new(SPICE_TYPE_PULSE, NULL);
     p = SPICE_PULSE_GET_PRIVATE(pulse);
@@ -170,10 +169,11 @@ SpicePulse *spice_pulse_new(SpiceSession *session, GMainLoop *mainloop,
 
     g_signal_connect(session, "spice-session-channel-new",
                      G_CALLBACK(channel_new), pulse);
-    n = spice_session_get_channels(session, channels, SPICE_N_ELEMENTS(channels));
-    for (i = 0; i < n; i++) {
-        channel_new(session, channels[i], (gpointer*)pulse);
+    list = spice_session_get_channels(session);
+    for (list = g_list_first(list); list != NULL; list = g_list_next(list)) {
+        channel_new(session, list->data, (gpointer*)pulse);
     }
+    g_list_free(list);
 
     p->mainloop = pa_glib_mainloop_new(g_main_loop_get_context(mainloop));
     p->context  = pa_context_new(pa_glib_mainloop_get_api(p->mainloop), name);

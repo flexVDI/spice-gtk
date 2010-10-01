@@ -300,20 +300,20 @@ void spice_session_disconnect(SpiceSession *session)
     s->cmain = NULL;
 }
 
-int spice_session_get_channels(SpiceSession *session, SpiceChannel **channels, int max)
+GList *spice_session_get_channels(SpiceSession *session)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
     struct channel *item;
+    GList *list = NULL;
     RingItem *ring;
-    int i;
 
-    for (i = 0, ring = ring_get_head(&s->channels);
-         i < max && ring != NULL;
-         i++, ring = ring_next(&s->channels, ring)) {
+    for (ring = ring_get_head(&s->channels);
+         ring != NULL;
+         ring = ring_next(&s->channels, ring)) {
         item = SPICE_CONTAINEROF(ring, struct channel, link);
-        channels[i] = item->channel;
+        list = g_list_append(list, item->channel);
     }
-    return i;
+    return list;
 }
 
 /* ------------------------------------------------------------------ */

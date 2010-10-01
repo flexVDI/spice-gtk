@@ -39,7 +39,7 @@ GType spice_session_get_type(void) G_GNUC_CONST;
 SpiceSession *spice_session_new(void);
 gboolean spice_session_connect(SpiceSession *session);
 void spice_session_disconnect(SpiceSession *session);
-int spice_session_get_channels(SpiceSession *session, SpiceChannel **channels, int max);
+GList *spice_session_get_channels(SpiceSession *session);
 
 G_END_DECLS
 

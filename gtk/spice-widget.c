@@ -1153,8 +1153,7 @@ GtkWidget *spice_display_new(SpiceSession *session, int id)
 {
     SpiceDisplay *display;
     spice_display *d;
-    SpiceChannel *channels[16];
-    int i, n;
+    GList *list;
 
     display = g_object_new(SPICE_TYPE_DISPLAY, NULL);
     d = SPICE_DISPLAY_GET_PRIVATE(display);
@@ -1163,10 +1162,11 @@ GtkWidget *spice_display_new(SpiceSession *session, int id)
 
     g_signal_connect(session, "spice-session-channel-new",
                      G_CALLBACK(channel_new), display);
-    n = spice_session_get_channels(session, channels, SPICE_N_ELEMENTS(channels));
-    for (i = 0; i < n; i++) {
-        channel_new(session, channels[i], (gpointer*)display);
+    list = spice_session_get_channels(session);
+    for (list = g_list_first(list); list != NULL; list = g_list_next(list)) {
+        channel_new(session, list->data, (gpointer*)display);
     }
+    g_list_free(list);
 
     return GTK_WIDGET(display);
 }
