@@ -161,6 +161,8 @@ libspice_client_glibinclude_HEADERS =	\
 
 spicy_SOURCES =				\
 	spicy.c				\
+	spice-cmdline.h			\
+	spice-cmdline.c			\
 	$(NULL)
 
 spicy_DEPENDENCIES =			\
@@ -175,6 +177,8 @@ spicy_LDFLAGS =				\
 
 snappy_SOURCES =			\
 	snappy.c			\
+	spice-cmdline.h			\
+	spice-cmdline.c			\
 	$(NULL)
 
 snappy_DEPENDENCIES =			\

@@ -1,12 +1,8 @@
 #include "spice-client.h"
 #include "spice-common.h"
+#include "spice-cmdline.h"
 
 /* config */
-static char *host      = "localhost";
-static char *port      = "5920";
-static char *tls_port  = "5921";
-static char *password;
-static char *ca_file;
 static char *outf      = "snappy.ppm";
 
 /* state */
@@ -94,54 +90,31 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer *data)
 
 /* ------------------------------------------------------------------ */
 
-static void usage(FILE *fp)
-{
-    fprintf(fp,
-            "usage:\n"
-            "  snappy [ options ]\n"
-            "\n"
-            "options:\n"
-            "  -h    host [ %s ]\n"
-            "  -p    port [ %s ]\n"
-            "  -o    file [ %s ]\n"
-            "\n",
-            host, port, outf);
-}
+static GOptionEntry app_entries[] = {
+    {
+        .long_name        = "out-file",
+        .short_name       = 'o',
+        .arg              = G_OPTION_ARG_FILENAME,
+        .arg_data         = &outf,
+        .description      = "output file name (*.ppm)",
+        .arg_description  = "<filename>",
+    },{
+        /* end of list */
+    }
+};
 
 int main(int argc, char *argv[])
 {
-    int c;
+    GError *error = NULL;
+    GOptionContext *context;
 
     /* parse opts */
-    for (;;) {
-        if (-1 == (c = getopt(argc, argv, "h:p:o:")))
-            break;
-        switch (c) {
-	case 'h':
-            host = optarg;
-	    break;
-	case 'p':
-            port = optarg;
-	    break;
-	case 'o':
-            outf = optarg;
-	    break;
-#if 0 /* --help */
-        case 'h':
-            usage(stdout);
-            exit(0);
-#endif
-        default:
-            usage(stderr);
-            exit(1);
-        }
-    }
-
-    if (ca_file == NULL) {
-        char *home = getenv("HOME");
-        size_t size = strlen(home) + 32;
-        ca_file = malloc(size);
-        snprintf(ca_file, size, "%s/.spicec/spice_truststore.pem", home);
+    context = g_option_context_new(" - write screen shots in ppm format");
+    g_option_context_add_main_entries(context, app_entries, NULL);
+    g_option_context_add_group(context, spice_cmdline_get_option_group());
+    if (!g_option_context_parse (context, &argc, &argv, &error)) {
+        g_print ("option parsing failed: %s\n", error->message);
+        exit (1);
     }
 
     g_type_init();
@@ -150,17 +123,7 @@ int main(int argc, char *argv[])
     session = spice_session_new();
     g_signal_connect(session, "spice-session-channel-new",
                      G_CALLBACK(channel_new), NULL);
-
-    if (host)
-        g_object_set(session, "host", host, NULL);
-    if (port)
-        g_object_set(session, "port", port, NULL);
-    if (tls_port)
-        g_object_set(session, "tls-port", tls_port, NULL);
-    if (password)
-        g_object_set(session, "password", password, NULL);
-    if (ca_file)
-        g_object_set(session, "ca-file", ca_file, NULL);
+    spice_cmdline_session_setup(session);
 
     if (!spice_session_connect(session)) {
         fprintf(stderr, "spice_session_connect failed\n");

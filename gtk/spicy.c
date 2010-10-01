@@ -15,11 +15,6 @@ struct spice_window {
 };
 
 /* config */
-static gchar *host = "localhost";
-static gchar *port = "5920";
-static gchar *tls_port = "5921";
-static gchar *password;
-static gchar *ca_file;
 static gboolean fullscreen = false;
 
 /* state */
@@ -385,7 +380,6 @@ static spice_window *create_spice_window(SpiceSession *s, int id)
 static void main_channel_event(SpiceChannel *channel, enum SpiceChannelEvent event,
                                gpointer *data)
 {
-    char message[256];
     char password[64];
     int rc;
 
@@ -399,11 +393,9 @@ static void main_channel_event(SpiceChannel *channel, enum SpiceChannelEvent eve
         break;
     case SPICE_CHANNEL_ERROR_AUTH:
         fprintf(stderr, "main channel: auth failure (wrong password?)\n");
-        snprintf(message, sizeof(message),
-                 "Please enter the password for the\n"
-                 "spice session to %s", host);
         strcpy(password, "");
-        rc = ask_user(NULL, "Authentication", message,
+        rc = ask_user(NULL, "Authentication",
+                      "Please enter the spice server password",
                       password, sizeof(password), true);
         if (rc == 0) {
             g_object_set(session, "password", password, NULL);
@@ -453,40 +445,6 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer *data)
 
 static GOptionEntry cmd_entries[] = {
     {
-        .long_name        = "host",
-        .short_name       = 'h',
-        .arg              = G_OPTION_ARG_STRING,
-        .arg_data         = &host,
-        .description      = "spice server address",
-        .arg_description  = "<host>",
-    },{
-        .long_name        = "port",
-        .short_name       = 'p',
-        .arg              = G_OPTION_ARG_STRING,
-        .arg_data         = &port,
-        .description      = "spice server port",
-        .arg_description  = "<port>",
-    },{
-        .long_name        = "secure-port",
-        .short_name       = 's',
-        .arg              = G_OPTION_ARG_STRING,
-        .arg_data         = &tls_port,
-        .description      = "spice server secure port",
-        .arg_description  = "<port>",
-    },{
-        .long_name        = "ca-file",
-        .arg              = G_OPTION_ARG_FILENAME,
-        .arg_data         = &ca_file,
-        .description      = "truststore file for secure connections",
-        .arg_description  = "<file>",
-    },{
-        .long_name        = "password",
-        .short_name       = 'w',
-        .arg              = G_OPTION_ARG_STRING,
-        .arg_data         = &password,
-        .description      = "server password",
-        .arg_description  = "<password>",
-    },{
         .long_name        = "full-screen",
         .short_name       = 'f',
         .arg              = G_OPTION_ARG_NONE,
@@ -504,19 +462,13 @@ int main(int argc, char *argv[])
 
     /* parse opts */
     gtk_init(&argc, &argv);
-    context = g_option_context_new(NULL);
+    context = g_option_context_new("- spice client application");
     g_option_context_add_main_entries (context, cmd_entries, NULL);
     g_option_context_add_group(context, gtk_get_option_group(TRUE));
+    g_option_context_add_group(context, spice_cmdline_get_option_group());
     if (!g_option_context_parse (context, &argc, &argv, &error)) {
         g_print ("option parsing failed: %s\n", error->message);
         exit (1);
-    }
-
-    if (ca_file == NULL) {
-        char *home = getenv("HOME");
-        size_t size = strlen(home) + 32;
-        ca_file = malloc(size);
-        snprintf(ca_file, size, "%s/.spicec/spice_truststore.pem", home);
     }
 
     g_type_init();
@@ -525,17 +477,7 @@ int main(int argc, char *argv[])
     session = spice_session_new();
     g_signal_connect(session, "spice-session-channel-new",
                      G_CALLBACK(channel_new), NULL);
-
-    if (host)
-        g_object_set(session, "host", host, NULL);
-    if (port)
-        g_object_set(session, "port", port, NULL);
-    if (tls_port)
-        g_object_set(session, "tls-port", tls_port, NULL);
-    if (password)
-        g_object_set(session, "password", password, NULL);
-    if (ca_file)
-        g_object_set(session, "ca-file", ca_file, NULL);
+    spice_cmdline_session_setup(session);
 
     if (!spice_session_connect(session)) {
         fprintf(stderr, "spice_session_connect failed\n");
