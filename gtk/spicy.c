@@ -15,12 +15,12 @@ struct spice_window {
 };
 
 /* config */
-static char *host      = "localhost";
-static char *port      = "5920";
-static char *tls_port  = "5921";
-static char *password;
-static char *ca_file;
-static bool fullscreen = false;
+static gchar *host = "localhost";
+static gchar *port = "5920";
+static gchar *tls_port = "5921";
+static gchar *password;
+static gchar *ca_file;
+static gboolean fullscreen = false;
 
 /* state */
 static GMainLoop    *mainloop;
@@ -451,56 +451,65 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer *data)
 
 /* ------------------------------------------------------------------ */
 
-static void usage(FILE *fp)
-{
-    fprintf(fp,
-            "usage:\n"
-            "  spicy [ options ]\n"
-            "\n"
-            "options:\n"
-            "  -h <host>    remote host               [ %s ]\n"
-            "  -p <port>    remote port               [ %s ]\n"
-            "  -s <port>    remote tls port           [ %s ]\n"
-            "  -w <secret>  password\n"
-            "  -f           fullscreen\n"
-            "\n",
-            host, port, tls_port);
-}
+static GOptionEntry cmd_entries[] = {
+    {
+        .long_name        = "host",
+        .short_name       = 'h',
+        .arg              = G_OPTION_ARG_STRING,
+        .arg_data         = &host,
+        .description      = "spice server address",
+        .arg_description  = "<host>",
+    },{
+        .long_name        = "port",
+        .short_name       = 'p',
+        .arg              = G_OPTION_ARG_STRING,
+        .arg_data         = &port,
+        .description      = "spice server port",
+        .arg_description  = "<port>",
+    },{
+        .long_name        = "secure-port",
+        .short_name       = 's',
+        .arg              = G_OPTION_ARG_STRING,
+        .arg_data         = &tls_port,
+        .description      = "spice server secure port",
+        .arg_description  = "<port>",
+    },{
+        .long_name        = "ca-file",
+        .arg              = G_OPTION_ARG_FILENAME,
+        .arg_data         = &ca_file,
+        .description      = "truststore file for secure connections",
+        .arg_description  = "<file>",
+    },{
+        .long_name        = "password",
+        .short_name       = 'w',
+        .arg              = G_OPTION_ARG_STRING,
+        .arg_data         = &password,
+        .description      = "server password",
+        .arg_description  = "<password>",
+    },{
+        .long_name        = "full-screen",
+        .short_name       = 'f',
+        .arg              = G_OPTION_ARG_NONE,
+        .arg_data         = &fullscreen,
+        .description      = "open in full screen mode",
+    },{
+        /* end of list */
+    }
+};
 
 int main(int argc, char *argv[])
 {
-    int c;
+    GError *error = NULL;
+    GOptionContext *context;
 
     /* parse opts */
     gtk_init(&argc, &argv);
-    for (;;) {
-        if (-1 == (c = getopt(argc, argv, "h:p:s:w:f")))
-            break;
-        switch (c) {
-	case 'h':
-            host = optarg;
-	    break;
-	case 'p':
-            port = optarg;
-	    break;
-	case 's':
-            tls_port = optarg;
-	    break;
-	case 'w':
-            password = optarg;
-	    break;
-	case 'f':
-            fullscreen = true;
-	    break;
-#if 0 /* --help */
-        case 'h':
-            usage(stdout);
-            exit(0);
-#endif
-        default:
-            usage(stderr);
-            exit(1);
-        }
+    context = g_option_context_new(NULL);
+    g_option_context_add_main_entries (context, cmd_entries, NULL);
+    g_option_context_add_group(context, gtk_get_option_group(TRUE));
+    if (!g_option_context_parse (context, &argc, &argv, &error)) {
+        g_print ("option parsing failed: %s\n", error->message);
+        exit (1);
     }
 
     if (ca_file == NULL) {
