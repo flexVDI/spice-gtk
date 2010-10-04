@@ -985,13 +985,12 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
 
 /* ---------------------------------------------------------------- */
 
-static void mouse_mode(SpiceChannel *channel, enum SpiceMouseMode mode,
-                       gpointer data)
+static void mouse_update(SpiceChannel *channel, gpointer data)
 {
     SpiceDisplay *display = data;
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
-    d->mouse_mode = mode;
+    g_object_get(channel, "mouse-mode", &d->mouse_mode, NULL);
 }
 
 static void primary_create(SpiceChannel *channel, gint format,
@@ -1100,9 +1099,9 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
         fprintf(stderr, "%s: main channel\n", __FUNCTION__);
         d->main = channel;
-        g_signal_connect(channel, "spice-main-mouse-mode",
-                         G_CALLBACK(mouse_mode), display);
-        mouse_mode(channel, spice_main_get_mouse_mode(channel), display);
+        g_signal_connect(channel, "spice-main-mouse-update",
+                         G_CALLBACK(mouse_update), display);
+        mouse_update(channel, display);
         return;
     }
 

@@ -24,6 +24,9 @@ static SpiceSession *session;
 static spice_window *wins[4];
 static GObject      *audio;
 
+static char *mouse_state = "?";
+static char *agent_state = "?";
+
 /* ------------------------------------------------------------------ */
 
 static int ask_user(GtkWidget *parent, char *title, char *message,
@@ -135,6 +138,16 @@ static int connect_dialog(GtkWidget *parent, SpiceSession *session)
 }
 
 /* ------------------------------------------------------------------ */
+
+static void update_status(struct spice_window *win)
+{
+    char status[256];
+
+    if (win == NULL)
+        return;
+    snprintf(status, sizeof(status), "mouse: %s, agent: %s", mouse_state, agent_state);
+    gtk_label_set_text(GTK_LABEL(win->status), status);
+}
 
 static void menu_cb_quit(GtkAction *action, void *data)
 {
@@ -407,6 +420,7 @@ static spice_window *create_spice_window(SpiceSession *s, int id)
     win->status = gtk_label_new("status line");
     gtk_misc_set_alignment(GTK_MISC(win->status), 0, 0.5);
     gtk_misc_set_padding(GTK_MISC(win->status), 3, 1);
+    update_status(win);
 
     /* Make a vbox and put stuff in */
     vbox = gtk_vbox_new(FALSE, 1);
@@ -481,14 +495,48 @@ static void main_channel_event(SpiceChannel *channel, enum SpiceChannelEvent eve
     }
 }
 
+static void main_mouse_update(SpiceChannel *channel, gpointer *data)
+{
+    gint mode;
+
+    g_object_get(channel, "mouse-mode", &mode, NULL);
+    switch (mode) {
+    case SPICE_MOUSE_MODE_SERVER:
+        mouse_state = "server";
+        break;
+    case SPICE_MOUSE_MODE_CLIENT:
+        mouse_state = "client";
+        break;
+    default:
+        mouse_state = "?";
+        break;
+    }
+    update_status(wins[0]);
+}
+
+static void main_agent_update(SpiceChannel *channel, gpointer *data)
+{
+    gboolean agent_connected;
+
+    g_object_get(channel, "agent-connected", &agent_connected, NULL);
+    agent_state = agent_connected ? "yes" : "no";
+    update_status(wins[0]);
+}
+
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer *data)
 {
     int id = spice_channel_id(channel);
 
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
+        fprintf(stderr, "new main channel\n");
         g_signal_connect(channel, "spice-channel-event",
                          G_CALLBACK(main_channel_event), NULL);
-        fprintf(stderr, "new main channel\n");
+        g_signal_connect(channel, "spice-main-mouse-update",
+                         G_CALLBACK(main_mouse_update), NULL);
+        g_signal_connect(channel, "spice-main-agent-update",
+                         G_CALLBACK(main_agent_update), NULL);
+        main_mouse_update(channel, NULL);
+        main_agent_update(channel, NULL);
         return;
     }
 

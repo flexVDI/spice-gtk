@@ -26,15 +26,14 @@ struct _SpiceMainChannelClass {
     SpiceChannelClass parent_class;
 
     /* signals */
-    void (*spice_main_mouse_mode)(SpiceChannel *channel, enum SpiceMouseMode mode);
-    void (*spice_main_agent_event)(SpiceChannel *channel, enum SpiceAgentEvent event);
+    void (*spice_main_mouse_update)(SpiceChannel *channel);
+    void (*spice_main_agent_update)(SpiceChannel *channel);
 
     /* Do not add fields to this struct */
 };
 
 GType	        spice_main_channel_get_type(void);
 
-enum SpiceMouseMode spice_main_get_mouse_mode(SpiceChannel *channel);
 void spice_main_set_display(SpiceChannel *channel, int id,
                             int x, int y, int width, int height);
 

@@ -15,6 +15,7 @@ struct spice_main_channel {
     uint8_t                     *agent_msg;
     uint8_t                     *agent_msg_pos;
     uint8_t                     *agent_msg_size;
+    uint32_t                    agent_caps[VD_AGENT_CAPS_SIZE];
     struct {
         int                     x;
         int                     y;
@@ -25,9 +26,18 @@ struct spice_main_channel {
 
 G_DEFINE_TYPE(SpiceMainChannel, spice_main_channel, SPICE_TYPE_CHANNEL)
 
+/* Properties */
 enum {
-    SPICE_MAIN_MOUSE_MODE,
-    SPICE_MAIN_AGENT_EVENT,
+    PROP_0,
+    PROP_MOUSE_MODE,
+    PROP_AGENT_CONNECTED,
+    PROP_AGENT_CAPS_0,
+};
+
+/* Signals */
+enum {
+    SPICE_MAIN_MOUSE_UPDATE,
+    SPICE_MAIN_AGENT_UPDATE,
 
     SPICE_MAIN_LAST_SIGNAL,
 };
@@ -35,6 +45,34 @@ enum {
 static guint signals[SPICE_MAIN_LAST_SIGNAL];
 
 static void spice_main_handle_msg(SpiceChannel *channel, spice_msg_in *msg);
+
+/* ------------------------------------------------------------------ */
+
+static const char *agent_msg_types[] = {
+    [ VD_AGENT_MOUSE_STATE             ] = "mouse state",
+    [ VD_AGENT_MONITORS_CONFIG         ] = "monitors config",
+    [ VD_AGENT_REPLY                   ] = "reply",
+    [ VD_AGENT_CLIPBOARD               ] = "clipboard",
+    [ VD_AGENT_DISPLAY_CONFIG          ] = "display config",
+    [ VD_AGENT_ANNOUNCE_CAPABILITIES   ] = "announce caps",
+#if 0
+    [ VD_AGENT_CLIPBOARD_GRAB          ] = "clipboard grab",
+    [ VD_AGENT_CLIPBOARD_REQUEST       ] = "clipboard request",
+    [ VD_AGENT_CLIPBOARD_RELEASE       ] = "clipboard release",
+#endif
+};
+
+static const char *agent_caps[] = {
+    [ VD_AGENT_CAP_MOUSE_STATE         ] = "mouse state",
+    [ VD_AGENT_CAP_MONITORS_CONFIG     ] = "monitors config",
+    [ VD_AGENT_CAP_REPLY               ] = "reply",
+    [ VD_AGENT_CAP_CLIPBOARD           ] = "clipboard (old)",
+    [ VD_AGENT_CAP_DISPLAY_CONFIG      ] = "display config",
+#if 0
+    [ VD_AGENT_CAP_CLIPBOARD_BY_DEMAND ] = "clipboard",
+#endif
+};
+#define NAME(_a, _i) ((_i) < SPICE_N_ELEMENTS(_a) ? (_a[(_i)] ?: "?") : "?")
 
 /* ------------------------------------------------------------------ */
 
@@ -46,6 +84,29 @@ static void spice_main_channel_init(SpiceMainChannel *channel)
 
     c = channel->priv = SPICE_MAIN_CHANNEL_GET_PRIVATE(channel);
     memset(c, 0, sizeof(*c));
+}
+
+static void spice_display_get_property(GObject    *object,
+                                       guint       prop_id,
+                                       GValue     *value,
+                                       GParamSpec *pspec)
+{
+    spice_main_channel *c = SPICE_MAIN_CHANNEL(object)->priv;
+
+    switch (prop_id) {
+    case PROP_MOUSE_MODE:
+        g_value_set_int(value, c->mouse_mode);
+	break;
+    case PROP_AGENT_CONNECTED:
+        g_value_set_boolean(value, c->agent_connected);
+	break;
+    case PROP_AGENT_CAPS_0:
+        g_value_set_int(value, c->agent_caps[0]);
+	break;
+    default:
+	G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+	break;
+    }
 }
 
 static void spice_main_channel_finalize(GObject *obj)
@@ -64,29 +125,61 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
     fprintf(stderr, "%s\n", __FUNCTION__);
 
     gobject_class->finalize     = spice_main_channel_finalize;
+    gobject_class->get_property = spice_display_get_property;
     channel_class->handle_msg   = spice_main_handle_msg;
 
-    signals[SPICE_MAIN_MOUSE_MODE] =
-        g_signal_new("spice-main-mouse-mode",
-                     G_OBJECT_CLASS_TYPE(gobject_class),
-                     G_SIGNAL_RUN_FIRST,
-                     G_STRUCT_OFFSET(SpiceMainChannelClass, spice_main_mouse_mode),
-                     NULL, NULL,
-                     g_cclosure_marshal_VOID__INT,
-                     G_TYPE_NONE,
-                     1,
-                     G_TYPE_INT);
+    g_object_class_install_property
+        (gobject_class, PROP_MOUSE_MODE,
+         g_param_spec_int("mouse-mode",
+                          "Mouse mode",
+                          "",
+                          0, INT_MAX, 0,
+                          G_PARAM_READABLE |
+                          G_PARAM_STATIC_NAME |
+                          G_PARAM_STATIC_NICK |
+                          G_PARAM_STATIC_BLURB));
 
-    signals[SPICE_MAIN_AGENT_EVENT] =
-        g_signal_new("spice-main-agent-event",
+    g_object_class_install_property
+        (gobject_class, PROP_AGENT_CONNECTED,
+         g_param_spec_boolean("agent-connected",
+                              "Agent connected",
+                              "",
+                              FALSE,
+                              G_PARAM_READABLE |
+                              G_PARAM_STATIC_NAME |
+                              G_PARAM_STATIC_NICK |
+                              G_PARAM_STATIC_BLURB));
+
+    g_object_class_install_property
+        (gobject_class, PROP_AGENT_CAPS_0,
+         g_param_spec_int("agent-caps-0",
+                          "Agent caps 0",
+                          "Agent capability bits 0 -> 31",
+                          0, INT_MAX, 0,
+                          G_PARAM_READABLE |
+                          G_PARAM_STATIC_NAME |
+                          G_PARAM_STATIC_NICK |
+                          G_PARAM_STATIC_BLURB));
+
+    signals[SPICE_MAIN_MOUSE_UPDATE] =
+        g_signal_new("spice-main-mouse-update",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
-                     G_STRUCT_OFFSET(SpiceMainChannelClass, spice_main_agent_event),
+                     G_STRUCT_OFFSET(SpiceMainChannelClass, spice_main_mouse_update),
                      NULL, NULL,
-                     g_cclosure_marshal_VOID__INT,
+                     g_cclosure_marshal_VOID__VOID,
                      G_TYPE_NONE,
-                     1,
-                     G_TYPE_INT);
+                     0);
+
+    signals[SPICE_MAIN_AGENT_UPDATE] =
+        g_signal_new("spice-main-agent-update",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_FIRST,
+                     G_STRUCT_OFFSET(SpiceMainChannelClass, spice_main_agent_update),
+                     NULL, NULL,
+                     g_cclosure_marshal_VOID__VOID,
+                     G_TYPE_NONE,
+                     0);
 
     g_type_class_add_private(klass, sizeof(spice_main_channel));
 }
@@ -149,8 +242,7 @@ static void agent_start(SpiceChannel *channel)
     spice_msg_out *out;
 
     c->agent_connected = true;
-    g_signal_emit(channel, signals[SPICE_MAIN_AGENT_EVENT], 0,
-                  SPICE_AGENT_CONNECT);
+    g_signal_emit(channel, signals[SPICE_MAIN_AGENT_UPDATE], 0);
 
     out = spice_msg_out_new(channel, SPICE_MSGC_MAIN_AGENT_START);
     out->marshallers->msgc_main_agent_start(out->marshaller, &agent_start);
@@ -165,8 +257,7 @@ static void agent_stopped(SpiceChannel *channel)
     spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
 
     c->agent_connected = false;
-    g_signal_emit(channel, signals[SPICE_MAIN_AGENT_EVENT], 0,
-                  SPICE_AGENT_DISCONNECT);
+    g_signal_emit(channel, signals[SPICE_MAIN_AGENT_UPDATE], 0);
 }
 
 static void set_mouse_mode(SpiceChannel *channel, uint32_t supported, uint32_t current)
@@ -175,7 +266,7 @@ static void set_mouse_mode(SpiceChannel *channel, uint32_t supported, uint32_t c
 
     if (c->mouse_mode != current) {
         c->mouse_mode = current;
-        g_signal_emit(channel, signals[SPICE_MAIN_MOUSE_MODE], 0, current);
+        g_signal_emit(channel, signals[SPICE_MAIN_MOUSE_UPDATE], 0);
     }
 
     /* switch to client mode if possible */
@@ -259,6 +350,7 @@ static void main_handle_agent_data(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
     VDAgentMessage *msg;
+    void *payload;
     int len;
 
     spice_msg_in_hexdump(in);
@@ -278,20 +370,36 @@ static void main_handle_agent_data(SpiceChannel *channel, spice_msg_in *in)
     return;
 
 complete:
+    payload = (msg+1);
     switch (msg->type) {
+    case VD_AGENT_ANNOUNCE_CAPABILITIES:
+    {
+        VDAgentAnnounceCapabilities *caps = payload;
+        int i, size;
+
+        size = VD_AGENT_CAPS_SIZE_FROM_MSG_SIZE(msg->size);
+        if (size > VD_AGENT_CAPS_SIZE)
+            size = VD_AGENT_CAPS_SIZE;
+        memset(c->agent_caps, 0, sizeof(c->agent_caps));
+        for (i = 0; i < size; i++) {
+            if (!VD_AGENT_HAS_CAPABILITY(caps->caps, VD_AGENT_CAPS_SIZE, i))
+                continue;
+            fprintf(stderr, "%s: cap: %d (%s)\n", __FUNCTION__,
+                    i, NAME(agent_caps, i));
+            VD_AGENT_SET_CAPABILITY(c->agent_caps, i);
+        }
+        g_signal_emit(channel, signals[SPICE_MAIN_AGENT_UPDATE], 0);
+    }
     case VD_AGENT_REPLY:
     {
-        VDAgentReply *reply = (VDAgentReply*)(msg+1);
+        VDAgentReply *reply = payload;
         fprintf(stderr, "%s: reply: type %d, %s\n", __FUNCTION__, reply->type,
                 reply->error == VD_AGENT_SUCCESS ? "success" : "error");
         break;
     }
-    case VD_AGENT_CLIPBOARD:
-        fprintf(stderr, "%s: clipboard\n", __FUNCTION__);
-        break;
     default:
-        fprintf(stderr, "unsupported agent message type %u size %u\n",
-                msg->type, msg->size);
+        fprintf(stderr, "unhandled agent message type: %u (%s), size %u\n",
+                msg->type, NAME(agent_msg_types, msg->type), msg->size);
     }
 }
 
@@ -322,12 +430,6 @@ static void spice_main_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
     assert(type < SPICE_N_ELEMENTS(main_handlers));
     assert(main_handlers[type] != NULL);
     main_handlers[type](channel, msg);
-}
-
-enum SpiceMouseMode spice_main_get_mouse_mode(SpiceChannel *channel)
-{
-    spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
-    return c->mouse_mode;
 }
 
 void spice_main_set_display(SpiceChannel *channel, int id,
