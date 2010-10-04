@@ -10,7 +10,8 @@
 
 struct spice_main_channel {
     enum SpiceMouseMode         mouse_mode;
-    int                         agent_connected;
+    bool                        agent_connected;
+    bool                        agent_caps_received;
     int                         agent_tokens;
     uint8_t                     *agent_msg;
     uint8_t                     *agent_msg_pos;
@@ -186,11 +187,31 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
 
 /* ------------------------------------------------------------------ */
 
+static void agent_msg_send(SpiceChannel *channel, int type, int size, void *data)
+{
+    spice_msg_out *out;
+    VDAgentMessage *msg;
+    void *payload;
+
+    out = spice_msg_out_new(channel, SPICE_MSGC_MAIN_AGENT_DATA);
+    msg = (VDAgentMessage*)
+        spice_marshaller_reserve_space(out->marshaller, sizeof(VDAgentMessage));
+    payload = (VDAgentMonitorsConfig*)
+        spice_marshaller_reserve_space(out->marshaller, size);
+
+    msg->protocol = VD_AGENT_PROTOCOL;
+    msg->type = type;
+    msg->opaque = 0;
+    msg->size = size;
+    memcpy(payload, data, size);
+
+    spice_msg_out_send(out);
+    spice_msg_out_unref(out);
+}
+
 static void agent_monitors_config(SpiceChannel *channel)
 {
     spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
-    spice_msg_out *out;
-    VDAgentMessage* msg;
     VDAgentMonitorsConfig *mon;
     int i, monitors = 1;
     size_t size;
@@ -204,16 +225,7 @@ static void agent_monitors_config(SpiceChannel *channel)
     }
 
     size = sizeof(VDAgentMonitorsConfig) + sizeof(VDAgentMonConfig) * monitors;
-    out = spice_msg_out_new(channel, SPICE_MSGC_MAIN_AGENT_DATA);
-    msg = (VDAgentMessage*)
-        spice_marshaller_reserve_space(out->marshaller, sizeof(VDAgentMessage));
-    mon = (VDAgentMonitorsConfig*)
-        spice_marshaller_reserve_space(out->marshaller, size);
-
-    msg->protocol = VD_AGENT_PROTOCOL;
-    msg->type = VD_AGENT_MONITORS_CONFIG;
-    msg->opaque = 0;
-    msg->size = size;
+    mon = spice_malloc0(size);
 
     mon->num_of_monitors = monitors;
     mon->flags = 0;
@@ -229,8 +241,29 @@ static void agent_monitors_config(SpiceChannel *channel)
                 mon->monitors[i].depth);
     }
 
-    spice_msg_out_send(out);
-    spice_msg_out_unref(out);
+    agent_msg_send(channel, VD_AGENT_MONITORS_CONFIG, size, mon);
+    free(mon);
+}
+
+static void agent_announce_caps(SpiceChannel *channel)
+{
+    spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
+    VDAgentAnnounceCapabilities *caps;
+    size_t size;
+
+    if (!c->agent_connected)
+        return;
+
+    size = sizeof(VDAgentAnnounceCapabilities) + VD_AGENT_CAPS_BYTES;
+    caps = spice_malloc0(size);
+    if (!c->agent_caps_received)
+        caps->request = 1;
+    VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_MOUSE_STATE);
+    VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_MONITORS_CONFIG);
+    VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_REPLY);
+
+    agent_msg_send(channel, VD_AGENT_ANNOUNCE_CAPABILITIES, size, caps);
+    free(caps);
 }
 
 static void agent_start(SpiceChannel *channel)
@@ -242,6 +275,7 @@ static void agent_start(SpiceChannel *channel)
     spice_msg_out *out;
 
     c->agent_connected = true;
+    c->agent_caps_received = false;
     g_signal_emit(channel, signals[SPICE_MAIN_AGENT_UPDATE], 0);
 
     out = spice_msg_out_new(channel, SPICE_MSGC_MAIN_AGENT_START);
@@ -249,6 +283,7 @@ static void agent_start(SpiceChannel *channel)
     spice_msg_out_send(out);
     spice_msg_out_unref(out);
 
+    agent_announce_caps(channel);
     agent_monitors_config(channel);
 }
 
@@ -257,6 +292,7 @@ static void agent_stopped(SpiceChannel *channel)
     spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
 
     c->agent_connected = false;
+    c->agent_caps_received = false;
     g_signal_emit(channel, signals[SPICE_MAIN_AGENT_UPDATE], 0);
 }
 
@@ -381,14 +417,17 @@ complete:
         if (size > VD_AGENT_CAPS_SIZE)
             size = VD_AGENT_CAPS_SIZE;
         memset(c->agent_caps, 0, sizeof(c->agent_caps));
-        for (i = 0; i < size; i++) {
-            if (!VD_AGENT_HAS_CAPABILITY(caps->caps, VD_AGENT_CAPS_SIZE, i))
+        for (i = 0; i < size * 32; i++) {
+            if (!VD_AGENT_HAS_CAPABILITY(caps->caps, size, i))
                 continue;
             fprintf(stderr, "%s: cap: %d (%s)\n", __FUNCTION__,
                     i, NAME(agent_caps, i));
             VD_AGENT_SET_CAPABILITY(c->agent_caps, i);
         }
+        c->agent_caps_received = true;
         g_signal_emit(channel, signals[SPICE_MAIN_AGENT_UPDATE], 0);
+        if (caps->request)
+            agent_announce_caps(channel);
     }
     case VD_AGENT_REPLY:
     {
