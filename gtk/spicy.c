@@ -23,6 +23,7 @@ static GMainLoop    *mainloop;
 static SpiceSession *session;
 static spice_window *wins[4];
 static GObject      *audio;
+static gboolean     connect_canceled = false;
 
 static char *mouse_state = "?";
 static char *agent_state = "?";
@@ -471,6 +472,7 @@ static void main_channel_event(SpiceChannel *channel, enum SpiceChannelEvent eve
         if (rc == 0) {
             spice_session_connect(session);
         } else {
+            connect_canceled = true;
             g_main_loop_quit(mainloop);
         }
         break;
@@ -597,6 +599,7 @@ int main(int argc, char *argv[])
     spice_cmdline_session_setup(session);
     spice_session_connect(session);
 
-    g_main_loop_run(mainloop);
+    if (!connect_canceled)
+        g_main_loop_run(mainloop);
     return 0;
 }
