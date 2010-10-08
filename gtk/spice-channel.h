@@ -45,16 +45,8 @@ struct _SpiceChannelClass
     void (*handle_msg)(SpiceChannel *channel, spice_msg_in *msg);
     void (*channel_up)(SpiceChannel *channel);
 
-    /* common signals */
+    /* signals */
     void (*spice_channel_event)(SpiceChannel *channel, enum SpiceChannelEvent event);
-
-    /* display signals */
-    void (*spice_display_primary_create)(SpiceChannel *channel, gint format,
-                                         gint width, gint height, gint stride,
-                                         gint shmid, gpointer data);
-    void (*spice_display_primary_destroy)(SpiceChannel *channel);
-    void (*spice_display_invalidate)(SpiceChannel *channel,
-                                     gint x, gint y, gint w, gint h);
 
 #if 0
     /*

@@ -25,6 +25,14 @@ struct _SpiceDisplayChannel {
 struct _SpiceDisplayChannelClass {
     SpiceChannelClass parent_class;
 
+    /* signals */
+    void (*spice_display_primary_create)(SpiceChannel *channel, gint format,
+                                         gint width, gint height, gint stride,
+                                         gint shmid, gpointer data);
+    void (*spice_display_primary_destroy)(SpiceChannel *channel);
+    void (*spice_display_invalidate)(SpiceChannel *channel,
+                                     gint x, gint y, gint w, gint h);
+
     /* Do not add fields to this struct */
 };
 
