@@ -80,15 +80,13 @@ enum {
     PROP_AUTO_CLIPBOARD,
 };
 
-#if 0
 /* Signals */
 enum {
-    SPICE_DISPLAY_FOO,
+    SPICE_DISPLAY_MOUSE_GRAB,
     SPICE_DISPLAY_LAST_SIGNAL,
 };
 
 static guint signals[SPICE_DISPLAY_LAST_SIGNAL];
-#endif
 
 static bool no_mitshm;
 
@@ -331,6 +329,7 @@ static void try_mouse_grab(GtkWidget *widget)
     d->mouse_grab_active = true;
     d->mouse_last_x = -1;
     d->mouse_last_y = -1;
+    g_signal_emit(widget, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, true);
 }
 
 static void mouse_check_edges(GtkWidget *widget, GdkEventMotion *motion)
@@ -371,8 +370,9 @@ static void try_mouse_ungrab(GtkWidget *widget)
         return;
 
     gdk_pointer_ungrab(GDK_CURRENT_TIME);
-    gdk_window_set_cursor(gtk_widget_get_window(widget), NULL);
+    gdk_window_set_cursor(gtk_widget_get_window(widget), d->mouse_cursor);
     d->mouse_grab_active = false;
+    g_signal_emit(widget, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, false);
 }
 
 static gboolean geometry_timer(gpointer data)
@@ -807,25 +807,26 @@ static gboolean configure_event(GtkWidget *widget, GdkEventConfigure *conf)
 /* ---------------------------------------------------------------- */
 
 static const struct {
-    const char  *x;
-    int         s;
+    const char  *xatom;
+    uint32_t    vdagent;
+    uint32_t    flags;
 } atom2agent[] = {
-    { .s = VD_AGENT_CLIPBOARD_UTF8_TEXT,  .x = "UTF8_STRING"              },
-    { .s = VD_AGENT_CLIPBOARD_UTF8_TEXT,  .x = "text/plain;charset=utf-8" },
-    { .s = VD_AGENT_CLIPBOARD_UTF8_TEXT,  .x = "STRING"                   },
-    { .s = VD_AGENT_CLIPBOARD_UTF8_TEXT,  .x = "TEXT"                     },
-    { .s = VD_AGENT_CLIPBOARD_UTF8_TEXT,  .x = "text/plain"               },
-
-#if 0 /* gimp */
-    { .s = VD_AGENT_CLIPBOARD_BITMAP,     .x = "image/bmp"                },
-    { .s = VD_AGENT_CLIPBOARD_BITMAP,     .x = "image/x-bmp"              },
-    { .s = VD_AGENT_CLIPBOARD_BITMAP,     .x = "image/x-MS-bmp"           },
-    { .s = VD_AGENT_CLIPBOARD_BITMAP,     .x = "image/x-win-bitmap"       },
-#endif
-
-#if 0 /* firefox */
-    { .s = VD_AGENT_CLIPBOARD_HTML,       .x = "text/html"                },
-#endif
+    {
+        .vdagent = VD_AGENT_CLIPBOARD_UTF8_TEXT,
+        .xatom   = "UTF8_STRING",
+    },{
+        .vdagent = VD_AGENT_CLIPBOARD_UTF8_TEXT,
+        .xatom   = "text/plain;charset=utf-8"
+    },{
+        .vdagent = VD_AGENT_CLIPBOARD_UTF8_TEXT,
+        .xatom   = "STRING"
+    },{
+        .vdagent = VD_AGENT_CLIPBOARD_UTF8_TEXT,
+        .xatom   = "TEXT"
+    },{
+        .vdagent = VD_AGENT_CLIPBOARD_UTF8_TEXT,
+        .xatom   = "text/plain"
+    }
 };
 
 static void clipboard_get_targets(GtkClipboard *clipboard,
@@ -842,7 +843,7 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
 #if 1 /* debug */
     fprintf(stderr, "%s:", __FUNCTION__);
     for (a = 0; a < n_atoms; a++) {
-        fprintf(stderr, " %s",gdk_atom_name(atoms[a]));
+        fprintf(stderr, " \"%s\"",gdk_atom_name(atoms[a]));
     }
     fprintf(stderr, "\n");
 #endif
@@ -851,18 +852,18 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
     for (a = 0; a < n_atoms; a++) {
         name = gdk_atom_name(atoms[a]);
         for (m = 0; m < SPICE_N_ELEMENTS(atom2agent); m++) {
-            if (strcasecmp(name, atom2agent[m].x) != 0) {
+            if (strcasecmp(name, atom2agent[m].xatom) != 0) {
                 continue;
             }
             /* found match */
             for (t = 0; t < SPICE_N_ELEMENTS(atom2agent); t++) {
-                if (types[t] == atom2agent[m].s) {
+                if (types[t] == atom2agent[m].vdagent) {
                     /* type already in list */
                     break;
                 }
                 if (types[t] == 0) {
                     /* add type to empty slot */
-                    types[t] = atom2agent[m].s;
+                    types[t] = atom2agent[m].vdagent;
                     break;
                 }
             }
@@ -980,7 +981,18 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                               G_PARAM_STATIC_NICK |
                               G_PARAM_STATIC_BLURB));
 
-        g_type_class_add_private(klass, sizeof(spice_display));
+    signals[SPICE_DISPLAY_MOUSE_GRAB] =
+        g_signal_new("spice-display-mouse-grab",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_FIRST,
+                     G_STRUCT_OFFSET(SpiceDisplayClass, spice_display_mouse_grab),
+                     NULL, NULL,
+                     g_cclosure_marshal_VOID__INT,
+                     G_TYPE_NONE,
+                     1,
+                     G_TYPE_INT);
+
+    g_type_class_add_private(klass, sizeof(spice_display));
 }
 
 /* ---------------------------------------------------------------- */
@@ -991,6 +1003,9 @@ static void mouse_update(SpiceChannel *channel, gpointer data)
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     g_object_get(channel, "mouse-mode", &d->mouse_mode, NULL);
+    if (d->mouse_mode == SPICE_MOUSE_MODE_CLIENT) {
+        try_mouse_ungrab(GTK_WIDGET(display));
+    }
 }
 
 static void primary_create(SpiceChannel *channel, gint format,
