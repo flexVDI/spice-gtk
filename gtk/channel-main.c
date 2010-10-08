@@ -266,6 +266,26 @@ static void agent_announce_caps(SpiceChannel *channel)
     free(caps);
 }
 
+static void agent_clipboard_grab(SpiceChannel *channel, int *types, int ntypes)
+{
+    spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
+    VDAgentClipboardGrab *grab;
+    size_t size;
+    int i;
+
+    if (!c->agent_connected)
+        return;
+
+    size = sizeof(VDAgentClipboardGrab) + sizeof(uint32_t) * ntypes;
+    grab = spice_malloc0(size);
+    for (i = 0; i < ntypes; i++) {
+        grab->types[i] = types[i];
+    }
+
+    agent_msg_send(channel, VD_AGENT_CLIPBOARD_GRAB, size, grab);
+    free(grab);
+}
+
 static void agent_start(SpiceChannel *channel)
 {
     spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
@@ -487,7 +507,7 @@ void spice_main_set_display(SpiceChannel *channel, int id,
 
 void spice_main_clipboard_grab(SpiceChannel *channel, int *types, int ntypes)
 {
-    fprintf(stderr, "%s: TODO (%d types)\n", __FUNCTION__, ntypes);
+    agent_clipboard_grab(channel, types, ntypes);
 }
 
 void spice_main_clipboard_release(SpiceChannel *channel)
