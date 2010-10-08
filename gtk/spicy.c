@@ -13,6 +13,7 @@ struct spice_window {
     GtkAccelGroup  *accel;
     GtkUIManager   *ui;
     bool           fullscreen;
+    bool           mouse_grabbed;
 };
 
 /* config */
@@ -146,7 +147,12 @@ static void update_status(struct spice_window *win)
 
     if (win == NULL)
         return;
-    snprintf(status, sizeof(status), "mouse: %s, agent: %s", mouse_state, agent_state);
+    if (win->mouse_grabbed) {
+        snprintf(status, sizeof(status), "Use Shift+F12 to ungrab mouse.");
+    } else {
+        snprintf(status, sizeof(status), "mouse: %s, agent: %s",
+                 mouse_state, agent_state);
+    }
     gtk_label_set_text(GTK_LABEL(win->status), status);
 }
 
@@ -249,6 +255,14 @@ static gboolean window_state_cb(GtkWidget *widget, GdkEventWindowState *event,
         }
     }
     return TRUE;
+}
+
+static void mouse_grab_cb(GtkWidget *widget, gint grabbed, gpointer data)
+{
+    struct spice_window *win = data;
+
+    win->mouse_grabbed = grabbed;
+    update_status(win);
 }
 
 /* ------------------------------------------------------------------ */
@@ -416,6 +430,8 @@ static spice_window *create_spice_window(SpiceSession *s, int id)
 
     /* spice display */
     win->spice = spice_display_new(s, id);
+    g_signal_connect(G_OBJECT(win->spice), "spice-display-mouse-grab",
+		     G_CALLBACK(mouse_grab_cb), win);
 
     /* status line */
     win->status = gtk_label_new("status line");
@@ -447,6 +463,7 @@ static spice_window *create_spice_window(SpiceSession *s, int id)
     if (fullscreen)
         gtk_window_fullscreen(GTK_WINDOW(win->toplevel));
     gtk_widget_show_all(win->toplevel);
+    gtk_widget_grab_focus(win->spice);
     return win;
 }
 
