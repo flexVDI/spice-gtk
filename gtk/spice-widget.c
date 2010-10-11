@@ -65,6 +65,7 @@ struct spice_display {
 
     const guint16 const     *keycode_map;
     size_t                  keycode_maplen;
+    uint32_t                key_state[512 / 32];
 
     gint                    timer_id;
 };
@@ -603,6 +604,51 @@ static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
     return true;
 }
 
+static void send_key(GtkWidget *widget, int scancode, int down)
+{
+    SpiceDisplay *display = SPICE_DISPLAY(widget);
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    uint32_t i, b, m;
+
+    if (!d->inputs)
+        return;
+
+    i = scancode / 32;
+    b = scancode % 32;
+    m = (1 << b);
+    assert(i < SPICE_N_ELEMENTS(d->key_state));
+
+    if (down) {
+        if (d->key_state[i] & m) {
+            return;
+        }
+        spice_inputs_key_press(d->inputs, scancode);
+        d->key_state[i] |= m;
+    } else {
+        if (!(d->key_state[i] & m)) {
+            return;
+        }
+        spice_inputs_key_release(d->inputs, scancode);
+        d->key_state[i] &= ~m;
+    }
+}
+
+static void release_keys(GtkWidget *widget)
+{
+    SpiceDisplay *display = SPICE_DISPLAY(widget);
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    uint32_t i, b;
+
+    for (i = 0; i < SPICE_N_ELEMENTS(d->key_state); i++) {
+        if (!d->key_state[i]) {
+            continue;
+        }
+        for (b = 0; b < 32; b++) {
+            send_key(widget, i * 32 + b, 0);
+        }
+    }
+}
+
 static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
@@ -622,10 +668,10 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
                                             key->hardware_keycode);
     switch (key->type) {
     case GDK_KEY_PRESS:
-        spice_inputs_key_press(d->inputs, scancode);
+        send_key(widget, scancode, 1);
         break;
     case GDK_KEY_RELEASE:
-        spice_inputs_key_release(d->inputs, scancode);
+        send_key(widget, scancode, 0);
         break;
     default:
         break;
@@ -667,6 +713,7 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
 #if 0
     fprintf(stderr, "%s\n", __FUNCTION__);
 #endif
+    release_keys(widget);
     d->keyboard_have_focus = true;
     try_keyboard_grab(widget);
     return true;
@@ -763,9 +810,9 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
 #if 0
-    fprintf(stderr, "%s %s: button %d\n", __FUNCTION__,
+    fprintf(stderr, "%s %s: button %d, state 0x%x\n", __FUNCTION__,
             button->type == GDK_BUTTON_PRESS ? "press" : "release",
-            button->button);
+            button->button, button->state);
 #endif
 
     gtk_widget_grab_focus(widget);

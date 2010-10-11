@@ -231,19 +231,29 @@ void spice_inputs_button_press(SpiceInputsChannel *channel, gint button,
                                gint button_state)
 {
     spice_inputs_channel *c = channel->priv;
-    SpiceMsgcMousePress press = {
-        .button = button,
-        .buttons_state = button_state,
-    };
+    SpiceMsgcMousePress press;
     spice_msg_out *msg;
 
-    c->bs  = button_state;
+    switch (button) {
+    case SPICE_MOUSE_BUTTON_LEFT:
+        button_state |= SPICE_MOUSE_BUTTON_MASK_LEFT;
+        break;
+    case SPICE_MOUSE_BUTTON_MIDDLE:
+        button_state |= SPICE_MOUSE_BUTTON_MASK_MIDDLE;
+        break;
+    case SPICE_MOUSE_BUTTON_RIGHT:
+        button_state |= SPICE_MOUSE_BUTTON_MASK_RIGHT;
+        break;
+    }
 
+    c->bs  = button_state;
     send_motion(channel);
     send_position(channel);
 
     msg = spice_msg_out_new(SPICE_CHANNEL(channel),
                             SPICE_MSGC_INPUTS_MOUSE_PRESS);
+    press.button = button;
+    press.buttons_state = button_state;
     msg->marshallers->msgc_inputs_mouse_press(msg->marshaller, &press);
     spice_msg_out_send(msg);
     spice_msg_out_unref(msg);
@@ -253,19 +263,29 @@ void spice_inputs_button_release(SpiceInputsChannel *channel, gint button,
                                  gint button_state)
 {
     spice_inputs_channel *c = channel->priv;
-    SpiceMsgcMouseRelease release = {
-        .button = button,
-        .buttons_state = button_state,
-    };
+    SpiceMsgcMouseRelease release;
     spice_msg_out *msg;
 
-    c->bs  = button_state;
+    switch (button) {
+    case SPICE_MOUSE_BUTTON_LEFT:
+        button_state &= ~SPICE_MOUSE_BUTTON_MASK_LEFT;
+        break;
+    case SPICE_MOUSE_BUTTON_MIDDLE:
+        button_state &= ~SPICE_MOUSE_BUTTON_MASK_MIDDLE;
+        break;
+    case SPICE_MOUSE_BUTTON_RIGHT:
+        button_state &= ~SPICE_MOUSE_BUTTON_MASK_RIGHT;
+        break;
+    }
 
+    c->bs  = button_state;
     send_motion(channel);
     send_position(channel);
 
     msg = spice_msg_out_new(SPICE_CHANNEL(channel),
                             SPICE_MSGC_INPUTS_MOUSE_RELEASE);
+    release.button = button;
+    release.buttons_state = button_state;
     msg->marshallers->msgc_inputs_mouse_release(msg->marshaller, &release);
     spice_msg_out_send(msg);
     spice_msg_out_unref(msg);
