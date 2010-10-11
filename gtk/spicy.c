@@ -3,12 +3,19 @@
 #include "spice-common.h"
 #include "spice-cmdline.h"
 
+enum {
+    STATE_SCROLL_LOCK,
+    STATE_CAPS_LOCK,
+    STATE_NUM_LOCK,
+    STATE_MAX,
+};
+
 typedef struct spice_window spice_window;
 struct spice_window {
     int            id;
     GtkWidget      *toplevel, *spice;
-    GtkWidget      *fstatus, *status;
     GtkWidget      *menubar, *toolbar;
+    GtkWidget      *hbox, *status, *st[STATE_MAX];
     GtkActionGroup *ag;
     GtkAccelGroup  *accel;
     GtkUIManager   *ui;
@@ -246,12 +253,12 @@ static gboolean window_state_cb(GtkWidget *widget, GdkEventWindowState *event,
         if (win->fullscreen) {
             gtk_widget_hide(win->menubar);
             gtk_widget_hide(win->toolbar);
-            gtk_widget_hide(win->fstatus);
+            gtk_widget_hide(win->hbox);
             gtk_widget_grab_focus(win->spice);
         } else {
             gtk_widget_show(win->menubar);
             gtk_widget_show(win->toolbar);
-            gtk_widget_show(win->fstatus);
+            gtk_widget_show(win->hbox);
         }
     }
     return TRUE;
@@ -390,7 +397,7 @@ static spice_window *create_spice_window(SpiceSession *s, int id)
 {
     char title[32];
     struct spice_window *win;
-    GtkWidget *vbox;
+    GtkWidget *vbox, *frame;
     GError *err = NULL;
     int i;
 
@@ -434,10 +441,24 @@ static spice_window *create_spice_window(SpiceSession *s, int id)
 		     G_CALLBACK(mouse_grab_cb), win);
 
     /* status line */
+    win->hbox = gtk_hbox_new(FALSE, 1);
+
     win->status = gtk_label_new("status line");
     gtk_misc_set_alignment(GTK_MISC(win->status), 0, 0.5);
     gtk_misc_set_padding(GTK_MISC(win->status), 3, 1);
     update_status(win);
+
+    frame = gtk_frame_new(NULL);
+    gtk_box_pack_start(GTK_BOX(win->hbox), frame, TRUE, TRUE, 0);
+    gtk_container_add(GTK_CONTAINER(frame), win->status);
+
+    for (i = 0; i < STATE_MAX; i++) {
+        win->st[i] = gtk_label_new("?");
+        gtk_label_set_width_chars(GTK_LABEL(win->st[i]), 5);
+        frame = gtk_frame_new(NULL);
+        gtk_box_pack_end(GTK_BOX(win->hbox), frame, FALSE, FALSE, 0);
+        gtk_container_add(GTK_CONTAINER(frame), win->st[i]);
+    }
 
     /* Make a vbox and put stuff in */
     vbox = gtk_vbox_new(FALSE, 1);
@@ -446,9 +467,8 @@ static spice_window *create_spice_window(SpiceSession *s, int id)
     gtk_box_pack_start(GTK_BOX(vbox), win->menubar, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(vbox), win->toolbar, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(vbox), win->spice, TRUE, TRUE, 0);
-    win->fstatus = gtk_frame_new(NULL);
-    gtk_box_pack_end(GTK_BOX(vbox), win->fstatus, FALSE, TRUE, 0);
-    gtk_container_add(GTK_CONTAINER(win->fstatus), win->status);
+    gtk_box_pack_end(GTK_BOX(vbox), win->hbox, FALSE, TRUE, 0);
+
 
     /* init toggle actions */
     for (i = 0; i < G_N_ELEMENTS(tentries); i++) {
@@ -542,6 +562,19 @@ static void main_agent_update(SpiceChannel *channel, gpointer *data)
     update_status(wins[0]);
 }
 
+static void inputs_modifiers(SpiceChannel *channel, gpointer *data)
+{
+    int m;
+
+    g_object_get(channel, "key-modifiers", &m, NULL);
+    gtk_label_set_text(GTK_LABEL(wins[0]->st[STATE_SCROLL_LOCK]),
+                       m & SPICE_KEYBOARD_MODIFIER_FLAGS_SCROLL_LOCK ? "SCROLL" : "");
+    gtk_label_set_text(GTK_LABEL(wins[0]->st[STATE_CAPS_LOCK]),
+                       m & SPICE_KEYBOARD_MODIFIER_FLAGS_CAPS_LOCK ? "CAPS" : "");
+    gtk_label_set_text(GTK_LABEL(wins[0]->st[STATE_NUM_LOCK]),
+                       m & SPICE_KEYBOARD_MODIFIER_FLAGS_NUM_LOCK ? "NUM" : "");
+}
+
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer *data)
 {
     int id = spice_channel_id(channel);
@@ -566,6 +599,13 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer *data)
             return;
         fprintf(stderr, "new display channel (#%d), creating window\n", id);
         wins[id] = create_spice_window(s, id);
+        return;
+    }
+
+    if (SPICE_IS_INPUTS_CHANNEL(channel)) {
+        fprintf(stderr, "new inputs channel\n");
+        g_signal_connect(channel, "spice-inputs-modifiers",
+                         G_CALLBACK(inputs_modifiers), NULL);
         return;
     }
 
