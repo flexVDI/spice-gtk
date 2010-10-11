@@ -25,6 +25,9 @@ struct _SpiceInputsChannel {
 struct _SpiceInputsChannelClass {
     SpiceChannelClass parent_class;
 
+    /* signals */
+    void (*spice_inputs_modifiers)(SpiceChannel *channel);
+
     /* Do not add fields to this struct */
 };
 

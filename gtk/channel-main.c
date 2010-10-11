@@ -87,10 +87,10 @@ static void spice_main_channel_init(SpiceMainChannel *channel)
     memset(c, 0, sizeof(*c));
 }
 
-static void spice_display_get_property(GObject    *object,
-                                       guint       prop_id,
-                                       GValue     *value,
-                                       GParamSpec *pspec)
+static void spice_main_get_property(GObject    *object,
+                                    guint       prop_id,
+                                    GValue     *value,
+                                    GParamSpec *pspec)
 {
     spice_main_channel *c = SPICE_MAIN_CHANNEL(object)->priv;
 
@@ -126,7 +126,7 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
     fprintf(stderr, "%s\n", __FUNCTION__);
 
     gobject_class->finalize     = spice_main_channel_finalize;
-    gobject_class->get_property = spice_display_get_property;
+    gobject_class->get_property = spice_main_get_property;
     channel_class->handle_msg   = spice_main_handle_msg;
 
     g_object_class_install_property

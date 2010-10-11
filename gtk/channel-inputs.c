@@ -9,9 +9,25 @@ struct spice_inputs_channel {
     int                         dx, dy;
     unsigned int                x, y, dpy;
     int                         motion_count;
+    int                         modifiers;
 };
 
 G_DEFINE_TYPE(SpiceInputsChannel, spice_inputs_channel, SPICE_TYPE_CHANNEL)
+
+/* Properties */
+enum {
+    PROP_0,
+    PROP_KEY_MODIFIERS,
+};
+
+/* Signals */
+enum {
+    SPICE_INPUTS_MODIFIERS,
+
+    SPICE_INPUTS_LAST_SIGNAL,
+};
+
+static guint signals[SPICE_INPUTS_LAST_SIGNAL];
 
 static void spice_inputs_handle_msg(SpiceChannel *channel, spice_msg_in *msg);
 
@@ -25,6 +41,23 @@ static void spice_inputs_channel_init(SpiceInputsChannel *channel)
 
     c = channel->priv = SPICE_INPUTS_CHANNEL_GET_PRIVATE(channel);
     memset(c, 0, sizeof(*c));
+}
+
+static void spice_inputs_get_property(GObject    *object,
+                                      guint       prop_id,
+                                      GValue     *value,
+                                      GParamSpec *pspec)
+{
+    spice_inputs_channel *c = SPICE_INPUTS_CHANNEL(object)->priv;
+
+    switch (prop_id) {
+    case PROP_KEY_MODIFIERS:
+        g_value_set_int(value, c->modifiers);
+	break;
+    default:
+	G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+	break;
+    }
 }
 
 static void spice_inputs_channel_finalize(GObject *obj)
@@ -43,7 +76,29 @@ static void spice_inputs_channel_class_init(SpiceInputsChannelClass *klass)
     fprintf(stderr, "%s\n", __FUNCTION__);
 
     gobject_class->finalize     = spice_inputs_channel_finalize;
+    gobject_class->get_property = spice_inputs_get_property;
     channel_class->handle_msg   = spice_inputs_handle_msg;
+
+    g_object_class_install_property
+        (gobject_class, PROP_KEY_MODIFIERS,
+         g_param_spec_int("key-modifiers",
+                          "Key modifiers",
+                          "Guest keyboard modifier state (derived from kbd leds)",
+                          0, INT_MAX, 0,
+                          G_PARAM_READABLE |
+                          G_PARAM_STATIC_NAME |
+                          G_PARAM_STATIC_NICK |
+                          G_PARAM_STATIC_BLURB));
+
+    signals[SPICE_INPUTS_MODIFIERS] =
+        g_signal_new("spice-inputs-modifiers",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_FIRST,
+                     G_STRUCT_OFFSET(SpiceInputsChannelClass, spice_inputs_modifiers),
+                     NULL, NULL,
+                     g_cclosure_marshal_VOID__VOID,
+                     G_TYPE_NONE,
+                     0);
 
     g_type_class_add_private(klass, sizeof(spice_inputs_channel));
 }
@@ -101,11 +156,20 @@ static void send_position(SpiceInputsChannel *channel)
 
 static void inputs_handle_init(SpiceChannel *channel, spice_msg_in *in)
 {
+    spice_inputs_channel *c = SPICE_INPUTS_CHANNEL(channel)->priv;
+    SpiceMsgInputsInit *init = spice_msg_in_parsed(in);
+
+    c->modifiers = init->keyboard_modifiers;
+    g_signal_emit(channel, signals[SPICE_INPUTS_MODIFIERS], 0);
 }
 
 static void inputs_handle_modifiers(SpiceChannel *channel, spice_msg_in *in)
 {
-    fprintf(stderr, "%s: TODO\n", __FUNCTION__);
+    spice_inputs_channel *c = SPICE_INPUTS_CHANNEL(channel)->priv;
+    SpiceMsgInputsKeyModifiers *modifiers = spice_msg_in_parsed(in);
+
+    c->modifiers = modifiers->modifiers;
+    g_signal_emit(channel, signals[SPICE_INPUTS_MODIFIERS], 0);
 }
 
 static void inputs_handle_ack(SpiceChannel *channel, spice_msg_in *in)

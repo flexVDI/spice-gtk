@@ -365,12 +365,17 @@ void spice_msg_out_send(spice_msg_out *out)
 static int spice_channel_send(SpiceChannel *channel, void *buf, int len)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    int rc;
 
     if (c->tls) {
-        return SSL_write(c->ssl, buf, len);
+        rc = SSL_write(c->ssl, buf, len);
+        if (rc != len) {
+            fprintf(stderr, "%s: SSL_write: %d / %d\n", __FUNCTION__, rc, len);
+        }
     } else {
-        return send(c->socket, buf, len, 0);
+        rc = send(c->socket, buf, len, 0);
     }
+    return rc;
 }
 
 static int spice_channel_recv(SpiceChannel *channel, void *buf, int len)
