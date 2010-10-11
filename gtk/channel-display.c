@@ -426,6 +426,25 @@ static void display_handle_inv_palette_all(SpiceChannel *channel, spice_msg_in *
 
 /* ------------------------------------------------------------------ */
 
+static void display_update_stream_region(display_stream *st)
+{
+    int i;
+
+    switch (st->clip->type) {
+    case SPICE_CLIP_TYPE_RECTS:
+        region_clear(&st->region);
+        for (i = 0; i < st->clip->rects->num_rects; i++) {
+            region_add(&st->region, &st->clip->rects->rects[i]);
+        }
+        st->have_region = true;
+        break;
+    case SPICE_CLIP_TYPE_NONE:
+    default:
+        st->have_region = false;
+        break;
+    }
+}
+
 static void display_handle_stream_create(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
@@ -444,6 +463,9 @@ static void display_handle_stream_create(SpiceChannel *channel, spice_msg_in *in
     st->clip = &op->clip;
     st->codec = op->codec_type;
     st->surface = find_surface(channel, op->surface_id);
+
+    region_init(&st->region);
+    display_update_stream_region(st);
 
     switch (st->codec) {
     case SPICE_VIDEO_CODEC_TYPE_MJPEG:
@@ -480,7 +502,7 @@ static void display_handle_stream_data(SpiceChannel *channel, spice_msg_in *in)
         st->surface->canvas->ops->put_image
             (st->surface->canvas, &info->dest, data,
              info->src_width, info->src_height, stride,
-             NULL /* FIXME: st->clip */ );
+             st->have_region ? &st->region : NULL);
         if (st->surface->primary)
             emit_invalidate(channel, &info->dest);
     }
@@ -500,7 +522,7 @@ static void display_handle_stream_clip(SpiceChannel *channel, spice_msg_in *in)
     spice_msg_in_ref(in);
     st->msg_clip = in;
     st->clip = &op->clip;
-    fprintf(stderr, "%s: TODO (id %d)\n", __FUNCTION__, op->id);
+    display_update_stream_region(st);
 }
 
 static void destroy_stream(SpiceChannel *channel, int id)

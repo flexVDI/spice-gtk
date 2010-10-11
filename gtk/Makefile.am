@@ -142,6 +142,8 @@ libspice_client_glib_la_SOURCES =	\
 	$(COMMON_DIR)/quic.h		\
 	$(COMMON_DIR)/lz.c		\
 	$(COMMON_DIR)/lz.h		\
+	$(COMMON_DIR)/region.c		\
+	$(COMMON_DIR)/region.h		\
 	$(NULL)
 
 libspice_client_glibincludedir = $(includedir)/spice-client

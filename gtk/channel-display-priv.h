@@ -32,6 +32,8 @@ typedef struct display_stream {
     /* from messages */
     display_surface             *surface;
     SpiceClip                   *clip;
+    QRegion                     region;
+    int                         have_region;
     int                         codec;
 
     /* mjpeg decoder */
