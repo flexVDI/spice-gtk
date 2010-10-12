@@ -528,6 +528,11 @@ static void destroy_spice_window(spice_window *win)
 {
     fprintf(stderr, "destroy window (#%d)\n", win->id);
     gtk_widget_destroy(win->toplevel);
+#if 0 /* FIXME: triggers gobject warning */
+    g_object_unref(win->ag);
+#endif
+    g_object_unref(win->ui);
+    g_object_unref(win->accel);
     free(win);
 }
 
@@ -717,8 +722,14 @@ static spice_connection *connection_new(void)
 static void connection_destroy(spice_connection *conn)
 {
     fprintf(stderr, "%s\n", __FUNCTION__);
+    g_object_unref(conn->session);
     free(conn);
+
     connections--;
+    if (connections > 0) {
+        return;
+    }
+
     g_main_loop_quit(mainloop);
 }
 
@@ -760,9 +771,6 @@ int main(int argc, char *argv[])
     spice_cmdline_session_setup(conn->session);
     spice_session_connect(conn->session);
 
-    while (connections) {
-        g_main_loop_run(mainloop);
-        fprintf(stderr, "%s: %d connections\n", __FUNCTION__, connections);
-    }
+    g_main_loop_run(mainloop);
     return 0;
 }
