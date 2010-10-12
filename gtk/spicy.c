@@ -3,6 +3,9 @@
 #include "spice-common.h"
 #include "spice-cmdline.h"
 
+/* config */
+static gboolean fullscreen = false;
+
 enum {
     STATE_SCROLL_LOCK,
     STATE_CAPS_LOCK,
@@ -11,30 +14,35 @@ enum {
 };
 
 typedef struct spice_window spice_window;
+typedef struct spice_connection spice_connection;
+
 struct spice_window {
-    int            id;
-    GtkWidget      *toplevel, *spice;
-    GtkWidget      *menubar, *toolbar;
-    GtkWidget      *hbox, *status, *st[STATE_MAX];
-    GtkActionGroup *ag;
-    GtkAccelGroup  *accel;
-    GtkUIManager   *ui;
-    bool           fullscreen;
-    bool           mouse_grabbed;
+    spice_connection *conn;
+    int              id;
+    GtkWidget        *toplevel, *spice;
+    GtkWidget        *menubar, *toolbar;
+    GtkWidget        *hbox, *status, *st[STATE_MAX];
+    GtkActionGroup   *ag;
+    GtkAccelGroup    *accel;
+    GtkUIManager     *ui;
+    bool             fullscreen;
+    bool             mouse_grabbed;
 };
 
-/* config */
-static gboolean fullscreen = false;
+struct spice_connection {
+    SpiceSession     *session;
+    spice_window     *wins[4];
+    GObject          *audio;
+    char             *mouse_state;
+    char             *agent_state;
+    int              channels;
+};
 
-/* state */
-static GMainLoop    *mainloop;
-static SpiceSession *session;
-static spice_window *wins[4];
-static GObject      *audio;
-static gboolean     connect_canceled = false;
+static GMainLoop     *mainloop;
+static int           connections;
 
-static char *mouse_state = "?";
-static char *agent_state = "?";
+static spice_connection *connection_new(void);
+static void connection_destroy(spice_connection *conn);
 
 /* ------------------------------------------------------------------ */
 
@@ -158,16 +166,24 @@ static void update_status(struct spice_window *win)
         snprintf(status, sizeof(status), "Use Shift+F12 to ungrab mouse.");
     } else {
         snprintf(status, sizeof(status), "mouse: %s, agent: %s",
-                 mouse_state, agent_state);
+                 win->conn->mouse_state, win->conn->agent_state);
     }
     gtk_label_set_text(GTK_LABEL(win->status), status);
 }
 
-static void menu_cb_quit(GtkAction *action, void *data)
+static void menu_cb_connect(GtkAction *action, void *data)
+{
+    struct spice_connection *conn;
+
+    conn = connection_new();
+    spice_session_connect(conn->session);
+}
+
+static void menu_cb_close(GtkAction *action, void *data)
 {
     struct spice_window *win = data;
 
-    gtk_widget_destroy(win->toplevel);
+    spice_session_disconnect(win->conn->session);
 }
 
 static void menu_cb_copy(GtkAction *action, void *data)
@@ -234,13 +250,23 @@ static void menu_cb_about(GtkAction *action, void *data)
                           NULL);
 }
 
+static gboolean delete_cb(GtkWidget *widget, GdkEvent *event, gpointer data)
+{
+    struct spice_window *win = data;
+
+    spice_session_disconnect(win->conn->session);
+    return true;
+}
+
 static void destroy_cb(GtkWidget *widget, gpointer data)
 {
+#if 0
     struct spice_window *win = data;
 
     if (win->id == 0) {
         g_main_loop_quit(mainloop);
     }
+#endif
 }
 
 static gboolean window_state_cb(GtkWidget *widget, GdkEventWindowState *event,
@@ -296,11 +322,17 @@ static const GtkActionEntry entries[] = {
     },{
 
 	/* File menu */
-	.name        = "Quit",
-	.stock_id    = GTK_STOCK_QUIT,
-	.label       = "_Quit",
-	.callback    = G_CALLBACK(menu_cb_quit),
+	.name        = "Connect",
+	.stock_id    = GTK_STOCK_CONNECT,
+	.label       = "_Connect ...",
+	.callback    = G_CALLBACK(menu_cb_connect),
         .accelerator = "", /* none (disable default "<control>Q") */
+    },{
+	.name        = "Close",
+	.stock_id    = GTK_STOCK_CLOSE,
+	.label       = "_Close",
+	.callback    = G_CALLBACK(menu_cb_close),
+//        .accelerator = "", /* none (disable default "<control>Q") */
     },{
 
 	/* Edit menu */
@@ -364,7 +396,8 @@ static char ui_xml[] =
 "<ui>\n"
 "  <menubar action='MainMenu'>\n"
 "    <menu action='FileMenu'>\n"
-"      <menuitem action='Quit'/>\n"
+"      <menuitem action='Connect'/>\n"
+"      <menuitem action='Close'/>\n"
 "    </menu>\n"
 "    <menu action='EditMenu'>\n"
 "      <menuitem action='CopyToGuest'/>\n"
@@ -387,13 +420,13 @@ static char ui_xml[] =
 "    </menu>\n"
 "  </menubar>\n"
 "  <toolbar action='ToolBar'>\n"
-"    <toolitem action='Quit'/>\n"
+"    <toolitem action='Close'/>\n"
 "    <separator/>\n"
 "    <toolitem action='Fullscreen'/>\n"
 "  </toolbar>\n"
 "</ui>\n";
 
-static spice_window *create_spice_window(SpiceSession *s, int id)
+static spice_window *create_spice_window(spice_connection *conn, int id)
 {
     char title[32];
     struct spice_window *win;
@@ -406,15 +439,19 @@ static spice_window *create_spice_window(SpiceSession *s, int id)
         return NULL;
     memset(win,0,sizeof(*win));
     win->id = id;
+    win->conn = conn;
+    fprintf(stderr, "create window (#%d)\n", win->id);
 
     /* toplevel */
     win->toplevel = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     snprintf(title, sizeof(title), "spice display %d", id);
     gtk_window_set_title(GTK_WINDOW(win->toplevel), title);
-    g_signal_connect(G_OBJECT(win->toplevel), "destroy",
-                     G_CALLBACK(destroy_cb), win);
     g_signal_connect(G_OBJECT(win->toplevel), "window-state-event",
 		     G_CALLBACK(window_state_cb), win);
+    g_signal_connect(G_OBJECT(win->toplevel), "delete-event",
+		     G_CALLBACK(delete_cb), win);
+    g_signal_connect(G_OBJECT(win->toplevel), "destroy",
+                     G_CALLBACK(destroy_cb), win);
 
     /* menu + toolbar */
     win->ui = gtk_ui_manager_new();
@@ -436,7 +473,7 @@ static spice_window *create_spice_window(SpiceSession *s, int id)
     win->toolbar = gtk_ui_manager_get_widget(win->ui, "/ToolBar");
 
     /* spice display */
-    win->spice = spice_display_new(s, id);
+    win->spice = spice_display_new(conn->session, id);
     g_signal_connect(G_OBJECT(win->spice), "spice-display-mouse-grab",
 		     G_CALLBACK(mouse_grab_cb), win);
 
@@ -487,30 +524,38 @@ static spice_window *create_spice_window(SpiceSession *s, int id)
     return win;
 }
 
+static void destroy_spice_window(spice_window *win)
+{
+    fprintf(stderr, "destroy window (#%d)\n", win->id);
+    gtk_widget_destroy(win->toplevel);
+    free(win);
+}
+
 /* ------------------------------------------------------------------ */
 
 static void main_channel_event(SpiceChannel *channel, enum SpiceChannelEvent event,
-                               gpointer *data)
+                               gpointer data)
 {
+    spice_connection *conn = data;
     char password[64];
     int rc;
 
     switch (event) {
     case SPICE_CHANNEL_OPENED:
+        fprintf(stderr, "main channel: opened\n");
         /* nothing */
         break;
     case SPICE_CHANNEL_CLOSED:
         fprintf(stderr, "main channel: closed\n");
-        g_main_loop_quit(mainloop);
+        /* nothing */
         break;
     case SPICE_CHANNEL_ERROR_CONNECT:
         fprintf(stderr, "main channel: failed to connect\n");
-        rc = connect_dialog(NULL, session);
+        rc = connect_dialog(NULL, conn->session);
         if (rc == 0) {
-            spice_session_connect(session);
+            spice_session_connect(conn->session);
         } else {
-            connect_canceled = true;
-            g_main_loop_quit(mainloop);
+            spice_session_disconnect(conn->session);
         }
         break;
     case SPICE_CHANNEL_ERROR_AUTH:
@@ -520,101 +565,161 @@ static void main_channel_event(SpiceChannel *channel, enum SpiceChannelEvent eve
                       "Please enter the spice server password",
                       password, sizeof(password), true);
         if (rc == 0) {
-            g_object_set(session, "password", password, NULL);
-            spice_session_connect(session);
+            g_object_set(conn->session, "password", password, NULL);
+            spice_session_connect(conn->session);
         } else {
-            g_main_loop_quit(mainloop);
+            spice_session_disconnect(conn->session);
         }
         break;
     default:
         /* TODO: more sophisticated error handling */
         fprintf(stderr, "unknown main channel event: %d\n", event);
-        g_main_loop_quit(mainloop);
+        spice_session_disconnect(conn->session);
         break;
     }
 }
 
-static void main_mouse_update(SpiceChannel *channel, gpointer *data)
+static void main_mouse_update(SpiceChannel *channel, gpointer data)
 {
+    spice_connection *conn = data;
     gint mode;
 
     g_object_get(channel, "mouse-mode", &mode, NULL);
     switch (mode) {
     case SPICE_MOUSE_MODE_SERVER:
-        mouse_state = "server";
+        conn->mouse_state = "server";
         break;
     case SPICE_MOUSE_MODE_CLIENT:
-        mouse_state = "client";
+        conn->mouse_state = "client";
         break;
     default:
-        mouse_state = "?";
+        conn->mouse_state = "?";
         break;
     }
-    update_status(wins[0]);
+    update_status(conn->wins[0]);
 }
 
-static void main_agent_update(SpiceChannel *channel, gpointer *data)
+static void main_agent_update(SpiceChannel *channel, gpointer data)
 {
+    spice_connection *conn = data;
     gboolean agent_connected;
 
     g_object_get(channel, "agent-connected", &agent_connected, NULL);
-    agent_state = agent_connected ? "yes" : "no";
-    update_status(wins[0]);
+    conn->agent_state = agent_connected ? "yes" : "no";
+    update_status(conn->wins[0]);
 }
 
-static void inputs_modifiers(SpiceChannel *channel, gpointer *data)
+static void inputs_modifiers(SpiceChannel *channel, gpointer data)
 {
+    spice_connection *conn = data;
     int m;
 
     g_object_get(channel, "key-modifiers", &m, NULL);
-    gtk_label_set_text(GTK_LABEL(wins[0]->st[STATE_SCROLL_LOCK]),
+    gtk_label_set_text(GTK_LABEL(conn->wins[0]->st[STATE_SCROLL_LOCK]),
                        m & SPICE_KEYBOARD_MODIFIER_FLAGS_SCROLL_LOCK ? "SCROLL" : "");
-    gtk_label_set_text(GTK_LABEL(wins[0]->st[STATE_CAPS_LOCK]),
+    gtk_label_set_text(GTK_LABEL(conn->wins[0]->st[STATE_CAPS_LOCK]),
                        m & SPICE_KEYBOARD_MODIFIER_FLAGS_CAPS_LOCK ? "CAPS" : "");
-    gtk_label_set_text(GTK_LABEL(wins[0]->st[STATE_NUM_LOCK]),
+    gtk_label_set_text(GTK_LABEL(conn->wins[0]->st[STATE_NUM_LOCK]),
                        m & SPICE_KEYBOARD_MODIFIER_FLAGS_NUM_LOCK ? "NUM" : "");
 }
 
-static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer *data)
+static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
+    spice_connection *conn = data;
     int id = spice_channel_id(channel);
+
+    conn->channels++;
 
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
         fprintf(stderr, "new main channel\n");
         g_signal_connect(channel, "spice-channel-event",
-                         G_CALLBACK(main_channel_event), NULL);
+                         G_CALLBACK(main_channel_event), conn);
         g_signal_connect(channel, "spice-main-mouse-update",
-                         G_CALLBACK(main_mouse_update), NULL);
+                         G_CALLBACK(main_mouse_update), conn);
         g_signal_connect(channel, "spice-main-agent-update",
-                         G_CALLBACK(main_agent_update), NULL);
-        main_mouse_update(channel, NULL);
-        main_agent_update(channel, NULL);
-        return;
+                         G_CALLBACK(main_agent_update), conn);
+        main_mouse_update(channel, conn);
+        main_agent_update(channel, conn);
     }
 
     if (SPICE_IS_DISPLAY_CHANNEL(channel)) {
-        if (id >= SPICE_N_ELEMENTS(wins))
+        if (id >= SPICE_N_ELEMENTS(conn->wins))
             return;
-        if (wins[id] != NULL)
+        if (conn->wins[id] != NULL)
             return;
-        fprintf(stderr, "new display channel (#%d), creating window\n", id);
-        wins[id] = create_spice_window(s, id);
-        return;
+        fprintf(stderr, "new display channel (#%d)\n", id);
+        conn->wins[id] = create_spice_window(conn, id);
     }
 
     if (SPICE_IS_INPUTS_CHANNEL(channel)) {
         fprintf(stderr, "new inputs channel\n");
         g_signal_connect(channel, "spice-inputs-modifiers",
-                         G_CALLBACK(inputs_modifiers), NULL);
-        return;
+                         G_CALLBACK(inputs_modifiers), conn);
     }
 
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
-        if (audio != NULL)
+        if (conn->audio != NULL)
             return;
-        audio = spice_audio_new(s, mainloop, "spice");
+        fprintf(stderr, "new audio channel\n");
+        conn->audio = spice_audio_new(s, mainloop, "spice");
+    }
+}
+
+static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer data)
+{
+    spice_connection *conn = data;
+    int id = spice_channel_id(channel);
+
+    if (SPICE_IS_MAIN_CHANNEL(channel)) {
+        fprintf(stderr, "zap main channel\n");
+    }
+
+    if (SPICE_IS_DISPLAY_CHANNEL(channel)) {
+        if (id >= SPICE_N_ELEMENTS(conn->wins))
+            return;
+        if (conn->wins[id] == NULL)
+            return;
+        fprintf(stderr, "zap display channel (#%d)\n", id);
+        destroy_spice_window(conn->wins[id]);
+        conn->wins[id] = NULL;
+    }
+
+    if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
+        if (conn->audio == NULL)
+            return;
+        fprintf(stderr, "zap audio channel\n");
+        /* zap audio */
+    }
+
+    conn->channels--;
+    if (conn->channels > 0) {
         return;
     }
+
+    connection_destroy(conn);
+}
+
+static spice_connection *connection_new(void)
+{
+    spice_connection *conn;
+
+    fprintf(stderr, "%s\n", __FUNCTION__);
+    conn = spice_new0(spice_connection, 1);
+    conn->session = spice_session_new();
+    g_signal_connect(conn->session, "spice-session-channel-new",
+                     G_CALLBACK(channel_new), conn);
+    g_signal_connect(conn->session, "spice-session-channel-destroy",
+                     G_CALLBACK(channel_destroy), conn);
+    connections++;
+    return conn;
+}
+
+static void connection_destroy(spice_connection *conn)
+{
+    fprintf(stderr, "%s\n", __FUNCTION__);
+    free(conn);
+    connections--;
+    g_main_loop_quit(mainloop);
 }
 
 /* ------------------------------------------------------------------ */
@@ -635,6 +740,7 @@ int main(int argc, char *argv[])
 {
     GError *error = NULL;
     GOptionContext *context;
+    spice_connection *conn;
 
     /* parse opts */
     gtk_init(&argc, &argv);
@@ -650,13 +756,13 @@ int main(int argc, char *argv[])
     g_type_init();
     mainloop = g_main_loop_new(NULL, false);
 
-    session = spice_session_new();
-    g_signal_connect(session, "spice-session-channel-new",
-                     G_CALLBACK(channel_new), NULL);
-    spice_cmdline_session_setup(session);
-    spice_session_connect(session);
+    conn = connection_new();
+    spice_cmdline_session_setup(conn->session);
+    spice_session_connect(conn->session);
 
-    if (!connect_canceled)
+    while (connections) {
         g_main_loop_run(mainloop);
+        fprintf(stderr, "%s: %d connections\n", __FUNCTION__, connections);
+    }
     return 0;
 }
