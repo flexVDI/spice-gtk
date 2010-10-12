@@ -269,7 +269,6 @@ static void destroy_canvas(display_surface *surface)
         free(surface->data);
     } else {
         shmdt(surface->data);
-        shmctl(surface->shmid, IPC_RMID, 0);
     }
     surface->shmid = -1;
     surface->data = NULL;
@@ -356,6 +355,7 @@ static void display_handle_mode(SpiceChannel *channel, spice_msg_in *in)
     g_signal_emit(channel, signals[SPICE_DISPLAY_PRIMARY_CREATE], 0,
                   surface->format, surface->width, surface->height,
                   surface->stride, surface->shmid, surface->data);
+    shmctl(surface->shmid, IPC_RMID, 0);
     ring_add(&c->surfaces, &surface->link);
 }
 
