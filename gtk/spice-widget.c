@@ -1210,6 +1210,40 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     return;
 }
 
+static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer data)
+{
+    SpiceDisplay *display = data;
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    int id = spice_channel_id(channel);
+
+    if (SPICE_IS_MAIN_CHANNEL(channel)) {
+        d->main = NULL;
+        return;
+    }
+
+    if (SPICE_IS_DISPLAY_CHANNEL(channel)) {
+        if (id != d->channel_id)
+            return;
+        d->display = NULL;
+        return;
+    }
+
+    if (SPICE_IS_CURSOR_CHANNEL(channel)) {
+        if (id != d->channel_id)
+            return;
+        d->cursor = NULL;
+        return;
+    }
+
+    if (SPICE_IS_INPUTS_CHANNEL(channel)) {
+        d->inputs = NULL;
+        return;
+    }
+
+    fprintf(stderr, "%s: unknown channel object\n", __FUNCTION__);
+    return;
+}
+
 GtkWidget *spice_display_new(SpiceSession *session, int id)
 {
     SpiceDisplay *display;
@@ -1223,6 +1257,8 @@ GtkWidget *spice_display_new(SpiceSession *session, int id)
 
     g_signal_connect(session, "spice-session-channel-new",
                      G_CALLBACK(channel_new), display);
+    g_signal_connect(session, "spice-session-channel-destroy",
+                     G_CALLBACK(channel_destroy), display);
     list = spice_session_get_channels(session);
     for (list = g_list_first(list); list != NULL; list = g_list_next(list)) {
         channel_new(session, list->data, (gpointer*)display);

@@ -36,12 +36,15 @@ struct spice_connection {
     char             *mouse_state;
     char             *agent_state;
     int              channels;
+    int              disconnecting;
 };
 
 static GMainLoop     *mainloop;
 static int           connections;
 
 static spice_connection *connection_new(void);
+static void connection_connect(spice_connection *conn);
+static void connection_disconnect(spice_connection *conn);
 static void connection_destroy(spice_connection *conn);
 
 /* ------------------------------------------------------------------ */
@@ -176,14 +179,14 @@ static void menu_cb_connect(GtkAction *action, void *data)
     struct spice_connection *conn;
 
     conn = connection_new();
-    spice_session_connect(conn->session);
+    connection_connect(conn);
 }
 
 static void menu_cb_close(GtkAction *action, void *data)
 {
     struct spice_window *win = data;
 
-    spice_session_disconnect(win->conn->session);
+    connection_disconnect(win->conn);
 }
 
 static void menu_cb_copy(GtkAction *action, void *data)
@@ -254,7 +257,7 @@ static gboolean delete_cb(GtkWidget *widget, GdkEvent *event, gpointer data)
 {
     struct spice_window *win = data;
 
-    spice_session_disconnect(win->conn->session);
+    connection_disconnect(win->conn);
     return true;
 }
 
@@ -552,15 +555,15 @@ static void main_channel_event(SpiceChannel *channel, enum SpiceChannelEvent eve
         break;
     case SPICE_CHANNEL_CLOSED:
         fprintf(stderr, "main channel: closed\n");
-        /* nothing */
+        connection_disconnect(conn);
         break;
     case SPICE_CHANNEL_ERROR_CONNECT:
         fprintf(stderr, "main channel: failed to connect\n");
         rc = connect_dialog(NULL, conn->session);
         if (rc == 0) {
-            spice_session_connect(conn->session);
+            connection_connect(conn);
         } else {
-            spice_session_disconnect(conn->session);
+            connection_disconnect(conn);
         }
         break;
     case SPICE_CHANNEL_ERROR_AUTH:
@@ -571,15 +574,15 @@ static void main_channel_event(SpiceChannel *channel, enum SpiceChannelEvent eve
                       password, sizeof(password), true);
         if (rc == 0) {
             g_object_set(conn->session, "password", password, NULL);
-            spice_session_connect(conn->session);
+            connection_connect(conn);
         } else {
-            spice_session_disconnect(conn->session);
+            connection_disconnect(conn);
         }
         break;
     default:
         /* TODO: more sophisticated error handling */
         fprintf(stderr, "unknown main channel event: %d\n", event);
-        spice_session_disconnect(conn->session);
+        connection_disconnect(conn);
         break;
     }
 }
@@ -719,6 +722,20 @@ static spice_connection *connection_new(void)
     return conn;
 }
 
+static void connection_connect(spice_connection *conn)
+{
+    conn->disconnecting = false;
+    spice_session_connect(conn->session);
+}
+
+static void connection_disconnect(spice_connection *conn)
+{
+    if (conn->disconnecting)
+        return;
+    conn->disconnecting = true;
+    spice_session_disconnect(conn->session);
+}
+
 static void connection_destroy(spice_connection *conn)
 {
     fprintf(stderr, "%s\n", __FUNCTION__);
@@ -769,7 +786,7 @@ int main(int argc, char *argv[])
 
     conn = connection_new();
     spice_cmdline_session_setup(conn->session);
-    spice_session_connect(conn->session);
+    connection_connect(conn);
 
     g_main_loop_run(mainloop);
     return 0;
