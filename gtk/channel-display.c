@@ -19,7 +19,8 @@ struct spice_display_channel {
     SpiceImageCache             image_cache;
     SpicePaletteCache           palette_cache;
     SpiceGlzDecoderWindow       *glz_window;
-    display_stream              *streams[128];
+    display_stream              **streams;
+    int                         nstreams;
 };
 
 G_DEFINE_TYPE(SpiceDisplayChannel, spice_display_channel, SPICE_TYPE_CHANNEL)
@@ -41,6 +42,7 @@ static void spice_display_channel_up(SpiceChannel *channel);
 static void palette_clear(SpicePaletteCache *cache);
 static void image_clear(SpiceImageCache *cache);
 static void clear_surfaces(SpiceChannel *channel);
+static void clear_streams(SpiceChannel *channel);
 
 /* ------------------------------------------------------------------ */
 
@@ -53,6 +55,7 @@ static void spice_display_channel_finalize(GObject *obj)
     palette_clear(&c->palette_cache);
     image_clear(&c->image_cache);
     clear_surfaces(SPICE_CHANNEL(obj));
+    clear_streams(SPICE_CHANNEL(obj));
     glz_decoder_window_destroy(c->glz_window);
 
     if (G_OBJECT_CLASS(spice_display_channel_parent_class)->finalize)
@@ -509,7 +512,17 @@ static void display_handle_stream_create(SpiceChannel *channel, spice_msg_in *in
 
     fprintf(stderr, "%s: id %d\n", __FUNCTION__, op->id);
 
-    assert(op->id < SPICE_N_ELEMENTS(c->streams));
+    if (op->id >= c->nstreams) {
+        int n = c->nstreams;
+        if (!c->nstreams) {
+            c->nstreams = 1;
+        }
+        while (op->id >= c->nstreams) {
+            c->nstreams *= 2;
+        }
+        c->streams = realloc(c->streams, c->nstreams * sizeof(c->streams[0]));
+        memset(c->streams + n, 0, (c->nstreams - n) * sizeof(c->streams[0]));
+    }
     assert(c->streams[op->id] == NULL);
     c->streams[op->id] = spice_new0(display_stream, 1);
     st = c->streams[op->id];
@@ -602,6 +615,19 @@ static void destroy_stream(SpiceChannel *channel, int id)
     c->streams[id] = NULL;
 }
 
+static void clear_streams(SpiceChannel *channel)
+{
+    spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
+    int i;
+
+    for (i = 0; i < c->nstreams; i++) {
+        destroy_stream(channel, i);
+    }
+    free(c->streams);
+    c->streams = NULL;
+    c->nstreams = 0;
+}
+
 static void display_handle_stream_destroy(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgDisplayStreamDestroy *op = spice_msg_in_parsed(in);
@@ -612,7 +638,7 @@ static void display_handle_stream_destroy(SpiceChannel *channel, spice_msg_in *i
 
 static void display_handle_stream_destroy_all(SpiceChannel *channel, spice_msg_in *in)
 {
-    fprintf(stderr, "%s: TODO\n", __FUNCTION__);
+    clear_streams(channel);
 }
 
 /* ------------------------------------------------------------------ */
