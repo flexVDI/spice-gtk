@@ -2,7 +2,7 @@
 #include "spice-common.h"
 #include "spice-cmdline.h"
 
-static char *host      = "localhost";
+static char *host;
 static char *port;
 static char *tls_port;
 static char *password;

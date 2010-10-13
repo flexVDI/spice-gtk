@@ -23,6 +23,7 @@ struct spice_main_channel {
         int                     width;
         int                     height;
     } display[1];
+    gint                        timer_id;
 };
 
 G_DEFINE_TYPE(SpiceMainChannel, spice_main_channel, SPICE_TYPE_CHANNEL)
@@ -112,7 +113,12 @@ static void spice_main_get_property(GObject    *object,
 
 static void spice_main_channel_finalize(GObject *obj)
 {
+    spice_main_channel *c = SPICE_MAIN_CHANNEL(obj)->priv;
+
     fprintf(stderr, "%s\n", __FUNCTION__);
+    if (c->timer_id) {
+        g_source_remove(c->timer_id);
+    }
 
     if (G_OBJECT_CLASS(spice_main_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_main_channel_parent_class)->finalize(obj);
@@ -491,18 +497,34 @@ static void spice_main_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
     main_handlers[type](channel, msg);
 }
 
+static gboolean timer_set_display(gpointer data)
+{
+    SpiceChannel *channel = data;
+    spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
+
+    c->timer_id = 0;
+    agent_monitors_config(channel);
+    return false;
+}
+
 void spice_main_set_display(SpiceChannel *channel, int id,
                             int x, int y, int width, int height)
 {
     spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
 
-    if (id < SPICE_N_ELEMENTS(c->display)) {
-        c->display[id].x      = x;
-        c->display[id].y      = y;
-        c->display[id].width  = width;
-        c->display[id].height = height;
-        agent_monitors_config(channel);
+    if (id >= SPICE_N_ELEMENTS(c->display)) {
+        return;
     }
+
+    c->display[id].x      = x;
+    c->display[id].y      = y;
+    c->display[id].width  = width;
+    c->display[id].height = height;
+
+    if (c->timer_id) {
+        g_source_remove(c->timer_id);
+    }
+    c->timer_id = g_timeout_add_seconds(1, timer_set_display, channel);
 }
 
 void spice_main_clipboard_grab(SpiceChannel *channel, int *types, int ntypes)

@@ -66,8 +66,6 @@ struct spice_display {
     const guint16 const     *keycode_map;
     size_t                  keycode_maplen;
     uint32_t                key_state[512 / 32];
-
-    gint                    timer_id;
 };
 
 G_DEFINE_TYPE(SpiceDisplay, spice_display, GTK_TYPE_DRAWING_AREA)
@@ -394,17 +392,6 @@ static void try_mouse_ungrab(GtkWidget *widget)
     g_signal_emit(widget, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, false);
 }
 
-static gboolean geometry_timer(gpointer data)
-{
-    SpiceDisplay *display = data;
-    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
-
-    d->timer_id = 0;
-    spice_main_set_display(d->main, d->channel_id,
-                           0, 0, d->ww, d->wh);
-    return false;
-}
-
 static void recalc_geometry(GtkWidget *widget)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
@@ -421,12 +408,9 @@ static void recalc_geometry(GtkWidget *widget)
     fprintf(stderr, "%s: guest %dx%d, window %dx%d, offset +%d+%d\n", __FUNCTION__,
             d->width, d->height, d->ww, d->wh, d->mx, d->my);
 #endif
-
-    if (d->timer_id) {
-        g_source_remove(d->timer_id);
-    }
     if (d->resize_guest_enable) {
-        d->timer_id = g_timeout_add_seconds(1, geometry_timer, display);
+        spice_main_set_display(d->main, d->channel_id,
+                               0, 0, d->ww, d->wh);
     }
 }
 
