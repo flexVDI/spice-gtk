@@ -385,6 +385,14 @@ SpiceGlzDecoderWindow *glz_decoder_window_new(void)
 
 void glz_decoder_window_destroy(SpiceGlzDecoderWindow *w)
 {
+    int i;
+
+    for (i = 0; i < w->nimages; i++) {
+        if (w->images[i]) {
+            glz_image_destroy(w->images[i]);
+        }
+    }
+    free(w->images);
     free(w);
 }
 

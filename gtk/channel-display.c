@@ -53,6 +53,7 @@ static void spice_display_channel_finalize(GObject *obj)
     palette_clear(&c->palette_cache);
     image_clear(&c->image_cache);
     clear_surfaces(SPICE_CHANNEL(obj));
+    glz_decoder_window_destroy(c->glz_window);
 
     if (G_OBJECT_CLASS(spice_display_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_display_channel_parent_class)->finalize(obj);
