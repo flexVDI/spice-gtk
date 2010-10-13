@@ -46,6 +46,7 @@ struct spice_channel {
     SpiceLinkMess               link_msg;
     SpiceLinkHeader             peer_hdr;
     SpiceLinkReply*             peer_msg;
+    int                         peer_pos;
 
     spice_msg_in                *msg_in;
     int                         message_ack_window;

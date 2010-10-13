@@ -587,9 +587,14 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
     int rc, num_caps;
 
-    rc = spice_channel_recv(channel, c->peer_msg, c->peer_hdr.size);
-    if (rc != c->peer_hdr.size)
-        PANIC("incomplete link reply (%d/%d)", rc, c->peer_hdr.size);
+    rc = spice_channel_recv(channel, (uint8_t*)c->peer_msg + c->peer_pos,
+                            c->peer_hdr.size - c->peer_pos);
+    c->peer_pos += rc;
+    if (c->peer_pos != c->peer_hdr.size) {
+        fprintf(stderr, "%s: incomplete link reply (%d/%d)\n", __FUNCTION__,
+                rc, c->peer_hdr.size);
+        return;
+    }
     switch (c->peer_msg->error) {
     case SPICE_LINK_ERR_OK:
         /* nothing */
