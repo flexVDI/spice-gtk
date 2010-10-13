@@ -38,11 +38,19 @@ static void spice_display_handle_msg(SpiceChannel *channel, spice_msg_in *msg);
 static void spice_display_channel_init(SpiceDisplayChannel *channel);
 static void spice_display_channel_up(SpiceChannel *channel);
 
+static void palette_clear(SpicePaletteCache *cache);
+static void image_clear(SpiceImageCache *cache);
+
 /* ------------------------------------------------------------------ */
 
 static void spice_display_channel_finalize(GObject *obj)
 {
+    spice_display_channel *c = SPICE_DISPLAY_CHANNEL(obj)->priv;
+
     fprintf(stderr, "%s\n", __FUNCTION__);
+
+    palette_clear(&c->palette_cache);
+    image_clear(&c->image_cache);
 
     if (G_OBJECT_CLASS(spice_display_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_display_channel_parent_class)->finalize(obj);
@@ -131,6 +139,34 @@ static pixman_image_t *image_get(SpiceImageCache *cache, uint64_t id)
         return pixman_image_ref(item->ptr);
     }
     return NULL;
+}
+
+static void image_remove(SpiceImageCache *cache, uint64_t id)
+{
+    spice_display_channel *c =
+        SPICE_CONTAINEROF(cache, spice_display_channel, image_cache);
+    display_cache_item *item;
+
+    item = cache_find(&c->images, id);
+    assert(item != NULL);
+    pixman_image_unref(item->ptr);
+    cache_del(&c->images, item);
+}
+
+static void image_clear(SpiceImageCache *cache)
+{
+    spice_display_channel *c =
+        SPICE_CONTAINEROF(cache, spice_display_channel, image_cache);
+    display_cache_item *item;
+
+    for (;;) {
+        item = cache_get_lru(&c->images);
+        if (item == NULL) {
+            break;
+        }
+        pixman_image_unref(item->ptr);
+        cache_del(&c->images, item);
+    }
 }
 
 static void palette_put(SpicePaletteCache *cache, SpicePalette *palette)
@@ -386,16 +422,12 @@ static void display_handle_inv_list(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     SpiceResourceList *list = spice_msg_in_parsed(in);
-    display_cache_item *item;
     int i;
 
     for (i = 0; i < list->count; i++) {
         switch (list->resources[i].type) {
         case SPICE_RES_TYPE_PIXMAP:
-            item = cache_find(&c->images, list->resources[i].id);
-            assert(item != NULL);
-            pixman_image_unref(item->ptr);
-            cache_del(&c->images, item);
+            image_remove(&c->image_cache, list->resources[i].id);
             break;
         default:
             PANIC("invalid res type");
@@ -406,7 +438,9 @@ static void display_handle_inv_list(SpiceChannel *channel, spice_msg_in *in)
 
 static void display_handle_inv_pixmap_all(SpiceChannel *channel, spice_msg_in *in)
 {
-    fprintf(stderr, "%s: TODO\n", __FUNCTION__);
+    spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
+
+    image_clear(&c->image_cache);
 }
 
 static void display_handle_inv_palette(SpiceChannel *channel, spice_msg_in *in)
