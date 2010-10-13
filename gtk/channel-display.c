@@ -40,6 +40,7 @@ static void spice_display_channel_up(SpiceChannel *channel);
 
 static void palette_clear(SpicePaletteCache *cache);
 static void image_clear(SpiceImageCache *cache);
+static void clear_surfaces(SpiceChannel *channel);
 
 /* ------------------------------------------------------------------ */
 
@@ -51,6 +52,7 @@ static void spice_display_channel_finalize(GObject *obj)
 
     palette_clear(&c->palette_cache);
     image_clear(&c->image_cache);
+    clear_surfaces(SPICE_CHANNEL(obj));
 
     if (G_OBJECT_CLASS(spice_display_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_display_channel_parent_class)->finalize(obj);
@@ -301,6 +303,8 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
 
 static void destroy_canvas(display_surface *surface)
 {
+    glz_decoder_destroy(surface->glz_decoder);
+
     if (surface->shmid == -1) {
         free(surface->data);
     } else {
@@ -327,6 +331,21 @@ static display_surface *find_surface(SpiceChannel *channel, int surface_id)
             return surface;
     }
     return NULL;
+}
+
+static void clear_surfaces(SpiceChannel *channel)
+{
+    spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
+    display_surface *surface;
+    RingItem *item;
+
+    while (!ring_is_empty(&c->surfaces)) {
+        item = ring_get_head(&c->surfaces);
+        surface = SPICE_CONTAINEROF(item, display_surface, link);
+        ring_remove(&surface->link);
+        destroy_canvas(surface);
+        free(surface);
+    }
 }
 
 static void emit_invalidate(SpiceChannel *channel, SpiceRect *bbox)
@@ -391,7 +410,9 @@ static void display_handle_mode(SpiceChannel *channel, spice_msg_in *in)
     g_signal_emit(channel, signals[SPICE_DISPLAY_PRIMARY_CREATE], 0,
                   surface->format, surface->width, surface->height,
                   surface->stride, surface->shmid, surface->data);
-    shmctl(surface->shmid, IPC_RMID, 0);
+    if (surface->shmid != -1) {
+        shmctl(surface->shmid, IPC_RMID, 0);
+    }
     ring_add(&c->surfaces, &surface->link);
 }
 
