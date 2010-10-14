@@ -30,6 +30,7 @@ enum {
 static guint signals[SPICE_CURSOR_LAST_SIGNAL];
 
 static void spice_cursor_handle_msg(SpiceChannel *channel, spice_msg_in *msg);
+static void delete_cursor_all(SpiceChannel *channel);
 
 /* ------------------------------------------------------------------ */
 
@@ -45,6 +46,8 @@ static void spice_cursor_channel_init(SpiceCursorChannel *channel)
 
 static void spice_cursor_channel_finalize(GObject *obj)
 {
+    delete_cursor_all(SPICE_CHANNEL(obj));
+
     if (G_OBJECT_CLASS(spice_cursor_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_cursor_channel_parent_class)->finalize(obj);
 }
