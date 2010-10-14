@@ -41,17 +41,24 @@ enum {
 
 static guint signals[SPICE_CHANNEL_LAST_SIGNAL];
 
+static const char *channel_desc[] = {
+    [ SPICE_CHANNEL_MAIN ]     = "main",
+    [ SPICE_CHANNEL_DISPLAY ]  = "display",
+    [ SPICE_CHANNEL_CURSOR ]   = "cursor",
+    [ SPICE_CHANNEL_INPUTS ]   = "inputs",
+    [ SPICE_CHANNEL_RECORD ]   = "record",
+    [ SPICE_CHANNEL_PLAYBACK ] = "playback",
+    [ SPICE_CHANNEL_TUNNEL ]   = "tunnel",
+};
+
 static void spice_channel_init(SpiceChannel *channel)
 {
     spice_channel *c;
-
-    fprintf(stderr, "%s\n", __FUNCTION__);
 
     c = channel->priv = SPICE_CHANNEL_GET_PRIVATE(channel);
 
     c->serial = 1;
     c->socket = -1;
-    c->protocol = SPICE_VERSION_MAJOR;
     strcpy(c->name, "?");
 }
 
@@ -59,10 +66,14 @@ static void spice_channel_constructed(GObject *gobject)
 {
     SpiceChannel *channel = SPICE_CHANNEL(gobject);
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    const char *desc = NULL;
 
-    snprintf(c->name, sizeof(c->name), "%d:%d",
-             c->channel_type, c->channel_id);
-    fprintf(stderr, "%s %s\n", __FUNCTION__, c->name);
+    if (c->channel_type < SPICE_N_ELEMENTS(channel_desc))
+        desc = channel_desc[c->channel_type];
+
+    snprintf(c->name, sizeof(c->name), "%s-%d:%d",
+             desc ? desc : "unknown", c->channel_type, c->channel_id);
+    fprintf(stderr, "%s: %s\n", c->name, __FUNCTION__);
 
     c->connection_id = spice_session_get_connection_id(c->session);
     spice_session_channel_new(c->session, channel);
@@ -77,7 +88,6 @@ static void spice_channel_dispose(GObject *gobject)
     SpiceChannel *channel = SPICE_CHANNEL(gobject);
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
 
-    fprintf(stderr, "%s %s\n", __FUNCTION__, c->name);
     spice_channel_disconnect(channel, SPICE_CHANNEL_CLOSED);
     spice_session_channel_destroy(c->session, channel);
 
@@ -91,7 +101,7 @@ static void spice_channel_finalize(GObject *gobject)
     SpiceChannel *channel = SPICE_CHANNEL(gobject);
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
 
-    fprintf(stderr, "%s %s\n", __FUNCTION__, c->name);
+    fprintf(stderr, "%s: %s\n", c->name, __FUNCTION__);
 
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_channel_parent_class)->finalize)
@@ -149,8 +159,6 @@ static void spice_channel_set_property(GObject      *gobject,
 static void spice_channel_class_init(SpiceChannelClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
-
-    fprintf(stderr, "%s\n", __FUNCTION__);
 
     gobject_class->constructed  = spice_channel_constructed;
     gobject_class->dispose      = spice_channel_dispose;
@@ -370,7 +378,8 @@ static int spice_channel_send(SpiceChannel *channel, void *buf, int len)
     if (c->tls) {
         rc = SSL_write(c->ssl, buf, len);
         if (rc != len) {
-            fprintf(stderr, "%s: SSL_write: %d / %d\n", __FUNCTION__, rc, len);
+            fprintf(stderr, "%s: %s: SSL_write: %d / %d\n",
+                    c->name, __FUNCTION__, rc, len);
         }
     } else {
         rc = send(c->socket, buf, len, 0);
@@ -389,7 +398,7 @@ static int spice_channel_recv(SpiceChannel *channel, void *buf, int len)
             return rc;
         }
         if (rc == 0) {
-            fprintf(stderr, "channel/tls eof: %s\n", c->name);
+            fprintf(stderr, "%s: channel/tls eof\n", c->name);
             spice_channel_disconnect(channel, SPICE_CHANNEL_CLOSED);
             return 0;
         }
@@ -397,7 +406,7 @@ static int spice_channel_recv(SpiceChannel *channel, void *buf, int len)
         if (err == SSL_ERROR_WANT_READ) {
             return 0;
         }
-        fprintf(stderr, "channel/tls error: %s: %s\n",
+        fprintf(stderr, "%s: channel/tls error: %s\n",
                 c->name, ERR_error_string(err, NULL));
         spice_channel_disconnect(channel, SPICE_CHANNEL_ERROR_IO);
         return 0;
@@ -407,12 +416,12 @@ static int spice_channel_recv(SpiceChannel *channel, void *buf, int len)
         case -1:
             if (errno == EAGAIN)
                 return 0;
-            fprintf(stderr, "channel error: %s: %s\n",
+            fprintf(stderr, "%s: channel error: %s\n",
                     c->name, strerror(errno));
             spice_channel_disconnect(channel, SPICE_CHANNEL_ERROR_IO);
             return 0;
         case 0:
-            fprintf(stderr, "channel eof: %s\n", c->name);
+            fprintf(stderr, "%s: channel eof\n", c->name);
             spice_channel_disconnect(channel, SPICE_CHANNEL_CLOSED);
             return 0;
         default:
@@ -432,7 +441,8 @@ static void spice_channel_tls_connect(SpiceChannel *channel)
         if (err == SSL_ERROR_WANT_READ) {
             return;
         }
-        fprintf(stderr, "SSL_connect: %s", ERR_error_string(err, NULL));
+        fprintf(stderr, "%s: SSL_connect: %s",
+                c->name, ERR_error_string(err, NULL));
         spice_channel_emit_event(channel, SPICE_CHANNEL_ERROR_TLS);
     }
     c->state = SPICE_CHANNEL_STATE_LINK_HDR;
@@ -491,7 +501,7 @@ static void spice_channel_recv_auth(SpiceChannel *channel)
         return;
     }
 
-    fprintf(stderr, "channel up: %s\n", c->name);
+    fprintf(stderr, "%s: channel up\n", c->name);
     c->state = SPICE_CHANNEL_STATE_READY;
     spice_channel_emit_event(channel, SPICE_CHANNEL_OPENED);
 
@@ -503,11 +513,13 @@ static void spice_channel_send_link(SpiceChannel *channel)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
     uint8_t *buffer, *p;
+    int protocol;
 
     c->link_hdr.magic = SPICE_MAGIC;
     c->link_hdr.size = sizeof(c->link_msg);
 
-    switch (c->protocol) {
+    g_object_get(c->session, "protocol", &protocol, NULL);
+    switch (protocol) {
     case 1: /* protocol 1 == major 1, old 0.4 protocol, last active minor */
         c->link_hdr.major_version = 1;
         c->link_hdr.minor_version = 3;
@@ -521,7 +533,7 @@ static void spice_channel_send_link(SpiceChannel *channel)
         c->marshallers = spice_message_marshallers_get();
         break;
     default:
-        PANIC("unknown major %d", c->protocol);
+        PANIC("unknown major %d", protocol);
     }
 
     c->link_msg.connection_id = c->connection_id;
@@ -568,8 +580,8 @@ static void spice_channel_recv_link_hdr(SpiceChannel *channel)
     if (c->peer_hdr.major_version != c->link_hdr.major_version) {
         if (c->peer_hdr.major_version == 1) {
             /* enter spice 0.4 mode */
-            c->protocol = 1;
-            fprintf(stderr, "switching to protocol 1 (spice 0.4)\n");
+            g_object_set(c->session, "protocol", 1, NULL);
+            fprintf(stderr, "%s: switching to protocol 1 (spice 0.4)\n", c->name);
             spice_channel_disconnect(channel, SPICE_CHANNEL_NONE);
             spice_channel_connect(channel);
             return;
@@ -591,8 +603,8 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
                             c->peer_hdr.size - c->peer_pos);
     c->peer_pos += rc;
     if (c->peer_pos != c->peer_hdr.size) {
-        fprintf(stderr, "%s: incomplete link reply (%d/%d)\n", __FUNCTION__,
-                rc, c->peer_hdr.size);
+        fprintf(stderr, "%s: %s: incomplete link reply (%d/%d)\n",
+                c->name, __FUNCTION__, rc, c->peer_hdr.size);
         return;
     }
     switch (c->peer_msg->error) {
@@ -601,20 +613,20 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
         break;
     case SPICE_LINK_ERR_NEED_SECURED:
         c->tls = true;
-        fprintf(stderr, "switching to tls\n");
+        fprintf(stderr, "%s: switching to tls\n", c->name);
         spice_channel_disconnect(channel, SPICE_CHANNEL_NONE);
         spice_channel_connect(channel);
         return;
     default:
-        fprintf(stderr, "%s: unhandled error %d\n", __FUNCTION__,
-                c->peer_msg->error);
+        fprintf(stderr, "%s: %s: unhandled error %d\n",
+                c->name, __FUNCTION__, c->peer_msg->error);
         spice_channel_disconnect(channel, SPICE_CHANNEL_ERROR_LINK);
         return;
     }
 
     num_caps = c->peer_msg->num_channel_caps + c->peer_msg->num_common_caps;
     if (num_caps) {
-        fprintf(stderr, "%s: %d caps\n", __FUNCTION__, num_caps);
+        fprintf(stderr, "%s: %s: %d caps\n", c->name, __FUNCTION__, num_caps);
     }
 
 #if 0
@@ -775,8 +787,6 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
     SpiceChannel *channel;
     GType gtype = 0;
 
-    fprintf(stderr, "%s: %d:%d\n", __FUNCTION__, type, id);
-
     switch (type) {
     case SPICE_CHANNEL_MAIN:
         gtype = SPICE_TYPE_MAIN_CHANNEL;
@@ -806,9 +816,6 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
 
 void spice_channel_destroy(SpiceChannel *channel)
 {
-    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
-
-    fprintf(stderr, "%s %s\n", __FUNCTION__, c->name);
     g_object_unref(channel);
 }
 
@@ -895,7 +902,8 @@ reconnect:
                 c->state = SPICE_CHANNEL_STATE_TLS;
                 return 0;
             }
-            fprintf(stderr, "SSL_connect: %s", ERR_error_string(err, NULL));
+            fprintf(stderr, "%s: SSL_connect: %s",
+                    c->name, ERR_error_string(err, NULL));
             spice_channel_emit_event(channel, SPICE_CHANNEL_ERROR_TLS);
         }
     }

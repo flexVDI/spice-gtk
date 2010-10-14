@@ -35,7 +35,6 @@ struct spice_channel {
     SSL_CTX                     *ctx;
     SSL                         *ssl;
 
-    int                         protocol;
     int                         tls;
 
     int                         connection_id;

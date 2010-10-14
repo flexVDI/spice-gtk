@@ -20,6 +20,7 @@ struct spice_session {
     char              *ca_file;
     struct addrinfo   ai;
     int               connection_id;
+    int               protocol;
     SpiceChannel      *cmain;
     Ring              channels;
 };
@@ -42,6 +43,7 @@ enum {
     PROP_CA_FILE,
     PROP_IPV4,
     PROP_IPV6,
+    PROP_PROTOCOL,
 };
 
 /* signals */
@@ -121,6 +123,9 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_CA_FILE:
         g_value_set_string(value, s->ca_file);
 	break;
+    case PROP_PROTOCOL:
+        g_value_set_int(value, s->protocol);
+	break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -161,6 +166,9 @@ static void spice_session_set_property(GObject      *gobject,
         free(s->ca_file);
         str = g_value_get_string(value);
         s->ca_file = str ? strdup(str) : NULL;
+        break;
+    case PROP_PROTOCOL:
+        s->protocol = g_value_get_int(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -236,6 +244,18 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              G_PARAM_STATIC_NAME |
                              G_PARAM_STATIC_NICK |
                              G_PARAM_STATIC_BLURB));
+
+    g_object_class_install_property
+        (gobject_class, PROP_PROTOCOL,
+         g_param_spec_int("protocol",
+                          "Protocol",
+                          "Spice protocol major version",
+                          1, 2, 2,
+                          G_PARAM_READWRITE |
+                          G_PARAM_CONSTRUCT |
+                          G_PARAM_STATIC_NAME |
+                          G_PARAM_STATIC_NICK |
+                          G_PARAM_STATIC_BLURB));
 
     signals[SPICE_SESSION_CHANNEL_NEW] =
         g_signal_new("spice-session-channel-new",

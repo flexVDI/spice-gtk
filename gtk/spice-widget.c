@@ -1204,7 +1204,6 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     int id = spice_channel_id(channel);
 
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
-        fprintf(stderr, "%s: main channel\n", __FUNCTION__);
         d->main = channel;
         g_signal_connect(channel, "spice-main-mouse-update",
                          G_CALLBACK(mouse_update), display);
@@ -1213,7 +1212,6 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     }
 
     if (SPICE_IS_DISPLAY_CHANNEL(channel)) {
-        fprintf(stderr, "%s: display channel\n", __FUNCTION__);
         if (id != d->channel_id)
             return;
         d->display = channel;
@@ -1228,7 +1226,6 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     }
 
     if (SPICE_IS_CURSOR_CHANNEL(channel)) {
-        fprintf(stderr, "%s: cursor channel\n", __FUNCTION__);
         if (id != d->channel_id)
             return;
         d->cursor = SPICE_CURSOR_CHANNEL(channel);
@@ -1245,13 +1242,11 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     }
 
     if (SPICE_IS_INPUTS_CHANNEL(channel)) {
-        fprintf(stderr, "%s: inputs channel\n", __FUNCTION__);
         d->inputs = SPICE_INPUTS_CHANNEL(channel);
         spice_channel_connect(channel);
         return;
     }
 
-    fprintf(stderr, "%s: unknown channel object\n", __FUNCTION__);
     return;
 }
 
@@ -1285,7 +1280,6 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
         return;
     }
 
-    fprintf(stderr, "%s: unknown channel object\n", __FUNCTION__);
     return;
 }
 

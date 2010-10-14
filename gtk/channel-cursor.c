@@ -37,8 +37,6 @@ static void spice_cursor_channel_init(SpiceCursorChannel *channel)
 {
     spice_cursor_channel *c;
 
-    fprintf(stderr, "%s\n", __FUNCTION__);
-
     c = channel->priv = SPICE_CURSOR_CHANNEL_GET_PRIVATE(channel);
     memset(c, 0, sizeof(*c));
 
@@ -47,8 +45,6 @@ static void spice_cursor_channel_init(SpiceCursorChannel *channel)
 
 static void spice_cursor_channel_finalize(GObject *obj)
 {
-    fprintf(stderr, "%s\n", __FUNCTION__);
-
     if (G_OBJECT_CLASS(spice_cursor_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_cursor_channel_parent_class)->finalize(obj);
 }
@@ -57,8 +53,6 @@ static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
     SpiceChannelClass *channel_class = SPICE_CHANNEL_CLASS(klass);
-
-    fprintf(stderr, "%s\n", __FUNCTION__);
 
     gobject_class->finalize     = spice_cursor_channel_finalize;
     channel_class->handle_msg   = spice_cursor_handle_msg;

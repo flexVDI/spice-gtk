@@ -50,8 +50,6 @@ static void spice_display_channel_finalize(GObject *obj)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(obj)->priv;
 
-    fprintf(stderr, "%s\n", __FUNCTION__);
-
     palette_clear(&c->palette_cache);
     image_clear(&c->image_cache);
     clear_surfaces(SPICE_CHANNEL(obj));
@@ -66,8 +64,6 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
     SpiceChannelClass *channel_class = SPICE_CHANNEL_CLASS(klass);
-
-    fprintf(stderr, "%s\n", __FUNCTION__);
 
     gobject_class->finalize     = spice_display_channel_finalize;
     channel_class->handle_msg   = spice_display_handle_msg;
@@ -247,8 +243,6 @@ static SpicePaletteCacheOps palette_cache_ops = {
 static void spice_display_channel_init(SpiceDisplayChannel *channel)
 {
     spice_display_channel *c;
-
-    fprintf(stderr, "%s\n", __FUNCTION__);
 
     c = channel->priv = SPICE_DISPLAY_CHANNEL_GET_PRIVATE(channel);
     memset(c, 0, sizeof(*c));

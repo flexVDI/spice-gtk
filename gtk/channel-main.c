@@ -82,8 +82,6 @@ static void spice_main_channel_init(SpiceMainChannel *channel)
 {
     spice_main_channel *c;
 
-    fprintf(stderr, "%s\n", __FUNCTION__);
-
     c = channel->priv = SPICE_MAIN_CHANNEL_GET_PRIVATE(channel);
     memset(c, 0, sizeof(*c));
 }
@@ -115,7 +113,6 @@ static void spice_main_channel_finalize(GObject *obj)
 {
     spice_main_channel *c = SPICE_MAIN_CHANNEL(obj)->priv;
 
-    fprintf(stderr, "%s\n", __FUNCTION__);
     if (c->timer_id) {
         g_source_remove(c->timer_id);
     }
@@ -128,8 +125,6 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
     SpiceChannelClass *channel_class = SPICE_CHANNEL_CLASS(klass);
-
-    fprintf(stderr, "%s\n", __FUNCTION__);
 
     gobject_class->finalize     = spice_main_channel_finalize;
     gobject_class->get_property = spice_main_get_property;

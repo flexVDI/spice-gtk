@@ -30,16 +30,12 @@ static void spice_playback_channel_init(SpicePlaybackChannel *channel)
 {
     spice_playback_channel *c;
 
-    fprintf(stderr, "%s\n", __FUNCTION__);
-
     c = channel->priv = SPICE_PLAYBACK_CHANNEL_GET_PRIVATE(channel);
     memset(c, 0, sizeof(*c));
 }
 
 static void spice_playback_channel_finalize(GObject *obj)
 {
-    fprintf(stderr, "%s\n", __FUNCTION__);
-
     if (G_OBJECT_CLASS(spice_playback_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_playback_channel_parent_class)->finalize(obj);
 }
@@ -48,8 +44,6 @@ static void spice_playback_channel_class_init(SpicePlaybackChannelClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
     SpiceChannelClass *channel_class = SPICE_CHANNEL_CLASS(klass);
-
-    fprintf(stderr, "%s\n", __FUNCTION__);
 
     gobject_class->finalize     = spice_playback_channel_finalize;
     channel_class->handle_msg   = spice_playback_handle_msg;
