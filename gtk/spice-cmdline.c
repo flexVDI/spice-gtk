@@ -6,10 +6,17 @@ static char *host;
 static char *port;
 static char *tls_port;
 static char *password;
+static char *uri;
 static char *ca_file;
 
 static GOptionEntry spice_entries[] = {
     {
+        .long_name        = "uri",
+        .arg              = G_OPTION_ARG_STRING,
+        .arg_data         = &uri,
+        .description      = "spice server uri",
+        .arg_description  = "<uri>",
+    },{
         .long_name        = "host",
         .short_name       = 'h',
         .arg              = G_OPTION_ARG_STRING,
@@ -71,6 +78,8 @@ void spice_cmdline_session_setup(SpiceSession *session)
         snprintf(ca_file, size, "%s/.spicec/spice_truststore.pem", home);
     }
 
+    if (uri)
+        g_object_set(session, "uri", uri, NULL);
     if (host)
         g_object_set(session, "host", host, NULL);
     if (port)

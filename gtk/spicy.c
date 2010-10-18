@@ -21,6 +21,8 @@ struct spice_window {
     int              id;
     GtkWidget        *toplevel, *spice;
     GtkWidget        *menubar, *toolbar;
+    GtkWidget        *ritem, *rmenu;
+    GtkRecentFilter  *rfilter;
     GtkWidget        *hbox, *status, *st[STATE_MAX];
     GtkActionGroup   *ag;
     GtkAccelGroup    *accel;
@@ -134,6 +136,8 @@ static int connect_dialog(GtkWidget *parent, SpiceSession *session)
         we[i] = gtk_entry_new();
         gtk_table_attach_defaults(table, we[i], 1, 2, i, i+1);
         g_object_get(session, entries[i].prop, &txt, NULL);
+        fprintf(stderr, "%s: #%i [%s]: \"%s\"\n",
+                __FUNCTION__, i, entries[i].prop, txt);
         if (txt) {
             gtk_entry_set_text(GTK_ENTRY(we[i]), txt);
         }
@@ -308,6 +312,9 @@ static const GtkActionEntry entries[] = {
 	.name        = "FileMenu",
 	.label       = "_File",
     },{
+	.name        = "FileRecentMenu",
+	.label       = "_Recent",
+    },{
 	.name        = "EditMenu",
 	.label       = "_Edit",
     },{
@@ -400,6 +407,8 @@ static char ui_xml[] =
 "  <menubar action='MainMenu'>\n"
 "    <menu action='FileMenu'>\n"
 "      <menuitem action='Connect'/>\n"
+"      <menu action='FileRecentMenu'/>\n"
+"      <separator/>\n"
 "      <menuitem action='Close'/>\n"
 "    </menu>\n"
 "    <menu action='EditMenu'>\n"
@@ -424,6 +433,9 @@ static char ui_xml[] =
 "  </menubar>\n"
 "  <toolbar action='ToolBar'>\n"
 "    <toolitem action='Close'/>\n"
+"    <separator/>\n"
+"    <toolitem action='CopyToGuest'/>\n"
+"    <toolitem action='PasteFromGuest'/>\n"
 "    <separator/>\n"
 "    <toolitem action='Fullscreen'/>\n"
 "  </toolbar>\n"
@@ -474,6 +486,17 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
     }
     win->menubar = gtk_ui_manager_get_widget(win->ui, "/MainMenu");
     win->toolbar = gtk_ui_manager_get_widget(win->ui, "/ToolBar");
+
+#if 0 /* FIXME: filtering doesn't work, dunno why */
+    /* recent menu */
+    win->ritem  = gtk_ui_manager_get_widget
+        (win->ui, "/MainMenu/FileMenu/FileRecentMenu");
+    win->rmenu = gtk_recent_chooser_menu_new();
+    win->rfilter = gtk_recent_filter_new();
+    gtk_recent_filter_add_mime_type(win->rfilter, "application/spice");
+    gtk_recent_chooser_set_filter(GTK_RECENT_CHOOSER(win->rmenu), win->rfilter);
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(win->ritem), win->rmenu);
+#endif
 
     /* spice display */
     win->spice = spice_display_new(conn->session, id);
@@ -541,6 +564,26 @@ static void destroy_spice_window(spice_window *win)
 
 /* ------------------------------------------------------------------ */
 
+static void recent_add(SpiceSession *session)
+{
+    GtkRecentManager *recent;
+    char name[256];
+    GtkRecentData meta = {
+        .display_name = name,
+        .mime_type    = "application/spice",
+        .app_name     = "spicy",
+        .app_exec     = "spicy --uri=%u",
+    };
+    char *host, *uri;
+
+    g_object_get(session, "uri", &uri, "host", &host, NULL);
+    fprintf(stderr, "%s: %s\n", __FUNCTION__, uri);
+    snprintf(name, sizeof(name), "%s (spice)", host);
+
+    recent = gtk_recent_manager_get_default();
+    gtk_recent_manager_add_full(recent, uri, &meta);
+}
+
 static void main_channel_event(SpiceChannel *channel, enum SpiceChannelEvent event,
                                gpointer data)
 {
@@ -551,7 +594,7 @@ static void main_channel_event(SpiceChannel *channel, enum SpiceChannelEvent eve
     switch (event) {
     case SPICE_CHANNEL_OPENED:
         fprintf(stderr, "main channel: opened\n");
-        /* nothing */
+        recent_add(conn->session);
         break;
     case SPICE_CHANNEL_CLOSED:
         fprintf(stderr, "main channel: closed\n");
