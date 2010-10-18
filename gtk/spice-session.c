@@ -44,6 +44,7 @@ enum {
     PROP_IPV4,
     PROP_IPV6,
     PROP_PROTOCOL,
+    PROP_URI,
 };
 
 /* signals */
@@ -99,6 +100,72 @@ spice_session_finalize(GObject *gobject)
         G_OBJECT_CLASS(spice_session_parent_class)->finalize(gobject);
 }
 
+static int spice_uri_create(SpiceSession *session, char *dest, int len)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    int pos = 0;
+
+    if (s->host == NULL || (s->port == NULL && s->tls_port == NULL)) {
+        return 0;
+    }
+
+    pos += snprintf(dest+pos, len-pos, "spice://%s?", s->host);
+    if (s->port && strlen(s->port))
+        pos += snprintf(dest+pos, len-pos, "port=%s;", s->port);
+    if (s->tls_port && strlen(s->tls_port))
+        pos += snprintf(dest+pos, len-pos, "tls-port=%s;", s->tls_port);
+    return pos;
+}
+
+static int spice_uri_parse(SpiceSession *session, const char *uri)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    char host[128], key[32], value[128];
+    char *port = NULL, *tls_port = NULL;
+    int len, pos = 0;
+
+    if (uri == NULL)
+        goto fail;
+    if (sscanf(uri, "spice://%127[-.0-9a-zA-Z]%n", host, &len) != 1)
+        goto fail;
+    pos += len;
+    for (;;) {
+        if (uri[pos] == '?' || uri[pos] == ';' || uri[pos] == '&') {
+            pos++;
+            continue;
+        }
+        if (uri[pos] == 0) {
+            break;
+        }
+        if (sscanf(uri+pos, "%31[a-zA-Z0-9]=%127[^;&]%n", key, value, &len) != 2)
+            goto fail;
+        pos += len;
+        if (strcmp(key, "port") == 0) {
+            port = strdup(value);
+        } else if (strcmp(key, "tls-port") == 0) {
+            tls_port = strdup(value);
+        } else {
+            goto fail;
+        }
+    }
+    if (port == NULL && tls_port == NULL)
+        goto fail;
+
+    /* parsed ok -> apply */
+    free(s->host);
+    free(s->port);
+    free(s->tls_port);
+    s->host = strdup(host);
+    s->port = port;
+    s->tls_port = tls_port;
+    return 0;
+
+fail:
+    free(port);
+    free(tls_port);
+    return -1;
+}
+
 static void spice_session_get_property(GObject    *gobject,
                                        guint       prop_id,
                                        GValue     *value,
@@ -106,6 +173,8 @@ static void spice_session_get_property(GObject    *gobject,
 {
     SpiceSession *session = SPICE_SESSION(gobject);
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    char buf[256];
+    int len;
 
     switch (prop_id) {
     case PROP_HOST:
@@ -126,6 +195,10 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_PROTOCOL:
         g_value_set_int(value, s->protocol);
 	break;
+    case PROP_URI:
+        len = spice_uri_create(session, buf, sizeof(buf));
+        g_value_set_string(value, len ? buf : NULL);
+        break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -169,6 +242,9 @@ static void spice_session_set_property(GObject      *gobject,
         break;
     case PROP_PROTOCOL:
         s->protocol = g_value_get_int(value);
+        break;
+    case PROP_URI:
+        spice_uri_parse(session, g_value_get_string(value));
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -256,6 +332,18 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                           G_PARAM_STATIC_NAME |
                           G_PARAM_STATIC_NICK |
                           G_PARAM_STATIC_BLURB));
+
+    g_object_class_install_property
+        (gobject_class, PROP_URI,
+         g_param_spec_string("uri",
+                             "URI",
+                             "Spice connection URI",
+                             NULL,
+                             G_PARAM_READWRITE |
+                             G_PARAM_CONSTRUCT |
+                             G_PARAM_STATIC_NAME |
+                             G_PARAM_STATIC_NICK |
+                             G_PARAM_STATIC_BLURB));
 
     signals[SPICE_SESSION_CHANNEL_NEW] =
         g_signal_new("spice-session-channel-new",
