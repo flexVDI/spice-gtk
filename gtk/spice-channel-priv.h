@@ -34,7 +34,6 @@ struct spice_channel {
     spice_watch                 *watch;
     SSL_CTX                     *ctx;
     SSL                         *ssl;
-
     int                         tls;
 
     int                         connection_id;

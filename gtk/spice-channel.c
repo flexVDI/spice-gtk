@@ -803,6 +803,9 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
     case SPICE_CHANNEL_PLAYBACK:
         gtype = SPICE_TYPE_PLAYBACK_CHANNEL;
         break;
+    case SPICE_CHANNEL_RECORD:
+        gtype = SPICE_TYPE_RECORD_CHANNEL;
+        break;
     default:
         return NULL;
     }

@@ -23,6 +23,7 @@
 #include "channel-cursor.h"
 #include "channel-inputs.h"
 #include "channel-playback.h"
+#include "channel-record.h"
 
 /* debug bits */
 #define PANIC(fmt, ...)                                 \
