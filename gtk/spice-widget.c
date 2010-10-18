@@ -57,6 +57,8 @@ struct spice_display {
     GdkCursor               *mouse_cursor;
     int                     mouse_last_x;
     int                     mouse_last_y;
+    int                     mouse_guest_x;
+    int                     mouse_guest_y;
 
     bool                    keyboard_grab_active;
     bool                    keyboard_have_focus;
@@ -255,6 +257,7 @@ static void spice_display_init(SpiceDisplay *display)
     g_signal_connect(G_OBJECT(d->clipboard), "owner-change",
                      G_CALLBACK(clipboard_owner_change), display);
 
+    d->mouse_cursor = gdk_cursor_new(GDK_BLANK_CURSOR);
     d->have_mitshm = true;
 }
 
@@ -322,6 +325,39 @@ static void try_keyboard_ungrab(GtkWidget *widget)
     d->keyboard_grab_active = false;
 }
 
+static void update_mouse_pointer(SpiceDisplay *display)
+{
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    GdkDrawable *window = gtk_widget_get_window(GTK_WIDGET(display));
+
+    if (!window)
+        return;
+
+    switch (d->mouse_mode) {
+    case SPICE_MOUSE_MODE_CLIENT:
+        gdk_window_set_cursor(window, d->mouse_cursor);
+        break;
+    case SPICE_MOUSE_MODE_SERVER:
+        if (!d->mouse_grab_active) {
+            gdk_window_set_cursor(window, NULL);
+        } else {
+            gdk_window_set_cursor(window, d->mouse_cursor);
+            gdk_pointer_grab(window,
+                             FALSE, /* All events to come to our window directly */
+                             GDK_POINTER_MOTION_MASK |
+                             GDK_BUTTON_PRESS_MASK |
+                             GDK_BUTTON_RELEASE_MASK |
+                             GDK_BUTTON_MOTION_MASK,
+                             NULL, /* Allow cursor to move over entire desktop */
+                             d->mouse_cursor,
+                             GDK_CURRENT_TIME);
+        }
+        break;
+    default:
+        break;
+    }
+}
+
 static void try_mouse_grab(GtkWidget *widget)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
@@ -341,7 +377,7 @@ static void try_mouse_grab(GtkWidget *widget)
                      GDK_BUTTON_RELEASE_MASK |
                      GDK_BUTTON_MOTION_MASK,
                      NULL, /* Allow cursor to move over entire desktop */
-                     gdk_cursor_new(GDK_BLANK_CURSOR),
+                     d->mouse_cursor,
                      GDK_CURRENT_TIME);
     d->mouse_grab_active = true;
     d->mouse_last_x = -1;
@@ -357,6 +393,9 @@ static void mouse_check_edges(GtkWidget *widget, GdkEventMotion *motion)
     GdkScreen *screen = gdk_drawable_get_screen(drawable);
     int x = (int)motion->x_root;
     int y = (int)motion->y_root;
+
+    if (d->mouse_guest_x != -1 && d->mouse_guest_y != -1)
+        return;
 
     /* In relative mode check to see if client pointer hit
      * one of the screen edges, and if so move it back by
@@ -387,8 +426,8 @@ static void try_mouse_ungrab(GtkWidget *widget)
         return;
 
     gdk_pointer_ungrab(GDK_CURRENT_TIME);
-    gdk_window_set_cursor(gtk_widget_get_window(widget), d->mouse_cursor);
     d->mouse_grab_active = false;
+    update_mouse_pointer(display);
     g_signal_emit(widget, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, false);
 }
 
@@ -413,6 +452,8 @@ static void recalc_geometry(GtkWidget *widget)
                                0, 0, d->ww, d->wh);
     }
 }
+
+/* ---------------------------------------------------------------- */
 
 static XVisualInfo *get_visual_for_format(GtkWidget *widget, enum SpiceSurfaceFmt format)
 {
@@ -605,6 +646,8 @@ static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
 
     return true;
 }
+
+/* ---------------------------------------------------------------- */
 
 static void send_key(GtkWidget *widget, int scancode, int down)
 {
@@ -1052,9 +1095,12 @@ static void mouse_update(SpiceChannel *channel, gpointer data)
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     g_object_get(channel, "mouse-mode", &d->mouse_mode, NULL);
+    d->mouse_guest_x = -1;
+    d->mouse_guest_y = -1;
     if (d->mouse_mode == SPICE_MOUSE_MODE_CLIENT) {
         try_mouse_ungrab(GTK_WIDGET(display));
     }
+    update_mouse_pointer(display);
 }
 
 static void primary_create(SpiceChannel *channel, gint format,
@@ -1127,7 +1173,7 @@ static void cursor_set(SpiceCursorChannel *channel,
     d->mouse_cursor = gdk_cursor_new_from_pixbuf(gtkdpy, pixbuf,
                                                  hot_x, hot_y);
     g_object_unref(pixbuf);
-    gdk_window_set_cursor(window, d->mouse_cursor);
+    update_mouse_pointer(display);
 }
 
 static void cursor_hide(SpiceCursorChannel *channel, gpointer data)
@@ -1141,12 +1187,25 @@ static void cursor_hide(SpiceCursorChannel *channel, gpointer data)
         return;
 
     d->mouse_cursor = gdk_cursor_new(GDK_BLANK_CURSOR);
-    gdk_window_set_cursor(window, d->mouse_cursor);
+    update_mouse_pointer(display);
 }
 
 static void cursor_move(SpiceCursorChannel *channel, gint x, gint y, gpointer data)
 {
-    fprintf(stderr, "%s: TODO (+%d+%d)\n", __FUNCTION__, x, y);
+    SpiceDisplay *display = data;
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    GdkDrawable *drawable = GDK_DRAWABLE(gtk_widget_get_window(GTK_WIDGET(display)));
+    GdkScreen *screen = gdk_drawable_get_screen(drawable);
+    int wx, wy;
+
+    fprintf(stderr, "%s: +%d+%d\n", __FUNCTION__, x, y);
+    d->mouse_guest_x = x;
+    d->mouse_guest_y = y;
+    d->mouse_last_x = x;
+    d->mouse_last_y = y;
+    gdk_window_get_origin(drawable, &wx, &wy);
+    gdk_display_warp_pointer(gdk_drawable_get_display(drawable),
+                             screen, wx + x, wy + y);
 }
 
 static void cursor_reset(SpiceCursorChannel *channel, gpointer data)
