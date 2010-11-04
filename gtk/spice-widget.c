@@ -257,7 +257,11 @@ static void spice_display_init(SpiceDisplay *display)
     g_signal_connect(G_OBJECT(d->clipboard), "owner-change",
                      G_CALLBACK(clipboard_owner_change), display);
 
+#if 0 /* visual debugging ;) */
+    d->mouse_cursor = gdk_cursor_new(GDK_DOT);
+#else
     d->mouse_cursor = gdk_cursor_new(GDK_BLANK_CURSOR);
+#endif
     d->have_mitshm = true;
 }
 
@@ -325,6 +329,20 @@ static void try_keyboard_ungrab(GtkWidget *widget)
     d->keyboard_grab_active = false;
 }
 
+static void do_pointer_grab(SpiceDisplay *display)
+{
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    GdkDrawable *window = gtk_widget_get_window(GTK_WIDGET(display));
+
+    gdk_pointer_grab(window, FALSE,
+                     GDK_POINTER_MOTION_MASK |
+                     GDK_BUTTON_PRESS_MASK |
+                     GDK_BUTTON_RELEASE_MASK |
+                     GDK_BUTTON_MOTION_MASK,
+                     window, d->mouse_cursor,
+                     GDK_CURRENT_TIME);
+}
+
 static void update_mouse_pointer(SpiceDisplay *display)
 {
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
@@ -342,15 +360,7 @@ static void update_mouse_pointer(SpiceDisplay *display)
             gdk_window_set_cursor(window, NULL);
         } else {
             gdk_window_set_cursor(window, d->mouse_cursor);
-            gdk_pointer_grab(window,
-                             FALSE, /* All events to come to our window directly */
-                             GDK_POINTER_MOTION_MASK |
-                             GDK_BUTTON_PRESS_MASK |
-                             GDK_BUTTON_RELEASE_MASK |
-                             GDK_BUTTON_MOTION_MASK,
-                             NULL, /* Allow cursor to move over entire desktop */
-                             d->mouse_cursor,
-                             GDK_CURRENT_TIME);
+            do_pointer_grab(display);
         }
         break;
     default:
@@ -370,15 +380,7 @@ static void try_mouse_grab(GtkWidget *widget)
     if (d->mouse_grab_active)
         return;
 
-    gdk_pointer_grab(gtk_widget_get_window(widget),
-                     FALSE, /* All events to come to our window directly */
-                     GDK_POINTER_MOTION_MASK |
-                     GDK_BUTTON_PRESS_MASK |
-                     GDK_BUTTON_RELEASE_MASK |
-                     GDK_BUTTON_MOTION_MASK,
-                     NULL, /* Allow cursor to move over entire desktop */
-                     d->mouse_cursor,
-                     GDK_CURRENT_TIME);
+    do_pointer_grab(display);
     d->mouse_grab_active = true;
     d->mouse_last_x = -1;
     d->mouse_last_y = -1;
@@ -398,16 +400,16 @@ static void mouse_check_edges(GtkWidget *widget, GdkEventMotion *motion)
         return;
 
     /* In relative mode check to see if client pointer hit
-     * one of the screen edges, and if so move it back by
+     * one of the window edges, and if so move it back by
      * 200 pixels. This is important because the pointer
      * in the server doesn't correspond 1-for-1, and so
      * may still be only half way across the screen. Without
      * this warp, the server pointer would thus appear to hit
      * an invisible wall */
-    if (x == 0) x += 200;
-    if (y == 0) y += 200;
-    if (x == (gdk_screen_get_width(screen) - 1)) x -= 200;
-    if (y == (gdk_screen_get_height(screen) - 1)) y -= 200;
+    if (motion->x == 0) x += 100;
+    if (motion->y == 0) y += 100;
+    if (motion->x == (d->ww - 1)) x -= 100;
+    if (motion->y == (d->wh - 1)) y -= 100;
 
     if (x != (int)motion->x_root || y != (int)motion->y_root) {
         gdk_display_warp_pointer(gdk_drawable_get_display(drawable),
@@ -1203,9 +1205,11 @@ static void cursor_move(SpiceCursorChannel *channel, gint x, gint y, gpointer da
     d->mouse_guest_y = y;
     d->mouse_last_x = x;
     d->mouse_last_y = y;
-    gdk_window_get_origin(drawable, &wx, &wy);
-    gdk_display_warp_pointer(gdk_drawable_get_display(drawable),
-                             screen, wx + x, wy + y);
+    if (d->mouse_grab_active) {
+        gdk_window_get_origin(drawable, &wx, &wy);
+        gdk_display_warp_pointer(gdk_drawable_get_display(drawable),
+                                 screen, wx + d->mx + x, wy + d->my + y);
+    }
 }
 
 static void cursor_reset(SpiceCursorChannel *channel, gpointer data)
