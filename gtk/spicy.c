@@ -754,7 +754,6 @@ static spice_connection *connection_new(void)
 {
     spice_connection *conn;
 
-    fprintf(stderr, "%s\n", __FUNCTION__);
     conn = spice_new0(spice_connection, 1);
     conn->session = spice_session_new();
     g_signal_connect(conn->session, "spice-session-channel-new",
@@ -762,6 +761,7 @@ static spice_connection *connection_new(void)
     g_signal_connect(conn->session, "spice-session-channel-destroy",
                      G_CALLBACK(channel_destroy), conn);
     connections++;
+    fprintf(stderr, "%s (%d)\n", __FUNCTION__, connections);
     return conn;
 }
 
@@ -781,11 +781,11 @@ static void connection_disconnect(spice_connection *conn)
 
 static void connection_destroy(spice_connection *conn)
 {
-    fprintf(stderr, "%s\n", __FUNCTION__);
     g_object_unref(conn->session);
     free(conn);
 
     connections--;
+    fprintf(stderr, "%s (%d)\n", __FUNCTION__, connections);
     if (connections > 0) {
         return;
     }
@@ -831,6 +831,7 @@ int main(int argc, char *argv[])
     spice_cmdline_session_setup(conn->session);
     connection_connect(conn);
 
-    g_main_loop_run(mainloop);
+    if (connections > 0)
+        g_main_loop_run(mainloop);
     return 0;
 }
