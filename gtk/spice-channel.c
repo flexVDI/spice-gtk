@@ -943,6 +943,9 @@ void spice_channel_disconnect(SpiceChannel *channel, enum SpiceChannelEvent reas
         c->socket = -1;
     }
     c->state = SPICE_CHANNEL_STATE_UNCONNECTED;
+    free(c->peer_msg);
+    c->peer_msg = NULL;
+    c->peer_pos = 0;
     if (reason != SPICE_CHANNEL_NONE) {
         spice_channel_emit_event(channel, reason);
     }
