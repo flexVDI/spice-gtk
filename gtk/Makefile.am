@@ -20,10 +20,7 @@ KEYMAPS = \
 	vncdisplaykeymap_osx2xtkbd.c \
 	vncdisplaykeymap_win322xtkbd.c
 
-WARN = -Wall -Wno-sign-compare -Wmissing-prototypes -Wpointer-arith -Wunused
-
 INCLUDES = \
-	$(WARN)				\
 	-DSW_CANVAS_CACHE		\
 	\
 	-I$(COMMON_DIR)			\
@@ -241,3 +238,36 @@ BUILT_SOURCES = spice-marshal.c spice-marshal.h \
 	$(KEYMAPS)
 
 CLEANFILES = $(BUILT_SOURCES)
+
+-include $(INTROSPECTION_MAKEFILE)
+
+INTROSPECTION_GIRS =
+INTROSPECTION_SCANNER_ARGS = --add-include-path=$(srcdir) --strip-prefix=Spice
+INTROSPECTION_COMPILER_ARGS = --includedir=$(srcdir)
+
+if HAVE_INTROSPECTION
+glib_introspection_files = $(libspice_client_glibinclude_HEADERS)
+gtk_introspection_files = $(libspice_client_gtkinclude_HEADERS)
+
+SpiceClientGLib-1.0.gir: libspice-client-glib.la
+SpiceClientGLib_1_0_gir_INCLUDES = GObject-2.0
+SpiceClientGLib_1_0_gir_CFLAGS = $(INCLUDES)
+SpiceClientGLib_1_0_gir_LIBS = libspice-client-glib.la
+SpiceClientGLib_1_0_gir_FILES = $(glib_introspection_files)
+INTROSPECTION_GIRS += SpiceClientGLib-1.0.gir
+
+SpiceClientGtk-1.0.gir: libspice-client-gtk.la
+SpiceClientGtk_1_0_gir_INCLUDES = GObject-2.0 Gtk-2.0 SpiceClientGLib-1.0
+SpiceClientGtk_1_0_gir_CFLAGS = $(INCLUDES)
+SpiceClientGtk_1_0_gir_LIBS = libspice-client-gtk.la libspice-client-glib.la
+SpiceClientGtk_1_0_gir_FILES = $(gtk_introspection_files)
+INTROSPECTION_GIRS += SpiceClientGtk-1.0.gir
+
+girdir = $(datadir)/gir-1.0
+gir_DATA = $(INTROSPECTION_GIRS)
+
+typelibsdir = $(libdir)/girepository-1.0
+typelibs_DATA = $(INTROSPECTION_GIRS:.gir=.typelib)
+
+CLEANFILES += $(gir_DATA) $(typelibs_DATA)
+endif

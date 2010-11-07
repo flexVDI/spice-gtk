@@ -3,6 +3,7 @@
 
 #include "spice-marshal.h"
 #include "spice-channel-cache.h"
+#include "spice-channel-priv.h"
 #include "channel-display-priv.h"
 #include "decode.h"
 

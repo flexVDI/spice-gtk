@@ -69,25 +69,4 @@ gboolean spice_channel_connect(SpiceChannel *channel);
 void spice_channel_disconnect(SpiceChannel *channel, enum SpiceChannelEvent event);
 int spice_channel_id(SpiceChannel *channel);
 
-spice_msg_in *spice_msg_in_new(SpiceChannel *channel);
-spice_msg_in *spice_msg_in_sub_new(SpiceChannel *channel, spice_msg_in *parent,
-                                   SpiceSubMessage *sub);
-void spice_msg_in_ref(spice_msg_in *in);
-void spice_msg_in_unref(spice_msg_in *in);
-int spice_msg_in_type(spice_msg_in *in);
-void *spice_msg_in_parsed(spice_msg_in *in);
-void *spice_msg_in_raw(spice_msg_in *in, int *len);
-void spice_msg_in_hexdump(spice_msg_in *in);
-
-spice_msg_out *spice_msg_out_new(SpiceChannel *channel, int type);
-void spice_msg_out_ref(spice_msg_out *out);
-void spice_msg_out_unref(spice_msg_out *out);
-void spice_msg_out_send(spice_msg_out *out);
-void spice_msg_out_hexdump(spice_msg_out *out, unsigned char *data, int len);
-
-/* channel-base.c */
-void spice_channel_handle_set_ack(SpiceChannel *channel, spice_msg_in *in);
-void spice_channel_handle_ping(SpiceChannel *channel, spice_msg_in *in);
-void spice_channel_handle_notify(SpiceChannel *channel, spice_msg_in *in);
-
 #endif /* __SPICE_CLIENT_CHANNEL_H__ */

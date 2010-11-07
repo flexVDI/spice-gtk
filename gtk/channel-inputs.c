@@ -1,5 +1,6 @@
 #include "spice-client.h"
 #include "spice-common.h"
+#include "spice-channel-priv.h"
 
 #define SPICE_INPUTS_CHANNEL_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_INPUTS_CHANNEL, spice_inputs_channel))

@@ -1,6 +1,7 @@
 #include "spice-client.h"
 #include "spice-common.h"
 
+#include "spice-channel-priv.h"
 #include "spice-session-priv.h"
 
 #include <spice/vd_agent.h>

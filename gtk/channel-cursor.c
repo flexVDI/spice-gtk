@@ -1,6 +1,7 @@
 #include "spice-client.h"
 #include "spice-common.h"
 
+#include "spice-channel-priv.h"
 #include "spice-channel-cache.h"
 #include "spice-marshal.h"
 
