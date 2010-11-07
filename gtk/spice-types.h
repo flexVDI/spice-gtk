@@ -11,7 +11,4 @@ typedef struct _SpiceChannel SpiceChannel;
 typedef struct _SpiceChannelClass SpiceChannelClass;
 typedef struct spice_channel spice_channel;
 
-typedef struct spice_msg_in  spice_msg_in;
-typedef struct spice_msg_out spice_msg_out;
-
 #endif /* __SPICE_CLIENT_TYPES_H__ */

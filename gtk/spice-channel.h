@@ -10,6 +10,9 @@ G_BEGIN_DECLS
 #define SPICE_IS_CHANNEL_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), SPICE_TYPE_CHANNEL))
 #define SPICE_CHANNEL_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), SPICE_TYPE_CHANNEL, SpiceChannelClass))
 
+typedef struct spice_msg_in  spice_msg_in;
+typedef struct spice_msg_out spice_msg_out;
+
 enum SpiceChannelEvent {
     SPICE_CHANNEL_NONE = 0,
     SPICE_CHANNEL_OPENED = 10,
@@ -19,15 +22,6 @@ enum SpiceChannelEvent {
     SPICE_CHANNEL_ERROR_LINK,
     SPICE_CHANNEL_ERROR_AUTH,
     SPICE_CHANNEL_ERROR_IO,
-};
-
-/* Hmm, should better be private ... */
-struct spice_msg_out {
-    int                   refcount;
-    SpiceChannel          *channel;
-    SpiceMessageMarshallers *marshallers;
-    SpiceMarshaller       *marshaller;
-    SpiceDataHeader       *header;
 };
 
 struct _SpiceChannel
@@ -59,8 +53,6 @@ struct _SpiceChannelClass
 
 GType spice_channel_get_type(void) G_GNUC_CONST;
 
-G_END_DECLS
-
 typedef void (*spice_msg_handler)(SpiceChannel *channel, spice_msg_in *in);
 
 SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id);
@@ -68,5 +60,7 @@ void spice_channel_destroy(SpiceChannel *channel);
 gboolean spice_channel_connect(SpiceChannel *channel);
 void spice_channel_disconnect(SpiceChannel *channel, enum SpiceChannelEvent event);
 int spice_channel_id(SpiceChannel *channel);
+
+G_END_DECLS
 
 #endif /* __SPICE_CLIENT_CHANNEL_H__ */

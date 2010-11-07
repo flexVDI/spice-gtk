@@ -1,5 +1,6 @@
 #include "spice-client.h"
 #include "spice-common.h"
+#include "spice-channel-priv.h"
 
 #include "channel-display-priv.h"
 
@@ -18,7 +19,7 @@ static int mjpeg_src_fill(struct jpeg_decompress_struct *cinfo)
 }
 
 static void mjpeg_src_skip(struct jpeg_decompress_struct *cinfo,
-			  long num_bytes)
+                           long num_bytes)
 {
     cinfo->src->next_input_byte += num_bytes;
 }
@@ -87,7 +88,7 @@ void stream_mjpeg_data(display_stream *st)
     st->mjpeg_cinfo.out_color_space = JCS_RGB;
     jpeg_start_decompress(&st->mjpeg_cinfo);
     for (i = 0; i < height; i++) {
-	jpeg_read_scanlines(&st->mjpeg_cinfo, &line, 1);
+        jpeg_read_scanlines(&st->mjpeg_cinfo, &line, 1);
         mjpeg_convert_scanline(dest, line, width, 0 /* FIXME: compat */);
         dest += 4 * width;
     }

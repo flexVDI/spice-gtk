@@ -3,6 +3,14 @@
 
 #include <openssl/ssl.h>
 
+struct spice_msg_out {
+    int                   refcount;
+    SpiceChannel          *channel;
+    SpiceMessageMarshallers *marshallers;
+    SpiceMarshaller       *marshaller;
+    SpiceDataHeader       *header;
+};
+
 struct spice_msg_in {
     int                   refcount;
     SpiceChannel          *channel;
