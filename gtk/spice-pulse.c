@@ -84,7 +84,7 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
     switch (state) {
     case PA_CONTEXT_READY:
         if (p->state != state) {
-            fprintf(stderr, "%s: pulse context ready\n", __FUNCTION__);
+            g_message("%s: pulse context ready", __FUNCTION__);
         }
         if (p->playback.stream &&
             (p->playback.spec.rate != frequency ||
@@ -109,8 +109,8 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
         break;
     default:
         if (p->state != state) {
-            fprintf(stderr, "%s: pulse context not ready (%s)\n",
-                    __FUNCTION__, STATE_NAME(context_state_names, state));
+            g_warning("%s: pulse context not ready (%s)",
+                      __FUNCTION__, STATE_NAME(context_state_names, state));
         }
         break;
     }
@@ -131,14 +131,14 @@ static void playback_data(SpicePlaybackChannel *channel, gpointer *audio, gint s
     switch (state) {
     case PA_STREAM_READY:
         if (p->playback.state != state) {
-            fprintf(stderr, "%s: pulse playback stream ready\n", __FUNCTION__);
+            g_message("%s: pulse playback stream ready", __FUNCTION__);
         }
         pa_stream_write(p->playback.stream, audio, size, NULL, 0, PA_SEEK_RELATIVE);
         break;
     default:
         if (p->playback.state != state) {
-            fprintf(stderr, "%s: pulse playback stream not ready (%s)\n",
-                    __FUNCTION__, STATE_NAME(stream_state_names, state));
+            g_warning("%s: pulse playback stream not ready (%s)",
+                      __FUNCTION__, STATE_NAME(stream_state_names, state));
         }
         break;
     }
@@ -159,12 +159,12 @@ static void playback_stop(SpicePlaybackChannel *channel, gpointer data)
 static void record_start(SpicePlaybackChannel *channel, gint format, gint channels,
                          gint frequency, gpointer data)
 {
-    fprintf(stderr, "%s\n", __FUNCTION__);
+    g_debug("%s", __FUNCTION__);
 }
 
 static void record_stop(SpicePlaybackChannel *channel, gpointer data)
 {
-    fprintf(stderr, "%s\n", __FUNCTION__);
+    g_debug("%s", __FUNCTION__);
 }
 
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)

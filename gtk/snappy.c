@@ -19,7 +19,7 @@ static void primary_create(SpiceChannel *channel, gint format,
                            gint width, gint height, gint stride,
                            gint shmid, gpointer imgdata, gpointer data)
 {
-    fprintf(stderr, "%s: %dx%d, format %d\n", __FUNCTION__, width, height, format);
+    g_debug("%s: %dx%d, format %d", __FUNCTION__, width, height, format);
     d_format = format;
     d_width  = width;
     d_height = height;
@@ -35,10 +35,10 @@ static int write_ppm_32(void)
 
     fp = fopen(outf,"w");
     if (NULL == fp) {
-	fprintf(stderr,"snappy: can't open %s: %s\n", outf, strerror(errno));
+	fprintf(stderr, "snappy: can't open %s: %s\n", outf, strerror(errno));
 	return -1;
     }
-    fprintf(fp,"P6\n%d %d\n255\n",
+    fprintf(fp, "P6\n%d %d\n255\n",
             d_width, d_height);
     n = d_width * d_height;
     p = d_data;

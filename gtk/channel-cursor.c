@@ -169,11 +169,9 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
     display_cursor *cursor;
     size_t size;
 
-#if 0
-    fprintf(stderr, "%s: type %d, %" PRIx64 ", %dx%d, flags %d, size %d\n",
+    g_debug("%s: type %d, %" PRIx64 ", %dx%d, flags %d, size %d",
             __FUNCTION__, hdr->type, hdr->unique, hdr->width, hdr->height,
             scursor->flags, scursor->data_size);
-#endif
 
     if (scursor->flags & SPICE_CURSOR_FLAGS_FROM_CACHE) {
         item = cache_find(&c->cursors, hdr->unique);
@@ -198,8 +196,8 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
         memcpy(cursor->data, scursor->data, size);
         break;
     default:
-        fprintf(stderr, "%s: unimplemented cursor type %d\n", __FUNCTION__,
-                hdr->type);
+        g_warning("%s: unimplemented cursor type %d", __FUNCTION__,
+                  hdr->type);
         free(cursor);
         cursor = NULL;
         break;
@@ -285,7 +283,7 @@ static void cursor_handle_hide(SpiceChannel *channel, spice_msg_in *in)
 
 static void cursor_handle_trail(SpiceChannel *channel, spice_msg_in *in)
 {
-    fprintf(stderr, "%s: TODO\n", __FUNCTION__);
+    g_warning("%s: TODO", __FUNCTION__);
 }
 
 static void cursor_handle_inval_one(SpiceChannel *channel, spice_msg_in *in)

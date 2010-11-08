@@ -15,7 +15,8 @@ static void mjpeg_src_init(struct jpeg_decompress_struct *cinfo)
 
 static int mjpeg_src_fill(struct jpeg_decompress_struct *cinfo)
 {
-    PANIC("need more input data");
+    g_critical("need more input data");
+    return 0;
 }
 
 static void mjpeg_src_skip(struct jpeg_decompress_struct *cinfo,

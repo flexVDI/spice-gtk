@@ -24,6 +24,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <glib.h>
 
 #include "tcp.h"
 
@@ -45,78 +46,78 @@ int tcp_connect(struct addrinfo *ai,
 		char *addr, char *port,
 		char *host, char *serv)
 {
-    struct addrinfo *res,*e;
+    struct addrinfo *res, *e;
     struct addrinfo *lres, ask;
-    char uaddr[INET6_ADDRSTRLEN+1];
+    char uaddr[INET6_ADDRSTRLEN + 1];
     char uport[33];
-    char uhost[INET6_ADDRSTRLEN+1];
+    char uhost[INET6_ADDRSTRLEN + 1];
     char userv[33];
-    int sock,rc,opt=1;
+    int sock, rc, opt=1;
 
     /* lookup peer */
     ai->ai_flags = AI_CANONNAME;
     if (0 != (rc = getaddrinfo(host, serv, ai, &res))) {
 	if (tcp_verbose)
-	    fprintf(stderr,"getaddrinfo (peer): %s\n", gai_strerror(rc));
+	    g_debug("getaddrinfo (peer): %s", gai_strerror(rc));
 	return -1;
     }
     for (e = res; e != NULL; e = e->ai_next) {
-	if (0 != getnameinfo((struct sockaddr*)e->ai_addr,e->ai_addrlen,
-			     uhost,INET6_ADDRSTRLEN,userv,32,
+	if (0 != getnameinfo((struct sockaddr*)e->ai_addr, e->ai_addrlen,
+			     uhost, INET6_ADDRSTRLEN, userv, 32,
 			     NI_NUMERICHOST | NI_NUMERICSERV)) {
 	    if (tcp_verbose)
-		fprintf(stderr,"getnameinfo (peer): oops\n");
+                g_debug("getnameinfo (peer): oops");
 	    continue;
 	}
 	if (-1 == (sock = socket(e->ai_family, e->ai_socktype,
 				 e->ai_protocol))) {
 	    if (tcp_verbose)
-		fprintf(stderr,"socket (%s): %s\n",
-			strfamily(e->ai_family),strerror(errno));
+                g_debug("socket (%s): %s",
+			strfamily(e->ai_family), strerror(errno));
 	    continue;
 	}
-        setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,&opt,sizeof(opt));
+        setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 	if (NULL != addr || NULL != port) {
 	    /* bind local port */
-	    memset(&ask,0,sizeof(ask));
+	    memset(&ask, 0, sizeof(ask));
 	    ask.ai_flags    = AI_PASSIVE;
 	    ask.ai_family   = e->ai_family;
 	    ask.ai_socktype = e->ai_socktype;
 	    if (0 != (rc = getaddrinfo(addr, port, &ask, &lres))) {
 		if (tcp_verbose)
-		    fprintf(stderr,"getaddrinfo (local): %s\n",
+		    g_debug("getaddrinfo (local): %s",
 			    gai_strerror(rc));
 		continue;
 	    }
 	    if (0 != getnameinfo((struct sockaddr*)lres->ai_addr,
 				 lres->ai_addrlen,
-				 uaddr,INET6_ADDRSTRLEN,uport,32,
+				 uaddr, INET6_ADDRSTRLEN, uport, 32,
 				 NI_NUMERICHOST | NI_NUMERICSERV)) {
 		if (tcp_verbose)
-		    fprintf(stderr,"getnameinfo (local): oops\n");
+		    g_debug("getnameinfo (local): oops");
 		continue;
 	    }
 	    if (-1 == bind(sock, lres->ai_addr, lres->ai_addrlen)) {
 		if (tcp_verbose)
-		    fprintf(stderr,"%s [%s] %s bind: %s\n",
-			    strfamily(lres->ai_family),uaddr,uport,
+		    g_debug("%s [%s] %s bind: %s",
+			    strfamily(lres->ai_family), uaddr, uport,
 			    strerror(errno));
 		continue;
 	    }
 	}
 	/* connect to peer */
-	if (-1 == connect(sock,e->ai_addr,e->ai_addrlen)) {
+	if (-1 == connect(sock, e->ai_addr, e->ai_addrlen)) {
 	    if (tcp_verbose)
-		fprintf(stderr,"%s %s [%s] %s connect: %s\n",
-			strfamily(e->ai_family),e->ai_canonname,uhost,userv,
+		g_debug("%s %s [%s] %s connect: %s",
+			strfamily(e->ai_family), e->ai_canonname, uhost, userv,
 			strerror(errno));
 	    close(sock);
 	    continue;
 	}
 	if (tcp_verbose)
-	    fprintf(stderr,"%s %s [%s] %s open\n",
-		    strfamily(e->ai_family),e->ai_canonname,uhost,userv);
-	fcntl(sock,F_SETFL,O_NONBLOCK);
+            g_debug("%s %s [%s] %s open",
+		    strfamily(e->ai_family), e->ai_canonname, uhost, userv);
+	fcntl(sock, F_SETFL, O_NONBLOCK);
 	return sock;
     }
     return -1;
@@ -124,41 +125,41 @@ int tcp_connect(struct addrinfo *ai,
 
 int tcp_listen(struct addrinfo *ai, char *addr, char *port)
 {
-    struct addrinfo *res,*e;
-    char uaddr[INET6_ADDRSTRLEN+1];
+    struct addrinfo *res, *e;
+    char uaddr[INET6_ADDRSTRLEN + 1];
     char uport[33];
-    int slisten,rc,opt=1;
+    int slisten, rc, opt=1;
 
     /* lookup */
     ai->ai_flags = AI_PASSIVE;
     if (0 != (rc = getaddrinfo(addr, port, ai, &res))) {
 	if (tcp_verbose)
-	    fprintf(stderr,"getaddrinfo: %s\n",gai_strerror(rc));
+	    g_debug("getaddrinfo: %s", gai_strerror(rc));
 	exit(1);
     }
 
     /* create socket + bind */
     for (e = res; e != NULL; e = e->ai_next) {
-	getnameinfo((struct sockaddr*)e->ai_addr,e->ai_addrlen,
-		    uaddr,INET6_ADDRSTRLEN,uport,32,
+	getnameinfo((struct sockaddr*)e->ai_addr, e->ai_addrlen,
+		    uaddr, INET6_ADDRSTRLEN, uport, 32,
 		    NI_NUMERICHOST | NI_NUMERICSERV);
 	if (-1 == (slisten = socket(e->ai_family, e->ai_socktype,
 				    e->ai_protocol))) {
 	    if (tcp_verbose)
-		fprintf(stderr,"socket (%s): %s\n",
-			strfamily(e->ai_family),strerror(errno));
+		g_debug("socket (%s): %s",
+			strfamily(e->ai_family), strerror(errno));
 	    continue;
 	}
 	opt = 1;
-        setsockopt(slisten,SOL_SOCKET,SO_REUSEADDR,&opt,sizeof(opt));
+        setsockopt(slisten, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 	if (-1 == bind(slisten, e->ai_addr, e->ai_addrlen)) {
 	    if (tcp_verbose)
-		fprintf(stderr,"%s [%s] %s bind: %s\n",
-			strfamily(e->ai_family),uaddr,uport,
+		g_debug("%s [%s] %s bind: %s",
+			strfamily(e->ai_family), uaddr, uport,
 			strerror(errno));
 	    continue;
 	}
-	listen(slisten,1);
+	listen(slisten, 1);
 	break;
     }
     if (NULL == e)
@@ -166,8 +167,8 @@ int tcp_listen(struct addrinfo *ai, char *addr, char *port)
 
     /* wait for a incoming connection */
     if (tcp_verbose)
-	fprintf(stderr,"listen on %s [%s] %s ...\n",
-		strfamily(e->ai_family),uaddr,uport);
-    fcntl(slisten,F_SETFL,O_NONBLOCK);
+	g_message("listen on %s [%s] %s ...",
+		strfamily(e->ai_family), uaddr, uport);
+    fcntl(slisten, F_SETFL, O_NONBLOCK);
     return slisten;
 }

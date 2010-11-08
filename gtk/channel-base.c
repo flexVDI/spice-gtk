@@ -52,7 +52,7 @@ void spice_channel_handle_notify(SpiceChannel *channel, spice_msg_in *in)
         message_str = (char*)notify->message;
     }
 
-    fprintf(stderr, "%s: channel %s -- %s%s #%u%s%.*s\n", __FUNCTION__,
+    g_debug("%s: channel %s -- %s%s #%u%s%.*s", __FUNCTION__,
             c->name, severity, visibility, notify->what,
             message_str ? ": " : "", notify->message_len,
             message_str ? message_str : "");

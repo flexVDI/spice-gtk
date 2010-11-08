@@ -91,10 +91,8 @@ static void playback_handle_data(SpiceChannel *channel, spice_msg_in *in)
     spice_playback_channel *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackPacket *data = spice_msg_in_parsed(in);
 
-#if 0
-    fprintf(stderr, "%s: time %d data %p size %d\n", __FUNCTION__,
+    g_debug("%s: time %d data %p size %d", __FUNCTION__,
             data->time, data->data, data->data_size);
-#endif
 
     switch (c->mode) {
     case SPICE_AUDIO_DATA_MODE_RAW:
@@ -102,7 +100,7 @@ static void playback_handle_data(SpiceChannel *channel, spice_msg_in *in)
                       data->data, data->data_size);
         break;
     default:
-        fprintf(stderr, "%s: unhandled mode\n", __FUNCTION__);
+        g_warning("%s: unhandled mode", __FUNCTION__);
         break;
     }
 }
@@ -112,17 +110,15 @@ static void playback_handle_mode(SpiceChannel *channel, spice_msg_in *in)
     spice_playback_channel *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackMode *mode = spice_msg_in_parsed(in);
 
-#if 0
-    fprintf(stderr, "%s: time %d mode %d data %p size %d\n", __FUNCTION__,
+    g_debug("%s: time %d mode %d data %p size %d", __FUNCTION__,
             mode->time, mode->mode, mode->data, mode->data_size);
-#endif
 
     c->mode = mode->mode;
     switch (c->mode) {
     case SPICE_AUDIO_DATA_MODE_RAW:
         break;
     default:
-        fprintf(stderr, "%s: unhandled mode\n", __FUNCTION__);
+        g_warning("%s: unhandled mode", __FUNCTION__);
         break;
     }
 }
@@ -132,10 +128,8 @@ static void playback_handle_start(SpiceChannel *channel, spice_msg_in *in)
     spice_playback_channel *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackStart *start = spice_msg_in_parsed(in);
 
-#if 0
-    fprintf(stderr, "%s: fmt %d channels %d freq %d time %d\n", __FUNCTION__,
+    g_debug("%s: fmt %d channels %d freq %d time %d", __FUNCTION__,
             start->format, start->channels, start->frequency, start->time);
-#endif
 
     switch (c->mode) {
     case SPICE_AUDIO_DATA_MODE_RAW:
@@ -143,7 +137,7 @@ static void playback_handle_start(SpiceChannel *channel, spice_msg_in *in)
                       start->format, start->channels, start->frequency);
         break;
     default:
-        fprintf(stderr, "%s: unhandled mode\n", __FUNCTION__);
+        g_warning("%s: unhandled mode", __FUNCTION__);
         break;
     }
 }

@@ -73,7 +73,7 @@ static void spice_channel_constructed(GObject *gobject)
 
     snprintf(c->name, sizeof(c->name), "%s-%d:%d",
              desc ? desc : "unknown", c->channel_type, c->channel_id);
-    fprintf(stderr, "%s: %s\n", c->name, __FUNCTION__);
+    g_message("%s: %s", c->name, __FUNCTION__);
 
     c->connection_id = spice_session_get_connection_id(c->session);
     spice_session_channel_new(c->session, channel);
@@ -101,7 +101,7 @@ static void spice_channel_finalize(GObject *gobject)
     SpiceChannel *channel = SPICE_CHANNEL(gobject);
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
 
-    fprintf(stderr, "%s: %s\n", c->name, __FUNCTION__);
+    g_message("%s: %s", c->name, __FUNCTION__);
 
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_channel_parent_class)->finalize)
@@ -291,6 +291,7 @@ void *spice_msg_in_raw(spice_msg_in *in, int *len)
 static void hexdump(char *prefix, unsigned char *data, int len)
 {
     int i;
+    char *dump;
 
     for (i = 0; i < len; i++) {
         if (i % 16 == 0)
@@ -378,8 +379,8 @@ static int spice_channel_send(SpiceChannel *channel, void *buf, int len)
     if (c->tls) {
         rc = SSL_write(c->ssl, buf, len);
         if (rc != len) {
-            fprintf(stderr, "%s: %s: SSL_write: %d / %d\n",
-                    c->name, __FUNCTION__, rc, len);
+            g_warning("%s: %s: SSL_write: %d / %d",
+                      c->name, __FUNCTION__, rc, len);
         }
     } else {
         rc = send(c->socket, buf, len, 0);
@@ -398,7 +399,7 @@ static int spice_channel_recv(SpiceChannel *channel, void *buf, int len)
             return rc;
         }
         if (rc == 0) {
-            fprintf(stderr, "%s: channel/tls eof\n", c->name);
+            g_message("%s: channel/tls eof", c->name);
             spice_channel_disconnect(channel, SPICE_CHANNEL_CLOSED);
             return 0;
         }
@@ -406,8 +407,8 @@ static int spice_channel_recv(SpiceChannel *channel, void *buf, int len)
         if (err == SSL_ERROR_WANT_READ) {
             return 0;
         }
-        fprintf(stderr, "%s: channel/tls error: %s\n",
-                c->name, ERR_error_string(err, NULL));
+        g_warning("%s: channel/tls error: %s",
+                  c->name, ERR_error_string(err, NULL));
         spice_channel_disconnect(channel, SPICE_CHANNEL_ERROR_IO);
         return 0;
     } else {
@@ -416,12 +417,12 @@ static int spice_channel_recv(SpiceChannel *channel, void *buf, int len)
         case -1:
             if (errno == EAGAIN)
                 return 0;
-            fprintf(stderr, "%s: channel error: %s\n",
-                    c->name, strerror(errno));
+            g_warning("%s: channel error: %s",
+                      c->name, strerror(errno));
             spice_channel_disconnect(channel, SPICE_CHANNEL_ERROR_IO);
             return 0;
         case 0:
-            fprintf(stderr, "%s: channel eof\n", c->name);
+            g_message("%s: channel eof", c->name);
             spice_channel_disconnect(channel, SPICE_CHANNEL_CLOSED);
             return 0;
         default:
@@ -441,8 +442,8 @@ static void spice_channel_tls_connect(SpiceChannel *channel)
         if (err == SSL_ERROR_WANT_READ) {
             return;
         }
-        fprintf(stderr, "%s: SSL_connect: %s",
-                c->name, ERR_error_string(err, NULL));
+        g_message("%s: SSL_connect: %s",
+                  c->name, ERR_error_string(err, NULL));
         spice_channel_emit_event(channel, SPICE_CHANNEL_ERROR_TLS);
     }
     c->state = SPICE_CHANNEL_STATE_LINK_HDR;
@@ -461,15 +462,14 @@ static void spice_channel_send_auth(SpiceChannel *channel)
     int rc;
 
     bioKey = BIO_new(BIO_s_mem());
-    if (bioKey == NULL)
-        PANIC("Could not initiate BIO");
+    g_return_if_fail(bioKey != NULL);
 
     BIO_write(bioKey, c->peer_msg->pub_key, SPICE_TICKET_PUBKEY_BYTES);
     pubkey = d2i_PUBKEY_bio(bioKey, NULL);
     rsa = pubkey->pkey.rsa;
     nRSASize = RSA_size(rsa);
 
-    encrypted = spice_malloc(nRSASize);
+    encrypted = g_alloca(nRSASize);
     /*
       The use of RSA encryption limit the potential maximum password length.
       for RSA_PKCS1_OAEP_PADDING it is RSA_size(rsa) - 41.
@@ -479,11 +479,10 @@ static void spice_channel_send_auth(SpiceChannel *channel)
         password = "";
     rc = RSA_public_encrypt(strlen(password) + 1, (uint8_t*)password,
                             encrypted, rsa, RSA_PKCS1_OAEP_PADDING);
-    if (rc <= 0)
-        PANIC("could not encrypt password");
+    g_return_if_fail(rc > 0);
+
     spice_channel_send(channel, encrypted, nRSASize);
     memset(encrypted, 0, nRSASize);
-    free(encrypted);
     BIO_free(bioKey);
 }
 
@@ -494,14 +493,17 @@ static void spice_channel_recv_auth(SpiceChannel *channel)
     int rc;
 
     rc = spice_channel_recv(channel, &link_res, sizeof(link_res));
-    if (rc != sizeof(link_res))
-        PANIC("incomplete auth reply (%d/%zd)", rc, sizeof(link_res));
+    if (rc != sizeof(link_res)) {
+        g_critical("incomplete auth reply (%d/%zd)", rc, sizeof(link_res));
+        return;
+    }
+
     if (link_res != SPICE_LINK_ERR_OK) {
         spice_channel_disconnect(channel, SPICE_CHANNEL_ERROR_AUTH);
         return;
     }
 
-    fprintf(stderr, "%s: channel up\n", c->name);
+    g_message("%s: channel up", c->name);
     c->state = SPICE_CHANNEL_STATE_READY;
     spice_channel_emit_event(channel, SPICE_CHANNEL_OPENED);
 
@@ -533,7 +535,8 @@ static void spice_channel_send_link(SpiceChannel *channel)
         c->marshallers = spice_message_marshallers_get();
         break;
     default:
-        PANIC("unknown major %d", protocol);
+        g_critical("unknown major %d", protocol);
+        return;
     }
 
     c->link_msg.connection_id = c->connection_id;
@@ -573,21 +576,24 @@ static void spice_channel_recv_link_hdr(SpiceChannel *channel)
     int rc;
 
     rc = spice_channel_recv(channel, &c->peer_hdr, sizeof(c->peer_hdr));
-    if (rc != sizeof(c->peer_hdr))
-        PANIC("incomplete link header (%d/%zd)", rc, sizeof(c->peer_hdr));
-    if (c->peer_hdr.magic != SPICE_MAGIC)
-        PANIC("bad magic");
+    if (rc != sizeof(c->peer_hdr)) {
+        g_critical("incomplete link header (%d/%zd)", rc, sizeof(c->peer_hdr));
+        return;
+    }
+    g_return_if_fail(c->peer_hdr.magic == SPICE_MAGIC);
+
     if (c->peer_hdr.major_version != c->link_hdr.major_version) {
         if (c->peer_hdr.major_version == 1) {
             /* enter spice 0.4 mode */
             g_object_set(c->session, "protocol", 1, NULL);
-            fprintf(stderr, "%s: switching to protocol 1 (spice 0.4)\n", c->name);
+            g_message("%s: switching to protocol 1 (spice 0.4)", c->name);
             spice_channel_disconnect(channel, SPICE_CHANNEL_NONE);
             spice_channel_connect(channel);
             return;
         }
-        PANIC("major mismatch (got %d, expected %d)",
-              c->peer_hdr.major_version, c->link_hdr.major_version);
+        g_critical("major mismatch (got %d, expected %d)",
+                   c->peer_hdr.major_version, c->link_hdr.major_version);
+        return;
     }
 
     c->peer_msg = spice_malloc(c->peer_hdr.size);
@@ -603,8 +609,8 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
                             c->peer_hdr.size - c->peer_pos);
     c->peer_pos += rc;
     if (c->peer_pos != c->peer_hdr.size) {
-        fprintf(stderr, "%s: %s: incomplete link reply (%d/%d)\n",
-                c->name, __FUNCTION__, rc, c->peer_hdr.size);
+        g_warning("%s: %s: incomplete link reply (%d/%d)",
+                  c->name, __FUNCTION__, rc, c->peer_hdr.size);
         return;
     }
     switch (c->peer_msg->error) {
@@ -613,12 +619,12 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
         break;
     case SPICE_LINK_ERR_NEED_SECURED:
         c->tls = true;
-        fprintf(stderr, "%s: switching to tls\n", c->name);
+        g_message("%s: switching to tls", c->name);
         spice_channel_disconnect(channel, SPICE_CHANNEL_NONE);
         spice_channel_connect(channel);
         return;
     default:
-        fprintf(stderr, "%s: %s: unhandled error %d\n",
+        g_warning("%s: %s: unhandled error %d",
                 c->name, __FUNCTION__, c->peer_msg->error);
         spice_channel_disconnect(channel, SPICE_CHANNEL_ERROR_LINK);
         return;
@@ -626,7 +632,7 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
 
     num_caps = c->peer_msg->num_channel_caps + c->peer_msg->num_common_caps;
     if (num_caps) {
-        fprintf(stderr, "%s: %s: %d caps\n", c->name, __FUNCTION__, num_caps);
+        g_message("%s: %s: %d caps", c->name, __FUNCTION__, num_caps);
     }
 
 #if 0
@@ -673,7 +679,8 @@ void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out)
     }
     if (res != len) {
         /* TODO: queue up */
-        PANIC("sending message data failed");
+        g_critical("sending message data failed");
+        return;
     }
 }
 
@@ -692,8 +699,10 @@ static void spice_channel_recv_msg(SpiceChannel *channel)
     if (in->hpos < sizeof(in->header)) {
         rc = spice_channel_recv(channel, (uint8_t*)&in->header + in->hpos,
                                 sizeof(in->header) - in->hpos);
-        if (rc < 0)
-            PANIC("recv hdr: %s", strerror(errno));
+        if (rc < 0) {
+            g_critical("recv hdr: %s", strerror(errno));
+            return;
+        }
         in->hpos += rc;
         if (in->hpos < sizeof(in->header))
             return;
@@ -702,8 +711,10 @@ static void spice_channel_recv_msg(SpiceChannel *channel)
     if (in->dpos < in->header.size) {
         rc = spice_channel_recv(channel, in->data + in->dpos,
                                 in->header.size - in->dpos);
-        if (rc < 0)
-            PANIC("recv msg: %s", strerror(errno));
+        if (rc < 0) {
+            g_critical("recv msg: %s", strerror(errno));
+            return;
+        }
         in->dpos += rc;
         if (in->dpos < in->header.size)
             return;
@@ -722,9 +733,11 @@ static void spice_channel_recv_msg(SpiceChannel *channel)
             sub_in->parsed = c->parser(sub_in->data, sub_in->data + sub_in->dpos,
                                        sub_in->header.type, c->peer_hdr.minor_version,
                                        &sub_in->psize, &sub_in->pfree);
-            if (sub_in->parsed == NULL)
-                PANIC("failed to parse sub-message: %s type %d",
-                      c->name, sub_in->header.type);
+            if (sub_in->parsed == NULL) {
+                g_critical("failed to parse sub-message: %s type %d",
+                           c->name, sub_in->header.type);
+                return;
+            }
             SPICE_CHANNEL_GET_CLASS(channel)->handle_msg(channel, sub_in);
             spice_msg_in_unref(sub_in);
         }
@@ -744,9 +757,11 @@ static void spice_channel_recv_msg(SpiceChannel *channel)
     /* parse message */
     in->parsed = c->parser(in->data, in->data + in->dpos, in->header.type,
                            c->peer_hdr.minor_version, &in->psize, &in->pfree);
-    if (in->parsed == NULL)
-        PANIC("failed to parse message: %s type %d",
-              c->name, in->header.type);
+    if (in->parsed == NULL) {
+        g_critical("failed to parse message: %s type %d",
+                   c->name, in->header.type);
+        return;
+    }
 
     /* process message */
     SPICE_CHANNEL_GET_CLASS(channel)->handle_msg(channel, in);
@@ -778,7 +793,7 @@ static void spice_channel_data(int event, void *opaque)
         spice_channel_recv_msg(channel);
         break;
     default:
-        PANIC("unknown state %d", c->state);
+        g_critical("unknown state %d", c->state);
     }
 }
 
@@ -852,7 +867,7 @@ gboolean spice_channel_connect(SpiceChannel *channel)
 
     if (c->session == NULL || c->channel_type == -1 || c->channel_id == -1) {
         /* unset properties or unknown channel type */
-        fprintf(stderr, "%s: channel setup incomplete\n", __FUNCTION__);
+        g_warning("%s: channel setup incomplete", __FUNCTION__);
         return false;
     }
     if (c->state != SPICE_CHANNEL_STATE_UNCONNECTED) {
@@ -866,6 +881,7 @@ reconnect:
             c->tls = true;
             goto reconnect;
         }
+        g_debug("Connect error");
         spice_channel_emit_event(channel, SPICE_CHANNEL_ERROR_CONNECT);
         return false;
     }
@@ -877,25 +893,28 @@ reconnect:
 
         c->ctx = SSL_CTX_new(TLSv1_method());
         if (c->ctx == NULL) {
-            PANIC("SSL_CTX_new failed");
+            g_critical("SSL_CTX_new failed");
+            return false;
         }
 
         g_object_get(c->session, "ca-file", &ca_file, NULL);
         if (ca_file) {
             rc = SSL_CTX_load_verify_locations(c->ctx, ca_file, NULL);
             if (rc <= 0) {
-                fprintf(stderr, "loading ca certs from %s failed\n", ca_file);
+                g_warning("loading ca certs from %s failed", ca_file);
             }
         }
         SSL_CTX_set_verify(c->ctx, SSL_VERIFY_PEER, tls_verify);
 
         c->ssl = SSL_new(c->ctx);
         if (c->ssl == NULL) {
-            PANIC("SSL_new failed");
+            g_critical("SSL_new failed");
+            return false;
         }
         rc = SSL_set_fd(c->ssl, c->socket);
         if (rc <= 0) {
-            PANIC("SSL_set_fd failed");
+            g_critical("SSL_set_fd failed");
+            return false;
         }
         SSL_set_app_data(c->ssl, c);
         rc = SSL_connect(c->ssl);
@@ -905,8 +924,8 @@ reconnect:
                 c->state = SPICE_CHANNEL_STATE_TLS;
                 return 0;
             }
-            fprintf(stderr, "%s: SSL_connect: %s",
-                    c->name, ERR_error_string(err, NULL));
+            g_message("%s: SSL_connect: %s",
+                      c->name, ERR_error_string(err, NULL));
             spice_channel_emit_event(channel, SPICE_CHANNEL_ERROR_TLS);
         }
     }

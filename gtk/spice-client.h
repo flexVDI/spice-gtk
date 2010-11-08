@@ -25,16 +25,4 @@
 #include "channel-playback.h"
 #include "channel-record.h"
 
-/* debug bits */
-#define PANIC(fmt, ...)                                 \
-    { fprintf(stderr, "%s:%d " fmt "\n",                \
-              __FUNCTION__, __LINE__, ## __VA_ARGS__);  \
-        exit(1); }
-
-#define ASSERT(x) if (!(x)) {                               \
-    { fprintf(stderr,"%s::%d ASSERT(%s) failed\n",          \
-              __FUNCTION__, __LINE__, #x);                  \
-        abort(); }                                          \
-}
-
 #endif /* __SPICE_CLIENT_CLIENT_H__ */

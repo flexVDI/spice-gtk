@@ -298,15 +298,13 @@ static void try_keyboard_grab(GtkWidget *widget)
         d->keyboard_grab_count = 0;
     }
     if (d->keyboard_grab_count++ > 32) {
-        fprintf(stderr, "%s: 32 grabs last second -> emergency exit\n",
-                __FUNCTION__);
+        g_critical("%s: 32 grabs last second -> emergency exit",
+                   __FUNCTION__);
         return;
     }
 #endif
 
-#if 0
-    fprintf(stderr, "grab keyboard\n");
-#endif
+    g_debug("grab keyboard");
 
     gdk_keyboard_grab(gtk_widget_get_window(widget), FALSE,
                       GDK_CURRENT_TIME);
@@ -322,9 +320,7 @@ static void try_keyboard_ungrab(GtkWidget *widget)
     if (!d->keyboard_grab_active)
         return;
 
-#if 0
-    fprintf(stderr, "ungrab keyboard\n");
-#endif
+    g_debug("ungrab keyboard");
     gdk_keyboard_ungrab(GDK_CURRENT_TIME);
     d->keyboard_grab_active = false;
 }
@@ -445,10 +441,8 @@ static void recalc_geometry(GtkWidget *widget)
     if (d->wh > d->height)
         d->my = (d->wh - d->height) / 2;
 
-#if 0
-    fprintf(stderr, "%s: guest %dx%d, window %dx%d, offset +%d+%d\n", __FUNCTION__,
+    g_debug("%s: guest %dx%d, window %dx%d, offset +%d+%d", __FUNCTION__,
             d->width, d->height, d->ww, d->wh, d->mx, d->my);
-#endif
     if (d->resize_guest_enable) {
         spice_main_set_display(d->main, d->channel_id,
                                0, 0, d->ww, d->wh);
@@ -518,10 +512,11 @@ static int ximage_create(GtkWidget *widget)
     if (d->vi == NULL) {
         d->convert = true;
         d->vi = get_visual_default(widget);
-        ASSERT(d->vi != NULL);
+        g_return_val_if_fail(d->vi != NULL, 1);
     }
     if (d->convert) {
-        PANIC("format conversion not implemented yet");
+        g_critical("format conversion not implemented yet");
+        return 1;
     }
 
     d->gc = XCreateGC(d->dpy, gdk_x11_drawable_get_xid(window),
@@ -585,13 +580,11 @@ static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
     GdkDrawable *window = gtk_widget_get_window(widget);
 
-#if 0
-    fprintf(stderr, "%s: area %dx%d at %d,%d\n", __FUNCTION__,
+    g_debug("%s: area %dx%d at %d,%d", __FUNCTION__,
             expose->area.width,
             expose->area.height,
             expose->area.x,
             expose->area.y);
-#endif
 
     if (d->data == NULL)
         return true;
@@ -702,11 +695,9 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
     int scancode;
 
-#if 0
-    fprintf(stderr, "%s %s: keycode: %d  state: %d  group %d\n",
+    g_debug("%s %s: keycode: %d  state: %d  group %d",
             __FUNCTION__, key->type == GDK_KEY_PRESS ? "press" : "release",
             key->hardware_keycode, key->state, key->group);
-#endif
 
     if (!d->inputs)
         return true;
@@ -731,9 +722,7 @@ static gboolean enter_event(GtkWidget *widget, GdkEventCrossing *crossing G_GNUC
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
-#if 0
-    fprintf(stderr, "%s\n", __FUNCTION__);
-#endif
+    g_debug("%s", __FUNCTION__);
     d->mouse_have_pointer = true;
     try_keyboard_grab(widget);
     return true;
@@ -744,9 +733,7 @@ static gboolean leave_event(GtkWidget *widget, GdkEventCrossing *crossing G_GNUC
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
-#if 0
-    fprintf(stderr, "%s\n", __FUNCTION__);
-#endif
+    g_debug("%s", __FUNCTION__);
     d->mouse_have_pointer = false;
     try_keyboard_ungrab(widget);
     return true;
@@ -757,9 +744,7 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
-#if 0
-    fprintf(stderr, "%s\n", __FUNCTION__);
-#endif
+    g_debug("%s", __FUNCTION__);
     release_keys(widget);
     d->keyboard_have_focus = true;
     try_keyboard_grab(widget);
@@ -771,9 +756,7 @@ static gboolean focus_out_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_U
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
-#if 0
-    fprintf(stderr, "%s\n", __FUNCTION__);
-#endif
+    g_debug("%s", __FUNCTION__);
     d->keyboard_have_focus = false;
     try_keyboard_ungrab(widget);
     return true;
@@ -812,10 +795,6 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
-
-#if 0
-    fprintf(stderr, "%s: +%.0f+%.0f\n", __FUNCTION__, motion->x, motion->y);
-#endif
 
     if (!d->inputs)
         return true;
@@ -856,11 +835,9 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
-#if 0
-    fprintf(stderr, "%s %s: button %d, state 0x%x\n", __FUNCTION__,
+    g_debug("%s %s: button %d, state 0x%x", __FUNCTION__,
             button->type == GDK_BUTTON_PRESS ? "press" : "release",
             button->button, button->state);
-#endif
 
     gtk_widget_grab_focus(widget);
     try_mouse_grab(widget);
@@ -934,13 +911,10 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
     char *name;
     int a, m, t;
 
-#if 1 /* debug */
-    fprintf(stderr, "%s:", __FUNCTION__);
+    g_debug("%s:", __FUNCTION__);
     for (a = 0; a < n_atoms; a++) {
-        fprintf(stderr, " \"%s\"",gdk_atom_name(atoms[a]));
+        g_debug(" \"%s\"", gdk_atom_name(atoms[a]));
     }
-    fprintf(stderr, "\n");
-#endif
 
     memset(types, 0, sizeof(types));
     for (a = 0; a < n_atoms; a++) {
@@ -1200,7 +1174,7 @@ static void cursor_move(SpiceCursorChannel *channel, gint x, gint y, gpointer da
     GdkScreen *screen = gdk_drawable_get_screen(drawable);
     int wx, wy;
 
-    fprintf(stderr, "%s: +%d+%d\n", __FUNCTION__, x, y);
+    g_debug("%s: +%d+%d", __FUNCTION__, x, y);
     d->mouse_guest_x = x;
     d->mouse_guest_y = y;
     d->mouse_last_x = x;
@@ -1214,7 +1188,7 @@ static void cursor_move(SpiceCursorChannel *channel, gint x, gint y, gpointer da
 
 static void cursor_reset(SpiceCursorChannel *channel, gpointer data)
 {
-    fprintf(stderr, "%s: TODO\n", __FUNCTION__);
+    g_warning("%s: TODO", __FUNCTION__);
 }
 
 static void disconnect_main(SpiceDisplay *display)
@@ -1387,5 +1361,5 @@ void spice_display_copy_to_guest(GtkWidget *widget)
 
 void spice_display_paste_from_guest(GtkWidget *widget)
 {
-    fprintf(stderr, "%s: TODO\n", __FUNCTION__);
+    g_warning("%s: TODO", __FUNCTION__);
 }

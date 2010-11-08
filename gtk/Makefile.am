@@ -21,6 +21,7 @@ KEYMAPS = \
 	vncdisplaykeymap_win322xtkbd.c
 
 INCLUDES = \
+	-DG_LOG_DOMAIN=\"GSpice\"       \
 	-DSW_CANVAS_CACHE		\
 	\
 	-I$(COMMON_DIR)			\

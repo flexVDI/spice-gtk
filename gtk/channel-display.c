@@ -296,7 +296,8 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
                                              surface->glz_decoder,
                                              NULL, // &jpeg_decoder(),
                                              NULL); // &zlib_decoder());
-    ASSERT(surface->canvas != NULL);
+
+    g_return_val_if_fail(surface->canvas != NULL, 0);
     return 0;
 }
 
@@ -376,7 +377,7 @@ static void spice_display_channel_up(SpiceChannel *channel)
 #define DRAW(type) {                                                    \
         display_surface *surface =                                      \
             find_surface(channel, op->base.surface_id);                 \
-        ASSERT(surface != NULL);                                        \
+        g_return_if_fail(surface != NULL);                                        \
         surface->canvas->ops->draw_##type(surface->canvas, &op->base.box, \
                                           &op->base.clip, &op->data);   \
         if (surface->primary) {                                         \
@@ -417,12 +418,12 @@ static void display_handle_mode(SpiceChannel *channel, spice_msg_in *in)
 
 static void display_handle_mark(SpiceChannel *channel, spice_msg_in *in)
 {
-    fprintf(stderr, "%s: TODO\n", __FUNCTION__);
+    g_warning("%s: TODO", __FUNCTION__);
 }
 
 static void display_handle_reset(SpiceChannel *channel, spice_msg_in *in)
 {
-    fprintf(stderr, "%s: TODO\n", __FUNCTION__);
+    g_warning("%s: TODO", __FUNCTION__);
 }
 
 static void display_handle_copy_bits(SpiceChannel *channel, spice_msg_in *in)
@@ -430,7 +431,7 @@ static void display_handle_copy_bits(SpiceChannel *channel, spice_msg_in *in)
     SpiceMsgDisplayCopyBits *op = spice_msg_in_parsed(in);
     display_surface *surface = find_surface(channel, op->base.surface_id);
 
-    ASSERT(surface != NULL);
+    g_return_if_fail(surface != NULL);
     surface->canvas->ops->copy_bits(surface->canvas, &op->base.box,
                                     &op->base.clip, &op->src_pos);
     if (surface->primary) {
@@ -450,7 +451,7 @@ static void display_handle_inv_list(SpiceChannel *channel, spice_msg_in *in)
             image_remove(&c->image_cache, list->resources[i].id);
             break;
         default:
-            PANIC("invalid res type");
+            g_return_if_reached();
             break;
         }
     }
@@ -505,7 +506,7 @@ static void display_handle_stream_create(SpiceChannel *channel, spice_msg_in *in
     SpiceMsgDisplayStreamCreate *op = spice_msg_in_parsed(in);
     display_stream *st;
 
-    fprintf(stderr, "%s: id %d\n", __FUNCTION__, op->id);
+    g_message("%s: id %d", __FUNCTION__, op->id);
 
     if (op->id >= c->nstreams) {
         int n = c->nstreams;
@@ -627,7 +628,7 @@ static void display_handle_stream_destroy(SpiceChannel *channel, spice_msg_in *i
 {
     SpiceMsgDisplayStreamDestroy *op = spice_msg_in_parsed(in);
 
-    fprintf(stderr, "%s: id %d\n", __FUNCTION__, op->id);
+    g_message("%s: id %d", __FUNCTION__, op->id);
     destroy_stream(channel, op->id);
 }
 

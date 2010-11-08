@@ -109,11 +109,11 @@ static int spice_uri_create(SpiceSession *session, char *dest, int len)
         return 0;
     }
 
-    pos += snprintf(dest+pos, len-pos, "spice://%s?", s->host);
+    pos += snprintf(dest + pos, len-pos, "spice://%s?", s->host);
     if (s->port && strlen(s->port))
-        pos += snprintf(dest+pos, len-pos, "port=%s;", s->port);
+        pos += snprintf(dest + pos, len - pos, "port=%s;", s->port);
     if (s->tls_port && strlen(s->tls_port))
-        pos += snprintf(dest+pos, len-pos, "tls-port=%s;", s->tls_port);
+        pos += snprintf(dest + pos, len - pos, "tls-port=%s;", s->tls_port);
     return pos;
 }
 

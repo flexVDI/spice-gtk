@@ -136,7 +136,7 @@ static int connect_dialog(GtkWidget *parent, SpiceSession *session)
         we[i] = gtk_entry_new();
         gtk_table_attach_defaults(table, we[i], 1, 2, i, i+1);
         g_object_get(session, entries[i].prop, &txt, NULL);
-        fprintf(stderr, "%s: #%i [%s]: \"%s\"\n",
+        g_debug("%s: #%i [%s]: \"%s\"",
                 __FUNCTION__, i, entries[i].prop, txt);
         if (txt) {
             gtk_entry_set_text(GTK_ENTRY(we[i]), txt);
@@ -230,7 +230,7 @@ static void menu_cb_bool_prop(GtkToggleAction *action, gpointer data)
     struct spice_window *win = data;
     gboolean state = gtk_toggle_action_get_active(action);
 
-    fprintf(stderr, "%s: %s = %s\n", __FUNCTION__,
+    g_debug("%s: %s = %s", __FUNCTION__,
             gtk_action_get_name(GTK_ACTION(action)), state ? "yes" : "no");
     g_object_set(G_OBJECT(win->spice),
                  gtk_action_get_name(GTK_ACTION(action)), state,
@@ -455,7 +455,7 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
     memset(win,0,sizeof(*win));
     win->id = id;
     win->conn = conn;
-    fprintf(stderr, "create window (#%d)\n", win->id);
+    g_message("create window (#%d)", win->id);
 
     /* toplevel */
     win->toplevel = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -552,7 +552,7 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
 
 static void destroy_spice_window(spice_window *win)
 {
-    fprintf(stderr, "destroy window (#%d)\n", win->id);
+    g_debug("destroy window (#%d)", win->id);
     gtk_widget_destroy(win->toplevel);
 #if 0 /* FIXME: triggers gobject warning */
     g_object_unref(win->ag);
@@ -577,7 +577,7 @@ static void recent_add(SpiceSession *session)
     char *host, *uri;
 
     g_object_get(session, "uri", &uri, "host", &host, NULL);
-    fprintf(stderr, "%s: %s\n", __FUNCTION__, uri);
+    g_debug("%s: %s", __FUNCTION__, uri);
     snprintf(name, sizeof(name), "%s (spice)", host);
 
     recent = gtk_recent_manager_get_default();
@@ -593,15 +593,15 @@ static void main_channel_event(SpiceChannel *channel, enum SpiceChannelEvent eve
 
     switch (event) {
     case SPICE_CHANNEL_OPENED:
-        fprintf(stderr, "main channel: opened\n");
+        g_message("main channel: opened");
         recent_add(conn->session);
         break;
     case SPICE_CHANNEL_CLOSED:
-        fprintf(stderr, "main channel: closed\n");
+        g_message("main channel: closed");
         connection_disconnect(conn);
         break;
     case SPICE_CHANNEL_ERROR_CONNECT:
-        fprintf(stderr, "main channel: failed to connect\n");
+        g_warning("main channel: failed to connect");
         rc = connect_dialog(NULL, conn->session);
         if (rc == 0) {
             connection_connect(conn);
@@ -610,8 +610,9 @@ static void main_channel_event(SpiceChannel *channel, enum SpiceChannelEvent eve
         }
         break;
     case SPICE_CHANNEL_ERROR_AUTH:
-        fprintf(stderr, "main channel: auth failure (wrong password?)\n");
+        g_warning("main channel: auth failure (wrong password?)");
         strcpy(password, "");
+        /* FIXME i18 */
         rc = ask_user(NULL, "Authentication",
                       "Please enter the spice server password",
                       password, sizeof(password), true);
@@ -624,8 +625,8 @@ static void main_channel_event(SpiceChannel *channel, enum SpiceChannelEvent eve
         break;
     default:
         /* TODO: more sophisticated error handling */
-        fprintf(stderr, "unknown main channel event: %d\n", event);
-        connection_disconnect(conn);
+        g_warning("unknown main channel event: %d", event);
+        /* connection_disconnect(conn); */
         break;
     }
 }
@@ -682,7 +683,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     conn->channels++;
 
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
-        fprintf(stderr, "new main channel\n");
+        g_debug("new main channel");
         g_signal_connect(channel, "spice-channel-event",
                          G_CALLBACK(main_channel_event), conn);
         g_signal_connect(channel, "spice-main-mouse-update",
@@ -698,12 +699,12 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
             return;
         if (conn->wins[id] != NULL)
             return;
-        fprintf(stderr, "new display channel (#%d)\n", id);
+        g_debug("new display channel (#%d)", id);
         conn->wins[id] = create_spice_window(conn, id);
     }
 
     if (SPICE_IS_INPUTS_CHANNEL(channel)) {
-        fprintf(stderr, "new inputs channel\n");
+        g_debug("new inputs channel");
         g_signal_connect(channel, "spice-inputs-modifiers",
                          G_CALLBACK(inputs_modifiers), conn);
     }
@@ -711,7 +712,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
         if (conn->audio != NULL)
             return;
-        fprintf(stderr, "new audio channel\n");
+        g_debug("new audio channel");
         conn->audio = spice_audio_new(s, mainloop, "spice");
     }
 }
@@ -722,7 +723,7 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
     int id = spice_channel_id(channel);
 
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
-        fprintf(stderr, "zap main channel\n");
+        g_debug("zap main channel");
     }
 
     if (SPICE_IS_DISPLAY_CHANNEL(channel)) {
@@ -730,7 +731,7 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
             return;
         if (conn->wins[id] == NULL)
             return;
-        fprintf(stderr, "zap display channel (#%d)\n", id);
+        g_debug("zap display channel (#%d)", id);
         destroy_spice_window(conn->wins[id]);
         conn->wins[id] = NULL;
     }
@@ -738,8 +739,8 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
         if (conn->audio == NULL)
             return;
-        fprintf(stderr, "zap audio channel\n");
-        /* zap audio */
+        g_debug("zap audio channel");
+        /* TODO: zap audio */
     }
 
     conn->channels--;
@@ -761,7 +762,7 @@ static spice_connection *connection_new(void)
     g_signal_connect(conn->session, "spice-session-channel-destroy",
                      G_CALLBACK(channel_destroy), conn);
     connections++;
-    fprintf(stderr, "%s (%d)\n", __FUNCTION__, connections);
+    g_debug("%s (%d)", __FUNCTION__, connections);
     return conn;
 }
 
@@ -785,7 +786,7 @@ static void connection_destroy(spice_connection *conn)
     free(conn);
 
     connections--;
-    fprintf(stderr, "%s (%d)\n", __FUNCTION__, connections);
+    g_debug("%s (%d)", __FUNCTION__, connections);
     if (connections > 0) {
         return;
     }

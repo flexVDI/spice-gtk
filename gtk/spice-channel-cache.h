@@ -63,10 +63,9 @@ static inline display_cache_item *cache_find(display_cache *cache, uint64_t id)
             return item;
         }
     }
-#if 0
-    fprintf(stderr, "%s: %s %" PRIx64 " [not found]\n", __FUNCTION__,
+
+    g_debug("%s: %s %" PRIx64 " [not found]", __FUNCTION__,
             cache->name, id);
-#endif
     return NULL;
 }
 
@@ -80,19 +79,16 @@ static inline display_cache_item *cache_add(display_cache *cache, uint64_t id)
     ring_add(cache_head(cache, item->id), &item->hash_link);
     ring_add(&cache->lru, &item->lru_link);
     cache->nitems++;
-#if 0
-    fprintf(stderr, "%s: %s %" PRIx64 " (%d)\n", __FUNCTION__,
+
+    g_debug("%s: %s %" PRIx64 " (%d)", __FUNCTION__,
             cache->name, id, cache->nitems);
-#endif
     return item;
 }
 
 static inline void cache_del(display_cache *cache, display_cache_item *item)
 {
-#if 0
-    fprintf(stderr, "%s: %s %" PRIx64 "\n", __FUNCTION__,
+    g_debug("%s: %s %" PRIx64, __FUNCTION__,
             cache->name, item->id);
-#endif
     ring_remove(&item->hash_link);
     ring_remove(&item->lru_link);
     free(item);

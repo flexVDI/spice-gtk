@@ -67,8 +67,8 @@ static void glz_decoder_window_resize(SpiceGlzDecoderWindow *w)
     struct glz_image  **new_images;
     int i, new_slot;
 
-    fprintf(stderr, "%s: array resize %d -> %d\n", __FUNCTION__,
-            w->nimages, w->nimages * 2);
+    g_message("%s: array resize %d -> %d", __FUNCTION__,
+              w->nimages, w->nimages * 2); /* TODO: g_info? */
     new_images = spice_new0(struct glz_image*, w->nimages * 2);
     for (i = 0; i < w->nimages; i++) {
         new_slot = w->images[i]->hdr.id % (w->nimages * 2);
@@ -96,19 +96,12 @@ static void *glz_decoder_window_bits(SpiceGlzDecoderWindow *w, uint64_t id,
                                      uint32_t dist, uint32_t offset)
 {
     int slot = (id - dist) % w->nimages;
+    
+    /* TODO remove assert and exit */
+    g_return_val_if_fail(w->images[slot], NULL);
+    g_return_val_if_fail(w->images[slot]->hdr.id == id - dist, NULL);
+    g_return_val_if_fail(w->images[slot]->hdr.gross_pixels >= offset, NULL);
 
-    if (!w->images[slot]) {
-        fprintf(stderr, "%s: slot %d empty\n", __FUNCTION__, slot);
-        exit(1);
-    }
-    if (w->images[slot]->hdr.id != id - dist) {
-        fprintf(stderr, "%s: oops. ID mismatch\n", __FUNCTION__);
-        exit(1);
-    }
-    if (w->images[slot]->hdr.gross_pixels < offset) {
-        fprintf(stderr, "%s: offset overflow\n", __FUNCTION__);
-        exit(1);
-    }
     return w->images[slot]->data + offset * 4;
 }
 
@@ -291,16 +284,10 @@ static void decode_header(GlibGlzDecoder *d)
     uint8_t tmp;
 
     magic = decode_32(d);
-    if (magic != LZ_MAGIC) {
-        fprintf(stderr, "%s: bad lz magic\n", __FUNCTION__);
-        exit(1);
-    }
+    g_return_if_fail(magic == LZ_MAGIC);
 
     version = decode_32(d);
-    if (version != LZ_VERSION) {
-        fprintf(stderr, "%s: bad lz version\n", __FUNCTION__);
-        exit(1);
-    }
+    g_return_if_fail(version == LZ_VERSION);
 
     tmp = *(d->in_now++);
 
@@ -320,12 +307,10 @@ static void decode_header(GlibGlzDecoder *d)
     d->image.id = decode_64(d);
     d->image.win_head_dist = decode_32(d);
 
-#if 0
-    fprintf(stderr, "%s: %dx%d, id %" PRId64 ", ref %" PRId64 "\n",
+    g_debug("%s: %dx%d, id %" PRId64 ", ref %" PRId64,
             __FUNCTION__,
             d->image.width, d->image.height, d->image.id,
             d->image.id - d->image.win_head_dist);
-#endif
 }
 
 static void decode(SpiceGlzDecoder *decoder,

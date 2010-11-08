@@ -132,9 +132,7 @@ static void send_position(SpiceInputsChannel *channel)
     if (c->dpy == -1)
         return;
 
-#if 0
-    fprintf(stderr, "%s: +%d+%d\n", __FUNCTION__, c->x, c->y);
-#endif
+    g_debug("%s: +%d+%d", __FUNCTION__, c->x, c->y);
     position.buttons_state = c->bs;
     position.x             = c->x;
     position.y             = c->y;
@@ -291,9 +289,7 @@ void spice_inputs_key_press(SpiceInputsChannel *channel, guint scancode)
     SpiceMsgcKeyDown down;
     spice_msg_out *msg;
 
-#if 0
-    fprintf(stderr, "%s: scancode %d\n", __FUNCTION__, scancode);
-#endif
+    g_debug("%s: scancode %d", __FUNCTION__, scancode);
     if (scancode < 0x100) {
         down.code = scancode;
     } else {
@@ -312,9 +308,7 @@ void spice_inputs_key_release(SpiceInputsChannel *channel, guint scancode)
     SpiceMsgcKeyUp up;
     spice_msg_out *msg;
 
-#if 0
-    fprintf(stderr, "%s: scancode %d\n", __FUNCTION__, scancode);
-#endif
+    g_debug("%s: scancode %d", __FUNCTION__, scancode);
     if (scancode < 0x100) {
         up.code = scancode | 0x80;
     } else {

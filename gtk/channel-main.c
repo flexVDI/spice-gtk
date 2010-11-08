@@ -237,10 +237,10 @@ static void agent_monitors_config(SpiceChannel *channel)
         mon->monitors[i].height = c->display[i].height;
         mon->monitors[i].x = c->display[i].x;
         mon->monitors[i].y = c->display[i].y;
-        fprintf(stderr, "%s: #%d %dx%d+%d+%d @ %d bpp\n", __FUNCTION__, i,
-                mon->monitors[i].width, mon->monitors[i].height,
-                mon->monitors[i].x, mon->monitors[i].y,
-                mon->monitors[i].depth);
+        g_message("%s: #%d %dx%d+%d+%d @ %d bpp", __FUNCTION__, i,
+                  mon->monitors[i].width, mon->monitors[i].height,
+                  mon->monitors[i].x, mon->monitors[i].y,
+                  mon->monitors[i].depth);
     }
 
     agent_msg_send(channel, VD_AGENT_MONITORS_CONFIG, size, mon);
@@ -368,7 +368,7 @@ static void main_handle_init(SpiceChannel *channel, spice_msg_in *in)
 
 static void main_handle_mm_time(SpiceChannel *channel, spice_msg_in *in)
 {
-    fprintf(stderr, "%s: TODO\n", __FUNCTION__);
+    g_debug("%s: TODO", __FUNCTION__);
 #if 0
     set_mm_time(init->multi_media_time);
 #endif
@@ -417,13 +417,13 @@ static void main_handle_agent_data(SpiceChannel *channel, spice_msg_in *in)
         msg = spice_msg_in_raw(in, &len);
         assert(len > sizeof(VDAgentMessage));
         if (msg->size + sizeof(VDAgentMessage) > len) {
-            fprintf(stderr, "%s: TODO: start buffer\n", __FUNCTION__);
+            g_warning("%s: TODO: start buffer", __FUNCTION__);
         } else {
             assert(msg->size + sizeof(VDAgentMessage) == len);
             goto complete;
         }
     } else {
-        fprintf(stderr, "%s: TODO: fill buffer\n", __FUNCTION__);
+        g_warning("%s: TODO: fill buffer", __FUNCTION__);
     }
     return;
 
@@ -442,8 +442,8 @@ complete:
         for (i = 0; i < size * 32; i++) {
             if (!VD_AGENT_HAS_CAPABILITY(caps->caps, size, i))
                 continue;
-            fprintf(stderr, "%s: cap: %d (%s)\n", __FUNCTION__,
-                    i, NAME(agent_caps, i));
+            g_message("%s: cap: %d (%s)", __FUNCTION__,
+                      i, NAME(agent_caps, i));
             VD_AGENT_SET_CAPABILITY(c->agent_caps, i);
         }
         c->agent_caps_received = true;
@@ -454,19 +454,19 @@ complete:
     case VD_AGENT_REPLY:
     {
         VDAgentReply *reply = payload;
-        fprintf(stderr, "%s: reply: type %d, %s\n", __FUNCTION__, reply->type,
-                reply->error == VD_AGENT_SUCCESS ? "success" : "error");
+        g_message("%s: reply: type %d, %s", __FUNCTION__, reply->type,
+                  reply->error == VD_AGENT_SUCCESS ? "success" : "error");
         break;
     }
     default:
-        fprintf(stderr, "unhandled agent message type: %u (%s), size %u\n",
-                msg->type, NAME(agent_msg_types, msg->type), msg->size);
+        g_warning("unhandled agent message type: %u (%s), size %u",
+                  msg->type, NAME(agent_msg_types, msg->type), msg->size);
     }
 }
 
 static void main_handle_agent_token(SpiceChannel *channel, spice_msg_in *in)
 {
-    fprintf(stderr, "%s: TODO\n", __FUNCTION__);
+    g_warning("%s: TODO", __FUNCTION__);
 }
 
 static spice_msg_handler main_handlers[] = {
@@ -530,5 +530,5 @@ void spice_main_clipboard_grab(SpiceChannel *channel, int *types, int ntypes)
 
 void spice_main_clipboard_release(SpiceChannel *channel)
 {
-    fprintf(stderr, "%s: TODO\n", __FUNCTION__);
+    g_warning("%s: TODO", __FUNCTION__);
 }
