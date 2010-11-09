@@ -13,5 +13,3 @@
 #include "messages.h"
 #include "marshaller.h"
 
-/* spice/gtk */
-#include "spice-events.h"

@@ -39,7 +39,8 @@ struct spice_channel {
     int                         socket;
     spice_parse_channel_func_t  parser;
     SpiceMessageMarshallers     *marshallers;
-    spice_watch                 *watch;
+    GIOChannel                  *channel;
+    guint                       channel_watch;
     SSL_CTX                     *ctx;
     SSL                         *ssl;
     int                         tls;

@@ -771,9 +771,9 @@ static void spice_channel_recv_msg(SpiceChannel *channel)
     c->msg_in = NULL;
 }
 
-static void spice_channel_data(int event, void *opaque)
+static gboolean spice_channel_data(GIOChannel *source, GIOCondition condition, void *opaque)
 {
-    SpiceChannel *channel = opaque;
+    SpiceChannel *channel = SPICE_CHANNEL(opaque);
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
 
     switch (c->state) {
@@ -795,6 +795,8 @@ static void spice_channel_data(int event, void *opaque)
     default:
         g_critical("unknown state %d", c->state);
     }
+
+    return TRUE;
 }
 
 SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
@@ -885,8 +887,11 @@ reconnect:
         spice_channel_emit_event(channel, SPICE_CHANNEL_ERROR_CONNECT);
         return false;
     }
-    c->watch = spice_watch_new(c->socket, SPICE_WATCH_EVENT_READ,
-                               spice_channel_data, channel);
+
+    c->channel = g_io_channel_unix_new(c->socket);
+    // FIXME: g_io_channel_set_encoding(NULL); ?
+    // FIXME: win32_new_socket()
+    c->channel_watch = g_io_add_watch(c->channel, G_IO_IN, spice_channel_data, channel);
 
     if (c->tls) {
         char *ca_file;
@@ -953,9 +958,11 @@ void spice_channel_disconnect(SpiceChannel *channel, enum SpiceChannelEvent reas
             c->ctx = NULL;
         }
     }
-    if (c->watch) {
-        spice_watch_put(c->watch);
-        c->watch = NULL;
+    if (c->channel) {
+        g_source_destroy(g_main_context_find_source_by_id
+                         (g_main_context_default(), c->channel_watch));
+        g_io_channel_unref(c->channel);
+        c->channel = NULL;
     }
     if (c->socket != -1) {
         close(c->socket);

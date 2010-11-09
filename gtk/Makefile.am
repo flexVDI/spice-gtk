@@ -86,8 +86,6 @@ libspice_client_glib_la_SOURCES =	\
 	spice-client.h			\
 	spice-common.h			\
 	\
-	spice-events.c			\
-	spice-events.h			\
 	spice-session.c			\
 	spice-session.h			\
 	spice-channel.c			\
