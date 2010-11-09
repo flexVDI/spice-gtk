@@ -253,14 +253,14 @@ static size_t FNAME(decode)(SpiceGlzDecoderWindow *window,
 
             if (!image_dist) { // reference is inside the same image
                 ref -= pixel_ofs;
-                assert(ref + len <= op_limit);
-                assert(ref >= out_pix_buf);
+                g_return_val_if_fail(ref + len <= op_limit, 0);
+                g_return_val_if_fail(ref >= out_pix_buf, 0);
             } else {
                 ref = glz_decoder_window_bits(window, image_id,
                                               image_dist, pixel_ofs);
             }
 
-            assert(op + len <= op_limit);
+            g_return_val_if_fail(op + len <= op_limit, 0);
 
             /* copying the match*/
 
@@ -270,39 +270,39 @@ static size_t FNAME(decode)(SpiceGlzDecoderWindow *window,
                 OUT_PIXEL b = *ref;
                 for (; len; --len) {
                     COPY_PIXEL(b, op);
-                    assert(op <= op_limit);
+                    g_return_val_if_fail(op <= op_limit, 0);
                 }
             } else {
                 for (; len; --len) {
                     COPY_REF_PIXEL(ref, op);
-                    assert(op <= op_limit);
+                    g_return_val_if_fail(op <= op_limit, 0);
                 }
             }
         } else { // copy
             ctrl++; // copy count is biased by 1
 #if defined(TO_RGB32) && (defined(PLT4_BE) || defined(PLT4_LE) || defined(PLT1_BE) || \
                                                                                    defined(PLT1_LE))
-            assert(op + CAST_PLT_DISTANCE(ctrl) <= op_limit);
+            g_return_val_if_fail(op + CAST_PLT_DISTANCE(ctrl) <= op_limit, 0);
 #else
-            assert(op + ctrl <= op_limit);
+            g_return_val_if_fail(op + ctrl <= op_limit, 0);
 #endif
 
 #if defined(TO_RGB32) && defined(LZ_PLT)
-            assert(plt);
+            g_return_val_if_fail(plt, 0);
             COPY_COMP_PIXEL(ip, op, plt);
 #else
             COPY_COMP_PIXEL(ip, op);
 #endif
-            assert(op <= op_limit);
+            g_return_val_if_fail(op <= op_limit, 0);
 
             for (--ctrl; ctrl; ctrl--) {
 #if defined(TO_RGB32) && defined(LZ_PLT)
-                assert(plt);
+                g_return_val_if_fail(plt, 0);
                 COPY_COMP_PIXEL(ip, op, plt);
 #else
                 COPY_COMP_PIXEL(ip, op);
 #endif
-                assert(op <= op_limit);
+                g_return_val_if_fail(op <= op_limit, 0);
             }
         } // END REF/COPY
 

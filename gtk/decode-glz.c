@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <inttypes.h>
-#include <assert.h>
+
+#include <glib.h>
 
 #include "decode.h"
 
@@ -29,7 +30,7 @@ static struct glz_image *glz_image_new(struct glz_image_hdr *hdr,
 {
     struct glz_image *img;
 
-    assert(type == LZ_IMAGE_TYPE_RGB32 || type == LZ_IMAGE_TYPE_RGBA);
+    g_return_val_if_fail(type == LZ_IMAGE_TYPE_RGB32 || type == LZ_IMAGE_TYPE_RGBA, NULL);
 
     img = spice_new0(struct glz_image, 1);
     img->hdr = *hdr;
@@ -97,7 +98,6 @@ static void *glz_decoder_window_bits(SpiceGlzDecoderWindow *w, uint64_t id,
 {
     int slot = (id - dist) % w->nimages;
     
-    /* TODO remove assert and exit */
     g_return_val_if_fail(w->images[slot], NULL);
     g_return_val_if_fail(w->images[slot]->hdr.id == id - dist, NULL);
     g_return_val_if_fail(w->images[slot]->hdr.gross_pixels >= offset, NULL);
