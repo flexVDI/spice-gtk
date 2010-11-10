@@ -35,11 +35,12 @@ struct _SpiceDisplayClass {
 };
 
 GType	        spice_display_get_type(void);
-G_END_DECLS
 
-GtkWidget* spice_display_new(SpiceSession *session, int id);
-void spice_display_mouse_ungrab(GtkWidget *widget);
-void spice_display_copy_to_guest(GtkWidget *widget);
-void spice_display_paste_from_guest(GtkWidget *widget);
+SpiceDisplay* spice_display_new(SpiceSession *session, int id);
+void spice_display_mouse_ungrab(SpiceDisplay *display);
+void spice_display_copy_to_guest(SpiceDisplay *display);
+void spice_display_paste_from_guest(SpiceDisplay *display);
+
+G_END_DECLS
 
 #endif /* __SPICE_CLIENT_WIDGET_H__ */

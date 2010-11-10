@@ -90,6 +90,8 @@ libspice_client_glib_la_SOURCES =	\
 	spice-session.h			\
 	spice-channel.c			\
 	spice-channel.h			\
+	spice-channel-enums.h		\
+	spice-channel-enums.c		\
 	spice-channel-priv.h		\
 	tcp.c				\
 	tcp.h				\
@@ -148,6 +150,7 @@ libspice_client_glibinclude_HEADERS =	\
 	spice-types.h			\
 	spice-session.h			\
 	spice-channel.h			\
+	spice-channel-enums.h		\
 	channel-main.h			\
 	channel-display.h		\
 	channel-cursor.h		\
@@ -197,6 +200,30 @@ spice-marshal.c: spice-marshal.txt
 spice-marshal.h: spice-marshal.txt
 	$(AM_V_GEN)glib-genmarshal --header $< > $@ || (rm -f $@ && exit 1)
 
+spice-channel-enums.c: spice-channel.h
+	$(AM_V_GEN)glib-mkenums --fhead "#include <glib-object.h>\n" \
+			--fhead "#include \"spice-channel-enums.h\"\n\n" \
+			--fprod "\n#include \"spice-channel.h\"\n" \
+			--vhead "static const G@Type@Value _@enum_name@_values[] = {" \
+			--vprod "  { @VALUENAME@, \"@VALUENAME@\", \"@valuenick@\" }," \
+			--vtail "  { 0, NULL, NULL }\n};\n\n" \
+			--vtail "GType\n@enum_name@_get_type (void)\n{\n" \
+			--vtail "  static GType type = 0;\n\n" \
+			--vtail "  if (!type)\n" \
+			--vtail "    type = g_@type@_register_static (\"@EnumName@\", _@enum_name@_values);\n\n" \
+			--vtail "  return type;\n}\n\n" \
+		$< > $@
+
+spice-channel-enums.h: spice-channel.h
+	$(AM_V_GEN)glib-mkenums --fhead "#ifndef SPICE_CHANNEL_ENUMS_H\n" \
+			--fhead "#define SPICE_CHANNEL_ENUMS_H\n\n" \
+			--fhead "G_BEGIN_DECLS\n\n" \
+			--ftail "G_END_DECLS\n\n" \
+			--ftail "#endif /* SPICE_CHANNEL_ENUMS_H */\n" \
+			--eprod "#define SPICE_TYPE_@ENUMSHORT@ @enum_name@_get_type()\n" \
+			--eprod "GType @enum_name@_get_type (void);\n" \
+		$< >  $@
+
 generated_demarshallers.c: $(top_srcdir)/spice.proto
 	$(PYTHON) $(top_srcdir)/spice_codegen.py --generate-demarshallers --client --include messages.h $< $@
 
@@ -234,14 +261,48 @@ vncdisplaykeymap_win322xtkbd.c:
 BUILT_SOURCES = spice-marshal.c spice-marshal.h \
 	generated_demarshallers.c generated_demarshallers1.c \
 	generated_marshallers.c generated_marshallers1.c \
+	spice-channel-enums.c spice-channel-enums.h \
 	$(KEYMAPS)
 
 CLEANFILES = $(BUILT_SOURCES)
 
+if WITH_PYTHON
+pyexec_LTLIBRARIES = SpiceClientGtk.la
+
+SpiceClientGtk_la_LIBADD = libspice-client-gtk.la libspice-client-glib.la @PYGTK_LIBS@
+SpiceClientGtk_la_CFLAGS = @GTK2_CFLAGS@ @PYTHON_INCLUDES@ @PYGTK_CFLAGS@
+SpiceClientGtk_la_LDFLAGS = -module -avoid-version -fPIC
+SpiceClientGtk_la_SOURCES = spice-client-gtk-module.c spice-client-gtk-module.defs.c
+
+CODEGENDIR = $(shell pkg-config --variable=codegendir pygtk-2.0)
+DEFSDIR = $(shell pkg-config --variable=defsdir pygtk-2.0)
+
+spice-client-gtk.defs: $(libspice_client_gtkinclude_HEADERS) $(libspice_client_glibinclude_HEADERS)
+	$(AM_V_GEN)$(PYTHON) $(CODEGENDIR)/h2def.py $(libspice_client_gtkinclude_HEADERS) $(libspice_client_glibinclude_HEADERS) > $@
+
+spice-client-gtk-module.defs.c: spice-client-gtk.override spice-client-gtk.defs
+	$(AM_V_GEN)pygobject-codegen-2.0 --prefix spice \
+			  --register $(DEFSDIR)/gdk-types.defs \
+			  --register $(DEFSDIR)/gtk-types.defs \
+			  --override $(srcdir)/spice-client-gtk.override \
+			  spice-client-gtk.defs > $@
+
+CLEANFILES += spice-client-gtk.defs spice-client-gtk-module.defs.c
+EXTRA_DIST += spice-client-gtk.override
+else
+EXTRA_DIST += spice-client-gtk.override spice-client-gtk-module.c
+endif
+
 -include $(INTROSPECTION_MAKEFILE)
 
+if G_IR_SCANNER_SYMBOL_PREFIX
+PREFIX_ARGS = --symbol-prefix=spice --identifier-prefix=Spice
+else
+PREFIX_ARGS = --strip-prefix=Spice
+endif
+
 INTROSPECTION_GIRS =
-INTROSPECTION_SCANNER_ARGS = --add-include-path=$(srcdir) --strip-prefix=Spice
+INTROSPECTION_SCANNER_ARGS = --add-include-path=$(srcdir) $(PREFIX_ARGS)
 INTROSPECTION_COMPILER_ARGS = --includedir=$(srcdir)
 
 if HAVE_INTROSPECTION

@@ -3,6 +3,8 @@
 
 G_BEGIN_DECLS
 
+#include "spice-types.h"
+
 #define SPICE_TYPE_CHANNEL            (spice_channel_get_type ())
 #define SPICE_CHANNEL(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), SPICE_TYPE_CHANNEL, SpiceChannel))
 #define SPICE_CHANNEL_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), SPICE_TYPE_CHANNEL, SpiceChannelClass))
@@ -13,7 +15,8 @@ G_BEGIN_DECLS
 typedef struct spice_msg_in  spice_msg_in;
 typedef struct spice_msg_out spice_msg_out;
 
-enum SpiceChannelEvent {
+typedef enum
+{
     SPICE_CHANNEL_NONE = 0,
     SPICE_CHANNEL_OPENED = 10,
     SPICE_CHANNEL_CLOSED,
@@ -22,7 +25,7 @@ enum SpiceChannelEvent {
     SPICE_CHANNEL_ERROR_LINK,
     SPICE_CHANNEL_ERROR_AUTH,
     SPICE_CHANNEL_ERROR_IO,
-};
+} SpiceChannelEvent;
 
 struct _SpiceChannel
 {
@@ -40,7 +43,7 @@ struct _SpiceChannelClass
     void (*channel_up)(SpiceChannel *channel);
 
     /* signals */
-    void (*spice_channel_event)(SpiceChannel *channel, enum SpiceChannelEvent event);
+    void (*spice_channel_event)(SpiceChannel *channel, SpiceChannelEvent event);
 
 #if 0
     /*
@@ -58,7 +61,7 @@ typedef void (*spice_msg_handler)(SpiceChannel *channel, spice_msg_in *in);
 SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id);
 void spice_channel_destroy(SpiceChannel *channel);
 gboolean spice_channel_connect(SpiceChannel *channel);
-void spice_channel_disconnect(SpiceChannel *channel, enum SpiceChannelEvent event);
+void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent event);
 
 G_END_DECLS
 

@@ -220,7 +220,7 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
 }
 
 static void spice_channel_emit_event(SpiceChannel *channel,
-                                     enum SpiceChannelEvent event)
+                                     SpiceChannelEvent event)
 {
     g_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, event);
 }
@@ -932,7 +932,7 @@ reconnect:
     return true;
 }
 
-void spice_channel_disconnect(SpiceChannel *channel, enum SpiceChannelEvent reason)
+void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
 

@@ -1322,7 +1322,7 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
     return;
 }
 
-GtkWidget *spice_display_new(SpiceSession *session, int id)
+SpiceDisplay *spice_display_new(SpiceSession *session, int id)
 {
     SpiceDisplay *display;
     spice_display *d;
@@ -1343,17 +1343,16 @@ GtkWidget *spice_display_new(SpiceSession *session, int id)
     }
     g_list_free(list);
 
-    return GTK_WIDGET(display);
+    return display;
 }
 
-void spice_display_mouse_ungrab(GtkWidget *widget)
+void spice_display_mouse_ungrab(SpiceDisplay *display)
 {
-    try_mouse_ungrab(widget);
+    try_mouse_ungrab(GTK_WIDGET(display));
 }
 
-void spice_display_copy_to_guest(GtkWidget *widget)
+void spice_display_copy_to_guest(SpiceDisplay *display)
 {
-    SpiceDisplay *display = SPICE_DISPLAY(widget);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     if (d->clip_hasdata && !d->clip_grabbed) {
@@ -1361,7 +1360,7 @@ void spice_display_copy_to_guest(GtkWidget *widget)
     }
 }
 
-void spice_display_paste_from_guest(GtkWidget *widget)
+void spice_display_paste_from_guest(SpiceDisplay *display)
 {
     g_warning("%s: TODO", __FUNCTION__);
 }

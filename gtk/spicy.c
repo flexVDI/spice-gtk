@@ -584,7 +584,7 @@ static void recent_add(SpiceSession *session)
     gtk_recent_manager_add_full(recent, uri, &meta);
 }
 
-static void main_channel_event(SpiceChannel *channel, enum SpiceChannelEvent event,
+static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
                                gpointer data)
 {
     spice_connection *conn = data;

@@ -1,0 +1,16 @@
+%%
+headers
+#include <Python.h>
+#include "pygobject.h"
+#include "spice-widget.h"
+#include "spice-channel-enums.h"
+%%
+modulename spice_client_gtk
+%%
+import gobject.GObject as PyGObject_Type
+import gtk.DrawingArea as PyGtkDrawingArea_Type
+import gtk.Widget as PyGtkWidget_Type
+%%
+ignore-glob
+  *_get_type
+%%
