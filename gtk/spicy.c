@@ -678,8 +678,9 @@ static void inputs_modifiers(SpiceChannel *channel, gpointer data)
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
     spice_connection *conn = data;
-    int id = spice_channel_id(channel);
+    int id;
 
+    g_object_get(channel, "channel-id", &id, NULL);
     conn->channels++;
 
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
@@ -720,8 +721,9 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
     spice_connection *conn = data;
-    int id = spice_channel_id(channel);
+    int id;
 
+    g_object_get(channel, "channel-id", &id, NULL);
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
         g_debug("zap main channel");
     }

@@ -1238,8 +1238,9 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
     SpiceDisplay *display = data;
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    int id = spice_channel_id(channel);
+    int id;
 
+    g_object_get(channel, "channel-id", &id, NULL);
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
         d->main = channel;
         g_signal_connect(channel, "main-mouse-update",
@@ -1291,8 +1292,9 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
 {
     SpiceDisplay *display = data;
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    int id = spice_channel_id(channel);
+    int id;
 
+    g_object_get(channel, "channel-id", &id, NULL);
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
         disconnect_main(display);
         return;

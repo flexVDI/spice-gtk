@@ -74,10 +74,12 @@ static void invalidate(SpiceChannel *channel,
 
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer *data)
 {
-    int id = spice_channel_id(channel);
+    int id;
 
     if (!SPICE_IS_DISPLAY_CHANNEL(channel))
         return;
+
+    g_object_get(channel, "channel-id", &id, NULL);
     if (id != 0)
         return;
 

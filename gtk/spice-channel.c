@@ -839,14 +839,6 @@ void spice_channel_destroy(SpiceChannel *channel)
     g_object_unref(channel);
 }
 
-int spice_channel_id(SpiceChannel *channel)
-{
-    gint id;
-
-    g_object_get(G_OBJECT(channel), "channel-id", &id, NULL);
-    return id;
-}
-
 static int tls_verify(int preverify_ok, X509_STORE_CTX *ctx)
 {
     spice_channel *c;
