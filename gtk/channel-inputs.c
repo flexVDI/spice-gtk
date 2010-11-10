@@ -85,8 +85,9 @@ static void spice_inputs_channel_class_init(SpiceInputsChannelClass *klass)
                           G_PARAM_STATIC_NICK |
                           G_PARAM_STATIC_BLURB));
 
+    /* TODO: use notify instead? */
     signals[SPICE_INPUTS_MODIFIERS] =
-        g_signal_new("spice-inputs-modifiers",
+        g_signal_new("inputs-modifiers",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceInputsChannelClass, spice_inputs_modifiers),

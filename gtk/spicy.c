@@ -500,7 +500,7 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
 
     /* spice display */
     win->spice = spice_display_new(conn->session, id);
-    g_signal_connect(G_OBJECT(win->spice), "spice-display-mouse-grab",
+    g_signal_connect(G_OBJECT(win->spice), "mouse-grab",
 		     G_CALLBACK(mouse_grab_cb), win);
 
     /* status line */
@@ -684,11 +684,11 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
         g_debug("new main channel");
-        g_signal_connect(channel, "spice-channel-event",
+        g_signal_connect(channel, "channel-event",
                          G_CALLBACK(main_channel_event), conn);
-        g_signal_connect(channel, "spice-main-mouse-update",
+        g_signal_connect(channel, "main-mouse-update",
                          G_CALLBACK(main_mouse_update), conn);
-        g_signal_connect(channel, "spice-main-agent-update",
+        g_signal_connect(channel, "main-agent-update",
                          G_CALLBACK(main_agent_update), conn);
         main_mouse_update(channel, conn);
         main_agent_update(channel, conn);
@@ -705,7 +705,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 
     if (SPICE_IS_INPUTS_CHANNEL(channel)) {
         g_debug("new inputs channel");
-        g_signal_connect(channel, "spice-inputs-modifiers",
+        g_signal_connect(channel, "inputs-modifiers",
                          G_CALLBACK(inputs_modifiers), conn);
     }
 
@@ -757,9 +757,9 @@ static spice_connection *connection_new(void)
 
     conn = spice_new0(spice_connection, 1);
     conn->session = spice_session_new();
-    g_signal_connect(conn->session, "spice-session-channel-new",
+    g_signal_connect(conn->session, "channel-new",
                      G_CALLBACK(channel_new), conn);
-    g_signal_connect(conn->session, "spice-session-channel-destroy",
+    g_signal_connect(conn->session, "channel-destroy",
                      G_CALLBACK(channel_destroy), conn);
     connections++;
     g_debug("%s (%d)", __FUNCTION__, connections);

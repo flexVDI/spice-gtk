@@ -346,7 +346,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              G_PARAM_STATIC_BLURB));
 
     signals[SPICE_SESSION_CHANNEL_NEW] =
-        g_signal_new("spice-session-channel-new",
+        g_signal_new("channel-new",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceSessionClass, spice_session_channel_new),
@@ -357,7 +357,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                      SPICE_TYPE_CHANNEL);
 
     signals[SPICE_SESSION_CHANNEL_DESTROY] =
-        g_signal_new("spice-session-channel-destroy",
+        g_signal_new("channel-destroy",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceSessionClass, spice_session_channel_destroy),

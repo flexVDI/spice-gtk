@@ -49,7 +49,7 @@ static void spice_record_channel_class_init(SpiceRecordChannelClass *klass)
     channel_class->handle_msg   = spice_record_handle_msg;
 
     signals[SPICE_RECORD_START] =
-        g_signal_new("spice-record-start",
+        g_signal_new("record-start",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceRecordChannelClass, spice_record_start),
@@ -60,7 +60,7 @@ static void spice_record_channel_class_init(SpiceRecordChannelClass *klass)
                      G_TYPE_INT, G_TYPE_INT, G_TYPE_INT);
 
     signals[SPICE_RECORD_STOP] =
-        g_signal_new("spice-record-stop",
+        g_signal_new("record-stop",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceRecordChannelClass, spice_record_stop),

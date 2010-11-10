@@ -174,20 +174,20 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
         p->pchannel = channel;
-        g_signal_connect(channel, "spice-playback-start",
+        g_signal_connect(channel, "playback-start",
                          G_CALLBACK(playback_start), pulse);
-        g_signal_connect(channel, "spice-playback-data",
+        g_signal_connect(channel, "playback-data",
                          G_CALLBACK(playback_data), pulse);
-        g_signal_connect(channel, "spice-playback-stop",
+        g_signal_connect(channel, "playback-stop",
                          G_CALLBACK(playback_stop), pulse);
         spice_channel_connect(channel);
     }
 
     if (SPICE_IS_RECORD_CHANNEL(channel)) {
         p->rchannel = channel;
-        g_signal_connect(channel, "spice-record-start",
+        g_signal_connect(channel, "record-start",
                          G_CALLBACK(record_start), pulse);
-        g_signal_connect(channel, "spice-record-stop",
+        g_signal_connect(channel, "record-stop",
                          G_CALLBACK(record_stop), pulse);
         spice_channel_connect(channel);
     }
@@ -204,7 +204,7 @@ SpicePulse *spice_pulse_new(SpiceSession *session, GMainLoop *mainloop,
     p = SPICE_PULSE_GET_PRIVATE(pulse);
     p->session = session;
 
-    g_signal_connect(session, "spice-session-channel-new",
+    g_signal_connect(session, "channel-new",
                      G_CALLBACK(channel_new), pulse);
     list = spice_session_get_channels(session);
     for (list = g_list_first(list); list != NULL; list = g_list_next(list)) {

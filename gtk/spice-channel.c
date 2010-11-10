@@ -203,7 +203,7 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
                           G_PARAM_STATIC_BLURB));
 
     signals[SPICE_CHANNEL_EVENT] =
-        g_signal_new("spice-channel-event",
+        g_signal_new("channel-event",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceChannelClass, spice_channel_event),

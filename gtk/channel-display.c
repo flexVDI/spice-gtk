@@ -71,7 +71,7 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
     channel_class->channel_up   = spice_display_channel_up;
 
     signals[SPICE_DISPLAY_PRIMARY_CREATE] =
-        g_signal_new("spice-display-primary-create",
+        g_signal_new("display-primary-create",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceDisplayChannelClass,
@@ -84,7 +84,7 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
                      G_TYPE_INT, G_TYPE_INT, G_TYPE_POINTER);
 
     signals[SPICE_DISPLAY_PRIMARY_DESTROY] =
-        g_signal_new("spice-display-primary-destroy",
+        g_signal_new("display-primary-destroy",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceDisplayChannelClass,
@@ -95,7 +95,7 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
                      0);
 
     signals[SPICE_DISPLAY_INVALIDATE] =
-        g_signal_new("spice-display-invalidate",
+        g_signal_new("display-invalidate",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceDisplayChannelClass,

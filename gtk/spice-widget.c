@@ -1050,7 +1050,7 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                               G_PARAM_STATIC_BLURB));
 
     signals[SPICE_DISPLAY_MOUSE_GRAB] =
-        g_signal_new("spice-display-mouse-grab",
+        g_signal_new("mouse-grab",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceDisplayClass, spice_display_mouse_grab),
@@ -1242,7 +1242,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
         d->main = channel;
-        g_signal_connect(channel, "spice-main-mouse-update",
+        g_signal_connect(channel, "main-mouse-update",
                          G_CALLBACK(mouse_update), display);
         mouse_update(channel, display);
         return;
@@ -1252,11 +1252,11 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         if (id != d->channel_id)
             return;
         d->display = channel;
-        g_signal_connect(channel, "spice-display-primary-create",
+        g_signal_connect(channel, "display-primary-create",
                          G_CALLBACK(primary_create), display);
-        g_signal_connect(channel, "spice-display-primary-destroy",
+        g_signal_connect(channel, "display-primary-destroy",
                          G_CALLBACK(primary_destroy), display);
-        g_signal_connect(channel, "spice-display-invalidate",
+        g_signal_connect(channel, "display-invalidate",
                          G_CALLBACK(invalidate), display);
         spice_channel_connect(channel);
         return;
@@ -1266,13 +1266,13 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         if (id != d->channel_id)
             return;
         d->cursor = SPICE_CURSOR_CHANNEL(channel);
-        g_signal_connect(channel, "spice-cursor-set",
+        g_signal_connect(channel, "cursor-set",
                          G_CALLBACK(cursor_set), display);
-        g_signal_connect(channel, "spice-cursor-move",
+        g_signal_connect(channel, "cursor-move",
                          G_CALLBACK(cursor_move), display);
-        g_signal_connect(channel, "spice-cursor-hide",
+        g_signal_connect(channel, "cursor-hide",
                          G_CALLBACK(cursor_hide), display);
-        g_signal_connect(channel, "spice-cursor-reset",
+        g_signal_connect(channel, "cursor-reset",
                          G_CALLBACK(cursor_reset), display);
         spice_channel_connect(channel);
         return;
@@ -1331,9 +1331,9 @@ GtkWidget *spice_display_new(SpiceSession *session, int id)
     d->session = session;
     d->channel_id = id;
 
-    g_signal_connect(session, "spice-session-channel-new",
+    g_signal_connect(session, "channel-new",
                      G_CALLBACK(channel_new), display);
-    g_signal_connect(session, "spice-session-channel-destroy",
+    g_signal_connect(session, "channel-destroy",
                      G_CALLBACK(channel_destroy), display);
     list = spice_session_get_channels(session);
     for (list = g_list_first(list); list != NULL; list = g_list_next(list)) {

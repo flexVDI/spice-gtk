@@ -50,7 +50,7 @@ static void spice_playback_channel_class_init(SpicePlaybackChannelClass *klass)
     channel_class->handle_msg   = spice_playback_handle_msg;
 
     signals[SPICE_PLAYBACK_START] =
-        g_signal_new("spice-playback-start",
+        g_signal_new("playback-start",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpicePlaybackChannelClass, spice_playback_start),
@@ -61,7 +61,7 @@ static void spice_playback_channel_class_init(SpicePlaybackChannelClass *klass)
                      G_TYPE_INT, G_TYPE_INT, G_TYPE_INT);
 
     signals[SPICE_PLAYBACK_DATA] =
-        g_signal_new("spice-playback-data",
+        g_signal_new("playback-data",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpicePlaybackChannelClass, spice_playback_data),
@@ -72,7 +72,7 @@ static void spice_playback_channel_class_init(SpicePlaybackChannelClass *klass)
                      G_TYPE_POINTER, G_TYPE_INT);
 
     signals[SPICE_PLAYBACK_STOP] =
-        g_signal_new("spice-playback-stop",
+        g_signal_new("playback-stop",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpicePlaybackChannelClass, spice_playback_stop),

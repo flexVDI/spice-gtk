@@ -62,7 +62,7 @@ static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
     channel_class->handle_msg   = spice_cursor_handle_msg;
 
     signals[SPICE_CURSOR_SET] =
-        g_signal_new("spice-cursor-set",
+        g_signal_new("cursor-set",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceCursorChannelClass, spice_cursor_set),
@@ -75,7 +75,7 @@ static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
                      G_TYPE_POINTER);
 
     signals[SPICE_CURSOR_MOVE] =
-        g_signal_new("spice-cursor-move",
+        g_signal_new("cursor-move",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceCursorChannelClass, spice_cursor_move),
@@ -86,7 +86,7 @@ static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
                      G_TYPE_INT, G_TYPE_INT);
 
     signals[SPICE_CURSOR_HIDE] =
-        g_signal_new("spice-cursor-hide",
+        g_signal_new("cursor-hide",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceCursorChannelClass, spice_cursor_hide),
@@ -96,7 +96,7 @@ static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
                      0);
 
     signals[SPICE_CURSOR_RESET] =
-        g_signal_new("spice-cursor-reset",
+        g_signal_new("cursor-reset",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceCursorChannelClass, spice_cursor_reset),

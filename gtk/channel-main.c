@@ -165,7 +165,7 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                           G_PARAM_STATIC_BLURB));
 
     signals[SPICE_MAIN_MOUSE_UPDATE] =
-        g_signal_new("spice-main-mouse-update",
+        g_signal_new("main-mouse-update",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceMainChannelClass, spice_main_mouse_update),
@@ -175,7 +175,7 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                      0);
 
     signals[SPICE_MAIN_AGENT_UPDATE] =
-        g_signal_new("spice-main-agent-update",
+        g_signal_new("main-agent-update",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceMainChannelClass, spice_main_agent_update),

@@ -81,9 +81,9 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer *data)
     if (id != 0)
         return;
 
-    g_signal_connect(channel, "spice-display-primary-create",
+    g_signal_connect(channel, "display-primary-create",
                      G_CALLBACK(primary_create), NULL);
-    g_signal_connect(channel, "spice-display-invalidate",
+    g_signal_connect(channel, "display-invalidate",
                      G_CALLBACK(invalidate), NULL);
     spice_channel_connect(channel);
 }
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
     mainloop = g_main_loop_new(NULL, false);
 
     session = spice_session_new();
-    g_signal_connect(session, "spice-session-channel-new",
+    g_signal_connect(session, "channel-new",
                      G_CALLBACK(channel_new), NULL);
     spice_cmdline_session_setup(session);
 
