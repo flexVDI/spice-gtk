@@ -197,14 +197,14 @@ static void menu_cb_copy(GtkAction *action, void *data)
 {
     struct spice_window *win = data;
 
-    spice_display_copy_to_guest(win->spice);
+    spice_display_copy_to_guest(SPICE_DISPLAY(win->spice));
 }
 
 static void menu_cb_paste(GtkAction *action, void *data)
 {
     struct spice_window *win = data;
 
-    spice_display_paste_from_guest(win->spice);
+    spice_display_paste_from_guest(SPICE_DISPLAY(win->spice));
 }
 
 static void menu_cb_fullscreen(GtkAction *action, void *data)
@@ -222,7 +222,7 @@ static void menu_cb_ungrab(GtkAction *action, void *data)
 {
     struct spice_window *win = data;
 
-    spice_display_mouse_ungrab(win->spice);
+    spice_display_mouse_ungrab(SPICE_DISPLAY(win->spice));
 }
 
 static void menu_cb_bool_prop(GtkToggleAction *action, gpointer data)
@@ -499,7 +499,7 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
 #endif
 
     /* spice display */
-    win->spice = spice_display_new(conn->session, id);
+    win->spice = GTK_WIDGET(spice_display_new(conn->session, id));
     g_signal_connect(G_OBJECT(win->spice), "mouse-grab",
 		     G_CALLBACK(mouse_grab_cb), win);
 
