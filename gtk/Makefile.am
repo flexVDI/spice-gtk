@@ -225,38 +225,38 @@ spice-channel-enums.h: spice-channel.h
 		$< >  $@
 
 generated_demarshallers.c: $(top_srcdir)/spice.proto
-	$(PYTHON) $(top_srcdir)/spice_codegen.py --generate-demarshallers --client --include messages.h $< $@
+	$(AM_V_GEN)$(PYTHON) $(top_srcdir)/spice_codegen.py --generate-demarshallers --client --include messages.h $< $@
 
 generated_demarshallers1.c: $(top_srcdir)/spice1.proto
-	$(PYTHON) $(top_srcdir)/spice_codegen.py --generate-demarshallers --client --include messages.h --prefix 1 --ptrsize 8 $< $@
+	$(AM_V_GEN)$(PYTHON) $(top_srcdir)/spice_codegen.py --generate-demarshallers --client --include messages.h --prefix 1 --ptrsize 8 $< $@
 
 generated_marshallers.c: $(top_srcdir)/spice.proto
-	$(PYTHON) $(top_srcdir)/spice_codegen.py --generate-marshallers -P --include messages.h --include marshallers.h --client $< $@
+	$(AM_V_GEN)$(PYTHON) $(top_srcdir)/spice_codegen.py --generate-marshallers -P --include messages.h --include marshallers.h --client $< $@
 
 generated_marshallers1.c: $(top_srcdir)/spice1.proto
-	$(PYTHON) $(top_srcdir)/spice_codegen.py --generate-marshallers -P --include messages.h --include marshallers.h --client --prefix 1 --ptrsize 8 $< $@
+	$(AM_V_GEN)$(PYTHON) $(top_srcdir)/spice_codegen.py --generate-marshallers -P --include messages.h --include marshallers.h --client --prefix 1 --ptrsize 8 $< $@
 
 vncdisplaykeymap.c: $(KEYMAPS)
 
 $(KEYMAPS): $(KEYMAP_GEN) keymaps.csv
 
 vncdisplaykeymap_xorgevdev2xtkbd.c:
-	$(KEYMAP_GEN) $(srcdir)/keymaps.csv xorgevdev xtkbd > $@ || rm $@
+	$(AM_V_GEN)$(KEYMAP_GEN) $(srcdir)/keymaps.csv xorgevdev xtkbd > $@ || rm $@
 
 vncdisplaykeymap_xorgkbd2xtkbd.c:
-	$(KEYMAP_GEN) $(srcdir)/keymaps.csv xorgkbd xtkbd > $@ || rm $@
+	$(AM_V_GEN)$(KEYMAP_GEN) $(srcdir)/keymaps.csv xorgkbd xtkbd > $@ || rm $@
 
 vncdisplaykeymap_xorgxquartz2xtkbd.c:
-	$(KEYMAP_GEN) $(srcdir)/keymaps.csv xorgxquartz xtkbd > $@ || rm $@
+	$(AM_V_GEN)$(KEYMAP_GEN) $(srcdir)/keymaps.csv xorgxquartz xtkbd > $@ || rm $@
 
 vncdisplaykeymap_xorgxwin2xtkbd.c:
-	$(KEYMAP_GEN) $(srcdir)/keymaps.csv xorgxwin xtkbd > $@ || rm $@
+	$(AM_V_GEN)$(KEYMAP_GEN) $(srcdir)/keymaps.csv xorgxwin xtkbd > $@ || rm $@
 
 vncdisplaykeymap_osx2xtkbd.c:
-	$(KEYMAP_GEN) $(srcdir)/keymaps.csv osx xtkbd > $@ || rm $@
+	$(AM_V_GEN)$(KEYMAP_GEN) $(srcdir)/keymaps.csv osx xtkbd > $@ || rm $@
 
 vncdisplaykeymap_win322xtkbd.c:
-	$(KEYMAP_GEN) $(srcdir)/keymaps.csv win32 xtkbd > $@ || rm $@
+	$(AM_V_GEN)$(KEYMAP_GEN) $(srcdir)/keymaps.csv win32 xtkbd > $@ || rm $@
 
 BUILT_SOURCES = spice-marshal.c spice-marshal.h \
 	generated_demarshallers.c generated_demarshallers1.c \
