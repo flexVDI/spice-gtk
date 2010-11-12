@@ -150,19 +150,19 @@ static void spice_display_get_property(GObject    *object,
     switch (prop_id) {
     case PROP_KEYBOARD_GRAB:
         g_value_set_boolean(value, d->keyboard_grab_enable);
-	break;
+        break;
     case PROP_MOUSE_GRAB:
         g_value_set_boolean(value, d->mouse_grab_enable);
-	break;
+        break;
     case PROP_RESIZE_GUEST:
         g_value_set_boolean(value, d->resize_guest_enable);
-	break;
+        break;
     case PROP_AUTO_CLIPBOARD:
         g_value_set_boolean(value, d->auto_clipboard_enable);
-	break;
+        break;
     default:
-	G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
-	break;
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+        break;
     }
 }
 
