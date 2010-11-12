@@ -94,7 +94,7 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
             p->playback.stream = NULL;
         }
         if (p->playback.stream == NULL) {
-            assert(format == SPICE_AUDIO_FMT_S16);
+            g_return_if_fail(format == SPICE_AUDIO_FMT_S16);
             p->playback.state = PA_STREAM_READY;
             p->playback.spec.format   = PA_SAMPLE_S16LE;
             p->playback.spec.rate     = frequency;

@@ -289,8 +289,8 @@ static void try_keyboard_grab(GtkWidget *widget)
      * focus-in-event -> grab -> focus-out-event -> ungrab -> repeat
      * I have no idea why the grab triggers focus-out :-(
      */
-    assert(gtk_widget_is_focus(widget));
-    assert(gtk_widget_has_focus(widget));
+    g_return_if_fail(gtk_widget_is_focus(widget));
+    g_return_if_fail(gtk_widget_has_focus(widget));
 
     now = time(NULL);
     if (d->keyboard_grab_time != now) {
@@ -656,7 +656,7 @@ static void send_key(GtkWidget *widget, int scancode, int down)
     i = scancode / 32;
     b = scancode % 32;
     m = (1 << b);
-    assert(i < SPICE_N_ELEMENTS(d->key_state));
+    g_return_if_fail(i < SPICE_N_ELEMENTS(d->key_state));
 
     if (down) {
         if (d->key_state[i] & m) {

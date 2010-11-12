@@ -6,7 +6,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <inttypes.h>
-#include <assert.h>
 
 /* spice/common */
 #include "mem.h"

@@ -123,7 +123,7 @@ static void image_put(SpiceImageCache *cache, uint64_t id, pixman_image_t *image
 
 #if 1 /* temporary sanity check */
     item = cache_find(&c->images, id);
-    assert(item == NULL);
+    g_return_if_fail(item == NULL);
 #endif
 
     item = cache_add(&c->images, id);
@@ -151,7 +151,7 @@ static void image_remove(SpiceImageCache *cache, uint64_t id)
     display_cache_item *item;
 
     item = cache_find(&c->images, id);
-    assert(item != NULL);
+    g_return_if_fail(item != NULL);
     pixman_image_unref(item->ptr);
     cache_del(&c->images, item);
 }
@@ -519,7 +519,7 @@ static void display_handle_stream_create(SpiceChannel *channel, spice_msg_in *in
         c->streams = realloc(c->streams, c->nstreams * sizeof(c->streams[0]));
         memset(c->streams + n, 0, (c->nstreams - n) * sizeof(c->streams[0]));
     }
-    assert(c->streams[op->id] == NULL);
+    g_return_if_fail(c->streams[op->id] == NULL);
     c->streams[op->id] = spice_new0(display_stream, 1);
     st = c->streams[op->id];
 
@@ -792,8 +792,8 @@ static spice_msg_handler display_handlers[] = {
 static void spice_display_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
 {
     int type = spice_msg_in_type(msg);
-    assert(type < SPICE_N_ELEMENTS(display_handlers));
-    assert(display_handlers[type] != NULL);
+    g_return_if_fail(type < SPICE_N_ELEMENTS(display_handlers));
+    g_return_if_fail(display_handlers[type] != NULL);
     display_handlers[type](channel, msg);
 }
 

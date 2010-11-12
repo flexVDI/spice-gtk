@@ -161,7 +161,7 @@ static spice_msg_handler playback_handlers[] = {
 static void spice_playback_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
 {
     int type = spice_msg_in_type(msg);
-    assert(type < SPICE_N_ELEMENTS(playback_handlers));
-    assert(playback_handlers[type] != NULL);
+    g_return_if_fail(type < SPICE_N_ELEMENTS(playback_handlers));
+    g_return_if_fail(playback_handlers[type] != NULL);
     playback_handlers[type](channel, msg);
 }

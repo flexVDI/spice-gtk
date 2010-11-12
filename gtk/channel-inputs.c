@@ -187,8 +187,8 @@ static spice_msg_handler inputs_handlers[] = {
 static void spice_inputs_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
 {
     int type = spice_msg_in_type(msg);
-    assert(type < SPICE_N_ELEMENTS(inputs_handlers));
-    assert(inputs_handlers[type] != NULL);
+    g_return_if_fail(type < SPICE_N_ELEMENTS(inputs_handlers));
+    g_return_if_fail(inputs_handlers[type] != NULL);
     inputs_handlers[type](channel, msg);
 }
 

@@ -319,7 +319,7 @@ static spice_msg_handler cursor_handlers[] = {
 static void spice_cursor_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
 {
     int type = spice_msg_in_type(msg);
-    assert(type < SPICE_N_ELEMENTS(cursor_handlers));
-    assert(cursor_handlers[type] != NULL);
+    g_return_if_fail(type < SPICE_N_ELEMENTS(cursor_handlers));
+    g_return_if_fail(cursor_handlers[type] != NULL);
     cursor_handlers[type](channel, msg);
 }

@@ -110,7 +110,7 @@ static spice_msg_handler record_handlers[] = {
 static void spice_record_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
 {
     int type = spice_msg_in_type(msg);
-    assert(type < SPICE_N_ELEMENTS(record_handlers));
-    assert(record_handlers[type] != NULL);
+    g_return_if_fail(type < SPICE_N_ELEMENTS(record_handlers));
+    g_return_if_fail(record_handlers[type] != NULL);
     record_handlers[type](channel, msg);
 }

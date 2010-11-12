@@ -415,11 +415,11 @@ static void main_handle_agent_data(SpiceChannel *channel, spice_msg_in *in)
 
     if (!c->agent_msg) {
         msg = spice_msg_in_raw(in, &len);
-        assert(len > sizeof(VDAgentMessage));
+        g_return_if_fail(len > sizeof(VDAgentMessage));
         if (msg->size + sizeof(VDAgentMessage) > len) {
             g_warning("%s: TODO: start buffer", __FUNCTION__);
         } else {
-            assert(msg->size + sizeof(VDAgentMessage) == len);
+            g_return_if_fail(msg->size + sizeof(VDAgentMessage) == len);
             goto complete;
         }
     } else {
@@ -488,8 +488,8 @@ static spice_msg_handler main_handlers[] = {
 static void spice_main_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
 {
     int type = spice_msg_in_type(msg);
-    assert(type < SPICE_N_ELEMENTS(main_handlers));
-    assert(main_handlers[type] != NULL);
+    g_return_if_fail(type < SPICE_N_ELEMENTS(main_handlers));
+    g_return_if_fail(main_handlers[type] != NULL);
     main_handlers[type](channel, msg);
 }
 
