@@ -659,9 +659,6 @@ static void send_key(GtkWidget *widget, int scancode, int down)
     g_return_if_fail(i < SPICE_N_ELEMENTS(d->key_state));
 
     if (down) {
-        if (d->key_state[i] & m) {
-            return;
-        }
         spice_inputs_key_press(d->inputs, scancode);
         d->key_state[i] |= m;
     } else {
