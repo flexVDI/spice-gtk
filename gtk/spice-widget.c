@@ -257,11 +257,10 @@ static void spice_display_init(SpiceDisplay *display)
     g_signal_connect(G_OBJECT(d->clipboard), "owner-change",
                      G_CALLBACK(clipboard_owner_change), display);
 
-#if 0 /* visual debugging ;) */
-    d->mouse_cursor = gdk_cursor_new(GDK_DOT);
-#else
-    d->mouse_cursor = gdk_cursor_new(GDK_BLANK_CURSOR);
-#endif
+    if (g_getenv("SPICE_DEBUG_CURSOR"))
+        d->mouse_cursor = gdk_cursor_new(GDK_DOT);
+    else
+        d->mouse_cursor = gdk_cursor_new(GDK_BLANK_CURSOR);
     d->have_mitshm = true;
 }
 
