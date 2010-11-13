@@ -269,6 +269,7 @@ static void try_keyboard_grab(GtkWidget *widget)
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
     time_t now;
+    GdkGrabStatus status;
 
     if (d->keyboard_grab_active)
         return;
@@ -305,9 +306,13 @@ static void try_keyboard_grab(GtkWidget *widget)
 
     g_debug("grab keyboard");
 
-    gdk_keyboard_grab(gtk_widget_get_window(widget), FALSE,
-                      GDK_CURRENT_TIME);
-    d->keyboard_grab_active = true;
+    status = gdk_keyboard_grab(gtk_widget_get_window(widget), FALSE,
+                               GDK_CURRENT_TIME);
+    if (status != GDK_GRAB_SUCCESS) {
+        g_warning("keyboard grab failed %d", status);
+        d->keyboard_grab_active = false;
+    } else
+        d->keyboard_grab_active = true;
 }
 
 
@@ -324,18 +329,23 @@ static void try_keyboard_ungrab(GtkWidget *widget)
     d->keyboard_grab_active = false;
 }
 
-static void do_pointer_grab(SpiceDisplay *display)
+static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
 {
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
     GdkDrawable *window = gtk_widget_get_window(GTK_WIDGET(display));
+    GdkGrabStatus status;
 
-    gdk_pointer_grab(window, FALSE,
+    status = gdk_pointer_grab(window, FALSE,
                      GDK_POINTER_MOTION_MASK |
                      GDK_BUTTON_PRESS_MASK |
                      GDK_BUTTON_RELEASE_MASK |
                      GDK_BUTTON_MOTION_MASK,
                      window, d->mouse_cursor,
                      GDK_CURRENT_TIME);
+    if (status != GDK_GRAB_SUCCESS)
+        g_warning("pointer grab failed %d", status);
+
+    return status;
 }
 
 static void update_mouse_pointer(SpiceDisplay *display)
@@ -375,7 +385,9 @@ static void try_mouse_grab(GtkWidget *widget)
     if (d->mouse_grab_active)
         return;
 
-    do_pointer_grab(display);
+    if (do_pointer_grab(display) != GDK_GRAB_SUCCESS)
+        return;
+
     d->mouse_grab_active = true;
     d->mouse_last_x = -1;
     d->mouse_last_y = -1;
