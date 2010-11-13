@@ -8,19 +8,20 @@ DL_EXPORT(void) initSpiceClientGtk(void)
 {
     PyObject *m, *d;
 
-    init_pygobject ();
+    init_pygobject();
 
-    m = Py_InitModule ("SpiceClientGtk", spice_functions);
+    m = Py_InitModule("SpiceClientGtk", spice_functions);
     if (PyErr_Occurred())
-	Py_FatalError("can't init module");
+        Py_FatalError("can't init module");
 
-    d = PyModule_GetDict (m);
+    d = PyModule_GetDict(m);
     if (PyErr_Occurred())
-	Py_FatalError("can't get dict");
+        Py_FatalError("can't get dict");
 
-    spice_register_classes (d);
+    spice_register_classes(d);
+    spice_add_constants(m, "SPICE_");
 
-    if (PyErr_Occurred ()) {
-        Py_FatalError ("can't initialise module SpiceClientGtk");
+    if (PyErr_Occurred()) {
+        Py_FatalError("can't initialise module SpiceClientGtk");
     }
 }
