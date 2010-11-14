@@ -68,6 +68,8 @@ struct spice_display {
     const guint16 const     *keycode_map;
     size_t                  keycode_maplen;
     uint32_t                key_state[512 / 32];
+    VncGrabSequence         *grabseq; /* the configured key sequence */
+    gboolean                *activeseq; /* the currently pressed keys */
 };
 
 G_DEFINE_TYPE(SpiceDisplay, spice_display, GTK_TYPE_DRAWING_AREA)
@@ -228,6 +230,16 @@ static void spice_display_destroy(GtkObject *obj)
 
 static void spice_display_finalize(GObject *obj)
 {
+    SpiceDisplay *display = SPICE_DISPLAY(obj);
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    g_debug("Finalize SpiceDisplay");
+
+    if (d->grabseq) {
+        vnc_grab_sequence_free(d->grabseq);
+        d->grabseq = NULL;
+    }
+
     G_OBJECT_CLASS(spice_display_parent_class)->finalize(obj);
 }
 
@@ -252,6 +264,8 @@ static void spice_display_init(SpiceDisplay *display)
     gtk_widget_set_can_focus(widget, true);
 
     d->keycode_map = vnc_display_keymap_gdk2xtkbd_table(&d->keycode_maplen);
+    d->grabseq = vnc_grab_sequence_new_from_string("Control_L+Alt_L");
+    d->activeseq = g_new0(gboolean, d->grabseq->nkeysyms);
 
     d->clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
     g_signal_connect(G_OBJECT(d->clipboard), "owner-change",
@@ -262,6 +276,30 @@ static void spice_display_init(SpiceDisplay *display)
     else
         d->mouse_cursor = gdk_cursor_new(GDK_BLANK_CURSOR);
     d->have_mitshm = true;
+}
+
+void spice_display_set_grab_keys(SpiceDisplay *display, VncGrabSequence *seq)
+{
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    g_return_if_fail(d != NULL);
+
+    if (d->grabseq) {
+        vnc_grab_sequence_free(d->grabseq);
+        g_free(d->activeseq);
+    }
+    if (seq)
+        d->grabseq = vnc_grab_sequence_copy(seq);
+    else
+        d->grabseq = vnc_grab_sequence_new_from_string("Control_L+Alt_L");
+    d->activeseq = g_new0(gboolean, d->grabseq->nkeysyms);
+}
+
+VncGrabSequence *spice_display_get_grab_keys(SpiceDisplay *display)
+{
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    g_return_val_if_fail(d != NULL, NULL);
+
+    return d->grabseq;
 }
 
 static void try_keyboard_grab(GtkWidget *widget)
@@ -342,8 +380,13 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
                      GDK_BUTTON_MOTION_MASK,
                      window, d->mouse_cursor,
                      GDK_CURRENT_TIME);
-    if (status != GDK_GRAB_SUCCESS)
+    if (status != GDK_GRAB_SUCCESS) {
+        d->mouse_grab_active = false;
         g_warning("pointer grab failed %d", status);
+    } else {
+        d->mouse_grab_active = true;
+        g_signal_emit(display, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, true);
+    }
 
     return status;
 }
@@ -388,10 +431,8 @@ static void try_mouse_grab(GtkWidget *widget)
     if (do_pointer_grab(display) != GDK_GRAB_SUCCESS)
         return;
 
-    d->mouse_grab_active = true;
     d->mouse_last_x = -1;
     d->mouse_last_y = -1;
-    g_signal_emit(widget, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, true);
 }
 
 static void mouse_check_edges(GtkWidget *widget, GdkEventMotion *motion)
@@ -697,6 +738,33 @@ static void release_keys(GtkWidget *widget)
     }
 }
 
+static gboolean check_for_grab_key(SpiceDisplay *display, int type, int keyval)
+{
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    int i;
+
+    if (!d->grabseq->nkeysyms)
+        return FALSE;
+
+    if (type == GDK_KEY_RELEASE) {
+        /* Any key release resets the whole grab sequence */
+        memset(d->activeseq, 0, sizeof(gboolean) * d->grabseq->nkeysyms);
+        return FALSE;
+    } else {
+        /* Record the new key press */
+        for (i = 0 ; i < d->grabseq->nkeysyms ; i++)
+            if (d->grabseq->keysyms[i] == keyval)
+                d->activeseq[i] = TRUE;
+
+        /* Return if any key is not pressed */
+        for (i = 0 ; i < d->grabseq->nkeysyms ; i++)
+            if (d->activeseq[i] == FALSE)
+                return FALSE;
+
+        return TRUE;
+    }
+}
+
 static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
@@ -722,6 +790,17 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
     default:
         break;
     }
+
+    if (check_for_grab_key(display, key->type, key->keyval)) {
+        if (d->mouse_grab_active)
+            try_mouse_ungrab(widget);
+        else
+            /* TODO: gtk-vnc has a weird condition here
+               if (!d->grab_keyboard || !d->absolute) */
+            try_mouse_grab(widget);
+    }
+
+
     return true;
 }
 

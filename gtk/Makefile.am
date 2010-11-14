@@ -54,6 +54,8 @@ libspice_client_gtk_la_SOURCES =	\
 	spice-widget.h			\
 	vncdisplaykeymap.c		\
 	vncdisplaykeymap.h		\
+	vncgrabsequence.c		\
+	vncgrabsequence.h		\
 	spice-audio.c			\
 	spice-audio.h			\
 	spice-pulse.c			\
@@ -64,6 +66,7 @@ libspice_client_gtkincludedir = $(includedir)/spice-client
 libspice_client_gtkinclude_HEADERS =	\
 	spice-widget.h			\
 	spice-audio.h			\
+	vncgrabsequence.h		\
 	$(NULL)
 
 

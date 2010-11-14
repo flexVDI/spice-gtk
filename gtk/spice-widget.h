@@ -4,6 +4,7 @@
 #include "spice-client.h"
 
 #include <gtk/gtk.h>
+#include "vncgrabsequence.h"
 
 G_BEGIN_DECLS
 
@@ -40,6 +41,8 @@ SpiceDisplay* spice_display_new(SpiceSession *session, int id);
 void spice_display_mouse_ungrab(SpiceDisplay *display);
 void spice_display_copy_to_guest(SpiceDisplay *display);
 void spice_display_paste_from_guest(SpiceDisplay *display);
+void spice_display_set_grab_keys(SpiceDisplay *display, VncGrabSequence *seq);
+VncGrabSequence *spice_display_get_grab_keys(SpiceDisplay *display);
 
 G_END_DECLS
 

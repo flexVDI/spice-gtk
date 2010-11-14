@@ -117,6 +117,21 @@
   (return-type "none")
 )
 
+(define-method set_grab_keys
+  (of-object "SpiceDisplay")
+  (c-name "spice_display_set_grab_keys")
+  (return-type "none")
+  (parameters
+    '("VncGrabSequence*" "seq")
+  )
+)
+
+(define-method get_grab_keys
+  (of-object "SpiceDisplay")
+  (c-name "spice_display_get_grab_keys")
+  (return-type "VncGrabSequence*")
+)
+
 
 
 ;; From spice-audio.h
@@ -130,6 +145,51 @@
     '("GMainLoop*" "mainloop")
     '("const-char*" "name")
   )
+)
+
+
+
+;; From vncgrabsequence.h
+
+(define-function vnc_grab_sequence_get_type
+  (c-name "vnc_grab_sequence_get_type")
+  (return-type "GType")
+)
+
+(define-function vnc_grab_sequence_new
+  (c-name "vnc_grab_sequence_new")
+  (is-constructor-of "VncGrabSequence")
+  (return-type "VncGrabSequence*")
+  (parameters
+    '("guint" "nkeysyms")
+    '("guint*" "keysyms")
+  )
+)
+
+(define-function vnc_grab_sequence_new_from_string
+  (c-name "vnc_grab_sequence_new_from_string")
+  (return-type "VncGrabSequence*")
+  (parameters
+    '("const-gchar*" "str")
+  )
+)
+
+(define-method copy
+  (of-object "VncGrabSequence")
+  (c-name "vnc_grab_sequence_copy")
+  (return-type "VncGrabSequence*")
+)
+
+(define-method free
+  (of-object "VncGrabSequence")
+  (c-name "vnc_grab_sequence_free")
+  (return-type "none")
+)
+
+(define-method as_string
+  (of-object "VncGrabSequence")
+  (c-name "vnc_grab_sequence_as_string")
+  (return-type "gchar*")
 )
 
 
