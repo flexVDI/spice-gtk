@@ -5,6 +5,7 @@
 
 #include <gtk/gtk.h>
 #include "vncgrabsequence.h"
+#include "spice-widget-enums.h"
 
 G_BEGIN_DECLS
 
@@ -36,6 +37,13 @@ struct _SpiceDisplayClass {
     /* Do not add fields to this struct */
 };
 
+typedef enum
+{
+	SPICE_DISPLAY_KEY_EVENT_PRESS = 1,
+	SPICE_DISPLAY_KEY_EVENT_RELEASE = 2,
+	SPICE_DISPLAY_KEY_EVENT_CLICK = 3,
+} SpiceDisplayKeyEvent;
+
 GType	        spice_display_get_type(void);
 
 SpiceDisplay* spice_display_new(SpiceSession *session, int id);
@@ -44,6 +52,8 @@ void spice_display_copy_to_guest(SpiceDisplay *display);
 void spice_display_paste_from_guest(SpiceDisplay *display);
 void spice_display_set_grab_keys(SpiceDisplay *display, VncGrabSequence *seq);
 VncGrabSequence *spice_display_get_grab_keys(SpiceDisplay *display);
+void spice_display_send_keys(SpiceDisplay *display, const guint *keyvals,
+                             int nkeyvals, SpiceDisplayKeyEvent kind);
 
 G_END_DECLS
 

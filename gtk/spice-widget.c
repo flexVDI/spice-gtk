@@ -700,9 +700,8 @@ static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
 
 /* ---------------------------------------------------------------- */
 
-static void send_key(GtkWidget *widget, int scancode, int down)
+static void send_key(SpiceDisplay *display, int scancode, int down)
 {
-    SpiceDisplay *display = SPICE_DISPLAY(widget);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
     uint32_t i, b, m;
 
@@ -726,9 +725,8 @@ static void send_key(GtkWidget *widget, int scancode, int down)
     }
 }
 
-static void release_keys(GtkWidget *widget)
+static void release_keys(SpiceDisplay *display)
 {
-    SpiceDisplay *display = SPICE_DISPLAY(widget);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
     uint32_t i, b;
 
@@ -737,7 +735,7 @@ static void release_keys(GtkWidget *widget)
             continue;
         }
         for (b = 0; b < 32; b++) {
-            send_key(widget, i * 32 + b, 0);
+            send_key(display, i * 32 + b, 0);
         }
     }
 }
@@ -786,10 +784,10 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
                                             key->hardware_keycode);
     switch (key->type) {
     case GDK_KEY_PRESS:
-        send_key(widget, scancode, 1);
+        send_key(display, scancode, 1);
         break;
     case GDK_KEY_RELEASE:
-        send_key(widget, scancode, 0);
+        send_key(display, scancode, 0);
         break;
     default:
         break;
@@ -806,6 +804,46 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
 
 
     return true;
+}
+
+static guint get_scancode_from_keyval(SpiceDisplay *display, guint keyval)
+{
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    guint keycode = 0;
+    GdkKeymapKey *keys = NULL;
+    gint n_keys = 0;
+
+    if (gdk_keymap_get_entries_for_keyval(gdk_keymap_get_default(),
+                                          keyval, &keys, &n_keys)) {
+        /* FIXME what about levels? */
+        keycode = keys[0].keycode;
+        g_free(keys);
+    }
+
+    return vnc_display_keymap_gdk2xtkbd(d->keycode_map, d->keycode_maplen, keycode);
+}
+
+void spice_display_send_keys(SpiceDisplay *display, const guint *keyvals,
+                             int nkeyvals, SpiceDisplayKeyEvent kind)
+{
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    int i;
+    int scancode;
+
+    g_return_if_fail(display != NULL);
+    g_return_if_fail(keyvals != NULL);
+
+    g_debug("%s", __FUNCTION__);
+
+    if (kind & SPICE_DISPLAY_KEY_EVENT_PRESS) {
+        for (i = 0 ; i < nkeyvals ; i++)
+            send_key(display, get_scancode_from_keyval(display, keyvals[i]), 1);
+	}
+
+    if (kind & SPICE_DISPLAY_KEY_EVENT_RELEASE) {
+        for (i = (nkeyvals-1) ; i >= 0 ; i--)
+            send_key(display, get_scancode_from_keyval(display, keyvals[i]), 0);
+    }
 }
 
 static gboolean enter_event(GtkWidget *widget, GdkEventCrossing *crossing G_GNUC_UNUSED)
@@ -836,7 +874,7 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     g_debug("%s", __FUNCTION__);
-    release_keys(widget);
+    release_keys(display);
     d->keyboard_have_focus = true;
     try_keyboard_grab(widget);
     return true;

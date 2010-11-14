@@ -52,6 +52,8 @@ libspice_client_gtk_la_LIBADD =		\
 libspice_client_gtk_la_SOURCES =	\
 	spice-widget.c			\
 	spice-widget.h			\
+	spice-widget-enums.c		\
+	spice-widget-enums.h		\
 	vncdisplaykeymap.c		\
 	vncdisplaykeymap.h		\
 	vncgrabsequence.c		\
@@ -65,6 +67,7 @@ libspice_client_gtk_la_SOURCES =	\
 libspice_client_gtkincludedir = $(includedir)/spice-client
 libspice_client_gtkinclude_HEADERS =	\
 	spice-widget.h			\
+	spice-widget-enums.h		\
 	spice-audio.h			\
 	vncgrabsequence.h		\
 	$(NULL)
@@ -227,6 +230,31 @@ spice-channel-enums.h: spice-channel.h
 			--eprod "GType @enum_name@_get_type (void);\n" \
 		$< >  $@
 
+spice-widget-enums.c: spice-widget.h
+	$(AM_V_GEN)glib-mkenums --fhead "#include <glib-object.h>\n" \
+			--fhead "#include \"spice-widget-enums.h\"\n\n" \
+			--fprod "\n#include \"spice-widget.h\"\n" \
+			--vhead "static const G@Type@Value _@enum_name@_values[] = {" \
+			--vprod "  { @VALUENAME@, \"@VALUENAME@\", \"@valuenick@\" }," \
+			--vtail "  { 0, NULL, NULL }\n};\n\n" \
+			--vtail "GType\n@enum_name@_get_type (void)\n{\n" \
+			--vtail "  static GType type = 0;\n\n" \
+			--vtail "  if (!type)\n" \
+			--vtail "    type = g_@type@_register_static (\"@EnumName@\", _@enum_name@_values);\n\n" \
+			--vtail "  return type;\n}\n\n" \
+		$< > $@
+
+spice-widget-enums.h: spice-widget.h
+	$(AM_V_GEN)glib-mkenums --fhead "#ifndef SPICE_WIDGET_ENUMS_H\n" \
+			--fhead "#define SPICE_WIDGET_ENUMS_H\n\n" \
+			--fhead "G_BEGIN_DECLS\n\n" \
+			--ftail "G_END_DECLS\n\n" \
+			--ftail "#endif /* SPICE_WIDGET_ENUMS_H */\n" \
+			--eprod "#define SPICE_TYPE_@ENUMSHORT@ @enum_name@_get_type()\n" \
+			--eprod "GType @enum_name@_get_type (void);\n" \
+		$< >  $@
+
+
 generated_demarshallers.c: $(top_srcdir)/spice.proto
 	$(AM_V_GEN)$(PYTHON) $(top_srcdir)/spice_codegen.py --generate-demarshallers --client --include messages.h $< $@
 
@@ -265,6 +293,7 @@ BUILT_SOURCES = spice-marshal.c spice-marshal.h \
 	generated_demarshallers.c generated_demarshallers1.c \
 	generated_marshallers.c generated_marshallers1.c \
 	spice-channel-enums.c spice-channel-enums.h \
+	spice-widget-enums.c spice-widget-enums.h \
 	$(KEYMAPS)
 
 CLEANFILES = $(BUILT_SOURCES)

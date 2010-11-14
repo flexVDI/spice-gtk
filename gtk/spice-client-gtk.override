@@ -3,7 +3,6 @@ headers
 #include <Python.h>
 #include "pygobject.h"
 #include "spice-widget.h"
-#include "spice-channel-enums.h"
 %%
 modulename spice_client_gtk
 %%
@@ -14,6 +13,46 @@ import gtk.Widget as PyGtkWidget_Type
 ignore-glob
   *_get_type
 %%
+%%
+override spice_display_send_keys kwargs
+static PyObject*
+_wrap_spice_display_send_keys(PyGObject *self,
+                            PyObject *args, PyObject *kwargs)
+{
+    static char *kwlist[] = {"keys", "kind", NULL};
+    PyObject *keyList;
+    int kind = SPICE_DISPLAY_KEY_EVENT_CLICK;
+    int ret, i, len;
+    guint *keys;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs,
+                                     "O|I:SpiceDisplay.send_keys", kwlist,
+                                     &keyList, &kind))
+	return NULL;
+
+    if (!PyList_Check(keyList))
+	return NULL;
+
+    len = PyList_Size(keyList);
+    keys = malloc(sizeof(guint)*len);
+    for (i = 0 ; i < len ; i++) {
+        PyObject *val;
+        char *sym;
+        val = PyList_GetItem(keyList, i);
+        sym = PyString_AsString(val);
+        if (!sym) {
+            free(keys);
+	    return NULL;
+        }
+        keys[i] = gdk_keyval_from_name(sym);
+    }
+
+    spice_display_send_keys(SPICE_DISPLAY(self->obj), keys, len, kind);
+    free(keys);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
 %%
 override spice_display_get_grab_keys kwargs
 static PyObject*
@@ -70,4 +109,30 @@ _wrap_spice_display_set_grab_keys(PyGObject *self,
 
     Py_INCREF(Py_None);
     return Py_None;
+}
+%%
+override spice_session_get_channels
+static PyObject*
+_wrap_spice_session_get_channels(PyGObject *self,
+                                 PyObject *args, PyObject *kwargs)
+{
+    PyObject *py_list;
+    GList *list, *tmp;
+    PyObject *chann;
+
+    list = spice_session_get_channels(SPICE_SESSION(self->obj));
+
+    if ((py_list = PyList_New(0)) == NULL) {
+        return NULL;
+    }
+    for (tmp = list; tmp != NULL; tmp = tmp->next) {
+        chann = pygobject_new(G_OBJECT(tmp->data));
+        if (chann == NULL) {
+            Py_DECREF(py_list);
+            return NULL;
+        }
+        PyList_Append(py_list, chann);
+        Py_DECREF(chann);
+    }
+    return py_list;
 }

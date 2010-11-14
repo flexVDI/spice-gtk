@@ -4,6 +4,7 @@
 G_BEGIN_DECLS
 
 #include "spice-types.h"
+#include "spice-channel-enums.h"
 
 #define SPICE_TYPE_CHANNEL            (spice_channel_get_type ())
 #define SPICE_CHANNEL(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), SPICE_TYPE_CHANNEL, SpiceChannel))

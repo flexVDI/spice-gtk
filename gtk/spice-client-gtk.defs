@@ -65,6 +65,17 @@
 
 ;; Enumerations and flags ...
 
+(define-enum DisplayKeyEvent
+  (in-module "Spice")
+  (c-name "SpiceDisplayKeyEvent")
+  (gtype-id "SPICE_TYPE_DISPLAY_KEY_EVENT")
+  (values
+    '("press" "SPICE_DISPLAY_KEY_EVENT_PRESS")
+    '("release" "SPICE_DISPLAY_KEY_EVENT_RELEASE")
+    '("click" "SPICE_DISPLAY_KEY_EVENT_CLICK")
+  )
+)
+
 (define-enum ChannelEvent
   (in-module "Spice")
   (c-name "SpiceChannelEvent")
@@ -130,6 +141,26 @@
   (of-object "SpiceDisplay")
   (c-name "spice_display_get_grab_keys")
   (return-type "VncGrabSequence*")
+)
+
+(define-method send_keys
+  (of-object "SpiceDisplay")
+  (c-name "spice_display_send_keys")
+  (return-type "none")
+  (parameters
+    '("const-guint*" "keyvals")
+    '("int" "nkeyvals")
+    '("SpiceDisplayKeyEvent" "kind")
+  )
+)
+
+
+
+;; From spice-widget-enums.h
+
+(define-function spice_display_key_event_get_type
+  (c-name "spice_display_key_event_get_type")
+  (return-type "GType")
 )
 
 
