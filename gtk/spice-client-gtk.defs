@@ -154,6 +154,12 @@
   )
 )
 
+(define-method get_pixbuf
+  (of-object "SpiceDisplay")
+  (c-name "spice_display_get_pixbuf")
+  (return-type "GdkPixbuf*")
+)
+
 
 
 ;; From spice-widget-enums.h

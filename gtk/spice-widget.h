@@ -54,6 +54,7 @@ void spice_display_set_grab_keys(SpiceDisplay *display, VncGrabSequence *seq);
 VncGrabSequence *spice_display_get_grab_keys(SpiceDisplay *display);
 void spice_display_send_keys(SpiceDisplay *display, const guint *keyvals,
                              int nkeyvals, SpiceDisplayKeyEvent kind);
+GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display);
 
 G_END_DECLS
 

@@ -1504,3 +1504,16 @@ void spice_display_paste_from_guest(SpiceDisplay *display)
 {
     g_warning("%s: TODO", __FUNCTION__);
 }
+
+GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
+{
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    GdkPixbuf *pixbuf;
+
+    g_return_val_if_fail(d != NULL, NULL);
+    g_return_val_if_fail(d->format == SPICE_SURFACE_FMT_32_xRGB, NULL);
+
+    pixbuf = gdk_pixbuf_new_from_data(d->data, GDK_COLORSPACE_RGB, false,
+                                      8, d->width, d->height, d->stride, NULL, NULL);
+    return pixbuf;
+}
