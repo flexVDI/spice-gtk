@@ -31,6 +31,7 @@ struct _SpiceDisplayClass {
 
     /* signals */
     void (*spice_display_mouse_grab)(SpiceChannel *channel, gint grabbed);
+    void (*spice_display_keyboard_grab)(SpiceChannel *channel, gint grabbed);
 
     /* Do not add fields to this struct */
 };

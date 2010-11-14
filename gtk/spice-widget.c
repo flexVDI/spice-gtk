@@ -86,6 +86,7 @@ enum {
 /* Signals */
 enum {
     SPICE_DISPLAY_MOUSE_GRAB,
+    SPICE_DISPLAY_KEYBOARD_GRAB,
     SPICE_DISPLAY_LAST_SIGNAL,
 };
 
@@ -349,8 +350,10 @@ static void try_keyboard_grab(GtkWidget *widget)
     if (status != GDK_GRAB_SUCCESS) {
         g_warning("keyboard grab failed %d", status);
         d->keyboard_grab_active = false;
-    } else
+    } else {
         d->keyboard_grab_active = true;
+        g_signal_emit(widget, signals[SPICE_DISPLAY_KEYBOARD_GRAB], 0, true);
+    }
 }
 
 
@@ -365,6 +368,7 @@ static void try_keyboard_ungrab(GtkWidget *widget)
     g_debug("ungrab keyboard");
     gdk_keyboard_ungrab(GDK_CURRENT_TIME);
     d->keyboard_grab_active = false;
+    g_signal_emit(widget, signals[SPICE_DISPLAY_KEYBOARD_GRAB], 0, false);
 }
 
 static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
@@ -1141,6 +1145,17 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceDisplayClass, spice_display_mouse_grab),
+                     NULL, NULL,
+                     g_cclosure_marshal_VOID__INT,
+                     G_TYPE_NONE,
+                     1,
+                     G_TYPE_INT);
+
+    signals[SPICE_DISPLAY_KEYBOARD_GRAB] =
+        g_signal_new("keyboard-grab",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_FIRST,
+                     G_STRUCT_OFFSET(SpiceDisplayClass, spice_display_keyboard_grab),
                      NULL, NULL,
                      g_cclosure_marshal_VOID__INT,
                      G_TYPE_NONE,
