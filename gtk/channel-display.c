@@ -303,6 +303,9 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
 
 static void destroy_canvas(display_surface *surface)
 {
+    if (surface == NULL)
+        return;
+
     glz_decoder_destroy(surface->glz_decoder);
 
     if (surface->shmid == -1) {
@@ -593,8 +596,11 @@ static void display_handle_stream_clip(SpiceChannel *channel, spice_msg_in *in)
 static void destroy_stream(SpiceChannel *channel, int id)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
-    display_stream *st = c->streams[id];
+    display_stream *st;
 
+    g_return_if_fail(c != NULL);
+
+    st = c->streams[id];
     if (!st)
         return;
 
@@ -628,6 +634,7 @@ static void display_handle_stream_destroy(SpiceChannel *channel, spice_msg_in *i
 {
     SpiceMsgDisplayStreamDestroy *op = spice_msg_in_parsed(in);
 
+    g_return_if_fail(op != NULL);
     g_message("%s: id %d", __FUNCTION__, op->id);
     destroy_stream(channel, op->id);
 }
@@ -741,8 +748,11 @@ static void display_handle_surface_create(SpiceChannel *channel, spice_msg_in *i
 static void display_handle_surface_destroy(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgSurfaceDestroy *destroy = spice_msg_in_parsed(in);
-    display_surface *surface = find_surface(channel, destroy->surface_id);
+    display_surface *surface;
 
+    g_return_if_fail(destroy != NULL);
+
+    surface = find_surface(channel, destroy->surface_id);
     if (surface->primary) {
         g_signal_emit(channel, signals[SPICE_DISPLAY_PRIMARY_DESTROY], 0);
     }

@@ -47,6 +47,9 @@ static struct glz_image *glz_image_new(struct glz_image_hdr *hdr,
 
 static void glz_image_destroy(struct glz_image *img)
 {
+    if (img == NULL)
+        return;
+
     pixman_image_unref(img->surface);
     free(img);
 }
@@ -371,6 +374,9 @@ SpiceGlzDecoderWindow *glz_decoder_window_new(void)
 void glz_decoder_window_destroy(SpiceGlzDecoderWindow *w)
 {
     int i;
+
+    if (w == NULL)
+        return;
 
     for (i = 0; i < w->nimages; i++) {
         if (w->images[i]) {
