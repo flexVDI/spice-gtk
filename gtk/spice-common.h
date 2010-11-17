@@ -12,3 +12,4 @@
 #include "messages.h"
 #include "marshaller.h"
 
+#include "spice-util.h"

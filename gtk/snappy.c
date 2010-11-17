@@ -19,7 +19,7 @@ static void primary_create(SpiceChannel *channel, gint format,
                            gint width, gint height, gint stride,
                            gint shmid, gpointer imgdata, gpointer data)
 {
-    g_debug("%s: %dx%d, format %d", __FUNCTION__, width, height, format);
+    SPICE_DEBUG("%s: %dx%d, format %d", __FUNCTION__, width, height, format);
     d_format = format;
     d_width  = width;
     d_height = height;

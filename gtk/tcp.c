@@ -26,6 +26,7 @@
 #include <fcntl.h>
 #include <glib.h>
 
+#include "spice-util.h"
 #include "tcp.h"
 
 int tcp_verbose;
@@ -58,7 +59,7 @@ int tcp_connect(struct addrinfo *ai,
     ai->ai_flags = AI_CANONNAME;
     if (0 != (rc = getaddrinfo(host, serv, ai, &res))) {
 	if (tcp_verbose)
-	    g_debug("getaddrinfo (peer): %s", gai_strerror(rc));
+	    SPICE_DEBUG("getaddrinfo (peer): %s", gai_strerror(rc));
 	return -1;
     }
     for (e = res; e != NULL; e = e->ai_next) {
@@ -66,13 +67,13 @@ int tcp_connect(struct addrinfo *ai,
 			     uhost, INET6_ADDRSTRLEN, userv, 32,
 			     NI_NUMERICHOST | NI_NUMERICSERV)) {
 	    if (tcp_verbose)
-                g_debug("getnameinfo (peer): oops");
+                SPICE_DEBUG("getnameinfo (peer): oops");
 	    continue;
 	}
 	if (-1 == (sock = socket(e->ai_family, e->ai_socktype,
 				 e->ai_protocol))) {
 	    if (tcp_verbose)
-                g_debug("socket (%s): %s",
+                SPICE_DEBUG("socket (%s): %s",
 			strfamily(e->ai_family), strerror(errno));
 	    continue;
 	}
@@ -85,7 +86,7 @@ int tcp_connect(struct addrinfo *ai,
 	    ask.ai_socktype = e->ai_socktype;
 	    if (0 != (rc = getaddrinfo(addr, port, &ask, &lres))) {
 		if (tcp_verbose)
-		    g_debug("getaddrinfo (local): %s",
+		    SPICE_DEBUG("getaddrinfo (local): %s",
 			    gai_strerror(rc));
 		continue;
 	    }
@@ -94,12 +95,12 @@ int tcp_connect(struct addrinfo *ai,
 				 uaddr, INET6_ADDRSTRLEN, uport, 32,
 				 NI_NUMERICHOST | NI_NUMERICSERV)) {
 		if (tcp_verbose)
-		    g_debug("getnameinfo (local): oops");
+		    SPICE_DEBUG("getnameinfo (local): oops");
 		continue;
 	    }
 	    if (-1 == bind(sock, lres->ai_addr, lres->ai_addrlen)) {
 		if (tcp_verbose)
-		    g_debug("%s [%s] %s bind: %s",
+		    SPICE_DEBUG("%s [%s] %s bind: %s",
 			    strfamily(lres->ai_family), uaddr, uport,
 			    strerror(errno));
 		continue;
@@ -108,14 +109,14 @@ int tcp_connect(struct addrinfo *ai,
 	/* connect to peer */
 	if (-1 == connect(sock, e->ai_addr, e->ai_addrlen)) {
 	    if (tcp_verbose)
-		g_debug("%s %s [%s] %s connect: %s",
+		SPICE_DEBUG("%s %s [%s] %s connect: %s",
 			strfamily(e->ai_family), e->ai_canonname, uhost, userv,
 			strerror(errno));
 	    close(sock);
 	    continue;
 	}
 	if (tcp_verbose)
-            g_debug("%s %s [%s] %s open",
+            SPICE_DEBUG("%s %s [%s] %s open",
 		    strfamily(e->ai_family), e->ai_canonname, uhost, userv);
 	fcntl(sock, F_SETFL, O_NONBLOCK);
 	return sock;
@@ -134,7 +135,7 @@ int tcp_listen(struct addrinfo *ai, char *addr, char *port)
     ai->ai_flags = AI_PASSIVE;
     if (0 != (rc = getaddrinfo(addr, port, ai, &res))) {
 	if (tcp_verbose)
-	    g_debug("getaddrinfo: %s", gai_strerror(rc));
+	    SPICE_DEBUG("getaddrinfo: %s", gai_strerror(rc));
 	exit(1);
     }
 
@@ -146,7 +147,7 @@ int tcp_listen(struct addrinfo *ai, char *addr, char *port)
 	if (-1 == (slisten = socket(e->ai_family, e->ai_socktype,
 				    e->ai_protocol))) {
 	    if (tcp_verbose)
-		g_debug("socket (%s): %s",
+		SPICE_DEBUG("socket (%s): %s",
 			strfamily(e->ai_family), strerror(errno));
 	    continue;
 	}
@@ -154,7 +155,7 @@ int tcp_listen(struct addrinfo *ai, char *addr, char *port)
         setsockopt(slisten, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 	if (-1 == bind(slisten, e->ai_addr, e->ai_addrlen)) {
 	    if (tcp_verbose)
-		g_debug("%s [%s] %s bind: %s",
+		SPICE_DEBUG("%s [%s] %s bind: %s",
 			strfamily(e->ai_family), uaddr, uport,
 			strerror(errno));
 	    continue;

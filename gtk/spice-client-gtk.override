@@ -2,6 +2,7 @@
 headers
 #include <Python.h>
 #include "pygobject.h"
+#include "spice-common.h"
 #include "spice-widget.h"
 %%
 modulename spice_client_gtk

@@ -322,6 +322,28 @@
 
 
 
+;; From spice-util.h
+
+(define-function spice_util_set_debug
+  (c-name "spice_util_set_debug")
+  (return-type "none")
+  (parameters
+    '("gboolean" "enabled")
+  )
+)
+
+(define-function spice_util_get_debug
+  (c-name "spice_util_get_debug")
+  (return-type "gboolean")
+)
+
+(define-function spice_util_get_version_string
+  (c-name "spice_util_get_version_string")
+  (return-type "const-gchar*")
+)
+
+
+
 ;; From channel-main.h
 
 (define-function spice_main_channel_get_type

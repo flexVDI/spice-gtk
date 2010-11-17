@@ -159,12 +159,12 @@ static void playback_stop(SpicePlaybackChannel *channel, gpointer data)
 static void record_start(SpicePlaybackChannel *channel, gint format, gint channels,
                          gint frequency, gpointer data)
 {
-    g_debug("%s", __FUNCTION__);
+    SPICE_DEBUG("%s", __FUNCTION__);
 }
 
 static void record_stop(SpicePlaybackChannel *channel, gpointer data)
 {
-    g_debug("%s", __FUNCTION__);
+    SPICE_DEBUG("%s", __FUNCTION__);
 }
 
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)

@@ -12,9 +12,11 @@
 #include <gdk/gdkkeysyms.h>
 #include "vncdisplaykeymap.h"
 
+#include "spice-util.h"
+
 #undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "vnc-keymap"
-#define VNC_DEBUG(message) g_debug(message);
+#define VNC_DEBUG(message) SPICE_DEBUG(message);
 
 /*
  * This table is taken from QEMU x_keymap.c, under the terms:

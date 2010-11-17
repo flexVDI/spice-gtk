@@ -875,7 +875,7 @@ reconnect:
             c->tls = true;
             goto reconnect;
         }
-        g_debug("Connect error");
+        SPICE_DEBUG("Connect error");
         spice_channel_emit_event(channel, SPICE_CHANNEL_ERROR_CONNECT);
         return false;
     }

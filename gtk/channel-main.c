@@ -368,7 +368,7 @@ static void main_handle_init(SpiceChannel *channel, spice_msg_in *in)
 
 static void main_handle_mm_time(SpiceChannel *channel, spice_msg_in *in)
 {
-    g_debug("%s: TODO", __FUNCTION__);
+    SPICE_DEBUG("%s: TODO", __FUNCTION__);
 #if 0
     set_mm_time(init->multi_media_time);
 #endif

@@ -79,7 +79,7 @@ static void record_handle_start(SpiceChannel *channel, spice_msg_in *in)
     spice_record_channel *c = SPICE_RECORD_CHANNEL(channel)->priv;
     SpiceMsgRecordStart *start = spice_msg_in_parsed(in);
 
-    g_debug("%s: fmt %d channels %d freq %d", __FUNCTION__,
+    SPICE_DEBUG("%s: fmt %d channels %d freq %d", __FUNCTION__,
             start->format, start->channels, start->frequency);
 
     switch (c->mode) {

@@ -169,7 +169,7 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
     display_cursor *cursor;
     size_t size;
 
-    g_debug("%s: type %d, %" PRIx64 ", %dx%d, flags %d, size %d",
+    SPICE_DEBUG("%s: type %d, %" PRIx64 ", %dx%d, flags %d, size %d",
             __FUNCTION__, hdr->type, hdr->unique, hdr->width, hdr->height,
             scursor->flags, scursor->data_size);
 

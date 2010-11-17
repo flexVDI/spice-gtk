@@ -91,7 +91,7 @@ static void playback_handle_data(SpiceChannel *channel, spice_msg_in *in)
     spice_playback_channel *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackPacket *data = spice_msg_in_parsed(in);
 
-    g_debug("%s: time %d data %p size %d", __FUNCTION__,
+    SPICE_DEBUG("%s: time %d data %p size %d", __FUNCTION__,
             data->time, data->data, data->data_size);
 
     switch (c->mode) {
@@ -110,7 +110,7 @@ static void playback_handle_mode(SpiceChannel *channel, spice_msg_in *in)
     spice_playback_channel *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackMode *mode = spice_msg_in_parsed(in);
 
-    g_debug("%s: time %d mode %d data %p size %d", __FUNCTION__,
+    SPICE_DEBUG("%s: time %d mode %d data %p size %d", __FUNCTION__,
             mode->time, mode->mode, mode->data, mode->data_size);
 
     c->mode = mode->mode;
@@ -128,7 +128,7 @@ static void playback_handle_start(SpiceChannel *channel, spice_msg_in *in)
     spice_playback_channel *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackStart *start = spice_msg_in_parsed(in);
 
-    g_debug("%s: fmt %d channels %d freq %d time %d", __FUNCTION__,
+    SPICE_DEBUG("%s: fmt %d channels %d freq %d time %d", __FUNCTION__,
             start->format, start->channels, start->frequency, start->time);
 
     switch (c->mode) {
