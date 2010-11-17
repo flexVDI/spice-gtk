@@ -322,7 +322,6 @@ static void decode(SpiceGlzDecoder *decoder,
                    void *usr_data)
 {
     GlibGlzDecoder *d = SPICE_CONTAINEROF(decoder, GlibGlzDecoder, base);
-    int out_size;
     LzImageType decoded_type;
     struct glz_image *decoded_image;
     size_t n_in_bytes_decoded;
@@ -331,8 +330,6 @@ static void decode(SpiceGlzDecoder *decoder,
     d->in_now = data;
 
     decode_header(d);
-
-    out_size = d->image.gross_pixels << 2;
 
     if (d->image.type == LZ_IMAGE_TYPE_RGBA) {
         decoded_type = LZ_IMAGE_TYPE_RGBA;

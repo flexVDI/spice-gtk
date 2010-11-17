@@ -826,11 +826,10 @@ static guint get_scancode_from_keyval(SpiceDisplay *display, guint keyval)
 void spice_display_send_keys(SpiceDisplay *display, const guint *keyvals,
                              int nkeyvals, SpiceDisplayKeyEvent kind)
 {
-    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
     int i;
     int scancode;
 
-    g_return_if_fail(display != NULL);
+    g_return_if_fail(SPICE_DISPLAY(display) != NULL);
     g_return_if_fail(keyvals != NULL);
 
     SPICE_DEBUG("%s", __FUNCTION__);
