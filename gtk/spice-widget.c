@@ -1285,6 +1285,8 @@ static void cursor_set(SpiceCursorChannel *channel,
                                       height,
                                       width * 4,
                                       NULL, NULL);
+    if (d->mouse_cursor)
+        gdk_cursor_unref(d->mouse_cursor);
     d->mouse_cursor = gdk_cursor_new_from_pixbuf(gtkdpy, pixbuf,
                                                  hot_x, hot_y);
     g_object_unref(pixbuf);
@@ -1301,6 +1303,8 @@ static void cursor_hide(SpiceCursorChannel *channel, gpointer data)
     if (!window)
         return;
 
+    if (d->mouse_cursor)
+        gdk_cursor_unref(d->mouse_cursor);
     d->mouse_cursor = gdk_cursor_new(GDK_BLANK_CURSOR);
     update_mouse_pointer(display);
 }
@@ -1327,7 +1331,11 @@ static void cursor_move(SpiceCursorChannel *channel, gint x, gint y, gpointer da
 
 static void cursor_reset(SpiceCursorChannel *channel, gpointer data)
 {
-    g_warning("%s: TODO", __FUNCTION__);
+    SpiceDisplay *display = data;
+    GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(display));
+    SPICE_DEBUG("%s",  __FUNCTION__);
+
+    gdk_window_set_cursor(window, NULL);
 }
 
 static void disconnect_main(SpiceDisplay *display)
