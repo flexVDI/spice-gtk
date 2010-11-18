@@ -22,6 +22,7 @@ struct spice_display_channel {
     SpiceGlzDecoderWindow       *glz_window;
     display_stream              **streams;
     int                         nstreams;
+    gboolean                    mark;
 };
 
 G_DEFINE_TYPE(SpiceDisplayChannel, spice_display_channel, SPICE_TYPE_CHANNEL)
@@ -30,6 +31,7 @@ enum {
     SPICE_DISPLAY_PRIMARY_CREATE,
     SPICE_DISPLAY_PRIMARY_DESTROY,
     SPICE_DISPLAY_INVALIDATE,
+    SPICE_DISPLAY_MARK,
 
     SPICE_DISPLAY_LAST_SIGNAL,
 };
@@ -105,6 +107,18 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
                      G_TYPE_NONE,
                      4,
                      G_TYPE_INT, G_TYPE_INT, G_TYPE_INT, G_TYPE_INT);
+
+    signals[SPICE_DISPLAY_MARK] =
+        g_signal_new("display-mark",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_FIRST,
+                     G_STRUCT_OFFSET(SpiceDisplayChannelClass,
+                                     spice_display_mark),
+                     NULL, NULL,
+                     g_cclosure_marshal_VOID__INT,
+                     G_TYPE_NONE,
+                     1,
+                     G_TYPE_INT);
 
     g_type_class_add_private(klass, sizeof(spice_display_channel));
 
@@ -353,6 +367,10 @@ static void clear_surfaces(SpiceChannel *channel)
 
 static void emit_invalidate(SpiceChannel *channel, SpiceRect *bbox)
 {
+    spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
+
+    if (!c->mark)
+        return;
     g_signal_emit(channel, signals[SPICE_DISPLAY_INVALIDATE], 0,
                   bbox->left, bbox->top,
                   bbox->right - bbox->left,
@@ -394,6 +412,8 @@ static void display_handle_mode(SpiceChannel *channel, spice_msg_in *in)
     SpiceMsgDisplayMode *mode = spice_msg_in_parsed(in);
     display_surface *surface = find_surface(channel, 0);
 
+    g_warn_if_fail(c->mark == FALSE);
+
     if (surface) {
         g_signal_emit(channel, signals[SPICE_DISPLAY_PRIMARY_DESTROY], 0);
         ring_remove(&surface->link);
@@ -421,12 +441,24 @@ static void display_handle_mode(SpiceChannel *channel, spice_msg_in *in)
 
 static void display_handle_mark(SpiceChannel *channel, spice_msg_in *in)
 {
-    g_warning("%s: TODO", __FUNCTION__);
+    spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
+    display_surface *surface = find_surface(channel, 0);
+
+    SPICE_DEBUG("%s", __FUNCTION__);
+    g_return_if_fail(surface != NULL);
+    g_warn_if_fail(c->mark == FALSE);
+
+    c->mark = TRUE;
+    g_signal_emit(channel, signals[SPICE_DISPLAY_MARK], 0, TRUE);
 }
 
 static void display_handle_reset(SpiceChannel *channel, spice_msg_in *in)
 {
+    spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
+
     g_warning("%s: TODO", __FUNCTION__);
+    c->mark = FALSE;
+    g_signal_emit(channel, signals[SPICE_DISPLAY_MARK], 0, FALSE);
 }
 
 static void display_handle_copy_bits(SpiceChannel *channel, spice_msg_in *in)

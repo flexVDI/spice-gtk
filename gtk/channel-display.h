@@ -32,6 +32,8 @@ struct _SpiceDisplayChannelClass {
     void (*spice_display_primary_destroy)(SpiceChannel *channel);
     void (*spice_display_invalidate)(SpiceChannel *channel,
                                      gint x, gint y, gint w, gint h);
+    void (*spice_display_mark)(SpiceChannel *channel,
+                               gboolean mark);
 
     /* Do not add fields to this struct */
 };

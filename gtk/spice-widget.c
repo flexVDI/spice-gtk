@@ -70,6 +70,7 @@ struct spice_display {
     uint32_t                key_state[512 / 32];
     VncGrabSequence         *grabseq; /* the configured key sequence */
     gboolean                *activeseq; /* the currently pressed keys */
+    gint                    mark;
 };
 
 G_DEFINE_TYPE(SpiceDisplay, spice_display, GTK_TYPE_DRAWING_AREA)
@@ -642,8 +643,9 @@ static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
             expose->area.x,
             expose->area.y);
 
-    if (d->data == NULL)
-        return true;
+    if (d->mark == 0 || d->data == NULL)
+        return false;
+
     if (!d->ximage) {
         ximage_create(widget);
     }
@@ -1290,6 +1292,17 @@ static void invalidate(SpiceChannel *channel,
                                x + d->mx, y + d->my, w, h);
 }
 
+static void mark(SpiceChannel *channel, gint mark, gpointer data)
+{
+    SpiceDisplay *display = data;
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    d->mark = mark;
+    if (mark != 0)
+        gdk_window_invalidate_rect(gtk_widget_get_window(GTK_WIDGET(display)),
+                                   NULL, FALSE);
+}
+
 static void cursor_set(SpiceCursorChannel *channel,
                        gint width, gint height, gint hot_x, gint hot_y,
                        gpointer rgba, gpointer data)
@@ -1433,6 +1446,8 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
                          G_CALLBACK(primary_destroy), display);
         g_signal_connect(channel, "display-invalidate",
                          G_CALLBACK(invalidate), display);
+        g_signal_connect(channel, "display-mark",
+                         G_CALLBACK(mark), display);
         spice_channel_connect(channel);
         return;
     }
