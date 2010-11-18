@@ -958,6 +958,32 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
     return true;
 }
 
+static gboolean scroll_event(GtkWidget *widget, GdkEventScroll *scroll)
+{
+    int button;
+    SpiceDisplay *display = SPICE_DISPLAY(widget);
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    SPICE_DEBUG("%s", __FUNCTION__);
+
+    if (!d->inputs)
+        return true;
+
+    if (scroll->direction == GDK_SCROLL_UP)
+        button = SPICE_MOUSE_BUTTON_UP;
+    else if (scroll->direction == GDK_SCROLL_DOWN)
+        button = SPICE_MOUSE_BUTTON_DOWN;
+    else {
+        SPICE_DEBUG("unsupported scroll direction");
+        return true;
+    }
+
+    spice_inputs_button_press(d->inputs, button,
+                              button_mask_gdk_to_spice(scroll->state));
+    spice_inputs_button_release(d->inputs, button,
+                                button_mask_gdk_to_spice(scroll->state));
+}
+
 static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
@@ -1120,6 +1146,7 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
     gtkwidget_class->button_press_event = button_event;
     gtkwidget_class->button_release_event = button_event;
     gtkwidget_class->configure_event = configure_event;
+    gtkwidget_class->scroll_event = scroll_event;
 
     gtkobject_class->destroy = spice_display_destroy;
 
