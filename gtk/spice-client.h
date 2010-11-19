@@ -9,10 +9,6 @@
 #include <spice/enums.h>
 #include <spice/protocol.h>
 
-/* spice/client -- FIXME */
-#include "marshallers.h"
-#include "demarshallers.h"
-
 /* spice/gtk */
 #include "spice-types.h"
 #include "spice-session.h"

@@ -3,6 +3,10 @@
 
 #include <openssl/ssl.h>
 
+/* spice/client -- FIXME */
+#include "marshallers.h"
+#include "demarshallers.h"
+
 struct spice_msg_out {
     int                   refcount;
     SpiceChannel          *channel;
