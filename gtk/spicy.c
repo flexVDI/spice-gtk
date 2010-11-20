@@ -714,7 +714,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         if (conn->audio != NULL)
             return;
         SPICE_DEBUG("new audio channel");
-        conn->audio = spice_audio_new(s, g_main_context_default(), "spice");
+        conn->audio = spice_audio_new(s, NULL, NULL);
     }
 }
 
