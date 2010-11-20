@@ -231,6 +231,8 @@ spice_msg_in *spice_msg_in_new(SpiceChannel *channel)
 {
     spice_msg_in *in;
 
+    g_return_val_if_fail(channel != NULL, NULL);
+
     in = spice_new0(spice_msg_in, 1);
     in->refcount = 1;
     in->channel  = channel;
@@ -241,6 +243,8 @@ spice_msg_in *spice_msg_in_sub_new(SpiceChannel *channel, spice_msg_in *parent,
                                    SpiceSubMessage *sub)
 {
     spice_msg_in *in;
+
+    g_return_val_if_fail(channel != NULL, NULL);
 
     in = spice_msg_in_new(channel);
     in->header.type = sub->type;
@@ -254,11 +258,15 @@ spice_msg_in *spice_msg_in_sub_new(SpiceChannel *channel, spice_msg_in *parent,
 
 void spice_msg_in_ref(spice_msg_in *in)
 {
+    g_return_if_fail(in != NULL);
+
     in->refcount++;
 }
 
 void spice_msg_in_unref(spice_msg_in *in)
 {
+    g_return_if_fail(in != NULL);
+
     in->refcount--;
     if (in->refcount > 0)
         return;
@@ -274,16 +282,23 @@ void spice_msg_in_unref(spice_msg_in *in)
 
 int spice_msg_in_type(spice_msg_in *in)
 {
+    g_return_val_if_fail(in != NULL, -1);
+
     return in->header.type;
 }
 
 void *spice_msg_in_parsed(spice_msg_in *in)
 {
+    g_return_val_if_fail(in != NULL, NULL);
+
     return in->parsed;
 }
 
 void *spice_msg_in_raw(spice_msg_in *in, int *len)
 {
+    g_return_val_if_fail(in != NULL, NULL);
+    g_return_val_if_fail(len != NULL, NULL);
+
     *len = in->dpos;
     return in->data;
 }
@@ -333,6 +348,8 @@ spice_msg_out *spice_msg_out_new(SpiceChannel *channel, int type)
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
     spice_msg_out *out;
 
+    g_return_val_if_fail(c != NULL, NULL);
+
     out = spice_new0(spice_msg_out, 1);
     out->refcount = 1;
     out->channel  = channel;
@@ -350,11 +367,15 @@ spice_msg_out *spice_msg_out_new(SpiceChannel *channel, int type)
 
 void spice_msg_out_ref(spice_msg_out *out)
 {
+    g_return_if_fail(out != NULL);
+
     out->refcount++;
 }
 
 void spice_msg_out_unref(spice_msg_out *out)
 {
+    g_return_if_fail(out != NULL);
+
     out->refcount--;
     if (out->refcount > 0)
         return;
@@ -364,6 +385,8 @@ void spice_msg_out_unref(spice_msg_out *out)
 
 void spice_msg_out_send(spice_msg_out *out)
 {
+    g_return_if_fail(out != NULL);
+
     out->header->size =
         spice_marshaller_get_total_size(out->marshaller) - sizeof(SpiceDataHeader);
     spice_channel_send_msg(out->channel, out);
@@ -605,6 +628,8 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
     int rc, num_caps;
 
+    g_return_if_fail(channel != NULL);
+
     rc = spice_channel_recv(channel, (uint8_t*)c->peer_msg + c->peer_pos,
                             c->peer_hdr.size - c->peer_pos);
     c->peer_pos += rc;
@@ -667,6 +692,9 @@ void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out)
     int free_data;
     size_t len;
     uint32_t res;
+
+    g_return_if_fail(channel != NULL);
+    g_return_if_fail(out != NULL);
 
     data = spice_marshaller_linearize(out->marshaller, 0,
                                       &len, &free_data);
@@ -804,6 +832,8 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
     SpiceChannel *channel;
     GType gtype = 0;
 
+    g_return_val_if_fail(s != NULL, NULL);
+
     switch (type) {
     case SPICE_CHANNEL_MAIN:
         gtype = SPICE_TYPE_MAIN_CHANNEL;
@@ -836,6 +866,7 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
 
 void spice_channel_destroy(SpiceChannel *channel)
 {
+    g_return_if_fail(channel != NULL);
     g_object_unref(channel);
 }
 
@@ -858,6 +889,8 @@ gboolean spice_channel_connect(SpiceChannel *channel)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
     int rc, err;
+
+    g_return_val_if_fail(c != NULL, FALSE);
 
     if (c->session == NULL || c->channel_type == -1 || c->channel_id == -1) {
         /* unset properties or unknown channel type */
@@ -935,6 +968,8 @@ reconnect:
 void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+
+    g_return_if_fail(c != NULL);
 
     if (c->state == SPICE_CHANNEL_STATE_UNCONNECTED) {
         return;

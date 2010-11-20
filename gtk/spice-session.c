@@ -383,6 +383,8 @@ gboolean spice_session_connect(SpiceSession *session)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
 
+    g_return_val_if_fail(s != NULL, FALSE);
+
     spice_session_disconnect(session);
     s->cmain = spice_channel_new(session, SPICE_CHANNEL_MAIN, 0);
     return spice_channel_connect(s->cmain);
@@ -393,6 +395,8 @@ void spice_session_disconnect(SpiceSession *session)
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
     struct channel *item;
     RingItem *ring, *next;
+
+    g_return_if_fail(s != NULL);
 
     if (s->cmain == NULL) {
         return;
@@ -415,6 +419,8 @@ GList *spice_session_get_channels(SpiceSession *session)
     GList *list = NULL;
     RingItem *ring;
 
+    g_return_val_if_fail(s != NULL, NULL);
+
     for (ring = ring_get_head(&s->channels);
          ring != NULL;
          ring = ring_next(&s->channels, ring)) {
@@ -432,6 +438,8 @@ int spice_session_channel_connect(SpiceSession *session, bool use_tls)
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
     char *port = use_tls ? s->tls_port : s->port;
 
+    g_return_val_if_fail(s != NULL, -1);
+
     if (port == NULL) {
         return -1;
     }
@@ -442,6 +450,9 @@ void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
     struct channel *item;
+
+    g_return_if_fail(s != NULL);
+    g_return_if_fail(channel != NULL);
 
     item = spice_new0(struct channel, 1);
     item->channel = channel;
@@ -454,6 +465,9 @@ void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel)
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
     struct channel *item = NULL;
     RingItem *ring;
+
+    g_return_if_fail(s != NULL);
+    g_return_if_fail(channel != NULL);
 
     for (ring = ring_get_head(&s->channels); ring != NULL;
          ring = ring_next(&s->channels, ring)) {
@@ -471,12 +485,16 @@ void spice_session_set_connection_id(SpiceSession *session, int id)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
 
+    g_return_if_fail(s != NULL);
+
     s->connection_id = id;
 }
 
 int spice_session_get_connection_id(SpiceSession *session)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_val_if_fail(s != NULL, -1);
 
     return s->connection_id;
 }
