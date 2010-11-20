@@ -179,7 +179,7 @@
   (return-type "GObject*")
   (parameters
     '("SpiceSession*" "session")
-    '("GMainLoop*" "mainloop")
+    '("GMainContext*" "context")
     '("const-char*" "name")
   )
 )

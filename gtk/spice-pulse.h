@@ -28,9 +28,10 @@ struct _SpicePulseClass {
     /* Do not add fields to this struct */
 };
 
-GType	        spice_pulse_get_type(void);
+GType           spice_pulse_get_type(void);
 
-SpicePulse *spice_pulse_new(SpiceSession *session, GMainLoop *mainloop,
+SpicePulse *spice_pulse_new(SpiceSession *session,
+                            GMainContext *context,
                             const char *name);
 
 G_END_DECLS

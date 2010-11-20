@@ -1298,7 +1298,7 @@ static void mark(SpiceChannel *channel, gint mark, gpointer data)
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     d->mark = mark;
-    if (mark != 0)
+    if (mark != 0 && gtk_widget_get_window(GTK_WIDGET(display)))
         gdk_window_invalidate_rect(gtk_widget_get_window(GTK_WIDGET(display)),
                                    NULL, FALSE);
 }

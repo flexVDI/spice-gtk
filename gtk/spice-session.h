@@ -1,6 +1,9 @@
 #ifndef __SPICE_CLIENT_SESSION_H__
 #define __SPICE_CLIENT_SESSION_H__
 
+#include <glib-object.h>
+#include "spice-types.h"
+
 G_BEGIN_DECLS
 
 #define SPICE_TYPE_SESSION            (spice_session_get_type ())

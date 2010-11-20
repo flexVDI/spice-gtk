@@ -32,8 +32,8 @@ G_DEFINE_TYPE(SpicePulse, spice_pulse, G_TYPE_OBJECT)
 static const char *stream_state_names[] = {
     [ PA_STREAM_UNCONNECTED ] = "unconnected",
     [ PA_STREAM_CREATING    ] = "creating",
-    [ PA_STREAM_READY 	    ] = "ready",
-    [ PA_STREAM_FAILED 	    ] = "failed",
+    [ PA_STREAM_READY       ] = "ready",
+    [ PA_STREAM_FAILED      ] = "failed",
     [ PA_STREAM_TERMINATED  ] = "terminated",
 };
 
@@ -193,7 +193,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     }
 }
 
-SpicePulse *spice_pulse_new(SpiceSession *session, GMainLoop *mainloop,
+SpicePulse *spice_pulse_new(SpiceSession *session, GMainContext *context,
                             const char *name)
 {
     SpicePulse *pulse;
@@ -212,7 +212,7 @@ SpicePulse *spice_pulse_new(SpiceSession *session, GMainLoop *mainloop,
     }
     g_list_free(list);
 
-    p->mainloop = pa_glib_mainloop_new(g_main_loop_get_context(mainloop));
+    p->mainloop = pa_glib_mainloop_new(context);
     p->state = PA_CONTEXT_READY;
     p->context = pa_context_new(pa_glib_mainloop_get_api(p->mainloop), name);
     pa_context_connect(p->context, NULL, 0, NULL);
