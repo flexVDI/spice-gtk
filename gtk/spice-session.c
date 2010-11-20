@@ -404,6 +404,8 @@ void spice_session_disconnect(SpiceSession *session)
         return;
     }
 
+    s->cmain = NULL;
+
     for (ring = ring_get_head(&s->channels); ring != NULL; ring = next) {
         next = ring_next(&s->channels, ring);
         item = SPICE_CONTAINEROF(ring, struct channel, link);
@@ -411,7 +413,6 @@ void spice_session_disconnect(SpiceSession *session)
     }
 
     s->connection_id = 0;
-    s->cmain = NULL;
 }
 
 GList *spice_session_get_channels(SpiceSession *session)
