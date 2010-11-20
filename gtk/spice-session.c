@@ -75,6 +75,8 @@ spice_session_dispose(GObject *gobject)
 {
     SpiceSession *session = SPICE_SESSION(gobject);
 
+    SPICE_DEBUG("session dispose");
+
     spice_session_disconnect(session);
 
     /* Chain up to the parent class */

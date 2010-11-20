@@ -89,7 +89,11 @@ static void spice_channel_dispose(GObject *gobject)
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
 
     spice_channel_disconnect(channel, SPICE_CHANNEL_CLOSED);
-    spice_session_channel_destroy(c->session, channel);
+    if (c->session) {
+         spice_session_channel_destroy(c->session, channel);
+         g_object_unref(c->session);
+         c->session = NULL;
+    }
 
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_channel_parent_class)->dispose)
@@ -101,7 +105,7 @@ static void spice_channel_finalize(GObject *gobject)
     SpiceChannel *channel = SPICE_CHANNEL(gobject);
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
 
-    g_message("%s: %s", c->name, __FUNCTION__);
+    SPICE_DEBUG("%s: %s", c->name, __FUNCTION__);
 
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_channel_parent_class)->finalize)
@@ -142,7 +146,7 @@ static void spice_channel_set_property(GObject      *gobject,
 
     switch (prop_id) {
     case PROP_SESSION:
-        c->session = g_value_get_object(value);
+        c->session = g_value_dup_object(value);
         break;
     case PROP_CHANNEL_TYPE:
         c->channel_type = g_value_get_int(value);
@@ -867,6 +871,8 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
 void spice_channel_destroy(SpiceChannel *channel)
 {
     g_return_if_fail(channel != NULL);
+
+    SPICE_DEBUG("channel destroy");
     g_object_unref(channel);
 }
 
