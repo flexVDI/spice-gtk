@@ -1558,11 +1558,27 @@ GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
 {
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
     GdkPixbuf *pixbuf;
+    int x, y;
+    gchar *src, *data, *dest;
 
     g_return_val_if_fail(d != NULL, NULL);
     g_return_val_if_fail(d->format == SPICE_SURFACE_FMT_32_xRGB, NULL);
 
-    pixbuf = gdk_pixbuf_new_from_data(d->data, GDK_COLORSPACE_RGB, false,
-                                      8, d->width, d->height, d->stride, NULL, NULL);
+    data = g_malloc(d->width * d->height * 3);
+    src = d->data;
+    dest = data;
+    for (y = 0; y < d->height; ++y) {
+        for (x = 0; x < d->width; ++x) {
+          dest[0] = src[x * 4 + 2];
+          dest[1] = src[x * 4 + 1];
+          dest[2] = src[x * 4 + 0];
+          dest += 3;
+        }
+        src += d->stride;
+    }
+
+    pixbuf = gdk_pixbuf_new_from_data(data, GDK_COLORSPACE_RGB, false,
+                                      8, d->width, d->height, d->width * 3,
+                                      (GdkPixbufDestroyNotify)g_free, NULL);
     return pixbuf;
 }
