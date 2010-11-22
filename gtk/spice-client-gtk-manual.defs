@@ -87,3 +87,12 @@
     '("guint" "keyval")
   )
 )
+
+(define-method spice_inputs_set_key_locks
+  (of-object "SpiceInputsChannel")
+  (c-name "spice_inputs_set_key_locks")
+  (return-type "none")
+  (parameters
+    '("guint" "locks")
+  )
+)

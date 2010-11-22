@@ -52,10 +52,10 @@ static void spice_inputs_get_property(GObject    *object,
     switch (prop_id) {
     case PROP_KEY_MODIFIERS:
         g_value_set_int(value, c->modifiers);
-	break;
+        break;
     default:
-	G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
-	break;
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+        break;
     }
 }
 
@@ -195,8 +195,11 @@ static void spice_inputs_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
 void spice_inputs_motion(SpiceInputsChannel *channel, gint dx, gint dy,
                          gint button_state)
 {
-    spice_inputs_channel *c = channel->priv;
+    spice_inputs_channel *c;
 
+    g_return_if_fail(channel != NULL);
+
+    c = channel->priv;
     c->bs  = button_state;
     c->dx += dx;
     c->dy += dy;
@@ -209,8 +212,11 @@ void spice_inputs_motion(SpiceInputsChannel *channel, gint dx, gint dy,
 void spice_inputs_position(SpiceInputsChannel *channel, gint x, gint y,
                            gint display, gint button_state)
 {
-    spice_inputs_channel *c = channel->priv;
+    spice_inputs_channel *c;
 
+    g_return_if_fail(channel != NULL);
+
+    c = channel->priv;
     c->bs  = button_state;
     c->x   = x;
     c->y   = y;
@@ -224,10 +230,13 @@ void spice_inputs_position(SpiceInputsChannel *channel, gint x, gint y,
 void spice_inputs_button_press(SpiceInputsChannel *channel, gint button,
                                gint button_state)
 {
-    spice_inputs_channel *c = channel->priv;
+    spice_inputs_channel *c;
     SpiceMsgcMousePress press;
     spice_msg_out *msg;
 
+    g_return_if_fail(channel != NULL);
+
+    c = channel->priv;
     switch (button) {
     case SPICE_MOUSE_BUTTON_LEFT:
         button_state |= SPICE_MOUSE_BUTTON_MASK_LEFT;
@@ -256,10 +265,13 @@ void spice_inputs_button_press(SpiceInputsChannel *channel, gint button,
 void spice_inputs_button_release(SpiceInputsChannel *channel, gint button,
                                  gint button_state)
 {
-    spice_inputs_channel *c = channel->priv;
+    spice_inputs_channel *c;
     SpiceMsgcMouseRelease release;
     spice_msg_out *msg;
 
+    g_return_if_fail(channel != NULL);
+
+    c = channel->priv;
     switch (button) {
     case SPICE_MOUSE_BUTTON_LEFT:
         button_state &= ~SPICE_MOUSE_BUTTON_MASK_LEFT;
@@ -290,6 +302,8 @@ void spice_inputs_key_press(SpiceInputsChannel *channel, guint scancode)
     SpiceMsgcKeyDown down;
     spice_msg_out *msg;
 
+    g_return_if_fail(channel != NULL);
+
     SPICE_DEBUG("%s: scancode %d", __FUNCTION__, scancode);
     if (scancode < 0x100) {
         down.code = scancode;
@@ -309,6 +323,8 @@ void spice_inputs_key_release(SpiceInputsChannel *channel, guint scancode)
     SpiceMsgcKeyUp up;
     spice_msg_out *msg;
 
+    g_return_if_fail(channel != NULL);
+
     SPICE_DEBUG("%s: scancode %d", __FUNCTION__, scancode);
     if (scancode < 0x100) {
         up.code = scancode | 0x80;
@@ -319,6 +335,21 @@ void spice_inputs_key_release(SpiceInputsChannel *channel, guint scancode)
     msg = spice_msg_out_new(SPICE_CHANNEL(channel),
                             SPICE_MSGC_INPUTS_KEY_UP);
     msg->marshallers->msgc_inputs_key_up(msg->marshaller, &up);
+    spice_msg_out_send(msg);
+    spice_msg_out_unref(msg);
+}
+
+void spice_inputs_set_key_locks(SpiceInputsChannel *channel, guint locks)
+{
+    SpiceMsgcKeyModifiers modifiers;
+    spice_msg_out *msg;
+
+    g_return_if_fail(channel != NULL);
+
+    msg = spice_msg_out_new(SPICE_CHANNEL(channel),
+                            SPICE_MSGC_INPUTS_KEY_MODIFIERS);
+    modifiers.modifiers = locks;
+    msg->marshallers->msgc_inputs_key_modifiers(msg->marshaller, &modifiers);
     spice_msg_out_send(msg);
     spice_msg_out_unref(msg);
 }

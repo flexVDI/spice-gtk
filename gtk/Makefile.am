@@ -209,10 +209,11 @@ spice-marshal.c: spice-marshal.txt
 spice-marshal.h: spice-marshal.txt
 	$(AM_V_GEN)glib-genmarshal --header $< > $@ || (rm -f $@ && exit 1)
 
-spice-channel-enums.c: spice-channel.h
+spice-channel-enums.c: spice-channel.h channel-inputs.h
 	$(AM_V_GEN)glib-mkenums --fhead "#include <glib-object.h>\n" \
 			--fhead "#include \"spice-channel-enums.h\"\n\n" \
 			--fprod "\n#include \"spice-channel.h\"\n" \
+			--fprod "\n#include \"channel-inputs.h\"\n" \
 			--vhead "static const G@Type@Value _@enum_name@_values[] = {" \
 			--vprod "  { @VALUENAME@, \"@VALUENAME@\", \"@valuenick@\" }," \
 			--vtail "  { 0, NULL, NULL }\n};\n\n" \
@@ -221,9 +222,9 @@ spice-channel-enums.c: spice-channel.h
 			--vtail "  if (!type)\n" \
 			--vtail "    type = g_@type@_register_static (\"@EnumName@\", _@enum_name@_values);\n\n" \
 			--vtail "  return type;\n}\n\n" \
-		$< > $@
+		$^ > $@
 
-spice-channel-enums.h: spice-channel.h
+spice-channel-enums.h: spice-channel.h channel-inputs.h
 	$(AM_V_GEN)glib-mkenums --fhead "#ifndef SPICE_CHANNEL_ENUMS_H\n" \
 			--fhead "#define SPICE_CHANNEL_ENUMS_H\n\n" \
 			--fhead "G_BEGIN_DECLS\n\n" \
@@ -231,7 +232,7 @@ spice-channel-enums.h: spice-channel.h
 			--ftail "#endif /* SPICE_CHANNEL_ENUMS_H */\n" \
 			--eprod "#define SPICE_TYPE_@ENUMSHORT@ @enum_name@_get_type()\n" \
 			--eprod "GType @enum_name@_get_type (void);\n" \
-		$< >  $@
+		$^ >  $@
 
 spice-widget-enums.c: spice-widget.h
 	$(AM_V_GEN)glib-mkenums --fhead "#include <glib-object.h>\n" \

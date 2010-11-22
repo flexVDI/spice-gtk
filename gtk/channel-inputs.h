@@ -16,6 +16,12 @@ typedef struct _SpiceInputsChannel SpiceInputsChannel;
 typedef struct _SpiceInputsChannelClass SpiceInputsChannelClass;
 typedef struct spice_inputs_channel spice_inputs_channel;
 
+typedef enum {
+    SPICE_INPUTS_SCROLL_LOCK = (1 << 0),
+    SPICE_INPUTS_NUM_LOCK    = (1 << 1),
+    SPICE_INPUTS_CAPS_LOCK   = (1 << 2)
+} SpiceInputsLock;
+
 struct _SpiceInputsChannel {
     SpiceChannel parent;
     spice_inputs_channel *priv;
@@ -31,7 +37,7 @@ struct _SpiceInputsChannelClass {
     /* Do not add fields to this struct */
 };
 
-GType	        spice_inputs_channel_get_type(void);
+GType spice_inputs_channel_get_type(void);
 
 void spice_inputs_motion(SpiceInputsChannel *channel, gint dx, gint dy,
                          gint button_state);
@@ -43,6 +49,7 @@ void spice_inputs_button_release(SpiceInputsChannel *channel, gint button,
                                  gint button_state);
 void spice_inputs_key_press(SpiceInputsChannel *channel, guint keyval);
 void spice_inputs_key_release(SpiceInputsChannel *channel, guint keyval);
+void spice_inputs_set_key_locks(SpiceInputsChannel *channel, guint locks);
 
 G_END_DECLS
 

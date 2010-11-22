@@ -92,6 +92,17 @@
   )
 )
 
+(define-flags InputsLock
+  (in-module "Spice")
+  (c-name "SpiceInputsLock")
+  (gtype-id "SPICE_TYPE_INPUTS_LOCK")
+  (values
+    '("scroll-lock" "SPICE_INPUTS_SCROLL_LOCK")
+    '("num-lock" "SPICE_INPUTS_NUM_LOCK")
+    '("caps-lock" "SPICE_INPUTS_CAPS_LOCK")
+  )
+)
+
 
 ;; From spice-widget.h
 
@@ -317,6 +328,11 @@
 
 (define-function spice_channel_event_get_type
   (c-name "spice_channel_event_get_type")
+  (return-type "GType")
+)
+
+(define-function spice_inputs_lock_get_type
+  (c-name "spice_inputs_lock_get_type")
   (return-type "GType")
 )
 
