@@ -88,9 +88,12 @@ static void spice_channel_dispose(GObject *gobject)
     SpiceChannel *channel = SPICE_CHANNEL(gobject);
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
 
+    if (c->session)
+        spice_session_channel_destroy(c->session, channel);
+
     spice_channel_disconnect(channel, SPICE_CHANNEL_CLOSED);
+
     if (c->session) {
-         spice_session_channel_destroy(c->session, channel);
          g_object_unref(c->session);
          c->session = NULL;
     }

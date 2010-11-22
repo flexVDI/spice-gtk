@@ -732,6 +732,7 @@ static void release_keys(SpiceDisplay *display)
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
     uint32_t i, b;
 
+    SPICE_DEBUG("%s", __FUNCTION__);
     for (i = 0; i < SPICE_N_ELEMENTS(d->key_state); i++) {
         if (!d->key_state[i]) {
             continue;
@@ -1504,6 +1505,7 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
     }
 
     if (SPICE_IS_INPUTS_CHANNEL(channel)) {
+        release_keys(display);
         d->inputs = NULL;
         return;
     }
