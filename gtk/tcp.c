@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 /*
  *  TCP helper functions.
  *
