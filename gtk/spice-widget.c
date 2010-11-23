@@ -389,7 +389,6 @@ static void spice_sync_keyboard_lock_modifiers(SpiceDisplay *display)
     modifiers = get_keyboard_lock_modifiers(x_display);
     if (d->inputs)
         spice_inputs_set_key_locks(d->inputs, modifiers);
-    spice_set_keyboard_lock_modifiers(display, modifiers);
 }
 
 void spice_display_set_grab_keys(SpiceDisplay *display, VncGrabSequence *seq)
@@ -1585,6 +1584,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     if (SPICE_IS_INPUTS_CHANNEL(channel)) {
         d->inputs = SPICE_INPUTS_CHANNEL(channel);
         spice_channel_connect(channel);
+        spice_sync_keyboard_lock_modifiers(display);
         return;
     }
 

@@ -28,6 +28,7 @@ struct spice_inputs_channel {
     unsigned int                x, y, dpy;
     int                         motion_count;
     int                         modifiers;
+    guint32                     locks;
 };
 
 G_DEFINE_TYPE(SpiceInputsChannel, spice_inputs_channel, SPICE_TYPE_CHANNEL)
@@ -48,6 +49,7 @@ enum {
 static guint signals[SPICE_INPUTS_LAST_SIGNAL];
 
 static void spice_inputs_handle_msg(SpiceChannel *channel, spice_msg_in *msg);
+static void spice_inputs_channel_up(SpiceChannel *channel);
 
 /* ------------------------------------------------------------------ */
 
@@ -90,6 +92,7 @@ static void spice_inputs_channel_class_init(SpiceInputsChannelClass *klass)
     gobject_class->finalize     = spice_inputs_channel_finalize;
     gobject_class->get_property = spice_inputs_get_property;
     channel_class->handle_msg   = spice_inputs_handle_msg;
+    channel_class->channel_up   = spice_inputs_channel_up;
 
     g_object_class_install_property
         (gobject_class, PROP_KEY_MODIFIERS,
@@ -360,8 +363,17 @@ void spice_inputs_set_key_locks(SpiceInputsChannel *channel, guint locks)
 {
     SpiceMsgcKeyModifiers modifiers;
     spice_msg_out *msg;
+    spice_inputs_channel *ic;
+    spice_channel *c;
 
-    g_return_if_fail(channel != NULL);
+    g_return_if_fail(SPICE_IS_INPUTS_CHANNEL(channel));
+
+    ic = channel->priv;
+    c = SPICE_CHANNEL(channel)->priv;
+
+    ic->locks = locks;
+    if (c->state != SPICE_CHANNEL_STATE_READY)
+        return;
 
     msg = spice_msg_out_new(SPICE_CHANNEL(channel),
                             SPICE_MSGC_INPUTS_KEY_MODIFIERS);
@@ -369,4 +381,11 @@ void spice_inputs_set_key_locks(SpiceInputsChannel *channel, guint locks)
     msg->marshallers->msgc_inputs_key_modifiers(msg->marshaller, &modifiers);
     spice_msg_out_send(msg);
     spice_msg_out_unref(msg);
+}
+
+static void spice_inputs_channel_up(SpiceChannel *channel)
+{
+    spice_inputs_channel *c = SPICE_INPUTS_CHANNEL(channel)->priv;
+
+    spice_inputs_set_key_locks(SPICE_INPUTS_CHANNEL(channel), c->locks);
 }
