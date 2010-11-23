@@ -182,21 +182,6 @@
 
 
 
-;; From spice-audio.h
-
-(define-function spice_audio_new
-  (c-name "spice_audio_new")
-  (is-constructor-of "SpiceAudio")
-  (return-type "GObject*")
-  (parameters
-    '("SpiceSession*" "session")
-    '("GMainContext*" "context")
-    '("const-char*" "name")
-  )
-)
-
-
-
 ;; From vncgrabsequence.h
 
 (define-function vnc_grab_sequence_get_type
@@ -238,6 +223,21 @@
   (of-object "VncGrabSequence")
   (c-name "vnc_grab_sequence_as_string")
   (return-type "gchar*")
+)
+
+
+
+;; From spice-audio.h
+
+(define-function spice_audio_new
+  (c-name "spice_audio_new")
+  (is-constructor-of "SpiceAudio")
+  (return-type "GObject*")
+  (parameters
+    '("SpiceSession*" "session")
+    '("GMainContext*" "context")
+    '("const-char*" "name")
+  )
 )
 
 

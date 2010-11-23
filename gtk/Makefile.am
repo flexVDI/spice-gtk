@@ -50,7 +50,6 @@ libspice_client_gtk_la_LDFLAGS =	\
 
 libspice_client_gtk_la_LIBADD =		\
 	$(GTK2_LIBS)			\
-	$(PULSE_LIBS)			\
 	$(NULL)
 
 libspice_client_gtk_la_SOURCES =	\
@@ -62,17 +61,12 @@ libspice_client_gtk_la_SOURCES =	\
 	vncdisplaykeymap.h		\
 	vncgrabsequence.c		\
 	vncgrabsequence.h		\
-	spice-audio.c			\
-	spice-audio.h			\
-	spice-pulse.c			\
-	spice-pulse.h			\
 	$(NULL)
 
-libspice_client_gtkincludedir = $(includedir)/spice-client
+libspice_client_gtkincludedir = $(includedir)/spice-client-gtk
 libspice_client_gtkinclude_HEADERS =	\
 	spice-widget.h			\
 	spice-widget-enums.h		\
-	spice-audio.h			\
 	vncgrabsequence.h		\
 	$(NULL)
 
@@ -90,9 +84,12 @@ libspice_client_glib_la_LIBADD =	\
 	$(Z_LIBS)			\
 	$(PIXMAN_LIBS)			\
 	$(SSL_LIBS)			\
+	$(PULSE_LIBS)			\
 	$(NULL)
 
 libspice_client_glib_la_SOURCES =	\
+	spice-audio.c			\
+	spice-audio.h			\
 	spice-client.h			\
 	spice-common.h			\
 	spice-util.h			\
@@ -111,6 +108,8 @@ libspice_client_glib_la_SOURCES =	\
 	tcp.h				\
 	spice-marshal.c			\
 	spice-marshal.h			\
+	spice-pulse.c			\
+	spice-pulse.h			\
 	generated_demarshallers.c	\
 	generated_demarshallers1.c	\
 	generated_marshallers.c		\
@@ -159,8 +158,9 @@ libspice_client_glib_la_SOURCES =	\
 	$(COMMON_DIR)/region.h		\
 	$(NULL)
 
-libspice_client_glibincludedir = $(includedir)/spice-client
+libspice_client_glibincludedir = $(includedir)/spice-client-glib
 libspice_client_glibinclude_HEADERS =	\
+	spice-audio.h			\
 	spice-client.h			\
 	spice-types.h			\
 	spice-session.h			\
