@@ -62,6 +62,9 @@ struct spice_channel {
     spice_msg_in                *msg_in;
     int                         message_ack_window;
     int                         message_ack_count;
+
+    GArray                      *caps;
+    GArray                      *common_caps;
 };
 
 spice_msg_in *spice_msg_in_new(SpiceChannel *channel);

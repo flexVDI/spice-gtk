@@ -60,6 +60,8 @@ static void spice_channel_init(SpiceChannel *channel)
     c->serial = 1;
     c->socket = -1;
     strcpy(c->name, "?");
+    c->caps = g_array_new(FALSE, TRUE, sizeof(guint32));
+    c->common_caps = g_array_new(FALSE, TRUE, sizeof(guint32));
 }
 
 static void spice_channel_constructed(GObject *gobject)
@@ -98,6 +100,12 @@ static void spice_channel_dispose(GObject *gobject)
          c->session = NULL;
     }
 
+    if (c->caps)
+        g_array_free(c->caps, TRUE);
+
+    if (c->common_caps)
+        g_array_free(c->common_caps, TRUE);
+
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_channel_parent_class)->dispose)
         G_OBJECT_CLASS(spice_channel_parent_class)->dispose(gobject);
@@ -126,16 +134,16 @@ static void spice_channel_get_property(GObject    *gobject,
     switch (prop_id) {
     case PROP_SESSION:
         g_value_set_object(value, c->session);
-	break;
+        break;
     case PROP_CHANNEL_TYPE:
         g_value_set_int(value, c->channel_type);
-	break;
+        break;
     case PROP_CHANNEL_ID:
         g_value_set_int(value, c->channel_id);
-	break;
+        break;
     default:
-	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
-	break;
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
+        break;
     }
 }
 
@@ -545,7 +553,7 @@ static void spice_channel_send_link(SpiceChannel *channel)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
     uint8_t *buffer, *p;
-    int protocol;
+    int protocol, i;
 
     c->link_hdr.magic = SPICE_MAGIC;
     c->link_hdr.size = sizeof(c->link_msg);
@@ -574,11 +582,10 @@ static void spice_channel_send_link(SpiceChannel *channel)
     c->link_msg.channel_id    = c->channel_id;
     c->link_msg.caps_offset   = sizeof(c->link_msg);
 
-#if 0 /* TODO */
-    c->link_msg.num_common_caps = get_common_caps().size();
-    c->link_msg.num_channel_caps = get_caps().size();
-    c->link_hdr.size += (c->link_msg.num_common_caps + c->link_msg.num_channel_caps) * sizeof(uint32_t);
-#endif
+    c->link_msg.num_common_caps = c->common_caps->len;
+    c->link_msg.num_channel_caps = c->caps->len;
+    c->link_hdr.size += (c->link_msg.num_common_caps +
+                         c->link_msg.num_channel_caps) * sizeof(uint32_t);
 
     buffer = spice_malloc(sizeof(c->link_hdr) + c->link_hdr.size);
     p = buffer;
@@ -586,16 +593,14 @@ static void spice_channel_send_link(SpiceChannel *channel)
     memcpy(p, &c->link_hdr, sizeof(c->link_hdr)); p += sizeof(c->link_hdr);
     memcpy(p, &c->link_msg, sizeof(c->link_msg)); p += sizeof(c->link_msg);
 
-#if 0
-    for (i = 0; i < _common_caps.size(); i++) {
-        *(uint32_t *)p = _common_caps[i];
+    for (i = 0; i < c->common_caps->len; i++) {
+        *(uint32_t *)p = g_array_index(c->common_caps, uint32_t, i);
         p += sizeof(uint32_t);
     }
-    for (i = 0; i < _caps.size(); i++) {
-        *(uint32_t *)p = _caps[i];
+    for (i = 0; i < c->caps->len; i++) {
+        *(uint32_t *)p = g_array_index(c->caps, uint32_t, i);
         p += sizeof(uint32_t);
     }
-#endif
 
     spice_channel_send(channel, buffer, p - buffer);
 }
