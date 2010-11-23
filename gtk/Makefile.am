@@ -3,7 +3,11 @@ NULL =
 COMMON_DIR=$(SPICE_COMMON_SRCDIR)
 CLIENT_DIR=$(top_srcdir)/client
 
-EXTRA_DIST = spice-marshall.txt keymap-gen.pl keymaps.csv
+EXTRA_DIST =					\
+	spice-marshal.txt			\
+	keymap-gen.pl				\
+	keymaps.csv				\
+	decode-glz-tmpl.c
 
 bin_PROGRAMS = spicy snappy
 lib_LTLIBRARIES = \
@@ -96,8 +100,10 @@ libspice_client_glib_la_SOURCES =	\
 	\
 	spice-session.c			\
 	spice-session.h			\
+	spice-session-priv.h		\
 	spice-channel.c			\
 	spice-channel.h			\
+	spice-channel-cache.h		\
 	spice-channel-enums.h		\
 	spice-channel-enums.c		\
 	spice-channel-priv.h		\
@@ -115,6 +121,7 @@ libspice_client_glib_la_SOURCES =	\
 	channel-main.c			\
 	channel-display.h		\
 	channel-display.c		\
+	channel-display-priv.h		\
 	channel-display-mjpeg.c		\
 	channel-cursor.h		\
 	channel-cursor.c		\
@@ -324,7 +331,7 @@ spice-client-gtk-module.defs.c: spice-client-gtk.override spice-client-gtk.defs 
 			  spice-client-gtk.defs spice-client-gtk-manual.defs > $@
 
 CLEANFILES += spice-client-gtk.defs spice-client-gtk-module.defs.c
-EXTRA_DIST += spice-client-gtk.override spice-client-gtk-manual.defs
+EXTRA_DIST += spice-client-gtk.override spice-client-gtk-manual.defs spice-client-gtk.defs
 else
 EXTRA_DIST += spice-client-gtk.override spice-client-gtk-module.c spice-client-gtk-manual.defs
 endif
