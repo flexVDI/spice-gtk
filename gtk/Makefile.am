@@ -338,8 +338,8 @@ PREFIX_ARGS = --strip-prefix=Spice
 endif
 
 INTROSPECTION_GIRS =
-INTROSPECTION_SCANNER_ARGS = --add-include-path=$(srcdir) $(PREFIX_ARGS)
-INTROSPECTION_COMPILER_ARGS = --includedir=$(srcdir)
+INTROSPECTION_SCANNER_ARGS = --add-include-path=$(builddir) $(PREFIX_ARGS)
+INTROSPECTION_COMPILER_ARGS = --includedir=$(builddir)
 
 if HAVE_INTROSPECTION
 glib_introspection_files = $(libspice_client_glibinclude_HEADERS)
