@@ -1,0 +1,64 @@
+spice & gtk
+===========
+
+Porting spice client to gtk ...
+
+
+What you can find here
+----------------------
+
+libspice-client-glib
+   provides glib objects for spice protocol decoding and surface rendering.
+      * SpiceSession (see spice-session.h).
+      * SpiceChannel (see spice-channel.h).
+      * Various Spice<Type>Channel (see channel-<type>.h).
+
+libspice-client-pulse
+   provides glib object for sound support via pulseaudio.
+      * SpicePulse (see spice-pulse.h)
+
+libspice-client-gtk
+   provides gtk widget to show spice display and accept user input.
+      * SpiceDisplay (see spice-widget.h)
+
+spicy
+   gtk based spice client app.  Command line options are simliar
+   to the spicec ones.
+
+snappy
+   Command line tool, connects to spice server and writes out a
+   screen shot.
+
+
+current state
+-------------
+
+spicy app starts becoming usable.
+
+Library API is far from being stable.  Likewise the ABI of course.
+If you play with the libs make sure you rebuild everything after
+updating the library for the time being.
+
+Some features are missing:
+  - No sound recording support.
+  - No client migration support.
+  - No mm time handling.
+  - Most channel implementations are incomplete.
+  - Almost no documentation.
+  - Probably more ...
+
+
+Copyright 2009 Red Hat, Inc. and/or its affiliates.
+
+This program and libraries is free software; you can redistribute it
+and/or modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, see <http://www.gnu.org/licenses/>.

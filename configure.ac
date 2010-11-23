@@ -1,0 +1,362 @@
+AC_PREREQ([2.57])
+
+m4_define([SPICE_MAJOR], 0)
+m4_define([SPICE_MINOR], 0)
+m4_define([SPICE_MICRO], 1)
+
+AC_INIT([spice-gtk], [SPICE_MAJOR.SPICE_MINOR.SPICE_MICRO], [])
+
+AC_CONFIG_MACRO_DIR([m4])
+AM_CONFIG_HEADER([config.h])
+AC_CONFIG_AUX_DIR([build-aux])
+
+AM_INIT_AUTOMAKE([foreign dist-bzip2 -Wall -Werror])
+LT_INIT
+AM_MAINTAINER_MODE
+
+# Define default SPICE_COMMON_SRCDIR
+SPICE_COMMON_SRCDIR='$(top_srcdir)'/common
+
+AS_IF([test "$CFLAGS" = ""], [], [_cflags_is_set=yes])
+AC_PROG_CC
+AC_PROG_CC_C99
+if test x"$ac_cv_prog_cc_c99" = xno; then
+    AC_MSG_ERROR([C99 compiler is required.])
+fi
+
+AS_IF([test "$CXXFLAGS" = ""], [], [_cxxflags_is_set=yes])
+AC_PROG_CXX
+AC_PROG_INSTALL
+AC_CANONICAL_HOST
+AC_PROG_LIBTOOL
+AM_PROG_CC_C_O
+AC_C_BIGENDIAN
+AC_PATH_PROGS(PYTHON, python2 python)
+
+# Check for the CPU we are using
+#
+AC_MSG_CHECKING(for x86 or x86-64 platform)
+case $host_cpu in
+  i386|i486|i586|i686|i786|k6|k7|arm|armv7)
+	variant=32
+        ;;
+  x86_64)
+	variant=64
+	;;
+  *)
+	AC_MSG_RESULT(no)
+	echo Only x86 and x86-64 are supported
+	exit 1
+esac
+AC_MSG_RESULT($variant bit)
+AM_CONDITIONAL([X86_64], [test "$variant" = 64])
+
+AC_MSG_CHECKING([for native Win32])
+case "$host" in
+  *-*-mingw*)
+    os_win32=yes
+    ;;
+  *)
+    os_win32=no
+    ;;
+esac
+AC_MSG_RESULT([$os_win32])
+
+case $host in
+  *-*-linux*)
+    os_linux=yes
+    ;;
+esac
+
+dnl =========================================================================
+dnl Check OS target
+
+AC_MSG_CHECKING([for some Win32 platform])
+case "$host" in
+  *-*-mingw*|*-*-cygwin*)
+    platform_win32=yes
+    ;;
+  *)
+    platform_win32=no
+    ;;
+esac
+AC_MSG_RESULT([$platform_win32])
+if test "$platform_win32" = yes; then
+  red_target=windows
+else
+  red_target=x11
+fi
+AC_SUBST(red_target)
+
+AM_CONDITIONAL(OS_WIN32, test "$os_win32" = "yes")
+AM_CONDITIONAL(OS_UNIX, test "$os_win32" != "yes")
+AM_CONDITIONAL(OS_LINUX, test "$os_linux" = "yes")
+
+dnl =========================================================================
+dnl Chek optional features
+PKG_CHECK_MODULES(PROTOCOL, spice-protocol >= 0.6.0)
+AC_SUBST(PROTOCOL_CFLAGS)
+
+SPICE_REQUIRES=""
+
+PKG_CHECK_MODULES(PIXMAN, pixman-1 >= 0.17.7)
+AC_SUBST(PIXMAN_CFLAGS)
+AC_SUBST(PIXMAN_LIBS)
+SPICE_REQUIRES+=" pixman-1 >= 0.17.7"
+
+PKG_CHECK_MODULES(CELT051, celt051 >= 0.5.1.1)
+AC_SUBST(CELT051_CFLAGS)
+AC_SUBST(CELT051_LIBS)
+AC_SUBST(CELT051_LIBDIR)
+SPICE_REQUIRES+=" celt051 >= 0.5.1.1"
+
+PKG_CHECK_MODULES(ALSA, alsa)
+AC_SUBST(ALSA_CFLAGS)
+AC_SUBST(ALSA_LIBS)
+SPICE_REQUIRES+=" alsa"
+
+PKG_CHECK_MODULES(SSL, openssl)
+AC_SUBST(SSL_CFLAGS)
+AC_SUBST(SSL_LIBS)
+SPICE_REQUIRES+=" openssl"
+
+PKG_CHECK_MODULES(GTK2, gtk+-2.0)
+AC_SUBST(GTK2_CFLAGS)
+AC_SUBST(GTK2_LIBS)
+
+PKG_CHECK_MODULES(GLIB2, glib-2.0)
+AC_SUBST(GLIB2_CFLAGS)
+AC_SUBST(GLIB2_LIBS)
+
+PKG_CHECK_MODULES(GOBJECT2, gobject-2.0)
+AC_SUBST(GOBJECT2_CFLAGS)
+AC_SUBST(GOBJECT2_LIBS)
+
+PKG_CHECK_MODULES(PULSE, libpulse libpulse-mainloop-glib)
+AC_SUBST(PULSE_CFLAGS)
+AC_SUBST(PULSE_LIBS)
+
+# Add parameter for (partial) static linkage of spice client.
+# this is used to achive single binary package for all (?) distros.
+AC_ARG_ENABLE(static-linkage, 
+	[  --enable-static-linkage will generate spice client binary with static linkage to external libraries ],
+	[SPICEC_STATIC_LINKAGE_BSTATIC=["-Wl,-Bstatic"];
+	SPICEC_STATIC_LINKAGE_BDYNAMIC=["-Wl,-Bdynamic"]])
+
+
+AS_IF([test "$_cflags_is_set" = "yes"], [], [
+    CFLAGS="-g -O2"
+])
+
+
+AS_IF([test "$_cxxflags_is_set" = "yes"], [], [
+    CXXFLAGS="-g -O2"
+])
+
+AC_CHECK_LIB(jpeg, jpeg_destroy_decompress,
+    AC_MSG_CHECKING([for jpeglib.h])
+    AC_TRY_CPP(
+[#include <stdio.h>
+#undef PACKAGE
+#undef VERSION
+#undef HAVE_STDLIB_H
+#include <jpeglib.h>],
+        JPEG_LIBS='-ljpeg'
+        AC_MSG_RESULT($jpeg_ok),
+	AC_MSG_ERROR([jpeglib.h not found])),
+    AC_MSG_ERROR([libjpeg not found]))
+AC_SUBST(JPEG_LIBS)
+
+AC_CHECK_LIB(z, deflate, Z_LIBS='-lz', AC_MSG_ERROR([zlib not found]))
+AC_SUBST(Z_LIBS)
+
+GOBJECT_INTROSPECTION_CHECK([0.6.7])
+PKG_CHECK_MODULES([GOBJECT_INTROSPECTION],
+        [gobject-introspection-1.0 >= 0.9.4],
+        [has_symbol_prefix=yes], [:])
+AM_CONDITIONAL([G_IR_SCANNER_SYMBOL_PREFIX], [test "x$has_symbol_prefix" = "xyes"])
+
+AC_ARG_WITH(python,
+[  --with-python           build python bindings],
+[case "${withval}" in
+   yes|no) ;;
+   *)      AC_MSG_ERROR([bad value ${withval} for python option]) ;;
+ esac],[withval=yes])
+
+WITH_PYTHON=$withval
+if test "$WITH_PYTHON" = "yes"; then
+  PKG_CHECK_MODULES(PYGTK, pygtk-2.0 >= 2.0.0)
+  AC_SUBST(PYGTK_CFLAGS)
+  AC_SUBST(PYGTK_LIBS)
+
+  AM_PATH_PYTHON
+
+  AC_MSG_CHECKING([whether $PYTHON version >= 2.0])
+  HAVE_PYTHON_REQUIRED=no
+  AM_PYTHON_CHECK_VERSION([$PYTHON], [2.0],
+      [HAVE_PYTHON_REQUIRED="yes"],
+      [HAVE_PYTHON_REQUIRED="no"])
+
+  AC_MSG_RESULT($HAVE_PYTHON_REQUIRED)
+
+  if test "x$HAVE_PYTHON_REQUIRED" != "xyes"
+  then
+    AC_MSG_ERROR("No suitable python found")
+  fi
+
+  AM_CHECK_PYTHON_HEADERS(have_python_headers=yes,have_python_headers=no)
+
+  if test "x$have_python_headers" != "xyes"
+  then
+    AC_MSG_ERROR("No python development headers found")
+  fi
+fi
+
+AM_CONDITIONAL(WITH_PYTHON, [test "$WITH_PYTHON" = "yes"])
+
+dnl ===========================================================================
+dnl check compiler flags
+
+AC_DEFUN([SPICE_CC_TRY_FLAG], [
+  AC_MSG_CHECKING([whether $CC supports $1])
+
+  spice_save_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS $1"
+
+  AC_COMPILE_IFELSE([ ], [spice_cc_flag=yes], [spice_cc_flag=no])
+  CFLAGS="$spice_save_CFLAGS"
+
+  if test "x$spice_cc_flag" = "xyes"; then
+    ifelse([$2], , :, [$2])
+  else
+    ifelse([$3], , :, [$3])
+  fi
+  AC_MSG_RESULT([$spice_cc_flag])
+])
+
+
+dnl Use lots of warning flags with with gcc and compatible compilers
+
+dnl Note: if you change the following variable, the cache is automatically
+dnl skipped and all flags rechecked.  So there's no need to do anything
+dnl else.  If for any reason you need to force a recheck, just change
+dnl MAYBE_WARN in an ignorable way (like adding whitespace)
+
+dnl MAYBE_WARN="-Wall -Wno-sign-compare -Werror -Wno-deprecated-declarations"
+
+MAYBE_WARN="-Wall -Wno-sign-compare -Wno-deprecated-declarations"
+
+AC_ARG_ENABLE(werror,
+AC_HELP_STRING([--enable-werror], [Use -Werror (if supported)]),
+set_werror="$enableval",[
+if test -f $srcdir/GITVERSION; then
+	is_git_version=true
+	set_werror=yes
+else
+	set_werror=no
+fi
+])
+
+
+# invalidate cached value if MAYBE_WARN has changed
+if test "x$spice_cv_warn_maybe" != "x$MAYBE_WARN"; then
+	unset spice_cv_warn_cflags
+fi
+AC_CACHE_CHECK([for supported warning flags], spice_cv_warn_cflags, [
+	echo
+	WARN_CFLAGS=""
+
+	# Some warning options are not supported by all versions of
+	# gcc, so test all desired options against the current
+	# compiler.
+	#
+	# Note that there are some order dependencies
+	# here. Specifically, an option that disables a warning will
+	# have no net effect if a later option then enables that
+	# warnings, (perhaps implicitly). So we put some grouped
+	# options (-Wall and -Wextra) up front and the -Wno options
+	# last.
+
+	for W in $MAYBE_WARN; do
+		SPICE_CC_TRY_FLAG([$W], [WARN_CFLAGS="$WARN_CFLAGS $W"])
+	done
+	if test "$set_werror" != "no"; then
+		SPICE_CC_TRY_FLAG(["-Werror"], [WARN_CFLAGS="$WARN_CFLAGS -Werror"])
+	fi
+
+	spice_cv_warn_cflags=$WARN_CFLAGS
+	spice_cv_warn_maybe=$MAYBE_WARN
+
+	AC_MSG_CHECKING([which warning flags were supported])])
+WARN_CFLAGS="$spice_cv_warn_cflags"
+SPICE_CFLAGS="$SPICE_CFLAGS $WARN_CFLAGS"
+
+# We only wish to enable attribute(warn_unused_result) if we can prevent
+# gcc from generating thousands of warnings about the misapplication of the
+# attribute to void functions and variables.
+AC_MSG_CHECKING([how to enable unused result warnings])
+warn_unused_result=""
+if echo $WARN_CFLAGS | grep -e '-Wno-attributes' >/dev/null; then
+    AC_TRY_COMPILE([__attribute__((__warn_unused_result__))
+	int f (int i) { return i; }], [],
+	[warn_unused_result="__attribute__((__warn_unused_result__))"])
+fi
+AC_DEFINE_UNQUOTED([WARN_UNUSED_RESULT], [$warn_unused_result],
+	  [Define to the value your compiler uses to support the warn-unused-result attribute])
+AC_MSG_RESULT([$warn_unused_result])
+
+AC_SUBST(WARN_CFLAGS)
+AC_SUBST(CFLAGS_CFLAGS)
+
+dnl =========================================================================
+dnl -fvisibility stuff
+
+have_gcc4=no
+AC_MSG_CHECKING(for -fvisibility)
+AC_COMPILE_IFELSE([
+#if defined(__GNUC__) && (__GNUC__ >= 4)
+#else
+error Need GCC 4.0 for visibility
+#endif
+int main () { return 0; }
+], have_gcc4=yes)
+
+if test "x$have_gcc4" = "xyes"; then
+   VISIBILITY_HIDDEN_CFLAGS="-fvisibility=hidden"
+fi
+AC_MSG_RESULT($have_gcc4)
+AC_SUBST(VISIBILITY_HIDDEN_CFLAGS)
+
+AC_SUBST(SPICE_COMMON_SRCDIR)
+AC_SUBST(SPICE_REQUIRES)
+
+AC_SUBST([SPICEC_STATIC_LINKAGE_BSTATIC])
+AC_SUBST([SPICEC_STATIC_LINKAGE_BDYNAMIC])
+
+m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
+
+AC_OUTPUT([
+Makefile
+spice-client-glib.pc
+spice-client-gtk.pc
+common/Makefile
+common/win/Makefile
+common/win/my_getopt-1.5/Makefile
+python_modules/Makefile
+gtk/Makefile
+])
+
+dnl ==========================================================================
+echo "
+
+        Spice-Gtk $VERSION
+        ==============
+
+        prefix:                   ${prefix}
+        c compiler:               ${CC}
+        c++ compiler:	          ${CXX}
+
+        Red target:               ${red_target}
+
+        Now type 'make' to build $PACKAGE
+"
