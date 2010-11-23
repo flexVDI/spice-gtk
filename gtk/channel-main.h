@@ -51,11 +51,11 @@ struct _SpiceMainChannelClass {
 
 GType	        spice_main_channel_get_type(void);
 
-void spice_main_set_display(SpiceChannel *channel, int id,
+void spice_main_set_display(SpiceMainChannel *channel, int id,
                             int x, int y, int width, int height);
 
-void spice_main_clipboard_grab(SpiceChannel *channel, int *types, int ntypes);
-void spice_main_clipboard_release(SpiceChannel *channel);
+void spice_main_clipboard_grab(SpiceMainChannel *channel, int *types, int ntypes);
+void spice_main_clipboard_release(SpiceMainChannel *channel);
 
 G_END_DECLS
 

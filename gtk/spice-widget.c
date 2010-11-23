@@ -64,7 +64,7 @@ struct spice_display {
     bool                    clip_grabbed;
 
     SpiceSession            *session;
-    SpiceChannel            *main;
+    SpiceMainChannel        *main;
     SpiceChannel            *display;
     SpiceCursorChannel      *cursor;
     SpiceInputsChannel      *inputs;
@@ -1542,7 +1542,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 
     g_object_get(channel, "channel-id", &id, NULL);
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
-        d->main = channel;
+        d->main = SPICE_MAIN_CHANNEL(channel);
         g_signal_connect(channel, "main-mouse-update",
                          G_CALLBACK(mouse_update), display);
         mouse_update(channel, display);

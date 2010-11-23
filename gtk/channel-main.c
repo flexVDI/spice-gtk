@@ -202,13 +202,13 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
 
 /* ------------------------------------------------------------------ */
 
-static void agent_msg_send(SpiceChannel *channel, int type, int size, void *data)
+static void agent_msg_send(SpiceMainChannel *channel, int type, int size, void *data)
 {
     spice_msg_out *out;
     VDAgentMessage *msg;
     void *payload;
 
-    out = spice_msg_out_new(channel, SPICE_MSGC_MAIN_AGENT_DATA);
+    out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_AGENT_DATA);
     msg = (VDAgentMessage*)
         spice_marshaller_reserve_space(out->marshaller, sizeof(VDAgentMessage));
     payload = (VDAgentMonitorsConfig*)
@@ -224,9 +224,9 @@ static void agent_msg_send(SpiceChannel *channel, int type, int size, void *data
     spice_msg_out_unref(out);
 }
 
-static void agent_monitors_config(SpiceChannel *channel)
+static void agent_monitors_config(SpiceMainChannel *channel)
 {
-    spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
+    spice_main_channel *c = channel->priv;
     VDAgentMonitorsConfig *mon;
     int i, monitors = 1;
     size_t size;
@@ -260,9 +260,9 @@ static void agent_monitors_config(SpiceChannel *channel)
     free(mon);
 }
 
-static void agent_announce_caps(SpiceChannel *channel)
+static void agent_announce_caps(SpiceMainChannel *channel)
 {
-    spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
+    spice_main_channel *c = channel->priv;
     VDAgentAnnounceCapabilities *caps;
     size_t size;
 
@@ -281,9 +281,9 @@ static void agent_announce_caps(SpiceChannel *channel)
     free(caps);
 }
 
-static void agent_clipboard_grab(SpiceChannel *channel, int *types, int ntypes)
+static void agent_clipboard_grab(SpiceMainChannel *channel, int *types, int ntypes)
 {
-    spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
+    spice_main_channel *c = channel->priv;
     VDAgentClipboardGrab *grab;
     size_t size;
     int i;
@@ -301,9 +301,9 @@ static void agent_clipboard_grab(SpiceChannel *channel, int *types, int ntypes)
     free(grab);
 }
 
-static void agent_start(SpiceChannel *channel)
+static void agent_start(SpiceMainChannel *channel)
 {
-    spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
+    spice_main_channel *c = channel->priv;
     SpiceMsgcMainAgentStart agent_start = {
         .num_tokens = ~0,
     };
@@ -313,7 +313,7 @@ static void agent_start(SpiceChannel *channel)
     c->agent_caps_received = false;
     g_signal_emit(channel, signals[SPICE_MAIN_AGENT_UPDATE], 0);
 
-    out = spice_msg_out_new(channel, SPICE_MSGC_MAIN_AGENT_START);
+    out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_AGENT_START);
     out->marshallers->msgc_main_agent_start(out->marshaller, &agent_start);
     spice_msg_out_send(out);
     spice_msg_out_unref(out);
@@ -322,7 +322,7 @@ static void agent_start(SpiceChannel *channel)
     agent_monitors_config(channel);
 }
 
-static void agent_stopped(SpiceChannel *channel)
+static void agent_stopped(SpiceMainChannel *channel)
 {
     spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
 
@@ -331,9 +331,9 @@ static void agent_stopped(SpiceChannel *channel)
     g_signal_emit(channel, signals[SPICE_MAIN_AGENT_UPDATE], 0);
 }
 
-static void set_mouse_mode(SpiceChannel *channel, uint32_t supported, uint32_t current)
+static void set_mouse_mode(SpiceMainChannel *channel, uint32_t supported, uint32_t current)
 {
-    spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
+    spice_main_channel *c = channel->priv;
 
     if (c->mouse_mode != current) {
         c->mouse_mode = current;
@@ -346,7 +346,7 @@ static void set_mouse_mode(SpiceChannel *channel, uint32_t supported, uint32_t c
             .mode = SPICE_MOUSE_MODE_CLIENT,
         };
         spice_msg_out *out;
-        out = spice_msg_out_new(channel, SPICE_MSGC_MAIN_MOUSE_MODE_REQUEST);
+        out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_MOUSE_MODE_REQUEST);
         out->marshallers->msgc_main_mouse_mode_request(out->marshaller, &req);
         spice_msg_out_send(out);
         spice_msg_out_unref(out);
@@ -363,15 +363,16 @@ static void main_handle_init(SpiceChannel *channel, spice_msg_in *in)
     g_object_get(channel, "spice-session", &session, NULL);
     spice_session_set_connection_id(session, init->session_id);
 
-    out = spice_msg_out_new(channel, SPICE_MSGC_MAIN_ATTACH_CHANNELS);
+    out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_ATTACH_CHANNELS);
     spice_msg_out_send(out);
     spice_msg_out_unref(out);
 
-    set_mouse_mode(channel, init->supported_mouse_modes, init->current_mouse_mode);
+    set_mouse_mode(SPICE_MAIN_CHANNEL(channel), init->supported_mouse_modes,
+                   init->current_mouse_mode);
 
     c->agent_tokens = init->agent_tokens;
     if (init->agent_connected) {
-        agent_start(channel);
+        agent_start(SPICE_MAIN_CHANNEL(channel));
     }
 
 #if 0
@@ -404,17 +405,17 @@ static void main_handle_channels_list(SpiceChannel *channel, spice_msg_in *in)
 static void main_handle_mouse_mode(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgMainMouseMode *msg = spice_msg_in_parsed(in);
-    set_mouse_mode(channel, msg->supported_modes, msg->current_mode);
+    set_mouse_mode(SPICE_MAIN_CHANNEL(channel), msg->supported_modes, msg->current_mode);
 }
 
 static void main_handle_agent_connected(SpiceChannel *channel, spice_msg_in *in)
 {
-    agent_start(channel);
+    agent_start(SPICE_MAIN_CHANNEL(channel));
 }
 
 static void main_handle_agent_disconnected(SpiceChannel *channel, spice_msg_in *in)
 {
-    agent_stopped(channel);
+    agent_stopped(SPICE_MAIN_CHANNEL(channel));
 }
 
 static void main_handle_agent_data(SpiceChannel *channel, spice_msg_in *in)
@@ -462,7 +463,7 @@ complete:
         c->agent_caps_received = true;
         g_signal_emit(channel, signals[SPICE_MAIN_AGENT_UPDATE], 0);
         if (caps->request)
-            agent_announce_caps(channel);
+            agent_announce_caps(SPICE_MAIN_CHANNEL(channel));
     }
     case VD_AGENT_REPLY:
     {
@@ -512,18 +513,20 @@ static gboolean timer_set_display(gpointer data)
     spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
 
     c->timer_id = 0;
-    agent_monitors_config(channel);
+    agent_monitors_config(SPICE_MAIN_CHANNEL(channel));
     return false;
 }
 
-void spice_main_set_display(SpiceChannel *channel, int id,
+void spice_main_set_display(SpiceMainChannel *channel, int id,
                             int x, int y, int width, int height)
 {
-    spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
+    spice_main_channel *c;
 
-    if (id >= SPICE_N_ELEMENTS(c->display)) {
-        return;
-    }
+    g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
+
+    c = SPICE_MAIN_CHANNEL(channel)->priv;
+
+    g_return_if_fail(id < SPICE_N_ELEMENTS(c->display));
 
     c->display[id].x      = x;
     c->display[id].y      = y;
@@ -536,12 +539,16 @@ void spice_main_set_display(SpiceChannel *channel, int id,
     c->timer_id = g_timeout_add_seconds(1, timer_set_display, channel);
 }
 
-void spice_main_clipboard_grab(SpiceChannel *channel, int *types, int ntypes)
+void spice_main_clipboard_grab(SpiceMainChannel *channel, int *types, int ntypes)
 {
+    g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
+
     agent_clipboard_grab(channel, types, ntypes);
 }
 
-void spice_main_clipboard_release(SpiceChannel *channel)
+void spice_main_clipboard_release(SpiceMainChannel *channel)
 {
+    g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
+
     g_warning("%s: TODO", __FUNCTION__);
 }
