@@ -9,5 +9,4 @@ Version: @VERSION@
 
 Requires: @SPICE_REQUIRES@ spice-protocol
 Libs: -L${libdir} -lspice-client-glib
-Libs.private: @SPICE_NONPKGCONFIG_LIBS@
-Cflags: -I${includedir}/spice-client
+Cflags: -I${includedir}/spice-client-glib

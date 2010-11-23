@@ -20,7 +20,7 @@ KEYMAPS = \
 	vncdisplaykeymap_osx2xtkbd.c \
 	vncdisplaykeymap_win322xtkbd.c
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	-DG_LOG_DOMAIN=\"GSpice\"       \
 	-DSW_CANVAS_CACHE		\
 	\
@@ -310,13 +310,13 @@ SpiceClientGtk_la_CFLAGS = @GTK2_CFLAGS@ @PYTHON_INCLUDES@ @PYGTK_CFLAGS@
 SpiceClientGtk_la_LDFLAGS = -module -avoid-version -fPIC
 SpiceClientGtk_la_SOURCES = spice-client-gtk-module.c spice-client-gtk-module.defs.c
 
-CODEGENDIR = $(shell pkg-config --variable=codegendir pygtk-2.0)
-DEFSDIR = $(shell pkg-config --variable=defsdir pygtk-2.0)
+CODEGENDIR = `pkg-config --variable=codegendir pygtk-2.0`
+DEFSDIR = `pkg-config --variable=defsdir pygtk-2.0`
 
 spice-client-gtk.defs: $(libspice_client_gtkinclude_HEADERS) $(libspice_client_glibinclude_HEADERS)
 	$(AM_V_GEN)$(PYTHON) $(CODEGENDIR)/h2def.py -f spice-client-gtk-manual.defs $(libspice_client_gtkinclude_HEADERS) $(libspice_client_glibinclude_HEADERS) > $@
 
-spice-client-gtk-module.defs.c: spice-client-gtk.override spice-client-gtk.defs
+spice-client-gtk-module.defs.c: spice-client-gtk.override spice-client-gtk.defs spice-client-gtk-manual.defs
 	$(AM_V_GEN)pygobject-codegen-2.0 --prefix spice \
 			  --register $(DEFSDIR)/gdk-types.defs \
 			  --register $(DEFSDIR)/gtk-types.defs \
@@ -347,14 +347,14 @@ gtk_introspection_files = $(libspice_client_gtkinclude_HEADERS)
 
 SpiceClientGLib-1.0.gir: libspice-client-glib.la
 SpiceClientGLib_1_0_gir_INCLUDES = GObject-2.0
-SpiceClientGLib_1_0_gir_CFLAGS = $(INCLUDES)
+SpiceClientGLib_1_0_gir_CFLAGS = $(AM_CPPFLAGS)
 SpiceClientGLib_1_0_gir_LIBS = libspice-client-glib.la
 SpiceClientGLib_1_0_gir_FILES = $(glib_introspection_files)
 INTROSPECTION_GIRS += SpiceClientGLib-1.0.gir
 
 SpiceClientGtk-1.0.gir: libspice-client-gtk.la
 SpiceClientGtk_1_0_gir_INCLUDES = GObject-2.0 Gtk-2.0 SpiceClientGLib-1.0
-SpiceClientGtk_1_0_gir_CFLAGS = $(INCLUDES)
+SpiceClientGtk_1_0_gir_CFLAGS = $(AM_CPPFLAGS)
 SpiceClientGtk_1_0_gir_LIBS = libspice-client-gtk.la libspice-client-glib.la
 SpiceClientGtk_1_0_gir_FILES = $(gtk_introspection_files)
 INTROSPECTION_GIRS += SpiceClientGtk-1.0.gir
