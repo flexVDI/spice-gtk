@@ -218,6 +218,7 @@ void spice_inputs_motion(SpiceInputsChannel *channel, gint dx, gint dy,
     spice_inputs_channel *c;
 
     g_return_if_fail(channel != NULL);
+    g_return_if_fail(SPICE_CHANNEL(channel)->priv->state == SPICE_CHANNEL_STATE_READY);
 
     c = channel->priv;
     c->bs  = button_state;
@@ -235,6 +236,9 @@ void spice_inputs_position(SpiceInputsChannel *channel, gint x, gint y,
     spice_inputs_channel *c;
 
     g_return_if_fail(channel != NULL);
+
+    if (SPICE_CHANNEL(channel)->priv->state != SPICE_CHANNEL_STATE_READY)
+        return;
 
     c = channel->priv;
     c->bs  = button_state;
@@ -255,6 +259,9 @@ void spice_inputs_button_press(SpiceInputsChannel *channel, gint button,
     spice_msg_out *msg;
 
     g_return_if_fail(channel != NULL);
+
+    if (SPICE_CHANNEL(channel)->priv->state != SPICE_CHANNEL_STATE_READY)
+        return;
 
     c = channel->priv;
     switch (button) {
@@ -291,6 +298,9 @@ void spice_inputs_button_release(SpiceInputsChannel *channel, gint button,
 
     g_return_if_fail(channel != NULL);
 
+    if (SPICE_CHANNEL(channel)->priv->state != SPICE_CHANNEL_STATE_READY)
+        return;
+
     c = channel->priv;
     switch (button) {
     case SPICE_MOUSE_BUTTON_LEFT:
@@ -323,6 +333,7 @@ void spice_inputs_key_press(SpiceInputsChannel *channel, guint scancode)
     spice_msg_out *msg;
 
     g_return_if_fail(channel != NULL);
+    g_return_if_fail(SPICE_CHANNEL(channel)->priv->state == SPICE_CHANNEL_STATE_READY);
 
     SPICE_DEBUG("%s: scancode %d", __FUNCTION__, scancode);
     if (scancode < 0x100) {
@@ -344,6 +355,7 @@ void spice_inputs_key_release(SpiceInputsChannel *channel, guint scancode)
     spice_msg_out *msg;
 
     g_return_if_fail(channel != NULL);
+    g_return_if_fail(SPICE_CHANNEL(channel)->priv->state == SPICE_CHANNEL_STATE_READY);
 
     SPICE_DEBUG("%s: scancode %d", __FUNCTION__, scancode);
     if (scancode < 0x100) {
