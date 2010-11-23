@@ -58,11 +58,9 @@ static const char *agent_msg_types[] = {
     [ VD_AGENT_CLIPBOARD               ] = "clipboard",
     [ VD_AGENT_DISPLAY_CONFIG          ] = "display config",
     [ VD_AGENT_ANNOUNCE_CAPABILITIES   ] = "announce caps",
-#if 0
     [ VD_AGENT_CLIPBOARD_GRAB          ] = "clipboard grab",
     [ VD_AGENT_CLIPBOARD_REQUEST       ] = "clipboard request",
     [ VD_AGENT_CLIPBOARD_RELEASE       ] = "clipboard release",
-#endif
 };
 
 static const char *agent_caps[] = {
@@ -71,9 +69,7 @@ static const char *agent_caps[] = {
     [ VD_AGENT_CAP_REPLY               ] = "reply",
     [ VD_AGENT_CAP_CLIPBOARD           ] = "clipboard (old)",
     [ VD_AGENT_CAP_DISPLAY_CONFIG      ] = "display config",
-#if 0
     [ VD_AGENT_CAP_CLIPBOARD_BY_DEMAND ] = "clipboard",
-#endif
 };
 #define NAME(_a, _i) ((_i) < SPICE_N_ELEMENTS(_a) ? (_a[(_i)] ?: "?") : "?")
 
