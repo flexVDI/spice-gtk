@@ -413,6 +413,9 @@ static int spice_channel_send(SpiceChannel *channel, void *buf, int len)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
     int rc;
+    int flags;
+
+    /* TODO: make the IO code async, either with cb or coroutine */
 
     if (c->tls) {
         rc = SSL_write(c->ssl, buf, len);
@@ -423,6 +426,7 @@ static int spice_channel_send(SpiceChannel *channel, void *buf, int len)
     } else {
         rc = send(c->socket, buf, len, 0);
     }
+
     return rc;
 }
 
