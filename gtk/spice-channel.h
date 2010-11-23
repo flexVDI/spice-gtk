@@ -5,6 +5,7 @@ G_BEGIN_DECLS
 
 #include "spice-types.h"
 #include "spice-channel-enums.h"
+#include "spice-util.h"
 
 #define SPICE_TYPE_CHANNEL            (spice_channel_get_type ())
 #define SPICE_CHANNEL(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), SPICE_TYPE_CHANNEL, SpiceChannel))
@@ -46,13 +47,11 @@ struct _SpiceChannelClass
     /* signals */
     void (*spice_channel_event)(SpiceChannel *channel, SpiceChannelEvent event);
 
-#if 0
     /*
      * If adding fields to this struct, remove corresponding
      * amount of padding to avoid changing overall struct size
      */
-    gpointer _spice_reserved[42];
-#endif
+    gchar _spice_reserved[SPICE_RESERVED_PADDING];
 };
 
 GType spice_channel_get_type(void) G_GNUC_CONST;

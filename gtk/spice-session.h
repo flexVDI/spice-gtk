@@ -3,6 +3,7 @@
 
 #include <glib-object.h>
 #include "spice-types.h"
+#include "spice-util.h"
 
 G_BEGIN_DECLS
 
@@ -28,13 +29,11 @@ struct _SpiceSessionClass
     void (*spice_session_channel_new)(SpiceSession *session, SpiceChannel *channel);
     void (*spice_session_channel_destroy)(SpiceSession *session, SpiceChannel *channel);
 
-#if 0
     /*
      * If adding fields to this struct, remove corresponding
      * amount of padding to avoid changing overall struct size
      */
-    gpointer _spice_reserved[42];
-#endif
+    gchar _spice_reserved[SPICE_RESERVED_PADDING];
 };
 
 GType spice_session_get_type(void) G_GNUC_CONST;

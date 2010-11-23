@@ -6,6 +6,7 @@
 #include <gtk/gtk.h>
 #include "vncgrabsequence.h"
 #include "spice-widget-enums.h"
+#include "spice-util.h"
 
 G_BEGIN_DECLS
 
@@ -34,7 +35,11 @@ struct _SpiceDisplayClass {
     void (*spice_display_mouse_grab)(SpiceChannel *channel, gint grabbed);
     void (*spice_display_keyboard_grab)(SpiceChannel *channel, gint grabbed);
 
-    /* Do not add fields to this struct */
+    /*
+     * If adding fields to this struct, remove corresponding
+     * amount of padding to avoid changing overall struct size
+     */
+    gchar _spice_reserved[SPICE_RESERVED_PADDING];
 };
 
 typedef enum

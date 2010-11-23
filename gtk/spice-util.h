@@ -15,6 +15,8 @@ const gchar *spice_util_get_version_string(void);
             g_debug(__FILE__ " " fmt, ## __VA_ARGS__);          \
     } while (0)
 
+#define SPICE_RESERVED_PADDING 44
+
 G_END_DECLS
 
 #endif /* SPICE_UTIL_H */
