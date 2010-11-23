@@ -1,5 +1,12 @@
 ;; -*- scheme -*-
 ; object definitions ...
+(define-object Audio
+  (in-module "Spice")
+  (parent "GObject")
+  (c-name "SpiceAudio")
+  (gtype-id "SPICE_TYPE_AUDIO")
+)
+
 (define-object Channel
   (in-module "Spice")
   (parent "GObject")
@@ -229,10 +236,15 @@
 
 ;; From spice-audio.h
 
+(define-function spice_audio_get_type
+  (c-name "spice_audio_get_type")
+  (return-type "GType")
+)
+
 (define-function spice_audio_new
   (c-name "spice_audio_new")
   (is-constructor-of "SpiceAudio")
-  (return-type "GObject*")
+  (return-type "SpiceAudio*")
   (parameters
     '("SpiceSession*" "session")
     '("GMainContext*" "context")

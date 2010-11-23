@@ -51,7 +51,7 @@ struct spice_window {
 struct spice_connection {
     SpiceSession     *session;
     spice_window     *wins[4];
-    GObject          *audio;
+    SpiceAudio       *audio;
     char             *mouse_state;
     char             *agent_state;
     int              channels;

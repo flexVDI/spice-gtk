@@ -25,16 +25,28 @@
 #include "spice-audio.h"
 #include "spice-pulse.h"
 
-GObject *spice_audio_new(SpiceSession *session, GMainContext *context,
+G_DEFINE_ABSTRACT_TYPE(SpiceAudio, spice_audio, G_TYPE_OBJECT)
+
+
+static void spice_audio_class_init(SpiceAudioClass *klass G_GNUC_UNUSED)
+{
+}
+
+static void spice_audio_init(SpiceAudio *self G_GNUC_UNUSED)
+{
+}
+
+
+SpiceAudio *spice_audio_new(SpiceSession *session, GMainContext *context,
                          const char *name)
 {
-    GObject *audio = NULL;
+    SpiceAudio *audio = NULL;
 
     if (context == NULL)
       context = g_main_context_default();
     if (name == NULL)
       name = "spice";
 
-    audio = G_OBJECT(spice_pulse_new(session, context, name));
+    audio = SPICE_AUDIO(spice_pulse_new(session, context, name));
     return audio;
 }

@@ -19,6 +19,7 @@
 #define __SPICE_CLIENT_PULSE_H__
 
 #include "spice-client.h"
+#include "spice-audio.h"
 
 G_BEGIN_DECLS
 
@@ -35,13 +36,13 @@ typedef struct _SpicePulseClass SpicePulseClass;
 typedef struct spice_pulse spice_pulse;
 
 struct _SpicePulse {
-    GObject parent;
+    SpiceAudio parent;
     spice_pulse *priv;
     /* Do not add fields to this struct */
 };
 
 struct _SpicePulseClass {
-    GObjectClass parent_class;
+    SpiceAudioClass parent_class;
     /* Do not add fields to this struct */
 };
 

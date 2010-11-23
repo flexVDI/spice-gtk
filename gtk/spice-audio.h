@@ -19,11 +19,43 @@
 #define __SPICE_CLIENT_AUDIO_H__
 
 #include <glib-object.h>
+#include "spice-util.h"
 #include "spice-session.h"
 
 G_BEGIN_DECLS
 
-GObject *spice_audio_new(SpiceSession *session,
+#define SPICE_TYPE_AUDIO spice_audio_get_type()
+
+#define SPICE_AUDIO(obj)					\
+    (G_TYPE_CHECK_INSTANCE_CAST ((obj), SPICE_TYPE_AUDIO, SpiceAudio))
+
+#define SPICE_AUDIO_CLASS(klass)				\
+    (G_TYPE_CHECK_CLASS_CAST ((klass), SPICE_TYPE_AUDIO, SpiceAudioClass))
+
+#define SPICE_IS_AUDIO(obj)                                     \
+    (G_TYPE_CHECK_INSTANCE_TYPE ((obj), SPICE_TYPE_AUDIO))
+
+#define SPICE_IS_AUDIO_CLASS(klass)                             \
+    (G_TYPE_CHECK_CLASS_TYPE ((klass), SPICE_TYPE_AUDIO))
+
+#define SPICE_AUDIO_GET_CLASS(obj)				\
+    (G_TYPE_INSTANCE_GET_CLASS ((obj), SPICE_TYPE_AUDIO, SpiceAudioClass))
+
+typedef struct _SpiceAudio SpiceAudio;
+typedef struct _SpiceAudioClass SpiceAudioClass;
+
+struct _SpiceAudio {
+    GObject parent;
+};
+
+struct _SpiceAudioClass {
+    GObjectClass parent_class;
+    gchar _spice_reserved[SPICE_RESERVED_PADDING];
+};
+
+GType spice_audio_get_type(void);
+
+SpiceAudio *spice_audio_new(SpiceSession *session,
                          GMainContext *context,
                          const char *name);
 

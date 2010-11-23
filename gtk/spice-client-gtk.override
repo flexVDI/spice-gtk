@@ -4,6 +4,7 @@ headers
 #include "pygobject.h"
 #include "spice-common.h"
 #include "spice-widget.h"
+#include "spice-audio.h"
 %%
 modulename spice_client_gtk
 %%
@@ -136,4 +137,31 @@ _wrap_spice_session_get_channels(PyGObject *self,
         Py_DECREF(chann);
     }
     return py_list;
+}
+%%
+override spice_audio_new
+static int
+_wrap_spice_audio_new(PyGObject *self,
+                      PyObject *args, PyObject *kwargs)
+{
+    static char *kwlist[] = {"session", "context", "name", NULL};
+    PyGObject *session = NULL;
+    PyObject *py_context = NULL;
+    char *name = NULL;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs,
+                                     "O!|Os:SpiceAudio", kwlist,
+                                     &PySpiceSession_Type, &session,
+                                     &py_context, &name))
+	return -1;
+
+    self->obj = (GObject *)spice_audio_new(SPICE_SESSION(session->obj), NULL, NULL);
+
+    if (!self->obj) {
+        PyErr_SetString(PyExc_RuntimeError, "could not create SpiceAudio object");
+        return -1;
+    }
+    pygobject_register_wrapper((PyObject *)self);
+    return 0;
+
 }

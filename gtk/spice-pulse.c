@@ -44,7 +44,7 @@ struct spice_pulse {
     struct stream           record;
 };
 
-G_DEFINE_TYPE(SpicePulse, spice_pulse, G_TYPE_OBJECT)
+G_DEFINE_TYPE(SpicePulse, spice_pulse, SPICE_TYPE_AUDIO)
 
 static const char *stream_state_names[] = {
     [ PA_STREAM_UNCONNECTED ] = "unconnected",
