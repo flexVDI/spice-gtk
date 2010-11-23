@@ -350,6 +350,7 @@ static spice_msg_handler cursor_handlers[] = {
     [ SPICE_MSG_SET_ACK ]                  = spice_channel_handle_set_ack,
     [ SPICE_MSG_PING ]                     = spice_channel_handle_ping,
     [ SPICE_MSG_NOTIFY ]                   = spice_channel_handle_notify,
+    [ SPICE_MSG_DISCONNECTING ]            = spice_channel_handle_disconnect,
 
     [ SPICE_MSG_CURSOR_INIT ]              = cursor_handle_init,
     [ SPICE_MSG_CURSOR_RESET ]             = cursor_handle_reset,

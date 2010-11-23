@@ -487,6 +487,7 @@ static spice_msg_handler main_handlers[] = {
     [ SPICE_MSG_SET_ACK ]                  = spice_channel_handle_set_ack,
     [ SPICE_MSG_PING ]                     = spice_channel_handle_ping,
     [ SPICE_MSG_NOTIFY ]                   = spice_channel_handle_notify,
+    [ SPICE_MSG_DISCONNECTING ]            = spice_channel_handle_disconnect,
 
     [ SPICE_MSG_MAIN_INIT ]                = main_handle_init,
     [ SPICE_MSG_MAIN_CHANNELS_LIST ]       = main_handle_channels_list,

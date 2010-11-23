@@ -74,3 +74,12 @@ void spice_channel_handle_notify(SpiceChannel *channel, spice_msg_in *in)
             message_str ? ": " : "", notify->message_len,
             message_str ? message_str : "");
 }
+
+void spice_channel_handle_disconnect(SpiceChannel *channel, spice_msg_in *in)
+{
+    spice_channel *c = channel->priv;
+    SpiceMsgDisconnect *disconnect = spice_msg_in_parsed(in);
+
+    SPICE_DEBUG("%s: ts: %" PRIu64", reason: %u", __FUNCTION__,
+                disconnect->time_stamp, disconnect->reason);
+}
