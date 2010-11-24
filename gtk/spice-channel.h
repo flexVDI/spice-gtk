@@ -79,6 +79,7 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id);
 void spice_channel_destroy(SpiceChannel *channel);
 gboolean spice_channel_connect(SpiceChannel *channel);
 void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent event);
+gboolean spice_channel_test_capability(SpiceChannel *channel, guint32 cap);
 
 G_END_DECLS
 

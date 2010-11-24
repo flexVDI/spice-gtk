@@ -1047,3 +1047,26 @@ void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
         spice_channel_emit_event(channel, reason);
     }
 }
+
+static gboolean test_capability(GArray *caps, guint32 cap)
+{
+    guint32 word_index = cap / 32;
+
+    if (caps == NULL)
+        return FALSE;
+
+    if (caps->len < word_index + 1)
+        return FALSE;
+
+    return (g_array_index(caps, guint32, word_index) & (1 << (cap % 32))) != 0;
+}
+
+gboolean spice_channel_test_capability(SpiceChannel *self, guint32 cap)
+{
+    spice_channel *c;
+
+    g_return_val_if_fail(SPICE_IS_CHANNEL(self), FALSE);
+
+    c = SPICE_CHANNEL_GET_PRIVATE(self);
+    return test_capability(c->remote_caps, cap);
+}
