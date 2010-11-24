@@ -446,7 +446,7 @@ static void main_handle_agent_data(SpiceChannel *channel, spice_msg_in *in)
     void *payload;
     int len;
 
-    spice_msg_in_hexdump(in);
+    /* spice_msg_in_hexdump(in); */
 
     if (!c->agent_msg) {
         msg = spice_msg_in_raw(in, &len);

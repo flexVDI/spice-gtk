@@ -79,6 +79,8 @@ static void spice_channel_init(SpiceChannel *channel)
     strcpy(c->name, "?");
     c->caps = g_array_new(FALSE, TRUE, sizeof(guint32));
     c->common_caps = g_array_new(FALSE, TRUE, sizeof(guint32));
+    c->remote_caps = g_array_new(FALSE, TRUE, sizeof(guint32));
+    c->remote_common_caps = g_array_new(FALSE, TRUE, sizeof(guint32));
 }
 
 static void spice_channel_constructed(GObject *gobject)
@@ -117,11 +119,25 @@ static void spice_channel_dispose(GObject *gobject)
          c->session = NULL;
     }
 
-    if (c->caps)
+    if (c->caps) {
         g_array_free(c->caps, TRUE);
+        c->caps = NULL;
+    }
 
-    if (c->common_caps)
+    if (c->common_caps) {
         g_array_free(c->common_caps, TRUE);
+        c->common_caps = NULL;
+    }
+
+    if (c->remote_caps) {
+        g_array_free(c->remote_caps, TRUE);
+        c->remote_caps = NULL;
+    }
+
+    if (c->remote_common_caps) {
+        g_array_free(c->remote_common_caps, TRUE);
+        c->remote_common_caps = NULL;
+    }
 
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_channel_parent_class)->dispose)
@@ -659,7 +675,7 @@ static void spice_channel_recv_link_hdr(SpiceChannel *channel)
 static void spice_channel_recv_link_msg(SpiceChannel *channel)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
-    int rc, num_caps;
+    int rc, num_caps, i;
 
     g_return_if_fail(channel != NULL);
 
@@ -693,27 +709,22 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
         g_message("%s: %s: %d caps", c->name, __FUNCTION__, num_caps);
     }
 
-#if 0
-    if ((uint8_t *)(reply + 1) > reply_buf.get() + header.size ||
-        (uint8_t *)reply + reply->caps_offset + num_caps * sizeof(uint32_t) >
-                                                                    reply_buf.get() + header.size) {
-        THROW_ERR(SPICEC_ERROR_CODE_CONNECT_FAILED, "access violation");
+    /* see original spice/client code: */
+    /* g_return_if_fail(c->peer_msg + c->peer_msg->caps_offset * sizeof(uint32_t) > c->peer_msg + c->peer_hdr.size); */
+
+    uint32_t *caps = (uint32_t *)((uint8_t *)c->peer_msg + c->peer_msg->caps_offset);
+
+    g_array_set_size(c->remote_common_caps, c->peer_msg->num_common_caps);
+    for (i = 0; i < c->peer_msg->num_common_caps; i++, caps++) {
+        g_array_index(c->remote_common_caps, uint32_t, i) = *caps;
+        SPICE_DEBUG("got caps %u %u", i, *caps);
     }
 
-    uint32_t *caps = (uint32_t *)((uint8_t *)reply + reply->caps_offset);
-
-    _remote_common_caps.clear();
-    for (i = 0; i < reply->num_common_caps; i++, caps++) {
-        _remote_common_caps.resize(i + 1);
-        _remote_common_caps[i] = *caps;
+    g_array_set_size(c->remote_caps, c->peer_msg->num_channel_caps);
+    for (i = 0; i < c->peer_msg->num_channel_caps; i++, caps++) {
+        g_array_index(c->remote_caps, uint32_t, i) = *caps;
+        SPICE_DEBUG("got caps %u %u", i, *caps);
     }
-
-    _remote_caps.clear();
-    for (i = 0; i < reply->num_channel_caps; i++, caps++) {
-        _remote_caps.resize(i + 1);
-        _remote_caps[i] = *caps;
-    }
-#endif
 
     c->state = SPICE_CHANNEL_STATE_AUTH;
     spice_channel_send_auth(channel);
@@ -731,9 +742,7 @@ void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out)
 
     data = spice_marshaller_linearize(out->marshaller, 0,
                                       &len, &free_data);
-#if 0
-    spice_msg_out_hexdump(out, data, len);
-#endif
+    /* spice_msg_out_hexdump(out, data, len); */
     res = spice_channel_send(channel, data, len);
     if (free_data) {
         free(data);

@@ -20,7 +20,7 @@
 
 #include <openssl/ssl.h>
 
-/* spice/client -- FIXME */
+/* common/ */
 #include "marshallers.h"
 #include "demarshallers.h"
 
@@ -84,6 +84,8 @@ struct spice_channel {
 
     GArray                      *caps;
     GArray                      *common_caps;
+    GArray                      *remote_caps;
+    GArray                      *remote_common_caps;
 };
 
 spice_msg_in *spice_msg_in_new(SpiceChannel *channel);
