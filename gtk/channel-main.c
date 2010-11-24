@@ -508,11 +508,33 @@ static void main_handle_agent_token(SpiceChannel *channel, spice_msg_in *in)
     agent_send_msg_queue(SPICE_MAIN_CHANNEL(channel), NULL);
 }
 
+static void main_handle_migrate_begin(SpiceChannel *channel, spice_msg_in *in)
+{
+    SpiceMsgMainMigrationBegin *mig = spice_msg_in_parsed(in);
+
+    g_warning("%s: TODO", __FUNCTION__);
+}
+
+static void main_handle_migrate_switch_host(SpiceChannel *channel, spice_msg_in *in)
+{
+    SpiceMsgMainMigrationSwitchHost *mig = spice_msg_in_parsed(in);
+
+    g_warning("%s: TODO", __FUNCTION__);
+}
+
+static void main_handle_migrate_cancel(SpiceChannel *channel,
+                                       spice_msg_in *in G_GNUC_UNUSED)
+{
+    g_warning("%s: TODO", __FUNCTION__);
+}
+
 static spice_msg_handler main_handlers[] = {
     [ SPICE_MSG_SET_ACK ]                  = spice_channel_handle_set_ack,
     [ SPICE_MSG_PING ]                     = spice_channel_handle_ping,
     [ SPICE_MSG_NOTIFY ]                   = spice_channel_handle_notify,
     [ SPICE_MSG_DISCONNECTING ]            = spice_channel_handle_disconnect,
+    [ SPICE_MSG_WAIT_FOR_CHANNELS ]        = spice_channel_handle_wait_for_channels,
+    [ SPICE_MSG_MIGRATE ]                  = spice_channel_handle_migrate,
 
     [ SPICE_MSG_MAIN_INIT ]                = main_handle_init,
     [ SPICE_MSG_MAIN_CHANNELS_LIST ]       = main_handle_channels_list,
@@ -523,6 +545,10 @@ static spice_msg_handler main_handlers[] = {
     [ SPICE_MSG_MAIN_AGENT_DISCONNECTED ]  = main_handle_agent_disconnected,
     [ SPICE_MSG_MAIN_AGENT_DATA ]          = main_handle_agent_data,
     [ SPICE_MSG_MAIN_AGENT_TOKEN ]         = main_handle_agent_token,
+
+    [ SPICE_MSG_MAIN_MIGRATE_BEGIN ]       = main_handle_migrate_begin,
+    [ SPICE_MSG_MAIN_MIGRATE_CANCEL ]      = main_handle_migrate_cancel,
+    [ SPICE_MSG_MAIN_MIGRATE_SWITCH_HOST ] = main_handle_migrate_switch_host,
 };
 
 static void spice_main_handle_msg(SpiceChannel *channel, spice_msg_in *msg)

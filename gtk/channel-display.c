@@ -816,6 +816,8 @@ static spice_msg_handler display_handlers[] = {
     [ SPICE_MSG_PING ]                       = spice_channel_handle_ping,
     [ SPICE_MSG_NOTIFY ]                     = spice_channel_handle_notify,
     [ SPICE_MSG_DISCONNECTING ]              = spice_channel_handle_disconnect,
+    [ SPICE_MSG_WAIT_FOR_CHANNELS ]          = spice_channel_handle_wait_for_channels,
+    [ SPICE_MSG_MIGRATE ]                    = spice_channel_handle_migrate,
 
     [ SPICE_MSG_DISPLAY_MODE ]               = display_handle_mode,
     [ SPICE_MSG_DISPLAY_MARK ]               = display_handle_mark,

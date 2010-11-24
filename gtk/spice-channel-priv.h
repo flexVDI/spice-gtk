@@ -107,6 +107,8 @@ void spice_channel_handle_set_ack(SpiceChannel *channel, spice_msg_in *in);
 void spice_channel_handle_ping(SpiceChannel *channel, spice_msg_in *in);
 void spice_channel_handle_notify(SpiceChannel *channel, spice_msg_in *in);
 void spice_channel_handle_disconnect(SpiceChannel *channel, spice_msg_in *in);
+void spice_channel_handle_wait_for_channels(SpiceChannel *channel, spice_msg_in *in);
+void spice_channel_handle_migrate(SpiceChannel *channel, spice_msg_in *in);
 
 G_END_DECLS
 

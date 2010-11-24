@@ -83,3 +83,19 @@ void spice_channel_handle_disconnect(SpiceChannel *channel, spice_msg_in *in)
     SPICE_DEBUG("%s: ts: %" PRIu64", reason: %u", __FUNCTION__,
                 disconnect->time_stamp, disconnect->reason);
 }
+
+void spice_channel_handle_wait_for_channels(SpiceChannel *channel, spice_msg_in *in)
+{
+    spice_channel *c = channel->priv;
+    SpiceMsgWaitForChannels *wfc = spice_msg_in_parsed(in);
+
+    SPICE_DEBUG("%s TODO", __FUNCTION__);
+}
+
+void spice_channel_handle_migrate(SpiceChannel *channel, spice_msg_in *in)
+{
+    spice_channel *c = channel->priv;
+    SpiceMsgMigrate *mig = spice_msg_in_parsed(in);
+
+    SPICE_DEBUG("%s TODO", __FUNCTION__);
+}
