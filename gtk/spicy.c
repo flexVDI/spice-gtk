@@ -15,6 +15,12 @@
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
+
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
+#include <glib/gi18n.h>
+
 #include "spice-widget.h"
 #include "spice-audio.h"
 #include "spice-common.h"
@@ -131,7 +137,7 @@ static int connect_dialog(GtkWidget *parent, SpiceSession *session)
     int i, retval;
 
     /* Create the widgets */
-    dialog = gtk_dialog_new_with_buttons("Connect",
+    dialog = gtk_dialog_new_with_buttons(_("Connect"),
 					 parent ? GTK_WINDOW(parent) : NULL,
                                          GTK_DIALOG_DESTROY_WITH_PARENT,
 					 GTK_STOCK_OK,
@@ -187,9 +193,9 @@ static void update_status(struct spice_window *win)
     if (win == NULL)
         return;
     if (win->mouse_grabbed) {
-        snprintf(status, sizeof(status), "Use Shift+F12 to ungrab mouse.");
+        snprintf(status, sizeof(status), _("Use Shift+F12 to ungrab mouse."));
     } else {
-        snprintf(status, sizeof(status), "mouse: %s, agent: %s",
+        snprintf(status, sizeof(status), _("mouse: %s, agent: %s"),
                  win->conn->mouse_state, win->conn->agent_state);
     }
     gtk_label_set_text(GTK_LABEL(win->status), status);
@@ -248,7 +254,7 @@ static void menu_cb_bool_prop(GtkToggleAction *action, gpointer data)
     gboolean state = gtk_toggle_action_get_active(action);
 
     SPICE_DEBUG("%s: %s = %s", __FUNCTION__,
-            gtk_action_get_name(GTK_ACTION(action)), state ? "yes" : "no");
+        gtk_action_get_name(GTK_ACTION(action)), state ? _("yes") : _("no"));
     g_object_set(G_OBJECT(win->spice),
                  gtk_action_get_name(GTK_ACTION(action)), state,
                  NULL);
@@ -256,8 +262,8 @@ static void menu_cb_bool_prop(GtkToggleAction *action, gpointer data)
 
 static void menu_cb_about(GtkAction *action, void *data)
 {
-    static char *comments = "gtk client app for the\n"
-        "spice remote desktop protocol";
+    char *comments = _("gtk client app for the\n"
+        "spice remote desktop protocol");
     static char *copyright = "(c) 2010 Red Hat";
     static char *website = "http://www.spice-space.org";
     static char *authors[] = { "Gerd Hoffmann <kraxel@redhat.com>", NULL };
@@ -351,13 +357,13 @@ static const GtkActionEntry entries[] = {
 	/* File menu */
 	.name        = "Connect",
 	.stock_id    = GTK_STOCK_CONNECT,
-	.label       = "_Connect ...",
+	.label       = N_("_Connect ..."),
 	.callback    = G_CALLBACK(menu_cb_connect),
         .accelerator = "", /* none (disable default "<control>Q") */
     },{
 	.name        = "Close",
 	.stock_id    = GTK_STOCK_CLOSE,
-	.label       = "_Close",
+	.label       = N_("_Close"),
 	.callback    = G_CALLBACK(menu_cb_close),
 //        .accelerator = "", /* none (disable default "<control>Q") */
     },{
@@ -365,13 +371,13 @@ static const GtkActionEntry entries[] = {
 	/* Edit menu */
 	.name        = "CopyToGuest",
 	.stock_id    = GTK_STOCK_COPY,
-	.label       = "_Copy to guest",
+	.label       = N_("_Copy to guest"),
 	.callback    = G_CALLBACK(menu_cb_copy),
         .accelerator = "", /* none (disable default "<control>Q") */
     },{
 	.name        = "PasteFromGuest",
 	.stock_id    = GTK_STOCK_PASTE,
-	.label       = "_Paste from guest",
+	.label       = N_("_Paste from guest"),
 	.callback    = G_CALLBACK(menu_cb_paste),
         .accelerator = "", /* none (disable default "<control>Q") */
     },{
@@ -379,14 +385,14 @@ static const GtkActionEntry entries[] = {
 	/* View menu */
 	.name        = "Fullscreen",
 	.stock_id    = GTK_STOCK_FULLSCREEN,
-	.label       = "_Fullscreen",
+	.label       = N_("_Fullscreen"),
 	.callback    = G_CALLBACK(menu_cb_fullscreen),
         .accelerator = "<shift>F11",
     },{
 
 	/* Input menu */
 	.name        = "UngrabMouse",
-	.label       = "_Ungrab mouse",
+	.label       = N_("_Ungrab mouse"),
 	.callback    = G_CALLBACK(menu_cb_ungrab),
         .accelerator = "<shift>F12",
     },{
@@ -394,7 +400,7 @@ static const GtkActionEntry entries[] = {
 	/* Help menu */
 	.name        = "About",
 	.stock_id    = GTK_STOCK_ABOUT,
-	.label       = "_About ...",
+	.label       = N_("_About ..."),
 	.callback    = G_CALLBACK(menu_cb_about),
     }
 };
@@ -402,19 +408,19 @@ static const GtkActionEntry entries[] = {
 static const GtkToggleActionEntry tentries[] = {
     {
 	.name        = "grab-keyboard",
-	.label       = "Grab keyboard when active and focused",
+	.label       = N_("Grab keyboard when active and focused"),
 	.callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
 	.name        = "grab-mouse",
-	.label       = "Grab mouse in server mode (no tabled/vdagent)",
+	.label       = N_("Grab mouse in server mode (no tabled/vdagent)"),
 	.callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
 	.name        = "resize-guest",
-	.label       = "Resize guest to match window size",
+	.label       = N_("Resize guest to match window size"),
 	.callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
 	.name        = "auto-clipboard",
-	.label       = "Automagic clipboard sharing between host and guest",
+	.label       = N_("Automagic clipboard sharing between host and guest"),
 	.callback    = G_CALLBACK(menu_cb_bool_prop),
     }
 };
@@ -476,7 +482,7 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
 
     /* toplevel */
     win->toplevel = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    snprintf(title, sizeof(title), "spice display %d", id);
+    snprintf(title, sizeof(title), _("spice display %d"), id);
     gtk_window_set_title(GTK_WINDOW(win->toplevel), title);
     g_signal_connect(G_OBJECT(win->toplevel), "window-state-event",
 		     G_CALLBACK(window_state_cb), win);
@@ -533,7 +539,7 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
     gtk_container_add(GTK_CONTAINER(frame), win->status);
 
     for (i = 0; i < STATE_MAX; i++) {
-        win->st[i] = gtk_label_new("?");
+        win->st[i] = gtk_label_new(_("?"));
         gtk_label_set_width_chars(GTK_LABEL(win->st[i]), 5);
         frame = gtk_frame_new(NULL);
         gtk_box_pack_end(GTK_BOX(win->hbox), frame, FALSE, FALSE, 0);
@@ -630,8 +636,8 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
         g_warning("main channel: auth failure (wrong password?)");
         strcpy(password, "");
         /* FIXME i18 */
-        rc = ask_user(NULL, "Authentication",
-                      "Please enter the spice server password",
+        rc = ask_user(NULL, _("Authentication"),
+                      _("Please enter the spice server password"),
                       password, sizeof(password), true);
         if (rc == 0) {
             g_object_set(conn->session, "password", password, NULL);
@@ -674,7 +680,7 @@ static void main_agent_update(SpiceChannel *channel, gpointer data)
     gboolean agent_connected;
 
     g_object_get(channel, "agent-connected", &agent_connected, NULL);
-    conn->agent_state = agent_connected ? "yes" : "no";
+    conn->agent_state = agent_connected ? _("yes") : _("no");
     update_status(conn->wins[0]);
 }
 
@@ -685,11 +691,11 @@ static void inputs_modifiers(SpiceChannel *channel, gpointer data)
 
     g_object_get(channel, "key-modifiers", &m, NULL);
     gtk_label_set_text(GTK_LABEL(conn->wins[0]->st[STATE_SCROLL_LOCK]),
-                       m & SPICE_KEYBOARD_MODIFIER_FLAGS_SCROLL_LOCK ? "SCROLL" : "");
+                       m & SPICE_KEYBOARD_MODIFIER_FLAGS_SCROLL_LOCK ? _("SCROLL") : "");
     gtk_label_set_text(GTK_LABEL(conn->wins[0]->st[STATE_CAPS_LOCK]),
-                       m & SPICE_KEYBOARD_MODIFIER_FLAGS_CAPS_LOCK ? "CAPS" : "");
+                       m & SPICE_KEYBOARD_MODIFIER_FLAGS_CAPS_LOCK ? _("CAPS") : "");
     gtk_label_set_text(GTK_LABEL(conn->wins[0]->st[STATE_NUM_LOCK]),
-                       m & SPICE_KEYBOARD_MODIFIER_FLAGS_NUM_LOCK ? "NUM" : "");
+                       m & SPICE_KEYBOARD_MODIFIER_FLAGS_NUM_LOCK ? _("NUM") : "");
 }
 
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
@@ -821,7 +827,7 @@ static GOptionEntry cmd_entries[] = {
         .short_name       = 'f',
         .arg              = G_OPTION_ARG_NONE,
         .arg_data         = &fullscreen,
-        .description      = "open in full screen mode",
+        .description      = N_("open in full screen mode"),
     },{
         /* end of list */
     }
@@ -833,14 +839,18 @@ int main(int argc, char *argv[])
     GOptionContext *context;
     spice_connection *conn;
 
+    bindtextdomain(GETTEXT_PACKAGE, SPICE_GTK_LOCALEDIR);
+    bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
+    textdomain(GETTEXT_PACKAGE);
+
     /* parse opts */
     gtk_init(&argc, &argv);
-    context = g_option_context_new("- spice client application");
+    context = g_option_context_new(_("- spice client application"));
     g_option_context_add_main_entries (context, cmd_entries, NULL);
     g_option_context_add_group(context, gtk_get_option_group(TRUE));
     g_option_context_add_group(context, spice_cmdline_get_option_group());
     if (!g_option_context_parse (context, &argc, &argv, &error)) {
-        g_print ("option parsing failed: %s\n", error->message);
+        g_print (_("option parsing failed: %s\n"), error->message);
         exit (1);
     }
 

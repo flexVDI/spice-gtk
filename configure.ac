@@ -14,6 +14,17 @@ AM_INIT_AUTOMAKE([foreign dist-bzip2 -Wall -Werror])
 LT_INIT
 AM_MAINTAINER_MODE
 
+IT_PROG_INTLTOOL([0.40.0])
+AM_GNU_GETTEXT_VERSION([0.17])
+AM_GNU_GETTEXT([external])
+
+AC_SUBST([GETTEXT_PACKAGE], [spice-gtk])
+AC_DEFINE([GETTEXT_PACKAGE], [PACKAGE_TARNAME], [Define to the gettext package name.])
+
+SPICE_GTK_LOCALEDIR=[${datadir}/locale]
+AC_SUBST(SPICE_GTK_LOCALEDIR)
+
+
 # Define default SPICE_COMMON_SRCDIR
 SPICE_COMMON_SRCDIR='$(top_srcdir)'/common
 
@@ -342,6 +353,7 @@ spice-client-gtk.pc
 common/Makefile
 common/win/Makefile
 common/win/my_getopt-1.5/Makefile
+po/Makefile.in
 python_modules/Makefile
 gtk/Makefile
 ])
