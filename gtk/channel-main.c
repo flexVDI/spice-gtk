@@ -396,17 +396,16 @@ static void main_handle_init(SpiceChannel *channel, spice_msg_in *in)
         agent_start(SPICE_MAIN_CHANNEL(channel));
     }
 
-#if 0
-    set_mm_time(init->multi_media_time);
-#endif
+    spice_session_set_mm_time(session, init->multi_media_time);
 }
 
 static void main_handle_mm_time(SpiceChannel *channel, spice_msg_in *in)
 {
-    SPICE_DEBUG("%s: TODO", __FUNCTION__);
-#if 0
-    set_mm_time(init->multi_media_time);
-#endif
+    SpiceSession *session;
+    SpiceMsgMainMultiMediaTime *msg = spice_msg_in_parsed(in);
+
+    g_object_get(channel, "spice-session", &session, NULL);
+    spice_session_set_mm_time(session, msg->time);
 }
 
 static void main_handle_channels_list(SpiceChannel *channel, spice_msg_in *in)

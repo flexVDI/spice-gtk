@@ -40,6 +40,7 @@ struct spice_session {
     int               protocol;
     SpiceChannel      *cmain;
     Ring              channels;
+    guint32           mm_time;
 };
 
 /* ------------------------------------------------------------------ */
@@ -517,4 +518,23 @@ int spice_session_get_connection_id(SpiceSession *session)
     g_return_val_if_fail(s != NULL, -1);
 
     return s->connection_id;
+}
+
+guint32 spice_session_get_mm_time(SpiceSession *session)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_val_if_fail(s != NULL, 0);
+    /* TODO make use of mm_time */
+    return s->mm_time;
+}
+
+void spice_session_set_mm_time(SpiceSession *session, guint32 time)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_if_fail(s != NULL);
+    SPICE_DEBUG("set mm time: %u", time);
+
+    s->mm_time = time;
 }
