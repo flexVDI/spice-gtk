@@ -42,6 +42,7 @@ struct spice_main_channel {
         int                     height;
     } display[1];
     gint                        timer_id;
+    GQueue                      *agent_msg_queue;
 };
 
 G_DEFINE_TYPE(SpiceMainChannel, spice_main_channel, SPICE_TYPE_CHANNEL)
@@ -98,6 +99,7 @@ static void spice_main_channel_init(SpiceMainChannel *channel)
 
     c = channel->priv = SPICE_MAIN_CHANNEL_GET_PRIVATE(channel);
     memset(c, 0, sizeof(*c));
+    c->agent_msg_queue = g_queue_new();
 }
 
 static void spice_main_get_property(GObject    *object,
@@ -130,6 +132,8 @@ static void spice_main_channel_finalize(GObject *obj)
     if (c->timer_id) {
         g_source_remove(c->timer_id);
     }
+
+    g_queue_free(c->agent_msg_queue);
 
     if (G_OBJECT_CLASS(spice_main_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_main_channel_parent_class)->finalize(obj);
@@ -202,6 +206,24 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
 
 /* ------------------------------------------------------------------ */
 
+static void agent_send_msg_queue(SpiceMainChannel *channel, spice_msg_out *new)
+{
+    spice_main_channel *c = channel->priv;
+    spice_msg_out *out;
+
+    if (new != NULL)
+        g_queue_push_tail(c->agent_msg_queue, new);
+
+    while (c->agent_tokens > 0 &&
+           !g_queue_is_empty(c->agent_msg_queue)) {
+        c->agent_tokens--;
+        out = g_queue_pop_head(c->agent_msg_queue);
+        spice_msg_out_send(out);
+        spice_msg_out_unref(out);
+    }
+}
+
+
 static void agent_msg_send(SpiceMainChannel *channel, int type, int size, void *data)
 {
     spice_msg_out *out;
@@ -220,8 +242,7 @@ static void agent_msg_send(SpiceMainChannel *channel, int type, int size, void *
     msg->size = size;
     memcpy(payload, data, size);
 
-    spice_msg_out_send(out);
-    spice_msg_out_unref(out);
+    agent_send_msg_queue(channel, out);
 }
 
 static void agent_monitors_config(SpiceMainChannel *channel)
@@ -480,7 +501,11 @@ complete:
 
 static void main_handle_agent_token(SpiceChannel *channel, spice_msg_in *in)
 {
-    g_warning("%s: TODO", __FUNCTION__);
+    SpiceMsgMainAgentTokens *tokens = spice_msg_in_parsed(in);
+    spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
+
+    c->agent_tokens = tokens->num_tokens;
+    agent_send_msg_queue(SPICE_MAIN_CHANNEL(channel), NULL);
 }
 
 static spice_msg_handler main_handlers[] = {
