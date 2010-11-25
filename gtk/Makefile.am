@@ -24,7 +24,7 @@ KEYMAPS = \
 	vncdisplaykeymap_osx2xtkbd.c \
 	vncdisplaykeymap_win322xtkbd.c
 
-AM_CPPFLAGS = \
+SPICE_COMMON_CPPFLAGS = \
 	-DG_LOG_DOMAIN=\"GSpice\"       \
 	-DSW_CANVAS_CACHE		\
 	-DSPICE_GTK_LOCALEDIR=\"${SPICE_GTK_LOCALEDIR}\" \
@@ -43,6 +43,9 @@ AM_CPPFLAGS = \
 	$(SSL_CFLAGS)			\
 	$(NULL)
 
+AM_CPPFLAGS = \
+	$(SPICE_COMMON_CPPFLAGS)	\
+	$(SPICE_CFLAGS)
 
 libspice_client_gtk_la_LDFLAGS =	\
 	-version-number 0:0:1		\
@@ -357,14 +360,14 @@ gtk_introspection_files = $(libspice_client_gtkinclude_HEADERS)
 
 SpiceClientGLib-1.0.gir: libspice-client-glib.la
 SpiceClientGLib_1_0_gir_INCLUDES = GObject-2.0
-SpiceClientGLib_1_0_gir_CFLAGS = $(AM_CPPFLAGS)
+SpiceClientGLib_1_0_gir_CFLAGS = $(SPICE_COMMON_CPPFLAGS)
 SpiceClientGLib_1_0_gir_LIBS = libspice-client-glib.la
 SpiceClientGLib_1_0_gir_FILES = $(glib_introspection_files)
 INTROSPECTION_GIRS += SpiceClientGLib-1.0.gir
 
 SpiceClientGtk-1.0.gir: libspice-client-gtk.la
 SpiceClientGtk_1_0_gir_INCLUDES = GObject-2.0 Gtk-2.0 SpiceClientGLib-1.0
-SpiceClientGtk_1_0_gir_CFLAGS = $(AM_CPPFLAGS)
+SpiceClientGtk_1_0_gir_CFLAGS = $(SPICE_COMMON_CPPFLAGS)
 SpiceClientGtk_1_0_gir_LIBS = libspice-client-gtk.la libspice-client-glib.la
 SpiceClientGtk_1_0_gir_FILES = $(gtk_introspection_files)
 INTROSPECTION_GIRS += SpiceClientGtk-1.0.gir

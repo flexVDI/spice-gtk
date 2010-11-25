@@ -323,6 +323,7 @@ typedef enum SpiceLed {
     SCROLL_LOCK_LED,
 } SpiceLed;
 
+#if 0
 static guint get_modifier_mask(Display *x_display, KeySym modifier)
 {
     int mask = 0;
@@ -350,12 +351,12 @@ static void set_keyboard_led(Display *x_display, SpiceLed led, int set)
 
     switch (led) {
     case CAPS_LOCK_LED:
-        if (mask = get_modifier_mask(x_display, XK_Caps_Lock)) {
+        if ((mask = get_modifier_mask(x_display, XK_Caps_Lock)) != 0) {
             XkbLockModifiers(x_display, XkbUseCoreKbd, mask, set ? mask : 0);
         }
         return;
     case NUM_LOCK_LED:
-        if (mask = get_modifier_mask(x_display, XK_Num_Lock)) {
+        if ((mask = get_modifier_mask(x_display, XK_Num_Lock)) != 0) {
             XkbLockModifiers(x_display, XkbUseCoreKbd, mask, set ? mask : 0);
         }
         return;
@@ -369,7 +370,6 @@ static void set_keyboard_led(Display *x_display, SpiceLed led, int set)
 
 static void spice_set_keyboard_lock_modifiers(SpiceDisplay *display, uint32_t modifiers)
 {
-    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
     Display *x_display;
 
     x_display = GDK_WINDOW_XDISPLAY(gtk_widget_get_parent_window(GTK_WIDGET(display)));
@@ -378,6 +378,7 @@ static void spice_set_keyboard_lock_modifiers(SpiceDisplay *display, uint32_t mo
     set_keyboard_led(x_display, NUM_LOCK_LED, !!(modifiers & SPICE_INPUTS_NUM_LOCK));
     set_keyboard_led(x_display, SCROLL_LOCK_LED, !!(modifiers & SPICE_INPUTS_SCROLL_LOCK));
 }
+#endif
 
 static void spice_sync_keyboard_lock_modifiers(SpiceDisplay *display)
 {
@@ -941,7 +942,6 @@ void spice_display_send_keys(SpiceDisplay *display, const guint *keyvals,
                              int nkeyvals, SpiceDisplayKeyEvent kind)
 {
     int i;
-    int scancode;
 
     g_return_if_fail(SPICE_DISPLAY(display) != NULL);
     g_return_if_fail(keyvals != NULL);
@@ -1097,6 +1097,7 @@ static gboolean scroll_event(GtkWidget *widget, GdkEventScroll *scroll)
                               button_mask_gdk_to_spice(scroll->state));
     spice_inputs_button_release(d->inputs, button,
                                 button_mask_gdk_to_spice(scroll->state));
+    return true;
 }
 
 static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
@@ -1674,7 +1675,7 @@ GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
     GdkPixbuf *pixbuf;
     int x, y;
-    gchar *src, *data, *dest;
+    guchar *src, *data, *dest;
 
     g_return_val_if_fail(d != NULL, NULL);
     g_return_val_if_fail(d->format == SPICE_SURFACE_FMT_32_xRGB, NULL);

@@ -509,14 +509,14 @@ static void main_handle_agent_token(SpiceChannel *channel, spice_msg_in *in)
 
 static void main_handle_migrate_begin(SpiceChannel *channel, spice_msg_in *in)
 {
-    SpiceMsgMainMigrationBegin *mig = spice_msg_in_parsed(in);
+    /* SpiceMsgMainMigrationBegin *mig = spice_msg_in_parsed(in); */
 
     g_warning("%s: TODO", __FUNCTION__);
 }
 
 static void main_handle_migrate_switch_host(SpiceChannel *channel, spice_msg_in *in)
 {
-    SpiceMsgMainMigrationSwitchHost *mig = spice_msg_in_parsed(in);
+    /* SpiceMsgMainMigrationSwitchHost *mig = spice_msg_in_parsed(in); */
 
     g_warning("%s: TODO", __FUNCTION__);
 }

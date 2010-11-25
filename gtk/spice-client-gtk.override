@@ -24,7 +24,7 @@ _wrap_spice_display_send_keys(PyGObject *self,
     static char *kwlist[] = {"keys", "kind", NULL};
     PyObject *keyList;
     int kind = SPICE_DISPLAY_KEY_EVENT_CLICK;
-    int ret, i, len;
+    int i, len;
     guint *keys;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwargs,

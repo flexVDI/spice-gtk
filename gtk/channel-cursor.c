@@ -341,8 +341,6 @@ static void cursor_handle_inval_one(SpiceChannel *channel, spice_msg_in *in)
 
 static void cursor_handle_inval_all(SpiceChannel *channel, spice_msg_in *in)
 {
-    spice_cursor_channel *c = SPICE_CURSOR_CHANNEL(channel)->priv;
-
     delete_cursor_all(channel);
 }
 

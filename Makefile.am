@@ -30,4 +30,4 @@ BUILT_SOURCES = $(top_srcdir)/.version
 $(top_srcdir)/.version:
 	echo $(VERSION) > $@-t && mv $@-t $@
 
-DISTCHECK_CONFIGURE_FLAGS =  --enable-introspection
+DISTCHECK_CONFIGURE_FLAGS = --enable-introspection --enable-werror

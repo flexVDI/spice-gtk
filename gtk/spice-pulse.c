@@ -322,7 +322,6 @@ static void stream_read_callback(pa_stream *s, size_t length, void *data)
 {
     SpicePulse *pulse = data;
     spice_pulse *p = SPICE_PULSE_GET_PRIVATE(pulse);
-    pa_context_state_t state;
 
     g_return_if_fail(p != NULL);
 

@@ -354,7 +354,6 @@ void *spice_msg_in_raw(spice_msg_in *in, int *len)
 static void hexdump(char *prefix, unsigned char *data, int len)
 {
     int i;
-    char *dump;
 
     for (i = 0; i < len; i++) {
         if (i % 16 == 0)
@@ -446,7 +445,6 @@ static int spice_channel_send(SpiceChannel *channel, void *buf, int len)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
     int rc;
-    int flags;
 
     /* TODO: make the IO code async, either with cb or coroutine */
 

@@ -308,8 +308,7 @@ AC_DEFINE_UNQUOTED([WARN_UNUSED_RESULT], [$warn_unused_result],
 	  [Define to the value your compiler uses to support the warn-unused-result attribute])
 AC_MSG_RESULT([$warn_unused_result])
 
-AC_SUBST(WARN_CFLAGS)
-AC_SUBST(CFLAGS_CFLAGS)
+AC_SUBST(SPICE_CFLAGS)
 
 dnl =========================================================================
 dnl -fvisibility stuff
