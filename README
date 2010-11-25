@@ -31,6 +31,12 @@ SpiceClientGtk python module.
 
 SpiceClientGlib and SpiceClientGtk GObject-introspection modules.
 
+Build depedencies:
+------------------
+
+spice-protocol pygtk2-devel intltool celt051-devel gtk2-devel
+openssl-devel pulseaudio-devel pixman-devel python
+
 current state
 -------------
 
