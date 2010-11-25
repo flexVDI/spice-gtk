@@ -31,6 +31,9 @@ void glz_decoder_window_destroy(SpiceGlzDecoderWindow *w);
 SpiceGlzDecoder *glz_decoder_new(SpiceGlzDecoderWindow *w);
 void glz_decoder_destroy(SpiceGlzDecoder *d);
 
+SpiceZlibDecoder *zlib_decoder_new(void);
+void zlib_decoder_destroy(SpiceZlibDecoder *d);
+
 G_END_DECLS
 
 #endif // SPICEGTK_DECODE_H_

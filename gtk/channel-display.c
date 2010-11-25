@@ -313,6 +313,7 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
         c->glz_window = glz_decoder_window_new();
     }
     surface->glz_decoder = glz_decoder_new(c->glz_window);
+    surface->zlib_decoder = zlib_decoder_new();
 
     surface->canvas = canvas_create_for_data(surface->width,
                                              surface->height,
@@ -326,7 +327,7 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
                                              NULL, // &csurfaces.base,
                                              surface->glz_decoder,
                                              NULL, // &jpeg_decoder(),
-                                             NULL); // &zlib_decoder());
+                                             surface->zlib_decoder);
 
     g_return_val_if_fail(surface->canvas != NULL, 0);
     return 0;
@@ -338,6 +339,7 @@ static void destroy_canvas(display_surface *surface)
         return;
 
     glz_decoder_destroy(surface->glz_decoder);
+    zlib_decoder_destroy(surface->zlib_decoder);
 
     if (surface->shmid == -1) {
         free(surface->data);

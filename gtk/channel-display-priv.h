@@ -44,6 +44,7 @@ typedef struct display_surface {
     uint8_t                     *data;
     SpiceCanvas                 *canvas;
     SpiceGlzDecoder             *glz_decoder;
+    SpiceZlibDecoder            *zlib_decoder;
 } display_surface;
 
 typedef struct display_stream {
