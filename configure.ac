@@ -1,10 +1,11 @@
 AC_PREREQ([2.57])
 
 m4_define([SPICE_MAJOR], 0)
-m4_define([SPICE_MINOR], 0)
-m4_define([SPICE_MICRO], 1)
+m4_define([SPICE_MINOR], 1)
+m4_define([SPICE_MICRO], 0)
 
-AC_INIT([spice-gtk], [SPICE_MAJOR.SPICE_MINOR.SPICE_MICRO], [])
+AC_INIT([spice-gtk], [SPICE_MAJOR.SPICE_MINOR.SPICE_MICRO],
+        [spice-devel@lists.freedesktop.org])
 
 AC_CONFIG_MACRO_DIR([m4])
 AM_CONFIG_HEADER([config.h])
