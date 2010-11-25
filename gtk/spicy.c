@@ -126,9 +126,9 @@ static int connect_dialog(GtkWidget *parent, SpiceSession *session)
         const char *text;
         const char *prop;
     } entries[] = {
-        { .text = "Hostname",   .prop = "host"      },
-        { .text = "Port",       .prop = "port"      },
-        { .text = "TLS Port",   .prop = "tls-port"  },
+        { .text = N_("Hostname"),   .prop = "host"      },
+        { .text = N_("Port"),       .prop = "port"      },
+        { .text = N_("TLS Port"),   .prop = "tls-port"  },
     };
     GtkWidget *we[SPICE_N_ELEMENTS(entries)];
     GtkWidget *dialog, *area, *label;

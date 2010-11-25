@@ -1,2 +1,3 @@
 gtk/spicy.c
 gtk/snappy.c
+gtk/spice-cmdline.c
