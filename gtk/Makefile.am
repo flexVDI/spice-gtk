@@ -365,7 +365,7 @@ SpiceClientGLib_1_0_gir_LIBS = libspice-client-glib.la
 SpiceClientGLib_1_0_gir_FILES = $(glib_introspection_files)
 INTROSPECTION_GIRS += SpiceClientGLib-1.0.gir
 
-SpiceClientGtk-1.0.gir: libspice-client-gtk.la
+SpiceClientGtk-1.0.gir: libspice-client-gtk.la SpiceClientGLib-1.0.gir
 SpiceClientGtk_1_0_gir_INCLUDES = GObject-2.0 Gtk-2.0 SpiceClientGLib-1.0
 SpiceClientGtk_1_0_gir_CFLAGS = $(SPICE_COMMON_CPPFLAGS)
 SpiceClientGtk_1_0_gir_LIBS = libspice-client-gtk.la libspice-client-glib.la
