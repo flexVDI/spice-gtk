@@ -71,6 +71,7 @@ static const char *context_state_names[] = {
 
 static void channel_event(SpiceChannel *channel, SpiceChannelEvent event,
                           gpointer data);
+static void stream_stop(SpicePulse *pulse, struct stream *s);
 
 static void spice_pulse_finalize(GObject *obj)
 {
@@ -89,6 +90,12 @@ static void spice_pulse_finalize(GObject *obj)
 
     if (p->record.cork_op)
         pa_operation_unref(p->record.cork_op);
+
+    if (p->playback.stream)
+        stream_stop(SPICE_PULSE(p), &p->playback);
+
+    if (p->record.stream)
+        stream_stop(SPICE_PULSE(p), &p->record);
 
     if (p->context != NULL)
         pa_context_unref(p->context);
@@ -200,13 +207,25 @@ static void stream_cork(SpicePulse *pulse, struct stream *s)
         s->uncork_op = NULL;
     }
 
-    if (pa_stream_is_corked(s->stream) && !s->cork_op) {
+    if (!pa_stream_is_corked(s->stream) && !s->cork_op) {
         if (!(o = pa_stream_cork(s->stream, 1, pulse_cork_cb, s))) {
             g_warning("pa_stream_cork() failed: %s",
                       pa_strerror(pa_context_errno(p->context)));
         }
         s->cork_op = o;
     }
+}
+
+static void stream_stop(SpicePulse *pulse, struct stream *s)
+{
+    spice_pulse *p = SPICE_PULSE_GET_PRIVATE(pulse);
+
+    if (pa_stream_disconnect(s->stream) < 0) {
+        g_warning("pa_stream_disconnect() failed: %s",
+                  pa_strerror(pa_context_errno(p->context)));
+    }
+    pa_stream_unref(s->stream);
+    s->stream = NULL;
 }
 
 static void playback_start(SpicePlaybackChannel *channel, gint format, gint channels,
@@ -228,12 +247,7 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
         if (p->playback.stream &&
             (p->playback.spec.rate != frequency ||
              p->playback.spec.channels != channels)) {
-            if (pa_stream_disconnect(p->playback.stream) < 0) {
-                g_warning("pa_stream_disconnect() failed: %s",
-                          pa_strerror(pa_context_errno(p->context)));
-            }
-            pa_stream_unref(p->playback.stream);
-            p->playback.stream = NULL;
+            stream_stop(pulse, &p->playback);
         }
         if (p->playback.stream == NULL) {
             g_return_if_fail(format == SPICE_AUDIO_FMT_S16);
@@ -353,12 +367,7 @@ static void record_start(SpiceRecordChannel *channel, gint format, gint channels
         if (p->record.stream &&
             (p->record.spec.rate != frequency ||
              p->record.spec.channels != channels)) {
-            if (pa_stream_disconnect(p->record.stream) < 0) {
-                g_warning("pa_stream_disconnect() failed: %s",
-                          pa_strerror(pa_context_errno(p->context)));
-            }
-            pa_stream_unref(p->record.stream);
-            p->record.stream = NULL;
+            stream_stop(pulse, &p->record);
         }
         if (p->record.stream == NULL) {
             pa_buffer_attr buffer_attr = { 0, };
@@ -407,7 +416,7 @@ static void record_stop(SpiceRecordChannel *channel, gpointer data)
     if (!p->record.stream)
         return;
 
-    stream_cork(pulse, &p->record);
+    stream_stop(pulse, &p->record);
 }
 
 static void channel_event(SpiceChannel *channel, SpiceChannelEvent event,
