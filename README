@@ -34,8 +34,11 @@ SpiceClientGlib and SpiceClientGtk GObject-introspection modules.
 Build depedencies:
 ------------------
 
+On Fedora:
+
 spice-protocol pygtk2-devel intltool celt051-devel gtk2-devel
-openssl-devel pulseaudio-devel pixman-devel python
+openssl-devel pulseaudio-libs-devel pixman-devel python perl-Text-CSV
+gobject-introspection-devel libjpeg-turbo-devel zlib-devel
 
 current state
 -------------
