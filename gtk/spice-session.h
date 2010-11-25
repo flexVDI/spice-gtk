@@ -43,8 +43,8 @@ struct _SpiceSessionClass
     GObjectClass parent_class;
 
     /* Signals */
-    void (*spice_session_channel_new)(SpiceSession *session, SpiceChannel *channel);
-    void (*spice_session_channel_destroy)(SpiceSession *session, SpiceChannel *channel);
+    void (*channel_new)(SpiceSession *session, SpiceChannel *channel);
+    void (*channel_destroy)(SpiceSession *session, SpiceChannel *channel);
 
     /*
      * If adding fields to this struct, remove corresponding

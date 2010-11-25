@@ -43,11 +43,11 @@ struct _SpiceCursorChannelClass {
     SpiceChannelClass parent_class;
 
     /* signals */
-    void (*spice_cursor_set)(SpiceCursorChannel *channel, gint width, gint height,
-                             gint hot_x, gint hot_y, gpointer rgba);
-    void (*spice_cursor_move)(SpiceCursorChannel *channel, gint x, gint y);
-    void (*spice_cursor_hide)(SpiceCursorChannel *channel);
-    void (*spice_cursor_reset)(SpiceCursorChannel *channel);
+    void (*cursor_set)(SpiceCursorChannel *channel, gint width, gint height,
+                       gint hot_x, gint hot_y, gpointer rgba);
+    void (*cursor_move)(SpiceCursorChannel *channel, gint x, gint y);
+    void (*cursor_hide)(SpiceCursorChannel *channel);
+    void (*cursor_reset)(SpiceCursorChannel *channel);
 
     /* Do not add fields to this struct */
 };

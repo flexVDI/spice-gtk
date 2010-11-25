@@ -49,8 +49,8 @@ struct _SpiceDisplayClass {
     GtkDrawingAreaClass parent_class;
 
     /* signals */
-    void (*spice_display_mouse_grab)(SpiceChannel *channel, gint grabbed);
-    void (*spice_display_keyboard_grab)(SpiceChannel *channel, gint grabbed);
+    void (*mouse_grab)(SpiceChannel *channel, gint grabbed);
+    void (*keyboard_grab)(SpiceChannel *channel, gint grabbed);
 
     /*
      * If adding fields to this struct, remove corresponding

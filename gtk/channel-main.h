@@ -43,8 +43,8 @@ struct _SpiceMainChannelClass {
     SpiceChannelClass parent_class;
 
     /* signals */
-    void (*spice_main_mouse_update)(SpiceChannel *channel);
-    void (*spice_main_agent_update)(SpiceChannel *channel);
+    void (*mouse_update)(SpiceChannel *channel);
+    void (*agent_update)(SpiceChannel *channel);
 
     /* Do not add fields to this struct */
 };

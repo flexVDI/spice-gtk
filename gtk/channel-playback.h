@@ -43,10 +43,10 @@ struct _SpicePlaybackChannelClass {
     SpiceChannelClass parent_class;
 
     /* signals */
-    void (*spice_playback_start)(SpicePlaybackChannel *channel,
-                                 gint format, gint channels, gint freq);
-    void (*spice_playback_data)(SpicePlaybackChannel *channel, gpointer *data, gint size);
-    void (*spice_playback_stop)(SpicePlaybackChannel *channel);
+    void (*playback_start)(SpicePlaybackChannel *channel,
+                           gint format, gint channels, gint freq);
+    void (*playback_data)(SpicePlaybackChannel *channel, gpointer *data, gint size);
+    void (*playback_stop)(SpicePlaybackChannel *channel);
 
     /*
      * If adding fields to this struct, remove corresponding

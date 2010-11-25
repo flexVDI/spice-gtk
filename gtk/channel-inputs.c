@@ -110,7 +110,7 @@ static void spice_inputs_channel_class_init(SpiceInputsChannelClass *klass)
         g_signal_new("inputs-modifiers",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
-                     G_STRUCT_OFFSET(SpiceInputsChannelClass, spice_inputs_modifiers),
+                     G_STRUCT_OFFSET(SpiceInputsChannelClass, inputs_modifiers),
                      NULL, NULL,
                      g_cclosure_marshal_VOID__VOID,
                      G_TYPE_NONE,
