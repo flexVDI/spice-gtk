@@ -254,7 +254,7 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
         g_signal_new("channel-event",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
-                     G_STRUCT_OFFSET(SpiceChannelClass, spice_channel_event),
+                     G_STRUCT_OFFSET(SpiceChannelClass, channel_event),
                      NULL, NULL,
                      g_cclosure_marshal_VOID__INT,
                      G_TYPE_NONE,

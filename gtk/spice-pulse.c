@@ -22,6 +22,7 @@
 #include <pulse/context.h>
 #include <pulse/stream.h>
 #include <pulse/sample.h>
+#include <pulse/error.h>
 
 #define SPICE_PULSE_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_PULSE, spice_pulse))
@@ -30,6 +31,8 @@ struct stream {
     pa_sample_spec          spec;
     pa_stream               *stream;
     int                     state;
+    pa_operation            *uncork_op;
+    pa_operation            *cork_op;
 };
 
 struct spice_pulse {
@@ -66,9 +69,63 @@ static const char *context_state_names[] = {
 #define STATE_NAME(array, state) \
     ((state < G_N_ELEMENTS(array)) ? array[state] : NULL)
 
+static void channel_event(SpiceChannel *channel, SpiceChannelEvent event,
+                          gpointer data);
+
 static void spice_pulse_finalize(GObject *obj)
 {
+    spice_pulse *p;
+
+    p = SPICE_PULSE_GET_PRIVATE(obj);
+
+    if (p->playback.uncork_op)
+        pa_operation_unref(p->playback.uncork_op);
+
+    if (p->playback.cork_op)
+        pa_operation_unref(p->playback.cork_op);
+
+    if (p->record.uncork_op)
+        pa_operation_unref(p->record.uncork_op);
+
+    if (p->record.cork_op)
+        pa_operation_unref(p->record.cork_op);
+
+    if (p->context != NULL)
+        pa_context_unref(p->context);
+
+    if (p->mainloop != NULL)
+        pa_glib_mainloop_free(p->mainloop);
+
     G_OBJECT_CLASS(spice_pulse_parent_class)->finalize(obj);
+}
+
+static void spice_pulse_dispose(GObject *obj)
+{
+    spice_pulse *p;
+
+    SPICE_DEBUG("%s", __FUNCTION__);
+    p = SPICE_PULSE_GET_PRIVATE(obj);
+
+    if (p->pchannel != NULL) {
+        g_signal_handlers_disconnect_by_func(p->pchannel,
+                                             channel_event, obj);
+        g_object_unref(p->pchannel);
+        p->pchannel = NULL;
+    }
+
+    if (p->rchannel != NULL) {
+        g_signal_handlers_disconnect_by_func(p->rchannel,
+                                             channel_event, obj);
+        g_object_unref(p->rchannel);
+        p->rchannel = NULL;
+    }
+
+    if (p->session != NULL) {
+        g_object_unref(p->session);
+        p->session = NULL;
+    }
+
+    G_OBJECT_CLASS(spice_pulse_parent_class)->dispose(obj);
 }
 
 static void spice_pulse_init(SpicePulse *pulse)
@@ -84,11 +141,73 @@ static void spice_pulse_class_init(SpicePulseClass *klass)
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 
     gobject_class->finalize = spice_pulse_finalize;
+    gobject_class->dispose = spice_pulse_dispose;
 
     g_type_class_add_private(klass, sizeof(spice_pulse));
 }
 
 /* ------------------------------------------------------------------ */
+static void pulse_uncork_cb(pa_stream *pastream, int success, void *data)
+{
+    struct stream *s = data;
+
+    if (!success)
+        g_warning("pulseaudio uncork operation failed");
+
+    pa_operation_unref(s->uncork_op);
+    s->uncork_op = NULL;
+}
+
+static void stream_uncork(SpicePulse *pulse, struct stream *s)
+{
+    spice_pulse *p = SPICE_PULSE_GET_PRIVATE(pulse);
+    pa_operation *o = NULL;
+
+    if (s->cork_op) {
+        pa_operation_cancel(s->cork_op);
+        pa_operation_unref(s->cork_op);
+        s->cork_op = NULL;
+    }
+
+    if (pa_stream_is_corked(s->stream) && !s->uncork_op) {
+        if (!(o = pa_stream_cork(s->stream, 0, pulse_uncork_cb, s))) {
+            g_warning("pa_stream_cork() failed: %s",
+                      pa_strerror(pa_context_errno(p->context)));
+        }
+        s->uncork_op = o;
+    }
+}
+
+static void pulse_cork_cb(pa_stream *pastream, int success, void *data)
+{
+    struct stream *s = data;
+
+    if (!success)
+        g_warning("pulseaudio cork operation failed");
+
+    pa_operation_unref(s->cork_op);
+    s->cork_op = NULL;
+}
+
+static void stream_cork(SpicePulse *pulse, struct stream *s)
+{
+    spice_pulse *p = SPICE_PULSE_GET_PRIVATE(pulse);
+    pa_operation *o = NULL;
+
+    if (s->uncork_op) {
+        pa_operation_cancel(s->uncork_op);
+        pa_operation_unref(s->uncork_op);
+        s->uncork_op = NULL;
+    }
+
+    if (pa_stream_is_corked(s->stream) && !s->cork_op) {
+        if (!(o = pa_stream_cork(s->stream, 1, pulse_cork_cb, s))) {
+            g_warning("pa_stream_cork() failed: %s",
+                      pa_strerror(pa_context_errno(p->context)));
+        }
+        s->cork_op = o;
+    }
+}
 
 static void playback_start(SpicePlaybackChannel *channel, gint format, gint channels,
                            gint frequency, gpointer data)
@@ -97,32 +216,40 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
     spice_pulse *p = SPICE_PULSE_GET_PRIVATE(pulse);
     pa_context_state_t state;
 
+    g_return_if_fail(p != NULL);
+
     state = pa_context_get_state(p->context);
     switch (state) {
+    /* TODO: create stream after pa state == READY */
     case PA_CONTEXT_READY:
         if (p->state != state) {
-            g_message("%s: pulse context ready", __FUNCTION__);
+            SPICE_DEBUG("%s: pulse context ready", __FUNCTION__);
         }
         if (p->playback.stream &&
             (p->playback.spec.rate != frequency ||
              p->playback.spec.channels != channels)) {
-            pa_stream_disconnect(p->playback.stream);
+            if (pa_stream_disconnect(p->playback.stream) < 0) {
+                g_warning("pa_stream_disconnect() failed: %s",
+                          pa_strerror(pa_context_errno(p->context)));
+            }
             pa_stream_unref(p->playback.stream);
             p->playback.stream = NULL;
         }
         if (p->playback.stream == NULL) {
             g_return_if_fail(format == SPICE_AUDIO_FMT_S16);
-            p->playback.state = PA_STREAM_READY;
+            p->playback.state         = PA_STREAM_READY;
             p->playback.spec.format   = PA_SAMPLE_S16LE;
             p->playback.spec.rate     = frequency;
             p->playback.spec.channels = channels;
             p->playback.stream = pa_stream_new(p->context, "playback",
                                                &p->playback.spec, NULL);
-            pa_stream_connect_playback(p->playback.stream, NULL, NULL, 0, NULL, NULL);
+            if (pa_stream_connect_playback(p->playback.stream,
+                                           NULL, NULL, 0, NULL, NULL) < 0) {
+                g_warning("pa_stream_connect_playback() failed: %s",
+                          pa_strerror(pa_context_errno(p->context)));
+            }
         }
-        if (pa_stream_is_corked(p->playback.stream)) {
-            pa_stream_cork(p->playback.stream, 0, NULL, NULL);
-        }
+        stream_uncork(pulse, &p->playback);
         break;
     default:
         if (p->state != state) {
@@ -148,9 +275,12 @@ static void playback_data(SpicePlaybackChannel *channel, gpointer *audio, gint s
     switch (state) {
     case PA_STREAM_READY:
         if (p->playback.state != state) {
-            g_message("%s: pulse playback stream ready", __FUNCTION__);
+            SPICE_DEBUG("%s: pulse playback stream ready", __FUNCTION__);
         }
-        pa_stream_write(p->playback.stream, audio, size, NULL, 0, PA_SEEK_RELATIVE);
+        if (pa_stream_write(p->playback.stream, audio, size, NULL, 0, PA_SEEK_RELATIVE) < 0) {
+            g_warning("pa_stream_write() failed: %s",
+                      pa_strerror(pa_context_errno(p->context)));
+        }
         break;
     default:
         if (p->playback.state != state) {
@@ -167,21 +297,142 @@ static void playback_stop(SpicePlaybackChannel *channel, gpointer data)
     SpicePulse *pulse = data;
     spice_pulse *p = pulse->priv;
 
+    SPICE_DEBUG("%s", __FUNCTION__);
     if (!p->playback.stream)
         return;
 
-    pa_stream_cork(p->playback.stream, 1, NULL, NULL);
+    stream_cork(pulse, &p->playback);
 }
 
-static void record_start(SpicePlaybackChannel *channel, gint format, gint channels,
+static void stream_read_callback(pa_stream *s, size_t length, void *data)
+{
+    SpicePulse *pulse = data;
+    spice_pulse *p = SPICE_PULSE_GET_PRIVATE(pulse);
+    pa_context_state_t state;
+
+    g_return_if_fail(p != NULL);
+
+    while (pa_stream_readable_size(s) > 0) {
+        const void *snddata;
+
+        if (pa_stream_peek(s, &snddata, &length) < 0) {
+            g_warning("pa_stream_peek() failed: %s",
+                      pa_strerror(pa_context_errno(p->context)));
+            return;
+        }
+
+        g_return_if_fail(snddata);
+        g_return_if_fail(length > 0);
+
+        spice_record_send_data(SPICE_RECORD_CHANNEL(p->rchannel),
+                               /* FIXME: server side doesn't care about ts?
+                                  what is the unit? ms apparently */
+                               (gpointer)snddata, length, 0);
+
+        if (pa_stream_drop(s) < 0) {
+            g_warning("pa_stream_drop() failed: %s",
+                      pa_strerror(pa_context_errno(p->context)));
+            return;
+        }
+    }
+}
+
+static void record_start(SpiceRecordChannel *channel, gint format, gint channels,
                          gint frequency, gpointer data)
 {
-    SPICE_DEBUG("%s", __FUNCTION__);
+    SpicePulse *pulse = data;
+    spice_pulse *p = SPICE_PULSE_GET_PRIVATE(pulse);
+    pa_context_state_t state;
+
+    state = pa_context_get_state(p->context);
+    switch (state) {
+    case PA_CONTEXT_READY:
+        if (p->state != state) {
+            SPICE_DEBUG("%s: pulse context ready", __FUNCTION__);
+        }
+        if (p->record.stream &&
+            (p->record.spec.rate != frequency ||
+             p->record.spec.channels != channels)) {
+            if (pa_stream_disconnect(p->record.stream) < 0) {
+                g_warning("pa_stream_disconnect() failed: %s",
+                          pa_strerror(pa_context_errno(p->context)));
+            }
+            pa_stream_unref(p->record.stream);
+            p->record.stream = NULL;
+        }
+        if (p->record.stream == NULL) {
+            pa_buffer_attr buffer_attr = { 0, };
+            pa_stream_flags_t flags;
+
+            g_return_if_fail(format == SPICE_AUDIO_FMT_S16);
+            p->record.state = PA_STREAM_READY;
+            p->record.spec.format = PA_SAMPLE_S16LE;
+            p->record.spec.rate = frequency;
+            p->record.spec.channels = channels;
+
+            p->record.stream = pa_stream_new(p->context, "record",
+                                             &p->record.spec, NULL);
+            pa_stream_set_read_callback(p->record.stream, stream_read_callback, pulse);
+
+            /* FIXME: we might want customizable latency */
+            buffer_attr.maxlength = -1;
+            buffer_attr.prebuf = -1;
+            buffer_attr.fragsize = buffer_attr.tlength = (uint32_t) 4096;
+            buffer_attr.minreq = (uint32_t) -1;
+            flags = PA_STREAM_ADJUST_LATENCY;
+
+            if (pa_stream_connect_record(p->record.stream, NULL, &buffer_attr, flags) < 0) {
+                g_warning("pa_stream_connect_record() failed: %s",
+                          pa_strerror(pa_context_errno(p->context)));
+            }
+        }
+        stream_uncork(pulse, &p->record);
+        break;
+    default:
+        if (p->state != state) {
+            g_warning("%s: pulse context not ready (%s)",
+                      __FUNCTION__, STATE_NAME(context_state_names, state));
+        }
+        break;
+    }
+    p->state = state;
 }
 
-static void record_stop(SpicePlaybackChannel *channel, gpointer data)
+static void record_stop(SpiceRecordChannel *channel, gpointer data)
 {
+    SpicePulse *pulse = data;
+    spice_pulse *p = pulse->priv;
+
     SPICE_DEBUG("%s", __FUNCTION__);
+    if (!p->record.stream)
+        return;
+
+    stream_cork(pulse, &p->record);
+}
+
+static void channel_event(SpiceChannel *channel, SpiceChannelEvent event,
+                          gpointer data)
+{
+    SpicePulse *pulse = data;
+    spice_pulse *p = pulse->priv;
+
+    switch (event) {
+    case SPICE_CHANNEL_OPENED:
+        break;
+    case SPICE_CHANNEL_CLOSED:
+        if (channel == p->pchannel) {
+            p->pchannel = NULL;
+            g_object_unref(channel);
+        } else if (channel == p->rchannel) {
+            record_stop(SPICE_RECORD_CHANNEL(channel), pulse);
+            p->rchannel = NULL;
+            g_object_unref(channel);
+        } else
+            g_return_if_reached();
+        break;
+    default:
+        break;
+    }
 }
 
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
@@ -190,22 +441,26 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     spice_pulse *p = pulse->priv;
 
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
-        p->pchannel = channel;
+        p->pchannel = g_object_ref(channel);
         g_signal_connect(channel, "playback-start",
                          G_CALLBACK(playback_start), pulse);
         g_signal_connect(channel, "playback-data",
                          G_CALLBACK(playback_data), pulse);
         g_signal_connect(channel, "playback-stop",
                          G_CALLBACK(playback_stop), pulse);
+        g_signal_connect(channel, "channel-event",
+                         G_CALLBACK(channel_event), pulse);
         spice_channel_connect(channel);
     }
 
     if (SPICE_IS_RECORD_CHANNEL(channel)) {
-        p->rchannel = channel;
+        p->rchannel = g_object_ref(channel);
         g_signal_connect(channel, "record-start",
                          G_CALLBACK(record_start), pulse);
         g_signal_connect(channel, "record-stop",
                          G_CALLBACK(record_stop), pulse);
+        g_signal_connect(channel, "channel-event",
+                         G_CALLBACK(channel_event), pulse);
         spice_channel_connect(channel);
     }
 }
@@ -219,20 +474,28 @@ SpicePulse *spice_pulse_new(SpiceSession *session, GMainContext *context,
 
     pulse = g_object_new(SPICE_TYPE_PULSE, NULL);
     p = SPICE_PULSE_GET_PRIVATE(pulse);
-    p->session = session;
+    p->session = g_object_ref(session);
 
     g_signal_connect(session, "channel-new",
                      G_CALLBACK(channel_new), pulse);
     list = spice_session_get_channels(session);
     for (list = g_list_first(list); list != NULL; list = g_list_next(list)) {
-        channel_new(session, list->data, (gpointer*)pulse);
+        channel_new(session, list->data, (gpointer)pulse);
     }
     g_list_free(list);
 
     p->mainloop = pa_glib_mainloop_new(context);
     p->state = PA_CONTEXT_READY;
     p->context = pa_context_new(pa_glib_mainloop_get_api(p->mainloop), name);
-    pa_context_connect(p->context, NULL, 0, NULL);
+    if (pa_context_connect(p->context, NULL, 0, NULL) < 0) {
+        g_warning("pa_context_connect() failed: %s",
+            pa_strerror(pa_context_errno(p->context)));
+        goto error;
+    }
 
     return pulse;
+
+error:
+    g_object_unref(pulse);
+    return  NULL;
 }

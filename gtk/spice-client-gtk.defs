@@ -334,6 +334,15 @@
   )
 )
 
+(define-method test_capability
+  (of-object "SpiceChannel")
+  (c-name "spice_channel_test_capability")
+  (return-type "gboolean")
+  (parameters
+    '("guint32" "cap")
+  )
+)
+
 
 
 ;; From spice-channel-enums.h
@@ -422,6 +431,17 @@
 (define-function spice_record_channel_get_type
   (c-name "spice_record_channel_get_type")
   (return-type "GType")
+)
+
+(define-function spice_record_send_data
+  (c-name "spice_record_send_data")
+  (return-type "none")
+  (parameters
+    '("SpiceRecordChannel*" "channel")
+    '("gpointer" "data")
+    '("gsize" "bytes")
+    '("uint32_t" "time")
+  )
 )
 
 

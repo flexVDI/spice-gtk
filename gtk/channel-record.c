@@ -20,12 +20,14 @@
 #include "spice-channel-priv.h"
 
 #include "spice-marshal.h"
+#include "spice-session-priv.h"
 
 #define SPICE_RECORD_CHANNEL_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_RECORD_CHANNEL, spice_record_channel))
 
 struct spice_record_channel {
     int                         mode;
+    gboolean                    started;
 };
 
 G_DEFINE_TYPE(SpiceRecordChannel, spice_record_channel, SPICE_TYPE_CHANNEL)
@@ -40,6 +42,7 @@ enum {
 static guint signals[SPICE_RECORD_LAST_SIGNAL];
 
 static void spice_record_handle_msg(SpiceChannel *channel, spice_msg_in *msg);
+static void channel_up(SpiceChannel *channel);
 
 /* ------------------------------------------------------------------ */
 
@@ -64,6 +67,7 @@ static void spice_record_channel_class_init(SpiceRecordChannelClass *klass)
 
     gobject_class->finalize     = spice_record_channel_finalize;
     channel_class->handle_msg   = spice_record_handle_msg;
+    channel_class->channel_up   = channel_up;
 
     signals[SPICE_RECORD_START] =
         g_signal_new("record-start",
@@ -89,6 +93,94 @@ static void spice_record_channel_class_init(SpiceRecordChannelClass *klass)
     g_type_class_add_private(klass, sizeof(spice_record_channel));
 }
 
+static void spice_record_mode(SpiceRecordChannel *channel, uint32_t time,
+                              uint32_t mode, uint8_t *data, uint32_t data_size)
+{
+    spice_record_channel *rc;
+    spice_channel *c;
+    SpiceMsgcRecordMode m = {0, };
+    spice_msg_out *msg;
+
+    g_return_if_fail(channel != NULL);
+    rc = channel->priv;
+    c = SPICE_CHANNEL(channel)->priv;
+
+    m.mode = mode;
+    m.time = time;
+    m.data = data;
+    m.data_size = data_size;
+
+    msg = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_RECORD_MODE);
+    msg->marshallers->msgc_record_mode(msg->marshaller, &m);
+    spice_msg_out_send(msg);
+    spice_msg_out_unref(msg);
+}
+
+static void channel_up(SpiceChannel *channel)
+{
+    spice_record_channel *rc;
+
+    rc = SPICE_RECORD_CHANNEL(channel)->priv;
+    if (spice_channel_test_capability(channel, SPICE_RECORD_CAP_CELT_0_5_1)) {
+        SPICE_DEBUG("record compatible CELT_0_5_1, TODO");
+    }
+
+    rc->mode = SPICE_AUDIO_DATA_MODE_RAW;
+}
+
+static void spice_record_start_mark(SpiceRecordChannel *channel, uint32_t time)
+{
+    spice_record_channel *rc;
+    spice_channel *c;
+    SpiceMsgcRecordStartMark m = {0, };
+    spice_msg_out *msg;
+
+    g_return_if_fail(channel != NULL);
+    rc = channel->priv;
+    c = SPICE_CHANNEL(channel)->priv;
+
+    m.time = time;
+
+    msg = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_RECORD_START_MARK);
+    msg->marshallers->msgc_record_start_mark(msg->marshaller, &m);
+    spice_msg_out_send(msg);
+    spice_msg_out_unref(msg);
+}
+
+void spice_record_send_data(SpiceRecordChannel *channel, gpointer data,
+                            gsize bytes, uint32_t time)
+{
+    spice_record_channel *rc;
+    spice_channel *c;
+    SpiceMsgcRecordPacket p = {0, };
+    spice_msg_out *msg;
+
+    g_return_if_fail(channel != NULL);
+    rc = channel->priv;
+    c = SPICE_CHANNEL(channel)->priv;
+
+    if (!rc->started) {
+        spice_record_mode(channel, time, rc->mode, NULL, 0);
+        spice_record_start_mark(channel, time);
+        rc->started = TRUE;
+    }
+
+    p.time = time;
+
+    while (bytes > 0) {
+        gsize n;
+
+        n = MIN(bytes, 1024);
+        msg = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_RECORD_DATA);
+        msg->marshallers->msgc_record_data(msg->marshaller, &p);
+        spice_marshaller_add(msg->marshaller, data, n);
+        spice_msg_out_send(msg);
+        spice_msg_out_unref(msg);
+        bytes -= n;
+        data = (guint8*)data + n;
+    }
+}
+
 /* ------------------------------------------------------------------ */
 
 static void record_handle_start(SpiceChannel *channel, spice_msg_in *in)
@@ -105,14 +197,17 @@ static void record_handle_start(SpiceChannel *channel, spice_msg_in *in)
                       start->format, start->channels, start->frequency);
         break;
     default:
-        g_warning("%s: unhandled mode", __FUNCTION__);
+        g_warning("%s: unhandled mode %d", __FUNCTION__, c->mode);
         break;
     }
 }
 
 static void record_handle_stop(SpiceChannel *channel, spice_msg_in *in)
 {
+    spice_record_channel *rc = SPICE_RECORD_CHANNEL(channel)->priv;
+
     g_signal_emit(channel, signals[SPICE_RECORD_STOP], 0);
+    rc->started = FALSE;
 }
 
 static spice_msg_handler record_handlers[] = {

@@ -1,4 +1,3 @@
-* sound recording support.
 * client migration support.
 * mm time handling.
 * use libcommon-spice instead of common/
@@ -7,6 +6,7 @@
   - display: jpeg, zlib decoders
   - VD_AGENT 
   - TunnelChannel?
+  - audio: CELT support
 * protocol <1 support?
 * win32
 * i18 in libs
@@ -14,3 +14,4 @@
 * open session by fd (tunnel ssh)
 * make the IO fully async
 * use GSocket
+* use GStreamer

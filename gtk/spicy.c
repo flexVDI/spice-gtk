@@ -765,7 +765,8 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
         if (conn->audio == NULL)
             return;
         SPICE_DEBUG("zap audio channel");
-        /* TODO: zap audio */
+        g_object_unref(conn->audio);
+        conn->audio = NULL;
     }
 
     conn->channels--;

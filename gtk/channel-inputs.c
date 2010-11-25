@@ -153,7 +153,7 @@ static void send_position(SpiceInputsChannel *channel)
     if (c->dpy == -1)
         return;
 
-    SPICE_DEBUG("%s: +%d+%d", __FUNCTION__, c->x, c->y);
+    /* SPICE_DEBUG("%s: +%d+%d", __FUNCTION__, c->x, c->y); */
     position.buttons_state = c->bs;
     position.x             = c->x;
     position.y             = c->y;

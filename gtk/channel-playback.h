@@ -48,7 +48,11 @@ struct _SpicePlaybackChannelClass {
     void (*spice_playback_data)(SpicePlaybackChannel *channel, gpointer *data, gint size);
     void (*spice_playback_stop)(SpicePlaybackChannel *channel);
 
-    /* Do not add fields to this struct */
+    /*
+     * If adding fields to this struct, remove corresponding
+     * amount of padding to avoid changing overall struct size
+     */
+    gchar _spice_reserved[SPICE_RESERVED_PADDING];
 };
 
 GType	        spice_playback_channel_get_type(void);

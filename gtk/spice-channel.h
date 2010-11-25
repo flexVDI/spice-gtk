@@ -62,7 +62,7 @@ struct _SpiceChannelClass
     void (*channel_up)(SpiceChannel *channel);
 
     /* signals */
-    void (*spice_channel_event)(SpiceChannel *channel, SpiceChannelEvent event);
+    void (*channel_event)(SpiceChannel *channel, SpiceChannelEvent event);
 
     /*
      * If adding fields to this struct, remove corresponding
