@@ -1,10 +1,6 @@
 AC_PREREQ([2.57])
 
-m4_define([SPICE_MAJOR], 0)
-m4_define([SPICE_MINOR], 1)
-m4_define([SPICE_MICRO], 0)
-
-AC_INIT([spice-gtk], [SPICE_MAJOR.SPICE_MINOR.SPICE_MICRO],
+AC_INIT([spice-gtk], [m4_esyscmd(build-aux/git-version-gen .tarball-version)],
         [spice-devel@lists.freedesktop.org])
 
 AC_CONFIG_MACRO_DIR([m4])
@@ -256,7 +252,7 @@ MAYBE_WARN="-Wall -Wno-sign-compare -Wno-deprecated-declarations"
 AC_ARG_ENABLE(werror,
 AC_HELP_STRING([--enable-werror], [Use -Werror (if supported)]),
 set_werror="$enableval",[
-if test -f $srcdir/GITVERSION; then
+if test -d $srcdir/.git; then
 	is_git_version=true
 	set_werror=yes
 else
