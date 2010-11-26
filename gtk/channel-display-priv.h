@@ -45,6 +45,7 @@ typedef struct display_surface {
     SpiceCanvas                 *canvas;
     SpiceGlzDecoder             *glz_decoder;
     SpiceZlibDecoder            *zlib_decoder;
+    SpiceJpegDecoder            *jpeg_decoder;
 } display_surface;
 
 typedef struct display_stream {

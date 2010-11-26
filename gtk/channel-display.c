@@ -152,9 +152,8 @@ static void image_put(SpiceImageCache *cache, uint64_t id, pixman_image_t *image
         SPICE_CONTAINEROF(cache, spice_display_channel, image_cache);
     display_cache_item *item;
 
-#if 1 /* temporary sanity check */
-    item = cache_find(&c->images, id);
-    g_return_if_fail(item == NULL);
+#if 1 /* TODO: temporary sanity check */
+    g_warn_if_fail(cache_find(&c->images, id) == NULL);
 #endif
 
     item = cache_add(&c->images, id);
@@ -261,9 +260,66 @@ static void palette_release(SpicePaletteCache *cache, SpicePalette *palette)
     palette_remove(cache, palette->unique);
 }
 
+#ifdef SW_CANVAS_CACHE
+static void image_put_lossy(SpiceImageCache *cache, uint64_t id,
+                            pixman_image_t *surface)
+{
+    spice_display_channel *c =
+        SPICE_CONTAINEROF(cache, spice_display_channel, image_cache);
+    display_cache_item *item;
+
+#if 1 /* TODO: temporary sanity check */
+    g_warn_if_fail(cache_find(&c->images, id) == NULL);
+#endif
+
+    item = cache_add(&c->images, id);
+    item->ptr = pixman_image_ref(surface);
+    item->lossy = TRUE;
+}
+
+static void image_replace_lossy(SpiceImageCache *cache, uint64_t id,
+                                pixman_image_t *surface)
+{
+    spice_display_channel *c =
+        SPICE_CONTAINEROF(cache, spice_display_channel, image_cache);
+    display_cache_item *item;
+
+    item = cache_find(&c->images, id);
+    g_return_if_fail(item != NULL);
+
+    pixman_image_unref(item->ptr);
+    item->ptr = pixman_image_ref(surface);
+    item->lossy = FALSE;
+}
+
+static pixman_image_t* image_get_lossless(SpiceImageCache *cache, uint64_t id)
+{
+    spice_display_channel *c =
+        SPICE_CONTAINEROF(cache, spice_display_channel, image_cache);
+    display_cache_item *item;
+
+    item = cache_find(&c->images, id);
+    if (!item)
+        return NULL;
+
+    /* TODO: shared_cache.hpp does wait until it is lossless..., is
+       that necessary? */
+    g_warn_if_fail(item->lossy == FALSE);
+
+    cache_used(&c->images, item);
+    return pixman_image_ref(item->ptr);
+}
+#endif
+
 static SpiceImageCacheOps image_cache_ops = {
     .put = image_put,
     .get = image_get,
+
+#ifdef SW_CANVAS_CACHE
+    .put_lossy = image_put_lossy,
+    .replace_lossy = image_replace_lossy,
+    .get_lossless = image_get_lossless,
+#endif
 };
 
 static SpicePaletteCacheOps palette_cache_ops = {
@@ -312,8 +368,15 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
     if (!c->glz_window) {
         c->glz_window = glz_decoder_window_new();
     }
+
+    g_warn_if_fail(surface->canvas == NULL);
+    g_warn_if_fail(surface->glz_decoder == NULL);
+    g_warn_if_fail(surface->zlib_decoder == NULL);
+    g_warn_if_fail(surface->jpeg_decoder == NULL);
+
     surface->glz_decoder = glz_decoder_new(c->glz_window);
     surface->zlib_decoder = zlib_decoder_new();
+    surface->jpeg_decoder = jpeg_decoder_new();
 
     surface->canvas = canvas_create_for_data(surface->width,
                                              surface->height,
@@ -326,7 +389,7 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
 #endif
                                              NULL, // &csurfaces.base,
                                              surface->glz_decoder,
-                                             NULL, // &jpeg_decoder(),
+                                             surface->jpeg_decoder,
                                              surface->zlib_decoder);
 
     g_return_val_if_fail(surface->canvas != NULL, 0);
@@ -340,6 +403,7 @@ static void destroy_canvas(display_surface *surface)
 
     glz_decoder_destroy(surface->glz_decoder);
     zlib_decoder_destroy(surface->zlib_decoder);
+    jpeg_decoder_destroy(surface->jpeg_decoder);
 
     if (surface->shmid == -1) {
         free(surface->data);

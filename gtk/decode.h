@@ -34,6 +34,9 @@ void glz_decoder_destroy(SpiceGlzDecoder *d);
 SpiceZlibDecoder *zlib_decoder_new(void);
 void zlib_decoder_destroy(SpiceZlibDecoder *d);
 
+SpiceJpegDecoder *jpeg_decoder_new(void);
+void jpeg_decoder_destroy(SpiceJpegDecoder *d);
+
 G_END_DECLS
 
 #endif // SPICEGTK_DECODE_H_

@@ -29,6 +29,7 @@ typedef struct display_cache_item {
     uint64_t                    id;
     uint32_t                    refcount;
     void                        *ptr;
+    gboolean                    lossy;
 } display_cache_item;
 
 typedef struct display_cache {
