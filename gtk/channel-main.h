@@ -49,7 +49,7 @@ struct _SpiceMainChannelClass {
     /* Do not add fields to this struct */
 };
 
-GType	        spice_main_channel_get_type(void);
+GType spice_main_channel_get_type(void);
 
 void spice_main_set_display(SpiceMainChannel *channel, int id,
                             int x, int y, int width, int height);

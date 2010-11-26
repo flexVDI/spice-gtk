@@ -31,9 +31,10 @@ struct spice_main_channel {
     bool                        agent_connected;
     bool                        agent_caps_received;
     int                         agent_tokens;
-    uint8_t                     *agent_msg;
-    uint8_t                     *agent_msg_pos;
-    uint8_t                     *agent_msg_size;
+    VDAgentMessage              agent_msg; /* partial msg reconstruction */
+    guint8                      *agent_msg_data;
+    uint8_t                     agent_msg_pos;
+    uint8_t                     agent_msg_size;
     uint32_t                    agent_caps[VD_AGENT_CAPS_SIZE];
     struct {
         int                     x;
@@ -133,6 +134,7 @@ static void spice_main_channel_finalize(GObject *obj)
         g_source_remove(c->timer_id);
     }
 
+    g_free(c->agent_msg_data);
     g_queue_free(c->agent_msg_queue);
 
     if (G_OBJECT_CLASS(spice_main_channel_parent_class)->finalize)
@@ -438,31 +440,11 @@ static void main_handle_agent_disconnected(SpiceChannel *channel, spice_msg_in *
     agent_stopped(SPICE_MAIN_CHANNEL(channel));
 }
 
-static void main_handle_agent_data(SpiceChannel *channel, spice_msg_in *in)
+static void main_agent_handle_msg(SpiceChannel *channel,
+                                  VDAgentMessage *msg, gpointer payload)
 {
     spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
-    VDAgentMessage *msg;
-    void *payload;
-    int len;
 
-    /* spice_msg_in_hexdump(in); */
-
-    if (!c->agent_msg) {
-        msg = spice_msg_in_raw(in, &len);
-        g_return_if_fail(len > sizeof(VDAgentMessage));
-        if (msg->size + sizeof(VDAgentMessage) > len) {
-            g_warning("%s: TODO: start buffer", __FUNCTION__);
-        } else {
-            g_return_if_fail(msg->size + sizeof(VDAgentMessage) == len);
-            goto complete;
-        }
-    } else {
-        g_warning("%s: TODO: fill buffer", __FUNCTION__);
-    }
-    return;
-
-complete:
-    payload = (msg+1);
     switch (msg->type) {
     case VD_AGENT_ANNOUNCE_CAPABILITIES:
     {
@@ -482,8 +464,32 @@ complete:
         }
         c->agent_caps_received = true;
         g_signal_emit(channel, signals[SPICE_MAIN_AGENT_UPDATE], 0);
+
         if (caps->request)
             agent_announce_caps(SPICE_MAIN_CHANNEL(channel));
+        break;
+    }
+    case VD_AGENT_CLIPBOARD:
+    {
+        g_message("VD_AGENT_CLIPBOARD FIXME");
+        break;
+    }
+    case VD_AGENT_CLIPBOARD_GRAB:
+    {
+        g_message("VD_AGENT_CLIPBOARD_GRAB FIXME");
+        /* Platform::on_clipboard_grab((uint32_t *)data, */
+        /*                               msg->size / sizeof(uint32_t)); */
+        break;
+    }
+    case VD_AGENT_CLIPBOARD_REQUEST:
+    {
+        g_message("VD_AGENT_CLIPBOARD_REQUEST FIXME");
+        break;
+    }
+    case VD_AGENT_CLIPBOARD_RELEASE:
+    {
+        g_message("VD_AGENT_CLIPBOARD_RELEASE FIXME");
+        break;
     }
     case VD_AGENT_REPLY:
     {
@@ -495,6 +501,65 @@ complete:
     default:
         g_warning("unhandled agent message type: %u (%s), size %u",
                   msg->type, NAME(agent_msg_types, msg->type), msg->size);
+    }
+}
+
+static void main_handle_agent_data_msg(SpiceChannel *channel, guint* msg_size, guchar** msg_pos)
+{
+    spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
+    int n;
+
+    if (c->agent_msg_pos < sizeof(VDAgentMessage)) {
+        n = MIN(sizeof(VDAgentMessage) - c->agent_msg_pos, *msg_size);
+        memcpy((uint8_t*)&c->agent_msg + c->agent_msg_pos, *msg_pos, n);
+        c->agent_msg_pos += n;
+        *msg_size -= n;
+        *msg_pos += n;
+        if (c->agent_msg_pos == sizeof(VDAgentMessage)) {
+            SPICE_DEBUG("agent msg start: msg_size=%d, protocol=%d, type=%d",
+                        c->agent_msg.size, c->agent_msg.protocol, c->agent_msg.type);
+            g_return_if_fail(c->agent_msg.protocol == VD_AGENT_PROTOCOL);
+            g_return_if_fail(c->agent_msg_data == NULL);
+            c->agent_msg_data = g_malloc(c->agent_msg.size);
+        }
+    }
+
+    if (c->agent_msg_pos >= sizeof(VDAgentMessage)) {
+        n = MIN(sizeof(VDAgentMessage) + c->agent_msg.size - c->agent_msg_pos, *msg_size);
+        memcpy(c->agent_msg_data + c->agent_msg_pos - sizeof(VDAgentMessage), *msg_pos, n);
+        c->agent_msg_pos += n;
+        *msg_size -= n;
+        *msg_pos += n;
+    }
+
+    if (c->agent_msg_pos == sizeof(VDAgentMessage) + c->agent_msg.size) {
+        main_agent_handle_msg(channel, &c->agent_msg, c->agent_msg_data);
+        g_free(c->agent_msg_data);
+        c->agent_msg_data = NULL;
+        c->agent_msg_pos = 0;
+    }
+}
+
+static void main_handle_agent_data(SpiceChannel *channel, spice_msg_in *in)
+{
+    spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
+    VDAgentMessage *msg;
+    guint msg_size;
+    guchar* msg_pos;
+    int len;
+
+    msg = spice_msg_in_raw(in, &len);
+    msg_size = msg->size;
+    msg_pos = msg->data;
+
+    if (c->agent_msg_pos == 0 &&
+        msg_size + sizeof(VDAgentMessage) == len) {
+        main_agent_handle_msg(channel, msg, msg + 1);
+        return;
+    }
+
+    while (msg_size > 0) {
+        main_handle_agent_data_msg(channel, &msg_size, &msg_pos);
     }
 }
 
