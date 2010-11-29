@@ -343,6 +343,15 @@
   )
 )
 
+(define-method set_capability
+  (of-object "SpiceChannel")
+  (c-name "spice_channel_set_capability")
+  (return-type "none")
+  (parameters
+    '("guint32" "cap")
+  )
+)
+
 
 
 ;; From spice-channel-enums.h

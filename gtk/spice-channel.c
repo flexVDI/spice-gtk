@@ -1066,3 +1066,26 @@ gboolean spice_channel_test_capability(SpiceChannel *self, guint32 cap)
     c = SPICE_CHANNEL_GET_PRIVATE(self);
     return test_capability(c->remote_caps, cap);
 }
+
+static void set_capability(GArray *caps, guint32 cap)
+{
+    guint word_index = cap / 32;
+
+    g_return_if_fail(caps != NULL);
+
+    if (caps->len <= word_index)
+        g_array_set_size(caps, word_index + 1);
+
+    g_array_index(caps, guint32, word_index) =
+        g_array_index(caps, guint32, word_index) | (1 << (cap % 32));
+}
+
+void spice_channel_set_capability(SpiceChannel *self, guint32 cap)
+{
+    spice_channel *c;
+
+    g_return_if_fail(SPICE_IS_CHANNEL(self));
+
+    c = SPICE_CHANNEL_GET_PRIVATE(self);
+    set_capability(c->caps, cap);
+}
