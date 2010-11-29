@@ -388,6 +388,26 @@
   (return-type "GType")
 )
 
+(define-function spice_main_clipboard_notify
+  (c-name "spice_main_clipboard_notify")
+  (return-type "none")
+  (parameters
+    '("SpiceMainChannel*" "channel")
+    '("guint32" "type")
+    '("const-guchar*" "data")
+    '("size_t" "size")
+  )
+)
+
+(define-function spice_main_clipboard_request
+  (c-name "spice_main_clipboard_request")
+  (return-type "none")
+  (parameters
+    '("SpiceMainChannel*" "channel")
+    '("guint32" "type")
+  )
+)
+
 
 
 ;; From channel-display.h

@@ -1177,13 +1177,17 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
 {
     SpiceDisplay *display = data;
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    int types[SPICE_N_ELEMENTS(atom2agent)];
+    guint32 types[SPICE_N_ELEMENTS(atom2agent)];
     char *name;
     int a, m, t;
 
     SPICE_DEBUG("%s:", __FUNCTION__);
-    for (a = 0; a < n_atoms; a++) {
-        SPICE_DEBUG(" \"%s\"", gdk_atom_name(atoms[a]));
+    if (spice_util_get_debug()) {
+        for (a = 0; a < n_atoms; a++) {
+            name = gdk_atom_name(atoms[a]);
+            SPICE_DEBUG(" \"%s\"", name);
+            g_free(name);
+        }
     }
 
     memset(types, 0, sizeof(types));
@@ -1207,6 +1211,7 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
             }
             break;
         }
+        g_free(name);
     }
     for (t = 0; t < SPICE_N_ELEMENTS(atom2agent); t++) {
         if (types[t] == 0) {
@@ -1535,6 +1540,183 @@ static void disconnect_cursor(SpiceDisplay *display)
     d->cursor = NULL;
 }
 
+
+typedef struct
+{
+    GMainLoop *loop;
+    SpiceDisplay *display;
+    GtkSelectionData *selection_data;
+    guint info;
+    gulong timeout_handler;
+} RunInfo;
+
+static void clipboard_got_from_guest(SpiceMainChannel *main,
+                                     guint type, guchar *data, guint size,
+                                     gpointer userdata)
+{
+    RunInfo *ri = userdata;
+
+    SPICE_DEBUG("clipboard got data");
+
+    gtk_selection_data_set(ri->selection_data,
+        gdk_atom_intern_static_string(atom2agent[ri->info].xatom),
+        8, data, size);
+
+    if (g_main_loop_is_running (ri->loop))
+        g_main_loop_quit (ri->loop);
+}
+
+static gboolean clipboard_timeout(gpointer data)
+{
+    RunInfo *ri = data;
+
+    g_warning("clipboard get timed out");
+    if (g_main_loop_is_running (ri->loop))
+        g_main_loop_quit (ri->loop);
+
+    ri->timeout_handler = 0;
+    return FALSE;
+}
+
+static void clipboard_get(GtkClipboard *clipboard, GtkSelectionData *selection_data,
+                          guint info, gpointer display)
+{
+    RunInfo ri = { NULL, };
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    gulong clipboard_handler;
+
+    SPICE_DEBUG("clipboard get");
+
+    g_return_if_fail(info < SPICE_N_ELEMENTS(atom2agent));
+
+    ri.display = display;
+    ri.selection_data = selection_data;
+    ri.info = info;
+    ri.loop = g_main_loop_new(NULL, FALSE);
+
+    clipboard_handler = g_signal_connect(d->main, "main-clipboard",
+                                         G_CALLBACK(clipboard_got_from_guest), &ri);
+    ri.timeout_handler = g_timeout_add_seconds(7, clipboard_timeout, &ri);
+    spice_main_clipboard_request(d->main, atom2agent[info].vdagent);
+
+    g_main_loop_run(ri.loop);
+
+    g_main_loop_unref(ri.loop);
+    ri.loop = NULL;
+    g_signal_handler_disconnect(d->main, clipboard_handler);
+    if (ri.timeout_handler != 0)
+        g_source_remove(ri.timeout_handler);
+}
+
+static void clipboard_clear(GtkClipboard *clipboard, gpointer display)
+{
+    SPICE_DEBUG("clipboard_clear");
+    // clipboard release ?
+}
+
+static gboolean clipboard_grab(SpiceMainChannel *main,
+                               guint32* types, guint32 ntypes, gpointer display)
+{
+    int m, n, i;
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    GtkTargetEntry targets[SPICE_N_ELEMENTS(atom2agent)];
+    gboolean target_selected[SPICE_N_ELEMENTS(atom2agent)] = { FALSE, };
+    gboolean found;
+
+    i = 0;
+    for (n = 0; n < ntypes; ++n) {
+        found = FALSE;
+        for (m = 0; m < SPICE_N_ELEMENTS(atom2agent); m++) {
+            if (atom2agent[m].vdagent == types[n] && !target_selected[m]) {
+                found = TRUE;
+                g_return_val_if_fail(i < SPICE_N_ELEMENTS(atom2agent), FALSE);
+                targets[i].target = (gchar*)atom2agent[m].xatom;
+                targets[i].flags = 0;
+                targets[i].info = m;
+                target_selected[m] = TRUE;
+                i += 1;
+            }
+        }
+        if (!found) {
+            g_warning("clipboard: couldn't find a matching type for: %d", types[n]);
+        }
+    }
+
+    if (!gtk_clipboard_set_with_data(d->clipboard, targets, i,
+                                     clipboard_get, clipboard_clear, display)) {
+        g_warning("clipboard grab failed");
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+static void clipboard_received_cb(GtkClipboard *clipboard,
+                                  GtkSelectionData *selection_data,
+                                  gpointer display)
+{
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    gint len = 0, m;
+    guint32 type = VD_AGENT_CLIPBOARD_NONE;
+    gchar* name;
+    GdkAtom atom;
+
+
+    len = gtk_selection_data_get_length(selection_data);
+    if (len == -1) {
+        SPICE_DEBUG("empty clipboard");
+    } else if (len == 0) {
+        SPICE_DEBUG("TODO: what should be done here?");
+    } else {
+        atom = gtk_selection_data_get_data_type(selection_data);
+        name = gdk_atom_name(atom);
+        for (m = 0; m < SPICE_N_ELEMENTS(atom2agent); m++) {
+            if (strcasecmp(name, atom2agent[m].xatom) == 0) {
+                break;
+            }
+        }
+
+        if (m >= SPICE_N_ELEMENTS(atom2agent)) {
+            g_warning("clipboard_received for unsupported type: %s", name);
+        } else {
+            type = atom2agent[m].vdagent;
+        }
+
+        g_free(name);
+    }
+
+    spice_main_clipboard_notify(d->main,
+        type, gtk_selection_data_get_data(selection_data), len);
+}
+
+static gboolean clipboard_request(SpiceMainChannel *main,
+                                  guint32 type, gpointer display)
+{
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    int m;
+    GdkAtom atom;
+
+    for (m = 0; m < SPICE_N_ELEMENTS(atom2agent); m++) {
+        if (atom2agent[m].vdagent == type)
+            break;
+    }
+
+    g_return_val_if_fail(m < SPICE_N_ELEMENTS(atom2agent), FALSE);
+
+    atom = gdk_atom_intern_static_string(atom2agent[m].xatom);
+    gtk_clipboard_request_contents(d->clipboard, atom,
+                                   clipboard_received_cb, display);
+
+    return TRUE;
+}
+
+static void clipboard_release(SpiceMainChannel *main, gpointer data)
+{
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(data);
+
+    gtk_clipboard_clear(d->clipboard);
+}
+
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
     SpiceDisplay *display = data;
@@ -1546,6 +1728,12 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         d->main = SPICE_MAIN_CHANNEL(channel);
         g_signal_connect(channel, "main-mouse-update",
                          G_CALLBACK(mouse_update), display);
+        g_signal_connect(channel, "main-clipboard-grab",
+                         G_CALLBACK(clipboard_grab), display);
+        g_signal_connect(channel, "main-clipboard-request",
+                         G_CALLBACK(clipboard_request), display);
+        g_signal_connect(channel, "main-clipboard-release",
+                         G_CALLBACK(clipboard_release), display);
         mouse_update(channel, display);
         return;
     }

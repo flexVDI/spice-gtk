@@ -54,8 +54,10 @@ GType spice_main_channel_get_type(void);
 void spice_main_set_display(SpiceMainChannel *channel, int id,
                             int x, int y, int width, int height);
 
-void spice_main_clipboard_grab(SpiceMainChannel *channel, int *types, int ntypes);
+void spice_main_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int ntypes);
 void spice_main_clipboard_release(SpiceMainChannel *channel);
+void spice_main_clipboard_notify(SpiceMainChannel *channel, guint32 type, const guchar *data, size_t size);
+void spice_main_clipboard_request(SpiceMainChannel *channel, guint32 type);
 
 G_END_DECLS
 

@@ -74,7 +74,10 @@ enum {
 enum {
     SPICE_MAIN_MOUSE_UPDATE,
     SPICE_MAIN_AGENT_UPDATE,
-
+    SPICE_MAIN_CLIPBOARD,
+    SPICE_MAIN_CLIPBOARD_GRAB,
+    SPICE_MAIN_CLIPBOARD_REQUEST,
+    SPICE_MAIN_CLIPBOARD_RELEASE,
     SPICE_MAIN_LAST_SIGNAL,
 };
 
@@ -305,6 +308,49 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                      G_TYPE_NONE,
                      0);
 
+    signals[SPICE_MAIN_CLIPBOARD] =
+        g_signal_new("main-clipboard",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_LAST,
+                     0,
+                     NULL, NULL,
+                     g_cclosure_user_marshal_VOID__UINT_POINTER_UINT,
+                     G_TYPE_NONE,
+                     3,
+                     G_TYPE_UINT, G_TYPE_POINTER, G_TYPE_UINT);
+
+    signals[SPICE_MAIN_CLIPBOARD_GRAB] =
+        g_signal_new("main-clipboard-grab",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_LAST,
+                     0,
+                     NULL, NULL,
+                     g_cclosure_user_marshal_BOOLEAN__POINTER_UINT,
+                     G_TYPE_BOOLEAN,
+                     2,
+                     G_TYPE_POINTER, G_TYPE_UINT);
+
+    signals[SPICE_MAIN_CLIPBOARD_REQUEST] =
+        g_signal_new("main-clipboard-request",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_LAST,
+                     0,
+                     NULL, NULL,
+                     g_cclosure_user_marshal_BOOLEAN__UINT,
+                     G_TYPE_BOOLEAN,
+                     1,
+                     G_TYPE_UINT);
+
+    signals[SPICE_MAIN_CLIPBOARD_RELEASE] =
+        g_signal_new("main-clipboard-release",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_LAST,
+                     0,
+                     NULL, NULL,
+                     g_cclosure_marshal_VOID__VOID,
+                     G_TYPE_NONE,
+                     0);
+
     g_type_class_add_private(klass, sizeof(spice_main_channel));
 }
 
@@ -435,12 +481,13 @@ static void agent_announce_caps(SpiceMainChannel *channel)
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_MONITORS_CONFIG);
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_REPLY);
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_DISPLAY_CONFIG);
+    VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_CLIPBOARD_BY_DEMAND);
 
     agent_msg_send(channel, VD_AGENT_ANNOUNCE_CAPABILITIES, size, caps);
     free(caps);
 }
 
-static void agent_clipboard_grab(SpiceMainChannel *channel, int *types, int ntypes)
+static void agent_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int ntypes)
 {
     spice_main_channel *c = channel->priv;
     VDAgentClipboardGrab *grab;
@@ -450,6 +497,9 @@ static void agent_clipboard_grab(SpiceMainChannel *channel, int *types, int ntyp
     if (!c->agent_connected)
         return;
 
+    g_return_if_fail(VD_AGENT_HAS_CAPABILITY(c->agent_caps,
+        sizeof(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
+
     size = sizeof(VDAgentClipboardGrab) + sizeof(uint32_t) * ntypes;
     grab = spice_malloc0(size);
     for (i = 0; i < ntypes; i++) {
@@ -458,6 +508,54 @@ static void agent_clipboard_grab(SpiceMainChannel *channel, int *types, int ntyp
 
     agent_msg_send(channel, VD_AGENT_CLIPBOARD_GRAB, size, grab);
     free(grab);
+}
+
+static void agent_clipboard_notify(SpiceMainChannel *channel,
+                                   guint32 type, const guchar *data, size_t size)
+{
+    spice_main_channel *c = channel->priv;
+    VDAgentClipboard *cb;
+    size_t msgsize;
+
+    g_return_if_fail(c->agent_connected);
+
+    g_return_if_fail(VD_AGENT_HAS_CAPABILITY(c->agent_caps,
+        sizeof(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
+
+    msgsize = sizeof(VDAgentClipboard) + size;
+    cb = spice_malloc0(msgsize);
+    cb->type = type;
+    memcpy(cb->data, data, msgsize);
+
+    agent_msg_send(channel, VD_AGENT_CLIPBOARD, msgsize, cb);
+    free(cb);
+}
+
+static void agent_clipboard_request(SpiceMainChannel *channel, guint32 type)
+{
+    spice_main_channel *c = channel->priv;
+    VDAgentClipboardRequest request = { 0, };
+
+    g_return_if_fail(c->agent_connected);
+
+    g_return_if_fail(VD_AGENT_HAS_CAPABILITY(c->agent_caps,
+        sizeof(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
+
+    request.type = type;
+
+    agent_msg_send(channel, VD_AGENT_CLIPBOARD_REQUEST, sizeof(VDAgentClipboardRequest), &request);
+}
+
+static void agent_clipboard_release(SpiceMainChannel *channel)
+{
+    spice_main_channel *c = channel->priv;
+
+    g_return_if_fail(c->agent_connected);
+
+    g_return_if_fail(VD_AGENT_HAS_CAPABILITY(c->agent_caps,
+        sizeof(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
+
+    agent_msg_send(channel, VD_AGENT_CLIPBOARD_REQUEST, 0, NULL);
 }
 
 static void agent_start(SpiceMainChannel *channel)
@@ -614,24 +712,29 @@ static void main_agent_handle_msg(SpiceChannel *channel,
     }
     case VD_AGENT_CLIPBOARD:
     {
-        g_message("VD_AGENT_CLIPBOARD FIXME");
+        VDAgentClipboard *cb = payload;
+        g_signal_emit(channel, signals[SPICE_MAIN_CLIPBOARD], 0,
+                      cb->type, cb->data, msg->size - sizeof(VDAgentClipboard));
         break;
     }
     case VD_AGENT_CLIPBOARD_GRAB:
     {
-        g_message("VD_AGENT_CLIPBOARD_GRAB FIXME");
-        /* Platform::on_clipboard_grab((uint32_t *)data, */
-        /*                               msg->size / sizeof(uint32_t)); */
+        gboolean ret;
+        g_signal_emit(channel, signals[SPICE_MAIN_CLIPBOARD_GRAB], 0,
+                      payload, msg->size / sizeof(uint32_t), &ret);
         break;
     }
     case VD_AGENT_CLIPBOARD_REQUEST:
     {
-        g_message("VD_AGENT_CLIPBOARD_REQUEST FIXME");
+        gboolean ret;
+        VDAgentClipboardRequest *req = payload;
+
+        g_signal_emit(channel, signals[SPICE_MAIN_CLIPBOARD_REQUEST], 0, req->type, &ret);
         break;
     }
     case VD_AGENT_CLIPBOARD_RELEASE:
     {
-        g_message("VD_AGENT_CLIPBOARD_RELEASE FIXME");
+        g_signal_emit(channel, signals[SPICE_MAIN_CLIPBOARD_RELEASE], 0);
         break;
     }
     case VD_AGENT_REPLY:
@@ -798,7 +901,7 @@ void spice_main_set_display(SpiceMainChannel *channel, int id,
     c->timer_id = g_timeout_add_seconds(1, timer_set_display, channel);
 }
 
-void spice_main_clipboard_grab(SpiceMainChannel *channel, int *types, int ntypes)
+void spice_main_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int ntypes)
 {
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
@@ -809,5 +912,20 @@ void spice_main_clipboard_release(SpiceMainChannel *channel)
 {
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
-    g_warning("%s: TODO", __FUNCTION__);
+    agent_clipboard_release(channel);
+}
+
+void spice_main_clipboard_notify(SpiceMainChannel *channel,
+                                 guint32 type, const guchar *data, size_t size)
+{
+    g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
+
+    agent_clipboard_notify(channel, type, data, size);
+}
+
+void spice_main_clipboard_request(SpiceMainChannel *channel, guint32 type)
+{
+    g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
+
+    agent_clipboard_request(channel, type);
 }
