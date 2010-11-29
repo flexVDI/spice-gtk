@@ -281,6 +281,15 @@
   (return-type "gboolean")
 )
 
+(define-method open_fd
+  (of-object "SpiceSession")
+  (c-name "spice_session_open_fd")
+  (return-type "gboolean")
+  (parameters
+    '("int" "fd")
+  )
+)
+
 (define-method disconnect
   (of-object "SpiceSession")
   (c-name "spice_session_disconnect")
@@ -323,6 +332,15 @@
   (of-object "SpiceChannel")
   (c-name "spice_channel_connect")
   (return-type "gboolean")
+)
+
+(define-method open_fd
+  (of-object "SpiceChannel")
+  (c-name "spice_channel_open_fd")
+  (return-type "gboolean")
+  (parameters
+    '("int" "fd")
+  )
 )
 
 (define-method disconnect

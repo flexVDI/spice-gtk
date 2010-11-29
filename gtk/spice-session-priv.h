@@ -22,6 +22,7 @@ G_BEGIN_DECLS
 
 void spice_session_set_connection_id(SpiceSession *session, int id);
 int spice_session_get_connection_id(SpiceSession *session);
+gboolean spice_session_get_client_provided_socket(SpiceSession *session);
 
 int spice_session_channel_connect(SpiceSession *session, bool use_tls);
 void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel);

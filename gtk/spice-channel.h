@@ -63,12 +63,13 @@ struct _SpiceChannelClass
 
     /* signals */
     void (*channel_event)(SpiceChannel *channel, SpiceChannelEvent event);
+    void (*open_fd)(SpiceChannel *channel, int with_tls);
 
     /*
      * If adding fields to this struct, remove corresponding
      * amount of padding to avoid changing overall struct size
      */
-    gchar _spice_reserved[SPICE_RESERVED_PADDING];
+    gchar _spice_reserved[SPICE_RESERVED_PADDING - sizeof(void*)];
 };
 
 GType spice_channel_get_type(void) G_GNUC_CONST;
@@ -78,6 +79,7 @@ typedef void (*spice_msg_handler)(SpiceChannel *channel, spice_msg_in *in);
 SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id);
 void spice_channel_destroy(SpiceChannel *channel);
 gboolean spice_channel_connect(SpiceChannel *channel);
+gboolean spice_channel_open_fd(SpiceChannel *channel, int fd);
 void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent event);
 gboolean spice_channel_test_capability(SpiceChannel *channel, guint32 cap);
 void spice_channel_set_capability(SpiceChannel *self, guint32 cap);

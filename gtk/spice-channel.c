@@ -52,6 +52,7 @@ enum {
 /* Signals */
 enum {
     SPICE_CHANNEL_EVENT,
+    SPICE_CHANNEL_OPEN_FD,
 
     SPICE_CHANNEL_LAST_SIGNAL,
 };
@@ -255,6 +256,17 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceChannelClass, channel_event),
+                     NULL, NULL,
+                     g_cclosure_marshal_VOID__INT,
+                     G_TYPE_NONE,
+                     1,
+                     G_TYPE_INT);
+
+    signals[SPICE_CHANNEL_OPEN_FD] =
+        g_signal_new("open-fd",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_FIRST,
+                     G_STRUCT_OFFSET(SpiceChannelClass, open_fd),
                      NULL, NULL,
                      g_cclosure_marshal_VOID__INT,
                      G_TYPE_NONE,
@@ -925,7 +937,7 @@ static int tls_verify(int preverify_ok, X509_STORE_CTX *ctx)
     return preverify_ok;
 }
 
-gboolean spice_channel_connect(SpiceChannel *channel)
+static gboolean channel_connect(SpiceChannel *channel)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
     int rc, err;
@@ -942,7 +954,14 @@ gboolean spice_channel_connect(SpiceChannel *channel)
     }
 
 reconnect:
-    c->socket = spice_session_channel_connect(c->session, c->tls);
+    if (spice_session_get_client_provided_socket(c->session)) {
+        if (c->socket == -1) {
+            g_signal_emit(channel, signals[SPICE_CHANNEL_OPEN_FD], 0, c->tls);
+            return true;
+        }
+    } else
+        c->socket = spice_session_channel_connect(c->session, c->tls);
+
     if (c->socket == -1) {
         if (!c->tls) {
             c->tls = true;
@@ -1003,6 +1022,23 @@ reconnect:
     c->state = SPICE_CHANNEL_STATE_LINK_HDR;
     spice_channel_send_link(channel);
     return true;
+}
+
+gboolean spice_channel_connect(SpiceChannel *channel)
+{
+    return channel_connect(channel);
+}
+
+gboolean spice_channel_open_fd(SpiceChannel *channel, int fd)
+{
+    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+
+    g_return_val_if_fail(c != NULL, FALSE);
+    g_return_val_if_fail(fd >= 0, FALSE);
+
+    c->socket = fd;
+
+    return channel_connect(channel);
 }
 
 void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)

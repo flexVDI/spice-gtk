@@ -41,6 +41,7 @@ struct spice_session {
     SpiceChannel      *cmain;
     Ring              channels;
     guint32           mm_time;
+    gboolean          client_provided_sockets;
 };
 
 /* ------------------------------------------------------------------ */
@@ -393,7 +394,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
 /* ------------------------------------------------------------------ */
 /* public functions                                                   */
 
-SpiceSession *spice_session_new()
+SpiceSession *spice_session_new(void)
 {
     return SPICE_SESSION(g_object_new(SPICE_TYPE_SESSION,
                                       NULL));
@@ -406,8 +407,32 @@ gboolean spice_session_connect(SpiceSession *session)
     g_return_val_if_fail(s != NULL, FALSE);
 
     spice_session_disconnect(session);
+
+    s->client_provided_sockets = FALSE;
     s->cmain = spice_channel_new(session, SPICE_CHANNEL_MAIN, 0);
     return spice_channel_connect(s->cmain);
+}
+
+gboolean spice_session_open_fd(SpiceSession *session, int fd)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_val_if_fail(s != NULL, FALSE);
+    g_return_val_if_fail(fd >= 0, FALSE);
+
+    spice_session_disconnect(session);
+
+    s->client_provided_sockets = TRUE;
+    s->cmain = spice_channel_new(session, SPICE_CHANNEL_MAIN, 0);
+    return spice_channel_open_fd(s->cmain, fd);
+}
+
+gboolean spice_session_get_client_provided_socket(SpiceSession *session)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_val_if_fail(s != NULL, FALSE);
+    return s->client_provided_sockets;
 }
 
 void spice_session_disconnect(SpiceSession *session)
