@@ -17,6 +17,7 @@
 */
 #include "spice-client.h"
 #include "spice-common.h"
+#include "spice-marshal.h"
 
 #include "spice-channel-priv.h"
 #include "spice-session-priv.h"
@@ -30,6 +31,14 @@ struct spice_main_channel {
     enum SpiceMouseMode         mouse_mode;
     bool                        agent_connected;
     bool                        agent_caps_received;
+
+    gboolean                    agent_display_config_sent;
+    guint8                      display_color_depth;
+    gboolean                    display_disable_wallpaper:1;
+    gboolean                    display_disable_font_smooth:1;
+    gboolean                    display_disable_animation:1;
+    gboolean                    display_set_color_depth:1;
+
     int                         agent_tokens;
     VDAgentMessage              agent_msg; /* partial msg reconstruction */
     guint8                      *agent_msg_data;
@@ -54,6 +63,11 @@ enum {
     PROP_MOUSE_MODE,
     PROP_AGENT_CONNECTED,
     PROP_AGENT_CAPS_0,
+    PROP_DISPLAY_DISABLE_WALLPAPER,
+    PROP_DISPLAY_DISABLE_FONT_SMOOTH,
+    PROP_DISPLAY_DISABLE_ANIMATION,
+    PROP_DISPLAY_SET_COLOR_DEPTH,
+    PROP_DISPLAY_COLOR_DEPTH,
 };
 
 /* Signals */
@@ -120,8 +134,50 @@ static void spice_main_get_property(GObject    *object,
     case PROP_AGENT_CAPS_0:
         g_value_set_int(value, c->agent_caps[0]);
 	break;
+    case PROP_DISPLAY_DISABLE_WALLPAPER:
+        g_value_set_boolean(value, c->display_disable_wallpaper);
+        break;
+    case PROP_DISPLAY_DISABLE_FONT_SMOOTH:
+        g_value_set_boolean(value, c->display_disable_font_smooth);
+        break;
+    case PROP_DISPLAY_DISABLE_ANIMATION:
+        g_value_set_boolean(value, c->display_disable_animation);
+        break;
+    case PROP_DISPLAY_SET_COLOR_DEPTH:
+        g_value_set_boolean(value, c->display_set_color_depth);
+        break;
+    case PROP_DISPLAY_COLOR_DEPTH:
+        g_value_set_uint(value, c->display_color_depth);
+        break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+	break;
+    }
+}
+
+static void spice_main_set_property(GObject *gobject, guint prop_id,
+                                    const GValue *value, GParamSpec *pspec)
+{
+    spice_main_channel *c = SPICE_MAIN_CHANNEL(gobject)->priv;
+
+    switch (prop_id) {
+    case PROP_DISPLAY_DISABLE_WALLPAPER:
+        c->display_disable_wallpaper = g_value_get_boolean(value);
+        break;
+    case PROP_DISPLAY_DISABLE_FONT_SMOOTH:
+        c->display_disable_font_smooth = g_value_get_boolean(value);
+        break;
+    case PROP_DISPLAY_DISABLE_ANIMATION:
+        c->display_disable_animation = g_value_get_boolean(value);
+        break;
+    case PROP_DISPLAY_SET_COLOR_DEPTH:
+        c->display_set_color_depth = g_value_get_boolean(value);
+        break;
+    case PROP_DISPLAY_COLOR_DEPTH:
+        c->display_color_depth = g_value_get_uint(value);
+        break;
+    default:
+	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
     }
 }
@@ -148,6 +204,7 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
 
     gobject_class->finalize     = spice_main_channel_finalize;
     gobject_class->get_property = spice_main_get_property;
+    gobject_class->set_property = spice_main_set_property;
     channel_class->handle_msg   = spice_main_handle_msg;
 
     g_object_class_install_property
@@ -182,6 +239,51 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                           G_PARAM_STATIC_NAME |
                           G_PARAM_STATIC_NICK |
                           G_PARAM_STATIC_BLURB));
+
+    g_object_class_install_property
+        (gobject_class, PROP_DISPLAY_DISABLE_WALLPAPER,
+         g_param_spec_boolean("display-disable-wallpaper",
+                              "Disable wallpaper",
+                              "", FALSE,
+                              G_PARAM_READWRITE |
+                              G_PARAM_CONSTRUCT |
+                              G_PARAM_STATIC_STRINGS));
+
+    g_object_class_install_property
+        (gobject_class, PROP_DISPLAY_DISABLE_FONT_SMOOTH,
+         g_param_spec_boolean("display-disable-font-smooth",
+                              "Disable font smooth",
+                              "", FALSE,
+                              G_PARAM_READWRITE |
+                              G_PARAM_CONSTRUCT |
+                              G_PARAM_STATIC_STRINGS));
+
+    g_object_class_install_property
+        (gobject_class, PROP_DISPLAY_DISABLE_ANIMATION,
+         g_param_spec_boolean("display-disable-animation",
+                              "Disable animations",
+                              "", FALSE,
+                              G_PARAM_READWRITE |
+                              G_PARAM_CONSTRUCT |
+                              G_PARAM_STATIC_STRINGS));
+
+    g_object_class_install_property
+        (gobject_class, PROP_DISPLAY_SET_COLOR_DEPTH,
+         g_param_spec_boolean("set-color-depth",
+                              "Set color depth",
+                              "", FALSE,
+                              G_PARAM_READWRITE |
+                              G_PARAM_CONSTRUCT |
+                              G_PARAM_STATIC_STRINGS));
+
+    g_object_class_install_property
+        (gobject_class, PROP_DISPLAY_COLOR_DEPTH,
+         g_param_spec_uint("color-depth",
+                           "Color depth",
+                           "", 8, 32, 32,
+                           G_PARAM_READWRITE |
+                           G_PARAM_CONSTRUCT |
+                           G_PARAM_STATIC_STRINGS));
 
     signals[SPICE_MAIN_MOUSE_UPDATE] =
         g_signal_new("main-mouse-update",
@@ -283,6 +385,39 @@ static void agent_monitors_config(SpiceMainChannel *channel)
     free(mon);
 }
 
+static void agent_display_config(SpiceMainChannel *channel)
+{
+    spice_main_channel *c = channel->priv;
+    VDAgentDisplayConfig config = { 0, };
+
+    if (c->display_disable_wallpaper) {
+        config.flags |= VD_AGENT_DISPLAY_CONFIG_FLAG_DISABLE_WALLPAPER;
+    }
+
+    if (c->display_disable_font_smooth) {
+        config.flags |= VD_AGENT_DISPLAY_CONFIG_FLAG_DISABLE_FONT_SMOOTH;
+    }
+
+    if (c->display_disable_animation) {
+        config.flags |= VD_AGENT_DISPLAY_CONFIG_FLAG_DISABLE_ANIMATION;
+    }
+
+    if (c->display_set_color_depth) {
+        config.flags |= VD_AGENT_DISPLAY_CONFIG_FLAG_SET_COLOR_DEPTH;
+        config.depth = c->display_color_depth;
+    }
+
+#if 0 // TODO
+    if (!_display_setting.is_empty()) {
+        _agent_reply_wait_type = VD_AGENT_DISPLAY_CONFIG;
+    }
+#endif
+
+    SPICE_DEBUG("display_config: flags: %u, depth: %u", config.flags, config.depth);
+
+    agent_msg_send(channel, VD_AGENT_DISPLAY_CONFIG, sizeof(VDAgentDisplayConfig), &config);
+}
+
 static void agent_announce_caps(SpiceMainChannel *channel)
 {
     spice_main_channel *c = channel->priv;
@@ -299,6 +434,7 @@ static void agent_announce_caps(SpiceMainChannel *channel)
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_MOUSE_STATE);
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_MONITORS_CONFIG);
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_REPLY);
+    VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_DISPLAY_CONFIG);
 
     agent_msg_send(channel, VD_AGENT_ANNOUNCE_CAPABILITIES, size, caps);
     free(caps);
@@ -351,6 +487,7 @@ static void agent_stopped(SpiceMainChannel *channel)
 
     c->agent_connected = false;
     c->agent_caps_received = false;
+    c->agent_display_config_sent = false;
     g_signal_emit(channel, signals[SPICE_MAIN_AGENT_UPDATE], 0);
 }
 
@@ -467,6 +604,12 @@ static void main_agent_handle_msg(SpiceChannel *channel,
 
         if (caps->request)
             agent_announce_caps(SPICE_MAIN_CHANNEL(channel));
+
+        if (VD_AGENT_HAS_CAPABILITY(caps->caps, sizeof(c->agent_caps), VD_AGENT_CAP_DISPLAY_CONFIG) &&
+            !c->agent_display_config_sent) {
+            agent_display_config(SPICE_MAIN_CHANNEL(channel));
+            c->agent_display_config_sent = true;
+        }
         break;
     }
     case VD_AGENT_CLIPBOARD:
