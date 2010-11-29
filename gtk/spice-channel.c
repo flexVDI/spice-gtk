@@ -94,7 +94,7 @@ static void spice_channel_constructed(GObject *gobject)
 
     snprintf(c->name, sizeof(c->name), "%s-%d:%d",
              desc ? desc : "unknown", c->channel_type, c->channel_id);
-    g_message("%s: %s", c->name, __FUNCTION__);
+    SPICE_DEBUG("%s: %s", c->name, __FUNCTION__);
 
     c->connection_id = spice_session_get_connection_id(c->session);
     spice_session_channel_new(c->session, channel);
@@ -472,7 +472,7 @@ static int spice_channel_recv(SpiceChannel *channel, void *buf, int len)
             return rc;
         }
         if (rc == 0) {
-            g_message("%s: channel/tls eof", c->name);
+            SPICE_DEBUG("%s: channel/tls eof", c->name);
             spice_channel_disconnect(channel, SPICE_CHANNEL_CLOSED);
             return 0;
         }
@@ -495,7 +495,7 @@ static int spice_channel_recv(SpiceChannel *channel, void *buf, int len)
             spice_channel_disconnect(channel, SPICE_CHANNEL_ERROR_IO);
             return 0;
         case 0:
-            g_message("%s: channel eof", c->name);
+            SPICE_DEBUG("%s: channel eof", c->name);
             spice_channel_disconnect(channel, SPICE_CHANNEL_CLOSED);
             return 0;
         default:
@@ -515,8 +515,8 @@ static void spice_channel_tls_connect(SpiceChannel *channel)
         if (err == SSL_ERROR_WANT_READ) {
             return;
         }
-        g_message("%s: SSL_connect: %s",
-                  c->name, ERR_error_string(err, NULL));
+        SPICE_DEBUG("%s: SSL_connect: %s",
+            c->name, ERR_error_string(err, NULL));
         spice_channel_emit_event(channel, SPICE_CHANNEL_ERROR_TLS);
     }
     c->state = SPICE_CHANNEL_STATE_LINK_HDR;
@@ -576,7 +576,7 @@ static void spice_channel_recv_auth(SpiceChannel *channel)
         return;
     }
 
-    g_message("%s: channel up", c->name);
+    SPICE_DEBUG("%s: channel up", c->name);
     c->state = SPICE_CHANNEL_STATE_READY;
     spice_channel_emit_event(channel, SPICE_CHANNEL_OPENED);
 
@@ -656,7 +656,7 @@ static void spice_channel_recv_link_hdr(SpiceChannel *channel)
         if (c->peer_hdr.major_version == 1) {
             /* enter spice 0.4 mode */
             g_object_set(c->session, "protocol", 1, NULL);
-            g_message("%s: switching to protocol 1 (spice 0.4)", c->name);
+            SPICE_DEBUG("%s: switching to protocol 1 (spice 0.4)", c->name);
             spice_channel_disconnect(channel, SPICE_CHANNEL_NONE);
             spice_channel_connect(channel);
             return;
@@ -691,7 +691,7 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
         break;
     case SPICE_LINK_ERR_NEED_SECURED:
         c->tls = true;
-        g_message("%s: switching to tls", c->name);
+        SPICE_DEBUG("%s: switching to tls", c->name);
         spice_channel_disconnect(channel, SPICE_CHANNEL_NONE);
         spice_channel_connect(channel);
         return;
@@ -703,9 +703,7 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
     }
 
     num_caps = c->peer_msg->num_channel_caps + c->peer_msg->num_common_caps;
-    if (num_caps) {
-        g_message("%s: %s: %d caps", c->name, __FUNCTION__, num_caps);
-    }
+    SPICE_DEBUG("%s: %s: %d caps", c->name, __FUNCTION__, num_caps);
 
     /* see original spice/client code: */
     /* g_return_if_fail(c->peer_msg + c->peer_msg->caps_offset * sizeof(uint32_t) > c->peer_msg + c->peer_hdr.size); */
@@ -996,7 +994,7 @@ reconnect:
                 c->state = SPICE_CHANNEL_STATE_TLS;
                 return 0;
             }
-            g_message("%s: SSL_connect: %s",
+            g_warning("%s: SSL_connect: %s",
                       c->name, ERR_error_string(err, NULL));
             spice_channel_emit_event(channel, SPICE_CHANNEL_ERROR_TLS);
         }
