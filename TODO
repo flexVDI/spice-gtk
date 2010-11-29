@@ -1,12 +1,9 @@
 * client migration support.
 * mm time handling.
-* use libcommon-spice instead of common/
-* clipboard
-* Incomplete channel implementations:
-  - display: jpeg, zlib decoders
-  - VD_AGENT 
-  - TunnelChannel?
-  - audio: CELT support
+* use libspice-common instead of common/
+* clipboard images
+* TunnelChannel?
+* audio: CELT support
 * protocol <1 support?
 * win32
 * i18 in libs
