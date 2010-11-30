@@ -15,6 +15,8 @@
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
+#include <celt051/celt.h>
+
 #include "spice-client.h"
 #include "spice-common.h"
 #include "spice-channel-priv.h"
@@ -26,6 +28,8 @@
 
 struct spice_playback_channel {
     int                         mode;
+    CELTMode                    *celt_mode;
+    CELTDecoder                 *celt_decoder;
 };
 
 G_DEFINE_TYPE(SpicePlaybackChannel, spice_playback_channel, SPICE_TYPE_CHANNEL)
@@ -50,10 +54,23 @@ static void spice_playback_channel_init(SpicePlaybackChannel *channel)
 
     c = channel->priv = SPICE_PLAYBACK_CHANNEL_GET_PRIVATE(channel);
     memset(c, 0, sizeof(*c));
+    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_PLAYBACK_CAP_CELT_0_5_1);
 }
 
 static void spice_playback_channel_finalize(GObject *obj)
 {
+    spice_playback_channel *c = SPICE_PLAYBACK_CHANNEL(obj)->priv;
+
+    if (c->celt_decoder) {
+        celt051_decoder_destroy(c->celt_decoder);
+        c->celt_decoder = NULL;
+    }
+
+    if (c->celt_mode) {
+        celt051_mode_destroy(c->celt_mode);
+        c->celt_mode = NULL;
+    }
+
     if (G_OBJECT_CLASS(spice_playback_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_playback_channel_parent_class)->finalize(obj);
 }
@@ -106,16 +123,31 @@ static void spice_playback_channel_class_init(SpicePlaybackChannelClass *klass)
 static void playback_handle_data(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_playback_channel *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
-    SpiceMsgPlaybackPacket *data = spice_msg_in_parsed(in);
+    SpiceMsgPlaybackPacket *packet = spice_msg_in_parsed(in);
 
     SPICE_DEBUG("%s: time %d data %p size %d", __FUNCTION__,
-            data->time, data->data, data->data_size);
+            packet->time, packet->data, packet->data_size);
 
     switch (c->mode) {
     case SPICE_AUDIO_DATA_MODE_RAW:
         g_signal_emit(channel, signals[SPICE_PLAYBACK_DATA], 0,
-                      data->data, data->data_size);
+                      packet->data, packet->data_size);
         break;
+    case SPICE_AUDIO_DATA_MODE_CELT_0_5_1: {
+        celt_int16_t pcm[256 * 2];
+
+        g_return_if_fail(c->celt_decoder != NULL);
+
+        if (celt051_decode(c->celt_decoder, packet->data,
+                           packet->data_size, pcm) != CELT_OK) {
+            g_warning("celt_decode() error");
+            return;
+        }
+
+        g_signal_emit(channel, signals[SPICE_PLAYBACK_DATA], 0,
+                      (uint8_t *)pcm, sizeof(pcm));
+        break;
+    }
     default:
         g_warning("%s: unhandled mode", __FUNCTION__);
         break;
@@ -133,6 +165,7 @@ static void playback_handle_mode(SpiceChannel *channel, spice_msg_in *in)
     c->mode = mode->mode;
     switch (c->mode) {
     case SPICE_AUDIO_DATA_MODE_RAW:
+    case SPICE_AUDIO_DATA_MODE_CELT_0_5_1:
         break;
     default:
         g_warning("%s: unhandled mode", __FUNCTION__);
@@ -144,6 +177,7 @@ static void playback_handle_start(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_playback_channel *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackStart *start = spice_msg_in_parsed(in);
+    int celt_mode_err;
 
     SPICE_DEBUG("%s: fmt %d channels %d freq %d time %d", __FUNCTION__,
             start->format, start->channels, start->frequency, start->time);
@@ -153,6 +187,25 @@ static void playback_handle_start(SpiceChannel *channel, spice_msg_in *in)
         g_signal_emit(channel, signals[SPICE_PLAYBACK_START], 0,
                       start->format, start->channels, start->frequency);
         break;
+    case SPICE_AUDIO_DATA_MODE_CELT_0_5_1: {
+        /* TODO: only support one setting now */
+        int frame_size = 256;
+        if (!c->celt_mode)
+            c->celt_mode = celt051_mode_create(start->frequency, start->channels,
+                                               frame_size, &celt_mode_err);
+        if (!c->celt_mode)
+            g_warning("create celt mode failed %d", celt_mode_err);
+
+        if (!c->celt_decoder)
+            c->celt_decoder = celt051_decoder_create(c->celt_mode);
+
+        if (!c->celt_decoder)
+            g_warning("create celt decoder failed");
+
+        g_signal_emit(channel, signals[SPICE_PLAYBACK_START], 0,
+                      start->format, start->channels, start->frequency);
+        break;
+    }
     default:
         g_warning("%s: unhandled mode", __FUNCTION__);
         break;
