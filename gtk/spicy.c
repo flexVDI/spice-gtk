@@ -21,6 +21,7 @@
 #endif
 #include <glib/gi18n.h>
 
+#include <sys/stat.h>
 #include "spice-widget.h"
 #include "spice-audio.h"
 #include "spice-common.h"
@@ -66,6 +67,7 @@ struct spice_connection {
 
 static GMainLoop     *mainloop;
 static int           connections;
+static GKeyFile      *keyfile;
 
 static spice_connection *connection_new(void);
 static void connection_connect(spice_connection *conn);
@@ -252,12 +254,13 @@ static void menu_cb_bool_prop(GtkToggleAction *action, gpointer data)
 {
     struct spice_window *win = data;
     gboolean state = gtk_toggle_action_get_active(action);
+    const char *name;
 
-    SPICE_DEBUG("%s: %s = %s", __FUNCTION__,
-        gtk_action_get_name(GTK_ACTION(action)), state ? _("yes") : _("no"));
-    g_object_set(G_OBJECT(win->spice),
-                 gtk_action_get_name(GTK_ACTION(action)), state,
-                 NULL);
+    name = gtk_action_get_name(GTK_ACTION(action));
+    SPICE_DEBUG("%s: %s = %s", __FUNCTION__, name, state ? _("yes") : _("no"));
+
+    g_key_file_set_boolean(keyfile, "general", name, state);
+    g_object_set(G_OBJECT(win->spice), name, state, NULL);
 }
 
 static void menu_cb_about(GtkAction *action, void *data)
@@ -326,6 +329,27 @@ static void mouse_grab_cb(GtkWidget *widget, gint grabbed, gpointer data)
 
     win->mouse_grabbed = grabbed;
     update_status(win);
+}
+
+static void restore_configuration(GtkWidget *spice)
+{
+    gboolean state;
+    gchar **keys;
+    gsize nkeys, i;
+    GError *error = NULL;
+
+    keys = g_key_file_get_keys(keyfile, "general", &nkeys, NULL);
+    for (i = 0; i < nkeys; ++i) {
+        state = g_key_file_get_boolean(keyfile, "general", keys[i], &error);
+        if (error != NULL) {
+            g_error_free(error);
+            error = NULL;
+            continue;
+        }
+        g_object_set(G_OBJECT(spice), keys[i], state, NULL);
+    }
+
+    g_strfreev(keys);
 }
 
 /* ------------------------------------------------------------------ */
@@ -523,6 +547,8 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
 
     /* spice display */
     win->spice = GTK_WIDGET(spice_display_new(conn->session, id));
+    restore_configuration(win->spice);
+
     g_signal_connect(G_OBJECT(win->spice), "mouse-grab",
 		     G_CALLBACK(mouse_grab_cb), win);
 
@@ -839,10 +865,27 @@ int main(int argc, char *argv[])
     GError *error = NULL;
     GOptionContext *context;
     spice_connection *conn;
+    gchar *conf_file, *conf;
 
     bindtextdomain(GETTEXT_PACKAGE, SPICE_GTK_LOCALEDIR);
     bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
     textdomain(GETTEXT_PACKAGE);
+
+    keyfile = g_key_file_new();
+
+    int mode = S_IRWXU;
+    conf_file = g_build_filename(g_get_user_config_dir(), "spicy", NULL);
+    if (g_mkdir_with_parents(conf_file, mode) == -1)
+        SPICE_DEBUG("failed to create config directory");
+    g_free(conf_file);
+
+    conf_file = g_build_filename(g_get_user_config_dir(), "spicy", "settings", NULL);
+    if (!g_key_file_load_from_file(keyfile, conf_file,
+                                   G_KEY_FILE_KEEP_COMMENTS|G_KEY_FILE_KEEP_TRANSLATIONS, &error)) {
+        SPICE_DEBUG("Couldn't load configuration: %s", error->message);
+        g_error_free(error);
+        error = NULL;
+    }
 
     /* parse opts */
     gtk_init(&argc, &argv);
@@ -864,5 +907,15 @@ int main(int argc, char *argv[])
 
     if (connections > 0)
         g_main_loop_run(mainloop);
+
+    if ((conf = g_key_file_to_data(keyfile, NULL, &error)) == NULL ||
+        !g_file_set_contents(conf_file, conf, -1, &error)) {
+        SPICE_DEBUG("Couldn't save configuration: %s", error->message);
+        g_error_free(error);
+        error = NULL;
+    }
+
+    g_free(conf_file);
+
     return 0;
 }
