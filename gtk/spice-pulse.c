@@ -178,7 +178,7 @@ static void stream_uncork(SpicePulse *pulse, struct stream *s)
 
     if (pa_stream_is_corked(s->stream) && !s->uncork_op) {
         if (!(o = pa_stream_cork(s->stream, 0, pulse_uncork_cb, s))) {
-            g_warning("pa_stream_cork() failed: %s",
+            g_warning("pa_stream_uncork() failed: %s",
                       pa_strerror(pa_context_errno(p->context)));
         }
         s->uncork_op = o;
@@ -262,8 +262,8 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
                 g_warning("pa_stream_connect_playback() failed: %s",
                           pa_strerror(pa_context_errno(p->context)));
             }
-        }
-        stream_uncork(pulse, &p->playback);
+        } else
+            stream_uncork(pulse, &p->playback);
         break;
     default:
         if (p->state != state) {
@@ -393,8 +393,8 @@ static void record_start(SpiceRecordChannel *channel, gint format, gint channels
                 g_warning("pa_stream_connect_record() failed: %s",
                           pa_strerror(pa_context_errno(p->context)));
             }
-        }
-        stream_uncork(pulse, &p->record);
+        } else
+            stream_uncork(pulse, &p->record);
         break;
     default:
         if (p->state != state) {
