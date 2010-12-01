@@ -33,6 +33,7 @@ struct stream {
     int                     state;
     pa_operation            *uncork_op;
     pa_operation            *cork_op;
+    gboolean                started;
 };
 
 struct spice_pulse {
@@ -79,24 +80,6 @@ static void spice_pulse_finalize(GObject *obj)
 
     p = SPICE_PULSE_GET_PRIVATE(obj);
 
-    if (p->playback.uncork_op)
-        pa_operation_unref(p->playback.uncork_op);
-
-    if (p->playback.cork_op)
-        pa_operation_unref(p->playback.cork_op);
-
-    if (p->record.uncork_op)
-        pa_operation_unref(p->record.uncork_op);
-
-    if (p->record.cork_op)
-        pa_operation_unref(p->record.cork_op);
-
-    if (p->playback.stream)
-        stream_stop(SPICE_PULSE(p), &p->playback);
-
-    if (p->record.stream)
-        stream_stop(SPICE_PULSE(p), &p->record);
-
     if (p->context != NULL)
         pa_context_unref(p->context);
 
@@ -112,6 +95,22 @@ static void spice_pulse_dispose(GObject *obj)
 
     SPICE_DEBUG("%s", __FUNCTION__);
     p = SPICE_PULSE_GET_PRIVATE(obj);
+
+    if (p->playback.uncork_op)
+        pa_operation_unref(p->playback.uncork_op);
+    p->playback.uncork_op = NULL;
+
+    if (p->playback.cork_op)
+        pa_operation_unref(p->playback.cork_op);
+    p->playback.cork_op = NULL;
+
+    if (p->record.uncork_op)
+        pa_operation_unref(p->record.uncork_op);
+    p->record.uncork_op = NULL;
+
+    if (p->record.cork_op)
+        pa_operation_unref(p->record.cork_op);
+    p->record.cork_op = NULL;
 
     if (p->pchannel != NULL) {
         g_signal_handlers_disconnect_by_func(p->pchannel,
@@ -228,6 +227,46 @@ static void stream_stop(SpicePulse *pulse, struct stream *s)
     s->stream = NULL;
 }
 
+static void stream_state_callback(pa_stream *s, void *userdata)
+{
+    spice_pulse *p;
+    p = SPICE_PULSE_GET_PRIVATE(userdata);
+
+    g_return_if_fail(p != NULL);
+    g_return_if_fail(s != NULL);
+
+    switch (pa_stream_get_state(s)) {
+        case PA_STREAM_CREATING:
+        case PA_STREAM_TERMINATED:
+        case PA_STREAM_READY:
+            break;
+        case PA_STREAM_FAILED:
+        default:
+            g_warning("Stream error: %s", pa_strerror(pa_context_errno(pa_stream_get_context(s))));
+    }
+}
+
+static void create_playback(SpicePulse *pulse)
+{
+    spice_pulse *p = SPICE_PULSE_GET_PRIVATE(pulse);
+
+    g_return_if_fail(p != NULL);
+    g_return_if_fail(p->context != NULL);
+    g_return_if_fail(p->playback.stream == NULL);
+    g_return_if_fail(pa_context_get_state(p->context) == PA_CONTEXT_READY);
+
+    p->playback.state = PA_STREAM_READY;
+    p->playback.stream = pa_stream_new(p->context, "playback",
+                                       &p->playback.spec, NULL);
+    pa_stream_set_state_callback(p->playback.stream, stream_state_callback, pulse);
+
+    if (pa_stream_connect_playback(p->playback.stream,
+                                   NULL, NULL, 0, NULL, NULL) < 0) {
+        g_warning("pa_stream_connect_playback() failed: %s",
+                  pa_strerror(pa_context_errno(p->context)));
+    }
+}
+
 static void playback_start(SpicePlaybackChannel *channel, gint format, gint channels,
                            gint frequency, gpointer data)
 {
@@ -237,38 +276,34 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
 
     g_return_if_fail(p != NULL);
 
+    p->playback.started = TRUE;
+
+    if (p->playback.stream &&
+        (p->playback.spec.rate != frequency ||
+         p->playback.spec.channels != channels)) {
+        stream_stop(pulse, &p->playback);
+    }
+
+    g_return_if_fail(format == SPICE_AUDIO_FMT_S16);
+    p->playback.spec.format   = PA_SAMPLE_S16LE;
+    p->playback.spec.rate     = frequency;
+    p->playback.spec.channels = channels;
+
     state = pa_context_get_state(p->context);
     switch (state) {
-    /* TODO: create stream after pa state == READY */
     case PA_CONTEXT_READY:
         if (p->state != state) {
             SPICE_DEBUG("%s: pulse context ready", __FUNCTION__);
         }
-        if (p->playback.stream &&
-            (p->playback.spec.rate != frequency ||
-             p->playback.spec.channels != channels)) {
-            stream_stop(pulse, &p->playback);
-        }
         if (p->playback.stream == NULL) {
-            g_return_if_fail(format == SPICE_AUDIO_FMT_S16);
-            p->playback.state         = PA_STREAM_READY;
-            p->playback.spec.format   = PA_SAMPLE_S16LE;
-            p->playback.spec.rate     = frequency;
-            p->playback.spec.channels = channels;
-            p->playback.stream = pa_stream_new(p->context, "playback",
-                                               &p->playback.spec, NULL);
-            if (pa_stream_connect_playback(p->playback.stream,
-                                           NULL, NULL, 0, NULL, NULL) < 0) {
-                g_warning("pa_stream_connect_playback() failed: %s",
-                          pa_strerror(pa_context_errno(p->context)));
-            }
+            create_playback(pulse);
         } else
             stream_uncork(pulse, &p->playback);
         break;
     default:
         if (p->state != state) {
-            g_warning("%s: pulse context not ready (%s)",
-                      __FUNCTION__, STATE_NAME(context_state_names, state));
+            SPICE_DEBUG("%s: pulse context not ready (%s)",
+                        __FUNCTION__, STATE_NAME(context_state_names, state));
         }
         break;
     }
@@ -287,6 +322,9 @@ static void playback_data(SpicePlaybackChannel *channel, gpointer *audio, gint s
 
     state = pa_stream_get_state(p->playback.stream);
     switch (state) {
+    case PA_STREAM_CREATING:
+        SPICE_DEBUG("stream creating, dropping data");
+        break;
     case PA_STREAM_READY:
         if (p->playback.state != state) {
             SPICE_DEBUG("%s: pulse playback stream ready", __FUNCTION__);
@@ -298,8 +336,8 @@ static void playback_data(SpicePlaybackChannel *channel, gpointer *audio, gint s
         break;
     default:
         if (p->playback.state != state) {
-            g_warning("%s: pulse playback stream not ready (%s)",
-                      __FUNCTION__, STATE_NAME(stream_state_names, state));
+            SPICE_DEBUG("%s: pulse playback stream not ready (%s)",
+                        __FUNCTION__, STATE_NAME(stream_state_names, state));
         }
         break;
     }
@@ -312,6 +350,8 @@ static void playback_stop(SpicePlaybackChannel *channel, gpointer data)
     spice_pulse *p = pulse->priv;
 
     SPICE_DEBUG("%s", __FUNCTION__);
+
+    p->playback.started = FALSE;
     if (!p->playback.stream)
         return;
 
@@ -337,16 +377,47 @@ static void stream_read_callback(pa_stream *s, size_t length, void *data)
         g_return_if_fail(snddata);
         g_return_if_fail(length > 0);
 
-        spice_record_send_data(SPICE_RECORD_CHANNEL(p->rchannel),
-                               /* FIXME: server side doesn't care about ts?
-                                  what is the unit? ms apparently */
-                               (gpointer)snddata, length, 0);
+        if (p->rchannel != NULL)
+            spice_record_send_data(SPICE_RECORD_CHANNEL(p->rchannel),
+                                   /* FIXME: server side doesn't care about ts?
+                                      what is the unit? ms apparently */
+                                   (gpointer)snddata, length, 0);
 
         if (pa_stream_drop(s) < 0) {
             g_warning("pa_stream_drop() failed: %s",
                       pa_strerror(pa_context_errno(p->context)));
             return;
         }
+    }
+}
+
+static void create_record(SpicePulse *pulse)
+{
+    spice_pulse *p = SPICE_PULSE_GET_PRIVATE(pulse);
+    pa_buffer_attr buffer_attr = { 0, };
+    pa_stream_flags_t flags;
+
+    g_return_if_fail(p != NULL);
+    g_return_if_fail(p->context != NULL);
+    g_return_if_fail(p->record.stream == NULL);
+    g_return_if_fail(pa_context_get_state(p->context) == PA_CONTEXT_READY);
+
+    p->record.state = PA_STREAM_READY;
+    p->record.stream = pa_stream_new(p->context, "record",
+                                     &p->record.spec, NULL);
+    pa_stream_set_read_callback(p->record.stream, stream_read_callback, pulse);
+    pa_stream_set_state_callback(p->record.stream, stream_state_callback, pulse);
+
+    /* FIXME: we might want customizable latency */
+    buffer_attr.maxlength = -1;
+    buffer_attr.prebuf = -1;
+    buffer_attr.fragsize = buffer_attr.tlength = (uint32_t) 4096;
+    buffer_attr.minreq = (uint32_t) -1;
+    flags = PA_STREAM_ADJUST_LATENCY;
+
+    if (pa_stream_connect_record(p->record.stream, NULL, &buffer_attr, flags) < 0) {
+        g_warning("pa_stream_connect_record() failed: %s",
+                  pa_strerror(pa_context_errno(p->context)));
     }
 }
 
@@ -357,42 +428,27 @@ static void record_start(SpiceRecordChannel *channel, gint format, gint channels
     spice_pulse *p = SPICE_PULSE_GET_PRIVATE(pulse);
     pa_context_state_t state;
 
+    p->record.started = TRUE;
+
+    if (p->record.stream &&
+        (p->record.spec.rate != frequency ||
+         p->record.spec.channels != channels)) {
+        stream_stop(pulse, &p->record);
+    }
+
+    g_return_if_fail(format == SPICE_AUDIO_FMT_S16);
+    p->record.spec.format = PA_SAMPLE_S16LE;
+    p->record.spec.rate = frequency;
+    p->record.spec.channels = channels;
+
     state = pa_context_get_state(p->context);
     switch (state) {
     case PA_CONTEXT_READY:
         if (p->state != state) {
             SPICE_DEBUG("%s: pulse context ready", __FUNCTION__);
         }
-        if (p->record.stream &&
-            (p->record.spec.rate != frequency ||
-             p->record.spec.channels != channels)) {
-            stream_stop(pulse, &p->record);
-        }
         if (p->record.stream == NULL) {
-            pa_buffer_attr buffer_attr = { 0, };
-            pa_stream_flags_t flags;
-
-            g_return_if_fail(format == SPICE_AUDIO_FMT_S16);
-            p->record.state = PA_STREAM_READY;
-            p->record.spec.format = PA_SAMPLE_S16LE;
-            p->record.spec.rate = frequency;
-            p->record.spec.channels = channels;
-
-            p->record.stream = pa_stream_new(p->context, "record",
-                                             &p->record.spec, NULL);
-            pa_stream_set_read_callback(p->record.stream, stream_read_callback, pulse);
-
-            /* FIXME: we might want customizable latency */
-            buffer_attr.maxlength = -1;
-            buffer_attr.prebuf = -1;
-            buffer_attr.fragsize = buffer_attr.tlength = (uint32_t) 4096;
-            buffer_attr.minreq = (uint32_t) -1;
-            flags = PA_STREAM_ADJUST_LATENCY;
-
-            if (pa_stream_connect_record(p->record.stream, NULL, &buffer_attr, flags) < 0) {
-                g_warning("pa_stream_connect_record() failed: %s",
-                          pa_strerror(pa_context_errno(p->context)));
-            }
+            create_record(pulse);
         } else
             stream_uncork(pulse, &p->record);
         break;
@@ -412,6 +468,8 @@ static void record_stop(SpiceRecordChannel *channel, gpointer data)
     spice_pulse *p = pulse->priv;
 
     SPICE_DEBUG("%s", __FUNCTION__);
+
+    p->record.started = FALSE;
     if (!p->record.stream)
         return;
 
@@ -473,6 +531,41 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     }
 }
 
+static void context_state_callback(pa_context *c, void *userdata)
+{
+    spice_pulse *p;
+    p = SPICE_PULSE_GET_PRIVATE(userdata);
+
+    g_return_if_fail(p != NULL);
+    g_return_if_fail(c != NULL);
+    switch (pa_context_get_state(c)) {
+    case PA_CONTEXT_CONNECTING:
+    case PA_CONTEXT_AUTHORIZING:
+    case PA_CONTEXT_SETTING_NAME:
+    case PA_CONTEXT_UNCONNECTED:
+        break;
+
+    case PA_CONTEXT_READY: {
+        if (!p->record.stream && p->record.started)
+            create_record(SPICE_PULSE(userdata));
+
+        if (!p->playback.stream && p->playback.started)
+            create_playback(SPICE_PULSE(userdata));
+        break;
+    }
+
+    case PA_CONTEXT_FAILED:
+        g_warning("PulseAudio context failed %s",
+                  pa_strerror(pa_context_errno(p->context)));
+        break;
+
+    case PA_CONTEXT_TERMINATED:
+    default:
+        SPICE_DEBUG("PulseAudio context terminated");
+        break;
+    }
+}
+
 SpicePulse *spice_pulse_new(SpiceSession *session, GMainContext *context,
                             const char *name)
 {
@@ -495,6 +588,7 @@ SpicePulse *spice_pulse_new(SpiceSession *session, GMainContext *context,
     p->mainloop = pa_glib_mainloop_new(context);
     p->state = PA_CONTEXT_READY;
     p->context = pa_context_new(pa_glib_mainloop_get_api(p->mainloop), name);
+    pa_context_set_state_callback(p->context, context_state_callback, pulse);
     if (pa_context_connect(p->context, NULL, 0, NULL) < 0) {
         g_warning("pa_context_connect() failed: %s",
             pa_strerror(pa_context_errno(p->context)));
