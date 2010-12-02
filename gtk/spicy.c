@@ -453,6 +453,13 @@ static const GtkActionEntry entries[] = {
     }
 };
 
+static const char *spice_properties[] = {
+    "grab-keyboard",
+    "grab-mouse",
+    "resize-guest",
+    "auto-clipboard"
+};
+
 static const GtkToggleActionEntry tentries[] = {
     {
 	.name        = "grab-keyboard",
@@ -617,11 +624,11 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
 
 
     /* init toggle actions */
-    for (i = 0; i < G_N_ELEMENTS(tentries); i++) {
+    for (i = 0; i < G_N_ELEMENTS(spice_properties); i++) {
         GtkAction *toggle;
         gboolean state;
-        toggle = gtk_action_group_get_action(win->ag, tentries[i].name);
-        g_object_get(win->spice, tentries[i].name, &state, NULL);
+        toggle = gtk_action_group_get_action(win->ag, spice_properties[i]);
+        g_object_get(win->spice, spice_properties[i], &state, NULL);
         gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(toggle), state);
     }
 
