@@ -142,7 +142,7 @@ AC_SUBST(PULSE_LIBS)
 # Add parameter for (partial) static linkage of spice client.
 # this is used to achive single binary package for all (?) distros.
 AC_ARG_ENABLE(static-linkage, 
-	[  --enable-static-linkage will generate spice client binary with static linkage to external libraries ],
+	AS_HELP_STRING([--enable-static-linkage], [will generate spice client binary with static linkage to external libraries]),
 	[SPICEC_STATIC_LINKAGE_BSTATIC=["-Wl,-Bstatic"];
 	SPICEC_STATIC_LINKAGE_BDYNAMIC=["-Wl,-Bdynamic"]])
 
@@ -173,6 +173,36 @@ AC_SUBST(JPEG_LIBS)
 AC_CHECK_LIB(z, deflate, Z_LIBS='-lz', AC_MSG_ERROR([zlib not found]))
 AC_SUBST(Z_LIBS)
 
+WITH_UCONTEXT=1
+
+AC_ARG_WITH(coroutine,
+ AS_HELP_STRING([--with-coroutine=ucontext/gthread], [use ucontext or GThread for coroutines]),
+  [],[with_coroutine=ucontext])
+
+case $with_coroutine in
+  ucontext)
+    ;;
+  gthread)
+    ;;
+  *)
+    AC_MSG_ERROR(Unsupported coroutine type)
+esac
+
+if test "$with_coroutine" = "ucontext"; then
+  AC_CHECK_FUNC(makecontext, [],[with_coroutine=gthread])
+  AC_CHECK_FUNC(swapcontext, [],[with_coroutine=gthread])
+  AC_CHECK_FUNC(getcontext, [],[with_coroutine=gthread])
+fi
+
+if test "$with_coroutine" = "gthread"; then
+  PKG_CHECK_MODULES(GTHREAD, gthread-2.0 > $GTHREAD_REQUIRED)
+  WITH_UCONTEXT=0
+fi
+AC_SUBST(GTHREAD_CFLAGS)
+AC_SUBST(GTHREAD_LIBS)
+AC_DEFINE_UNQUOTED(WITH_UCONTEXT,[$WITH_UCONTEXT], [Whether to use ucontext coroutine impl])
+AM_CONDITIONAL(WITH_UCONTEXT, [test "$WITH_UCONTEXT" != "0"])
+
 GOBJECT_INTROSPECTION_CHECK([0.6.7])
 PKG_CHECK_MODULES([GOBJECT_INTROSPECTION],
         [gobject-introspection-1.0 >= 0.9.4],
@@ -180,7 +210,7 @@ PKG_CHECK_MODULES([GOBJECT_INTROSPECTION],
 AM_CONDITIONAL([G_IR_SCANNER_SYMBOL_PREFIX], [test "x$has_symbol_prefix" = "xyes"])
 
 AC_ARG_WITH(python,
-[  --with-python           build python bindings],
+  AS_HELP_STRING([--with-python], [build python bindings]),
 [case "${withval}" in
    yes|no) ;;
    *)      AC_MSG_ERROR([bad value ${withval} for python option]) ;;
@@ -250,7 +280,7 @@ dnl MAYBE_WARN="-Wall -Wno-sign-compare -Werror -Wno-deprecated-declarations"
 MAYBE_WARN="-Wall -Wno-sign-compare -Wno-deprecated-declarations"
 
 AC_ARG_ENABLE(werror,
-AC_HELP_STRING([--enable-werror], [Use -Werror (if supported)]),
+AS_HELP_STRING([--enable-werror], [Use -Werror (if supported)]),
 set_werror="$enableval",[
 if test -d $srcdir/.git; then
 	is_git_version=true
@@ -359,7 +389,7 @@ echo "
         c compiler:               ${CC}
         c++ compiler:	          ${CXX}
 
-        Red target:               ${red_target}
+        Coroutine:                ${with_coroutine}
 
         Now type 'make' to build $PACKAGE
 "

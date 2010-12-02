@@ -118,6 +118,7 @@ libspice_client_glib_la_SOURCES =	\
 	generated_demarshallers1.c	\
 	generated_marshallers.c		\
 	generated_marshallers1.c	\
+	coroutine.h			\
 	\
 	channel-base.c			\
 	channel-main.h			\
@@ -161,6 +162,15 @@ libspice_client_glib_la_SOURCES =	\
 	$(COMMON_DIR)/region.c		\
 	$(COMMON_DIR)/region.h		\
 	$(NULL)
+
+if WITH_UCONTEXT
+libspice_client_glib_la_SOURCES += continuation.h continuation.c coroutine_ucontext.c
+EXTRA_DIST += coroutine_gthread.c
+else
+libspice_client_glib_la_SOURCES += coroutine_gthread.c
+EXTRA_DIST += continuation.h continuation.c coroutine_ucontext.c
+endif
+
 
 libspice_client_glibincludedir = $(includedir)/spice-client-glib
 libspice_client_glibinclude_HEADERS =	\
