@@ -39,6 +39,7 @@ SPICE_COMMON_CPPFLAGS = \
 	$(PULSE_CFLAGS)			\
 	$(GTK2_CFLAGS)			\
 	$(GLIB2_CFLAGS)			\
+	$(GIO_CFLAGS)			\
 	$(GOBJECT2_CFLAGS)		\
 	$(SSL_CFLAGS)			\
 	$(NULL)
@@ -82,6 +83,7 @@ libspice_client_glib_la_LDFLAGS =	\
 
 libspice_client_glib_la_LIBADD =	\
 	$(GLIB2_LIBS)			\
+	$(GIO_LIBS)			\
 	$(GOBJECT2_LIBS)		\
 	$(CELT051_LIBS)			\
 	$(JPEG_LIBS)			\
@@ -119,6 +121,8 @@ libspice_client_glib_la_SOURCES =	\
 	generated_marshallers.c		\
 	generated_marshallers1.c	\
 	coroutine.h			\
+	gio-coroutine.c			\
+	gio-coroutine.h			\
 	\
 	channel-base.c			\
 	channel-main.h			\

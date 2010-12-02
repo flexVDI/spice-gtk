@@ -30,6 +30,8 @@
 
 #include <sys/socket.h>
 
+#include "gio-coroutine.h"
+
 static void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out);
 static void spice_channel_send_link(SpiceChannel *channel);
 
@@ -937,10 +939,31 @@ static int tls_verify(int preverify_ok, X509_STORE_CTX *ctx)
     return preverify_ok;
 }
 
+static void *spice_channel_coroutine(void *data)
+{
+    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(data);
+    GSocket *socket;
+    /* int ret; */
+    /* struct signal_data s; */
+
+    SPICE_DEBUG("Started background coroutine");
+    socket = spice_session_channel_open_host(c->session, c->tls);
+    if (socket == NULL) /* FIXME: reconnect with tls? */
+        goto cleanup;
+
+ cleanup:
+    SPICE_DEBUG("Doing final channel cleanup");
+    /* vnc_connection_close(conn); */
+    /* vnc_connection_emit_main_context(conn, VNC_DISCONNECTED, &s); */
+    /* g_idle_add(spice_connection_delayed_unref, conn); */
+    return NULL;
+}
+
 static gboolean channel_connect(SpiceChannel *channel)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
     int rc, err;
+    struct coroutine *co;
 
     g_return_val_if_fail(c != NULL, FALSE);
 
@@ -954,6 +977,18 @@ static gboolean channel_connect(SpiceChannel *channel)
     }
 
 reconnect:
+    SPICE_DEBUG("Open coroutine starting");
+    c->open_id = 0;
+
+    co = &c->coroutine;
+
+    co->stack_size = 16 << 20;
+    co->entry = spice_channel_coroutine;
+    co->release = NULL;
+
+    coroutine_init(co);
+    coroutine_yieldto(co, channel);
+
     if (spice_session_get_client_provided_socket(c->session)) {
         if (c->socket == -1) {
             g_signal_emit(channel, signals[SPICE_CHANNEL_OPEN_FD], 0, c->tls);

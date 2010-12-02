@@ -19,6 +19,7 @@
 #define __SPICE_CLIENT_CHANNEL_PRIV_H__
 
 #include <openssl/ssl.h>
+#include "coroutine.h"
 
 /* common/ */
 #include "marshallers.h"
@@ -57,6 +58,9 @@ enum spice_channel_state {
 
 struct spice_channel {
     SpiceSession                *session;
+    struct coroutine            coroutine;
+    guint                       open_id;
+
     char                        name[16];
     enum spice_channel_state    state;
     int                         socket;
