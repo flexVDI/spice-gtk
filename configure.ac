@@ -102,7 +102,7 @@ AM_CONDITIONAL(OS_LINUX, test "$os_linux" = "yes")
 
 dnl =========================================================================
 dnl Chek optional features
-PKG_CHECK_MODULES(PROTOCOL, spice-protocol >= 0.6.0)
+PKG_CHECK_MODULES(PROTOCOL, spice-protocol >= 0.6.3)
 AC_SUBST(PROTOCOL_CFLAGS)
 
 SPICE_REQUIRES=""
