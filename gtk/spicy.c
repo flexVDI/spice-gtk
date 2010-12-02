@@ -263,13 +263,37 @@ static void menu_cb_bool_prop(GtkToggleAction *action, gpointer data)
     g_object_set(G_OBJECT(win->spice), name, state, NULL);
 }
 
+static void menu_cb_toolbar(GtkToggleAction *action, gpointer data)
+{
+    struct spice_window *win = data;
+    gboolean state = gtk_toggle_action_get_active(action);
+
+    if (state)
+        gtk_widget_show(win->toolbar);
+    else
+        gtk_widget_hide(win->toolbar);
+}
+
+static void menu_cb_statusbar(GtkToggleAction *action, gpointer data)
+{
+    struct spice_window *win = data;
+    gboolean state = gtk_toggle_action_get_active(action);
+
+    if (state)
+        gtk_widget_show(win->hbox);
+    else
+        gtk_widget_hide(win->hbox);
+}
+
 static void menu_cb_about(GtkAction *action, void *data)
 {
     char *comments = _("gtk client app for the\n"
         "spice remote desktop protocol");
     static char *copyright = "(c) 2010 Red Hat";
     static char *website = "http://www.spice-space.org";
-    static char *authors[] = { "Gerd Hoffmann <kraxel@redhat.com>", NULL };
+    static char *authors[] = { "Gerd Hoffmann <kraxel@redhat.com>",
+                               "Marc-André Lureau <marcandre.lureau@redhat.com>",
+                               NULL };
     struct spice_window *win = data;
 
     gtk_show_about_dialog(GTK_WINDOW(win->toplevel),
@@ -446,6 +470,14 @@ static const GtkToggleActionEntry tentries[] = {
 	.name        = "auto-clipboard",
 	.label       = N_("Automagic clipboard sharing between host and guest"),
 	.callback    = G_CALLBACK(menu_cb_bool_prop),
+    },{
+	.name        = "Statusbar",
+	.label       = N_("Statusbar"),
+	.callback    = G_CALLBACK(menu_cb_statusbar),
+    },{
+	.name        = "Toolbar",
+	.label       = N_("Toolbar"),
+	.callback    = G_CALLBACK(menu_cb_toolbar),
     }
 };
 
@@ -464,6 +496,8 @@ static char ui_xml[] =
 "    </menu>\n"
 "    <menu action='ViewMenu'>\n"
 "      <menuitem action='Fullscreen'/>\n"
+"      <menuitem action='Toolbar'/>\n"
+"      <menuitem action='Statusbar'/>\n"
 "    </menu>\n"
 "    <menu action='InputMenu'>\n"
 "      <menuitem action='UngrabMouse'/>\n"
