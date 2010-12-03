@@ -120,6 +120,7 @@ static void spice_playback_channel_class_init(SpicePlaybackChannelClass *klass)
 
 /* ------------------------------------------------------------------ */
 
+/* coroutine context */
 static void playback_handle_data(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_playback_channel *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
@@ -154,6 +155,7 @@ static void playback_handle_data(SpiceChannel *channel, spice_msg_in *in)
     }
 }
 
+/* coroutine context */
 static void playback_handle_mode(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_playback_channel *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
@@ -173,6 +175,7 @@ static void playback_handle_mode(SpiceChannel *channel, spice_msg_in *in)
     }
 }
 
+/* coroutine context */
 static void playback_handle_start(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_playback_channel *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
@@ -212,6 +215,7 @@ static void playback_handle_start(SpiceChannel *channel, spice_msg_in *in)
     }
 }
 
+/* coroutine context */
 static void playback_handle_stop(SpiceChannel *channel, spice_msg_in *in)
 {
     g_signal_emit(channel, signals[SPICE_PLAYBACK_STOP], 0);
@@ -231,6 +235,7 @@ static spice_msg_handler playback_handlers[] = {
     [ SPICE_MSG_PLAYBACK_STOP ]            = playback_handle_stop,
 };
 
+/* coroutine context */
 static void spice_playback_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
 {
     int type = spice_msg_in_type(msg);

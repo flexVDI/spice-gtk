@@ -530,6 +530,7 @@ static void update_mouse_pointer(SpiceDisplay *display)
         }
         break;
     default:
+        g_warn_if_reached();
         break;
     }
 }

@@ -84,6 +84,7 @@ enum {
 static guint signals[SPICE_MAIN_LAST_SIGNAL];
 
 static void spice_main_handle_msg(SpiceChannel *channel, spice_msg_in *msg);
+static void agent_send_msg_queue(SpiceMainChannel *channel);
 
 /* ------------------------------------------------------------------ */
 
@@ -200,6 +201,15 @@ static void spice_main_channel_finalize(GObject *obj)
         G_OBJECT_CLASS(spice_main_channel_parent_class)->finalize(obj);
 }
 
+/* coroutine context */
+static void spice_channel_iterate_write(SpiceChannel *channel)
+{
+    agent_send_msg_queue(SPICE_MAIN_CHANNEL(channel));
+
+    if (SPICE_CHANNEL_CLASS(spice_main_channel_parent_class)->iterate_write)
+        SPICE_CHANNEL_CLASS(spice_main_channel_parent_class)->iterate_write(channel);
+}
+
 static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
@@ -208,7 +218,9 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
     gobject_class->finalize     = spice_main_channel_finalize;
     gobject_class->get_property = spice_main_get_property;
     gobject_class->set_property = spice_main_set_property;
-    channel_class->handle_msg   = spice_main_handle_msg;
+
+    channel_class->handle_msg    = spice_main_handle_msg;
+    channel_class->iterate_write = spice_channel_iterate_write;
 
     g_object_class_install_property
         (gobject_class, PROP_MOUSE_MODE,
@@ -354,28 +366,96 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
     g_type_class_add_private(klass, sizeof(spice_main_channel));
 }
 
+/* signal trampoline---------------------------------------------------------- */
+
+struct SPICE_MAIN_CLIPBOARD_RELEASE {
+};
+
+struct SPICE_MAIN_AGENT_UPDATE {
+};
+
+struct SPICE_MAIN_MOUSE_UPDATE {
+};
+
+struct SPICE_MAIN_CLIPBOARD {
+    guint type;
+    gpointer data;
+    gsize size;
+};
+
+struct SPICE_MAIN_CLIPBOARD_GRAB {
+    gpointer types;
+    gsize ntypes;
+    gboolean *ret;
+};
+
+struct SPICE_MAIN_CLIPBOARD_REQUEST {
+    guint type;
+    gboolean *ret;
+};
+
+/* main context */
+static void do_emit_main_context(GObject *object, int signum, gpointer params)
+{
+    switch (signum) {
+    case SPICE_MAIN_CLIPBOARD_RELEASE:
+    case SPICE_MAIN_AGENT_UPDATE:
+    case SPICE_MAIN_MOUSE_UPDATE: {
+        g_signal_emit(object, signals[signum], 0);
+        break;
+    }
+    case SPICE_MAIN_CLIPBOARD: {
+        struct SPICE_MAIN_CLIPBOARD *p = params;
+        g_signal_emit(object, signals[signum], 0,
+                      p->type, p->data, p->size);
+        break;
+    }
+    case SPICE_MAIN_CLIPBOARD_GRAB: {
+        struct SPICE_MAIN_CLIPBOARD_GRAB *p = params;
+        g_signal_emit(object, signals[signum], 0,
+                      p->types, p->ntypes, p->ret);
+        break;
+    }
+    case SPICE_MAIN_CLIPBOARD_REQUEST: {
+        struct SPICE_MAIN_CLIPBOARD_REQUEST *p = params;
+        g_signal_emit(object, signals[signum], 0,
+                      p->type, p->ret);
+        break;
+    }
+    default:
+        g_warn_if_reached();
+    }
+}
+
+/* coroutine context */
+#define emit_main_context(object, event, args...)                       \
+    G_STMT_START {                                                      \
+        g_signal_emit_main_context(G_OBJECT(object), do_emit_main_context, \
+                                   event, &((struct event) { args }));  \
+    } G_STMT_END
+
 /* ------------------------------------------------------------------ */
 
-static void agent_send_msg_queue(SpiceMainChannel *channel, spice_msg_out *new)
+/* coroutine context */
+static void agent_send_msg_queue(SpiceMainChannel *channel)
 {
     spice_main_channel *c = channel->priv;
     spice_msg_out *out;
-
-    if (new != NULL)
-        g_queue_push_tail(c->agent_msg_queue, new);
 
     while (c->agent_tokens > 0 &&
            !g_queue_is_empty(c->agent_msg_queue)) {
         c->agent_tokens--;
         out = g_queue_pop_head(c->agent_msg_queue);
-        spice_msg_out_send(out);
+        spice_msg_out_send_internal(out);
         spice_msg_out_unref(out);
     }
 }
 
-
-static void agent_msg_send(SpiceMainChannel *channel, int type, int size, void *data)
+/* any context: the message is not flushed immediately,
+   you can wakeup() the channel coroutine or send_msg_queue() */
+static void agent_msg_queue(SpiceMainChannel *channel, int type, int size, void *data)
 {
+    spice_main_channel *c = channel->priv;
     spice_msg_out *out;
     VDAgentMessage *msg;
     void *payload;
@@ -392,10 +472,12 @@ static void agent_msg_send(SpiceMainChannel *channel, int type, int size, void *
     msg->size = size;
     memcpy(payload, data, size);
 
-    agent_send_msg_queue(channel, out);
+    g_queue_push_tail(c->agent_msg_queue, out);
 }
 
-static void agent_monitors_config(SpiceMainChannel *channel)
+/* any context: the message is not flushed immediately,
+   you can wakeup() the channel coroutine or send_msg_queue() */
+void agent_monitors_config(SpiceMainChannel *channel)
 {
     spice_main_channel *c = channel->priv;
     VDAgentMonitorsConfig *mon;
@@ -421,16 +503,18 @@ static void agent_monitors_config(SpiceMainChannel *channel)
         mon->monitors[i].height = c->display[i].height;
         mon->monitors[i].x = c->display[i].x;
         mon->monitors[i].y = c->display[i].y;
-        g_message("%s: #%d %dx%d+%d+%d @ %d bpp", __FUNCTION__, i,
-                  mon->monitors[i].width, mon->monitors[i].height,
-                  mon->monitors[i].x, mon->monitors[i].y,
-                  mon->monitors[i].depth);
+        SPICE_DEBUG("%s: #%d %dx%d+%d+%d @ %d bpp", __FUNCTION__, i,
+                    mon->monitors[i].width, mon->monitors[i].height,
+                    mon->monitors[i].x, mon->monitors[i].y,
+                    mon->monitors[i].depth);
     }
 
-    agent_msg_send(channel, VD_AGENT_MONITORS_CONFIG, size, mon);
+    agent_msg_queue(channel, VD_AGENT_MONITORS_CONFIG, size, mon);
     free(mon);
 }
 
+/* any context: the message is not flushed immediately,
+   you can wakeup() the channel coroutine or send_msg_queue() */
 static void agent_display_config(SpiceMainChannel *channel)
 {
     spice_main_channel *c = channel->priv;
@@ -461,9 +545,11 @@ static void agent_display_config(SpiceMainChannel *channel)
 
     SPICE_DEBUG("display_config: flags: %u, depth: %u", config.flags, config.depth);
 
-    agent_msg_send(channel, VD_AGENT_DISPLAY_CONFIG, sizeof(VDAgentDisplayConfig), &config);
+    agent_msg_queue(channel, VD_AGENT_DISPLAY_CONFIG, sizeof(VDAgentDisplayConfig), &config);
 }
 
+/* any context: the message is not flushed immediately,
+   you can wakeup() the channel coroutine or send_msg_queue() */
 static void agent_announce_caps(SpiceMainChannel *channel)
 {
     spice_main_channel *c = channel->priv;
@@ -483,10 +569,12 @@ static void agent_announce_caps(SpiceMainChannel *channel)
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_DISPLAY_CONFIG);
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_CLIPBOARD_BY_DEMAND);
 
-    agent_msg_send(channel, VD_AGENT_ANNOUNCE_CAPABILITIES, size, caps);
+    agent_msg_queue(channel, VD_AGENT_ANNOUNCE_CAPABILITIES, size, caps);
     free(caps);
 }
 
+/* any context: the message is not flushed immediately,
+   you can wakeup() the channel coroutine or send_msg_queue() */
 static void agent_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int ntypes)
 {
     spice_main_channel *c = channel->priv;
@@ -506,10 +594,12 @@ static void agent_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int 
         grab->types[i] = types[i];
     }
 
-    agent_msg_send(channel, VD_AGENT_CLIPBOARD_GRAB, size, grab);
+    agent_msg_queue(channel, VD_AGENT_CLIPBOARD_GRAB, size, grab);
     free(grab);
 }
 
+/* any context: the message is not flushed immediately,
+   you can wakeup() the channel coroutine or send_msg_queue() */
 static void agent_clipboard_notify(SpiceMainChannel *channel,
                                    guint32 type, const guchar *data, size_t size)
 {
@@ -527,10 +617,12 @@ static void agent_clipboard_notify(SpiceMainChannel *channel,
     cb->type = type;
     memcpy(cb->data, data, size);
 
-    agent_msg_send(channel, VD_AGENT_CLIPBOARD, msgsize, cb);
+    agent_msg_queue(channel, VD_AGENT_CLIPBOARD, msgsize, cb);
     free(cb);
 }
 
+/* any context: the message is not flushed immediately,
+   you can wakeup() the channel coroutine or send_msg_queue() */
 static void agent_clipboard_request(SpiceMainChannel *channel, guint32 type)
 {
     spice_main_channel *c = channel->priv;
@@ -543,9 +635,11 @@ static void agent_clipboard_request(SpiceMainChannel *channel, guint32 type)
 
     request.type = type;
 
-    agent_msg_send(channel, VD_AGENT_CLIPBOARD_REQUEST, sizeof(VDAgentClipboardRequest), &request);
+    agent_msg_queue(channel, VD_AGENT_CLIPBOARD_REQUEST, sizeof(VDAgentClipboardRequest), &request);
 }
 
+/* any context: the message is not flushed immediately,
+   you can wakeup() the channel coroutine or send_msg_queue() */
 static void agent_clipboard_release(SpiceMainChannel *channel)
 {
     spice_main_channel *c = channel->priv;
@@ -555,9 +649,10 @@ static void agent_clipboard_release(SpiceMainChannel *channel)
     g_return_if_fail(VD_AGENT_HAS_CAPABILITY(c->agent_caps,
         sizeof(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
 
-    agent_msg_send(channel, VD_AGENT_CLIPBOARD_REQUEST, 0, NULL);
+    agent_msg_queue(channel, VD_AGENT_CLIPBOARD_REQUEST, 0, NULL);
 }
 
+/* coroutine context  */
 static void agent_start(SpiceMainChannel *channel)
 {
     spice_main_channel *c = channel->priv;
@@ -568,17 +663,19 @@ static void agent_start(SpiceMainChannel *channel)
 
     c->agent_connected = true;
     c->agent_caps_received = false;
-    g_signal_emit(channel, signals[SPICE_MAIN_AGENT_UPDATE], 0);
+    emit_main_context(channel, SPICE_MAIN_AGENT_UPDATE);
 
     out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_AGENT_START);
     out->marshallers->msgc_main_agent_start(out->marshaller, &agent_start);
-    spice_msg_out_send(out);
+    spice_msg_out_send_internal(out);
     spice_msg_out_unref(out);
 
     agent_announce_caps(channel);
     agent_monitors_config(channel);
+    agent_send_msg_queue(channel);
 }
 
+/* coroutine context  */
 static void agent_stopped(SpiceMainChannel *channel)
 {
     spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
@@ -586,16 +683,17 @@ static void agent_stopped(SpiceMainChannel *channel)
     c->agent_connected = false;
     c->agent_caps_received = false;
     c->agent_display_config_sent = false;
-    g_signal_emit(channel, signals[SPICE_MAIN_AGENT_UPDATE], 0);
+    emit_main_context(channel, SPICE_MAIN_AGENT_UPDATE);
 }
 
+/* coroutine context */
 static void set_mouse_mode(SpiceMainChannel *channel, uint32_t supported, uint32_t current)
 {
     spice_main_channel *c = channel->priv;
 
     if (c->mouse_mode != current) {
         c->mouse_mode = current;
-        g_signal_emit(channel, signals[SPICE_MAIN_MOUSE_UPDATE], 0);
+        emit_main_context(channel, SPICE_MAIN_MOUSE_UPDATE);
     }
 
     /* switch to client mode if possible */
@@ -606,11 +704,12 @@ static void set_mouse_mode(SpiceMainChannel *channel, uint32_t supported, uint32
         spice_msg_out *out;
         out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_MOUSE_MODE_REQUEST);
         out->marshallers->msgc_main_mouse_mode_request(out->marshaller, &req);
-        spice_msg_out_send(out);
+        spice_msg_out_send_internal(out);
         spice_msg_out_unref(out);
     }
 }
 
+/* coroutine context */
 static void main_handle_init(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
@@ -622,7 +721,7 @@ static void main_handle_init(SpiceChannel *channel, spice_msg_in *in)
     spice_session_set_connection_id(session, init->session_id);
 
     out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_ATTACH_CHANNELS);
-    spice_msg_out_send(out);
+    spice_msg_out_send_internal(out);
     spice_msg_out_unref(out);
 
     set_mouse_mode(SPICE_MAIN_CHANNEL(channel), init->supported_mouse_modes,
@@ -636,6 +735,7 @@ static void main_handle_init(SpiceChannel *channel, spice_msg_in *in)
     spice_session_set_mm_time(session, init->multi_media_time);
 }
 
+/* coroutine context */
 static void main_handle_mm_time(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceSession *session;
@@ -645,6 +745,7 @@ static void main_handle_mm_time(SpiceChannel *channel, spice_msg_in *in)
     spice_session_set_mm_time(session, msg->time);
 }
 
+/* coroutine context */
 static void main_handle_channels_list(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgChannels *msg = spice_msg_in_parsed(in);
@@ -659,22 +760,26 @@ static void main_handle_channels_list(SpiceChannel *channel, spice_msg_in *in)
     }
 }
 
+/* coroutine context */
 static void main_handle_mouse_mode(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgMainMouseMode *msg = spice_msg_in_parsed(in);
     set_mouse_mode(SPICE_MAIN_CHANNEL(channel), msg->supported_modes, msg->current_mode);
 }
 
+/* coroutine context */
 static void main_handle_agent_connected(SpiceChannel *channel, spice_msg_in *in)
 {
     agent_start(SPICE_MAIN_CHANNEL(channel));
 }
 
+/* coroutine context */
 static void main_handle_agent_disconnected(SpiceChannel *channel, spice_msg_in *in)
 {
     agent_stopped(SPICE_MAIN_CHANNEL(channel));
 }
 
+/* coroutine context */
 static void main_agent_handle_msg(SpiceChannel *channel,
                                   VDAgentMessage *msg, gpointer payload)
 {
@@ -693,12 +798,12 @@ static void main_agent_handle_msg(SpiceChannel *channel,
         for (i = 0; i < size * 32; i++) {
             if (!VD_AGENT_HAS_CAPABILITY(caps->caps, size, i))
                 continue;
-            g_message("%s: cap: %d (%s)", __FUNCTION__,
-                      i, NAME(agent_caps, i));
+            SPICE_DEBUG("%s: cap: %d (%s)", __FUNCTION__,
+                        i, NAME(agent_caps, i));
             VD_AGENT_SET_CAPABILITY(c->agent_caps, i);
         }
         c->agent_caps_received = true;
-        g_signal_emit(channel, signals[SPICE_MAIN_AGENT_UPDATE], 0);
+        emit_main_context(channel, SPICE_MAIN_AGENT_UPDATE);
 
         if (caps->request)
             agent_announce_caps(SPICE_MAIN_CHANNEL(channel));
@@ -706,6 +811,7 @@ static void main_agent_handle_msg(SpiceChannel *channel,
         if (VD_AGENT_HAS_CAPABILITY(caps->caps, sizeof(c->agent_caps), VD_AGENT_CAP_DISPLAY_CONFIG) &&
             !c->agent_display_config_sent) {
             agent_display_config(SPICE_MAIN_CHANNEL(channel));
+            agent_send_msg_queue(SPICE_MAIN_CHANNEL(channel));
             c->agent_display_config_sent = true;
         }
         break;
@@ -713,35 +819,35 @@ static void main_agent_handle_msg(SpiceChannel *channel,
     case VD_AGENT_CLIPBOARD:
     {
         VDAgentClipboard *cb = payload;
-        g_signal_emit(channel, signals[SPICE_MAIN_CLIPBOARD], 0,
-                      cb->type, cb->data, msg->size - sizeof(VDAgentClipboard));
+        emit_main_context(channel, SPICE_MAIN_CLIPBOARD,
+                          cb->type, cb->data, msg->size - sizeof(VDAgentClipboard));
         break;
     }
     case VD_AGENT_CLIPBOARD_GRAB:
     {
         gboolean ret;
-        g_signal_emit(channel, signals[SPICE_MAIN_CLIPBOARD_GRAB], 0,
-                      payload, msg->size / sizeof(uint32_t), &ret);
+        emit_main_context(channel, SPICE_MAIN_CLIPBOARD_GRAB,
+                          payload, msg->size / sizeof(uint32_t), &ret);
         break;
     }
     case VD_AGENT_CLIPBOARD_REQUEST:
     {
         gboolean ret;
         VDAgentClipboardRequest *req = payload;
-
-        g_signal_emit(channel, signals[SPICE_MAIN_CLIPBOARD_REQUEST], 0, req->type, &ret);
+        emit_main_context(channel, SPICE_MAIN_CLIPBOARD_REQUEST,
+                          req->type, &ret);
         break;
     }
     case VD_AGENT_CLIPBOARD_RELEASE:
     {
-        g_signal_emit(channel, signals[SPICE_MAIN_CLIPBOARD_RELEASE], 0);
+        emit_main_context(channel, SPICE_MAIN_CLIPBOARD_RELEASE);
         break;
     }
     case VD_AGENT_REPLY:
     {
         VDAgentReply *reply = payload;
-        g_message("%s: reply: type %d, %s", __FUNCTION__, reply->type,
-                  reply->error == VD_AGENT_SUCCESS ? "success" : "error");
+        g_debug("%s: reply: type %d, %s", __FUNCTION__, reply->type,
+                reply->error == VD_AGENT_SUCCESS ? "success" : "error");
         break;
     }
     default:
@@ -750,6 +856,7 @@ static void main_agent_handle_msg(SpiceChannel *channel,
     }
 }
 
+/* coroutine context */
 static void main_handle_agent_data_msg(SpiceChannel *channel, guint* msg_size, guchar** msg_pos)
 {
     spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
@@ -786,6 +893,7 @@ static void main_handle_agent_data_msg(SpiceChannel *channel, guint* msg_size, g
     }
 }
 
+/* coroutine context */
 static void main_handle_agent_data(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
@@ -809,15 +917,17 @@ static void main_handle_agent_data(SpiceChannel *channel, spice_msg_in *in)
     }
 }
 
+/* coroutine context */
 static void main_handle_agent_token(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgMainAgentTokens *tokens = spice_msg_in_parsed(in);
     spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
 
     c->agent_tokens = tokens->num_tokens;
-    agent_send_msg_queue(SPICE_MAIN_CHANNEL(channel), NULL);
+    agent_send_msg_queue(SPICE_MAIN_CHANNEL(channel));
 }
 
+/* coroutine context */
 static void main_handle_migrate_begin(SpiceChannel *channel, spice_msg_in *in)
 {
     /* SpiceMsgMainMigrationBegin *mig = spice_msg_in_parsed(in); */
@@ -825,6 +935,7 @@ static void main_handle_migrate_begin(SpiceChannel *channel, spice_msg_in *in)
     g_warning("%s: TODO", __FUNCTION__);
 }
 
+/* coroutine context */
 static void main_handle_migrate_switch_host(SpiceChannel *channel, spice_msg_in *in)
 {
     /* SpiceMsgMainMigrationSwitchHost *mig = spice_msg_in_parsed(in); */
@@ -832,6 +943,7 @@ static void main_handle_migrate_switch_host(SpiceChannel *channel, spice_msg_in 
     g_warning("%s: TODO", __FUNCTION__);
 }
 
+/* coroutine context */
 static void main_handle_migrate_cancel(SpiceChannel *channel,
                                        spice_msg_in *in G_GNUC_UNUSED)
 {
@@ -861,14 +973,18 @@ static spice_msg_handler main_handlers[] = {
     [ SPICE_MSG_MAIN_MIGRATE_SWITCH_HOST ] = main_handle_migrate_switch_host,
 };
 
+/* coroutine context */
 static void spice_main_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
 {
     int type = spice_msg_in_type(msg);
+
     g_return_if_fail(type < SPICE_N_ELEMENTS(main_handlers));
     g_return_if_fail(main_handlers[type] != NULL);
+
     main_handlers[type](channel, msg);
 }
 
+/* system context*/
 static gboolean timer_set_display(gpointer data)
 {
     SpiceChannel *channel = data;
@@ -876,9 +992,23 @@ static gboolean timer_set_display(gpointer data)
 
     c->timer_id = 0;
     agent_monitors_config(SPICE_MAIN_CHANNEL(channel));
+    spice_channel_wakeup(channel);
+
     return false;
 }
 
+/**
+ * spice_main_set_display:
+ * @channel:
+ * @id: TODO: display channel id? or monitor id?
+ * @x: ..
+ * @y: ..
+ * @width: display width
+ * @height: display height
+ *
+ * Notify the guest of screen resolution change. The notification is
+ * sent 1 second later, if no further changes happen.
+ **/
 void spice_main_set_display(SpiceMainChannel *channel, int id,
                             int x, int y, int width, int height)
 {
@@ -901,31 +1031,67 @@ void spice_main_set_display(SpiceMainChannel *channel, int id,
     c->timer_id = g_timeout_add_seconds(1, timer_set_display, channel);
 }
 
+/**
+ * spice_main_clipboard_grab:
+ * @channel:
+ * @types: an array of #VD_AGENT_CLIPBOARD types
+ * @ntypes: the number of types in @types
+ *
+ * Grab the guest clipboard for  #VD_AGENT_CLIPBOARD @types.
+ **/
 void spice_main_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int ntypes)
 {
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
     agent_clipboard_grab(channel, types, ntypes);
+    spice_channel_wakeup(SPICE_CHANNEL(channel));
 }
 
+/**
+ * spice_main_clipboard_release:
+ * @channel:
+ *
+ * Release clipboard, when client loose clipboard, inform guest no
+ * clipboard data is available.
+ **/
 void spice_main_clipboard_release(SpiceMainChannel *channel)
 {
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
     agent_clipboard_release(channel);
+    spice_channel_wakeup(SPICE_CHANNEL(channel));
 }
 
+/**
+ * spice_main_clipboard_notify:
+ * @channel:
+ * @type: a #VD_AGENT_CLIPBOARD type
+ * @data: clipboard data
+ * @size: data length in bytes
+ *
+ * Send clipboard data to guest.
+ **/
 void spice_main_clipboard_notify(SpiceMainChannel *channel,
                                  guint32 type, const guchar *data, size_t size)
 {
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
     agent_clipboard_notify(channel, type, data, size);
+    spice_channel_wakeup(SPICE_CHANNEL(channel));
 }
 
+/**
+ * spice_main_clipboard_request:
+ * @channel:
+ * @type: a #VD_AGENT_CLIPBOARD type
+ *
+ * Request clipboard data of @type from guest. The reply is sent
+ * through ::main-clipboard signal.
+ **/
 void spice_main_clipboard_request(SpiceMainChannel *channel, guint32 type)
 {
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
     agent_clipboard_request(channel, type);
+    spice_channel_wakeup(SPICE_CHANNEL(channel));
 }
