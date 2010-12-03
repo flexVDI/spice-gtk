@@ -82,7 +82,7 @@ gboolean spice_channel_connect(SpiceChannel *channel);
 gboolean spice_channel_open_fd(SpiceChannel *channel, int fd);
 void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent event);
 gboolean spice_channel_test_capability(SpiceChannel *channel, guint32 cap);
-void spice_channel_set_capability(SpiceChannel *self, guint32 cap);
+void spice_channel_set_capability(SpiceChannel *channel, guint32 cap);
 
 G_END_DECLS
 

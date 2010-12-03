@@ -274,6 +274,7 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
 }
 
 /* ---------------------------------------------------------------- */
+/* private msg api                                                  */
 
 spice_msg_in *spice_msg_in_new(SpiceChannel *channel)
 {
@@ -388,8 +389,6 @@ void spice_msg_out_hexdump(spice_msg_out *out, unsigned char *data, int len)
     hexdump(">> msg", data, len);
 }
 
-/* ---------------------------------------------------------------- */
-
 spice_msg_out *spice_msg_out_new(SpiceChannel *channel, int type)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
@@ -440,6 +439,7 @@ void spice_msg_out_send(spice_msg_out *out)
 }
 
 /* ---------------------------------------------------------------- */
+
 struct signal_data
 {
     GObject *object;
@@ -452,6 +452,7 @@ struct signal_data
     } params;
 };
 
+/* main -> coroutine context */
 static gboolean do_spice_channel_emit_main_context(gpointer opaque)
 {
     struct signal_data *data = opaque;
@@ -474,6 +475,7 @@ static gboolean do_spice_channel_emit_main_context(gpointer opaque)
     return FALSE;
 }
 
+/* coroutine -> main context */
 static void spice_channel_emit_main_context(SpiceChannel *channel,
                                             int signum,
                                             struct signal_data *data)
@@ -493,6 +495,7 @@ static void spice_channel_emit_main_context(SpiceChannel *channel,
     coroutine_yield(NULL);
 }
 
+/* coroutine context */
 static void spice_channel_emit_event(SpiceChannel *channel,
                                      SpiceChannelEvent event)
 {
@@ -506,6 +509,7 @@ static void spice_channel_emit_event(SpiceChannel *channel,
  * Write all 'data' of length 'datalen' bytes out to
  * the wire
  */
+/* coroutine context */
 static void spice_channel_flush_wire(SpiceChannel *channel,
                                      const void *data,
                                      size_t datalen)
@@ -562,6 +566,7 @@ static void spice_channel_flush_wire(SpiceChannel *channel,
     }
 }
 
+/* coroutine context */
 static void spice_channel_write(SpiceChannel *channel, const void *data, size_t len)
 {
     spice_channel_flush_wire(channel, data, len);
@@ -571,6 +576,7 @@ static void spice_channel_write(SpiceChannel *channel, const void *data, size_t 
  * Read at least 1 more byte of data straight off the wire
  * into the requested buffer.
  */
+/* coroutine context */
 static int spice_channel_read_wire(SpiceChannel *channel, void *data, size_t len)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
@@ -635,9 +641,8 @@ reread:
 
 /*
  * Fill the 'data' buffer up with exactly 'len' bytes worth of data
- *
- * Must only be called from the coroutine
  */
+/* coroutine context */
 static int spice_channel_read(SpiceChannel *channel, void *data, size_t len)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
@@ -647,6 +652,7 @@ static int spice_channel_read(SpiceChannel *channel, void *data, size_t len)
     return spice_channel_read_wire(channel, data, len);
 }
 
+/* coroutine context */
 static void spice_channel_send_auth(SpiceChannel *channel)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
@@ -683,6 +689,7 @@ static void spice_channel_send_auth(SpiceChannel *channel)
     BIO_free(bioKey);
 }
 
+/* coroutine context */
 static void spice_channel_recv_auth(SpiceChannel *channel)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
@@ -708,6 +715,7 @@ static void spice_channel_recv_auth(SpiceChannel *channel)
         SPICE_CHANNEL_GET_CLASS(channel)->channel_up(channel);
 }
 
+/* coroutine context */
 static void spice_channel_send_link(SpiceChannel *channel)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
@@ -764,6 +772,7 @@ static void spice_channel_send_link(SpiceChannel *channel)
     spice_channel_write(channel, buffer, p - buffer);
 }
 
+/* coroutine context */
 static void spice_channel_recv_link_hdr(SpiceChannel *channel)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
@@ -794,6 +803,7 @@ static void spice_channel_recv_link_hdr(SpiceChannel *channel)
     c->state = SPICE_CHANNEL_STATE_LINK_MSG;
 }
 
+/* coroutine context */
 static void spice_channel_recv_link_msg(SpiceChannel *channel)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
@@ -850,6 +860,7 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
     spice_channel_send_auth(channel);
 }
 
+/* coroutine context */
 void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out)
 {
     uint8_t *data;
@@ -868,6 +879,7 @@ void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out)
     }
 }
 
+/* coroutine context */
 static void spice_channel_recv_msg(SpiceChannel *channel)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
@@ -955,6 +967,16 @@ static void spice_channel_recv_msg(SpiceChannel *channel)
     c->msg_in = NULL;
 }
 
+/**
+ * spice_channel_new:
+ * @s: the @SpiceSession the channel is linked to
+ * @type: the requested SPICE_CHANNEL type
+ * @id: the channel-id
+ *
+ * Create a new #SpiceChannel of type @type, and channel ID @id.
+ *
+ * Returns:
+ **/
 SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
 {
     SpiceChannel *channel;
@@ -992,6 +1014,14 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
     return channel;
 }
 
+/**
+ * spice_channel_destroy:
+ * @channel:
+ *
+ * Unref the @channel. Called by @spice_session_disconnect()
+ *
+ * Deprecated: 0.3: Use g_object_unref() instead.
+ **/
 void spice_channel_destroy(SpiceChannel *channel)
 {
     g_return_if_fail(channel != NULL);
@@ -1000,6 +1030,7 @@ void spice_channel_destroy(SpiceChannel *channel)
     g_object_unref(channel);
 }
 
+/* coroutine context */
 static int tls_verify(int preverify_ok, X509_STORE_CTX *ctx)
 {
     spice_channel *c;
@@ -1015,6 +1046,7 @@ static int tls_verify(int preverify_ok, X509_STORE_CTX *ctx)
     return preverify_ok;
 }
 
+/* coroutine context */
 static gboolean spice_channel_message(SpiceChannel *channel)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
@@ -1200,11 +1232,28 @@ static gboolean channel_connect(SpiceChannel *channel)
     return true;
 }
 
+/**
+ * spice_channel_connect:
+ * @channel:
+ *
+ * Connect the channel, using #SpiceSession connection informations
+ *
+ * Returns: #TRUE on success.
+ **/
 gboolean spice_channel_connect(SpiceChannel *channel)
 {
     return channel_connect(channel);
 }
 
+/**
+ * spice_channel_open_fd:
+ * @channel:
+ * @fd: a file descriptor (socket)
+ *
+ * Connect the channel using @fd socket.
+ *
+ * Returns: #TRUE on success.
+ **/
 gboolean spice_channel_open_fd(SpiceChannel *channel, int fd)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
@@ -1217,6 +1266,15 @@ gboolean spice_channel_open_fd(SpiceChannel *channel, int fd)
     return channel_connect(channel);
 }
 
+/**
+ * spice_channel_disconnect:
+ * @channel:
+ * @reason: a channel event emitted on main context (or #SPICE_CHANNEL_NONE)
+ *
+ * Close socket and reset connection specific data, then emit @reason
+ * on main context if not #SPICE_CHANNEL_NONE.
+ **/
+/* deprecated: do we want spice_channel_disconnect() as public API? */
 void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
@@ -1274,6 +1332,15 @@ static gboolean test_capability(GArray *caps, guint32 cap)
     return (g_array_index(caps, guint32, word_index) & (1 << (cap % 32))) != 0;
 }
 
+/**
+ * spice_channel_test_capability:
+ * @self:
+ * @cap:
+ *
+ * Test availability of specific channel-kind capability of the remote.
+ *
+ * Returns: #TRUE if @cap, a specific channel capability, is available.
+ **/
 gboolean spice_channel_test_capability(SpiceChannel *self, guint32 cap)
 {
     spice_channel *c;
@@ -1297,12 +1364,19 @@ static void set_capability(GArray *caps, guint32 cap)
         g_array_index(caps, guint32, word_index) | (1 << (cap % 32));
 }
 
-void spice_channel_set_capability(SpiceChannel *self, guint32 cap)
+/**
+ * spice_channel_set_capability:
+ * @channel:
+ * @cap: a capability
+ *
+ * Enable specific channel-kind capability.
+ **/
+void spice_channel_set_capability(SpiceChannel *channel, guint32 cap)
 {
     spice_channel *c;
 
-    g_return_if_fail(SPICE_IS_CHANNEL(self));
+    g_return_if_fail(SPICE_IS_CHANNEL(channel));
 
-    c = SPICE_CHANNEL_GET_PRIVATE(self);
+    c = SPICE_CHANNEL_GET_PRIVATE(channel);
     set_capability(c->caps, cap);
 }

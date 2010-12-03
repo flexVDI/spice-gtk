@@ -20,6 +20,7 @@
 
 #include "spice-channel-priv.h"
 
+/* coroutine context */
 void spice_channel_handle_set_ack(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_channel *c = channel->priv;
@@ -31,10 +32,11 @@ void spice_channel_handle_set_ack(SpiceChannel *channel, spice_msg_in *in)
 
     c->message_ack_window = c->message_ack_count = ack->window;
     c->marshallers->msgc_ack_sync(out->marshaller, &sync);
-    spice_msg_out_send(out);
+    spice_msg_out_send_internal(out);
     spice_msg_out_unref(out);
 }
 
+/* coroutine context */
 void spice_channel_handle_ping(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_channel *c = channel->priv;
@@ -42,10 +44,11 @@ void spice_channel_handle_ping(SpiceChannel *channel, spice_msg_in *in)
     spice_msg_out *pong = spice_msg_out_new(channel, SPICE_MSGC_PONG);
 
     c->marshallers->msgc_pong(pong->marshaller, ping);
-    spice_msg_out_send(pong);
+    spice_msg_out_send_internal(pong);
     spice_msg_out_unref(pong);
 }
 
+/* coroutine context */
 void spice_channel_handle_notify(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_channel *c = channel->priv;
@@ -75,6 +78,7 @@ void spice_channel_handle_notify(SpiceChannel *channel, spice_msg_in *in)
             message_str ? message_str : "");
 }
 
+/* coroutine context */
 void spice_channel_handle_disconnect(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgDisconnect *disconnect = spice_msg_in_parsed(in);
@@ -83,6 +87,7 @@ void spice_channel_handle_disconnect(SpiceChannel *channel, spice_msg_in *in)
                 disconnect->time_stamp, disconnect->reason);
 }
 
+/* coroutine context */
 void spice_channel_handle_wait_for_channels(SpiceChannel *channel, spice_msg_in *in)
 {
     /* spice_channel *c = channel->priv;
@@ -91,6 +96,7 @@ void spice_channel_handle_wait_for_channels(SpiceChannel *channel, spice_msg_in 
     SPICE_DEBUG("%s TODO", __FUNCTION__);
 }
 
+/* coroutine context */
 void spice_channel_handle_migrate(SpiceChannel *channel, spice_msg_in *in)
 {
     /* spice_channel *c = channel->priv;

@@ -112,6 +112,7 @@ void spice_msg_out_send(spice_msg_out *out);
 void spice_msg_out_hexdump(spice_msg_out *out, unsigned char *data, int len);
 
 /* channel-base.c */
+/* coroutine context */
 void spice_channel_handle_set_ack(SpiceChannel *channel, spice_msg_in *in);
 void spice_channel_handle_ping(SpiceChannel *channel, spice_msg_in *in);
 void spice_channel_handle_notify(SpiceChannel *channel, spice_msg_in *in);
