@@ -539,7 +539,14 @@ GSocket* spice_session_channel_open_host(SpiceSession *session, gboolean use_tls
     GSocketAddress *sockaddr;
     GError *conn_error = NULL;
     GSocket *sock = NULL;
-    int port = atoi(use_tls ? s->tls_port : s->port);
+    int port;
+
+    if (use_tls)
+        g_return_val_if_fail(s->tls_port != NULL, NULL);
+    else
+        g_return_val_if_fail(s->port != NULL, NULL);
+
+    port = atoi(use_tls ? s->tls_port : s->port);
 
     SPICE_DEBUG("Resolving host %s %d", s->host, port);
 

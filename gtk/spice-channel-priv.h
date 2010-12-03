@@ -19,6 +19,8 @@
 #define __SPICE_CLIENT_CHANNEL_PRIV_H__
 
 #include <openssl/ssl.h>
+#include <gio/gio.h>
+
 #include "coroutine.h"
 
 /* common/ */
@@ -60,10 +62,13 @@ struct spice_channel {
     SpiceSession                *session;
     struct coroutine            coroutine;
     guint                       open_id;
+    GSocket                     *sock;
+    int                         fd;
+    gboolean                    has_error;
 
     char                        name[16];
     enum spice_channel_state    state;
-    int                         socket;
+    int                         socket; /* TODO: remove */
     spice_parse_channel_func_t  parser;
     SpiceMessageMarshallers     *marshallers;
     GIOChannel                  *channel;

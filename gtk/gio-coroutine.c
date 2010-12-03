@@ -40,6 +40,7 @@ GIOCondition g_io_wait(GSocket *sock, GIOCondition cond)
     g_source_set_callback(src, (GSourceFunc)g_io_wait_helper, coroutine_self(), NULL);
     g_source_attach(src, NULL);
     ret = coroutine_yield(NULL);
+    g_source_unref(src);
     return *ret;
 }
 
@@ -61,6 +62,7 @@ GIOCondition g_io_wait_interruptable(struct wait_queue *wait,
     wait->waiting = TRUE;
     ret = coroutine_yield(NULL);
     wait->waiting = FALSE;
+    g_source_unref(src);
 
     if (ret == NULL) {
         g_source_remove(id);
@@ -140,5 +142,7 @@ gboolean g_condition_wait(g_condition_wait_func func, gpointer data)
     g_source_attach(src, NULL);
     g_source_set_callback(src, g_condition_wait_helper, coroutine_self(), NULL);
     coroutine_yield(NULL);
+    g_source_unref(src);
+
     return TRUE;
 }

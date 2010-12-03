@@ -122,26 +122,6 @@ static void spice_channel_dispose(GObject *gobject)
          c->session = NULL;
     }
 
-    if (c->caps) {
-        g_array_free(c->caps, TRUE);
-        c->caps = NULL;
-    }
-
-    if (c->common_caps) {
-        g_array_free(c->common_caps, TRUE);
-        c->common_caps = NULL;
-    }
-
-    if (c->remote_caps) {
-        g_array_free(c->remote_caps, TRUE);
-        c->remote_caps = NULL;
-    }
-
-    if (c->remote_common_caps) {
-        g_array_free(c->remote_common_caps, TRUE);
-        c->remote_common_caps = NULL;
-    }
-
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_channel_parent_class)->dispose)
         G_OBJECT_CLASS(spice_channel_parent_class)->dispose(gobject);
@@ -153,6 +133,18 @@ static void spice_channel_finalize(GObject *gobject)
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
 
     SPICE_DEBUG("%s: %s", c->name, __FUNCTION__);
+
+    if (c->caps)
+        g_array_free(c->caps, TRUE);
+
+    if (c->common_caps)
+        g_array_free(c->common_caps, TRUE);
+
+    if (c->remote_caps)
+        g_array_free(c->remote_caps, TRUE);
+
+    if (c->remote_common_caps)
+        g_array_free(c->remote_common_caps, TRUE);
 
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_channel_parent_class)->finalize)
@@ -279,12 +271,6 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
 
     SSL_library_init();
     SSL_load_error_strings();
-}
-
-static void spice_channel_emit_event(SpiceChannel *channel,
-                                     SpiceChannelEvent event)
-{
-    g_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, event);
 }
 
 /* ---------------------------------------------------------------- */
@@ -454,68 +440,212 @@ void spice_msg_out_send(spice_msg_out *out)
 }
 
 /* ---------------------------------------------------------------- */
-
-static int spice_channel_send(SpiceChannel *channel, void *buf, int len)
+struct signal_data
 {
-    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
-    int rc;
+    GObject *object;
+    struct coroutine *caller;
 
-    /* TODO: make the IO code async, either with cb or coroutine */
+    int signum;
 
-    if (c->tls) {
-        rc = SSL_write(c->ssl, buf, len);
-        if (rc != len) {
-            g_warning("%s: %s: SSL_write: %d / %d",
-                      c->name, __FUNCTION__, rc, len);
-        }
-    } else {
-        rc = send(c->socket, buf, len, 0);
+    union {
+        SpiceChannelEvent event;
+    } params;
+};
+
+static gboolean do_spice_channel_emit_main_context(gpointer opaque)
+{
+    struct signal_data *data = opaque;
+
+    SPICE_DEBUG("Emit main context %d", data->signum);
+
+    switch (data->signum) {
+    case SPICE_CHANNEL_EVENT:
+        g_signal_emit(data->object, signals[data->signum], 0,
+                      data->params.event);
+        break;
+    case SPICE_CHANNEL_OPEN_FD:
+        g_warning("this signal is only sent from main context");
+        break;
+    default:
+        g_warn_if_reached();
     }
+    coroutine_yieldto(data->caller, NULL);
 
-    return rc;
+    return FALSE;
 }
 
-static int spice_channel_recv(SpiceChannel *channel, void *buf, int len)
+static void spice_channel_emit_main_context(SpiceChannel *channel,
+                                            int signum,
+                                            struct signal_data *data)
+{
+    data->object = G_OBJECT(channel);
+    data->caller = coroutine_self();
+    data->signum = signum;
+
+    g_idle_add(do_spice_channel_emit_main_context, data);
+
+    /* This switches to the system coroutine context, lets
+     * the idle function run to dispatch the signal, and
+     * finally returns once complete. ie this is synchronous
+     * from the POV of the coroutine despite there being
+     * an idle function involved
+     */
+    coroutine_yield(NULL);
+}
+
+static void spice_channel_emit_event(SpiceChannel *channel,
+                                     SpiceChannelEvent event)
+{
+    struct signal_data data;
+
+    data.params.event = event;
+    spice_channel_emit_main_context(channel, SPICE_CHANNEL_EVENT, &data);
+}
+
+/*
+ * Write all 'data' of length 'datalen' bytes out to
+ * the wire
+ */
+static void spice_channel_flush_wire(SpiceChannel *channel,
+                                     const void *data,
+                                     size_t datalen)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
-    int rc, err;
+    const char *ptr = data;
+    size_t offset = 0;
 
+    while (offset < datalen) {
+        int ret;
+        GIOCondition cond;
+
+        if (c->has_error) return;
+
+        cond = 0;
+        if (c->tls) {
+            ret = SSL_write(c->ssl, ptr+offset, datalen-offset);
+            if (ret < 0) {
+                ret = SSL_get_error(c->ssl, ret);
+                if (ret == SSL_ERROR_WANT_READ)
+                    cond |= G_IO_IN;
+                if (ret == SSL_ERROR_WANT_WRITE)
+                    cond |= G_IO_OUT;
+                ret = -1;
+            }
+        } else {
+            GError *error = NULL;
+            ret = g_socket_send(c->sock, ptr+offset, datalen-offset,
+                                NULL, &error);
+            if (ret < 0) {
+                if (error) {
+                    if (error->code == G_IO_ERROR_WOULD_BLOCK)
+                        cond |= G_IO_OUT;
+                    g_error_free(error);
+                }
+                ret = -1;
+            }
+        }
+        if (ret == -1) {
+            if (cond != 0) {
+                g_io_wait(c->sock, cond);
+            } else {
+                SPICE_DEBUG("Closing the channel: spice_channel_flush %d", errno);
+                c->has_error = TRUE;
+                return;
+            }
+        }
+        if (ret == 0) {
+            SPICE_DEBUG("Closing the connection: spice_channel_flush");
+            c->has_error = TRUE;
+            return;
+        }
+        offset += ret;
+    }
+}
+
+static void spice_channel_write(SpiceChannel *channel, const void *data, size_t len)
+{
+    /* FIXME: do we want to bufferize? */
+    spice_channel_flush_wire(channel, data, len);
+}
+
+/*
+ * Read at least 1 more byte of data straight off the wire
+ * into the requested buffer.
+ */
+static int spice_channel_read_wire(SpiceChannel *channel, void *data, size_t len)
+{
+    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    int ret;
+    GIOCondition cond;
+
+ reread:
+
+    if (c->has_error) return -EINVAL;
+
+    cond = 0;
     if (c->tls) {
-        rc = SSL_read(c->ssl, buf, len);
-        if (rc > 0) {
-            return rc;
+        ret = SSL_read(c->ssl, data, len);
+        if (ret < 0) {
+            ret = SSL_get_error(c->ssl, ret);
+            if (ret == SSL_ERROR_WANT_READ)
+                cond |= G_IO_IN;
+            if (ret == SSL_ERROR_WANT_WRITE)
+                cond |= G_IO_OUT;
+            ret = -1;
         }
-        if (rc == 0) {
-            SPICE_DEBUG("%s: channel/tls eof", c->name);
-            spice_channel_disconnect(channel, SPICE_CHANNEL_CLOSED);
-            return 0;
-        }
-        err = SSL_get_error(c->ssl, rc);
-        if (err == SSL_ERROR_WANT_READ) {
-            return 0;
-        }
-        g_warning("%s: channel/tls error: %s",
-                  c->name, ERR_error_string(err, NULL));
-        spice_channel_disconnect(channel, SPICE_CHANNEL_ERROR_IO);
-        return 0;
     } else {
-        rc = recv(c->socket, buf, len, 0);
-        switch (rc) {
-        case -1:
-            if (errno == EAGAIN)
-                return 0;
-            g_warning("%s: channel error: %s",
-                      c->name, strerror(errno));
-            spice_channel_disconnect(channel, SPICE_CHANNEL_ERROR_IO);
-            return 0;
-        case 0:
-            SPICE_DEBUG("%s: channel eof", c->name);
-            spice_channel_disconnect(channel, SPICE_CHANNEL_CLOSED);
-            return 0;
-        default:
-            return rc;
+        GError *error = NULL;
+        ret = g_socket_receive(c->sock, data, len, NULL, &error);
+        if (ret < 0) {
+            if (error) {
+                if (error->code == G_IO_ERROR_WOULD_BLOCK)
+                    cond = G_IO_IN;
+                g_error_free(error);
+            } else {
+                SPICE_DEBUG("Read error %s", error->message);
+            }
+            ret = -1;
         }
     }
+
+    if (ret == -1) {
+        if (cond != 0) {
+            /* FIXME: wait_interruptable ? */
+            /* if (priv->wait_interruptable) { */
+            /*     if (!g_io_wait_interruptable(&priv->wait, */
+            /*                                  priv->sock, G_IO_IN)) { */
+            /*         //SPICE_DEBUG("Read blocking interrupted %d", priv->has_error); */
+            /*         return -EAGAIN; */
+            /*     } */
+            /* } else { */
+            g_io_wait(c->sock, cond);
+            goto reread;
+        } else {
+            c->has_error = TRUE;
+            return -errno;
+        }
+    }
+    if (ret == 0) {
+        SPICE_DEBUG("Closing the connection: spice_channel_read() - ret=0");
+        c->has_error = TRUE;
+        return -EPIPE;
+    }
+
+    return ret;
+}
+
+/*
+ * Fill the 'data' buffer up with exactly 'len' bytes worth of data
+ *
+ * Must only be called from the coroutine
+ */
+static int spice_channel_read(SpiceChannel *channel, void *data, size_t len)
+{
+    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+
+    if (c->has_error) return -EINVAL;
+
+    return spice_channel_read_wire(channel, data, len);
 }
 
 static void spice_channel_tls_connect(SpiceChannel *channel)
@@ -568,7 +698,7 @@ static void spice_channel_send_auth(SpiceChannel *channel)
                             encrypted, rsa, RSA_PKCS1_OAEP_PADDING);
     g_return_if_fail(rc > 0);
 
-    spice_channel_send(channel, encrypted, nRSASize);
+    spice_channel_write(channel, encrypted, nRSASize);
     memset(encrypted, 0, nRSASize);
     BIO_free(bioKey);
 }
@@ -579,7 +709,7 @@ static void spice_channel_recv_auth(SpiceChannel *channel)
     uint32_t link_res;
     int rc;
 
-    rc = spice_channel_recv(channel, &link_res, sizeof(link_res));
+    rc = spice_channel_read(channel, &link_res, sizeof(link_res));
     if (rc != sizeof(link_res)) {
         g_critical("incomplete auth reply (%d/%zd)", rc, sizeof(link_res));
         return;
@@ -651,7 +781,7 @@ static void spice_channel_send_link(SpiceChannel *channel)
         p += sizeof(uint32_t);
     }
 
-    spice_channel_send(channel, buffer, p - buffer);
+    spice_channel_write(channel, buffer, p - buffer);
 }
 
 static void spice_channel_recv_link_hdr(SpiceChannel *channel)
@@ -659,7 +789,7 @@ static void spice_channel_recv_link_hdr(SpiceChannel *channel)
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
     int rc;
 
-    rc = spice_channel_recv(channel, &c->peer_hdr, sizeof(c->peer_hdr));
+    rc = spice_channel_read(channel, &c->peer_hdr, sizeof(c->peer_hdr));
     if (rc != sizeof(c->peer_hdr)) {
         g_critical("incomplete link header (%d/%zd)", rc, sizeof(c->peer_hdr));
         return;
@@ -691,7 +821,7 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
 
     g_return_if_fail(channel != NULL);
 
-    rc = spice_channel_recv(channel, (uint8_t*)c->peer_msg + c->peer_pos,
+    rc = spice_channel_read(channel, (uint8_t*)c->peer_msg + c->peer_pos,
                             c->peer_hdr.size - c->peer_pos);
     c->peer_pos += rc;
     if (c->peer_pos != c->peer_hdr.size) {
@@ -745,7 +875,6 @@ void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out)
     uint8_t *data;
     int free_data;
     size_t len;
-    uint32_t res;
 
     g_return_if_fail(channel != NULL);
     g_return_if_fail(out != NULL);
@@ -753,14 +882,9 @@ void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out)
     data = spice_marshaller_linearize(out->marshaller, 0,
                                       &len, &free_data);
     /* spice_msg_out_hexdump(out, data, len); */
-    res = spice_channel_send(channel, data, len);
+    spice_channel_write(channel, data, len);
     if (free_data) {
         free(data);
-    }
-    if (res != len) {
-        /* TODO: queue up */
-        g_critical("sending message data failed");
-        return;
     }
 }
 
@@ -777,7 +901,7 @@ static void spice_channel_recv_msg(SpiceChannel *channel)
 
     /* receive message */
     if (in->hpos < sizeof(in->header)) {
-        rc = spice_channel_recv(channel, (uint8_t*)&in->header + in->hpos,
+        rc = spice_channel_read(channel, (uint8_t*)&in->header + in->hpos,
                                 sizeof(in->header) - in->hpos);
         if (rc < 0) {
             g_critical("recv hdr: %s", strerror(errno));
@@ -789,7 +913,7 @@ static void spice_channel_recv_msg(SpiceChannel *channel)
         in->data = spice_malloc(in->header.size);
     }
     if (in->dpos < in->header.size) {
-        rc = spice_channel_recv(channel, in->data + in->dpos,
+        rc = spice_channel_read(channel, in->data + in->dpos,
                                 in->header.size - in->dpos);
         if (rc < 0) {
             g_critical("recv msg: %s", strerror(errno));
@@ -851,34 +975,6 @@ static void spice_channel_recv_msg(SpiceChannel *channel)
     c->msg_in = NULL;
 }
 
-static gboolean spice_channel_data(GIOChannel *source, GIOCondition condition, void *opaque)
-{
-    SpiceChannel *channel = SPICE_CHANNEL(opaque);
-    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
-
-    switch (c->state) {
-    case SPICE_CHANNEL_STATE_TLS:
-        spice_channel_tls_connect(channel);
-        break;
-    case SPICE_CHANNEL_STATE_LINK_HDR:
-        spice_channel_recv_link_hdr(channel);
-        break;
-    case SPICE_CHANNEL_STATE_LINK_MSG:
-        spice_channel_recv_link_msg(channel);
-        break;
-    case SPICE_CHANNEL_STATE_AUTH:
-        spice_channel_recv_auth(channel);
-        break;
-    case SPICE_CHANNEL_STATE_READY:
-        spice_channel_recv_msg(channel);
-        break;
-    default:
-        g_critical("unknown state %d", c->state);
-    }
-
-    return TRUE;
-}
-
 SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
 {
     SpiceChannel *channel;
@@ -924,6 +1020,7 @@ void spice_channel_destroy(SpiceChannel *channel)
     g_object_unref(channel);
 }
 
+#if 0
 static int tls_verify(int preverify_ok, X509_STORE_CTX *ctx)
 {
     spice_channel *c;
@@ -938,31 +1035,111 @@ static int tls_verify(int preverify_ok, X509_STORE_CTX *ctx)
 
     return preverify_ok;
 }
+#endif
+
+static gboolean spice_channel_message(SpiceChannel *channel)
+{
+    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+
+    switch (c->state) {
+    case SPICE_CHANNEL_STATE_TLS:
+        spice_channel_tls_connect(channel);
+        break;
+    case SPICE_CHANNEL_STATE_LINK_HDR:
+        spice_channel_recv_link_hdr(channel);
+        break;
+    case SPICE_CHANNEL_STATE_LINK_MSG:
+        spice_channel_recv_link_msg(channel);
+        break;
+    case SPICE_CHANNEL_STATE_AUTH:
+        spice_channel_recv_auth(channel);
+        break;
+    case SPICE_CHANNEL_STATE_READY:
+        spice_channel_recv_msg(channel);
+        break;
+    default:
+        g_critical("unknown state %d", c->state);
+    }
+
+    return TRUE;
+}
+
+/* we use an idle function to allow the coroutine to exit before we actually
+ * unref the object since the coroutine's state is part of the object */
+static gboolean spice_channel_delayed_unref(gpointer data)
+{
+    SpiceChannel *channel = SPICE_CHANNEL(data);
+    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(data);
+
+    g_return_val_if_fail(channel != NULL, FALSE);
+    SPICE_DEBUG("Delayed unref channel=%p", channel);
+
+    g_return_val_if_fail(c->coroutine.exited == TRUE, FALSE);
+
+    g_object_unref(G_OBJECT(data));
+
+    return FALSE;
+}
 
 static void *spice_channel_coroutine(void *data)
 {
+    SpiceChannel *channel = SPICE_CHANNEL(data);
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(data);
-    GSocket *socket;
-    /* int ret; */
-    /* struct signal_data s; */
+    int ret;
 
     SPICE_DEBUG("Started background coroutine");
-    socket = spice_session_channel_open_host(c->session, c->tls);
-    if (socket == NULL) /* FIXME: reconnect with tls? */
-        goto cleanup;
 
- cleanup:
+    if (spice_session_get_client_provided_socket(c->session)) {
+        if (c->fd < 0) {
+            g_critical("fd not provided!");
+            goto cleanup;
+        }
+
+	if (!(c->sock = g_socket_new_from_fd(c->fd, NULL))) {
+		SPICE_DEBUG("Failed to open socket from fd %d", c->fd);
+		return FALSE;
+	}
+
+	g_socket_set_blocking(c->sock, FALSE);
+        goto connected;
+    }
+
+reconnect:
+    c->sock = spice_session_channel_open_host(c->session, c->tls);
+    if (c->sock == NULL) {
+        if (!c->tls) {
+            SPICE_DEBUG("connection failed, trying with TLS port");
+            c->tls = true; /* FIXME: does that really work with provided fd */
+            goto reconnect;
+        }
+        SPICE_DEBUG("Connect error");
+        spice_channel_emit_event(channel, SPICE_CHANNEL_ERROR_CONNECT);
+        goto cleanup;
+    }
+
+connected:
+    c->state = SPICE_CHANNEL_STATE_LINK_HDR;
+    spice_channel_send_link(channel);
+
+    while ((ret = spice_channel_message(channel)))
+        if (c->has_error) {
+            g_warning("IO error, breaking channel loop");
+            break;
+        }
+
+cleanup:
     SPICE_DEBUG("Doing final channel cleanup");
-    /* vnc_connection_close(conn); */
-    /* vnc_connection_emit_main_context(conn, VNC_DISCONNECTED, &s); */
-    /* g_idle_add(spice_connection_delayed_unref, conn); */
+    spice_channel_disconnect(channel, SPICE_CHANNEL_CLOSED);
+    g_idle_add(spice_channel_delayed_unref, data);
+
+    /* Co-routine exits now - the SpiceChannel object may no longer exist,
+       so don't do anything else now unless you like SEGVs */
     return NULL;
 }
 
 static gboolean channel_connect(SpiceChannel *channel)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
-    int rc, err;
     struct coroutine *co;
 
     g_return_val_if_fail(c != NULL, FALSE);
@@ -976,7 +1153,17 @@ static gboolean channel_connect(SpiceChannel *channel)
         return true;
     }
 
-reconnect:
+    if (spice_session_get_client_provided_socket(c->session)) {
+        if (c->socket == -1) {
+            g_signal_emit(channel, signals[SPICE_CHANNEL_OPEN_FD], 0, c->tls);
+            return true;
+        }
+    }
+
+    g_return_val_if_fail(c->sock == NULL, FALSE);
+    g_object_ref(G_OBJECT(channel)); /* Unref'd when co-routine exits */
+
+    /* ----------- FIXME gtk-vnc does that in idle */
     SPICE_DEBUG("Open coroutine starting");
     c->open_id = 0;
 
@@ -989,29 +1176,7 @@ reconnect:
     coroutine_init(co);
     coroutine_yieldto(co, channel);
 
-    if (spice_session_get_client_provided_socket(c->session)) {
-        if (c->socket == -1) {
-            g_signal_emit(channel, signals[SPICE_CHANNEL_OPEN_FD], 0, c->tls);
-            return true;
-        }
-    } else
-        c->socket = spice_session_channel_connect(c->session, c->tls);
-
-    if (c->socket == -1) {
-        if (!c->tls) {
-            c->tls = true;
-            goto reconnect;
-        }
-        SPICE_DEBUG("Connect error");
-        spice_channel_emit_event(channel, SPICE_CHANNEL_ERROR_CONNECT);
-        return false;
-    }
-
-    c->channel = g_io_channel_unix_new(c->socket);
-    // FIXME: g_io_channel_set_encoding(NULL); ?
-    // FIXME: win32_new_socket()
-    c->channel_watch = g_io_add_watch(c->channel, G_IO_IN, spice_channel_data, channel);
-
+#if 0
     if (c->tls) {
         char *ca_file;
 
@@ -1056,6 +1221,8 @@ reconnect:
 
     c->state = SPICE_CHANNEL_STATE_LINK_HDR;
     spice_channel_send_link(channel);
+#endif
+
     return true;
 }
 
@@ -1071,7 +1238,7 @@ gboolean spice_channel_open_fd(SpiceChannel *channel, int fd)
     g_return_val_if_fail(c != NULL, FALSE);
     g_return_val_if_fail(fd >= 0, FALSE);
 
-    c->socket = fd;
+    c->fd = fd;
 
     return channel_connect(channel);
 }
@@ -1106,6 +1273,10 @@ void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
         close(c->socket);
         c->socket = -1;
     }
+    if (c->sock) {
+        g_object_unref(c->sock);
+        c->sock = NULL;
+    }
     c->state = SPICE_CHANNEL_STATE_UNCONNECTED;
     free(c->peer_msg);
     c->peer_msg = NULL;
@@ -1113,6 +1284,11 @@ void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
     if (reason != SPICE_CHANNEL_NONE) {
         spice_channel_emit_event(channel, reason);
     }
+
+    g_array_set_size(c->remote_common_caps, 0);
+    g_array_set_size(c->remote_caps, 0);
+    g_array_set_size(c->common_caps, 0);
+    g_array_set_size(c->caps, 0);
 }
 
 static gboolean test_capability(GArray *caps, guint32 cap)
