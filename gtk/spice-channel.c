@@ -71,6 +71,9 @@ static const char *channel_desc[] = {
     [ SPICE_CHANNEL_TUNNEL ]   = "tunnel",
 };
 
+static void spice_channel_iterate_write(SpiceChannel *channel);
+static void spice_channel_iterate_read(SpiceChannel *channel);
+
 static void spice_channel_init(SpiceChannel *channel)
 {
     spice_channel *c;
@@ -202,6 +205,9 @@ static void spice_channel_set_property(GObject      *gobject,
 static void spice_channel_class_init(SpiceChannelClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
+
+    klass->iterate_write = spice_channel_iterate_write;
+    klass->iterate_read  = spice_channel_iterate_read;
 
     gobject_class->constructed  = spice_channel_constructed;
     gobject_class->dispose      = spice_channel_dispose;
@@ -1092,24 +1098,22 @@ static int tls_verify(int preverify_ok, X509_STORE_CTX *ctx)
 }
 
 /* coroutine context */
-static gboolean spice_channel_message(SpiceChannel *channel)
+static void spice_channel_iterate_write(SpiceChannel *channel)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
-    GIOCondition ret;
 
-    if (c->has_error) {
-        g_warning("IO error, breaking channel loop");
-        return FALSE;
+    if (c->xmit_buffer_size) {
+        spice_channel_write(channel, c->xmit_buffer, c->xmit_buffer_size);
+        c->xmit_buffer_size = 0;
     }
+}
 
-    do {
-        if (c->xmit_buffer_size) {
-            spice_channel_write(channel, c->xmit_buffer, c->xmit_buffer_size);
-            c->xmit_buffer_size = 0;
-        }
-    } while (!(ret = g_io_wait_interruptable(&c->wait, c->sock, G_IO_IN)));
-    /* TODO: check ret if error */
+/* coroutine context */
+static void spice_channel_iterate_read(SpiceChannel *channel)
+{
+    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
 
+    /* TODO: get rid of state, and use coroutine state */
     switch (c->state) {
     case SPICE_CHANNEL_STATE_LINK_HDR:
         spice_channel_recv_link_hdr(channel);
@@ -1126,6 +1130,25 @@ static gboolean spice_channel_message(SpiceChannel *channel)
     default:
         g_critical("unknown state %d", c->state);
     }
+}
+
+/* coroutine context */
+static gboolean spice_channel_iterate(SpiceChannel *channel)
+{
+    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    GIOCondition ret;
+
+    if (c->has_error) {
+        g_warning("IO error, breaking channel loop");
+        return FALSE;
+    }
+
+    do {
+        SPICE_CHANNEL_GET_CLASS(channel)->iterate_write(channel);
+    } while (!(ret = g_io_wait_interruptable(&c->wait, c->sock, G_IO_IN)));
+    /* TODO: check ret if error */
+
+    SPICE_CHANNEL_GET_CLASS(channel)->iterate_read(channel);
 
     return TRUE;
 }
@@ -1233,7 +1256,7 @@ connected:
     c->state = SPICE_CHANNEL_STATE_LINK_HDR;
     spice_channel_send_link(channel);
 
-    while ((ret = spice_channel_message(channel)))
+    while ((ret = spice_channel_iterate(channel)))
         ;
 
 cleanup:

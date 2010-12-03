@@ -57,11 +57,13 @@ struct _SpiceChannelClass
 {
     GObjectClass parent_class;
 
-    /* virtual methods */
+    /* virtual methods, coroutine context */
     void (*handle_msg)(SpiceChannel *channel, spice_msg_in *msg);
     void (*channel_up)(SpiceChannel *channel);
+    void (*iterate_write)(SpiceChannel *channel);
+    void (*iterate_read)(SpiceChannel *channel);
 
-    /* signals */
+    /* signals, system context */
     void (*channel_event)(SpiceChannel *channel, SpiceChannelEvent event);
     void (*open_fd)(SpiceChannel *channel, int with_tls);
 
@@ -69,7 +71,7 @@ struct _SpiceChannelClass
      * If adding fields to this struct, remove corresponding
      * amount of padding to avoid changing overall struct size
      */
-    gchar _spice_reserved[SPICE_RESERVED_PADDING - sizeof(void*)];
+    gchar _spice_reserved[SPICE_RESERVED_PADDING - 3 * sizeof(void*)];
 };
 
 GType spice_channel_get_type(void) G_GNUC_CONST;
