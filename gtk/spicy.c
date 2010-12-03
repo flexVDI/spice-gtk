@@ -362,7 +362,15 @@ static void restore_configuration(GtkWidget *spice)
     gsize nkeys, i;
     GError *error = NULL;
 
-    keys = g_key_file_get_keys(keyfile, "general", &nkeys, NULL);
+    keys = g_key_file_get_keys(keyfile, "general", &nkeys, &error);
+    if (error != NULL) {
+        if (error->code != G_KEY_FILE_ERROR_GROUP_NOT_FOUND)
+            g_warning("Failed to read configuration file keys: %s", error->message);
+        g_clear_error(&error);
+        return;
+    }
+
+    g_return_if_fail(keys != NULL);
     for (i = 0; i < nkeys; ++i) {
         state = g_key_file_get_boolean(keyfile, "general", keys[i], &error);
         if (error != NULL) {
