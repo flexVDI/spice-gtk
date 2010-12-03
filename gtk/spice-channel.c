@@ -78,7 +78,7 @@ static void spice_channel_init(SpiceChannel *channel)
     c = channel->priv = SPICE_CHANNEL_GET_PRIVATE(channel);
 
     c->serial = 1;
-    c->socket = -1;
+    c->fd = -1;
     strcpy(c->name, "?");
     c->caps = g_array_new(FALSE, TRUE, sizeof(guint32));
     c->common_caps = g_array_new(FALSE, TRUE, sizeof(guint32));
@@ -564,7 +564,6 @@ static void spice_channel_flush_wire(SpiceChannel *channel,
 
 static void spice_channel_write(SpiceChannel *channel, const void *data, size_t len)
 {
-    /* FIXME: do we want to bufferize? */
     spice_channel_flush_wire(channel, data, len);
 }
 
@@ -578,7 +577,7 @@ static int spice_channel_read_wire(SpiceChannel *channel, void *data, size_t len
     int ret;
     GIOCondition cond;
 
- reread:
+reread:
 
     if (c->has_error) return -EINVAL;
 
@@ -646,25 +645,6 @@ static int spice_channel_read(SpiceChannel *channel, void *data, size_t len)
     if (c->has_error) return -EINVAL;
 
     return spice_channel_read_wire(channel, data, len);
-}
-
-static void spice_channel_tls_connect(SpiceChannel *channel)
-{
-    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
-    int rc, err;
-
-    rc = SSL_connect(c->ssl);
-    if (rc <= 0) {
-        err = SSL_get_error(c->ssl, rc);
-        if (err == SSL_ERROR_WANT_READ) {
-            return;
-        }
-        SPICE_DEBUG("%s: SSL_connect: %s",
-            c->name, ERR_error_string(err, NULL));
-        spice_channel_emit_event(channel, SPICE_CHANNEL_ERROR_TLS);
-    }
-    c->state = SPICE_CHANNEL_STATE_LINK_HDR;
-    spice_channel_send_link(channel);
 }
 
 static void spice_channel_send_auth(SpiceChannel *channel)
@@ -1020,7 +1000,6 @@ void spice_channel_destroy(SpiceChannel *channel)
     g_object_unref(channel);
 }
 
-#if 0
 static int tls_verify(int preverify_ok, X509_STORE_CTX *ctx)
 {
     spice_channel *c;
@@ -1035,16 +1014,12 @@ static int tls_verify(int preverify_ok, X509_STORE_CTX *ctx)
 
     return preverify_ok;
 }
-#endif
 
 static gboolean spice_channel_message(SpiceChannel *channel)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
 
     switch (c->state) {
-    case SPICE_CHANNEL_STATE_TLS:
-        spice_channel_tls_connect(channel);
-        break;
     case SPICE_CHANNEL_STATE_LINK_HDR:
         spice_channel_recv_link_hdr(channel);
         break;
@@ -1117,6 +1092,52 @@ reconnect:
         goto cleanup;
     }
 
+    if (c->tls) {
+        gchar *ca_file;
+        int rc;
+
+        c->ctx = SSL_CTX_new(TLSv1_method());
+        if (c->ctx == NULL) {
+            g_critical("SSL_CTX_new failed");
+            goto cleanup;
+        }
+
+        g_object_get(c->session, "ca-file", &ca_file, NULL);
+        if (ca_file) {
+            rc = SSL_CTX_load_verify_locations(c->ctx, ca_file, NULL);
+            if (rc <= 0) {
+                g_warning("loading ca certs from %s failed", ca_file);
+            }
+        }
+        SSL_CTX_set_verify(c->ctx, SSL_VERIFY_PEER, tls_verify);
+
+        c->ssl = SSL_new(c->ctx);
+        if (c->ssl == NULL) {
+            g_critical("SSL_new failed");
+            goto cleanup;
+        }
+        rc = SSL_set_fd(c->ssl, c->fd);
+        if (rc <= 0) {
+            g_critical("SSL_set_fd failed");
+            goto cleanup;
+        }
+        SSL_set_app_data(c->ssl, c);
+ssl_reconnect:
+        rc = SSL_connect(c->ssl);
+        if (rc <= 0) {
+            rc = SSL_get_error(c->ssl, rc);
+            if (rc == SSL_ERROR_WANT_READ || rc == SSL_ERROR_WANT_WRITE) {
+                g_io_wait(c->sock, G_IO_OUT|G_IO_ERR|G_IO_HUP);
+                goto ssl_reconnect;
+            } else {
+                g_warning("%s: SSL_connect: %s",
+                          c->name, ERR_error_string(rc, NULL));
+                spice_channel_emit_event(channel, SPICE_CHANNEL_ERROR_TLS);
+                goto cleanup;
+            }
+        }
+    }
+
 connected:
     c->state = SPICE_CHANNEL_STATE_LINK_HDR;
     spice_channel_send_link(channel);
@@ -1154,7 +1175,7 @@ static gboolean channel_connect(SpiceChannel *channel)
     }
 
     if (spice_session_get_client_provided_socket(c->session)) {
-        if (c->socket == -1) {
+        if (c->fd == -1) {
             g_signal_emit(channel, signals[SPICE_CHANNEL_OPEN_FD], 0, c->tls);
             return true;
         }
@@ -1175,53 +1196,6 @@ static gboolean channel_connect(SpiceChannel *channel)
 
     coroutine_init(co);
     coroutine_yieldto(co, channel);
-
-#if 0
-    if (c->tls) {
-        char *ca_file;
-
-        c->ctx = SSL_CTX_new(TLSv1_method());
-        if (c->ctx == NULL) {
-            g_critical("SSL_CTX_new failed");
-            return false;
-        }
-
-        g_object_get(c->session, "ca-file", &ca_file, NULL);
-        if (ca_file) {
-            rc = SSL_CTX_load_verify_locations(c->ctx, ca_file, NULL);
-            if (rc <= 0) {
-                g_warning("loading ca certs from %s failed", ca_file);
-            }
-        }
-        SSL_CTX_set_verify(c->ctx, SSL_VERIFY_PEER, tls_verify);
-
-        c->ssl = SSL_new(c->ctx);
-        if (c->ssl == NULL) {
-            g_critical("SSL_new failed");
-            return false;
-        }
-        rc = SSL_set_fd(c->ssl, c->socket);
-        if (rc <= 0) {
-            g_critical("SSL_set_fd failed");
-            return false;
-        }
-        SSL_set_app_data(c->ssl, c);
-        rc = SSL_connect(c->ssl);
-        if (rc <= 0) {
-            err = SSL_get_error(c->ssl, rc);
-            if (err == SSL_ERROR_WANT_READ) {
-                c->state = SPICE_CHANNEL_STATE_TLS;
-                return 0;
-            }
-            g_warning("%s: SSL_connect: %s",
-                      c->name, ERR_error_string(err, NULL));
-            spice_channel_emit_event(channel, SPICE_CHANNEL_ERROR_TLS);
-        }
-    }
-
-    c->state = SPICE_CHANNEL_STATE_LINK_HDR;
-    spice_channel_send_link(channel);
-#endif
 
     return true;
 }
@@ -1268,10 +1242,6 @@ void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
                          (g_main_context_default(), c->channel_watch));
         g_io_channel_unref(c->channel);
         c->channel = NULL;
-    }
-    if (c->socket != -1) {
-        close(c->socket);
-        c->socket = -1;
     }
     if (c->sock) {
         g_object_unref(c->sock);

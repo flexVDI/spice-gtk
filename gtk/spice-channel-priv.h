@@ -51,7 +51,6 @@ struct spice_msg_in {
 
 enum spice_channel_state {
     SPICE_CHANNEL_STATE_UNCONNECTED = 0,
-    SPICE_CHANNEL_STATE_TLS,
     SPICE_CHANNEL_STATE_LINK_HDR,
     SPICE_CHANNEL_STATE_LINK_MSG,
     SPICE_CHANNEL_STATE_AUTH,
@@ -68,7 +67,6 @@ struct spice_channel {
 
     char                        name[16];
     enum spice_channel_state    state;
-    int                         socket; /* TODO: remove */
     spice_parse_channel_func_t  parser;
     SpiceMessageMarshallers     *marshallers;
     GIOChannel                  *channel;
