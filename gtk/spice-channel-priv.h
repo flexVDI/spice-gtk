@@ -22,6 +22,7 @@
 #include <gio/gio.h>
 
 #include "coroutine.h"
+#include "gio-coroutine.h"
 
 /* common/ */
 #include "marshallers.h"
@@ -64,6 +65,12 @@ struct spice_channel {
     GSocket                     *sock;
     int                         fd;
     gboolean                    has_error;
+
+    int                         wait_interruptable;
+    struct wait_queue           wait;
+    guint8                      *xmit_buffer;
+    int                         xmit_buffer_capacity;
+    int                         xmit_buffer_size;
 
     char                        name[16];
     enum spice_channel_state    state;
@@ -109,7 +116,10 @@ spice_msg_out *spice_msg_out_new(SpiceChannel *channel, int type);
 void spice_msg_out_ref(spice_msg_out *out);
 void spice_msg_out_unref(spice_msg_out *out);
 void spice_msg_out_send(spice_msg_out *out);
+void spice_msg_out_send_internal(spice_msg_out *out);
 void spice_msg_out_hexdump(spice_msg_out *out, unsigned char *data, int len);
+
+void spice_channel_wakeup(SpiceChannel *channel);
 
 /* channel-base.c */
 /* coroutine context */

@@ -32,7 +32,7 @@
 
 #include "gio-coroutine.h"
 
-static void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out);
+static void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out, gboolean buffered);
 static void spice_channel_send_link(SpiceChannel *channel);
 
 /* ------------------------------------------------------------------ */
@@ -429,13 +429,27 @@ void spice_msg_out_unref(spice_msg_out *out)
     free(out);
 }
 
+/* system context */
 void spice_msg_out_send(spice_msg_out *out)
 {
     g_return_if_fail(out != NULL);
 
     out->header->size =
         spice_marshaller_get_total_size(out->marshaller) - sizeof(SpiceDataHeader);
-    spice_channel_send_msg(out->channel, out);
+    spice_channel_send_msg(out->channel, out, TRUE);
+
+    /* TODO: we currently flush/wakeup immediately all buffered messages */
+    spice_channel_wakeup(out->channel);
+}
+
+/* coroutine context */
+void spice_msg_out_send_internal(spice_msg_out *out)
+{
+    g_return_if_fail(out != NULL);
+
+    out->header->size =
+        spice_marshaller_get_total_size(out->marshaller) - sizeof(SpiceDataHeader);
+    spice_channel_send_msg(out->channel, out, FALSE);
 }
 
 /* ---------------------------------------------------------------- */
@@ -615,15 +629,14 @@ reread:
 
     if (ret == -1) {
         if (cond != 0) {
-            /* FIXME: wait_interruptable ? */
-            /* if (priv->wait_interruptable) { */
-            /*     if (!g_io_wait_interruptable(&priv->wait, */
-            /*                                  priv->sock, G_IO_IN)) { */
-            /*         //SPICE_DEBUG("Read blocking interrupted %d", priv->has_error); */
-            /*         return -EAGAIN; */
-            /*     } */
-            /* } else { */
-            g_io_wait(c->sock, cond);
+            if (c->wait_interruptable) {
+                if (!g_io_wait_interruptable(&c->wait, c->sock, cond)) {
+                    // SPICE_DEBUG("Read blocking interrupted %d", priv->has_error);
+                    return -EAGAIN;
+                }
+            } else {
+                g_io_wait(c->sock, cond);
+            }
             goto reread;
         } else {
             c->has_error = TRUE;
@@ -860,8 +873,37 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
     spice_channel_send_auth(channel);
 }
 
-/* coroutine context */
-void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out)
+/* system context */
+static void spice_channel_buffered_write(SpiceChannel *channel, const void *data, size_t size)
+{
+    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    size_t left;
+
+    left = c->xmit_buffer_capacity - c->xmit_buffer_size;
+    if (left < size) {
+        c->xmit_buffer_capacity += size + 4095;
+        c->xmit_buffer_capacity &= ~4095;
+
+        c->xmit_buffer = g_realloc(c->xmit_buffer, c->xmit_buffer_capacity);
+    }
+
+    memcpy(&c->xmit_buffer[c->xmit_buffer_size], data, size);
+
+    c->xmit_buffer_size += size;
+}
+
+/* system context */
+/* TODO: we currently flush/wakeup immediately all buffered messages */
+void spice_channel_wakeup(SpiceChannel *channel)
+{
+    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+
+    g_io_wakeup(&c->wait);
+}
+
+/* coroutine context if @buffered is TRUE,
+   system context if @buffered is FALSE */
+static void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out, gboolean buffered)
 {
     uint8_t *data;
     int free_data;
@@ -873,7 +915,10 @@ void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out)
     data = spice_marshaller_linearize(out->marshaller, 0,
                                       &len, &free_data);
     /* spice_msg_out_hexdump(out, data, len); */
-    spice_channel_write(channel, data, len);
+    if (buffered)
+        spice_channel_buffered_write(channel, data, len);
+    else
+        spice_channel_write(channel, data, len);
     if (free_data) {
         free(data);
     }
@@ -944,7 +989,7 @@ static void spice_channel_recv_msg(SpiceChannel *channel)
         c->message_ack_count--;
         if (!c->message_ack_count) {
             spice_msg_out *out = spice_msg_out_new(channel, SPICE_MSGC_ACK);
-            spice_msg_out_send(out);
+            spice_msg_out_send_internal(out);
             spice_msg_out_unref(out);
             c->message_ack_count = c->message_ack_window;
         }
@@ -1050,6 +1095,20 @@ static int tls_verify(int preverify_ok, X509_STORE_CTX *ctx)
 static gboolean spice_channel_message(SpiceChannel *channel)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    GIOCondition ret;
+
+    if (c->has_error) {
+        g_warning("IO error, breaking channel loop");
+        return FALSE;
+    }
+
+    do {
+        if (c->xmit_buffer_size) {
+            spice_channel_write(channel, c->xmit_buffer, c->xmit_buffer_size);
+            c->xmit_buffer_size = 0;
+        }
+    } while (!(ret = g_io_wait_interruptable(&c->wait, c->sock, G_IO_IN)));
+    /* TODO: check ret if error */
 
     switch (c->state) {
     case SPICE_CHANNEL_STATE_LINK_HDR:
@@ -1175,10 +1234,7 @@ connected:
     spice_channel_send_link(channel);
 
     while ((ret = spice_channel_message(channel)))
-        if (c->has_error) {
-            g_warning("IO error, breaking channel loop");
-            break;
-        }
+        ;
 
 cleanup:
     SPICE_DEBUG("Doing final channel cleanup");
@@ -1309,6 +1365,14 @@ void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
     free(c->peer_msg);
     c->peer_msg = NULL;
     c->peer_pos = 0;
+
+    if (c->xmit_buffer) {
+        g_free(c->xmit_buffer);
+        c->xmit_buffer = NULL;
+        c->xmit_buffer_size = 0;
+        c->xmit_buffer_capacity = 0;
+    }
+
     if (reason != SPICE_CHANNEL_NONE) {
         spice_channel_emit_event(channel, reason);
     }
