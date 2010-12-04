@@ -460,70 +460,34 @@ void spice_msg_out_send_internal(spice_msg_out *out)
 
 /* ---------------------------------------------------------------- */
 
-struct signal_data
-{
-    GObject *object;
-    struct coroutine *caller;
-
-    int signum;
-
-    union {
-        SpiceChannelEvent event;
-    } params;
+struct SPICE_CHANNEL_EVENT {
+    SpiceChannelEvent event;
 };
 
-/* main -> coroutine context */
-static gboolean do_spice_channel_emit_main_context(gpointer opaque)
+/* main context */
+static void do_emit_main_context(GObject *object, int signum, gpointer params)
 {
-    struct signal_data *data = opaque;
-
-    SPICE_DEBUG("Emit main context %d", data->signum);
-
-    switch (data->signum) {
-    case SPICE_CHANNEL_EVENT:
-        g_signal_emit(data->object, signals[data->signum], 0,
-                      data->params.event);
+    switch (signum) {
+    case SPICE_CHANNEL_EVENT: {
+        struct SPICE_CHANNEL_EVENT *p = params;
+        g_signal_emit(object, signals[signum], 0, p->event);
         break;
+    }
     case SPICE_CHANNEL_OPEN_FD:
-        g_warning("this signal is only sent from main context");
+        g_warning("this signal is only sent directly from main context");
         break;
     default:
         g_warn_if_reached();
     }
-    coroutine_yieldto(data->caller, NULL);
-
-    return FALSE;
-}
-
-/* coroutine -> main context */
-static void spice_channel_emit_main_context(SpiceChannel *channel,
-                                            int signum,
-                                            struct signal_data *data)
-{
-    data->object = G_OBJECT(channel);
-    data->caller = coroutine_self();
-    data->signum = signum;
-
-    g_idle_add(do_spice_channel_emit_main_context, data);
-
-    /* This switches to the system coroutine context, lets
-     * the idle function run to dispatch the signal, and
-     * finally returns once complete. ie this is synchronous
-     * from the POV of the coroutine despite there being
-     * an idle function involved
-     */
-    coroutine_yield(NULL);
 }
 
 /* coroutine context */
-static void spice_channel_emit_event(SpiceChannel *channel,
-                                     SpiceChannelEvent event)
-{
-    struct signal_data data;
+#define emit_main_context(object, event, args...)                       \
+    G_STMT_START {                                                      \
+        g_signal_emit_main_context(G_OBJECT(object), do_emit_main_context, \
+                                   event, &((struct event) { args }));  \
+    } G_STMT_END
 
-    data.params.event = event;
-    spice_channel_emit_main_context(channel, SPICE_CHANNEL_EVENT, &data);
-}
 
 /*
  * Write all 'data' of length 'datalen' bytes out to
@@ -652,7 +616,7 @@ reread:
     if (ret == 0) {
         SPICE_DEBUG("Closing the connection: spice_channel_read() - ret=0");
         c->has_error = TRUE;
-        return -EPIPE;
+        return 0;
     }
 
     return ret;
@@ -728,8 +692,8 @@ static void spice_channel_recv_auth(SpiceChannel *channel)
 
     SPICE_DEBUG("%s: channel up", c->name);
     c->state = SPICE_CHANNEL_STATE_READY;
-    spice_channel_emit_event(channel, SPICE_CHANNEL_OPENED);
 
+    emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_OPENED);
     if (SPICE_CHANNEL_GET_CLASS(channel)->channel_up)
         SPICE_CHANNEL_GET_CLASS(channel)->channel_up(channel);
 }
@@ -1202,7 +1166,7 @@ reconnect:
             goto reconnect;
         }
         SPICE_DEBUG("Connect error");
-        spice_channel_emit_event(channel, SPICE_CHANNEL_ERROR_CONNECT);
+        emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_CONNECT);
         goto cleanup;
     }
 
@@ -1246,7 +1210,7 @@ ssl_reconnect:
             } else {
                 g_warning("%s: SSL_connect: %s",
                           c->name, ERR_error_string(rc, NULL));
-                spice_channel_emit_event(channel, SPICE_CHANNEL_ERROR_TLS);
+                emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_TLS);
                 goto cleanup;
             }
         }
@@ -1354,6 +1318,7 @@ gboolean spice_channel_open_fd(SpiceChannel *channel, int fd)
  * on main context if not #SPICE_CHANNEL_NONE.
  **/
 /* deprecated: do we want spice_channel_disconnect() as public API? */
+/* TODO: make this a vmethod, and implement in all childs? */
 void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
@@ -1397,7 +1362,7 @@ void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
     }
 
     if (reason != SPICE_CHANNEL_NONE) {
-        spice_channel_emit_event(channel, reason);
+        emit_main_context(channel, SPICE_CHANNEL_EVENT, reason);
     }
 
     g_array_set_size(c->remote_common_caps, 0);

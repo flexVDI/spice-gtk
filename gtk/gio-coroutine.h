@@ -51,10 +51,14 @@ struct g_condition_wait_source
     gpointer data;
 };
 
+typedef void (*GSignalEmitMainFunc)(GObject *object, int signum, gpointer params);
+
 GIOCondition g_io_wait              (GSocket *sock, GIOCondition cond);
 gboolean     g_condition_wait       (g_condition_wait_func func, gpointer data);
 void         g_io_wakeup            (struct wait_queue *wait);
 GIOCondition g_io_wait_interruptable(struct wait_queue *wait, GSocket *sock, GIOCondition cond);
+void         g_signal_emit_main_context(GObject *object, GSignalEmitMainFunc func,
+                                        int signum, gpointer params);
 
 G_END_DECLS
 

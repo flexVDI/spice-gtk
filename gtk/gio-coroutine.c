@@ -146,3 +146,48 @@ gboolean g_condition_wait(g_condition_wait_func func, gpointer data)
 
     return TRUE;
 }
+
+struct signal_data
+{
+    GObject *object;
+    struct coroutine *caller;
+    int signum;
+    gpointer params;
+    GSignalEmitMainFunc func;
+};
+
+static gboolean emit_main_context(gpointer opaque)
+{
+    struct signal_data *signal = opaque;
+
+    signal->func(signal->object, signal->signum, signal->params);
+    coroutine_yieldto(signal->caller, NULL);
+
+    return FALSE;
+}
+
+/* coroutine -> main context */
+void g_signal_emit_main_context(GObject *object,
+                                GSignalEmitMainFunc emit_main_func,
+                                int signum,
+                                gpointer params)
+{
+    struct signal_data data;
+
+    data.object = object;
+    data.caller = coroutine_self();
+    data.signum = signum;
+    data.params = params;
+    data.func = emit_main_func;
+
+    g_idle_add(emit_main_context, &data);
+
+    /* This switches to the system coroutine context, lets
+     * the idle function run to dispatch the signal, and
+     * finally returns once complete. ie this is synchronous
+     * from the POV of the coroutine despite there being
+     * an idle function involved
+     */
+    coroutine_yield(NULL);
+}
+
