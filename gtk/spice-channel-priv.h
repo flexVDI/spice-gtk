@@ -19,6 +19,10 @@
 #define __SPICE_CLIENT_CHANNEL_PRIV_H__
 
 #include <openssl/ssl.h>
+#include <gio/gio.h>
+
+#include "coroutine.h"
+#include "gio-coroutine.h"
 
 /* common/ */
 #include "marshallers.h"
@@ -48,7 +52,6 @@ struct spice_msg_in {
 
 enum spice_channel_state {
     SPICE_CHANNEL_STATE_UNCONNECTED = 0,
-    SPICE_CHANNEL_STATE_TLS,
     SPICE_CHANNEL_STATE_LINK_HDR,
     SPICE_CHANNEL_STATE_LINK_MSG,
     SPICE_CHANNEL_STATE_AUTH,
@@ -57,12 +60,22 @@ enum spice_channel_state {
 
 struct spice_channel {
     SpiceSession                *session;
+    struct coroutine            coroutine;
+    guint                       open_id;
+    GSocket                     *sock;
+    int                         fd;
+    gboolean                    has_error;
+
+    int                         wait_interruptable;
+    struct wait_queue           wait;
+    guint8                      *xmit_buffer;
+    int                         xmit_buffer_capacity;
+    int                         xmit_buffer_size;
+
     char                        name[16];
     enum spice_channel_state    state;
-    int                         socket;
     spice_parse_channel_func_t  parser;
     SpiceMessageMarshallers     *marshallers;
-    GIOChannel                  *channel;
     guint                       channel_watch;
     SSL_CTX                     *ctx;
     SSL                         *ssl;
@@ -102,9 +115,13 @@ spice_msg_out *spice_msg_out_new(SpiceChannel *channel, int type);
 void spice_msg_out_ref(spice_msg_out *out);
 void spice_msg_out_unref(spice_msg_out *out);
 void spice_msg_out_send(spice_msg_out *out);
+void spice_msg_out_send_internal(spice_msg_out *out);
 void spice_msg_out_hexdump(spice_msg_out *out, unsigned char *data, int len);
 
+void spice_channel_wakeup(SpiceChannel *channel);
+
 /* channel-base.c */
+/* coroutine context */
 void spice_channel_handle_set_ack(SpiceChannel *channel, spice_msg_in *in);
 void spice_channel_handle_ping(SpiceChannel *channel, spice_msg_in *in);
 void spice_channel_handle_notify(SpiceChannel *channel, spice_msg_in *in);

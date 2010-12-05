@@ -576,7 +576,7 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
 
     err = NULL;
     if (!gtk_ui_manager_add_ui_from_string(win->ui, ui_xml, -1, &err)) {
-	g_message("building menus failed: %s", err->message);
+	g_warning("building menus failed: %s", err->message);
 	g_error_free(err);
 	exit(1);
     }

@@ -89,8 +89,8 @@ static void glz_decoder_window_resize(SpiceGlzDecoderWindow *w)
     struct glz_image  **new_images;
     int i, new_slot;
 
-    g_message("%s: array resize %d -> %d", __FUNCTION__,
-              w->nimages, w->nimages * 2); /* TODO: g_info? */
+    SPICE_DEBUG("%s: array resize %d -> %d", __FUNCTION__,
+                w->nimages, w->nimages * 2);
     new_images = spice_new0(struct glz_image*, w->nimages * 2);
     for (i = 0; i < w->nimages; i++) {
         new_slot = w->images[i]->hdr.id % (w->nimages * 2);

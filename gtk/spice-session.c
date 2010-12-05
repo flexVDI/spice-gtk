@@ -15,6 +15,7 @@
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
+#include <gio/gio.h>
 #include "spice-client.h"
 #include "spice-common.h"
 
@@ -23,6 +24,8 @@
 
 /* spice/common */
 #include "ring.h"
+
+#include "gio-coroutine.h"
 
 struct channel {
     SpiceChannel      *channel;
@@ -452,7 +455,7 @@ void spice_session_disconnect(SpiceSession *session)
     for (ring = ring_get_head(&s->channels); ring != NULL; ring = next) {
         next = ring_next(&s->channels, ring);
         item = SPICE_CONTAINEROF(ring, struct channel, link);
-        spice_channel_destroy(item->channel);
+        spice_channel_destroy(item->channel); /* /!\ item and channel are destroy() after this call */
     }
 
     s->connection_id = 0;
@@ -491,6 +494,83 @@ int spice_session_channel_connect(SpiceSession *session, bool use_tls)
     }
     return tcp_connect(&s->ai, NULL, NULL, s->host, port);
 }
+
+static GSocket *channel_connect_socket(GSocketAddress *sockaddr,
+                                       GError **error)
+{
+    GSocket *sock = g_socket_new(g_socket_address_get_family(sockaddr),
+                                 G_SOCKET_TYPE_STREAM,
+                                 G_SOCKET_PROTOCOL_DEFAULT,
+                                 error);
+
+    if (!sock)
+        return NULL;
+
+    g_socket_set_blocking(sock, FALSE);
+    if (!g_socket_connect(sock, sockaddr, NULL, error)) {
+        if (*error && (*error)->code == G_IO_ERROR_PENDING) {
+            g_error_free(*error);
+            *error = NULL;
+            SPICE_DEBUG("Socket pending");
+            g_io_wait(sock, G_IO_OUT|G_IO_ERR|G_IO_HUP);
+
+            if (!g_socket_check_connect_result(sock, error)) {
+                SPICE_DEBUG("Failed to connect %s", (*error)->message);
+                g_object_unref(sock);
+                return NULL;
+            }
+        } else {
+            SPICE_DEBUG("Socket error: %s", *error ? (*error)->message : "unknown");
+            g_object_unref(sock);
+            return NULL;
+        }
+    }
+
+    SPICE_DEBUG("Finally connected");
+
+    return sock;
+}
+
+GSocket* spice_session_channel_open_host(SpiceSession *session, gboolean use_tls)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    GSocketConnectable *addr;
+    GSocketAddressEnumerator *enumerator;
+    GSocketAddress *sockaddr;
+    GError *conn_error = NULL;
+    GSocket *sock = NULL;
+    int port;
+
+    if (use_tls)
+        g_return_val_if_fail(s->tls_port != NULL, NULL);
+    else
+        g_return_val_if_fail(s->port != NULL, NULL);
+
+    port = atoi(use_tls ? s->tls_port : s->port);
+
+    SPICE_DEBUG("Resolving host %s %d", s->host, port);
+
+    addr = g_network_address_new(s->host, port);
+
+    enumerator = g_socket_connectable_enumerate (addr);
+    g_object_unref (addr);
+
+    /* Try each sockaddr until we succeed. Record the first
+     * connection error, but not any further ones (since they'll probably
+     * be basically the same as the first).
+     */
+    while (!sock &&
+           (sockaddr = g_socket_address_enumerator_next(enumerator, NULL, &conn_error))) {
+        SPICE_DEBUG("Trying one socket");
+        g_clear_error(&conn_error);
+        sock = channel_connect_socket(sockaddr, &conn_error);
+        g_object_unref(sockaddr);
+    }
+    g_object_unref(enumerator);
+    g_clear_error(&conn_error);
+    return sock;
+}
+
 
 void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel)
 {

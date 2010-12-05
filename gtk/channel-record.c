@@ -119,6 +119,45 @@ static void spice_record_channel_class_init(SpiceRecordChannelClass *klass)
     g_type_class_add_private(klass, sizeof(spice_record_channel));
 }
 
+/* signal trampoline---------------------------------------------------------- */
+
+struct SPICE_RECORD_START {
+    gint format;
+    gint channels;
+    gint frequency;
+};
+
+struct SPICE_RECORD_STOP {
+};
+
+/* main context */
+static void do_emit_main_context(GObject *object, int signum, gpointer params)
+{
+    switch (signum) {
+    case SPICE_RECORD_START: {
+        struct SPICE_RECORD_START *p = params;
+        g_signal_emit(object, signals[signum], 0,
+                      p->format, p->channels, p->frequency);
+        break;
+    }
+    case SPICE_RECORD_STOP: {
+        g_signal_emit(object, signals[signum], 0);
+        break;
+    }
+    default:
+        g_warn_if_reached();
+    }
+}
+
+/* coroutine context */
+#define emit_main_context(object, event, args...)                       \
+    G_STMT_START {                                                      \
+        g_signal_emit_main_context(G_OBJECT(object), do_emit_main_context, \
+                                   event, &((struct event) { args }));  \
+    } G_STMT_END
+
+
+/* main context */
 static void spice_record_mode(SpiceRecordChannel *channel, uint32_t time,
                               uint32_t mode, uint8_t *data, uint32_t data_size)
 {
@@ -142,6 +181,7 @@ static void spice_record_mode(SpiceRecordChannel *channel, uint32_t time,
     spice_msg_out_unref(msg);
 }
 
+/* coroutine context */
 static void channel_up(SpiceChannel *channel)
 {
     spice_record_channel *rc;
@@ -154,6 +194,7 @@ static void channel_up(SpiceChannel *channel)
     }
 }
 
+/* main context */
 static void spice_record_start_mark(SpiceRecordChannel *channel, uint32_t time)
 {
     spice_record_channel *rc;
@@ -173,6 +214,15 @@ static void spice_record_start_mark(SpiceRecordChannel *channel, uint32_t time)
     spice_msg_out_unref(msg);
 }
 
+/**
+ * spice_record_send_data:
+ * @channel:
+ * @data: PCM data
+ * @bytes: size of @data
+ * @time: stream timestamp
+ *
+ * Send recorded PCM data to the guest.
+ **/
 void spice_record_send_data(SpiceRecordChannel *channel, gpointer data,
                             gsize bytes, uint32_t time)
 {
@@ -253,6 +303,7 @@ void spice_record_send_data(SpiceRecordChannel *channel, gpointer data,
 
 /* ------------------------------------------------------------------ */
 
+/* coroutine context */
 static void record_handle_start(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_record_channel *c = SPICE_RECORD_CHANNEL(channel)->priv;
@@ -269,8 +320,8 @@ static void record_handle_start(SpiceChannel *channel, spice_msg_in *in)
 
     switch (c->mode) {
     case SPICE_AUDIO_DATA_MODE_RAW:
-        g_signal_emit(channel, signals[SPICE_RECORD_START], 0,
-                      start->format, start->channels, start->frequency);
+        emit_main_context(channel, SPICE_RECORD_START,
+                          start->format, start->channels, start->frequency);
         break;
     case SPICE_AUDIO_DATA_MODE_CELT_0_5_1: {
         int celt_mode_err;
@@ -289,8 +340,8 @@ static void record_handle_start(SpiceChannel *channel, spice_msg_in *in)
         if (!c->celt_encoder)
             g_warning("Failed to create celt encoder");
 
-        g_signal_emit(channel, signals[SPICE_RECORD_START], 0,
-                      start->format, start->channels, start->frequency);
+        emit_main_context(channel, SPICE_RECORD_START,
+                          start->format, start->channels, start->frequency);
         break;
     }
     default:
@@ -299,11 +350,12 @@ static void record_handle_start(SpiceChannel *channel, spice_msg_in *in)
     }
 }
 
+/* coroutine context */
 static void record_handle_stop(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_record_channel *rc = SPICE_RECORD_CHANNEL(channel)->priv;
 
-    g_signal_emit(channel, signals[SPICE_RECORD_STOP], 0);
+    emit_main_context(channel, SPICE_RECORD_STOP);
     rc->started = FALSE;
 }
 
@@ -319,6 +371,7 @@ static spice_msg_handler record_handlers[] = {
     [ SPICE_MSG_RECORD_STOP ]              = record_handle_stop,
 };
 
+/* coroutine context */
 static void spice_record_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
 {
     int type = spice_msg_in_type(msg);
