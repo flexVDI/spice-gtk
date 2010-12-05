@@ -455,7 +455,7 @@ void spice_session_disconnect(SpiceSession *session)
     for (ring = ring_get_head(&s->channels); ring != NULL; ring = next) {
         next = ring_next(&s->channels, ring);
         item = SPICE_CONTAINEROF(ring, struct channel, link);
-        spice_channel_destroy(item->channel);
+        spice_channel_destroy(item->channel); /* /!\ item and channel are destroy() after this call */
     }
 
     s->connection_id = 0;

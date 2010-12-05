@@ -493,8 +493,8 @@ static void channel_event(SpiceChannel *channel, SpiceChannelEvent event,
             record_stop(SPICE_RECORD_CHANNEL(channel), pulse);
             p->rchannel = NULL;
             g_object_unref(channel);
-        } else
-            g_return_if_reached();
+        } else /* if (p->pchannel || p->rchannel) */
+            g_warn_if_reached();
         break;
     default:
         break;

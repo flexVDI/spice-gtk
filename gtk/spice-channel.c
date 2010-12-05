@@ -34,6 +34,7 @@
 
 static void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out, gboolean buffered);
 static void spice_channel_send_link(SpiceChannel *channel);
+static void channel_disconnect(SpiceChannel *channel);
 
 /* ------------------------------------------------------------------ */
 /* gobject glue                                                       */
@@ -569,7 +570,7 @@ static int spice_channel_read_wire(SpiceChannel *channel, void *data, size_t len
 
 reread:
 
-    if (c->has_error) return -EINVAL;
+    if (c->has_error) return 0; /* has_error is set by disconnect(), return no error */
 
     cond = 0;
     if (c->tls) {
@@ -630,7 +631,7 @@ static int spice_channel_read(SpiceChannel *channel, void *data, size_t len)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
 
-    if (c->has_error) return -EINVAL;
+    if (c->has_error) return 0; /* has_error is set by disconnect(), return no error */
 
     return spice_channel_read_wire(channel, data, len);
 }
@@ -686,7 +687,7 @@ static void spice_channel_recv_auth(SpiceChannel *channel)
     }
 
     if (link_res != SPICE_LINK_ERR_OK) {
-        spice_channel_disconnect(channel, SPICE_CHANNEL_ERROR_AUTH);
+        emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_AUTH);
         return;
     }
 
@@ -773,7 +774,7 @@ static void spice_channel_recv_link_hdr(SpiceChannel *channel)
             /* enter spice 0.4 mode */
             g_object_set(c->session, "protocol", 1, NULL);
             SPICE_DEBUG("%s: switching to protocol 1 (spice 0.4)", c->name);
-            spice_channel_disconnect(channel, SPICE_CHANNEL_NONE);
+            channel_disconnect(channel);
             spice_channel_connect(channel);
             return;
         }
@@ -809,13 +810,14 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
     case SPICE_LINK_ERR_NEED_SECURED:
         c->tls = true;
         SPICE_DEBUG("%s: switching to tls", c->name);
-        spice_channel_disconnect(channel, SPICE_CHANNEL_NONE);
+        channel_disconnect(channel);
         spice_channel_connect(channel);
         return;
     default:
         g_warning("%s: %s: unhandled error %d",
                 c->name, __FUNCTION__, c->peer_msg->error);
-        spice_channel_disconnect(channel, SPICE_CHANNEL_ERROR_LINK);
+        channel_disconnect(channel);
+        emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_LINK);
         return;
     }
 
@@ -1033,15 +1035,15 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
  * spice_channel_destroy:
  * @channel:
  *
- * Unref the @channel. Called by @spice_session_disconnect()
+ * Disconnect and unref the @channel. Called by @spice_session_disconnect()
  *
- * Deprecated: 0.3: Use g_object_unref() instead.
  **/
 void spice_channel_destroy(SpiceChannel *channel)
 {
     g_return_if_fail(channel != NULL);
 
     SPICE_DEBUG("channel destroy");
+    spice_channel_disconnect(channel, SPICE_CHANNEL_NONE);
     g_object_unref(channel);
 }
 
@@ -1102,12 +1104,12 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
     GIOCondition ret;
 
-    if (c->has_error) {
-        g_warning("IO error, breaking channel loop");
-        return FALSE;
-    }
-
     do {
+        if (c->has_error) {
+            SPICE_DEBUG("channel has error, breaking loop");
+            return FALSE;
+        }
+
         SPICE_CHANNEL_GET_CLASS(channel)->iterate_write(channel);
     } while (!(ret = g_io_wait_interruptable(&c->wait, c->sock, G_IO_IN)));
     /* TODO: check ret if error */
@@ -1134,6 +1136,7 @@ static gboolean spice_channel_delayed_unref(gpointer data)
     return FALSE;
 }
 
+/* coroutine context */
 static void *spice_channel_coroutine(void *data)
 {
     SpiceChannel *channel = SPICE_CHANNEL(data);
@@ -1225,7 +1228,9 @@ connected:
 
 cleanup:
     SPICE_DEBUG("Doing final channel cleanup");
-    spice_channel_disconnect(channel, SPICE_CHANNEL_CLOSED);
+    channel_disconnect(channel);
+    emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_CLOSED);
+
     g_idle_add(spice_channel_delayed_unref, data);
 
     /* Co-routine exits now - the SpiceChannel object may no longer exist,
@@ -1309,17 +1314,9 @@ gboolean spice_channel_open_fd(SpiceChannel *channel, int fd)
     return channel_connect(channel);
 }
 
-/**
- * spice_channel_disconnect:
- * @channel:
- * @reason: a channel event emitted on main context (or #SPICE_CHANNEL_NONE)
- *
- * Close socket and reset connection specific data, then emit @reason
- * on main context if not #SPICE_CHANNEL_NONE.
- **/
-/* deprecated: do we want spice_channel_disconnect() as public API? */
 /* TODO: make this a vmethod, and implement in all childs? */
-void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
+/* system or coroutine context */
+static void channel_disconnect(SpiceChannel *channel)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
 
@@ -1327,6 +1324,11 @@ void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
 
     if (c->state == SPICE_CHANNEL_STATE_UNCONNECTED) {
         return;
+    }
+
+    if (c->open_id) {
+        g_source_remove(c->open_id);
+        c->open_id = 0;
     }
 
     if (c->tls) {
@@ -1339,13 +1341,9 @@ void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
             c->ctx = NULL;
         }
     }
-    if (c->channel) {
-        g_source_destroy(g_main_context_find_source_by_id
-                         (g_main_context_default(), c->channel_watch));
-        g_io_channel_unref(c->channel);
-        c->channel = NULL;
-    }
+
     if (c->sock) {
+        g_socket_close(c->sock, NULL);
         g_object_unref(c->sock);
         c->sock = NULL;
     }
@@ -1361,14 +1359,39 @@ void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
         c->xmit_buffer_capacity = 0;
     }
 
-    if (reason != SPICE_CHANNEL_NONE) {
-        emit_main_context(channel, SPICE_CHANNEL_EVENT, reason);
-    }
-
     g_array_set_size(c->remote_common_caps, 0);
     g_array_set_size(c->remote_caps, 0);
     g_array_set_size(c->common_caps, 0);
     g_array_set_size(c->caps, 0);
+}
+
+/**
+ * spice_channel_disconnect:
+ * @channel:
+ * @reason: a channel event emitted on main context (or #SPICE_CHANNEL_NONE)
+ *
+ * Close socket and reset connection specific data, then emit @reason
+ * on main context if not #SPICE_CHANNEL_NONE.
+ **/
+void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
+{
+    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+
+    g_return_if_fail(c != NULL);
+
+    if (c->state == SPICE_CHANNEL_STATE_UNCONNECTED) {
+        return;
+    }
+
+    c->fd = -1;
+    c->has_error = 1;
+    spice_channel_wakeup(channel);
+
+    /* channel_disconnect(channel); */
+
+    if (reason != SPICE_CHANNEL_NONE) {
+        g_signal_emit(G_OBJECT(channel), signals[SPICE_CHANNEL_EVENT], 0, reason);
+    }
 }
 
 static gboolean test_capability(GArray *caps, guint32 cap)

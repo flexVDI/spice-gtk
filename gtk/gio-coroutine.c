@@ -52,6 +52,9 @@ GIOCondition g_io_wait_interruptable(struct wait_queue *wait,
     GIOCondition *ret;
     gint id;
 
+    g_return_val_if_fail(wait != NULL, 0);
+    g_return_val_if_fail(sock != NULL, 0);
+
     wait->context = coroutine_self();
     GSource *src = g_socket_create_source(sock,
                                           cond | G_IO_HUP | G_IO_ERR | G_IO_NVAL,

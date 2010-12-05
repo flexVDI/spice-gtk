@@ -76,7 +76,6 @@ struct spice_channel {
     enum spice_channel_state    state;
     spice_parse_channel_func_t  parser;
     SpiceMessageMarshallers     *marshallers;
-    GIOChannel                  *channel;
     guint                       channel_watch;
     SSL_CTX                     *ctx;
     SSL                         *ssl;
