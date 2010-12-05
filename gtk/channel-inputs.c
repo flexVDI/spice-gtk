@@ -119,16 +119,41 @@ static void spice_inputs_channel_class_init(SpiceInputsChannelClass *klass)
     g_type_class_add_private(klass, sizeof(spice_inputs_channel));
 }
 
+/* signal trampoline---------------------------------------------------------- */
+
+struct SPICE_INPUTS_MODIFIERS {
+};
+
+/* main context */
+static void do_emit_main_context(GObject *object, int signum, gpointer params)
+{
+    switch (signum) {
+    case SPICE_INPUTS_MODIFIERS: {
+        g_signal_emit(object, signals[signum], 0);
+        break;
+    }
+    default:
+        g_warn_if_reached();
+    }
+}
+
+/* coroutine context */
+#define emit_main_context(object, event, args...)                       \
+    G_STMT_START {                                                      \
+        g_signal_emit_main_context(G_OBJECT(object), do_emit_main_context, \
+                                   event, &((struct event) { args }));  \
+    } G_STMT_END
+
 /* ------------------------------------------------------------------ */
 
-static void send_motion(SpiceInputsChannel *channel)
+static spice_msg_out* mouse_motion(SpiceInputsChannel *channel)
 {
     spice_inputs_channel *c = channel->priv;
     SpiceMsgcMouseMotion motion;
     spice_msg_out *msg;
 
     if (!c->dx && !c->dy)
-        return;
+        return NULL;
 
     motion.buttons_state = c->bs;
     motion.dx            = c->dx;
@@ -136,22 +161,22 @@ static void send_motion(SpiceInputsChannel *channel)
     msg = spice_msg_out_new(SPICE_CHANNEL(channel),
                             SPICE_MSGC_INPUTS_MOUSE_MOTION);
     msg->marshallers->msgc_inputs_mouse_motion(msg->marshaller, &motion);
-    spice_msg_out_send(msg);
-    spice_msg_out_unref(msg);
 
     c->motion_count++;
     c->dx = 0;
     c->dy = 0;
+
+    return msg;
 }
 
-static void send_position(SpiceInputsChannel *channel)
+static spice_msg_out* mouse_position(SpiceInputsChannel *channel)
 {
     spice_inputs_channel *c = channel->priv;
     SpiceMsgcMousePosition position;
     spice_msg_out *msg;
 
     if (c->dpy == -1)
-        return;
+        return NULL;
 
     /* SPICE_DEBUG("%s: +%d+%d", __FUNCTION__, c->x, c->y); */
     position.buttons_state = c->bs;
@@ -161,37 +186,78 @@ static void send_position(SpiceInputsChannel *channel)
     msg = spice_msg_out_new(SPICE_CHANNEL(channel),
                             SPICE_MSGC_INPUTS_MOUSE_POSITION);
     msg->marshallers->msgc_inputs_mouse_position(msg->marshaller, &position);
-    spice_msg_out_send(msg);
-    spice_msg_out_unref(msg);
 
     c->motion_count++;
     c->dpy = -1;
+
+    return msg;
 }
 
+/* main context */
+static void send_position(SpiceInputsChannel *channel)
+{
+    spice_msg_out *msg;
+
+    msg = mouse_position(channel);
+    if (!msg) /* if no motion */
+        return;
+
+    spice_msg_out_send(msg);
+    spice_msg_out_unref(msg);
+}
+
+/* main context */
+static void send_motion(SpiceInputsChannel *channel)
+{
+    spice_msg_out *msg;
+
+    msg = mouse_motion(channel);
+    if (!msg) /* if no motion */
+        return;
+
+    spice_msg_out_send(msg);
+    spice_msg_out_unref(msg);
+}
+
+/* coroutine context */
 static void inputs_handle_init(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_inputs_channel *c = SPICE_INPUTS_CHANNEL(channel)->priv;
     SpiceMsgInputsInit *init = spice_msg_in_parsed(in);
 
     c->modifiers = init->keyboard_modifiers;
-    g_signal_emit(channel, signals[SPICE_INPUTS_MODIFIERS], 0);
+    emit_main_context(channel, SPICE_INPUTS_MODIFIERS);
 }
 
+/* coroutine context */
 static void inputs_handle_modifiers(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_inputs_channel *c = SPICE_INPUTS_CHANNEL(channel)->priv;
     SpiceMsgInputsKeyModifiers *modifiers = spice_msg_in_parsed(in);
 
     c->modifiers = modifiers->modifiers;
-    g_signal_emit(channel, signals[SPICE_INPUTS_MODIFIERS], 0);
+    emit_main_context(channel, SPICE_INPUTS_MODIFIERS);
 }
 
+/* coroutine context */
 static void inputs_handle_ack(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_inputs_channel *c = SPICE_INPUTS_CHANNEL(channel)->priv;
+    spice_msg_out *msg;
+
     c->motion_count -= SPICE_INPUT_MOTION_ACK_BUNCH;
-    send_motion(SPICE_INPUTS_CHANNEL(channel));
-    send_position(SPICE_INPUTS_CHANNEL(channel));
+
+    msg = mouse_motion(SPICE_INPUTS_CHANNEL(channel));
+    if (msg) { /* if no motion, msg == NULL */
+        spice_msg_out_send_internal(msg);
+        spice_msg_out_unref(msg);
+    }
+
+    msg = mouse_position(SPICE_INPUTS_CHANNEL(channel));
+    if (msg) {
+        spice_msg_out_send_internal(msg);
+        spice_msg_out_unref(msg);
+    }
 }
 
 static spice_msg_handler inputs_handlers[] = {
@@ -207,6 +273,7 @@ static spice_msg_handler inputs_handlers[] = {
     [ SPICE_MSG_INPUTS_MOUSE_MOTION_ACK ]  = inputs_handle_ack,
 };
 
+/* coroutine context */
 static void spice_inputs_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
 {
     int type = spice_msg_in_type(msg);
@@ -215,6 +282,15 @@ static void spice_inputs_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
     inputs_handlers[type](channel, msg);
 }
 
+/**
+ * spice_inputs_motion:
+ * @channel:
+ * @dx: delta X mouse coordinates
+ * @dy: delta Y mouse coordinates
+ * @button_state: SPICE_MOUSE_BUTTON_MASK flags
+ *
+ * Change mouse position (used in SPICE_MOUSE_MODE_CLIENT).
+ **/
 void spice_inputs_motion(SpiceInputsChannel *channel, gint dx, gint dy,
                          gint button_state)
 {
@@ -230,9 +306,21 @@ void spice_inputs_motion(SpiceInputsChannel *channel, gint dx, gint dy,
 
     if (c->motion_count < SPICE_INPUT_MOTION_ACK_BUNCH * 2) {
         send_motion(channel);
+    } else {
+        SPICE_DEBUG("over SPICE_INPUT_MOTION_ACK_BUNCH * 2, dropping");
     }
 }
 
+/**
+ * spice_inputs_position:
+ * @channel:
+ * @x: X mouse coordinates
+ * @y: Y mouse coordinates
+ * @display: display channel id
+ * @button_state: SPICE_MOUSE_BUTTON_MASK flags
+ *
+ * Change mouse position (used in SPICE_MOUSE_MODE_CLIENT).
+ **/
 void spice_inputs_position(SpiceInputsChannel *channel, gint x, gint y,
                            gint display, gint button_state)
 {
@@ -251,9 +339,19 @@ void spice_inputs_position(SpiceInputsChannel *channel, gint x, gint y,
 
     if (c->motion_count < SPICE_INPUT_MOTION_ACK_BUNCH * 2) {
         send_position(channel);
+    } else {
+        SPICE_DEBUG("over SPICE_INPUT_MOTION_ACK_BUNCH * 2, dropping");
     }
 }
 
+/**
+ * spice_inputs_button_press:
+ * @channel:
+ * @button: a SPICE_MOUSE_BUTTON
+ * @button_state: SPICE_MOUSE_BUTTON_MASK flags
+ *
+ * Press a mouse button.
+ **/
 void spice_inputs_button_press(SpiceInputsChannel *channel, gint button,
                                gint button_state)
 {
@@ -292,6 +390,14 @@ void spice_inputs_button_press(SpiceInputsChannel *channel, gint button,
     spice_msg_out_unref(msg);
 }
 
+/**
+ * spice_inputs_button_release:
+ * @channel:
+ * @button: a SPICE_MOUSE_BUTTON
+ * @button_state: SPICE_MOUSE_BUTTON_MASK flags
+ *
+ * Release a button.
+ **/
 void spice_inputs_button_release(SpiceInputsChannel *channel, gint button,
                                  gint button_state)
 {
@@ -330,6 +436,13 @@ void spice_inputs_button_release(SpiceInputsChannel *channel, gint button,
     spice_msg_out_unref(msg);
 }
 
+/**
+ * spice_inputs_key_press:
+ * @channel:
+ * @scancode: key scancode
+ *
+ * Press a key.
+ **/
 void spice_inputs_key_press(SpiceInputsChannel *channel, guint scancode)
 {
     SpiceMsgcKeyDown down;
@@ -352,6 +465,13 @@ void spice_inputs_key_press(SpiceInputsChannel *channel, guint scancode)
     spice_msg_out_unref(msg);
 }
 
+/**
+ * spice_inputs_key_release:
+ * @channel:
+ * @scancode: key scancode
+ *
+ * Release a key.
+ **/
 void spice_inputs_key_release(SpiceInputsChannel *channel, guint scancode)
 {
     SpiceMsgcKeyUp up;
@@ -374,33 +494,56 @@ void spice_inputs_key_release(SpiceInputsChannel *channel, guint scancode)
     spice_msg_out_unref(msg);
 }
 
-void spice_inputs_set_key_locks(SpiceInputsChannel *channel, guint locks)
+/* main or coroutine context */
+static spice_msg_out* set_key_locks(SpiceInputsChannel *channel, guint locks)
 {
     SpiceMsgcKeyModifiers modifiers;
     spice_msg_out *msg;
     spice_inputs_channel *ic;
     spice_channel *c;
 
-    g_return_if_fail(SPICE_IS_INPUTS_CHANNEL(channel));
+    g_return_val_if_fail(SPICE_IS_INPUTS_CHANNEL(channel), NULL);
 
     ic = channel->priv;
     c = SPICE_CHANNEL(channel)->priv;
 
     ic->locks = locks;
     if (c->state != SPICE_CHANNEL_STATE_READY)
-        return;
+        return NULL;
 
     msg = spice_msg_out_new(SPICE_CHANNEL(channel),
                             SPICE_MSGC_INPUTS_KEY_MODIFIERS);
     modifiers.modifiers = locks;
     msg->marshallers->msgc_inputs_key_modifiers(msg->marshaller, &modifiers);
-    spice_msg_out_send(msg);
+    return msg;
+}
+
+/**
+ * spice_inputs_set_key_locks:
+ * @channel:
+ * @locks: SPICE_INPUTS_*_LOCK modifiers flags
+ *
+ * Set the keyboard locks on the guest (Caps, Num, Scroll..)
+ **/
+void spice_inputs_set_key_locks(SpiceInputsChannel *channel, guint locks)
+{
+    spice_msg_out *msg;
+
+    msg = set_key_locks(channel, locks);
+    if (!msg) /* you can set_key_locks() even if the channel is not ready */
+        return;
+
+    spice_msg_out_send(msg); /* main -> coroutine */
     spice_msg_out_unref(msg);
 }
 
+/* coroutine context */
 static void spice_inputs_channel_up(SpiceChannel *channel)
 {
     spice_inputs_channel *c = SPICE_INPUTS_CHANNEL(channel)->priv;
+    spice_msg_out *msg;
 
-    spice_inputs_set_key_locks(SPICE_INPUTS_CHANNEL(channel), c->locks);
+    msg = set_key_locks(SPICE_INPUTS_CHANNEL(channel), c->locks);
+    spice_msg_out_send_internal(msg);
+    spice_msg_out_unref(msg);
 }
