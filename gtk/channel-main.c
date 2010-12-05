@@ -525,7 +525,7 @@ static void agent_clipboard_notify(SpiceMainChannel *channel,
     msgsize = sizeof(VDAgentClipboard) + size;
     cb = spice_malloc0(msgsize);
     cb->type = type;
-    memcpy(cb->data, data, msgsize);
+    memcpy(cb->data, data, size);
 
     agent_msg_send(channel, VD_AGENT_CLIPBOARD, msgsize, cb);
     free(cb);
