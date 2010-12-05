@@ -48,6 +48,7 @@ struct spice_display {
     gint                    width, height, stride;
     gint                    shmid;
     gpointer                data;
+    gboolean                clipboard_by_guest; /* hack? */
 
     gint                    ww, wh, mx, my;
 
@@ -1238,6 +1239,10 @@ static void clipboard_owner_change(GtkClipboard        *clipboard,
 
     switch (event->reason) {
     case GDK_OWNER_CHANGE_NEW_OWNER:
+        if (d->clipboard_by_guest) {
+            d->clipboard_by_guest = FALSE;
+            break;
+        }
         d->clip_hasdata = 1;
         if (d->auto_clipboard_enable)
             gtk_clipboard_request_targets(clipboard, clipboard_get_targets, data);
@@ -1648,6 +1653,7 @@ static gboolean clipboard_grab(SpiceMainChannel *main,
         return FALSE;
     }
 
+    d->clipboard_by_guest = TRUE;
     return TRUE;
 }
 
