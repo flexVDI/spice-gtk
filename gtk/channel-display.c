@@ -144,6 +144,67 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
     rop3_init();
 }
 
+/* signal trampoline---------------------------------------------------------- */
+
+struct SPICE_DISPLAY_PRIMARY_CREATE {
+    gint format;
+    gint width;
+    gint height;
+    gint stride;
+    gint shmid;
+    gpointer imgdata;
+};
+
+struct SPICE_DISPLAY_PRIMARY_DESTROY {
+};
+
+struct SPICE_DISPLAY_INVALIDATE {
+    gint x;
+    gint y;
+    gint w;
+    gint h;
+};
+
+struct SPICE_DISPLAY_MARK {
+    gint mark;
+};
+
+/* main context */
+static void do_emit_main_context(GObject *object, int signum, gpointer params)
+{
+    switch (signum) {
+    case SPICE_DISPLAY_PRIMARY_DESTROY: {
+        g_signal_emit(object, signals[signum], 0);
+        break;
+    }
+    case SPICE_DISPLAY_MARK: {
+        struct SPICE_DISPLAY_MARK *p = params;
+        g_signal_emit(object, signals[signum], 0, p->mark);
+        break;
+    }
+    case SPICE_DISPLAY_PRIMARY_CREATE: {
+        struct SPICE_DISPLAY_PRIMARY_CREATE *p = params;
+        g_signal_emit(object, signals[signum], 0,
+                      p->format, p->width, p->height, p->stride, p->shmid, p->imgdata);
+        break;
+    }
+    case SPICE_DISPLAY_INVALIDATE: {
+        struct SPICE_DISPLAY_INVALIDATE *p = params;
+        g_signal_emit(object, signals[signum], 0, p->x, p->y, p->w, p->h);
+        break;
+    }
+    default:
+        g_warn_if_reached();
+    }
+}
+
+/* coroutine context */
+#define emit_main_context(object, event, args...)                       \
+    G_STMT_START {                                                      \
+        g_signal_emit_main_context(G_OBJECT(object), do_emit_main_context, \
+                                   event, &((struct event) { args }));  \
+    } G_STMT_END
+
 /* ------------------------------------------------------------------ */
 
 static void image_put(SpiceImageCache *cache, uint64_t id, pixman_image_t *image)
@@ -448,20 +509,23 @@ static void clear_surfaces(SpiceChannel *channel)
     }
 }
 
+/* coroutine context */
 static void emit_invalidate(SpiceChannel *channel, SpiceRect *bbox)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
 
     if (!c->mark)
         return;
-    g_signal_emit(channel, signals[SPICE_DISPLAY_INVALIDATE], 0,
-                  bbox->left, bbox->top,
-                  bbox->right - bbox->left,
-                  bbox->bottom - bbox->top);
+
+    emit_main_context(channel, SPICE_DISPLAY_INVALIDATE,
+                      bbox->left, bbox->top,
+                      bbox->right - bbox->left,
+                      bbox->bottom - bbox->top);
 }
 
 /* ------------------------------------------------------------------ */
 
+/* coroutine context */
 static void spice_display_channel_up(SpiceChannel *channel)
 {
     spice_msg_out *out;
@@ -474,7 +538,7 @@ static void spice_display_channel_up(SpiceChannel *channel)
 
     out = spice_msg_out_new(channel, SPICE_MSGC_DISPLAY_INIT);
     out->marshallers->msgc_display_init(out->marshaller, &init);
-    spice_msg_out_send(out);
+    spice_msg_out_send_internal(out);
     spice_msg_out_unref(out);
 }
 
@@ -489,6 +553,7 @@ static void spice_display_channel_up(SpiceChannel *channel)
         }                                                               \
 }
 
+/* coroutine context */
 static void display_handle_mode(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
@@ -498,7 +563,7 @@ static void display_handle_mode(SpiceChannel *channel, spice_msg_in *in)
     g_warn_if_fail(c->mark == FALSE);
 
     if (surface) {
-        g_signal_emit(channel, signals[SPICE_DISPLAY_PRIMARY_DESTROY], 0);
+        emit_main_context(channel, SPICE_DISPLAY_PRIMARY_DESTROY);
         ring_remove(&surface->link);
         destroy_canvas(surface);
         free(surface);
@@ -513,15 +578,16 @@ static void display_handle_mode(SpiceChannel *channel, spice_msg_in *in)
     surface->size    = surface->height * surface->stride;
     surface->primary = true;
     create_canvas(channel, surface);
-    g_signal_emit(channel, signals[SPICE_DISPLAY_PRIMARY_CREATE], 0,
-                  surface->format, surface->width, surface->height,
-                  surface->stride, surface->shmid, surface->data);
+    emit_main_context(channel, SPICE_DISPLAY_PRIMARY_CREATE,
+                      surface->format, surface->width, surface->height,
+                      surface->stride, surface->shmid, surface->data);
     if (surface->shmid != -1) {
         shmctl(surface->shmid, IPC_RMID, 0);
     }
     ring_add(&c->surfaces, &surface->link);
 }
 
+/* coroutine context */
 static void display_handle_mark(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
@@ -532,18 +598,20 @@ static void display_handle_mark(SpiceChannel *channel, spice_msg_in *in)
     g_warn_if_fail(c->mark == FALSE);
 
     c->mark = TRUE;
-    g_signal_emit(channel, signals[SPICE_DISPLAY_MARK], 0, TRUE);
+    emit_main_context(channel, SPICE_DISPLAY_MARK, TRUE);
 }
 
+/* coroutine context */
 static void display_handle_reset(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
 
     g_warning("%s: TODO", __FUNCTION__);
     c->mark = FALSE;
-    g_signal_emit(channel, signals[SPICE_DISPLAY_MARK], 0, FALSE);
+    emit_main_context(channel, SPICE_DISPLAY_MARK, FALSE);
 }
 
+/* coroutine context */
 static void display_handle_copy_bits(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgDisplayCopyBits *op = spice_msg_in_parsed(in);
@@ -557,6 +625,7 @@ static void display_handle_copy_bits(SpiceChannel *channel, spice_msg_in *in)
     }
 }
 
+/* coroutine context */
 static void display_handle_inv_list(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
@@ -575,6 +644,7 @@ static void display_handle_inv_list(SpiceChannel *channel, spice_msg_in *in)
     }
 }
 
+/* coroutine context */
 static void display_handle_inv_pixmap_all(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
@@ -582,6 +652,7 @@ static void display_handle_inv_pixmap_all(SpiceChannel *channel, spice_msg_in *i
     image_clear(&c->image_cache);
 }
 
+/* coroutine context */
 static void display_handle_inv_palette(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
@@ -590,6 +661,7 @@ static void display_handle_inv_palette(SpiceChannel *channel, spice_msg_in *in)
     palette_remove(&c->palette_cache, op->id);
 }
 
+/* coroutine context */
 static void display_handle_inv_palette_all(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
@@ -618,6 +690,7 @@ static void display_update_stream_region(display_stream *st)
     }
 }
 
+/* coroutine context */
 static void display_handle_stream_create(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
@@ -657,6 +730,7 @@ static void display_handle_stream_create(SpiceChannel *channel, spice_msg_in *in
     }
 }
 
+/* coroutine context */
 static void display_handle_stream_data(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
@@ -693,6 +767,7 @@ static void display_handle_stream_data(SpiceChannel *channel, spice_msg_in *in)
     st->msg_data = NULL;
 }
 
+/* coroutine context */
 static void display_handle_stream_clip(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
@@ -745,6 +820,7 @@ static void clear_streams(SpiceChannel *channel)
     c->nstreams = 0;
 }
 
+/* coroutine context */
 static void display_handle_stream_destroy(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgDisplayStreamDestroy *op = spice_msg_in_parsed(in);
@@ -754,6 +830,7 @@ static void display_handle_stream_destroy(SpiceChannel *channel, spice_msg_in *i
     destroy_stream(channel, op->id);
 }
 
+/* coroutine context */
 static void display_handle_stream_destroy_all(SpiceChannel *channel, spice_msg_in *in)
 {
     clear_streams(channel);
@@ -761,30 +838,35 @@ static void display_handle_stream_destroy_all(SpiceChannel *channel, spice_msg_i
 
 /* ------------------------------------------------------------------ */
 
+/* coroutine context */
 static void display_handle_draw_fill(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgDisplayDrawFill *op = spice_msg_in_parsed(in);
     DRAW(fill);
 }
 
+/* coroutine context */
 static void display_handle_draw_opaque(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgDisplayDrawOpaque *op = spice_msg_in_parsed(in);
     DRAW(opaque);
 }
 
+/* coroutine context */
 static void display_handle_draw_copy(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgDisplayDrawCopy *op = spice_msg_in_parsed(in);
     DRAW(copy);
 }
 
+/* coroutine context */
 static void display_handle_draw_blend(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgDisplayDrawBlend *op = spice_msg_in_parsed(in);
     DRAW(blend);
 }
 
+/* coroutine context */
 static void display_handle_draw_blackness(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgDisplayDrawBlackness *op = spice_msg_in_parsed(in);
@@ -797,42 +879,49 @@ static void display_handle_draw_whiteness(SpiceChannel *channel, spice_msg_in *i
     DRAW(whiteness);
 }
 
+/* coroutine context */
 static void display_handle_draw_invers(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgDisplayDrawInvers *op = spice_msg_in_parsed(in);
     DRAW(invers);
 }
 
+/* coroutine context */
 static void display_handle_draw_rop3(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgDisplayDrawRop3 *op = spice_msg_in_parsed(in);
     DRAW(rop3);
 }
 
+/* coroutine context */
 static void display_handle_draw_stroke(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgDisplayDrawStroke *op = spice_msg_in_parsed(in);
     DRAW(stroke);
 }
 
+/* coroutine context */
 static void display_handle_draw_text(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgDisplayDrawText *op = spice_msg_in_parsed(in);
     DRAW(text);
 }
 
+/* coroutine context */
 static void display_handle_draw_transparent(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgDisplayDrawTransparent *op = spice_msg_in_parsed(in);
     DRAW(transparent);
 }
 
+/* coroutine context */
 static void display_handle_draw_alpha_blend(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgDisplayDrawAlphaBlend *op = spice_msg_in_parsed(in);
     DRAW(alpha_blend);
 }
 
+/* coroutine context */
 static void display_handle_surface_create(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
@@ -849,9 +938,9 @@ static void display_handle_surface_create(SpiceChannel *channel, spice_msg_in *i
     if (create->flags == SPICE_SURFACE_FLAGS_PRIMARY) {
         surface->primary = true;
         create_canvas(channel, surface);
-        g_signal_emit(channel, signals[SPICE_DISPLAY_PRIMARY_CREATE], 0,
-                      surface->format, surface->width, surface->height,
-                      surface->stride, surface->shmid, surface->data);
+        emit_main_context(channel, SPICE_DISPLAY_PRIMARY_CREATE,
+                          surface->format, surface->width, surface->height,
+                          surface->stride, surface->shmid, surface->data);
     } else {
         surface->primary = false;
         create_canvas(channel, surface);
@@ -860,6 +949,7 @@ static void display_handle_surface_create(SpiceChannel *channel, spice_msg_in *i
     ring_add(&c->surfaces, &surface->link);
 }
 
+/* coroutine context */
 static void display_handle_surface_destroy(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgSurfaceDestroy *destroy = spice_msg_in_parsed(in);
@@ -869,7 +959,7 @@ static void display_handle_surface_destroy(SpiceChannel *channel, spice_msg_in *
 
     surface = find_surface(channel, destroy->surface_id);
     if (surface->primary) {
-        g_signal_emit(channel, signals[SPICE_DISPLAY_PRIMARY_DESTROY], 0);
+        emit_main_context(channel, SPICE_DISPLAY_PRIMARY_DESTROY);
     }
 
     ring_remove(&surface->link);
@@ -917,6 +1007,7 @@ static spice_msg_handler display_handlers[] = {
     [ SPICE_MSG_DISPLAY_SURFACE_DESTROY ]    = display_handle_surface_destroy,
 };
 
+/* coroutine context */
 static void spice_display_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
 {
     int type = spice_msg_in_type(msg);
