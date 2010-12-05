@@ -1,0 +1,27 @@
+#include "spice-audio.h"
+#include "spice-client.h"
+#include "spice-types.h"
+#include "spice-session.h"
+#include "spice-channel.h"
+#include "spice-channel-enums.h"
+#include "spice-util.h"
+#include "channel-main.h"
+#include "channel-display.h"
+#include "channel-cursor.h"
+#include "channel-inputs.h"
+#include "channel-playback.h"
+#include "channel-record.h"
+#include "spice-widget.h"
+
+spice_audio_get_type
+spice_channel_get_type
+spice_channel_event_get_type
+spice_cursor_channel_get_type
+spice_display_channel_get_type
+spice_inputs_channel_get_type
+spice_inputs_lock_get_type
+spice_main_channel_get_type
+spice_playback_channel_get_type
+spice_record_channel_get_type
+spice_session_get_type
+spice_display_get_type

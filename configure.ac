@@ -21,6 +21,7 @@ AC_DEFINE([GETTEXT_PACKAGE], [PACKAGE_TARNAME], [Define to the gettext package n
 SPICE_GTK_LOCALEDIR=[${datadir}/locale]
 AC_SUBST(SPICE_GTK_LOCALEDIR)
 
+GTK_DOC_CHECK([1.14],[--flavour no-tmpl])
 
 # Define default SPICE_COMMON_SRCDIR
 SPICE_COMMON_SRCDIR='$(top_srcdir)'/common
@@ -344,6 +345,12 @@ AC_MSG_RESULT([$warn_unused_result])
 
 AC_SUBST(SPICE_CFLAGS)
 
+SPICE_GLIB_CFLAGS="$PROTOCOL_CFLAGS $PIXMAN_CFLAGS $CELT051_CFLAGS $PULSE_CFLAGS $GLIB2_CFLAGS $GIO_CFLAGS $GOBJECT2_CFLAGS $SSL_CFLAGS"
+SPICE_GTK_CFLAGS="$SPICE_GLIB_CFLAGS $GTK2_CFLAGS "
+
+AC_SUBST(SPICE_GLIB_CFLAGS)
+AC_SUBST(SPICE_GTK_CFLAGS)
+
 dnl =========================================================================
 dnl -fvisibility stuff
 
@@ -381,6 +388,8 @@ common/win/my_getopt-1.5/Makefile
 po/Makefile.in
 python_modules/Makefile
 gtk/Makefile
+doc/Makefile
+doc/reference/Makefile
 ])
 
 dnl ==========================================================================
