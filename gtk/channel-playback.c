@@ -118,6 +118,54 @@ static void spice_playback_channel_class_init(SpicePlaybackChannelClass *klass)
     g_type_class_add_private(klass, sizeof(spice_playback_channel));
 }
 
+/* signal trampoline---------------------------------------------------------- */
+
+struct SPICE_PLAYBACK_START {
+    gint format;
+    gint channels;
+    gint frequency;
+};
+
+struct SPICE_PLAYBACK_DATA {
+    uint8_t *data;
+    gsize data_size;
+};
+
+struct SPICE_PLAYBACK_STOP {
+};
+
+/* main context */
+static void do_emit_main_context(GObject *object, int signum, gpointer params)
+{
+    switch (signum) {
+    case SPICE_PLAYBACK_STOP: {
+        g_signal_emit(object, signals[signum], 0);
+        break;
+    }
+    case SPICE_PLAYBACK_START: {
+        struct SPICE_PLAYBACK_START *p = params;
+        g_signal_emit(object, signals[signum], 0,
+                      p->format, p->channels, p->frequency);
+        break;
+    }
+    case SPICE_PLAYBACK_DATA: {
+        struct SPICE_PLAYBACK_DATA *p = params;
+        g_signal_emit(object, signals[signum], 0,
+                      p->data, p->data_size);
+        break;
+    }
+    default:
+        g_warn_if_reached();
+    }
+}
+
+/* coroutine context */
+#define emit_main_context(object, event, args...)                       \
+    G_STMT_START {                                                      \
+        g_signal_emit_main_context(G_OBJECT(object), do_emit_main_context, \
+                                   event, &((struct event) { args }));  \
+    } G_STMT_END
+
 /* ------------------------------------------------------------------ */
 
 /* coroutine context */
@@ -131,8 +179,8 @@ static void playback_handle_data(SpiceChannel *channel, spice_msg_in *in)
 
     switch (c->mode) {
     case SPICE_AUDIO_DATA_MODE_RAW:
-        g_signal_emit(channel, signals[SPICE_PLAYBACK_DATA], 0,
-                      packet->data, packet->data_size);
+        emit_main_context(channel, SPICE_PLAYBACK_DATA,
+                          packet->data, packet->data_size);
         break;
     case SPICE_AUDIO_DATA_MODE_CELT_0_5_1: {
         celt_int16_t pcm[256 * 2];
@@ -145,8 +193,8 @@ static void playback_handle_data(SpiceChannel *channel, spice_msg_in *in)
             return;
         }
 
-        g_signal_emit(channel, signals[SPICE_PLAYBACK_DATA], 0,
-                      (uint8_t *)pcm, sizeof(pcm));
+        emit_main_context(channel, SPICE_PLAYBACK_DATA,
+                          (uint8_t *)pcm, sizeof(pcm));
         break;
     }
     default:
@@ -187,8 +235,8 @@ static void playback_handle_start(SpiceChannel *channel, spice_msg_in *in)
 
     switch (c->mode) {
     case SPICE_AUDIO_DATA_MODE_RAW:
-        g_signal_emit(channel, signals[SPICE_PLAYBACK_START], 0,
-                      start->format, start->channels, start->frequency);
+        emit_main_context(channel, SPICE_PLAYBACK_START,
+                          start->format, start->channels, start->frequency);
         break;
     case SPICE_AUDIO_DATA_MODE_CELT_0_5_1: {
         /* TODO: only support one setting now */
@@ -205,8 +253,8 @@ static void playback_handle_start(SpiceChannel *channel, spice_msg_in *in)
         if (!c->celt_decoder)
             g_warning("create celt decoder failed");
 
-        g_signal_emit(channel, signals[SPICE_PLAYBACK_START], 0,
-                      start->format, start->channels, start->frequency);
+        emit_main_context(channel, SPICE_PLAYBACK_START,
+                          start->format, start->channels, start->frequency);
         break;
     }
     default:
@@ -218,7 +266,7 @@ static void playback_handle_start(SpiceChannel *channel, spice_msg_in *in)
 /* coroutine context */
 static void playback_handle_stop(SpiceChannel *channel, spice_msg_in *in)
 {
-    g_signal_emit(channel, signals[SPICE_PLAYBACK_STOP], 0);
+    emit_main_context(channel, SPICE_PLAYBACK_STOP);
 }
 
 static spice_msg_handler playback_handlers[] = {
