@@ -47,6 +47,7 @@ static void mjpeg_src_term(struct jpeg_decompress_struct *cinfo)
     /* nothing */
 }
 
+G_GNUC_INTERNAL
 void stream_mjpeg_init(display_stream *st)
 {
     st->mjpeg_cinfo.err = jpeg_std_error(&st->mjpeg_jerr);
@@ -86,6 +87,7 @@ static void mjpeg_convert_scanline(uint8_t *dest, uint8_t *src, int width, int c
     }
 }
 
+G_GNUC_INTERNAL
 void stream_mjpeg_data(display_stream *st)
 {
     SpiceMsgDisplayStreamCreate *info = spice_msg_in_parsed(st->msg_create);
@@ -115,6 +117,7 @@ void stream_mjpeg_data(display_stream *st)
     free(line);
 }
 
+G_GNUC_INTERNAL
 void stream_mjpeg_cleanup(display_stream *st)
 {
     jpeg_destroy_decompress(&st->mjpeg_cinfo);

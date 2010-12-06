@@ -283,6 +283,7 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
 /* ---------------------------------------------------------------- */
 /* private msg api                                                  */
 
+G_GNUC_INTERNAL
 spice_msg_in *spice_msg_in_new(SpiceChannel *channel)
 {
     spice_msg_in *in;
@@ -295,6 +296,7 @@ spice_msg_in *spice_msg_in_new(SpiceChannel *channel)
     return in;
 }
 
+G_GNUC_INTERNAL
 spice_msg_in *spice_msg_in_sub_new(SpiceChannel *channel, spice_msg_in *parent,
                                    SpiceSubMessage *sub)
 {
@@ -312,6 +314,7 @@ spice_msg_in *spice_msg_in_sub_new(SpiceChannel *channel, spice_msg_in *parent,
     return in;
 }
 
+G_GNUC_INTERNAL
 void spice_msg_in_ref(spice_msg_in *in)
 {
     g_return_if_fail(in != NULL);
@@ -319,6 +322,7 @@ void spice_msg_in_ref(spice_msg_in *in)
     in->refcount++;
 }
 
+G_GNUC_INTERNAL
 void spice_msg_in_unref(spice_msg_in *in)
 {
     g_return_if_fail(in != NULL);
@@ -336,6 +340,7 @@ void spice_msg_in_unref(spice_msg_in *in)
     free(in);
 }
 
+G_GNUC_INTERNAL
 int spice_msg_in_type(spice_msg_in *in)
 {
     g_return_val_if_fail(in != NULL, -1);
@@ -343,6 +348,7 @@ int spice_msg_in_type(spice_msg_in *in)
     return in->header.type;
 }
 
+G_GNUC_INTERNAL
 void *spice_msg_in_parsed(spice_msg_in *in)
 {
     g_return_val_if_fail(in != NULL, NULL);
@@ -350,6 +356,7 @@ void *spice_msg_in_parsed(spice_msg_in *in)
     return in->parsed;
 }
 
+G_GNUC_INTERNAL
 void *spice_msg_in_raw(spice_msg_in *in, int *len)
 {
     g_return_val_if_fail(in != NULL, NULL);
@@ -376,6 +383,7 @@ static void hexdump(char *prefix, unsigned char *data, int len)
         fprintf(stderr, "\n");
 }
 
+G_GNUC_INTERNAL
 void spice_msg_in_hexdump(spice_msg_in *in)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(in->channel);
@@ -386,6 +394,7 @@ void spice_msg_in_hexdump(spice_msg_in *in)
     hexdump("<< msg", in->data, in->dpos);
 }
 
+G_GNUC_INTERNAL
 void spice_msg_out_hexdump(spice_msg_out *out, unsigned char *data, int len)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(out->channel);
@@ -396,6 +405,7 @@ void spice_msg_out_hexdump(spice_msg_out *out, unsigned char *data, int len)
     hexdump(">> msg", data, len);
 }
 
+G_GNUC_INTERNAL
 spice_msg_out *spice_msg_out_new(SpiceChannel *channel, int type)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
@@ -418,6 +428,7 @@ spice_msg_out *spice_msg_out_new(SpiceChannel *channel, int type)
     return out;
 }
 
+G_GNUC_INTERNAL
 void spice_msg_out_ref(spice_msg_out *out)
 {
     g_return_if_fail(out != NULL);
@@ -425,6 +436,7 @@ void spice_msg_out_ref(spice_msg_out *out)
     out->refcount++;
 }
 
+G_GNUC_INTERNAL
 void spice_msg_out_unref(spice_msg_out *out)
 {
     g_return_if_fail(out != NULL);
@@ -437,6 +449,7 @@ void spice_msg_out_unref(spice_msg_out *out)
 }
 
 /* system context */
+G_GNUC_INTERNAL
 void spice_msg_out_send(spice_msg_out *out)
 {
     g_return_if_fail(out != NULL);
@@ -450,6 +463,7 @@ void spice_msg_out_send(spice_msg_out *out)
 }
 
 /* coroutine context */
+G_GNUC_INTERNAL
 void spice_msg_out_send_internal(spice_msg_out *out)
 {
     g_return_if_fail(out != NULL);
@@ -866,6 +880,7 @@ static void spice_channel_buffered_write(SpiceChannel *channel, const void *data
 
 /* system context */
 /* TODO: we currently flush/wakeup immediately all buffered messages */
+G_GNUC_INTERNAL
 void spice_channel_wakeup(SpiceChannel *channel)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);

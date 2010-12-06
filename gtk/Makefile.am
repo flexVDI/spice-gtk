@@ -14,6 +14,12 @@ lib_LTLIBRARIES = \
 	libspice-client-gtk.la		\
 	libspice-client-glib.la
 
+if HAVE_LD_VERSION_SCRIPT
+VERSION_LDFLAGS = -Wl,--version-script=${srcdir}/map-file
+else
+VERSION_LDFLAGS = -export-symbols ${srcdir}/sym-file
+endif
+
 KEYMAP_GEN = $(srcdir)/keymap-gen.pl
 
 KEYMAPS = \
@@ -52,6 +58,7 @@ AM_CPPFLAGS = \
 libspice_client_gtk_la_LDFLAGS =	\
 	-version-number 1:0:0		\
 	-no-undefined			\
+	$(VERSION_LDFLAGS)		\
 	$(NULL)
 
 libspice_client_gtk_la_LIBADD =		\
@@ -79,6 +86,7 @@ libspice_client_gtkinclude_HEADERS =	\
 libspice_client_glib_la_LDFLAGS =	\
 	-version-number 1:0:0		\
 	-no-undefined			\
+	$(VERSION_LDFLAGS)		\
 	$(NULL)
 
 libspice_client_glib_la_LIBADD =	\
@@ -392,5 +400,13 @@ typelibs_DATA = $(INTROSPECTION_GIRS:.gir=.typelib)
 
 CLEANFILES += $(gir_DATA) $(typelibs_DATA)
 endif
+
+update-map-file:
+	( echo "SPICEGTK_0 {" ; \
+	  echo "global:" ; \
+	  ctags -f - --c-kinds=p $(libspice_client_gtkinclude_HEADERS) $(libspice_client_glibinclude_HEADERS) | awk '/^spice_/ { print $$1 ";" }' | sort ; \
+	  echo "local:" ;  \
+	  echo "*;" ; \
+	  echo "};" ) > $(srcdir)/map-file
 
 -include $(top_srcdir)/git.mk

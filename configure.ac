@@ -41,6 +41,7 @@ AC_PROG_LIBTOOL
 AM_PROG_CC_C_O
 AC_C_BIGENDIAN
 AC_PATH_PROGS(PYTHON, python2 python)
+RRA_LD_VERSION_SCRIPT
 
 # Check for the CPU we are using
 #

@@ -699,7 +699,7 @@ static int ximage_create(GtkWidget *widget)
         }
         no_mitshm = false;
         old_handler = XSetErrorHandler(catch_no_mitshm);
-        d->shminfo = spice_new0(XShmSegmentInfo, 1);
+        d->shminfo = g_new0(XShmSegmentInfo, 1);
         d->ximage = XShmCreateImage(d->dpy, d->vi->visual, d->vi->depth,
                                     ZPixmap, d->data, d->shminfo, d->width, d->height);
         if (d->ximage == NULL)

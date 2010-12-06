@@ -514,6 +514,7 @@ static GSocket *channel_connect_socket(GSocketAddress *sockaddr,
     return sock;
 }
 
+G_GNUC_INTERNAL
 GSocket* spice_session_channel_open_host(SpiceSession *session, gboolean use_tls)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
@@ -555,6 +556,7 @@ GSocket* spice_session_channel_open_host(SpiceSession *session, gboolean use_tls
 }
 
 
+G_GNUC_INTERNAL
 void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
@@ -569,6 +571,7 @@ void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel)
     g_signal_emit(session, signals[SPICE_SESSION_CHANNEL_NEW], 0, channel);
 }
 
+G_GNUC_INTERNAL
 void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
@@ -590,6 +593,7 @@ void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel)
     }
 }
 
+G_GNUC_INTERNAL
 void spice_session_set_connection_id(SpiceSession *session, int id)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
@@ -599,6 +603,7 @@ void spice_session_set_connection_id(SpiceSession *session, int id)
     s->connection_id = id;
 }
 
+G_GNUC_INTERNAL
 int spice_session_get_connection_id(SpiceSession *session)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
@@ -608,6 +613,7 @@ int spice_session_get_connection_id(SpiceSession *session)
     return s->connection_id;
 }
 
+G_GNUC_INTERNAL
 guint32 spice_session_get_mm_time(SpiceSession *session)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
@@ -617,6 +623,7 @@ guint32 spice_session_get_mm_time(SpiceSession *session)
     return s->mm_time;
 }
 
+G_GNUC_INTERNAL
 void spice_session_set_mm_time(SpiceSession *session, guint32 time)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);

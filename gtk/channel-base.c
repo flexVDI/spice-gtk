@@ -21,6 +21,7 @@
 #include "spice-channel-priv.h"
 
 /* coroutine context */
+G_GNUC_INTERNAL
 void spice_channel_handle_set_ack(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_channel *c = channel->priv;
@@ -37,6 +38,7 @@ void spice_channel_handle_set_ack(SpiceChannel *channel, spice_msg_in *in)
 }
 
 /* coroutine context */
+G_GNUC_INTERNAL
 void spice_channel_handle_ping(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_channel *c = channel->priv;
@@ -49,6 +51,7 @@ void spice_channel_handle_ping(SpiceChannel *channel, spice_msg_in *in)
 }
 
 /* coroutine context */
+G_GNUC_INTERNAL
 void spice_channel_handle_notify(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_channel *c = channel->priv;
@@ -79,6 +82,7 @@ void spice_channel_handle_notify(SpiceChannel *channel, spice_msg_in *in)
 }
 
 /* coroutine context */
+G_GNUC_INTERNAL
 void spice_channel_handle_disconnect(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgDisconnect *disconnect = spice_msg_in_parsed(in);
@@ -88,6 +92,7 @@ void spice_channel_handle_disconnect(SpiceChannel *channel, spice_msg_in *in)
 }
 
 /* coroutine context */
+G_GNUC_INTERNAL
 void spice_channel_handle_wait_for_channels(SpiceChannel *channel, spice_msg_in *in)
 {
     /* spice_channel *c = channel->priv;
@@ -97,6 +102,7 @@ void spice_channel_handle_wait_for_channels(SpiceChannel *channel, spice_msg_in 
 }
 
 /* coroutine context */
+G_GNUC_INTERNAL
 void spice_channel_handle_migrate(SpiceChannel *channel, spice_msg_in *in)
 {
     /* spice_channel *c = channel->priv;

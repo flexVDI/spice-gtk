@@ -856,7 +856,7 @@ static spice_connection *connection_new(void)
 {
     spice_connection *conn;
 
-    conn = spice_new0(spice_connection, 1);
+    conn = g_new0(spice_connection, 1);
     conn->session = spice_session_new();
     g_signal_connect(conn->session, "channel-new",
                      G_CALLBACK(channel_new), conn);
