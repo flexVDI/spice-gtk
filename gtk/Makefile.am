@@ -110,8 +110,6 @@ libspice_client_glib_la_SOURCES =	\
 	spice-channel-enums.h		\
 	spice-channel-enums.c		\
 	spice-channel-priv.h		\
-	tcp.c				\
-	tcp.h				\
 	spice-marshal.c			\
 	spice-marshal.h			\
 	spice-pulse.c			\

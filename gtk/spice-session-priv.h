@@ -28,7 +28,6 @@ int spice_session_get_connection_id(SpiceSession *session);
 gboolean spice_session_get_client_provided_socket(SpiceSession *session);
 
 GSocket* spice_session_channel_open_host(SpiceSession *session, gboolean use_tls);
-int spice_session_channel_connect(SpiceSession *session, bool use_tls);
 void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel);
 void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel);
 

@@ -20,7 +20,6 @@
 #include "spice-common.h"
 
 #include "spice-session-priv.h"
-#include "tcp.h"
 
 /* spice/common */
 #include "ring.h"
@@ -38,7 +37,6 @@ struct spice_session {
     char              *tls_port;
     char              *password;
     char              *ca_file;
-    struct addrinfo   ai;
     int               connection_id;
     int               protocol;
     SpiceChannel      *cmain;
@@ -86,8 +84,6 @@ static void spice_session_init(SpiceSession *session)
     memset(s, 0, sizeof(*s));
 
     s->host = strdup("localhost");
-    s->ai.ai_socktype = SOCK_STREAM;
-    s->ai.ai_family = PF_UNSPEC;
 
     ring_init(&s->channels);
 }
@@ -481,19 +477,6 @@ GList *spice_session_get_channels(SpiceSession *session)
 
 /* ------------------------------------------------------------------ */
 /* private functions                                                  */
-
-int spice_session_channel_connect(SpiceSession *session, bool use_tls)
-{
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
-    char *port = use_tls ? s->tls_port : s->port;
-
-    g_return_val_if_fail(s != NULL, -1);
-
-    if (port == NULL) {
-        return -1;
-    }
-    return tcp_connect(&s->ai, NULL, NULL, s->host, port);
-}
 
 static GSocket *channel_connect_socket(GSocketAddress *sockaddr,
                                        GError **error)
