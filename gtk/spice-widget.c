@@ -87,7 +87,7 @@ struct spice_display {
     const guint16 const     *keycode_map;
     size_t                  keycode_maplen;
     uint32_t                key_state[512 / 32];
-    VncGrabSequence         *grabseq; /* the configured key sequence */
+    SpiceGrabSequence         *grabseq; /* the configured key sequence */
     gboolean                *activeseq; /* the currently pressed keys */
     gint                    mark;
 };
@@ -257,7 +257,7 @@ static void spice_display_finalize(GObject *obj)
     SPICE_DEBUG("Finalize SpiceDisplay");
 
     if (d->grabseq) {
-        vnc_grab_sequence_free(d->grabseq);
+        spice_grab_sequence_free(d->grabseq);
         d->grabseq = NULL;
     }
 
@@ -285,7 +285,7 @@ static void spice_display_init(SpiceDisplay *display)
     gtk_widget_set_can_focus(widget, true);
 
     d->keycode_map = vnc_display_keymap_gdk2xtkbd_table(&d->keycode_maplen);
-    d->grabseq = vnc_grab_sequence_new_from_string("Control_L+Alt_L");
+    d->grabseq = spice_grab_sequence_new_from_string("Control_L+Alt_L");
     d->activeseq = g_new0(gboolean, d->grabseq->nkeysyms);
 
     d->clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
@@ -393,23 +393,23 @@ static void spice_sync_keyboard_lock_modifiers(SpiceDisplay *display)
         spice_inputs_set_key_locks(d->inputs, modifiers);
 }
 
-void spice_display_set_grab_keys(SpiceDisplay *display, VncGrabSequence *seq)
+void spice_display_set_grab_keys(SpiceDisplay *display, SpiceGrabSequence *seq)
 {
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
     g_return_if_fail(d != NULL);
 
     if (d->grabseq) {
-        vnc_grab_sequence_free(d->grabseq);
+        spice_grab_sequence_free(d->grabseq);
         g_free(d->activeseq);
     }
     if (seq)
-        d->grabseq = vnc_grab_sequence_copy(seq);
+        d->grabseq = spice_grab_sequence_copy(seq);
     else
-        d->grabseq = vnc_grab_sequence_new_from_string("Control_L+Alt_L");
+        d->grabseq = spice_grab_sequence_new_from_string("Control_L+Alt_L");
     d->activeseq = g_new0(gboolean, d->grabseq->nkeysyms);
 }
 
-VncGrabSequence *spice_display_get_grab_keys(SpiceDisplay *display)
+SpiceGrabSequence *spice_display_get_grab_keys(SpiceDisplay *display)
 {
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
     g_return_val_if_fail(d != NULL, NULL);

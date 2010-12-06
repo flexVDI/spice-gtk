@@ -72,8 +72,7 @@ IGNORE_HFILES= \
 	spice-session-priv.h			\
 	spice-types.h				\
 	tcp.h					\
-	vncdisplaykeymap.h			\
-	vncgrabsequence.h
+	vncdisplaykeymap.h
 
 # Images to copy into HTML directory.
 # e.g. HTML_IMAGES=$(top_srcdir)/gtk/stock-icons/stock_about_24.png

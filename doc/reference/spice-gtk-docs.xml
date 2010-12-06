@@ -47,6 +47,7 @@
       <title>Display GTK Widget, from spice-client-gtk</title>
       <xi:include href="xml/spice-widget.xml"/>
       <xi:include href="xml/spice-widget-enums.xml"/>
+      <xi:include href="xml/spice-grabsequence.xml"/>
     </chapter>
   </part>
 

@@ -21,7 +21,7 @@
 #include "spice-client.h"
 
 #include <gtk/gtk.h>
-#include "vncgrabsequence.h"
+#include "spice-grabsequence.h"
 #include "spice-widget-enums.h"
 #include "spice-util.h"
 
@@ -72,8 +72,8 @@ SpiceDisplay* spice_display_new(SpiceSession *session, int id);
 void spice_display_mouse_ungrab(SpiceDisplay *display);
 void spice_display_copy_to_guest(SpiceDisplay *display);
 void spice_display_paste_from_guest(SpiceDisplay *display);
-void spice_display_set_grab_keys(SpiceDisplay *display, VncGrabSequence *seq);
-VncGrabSequence *spice_display_get_grab_keys(SpiceDisplay *display);
+void spice_display_set_grab_keys(SpiceDisplay *display, SpiceGrabSequence *seq);
+SpiceGrabSequence *spice_display_get_grab_keys(SpiceDisplay *display);
 void spice_display_send_keys(SpiceDisplay *display, const guint *keyvals,
                              int nkeyvals, SpiceDisplayKeyEvent kind);
 GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display);

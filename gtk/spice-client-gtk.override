@@ -61,7 +61,7 @@ static PyObject*
 _wrap_spice_display_get_grab_keys(PyGObject *self,
                             PyObject *args, PyObject *kwargs)
 {
-    VncGrabSequence *seq;
+    SpiceGrabSequence *seq;
     PyObject *keyList;
     int i;
 
@@ -84,7 +84,7 @@ _wrap_spice_display_set_grab_keys(PyGObject *self,
     int i;
     guint nkeysyms;
     guint *keysyms;
-    VncGrabSequence *seq;
+    SpiceGrabSequence *seq;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwargs,
                                      "O|I:SpiceDisplay.set_grab_keys", kwlist,
@@ -102,12 +102,12 @@ _wrap_spice_display_set_grab_keys(PyGObject *self,
         keysyms[i] = (guint)PyInt_AsLong(val);
     }
 
-    seq = vnc_grab_sequence_new(nkeysyms, keysyms);
+    seq = spice_grab_sequence_new(nkeysyms, keysyms);
     g_free(keysyms);
 
     spice_display_set_grab_keys(SPICE_DISPLAY(self->obj), seq);
 
-    vnc_grab_sequence_free(seq);
+    spice_grab_sequence_free(seq);
 
     Py_INCREF(Py_None);
     return Py_None;

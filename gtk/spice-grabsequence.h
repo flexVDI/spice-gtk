@@ -19,37 +19,37 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#ifndef VNC_GRAB_SEQUENCE_H
-#define VNC_GRAB_SEQUENCE_H
+#ifndef SPICE_GRAB_SEQUENCE_H
+#define SPICE_GRAB_SEQUENCE_H
 
 #include <glib.h>
 #include <glib-object.h>
 
 G_BEGIN_DECLS
 
-#define VNC_TYPE_GRAB_SEQUENCE            (vnc_grab_sequence_get_type ())
+#define SPICE_TYPE_GRAB_SEQUENCE            (spice_grab_sequence_get_type ())
 
-typedef struct _VncGrabSequence VncGrabSequence;
+typedef struct _SpiceGrabSequence SpiceGrabSequence;
 
-struct _VncGrabSequence {
+struct _SpiceGrabSequence {
 	guint nkeysyms;
 	guint *keysyms;
 
 	/* Do not add fields to this struct */
 };
 
-GType vnc_grab_sequence_get_type(void);
+GType spice_grab_sequence_get_type(void);
 
-VncGrabSequence *vnc_grab_sequence_new(guint nkeysyms, guint *keysyms);
-VncGrabSequence *vnc_grab_sequence_new_from_string(const gchar *str);
-VncGrabSequence *vnc_grab_sequence_copy(VncGrabSequence *sequence);
-void vnc_grab_sequence_free(VncGrabSequence *sequence);
-gchar *vnc_grab_sequence_as_string(VncGrabSequence *sequence);
+SpiceGrabSequence *spice_grab_sequence_new(guint nkeysyms, guint *keysyms);
+SpiceGrabSequence *spice_grab_sequence_new_from_string(const gchar *str);
+SpiceGrabSequence *spice_grab_sequence_copy(SpiceGrabSequence *sequence);
+void spice_grab_sequence_free(SpiceGrabSequence *sequence);
+gchar *spice_grab_sequence_as_string(SpiceGrabSequence *sequence);
 
 
 G_END_DECLS
 
-#endif /* VNC_GRAB_SEQUENCE_H */
+#endif /* SPICE_GRAB_SEQUENCE_H */
 
 /*
  * Local variables:

@@ -12,6 +12,7 @@
 #include "channel-playback.h"
 #include "channel-record.h"
 #include "spice-widget.h"
+#include "spice-grabsequence.h"
 
 spice_audio_get_type
 spice_channel_get_type
@@ -25,3 +26,4 @@ spice_playback_channel_get_type
 spice_record_channel_get_type
 spice_session_get_type
 spice_display_get_type
+spice_grab_sequence_get_type

@@ -48,8 +48,9 @@ AM_CPPFLAGS = \
 	$(SPICE_COMMON_CPPFLAGS)	\
 	$(SPICE_CFLAGS)
 
+# http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 libspice_client_gtk_la_LDFLAGS =	\
-	-version-number 0:0:1		\
+	-version-number 1:0:0		\
 	-no-undefined			\
 	$(NULL)
 
@@ -64,20 +65,19 @@ libspice_client_gtk_la_SOURCES =	\
 	spice-widget-enums.h		\
 	vncdisplaykeymap.c		\
 	vncdisplaykeymap.h		\
-	vncgrabsequence.c		\
-	vncgrabsequence.h		\
+	spice-grabsequence.c		\
+	spice-grabsequence.h		\
 	$(NULL)
 
 libspice_client_gtkincludedir = $(includedir)/spice-client-gtk
 libspice_client_gtkinclude_HEADERS =	\
 	spice-widget.h			\
 	spice-widget-enums.h		\
-	vncgrabsequence.h		\
+	spice-grabsequence.h		\
 	$(NULL)
 
-
 libspice_client_glib_la_LDFLAGS =	\
-	-version-number 0:0:1		\
+	-version-number 1:0:0		\
 	-no-undefined			\
 	$(NULL)
 

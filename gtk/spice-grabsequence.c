@@ -23,28 +23,28 @@
 #include <string.h>
 #include <gdk/gdk.h>
 
-#include "vncgrabsequence.h"
+#include "spice-grabsequence.h"
 
-GType vnc_grab_sequence_get_type(void)
+GType spice_grab_sequence_get_type(void)
 {
 	static GType grab_sequence_type = 0;
 
 	if (G_UNLIKELY(grab_sequence_type == 0)) {
 		grab_sequence_type = g_boxed_type_register_static
-			("VncGrabSequence",
-			 (GBoxedCopyFunc)vnc_grab_sequence_copy,
-			 (GBoxedFreeFunc)vnc_grab_sequence_free);
+			("SpiceGrabSequence",
+			 (GBoxedCopyFunc)spice_grab_sequence_copy,
+			 (GBoxedFreeFunc)spice_grab_sequence_free);
 	}
 
 	return grab_sequence_type;
 }
 
 
-VncGrabSequence *vnc_grab_sequence_new(guint nkeysyms, guint *keysyms)
+SpiceGrabSequence *spice_grab_sequence_new(guint nkeysyms, guint *keysyms)
 {
-	VncGrabSequence *sequence;
+	SpiceGrabSequence *sequence;
 
-	sequence = g_slice_new0(VncGrabSequence);
+	sequence = g_slice_new0(SpiceGrabSequence);
 	sequence->nkeysyms = nkeysyms;
 	sequence->keysyms = g_new0(guint, nkeysyms);
 	memcpy(sequence->keysyms, keysyms, sizeof(guint)*nkeysyms);
@@ -53,13 +53,13 @@ VncGrabSequence *vnc_grab_sequence_new(guint nkeysyms, guint *keysyms)
 }
 
 
-VncGrabSequence *vnc_grab_sequence_new_from_string(const gchar *str)
+SpiceGrabSequence *spice_grab_sequence_new_from_string(const gchar *str)
 {
 	gchar **keysymstr;
 	int i;
-	VncGrabSequence *sequence;
+	SpiceGrabSequence *sequence;
 
-	sequence = g_slice_new0(VncGrabSequence);
+	sequence = g_slice_new0(SpiceGrabSequence);
 
 	keysymstr = g_strsplit(str, "+", 5);
 
@@ -77,11 +77,11 @@ VncGrabSequence *vnc_grab_sequence_new_from_string(const gchar *str)
 }
 
 
-VncGrabSequence *vnc_grab_sequence_copy(VncGrabSequence *srcSequence)
+SpiceGrabSequence *spice_grab_sequence_copy(SpiceGrabSequence *srcSequence)
 {
-	VncGrabSequence *sequence;
+	SpiceGrabSequence *sequence;
 
-	sequence = g_slice_dup(VncGrabSequence, srcSequence);
+	sequence = g_slice_dup(SpiceGrabSequence, srcSequence);
 	sequence->keysyms = g_new0(guint, srcSequence->nkeysyms);
 	memcpy(sequence->keysyms, srcSequence->keysyms,
 	       sizeof(guint) * sequence->nkeysyms);
@@ -90,13 +90,13 @@ VncGrabSequence *vnc_grab_sequence_copy(VncGrabSequence *srcSequence)
 }
 
 
-void vnc_grab_sequence_free(VncGrabSequence *sequence)
+void spice_grab_sequence_free(SpiceGrabSequence *sequence)
 {
-	g_slice_free(VncGrabSequence, sequence);
+	g_slice_free(SpiceGrabSequence, sequence);
 }
 
 
-gchar *vnc_grab_sequence_as_string(VncGrabSequence *sequence)
+gchar *spice_grab_sequence_as_string(SpiceGrabSequence *sequence)
 {
 	GString *str = g_string_new("");
 	int i;
