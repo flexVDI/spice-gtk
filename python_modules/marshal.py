@@ -120,7 +120,7 @@ def write_marshal_ptr_function(writer, target_type):
     writer.header = header
     writer.out_prefix = ""
     if target_type.is_array():
-        scope = writer.function(marshal_function, "SPICE_GNUC_UNUSED static void", "SpiceMarshaller *m, %s_t *ptr, int count" % target_type.element_type.primitive_type() + names_args)
+        scope = writer.function(marshal_function, "SPICE_GNUC_UNUSED static void", "SpiceMarshaller *m, %s_t *ptr, unsigned count" % target_type.element_type.primitive_type() + names_args)
     else:
         scope = writer.function(marshal_function, "void", "SpiceMarshaller *m, %s *ptr" % target_type.c_type() + names_args)
         header.writeln("void " + marshal_function + "(SpiceMarshaller *m, %s *msg" % target_type.c_type() + names_args + ");")
