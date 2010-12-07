@@ -51,6 +51,7 @@ struct _SpiceInputsChannelClass {
     /* signals */
     void (*inputs_modifiers)(SpiceChannel *channel);
 
+    /*< private >*/
     /* Do not add fields to this struct */
 };
 

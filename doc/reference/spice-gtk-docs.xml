@@ -27,28 +27,26 @@
       <title>Session and Channels Objects, from spice-client-glib</title>
       <xi:include href="xml/spice-session.xml"/>
       <xi:include href="xml/spice-channel.xml"/>
+
       <xi:include href="xml/channel-cursor.xml"/>
       <xi:include href="xml/channel-display.xml"/>
       <xi:include href="xml/channel-inputs.xml"/>
       <xi:include href="xml/channel-main.xml"/>
       <xi:include href="xml/channel-playback.xml"/>
       <xi:include href="xml/channel-record.xml"/>
-      <xi:include href="xml/spice-channel-enums.xml"/>
-    </chapter>
-
-    <chapter id="application-support">
-      <title>Application support, from spice-client-glib</title>
-      <xi:include href="xml/spice-audio.xml"/>
-      <xi:include href="xml/spice-cmdline.xml"/>
-      <xi:include href="xml/spice-util.xml"/>
     </chapter>
 
     <chapter>
-      <title>Display GTK Widget, from spice-client-gtk</title>
+      <title>GTK Widget, from spice-client-gtk</title>
       <xi:include href="xml/spice-widget.xml"/>
-      <xi:include href="xml/spice-widget-enums.xml"/>
-      <xi:include href="xml/spice-grabsequence.xml"/>
     </chapter>
+
+    <chapter id="application-support">
+      <title>Application Support, from spice-client-glib</title>
+      <xi:include href="xml/spice-audio.xml"/>
+      <xi:include href="xml/spice-util.xml"/>
+    </chapter>
+
   </part>
 
   <chapter id="object-tree">

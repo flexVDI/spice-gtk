@@ -52,6 +52,7 @@ struct _SpiceDisplayChannelClass {
     void (*display_mark)(SpiceChannel *channel,
                          gboolean mark);
 
+    /*< private >*/
     /* Do not add fields to this struct */
 };
 

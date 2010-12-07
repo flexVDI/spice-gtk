@@ -19,6 +19,25 @@
 #include "spice-common.h"
 #include "spice-channel-priv.h"
 
+/**
+ * SECTION:channel-inputs
+ * @short_description: control the server mouse and keyboard
+ * @title: Inputs Channel
+ * @section_id:
+ * @see_also: #SpiceChannel, and the GTK widget #SpiceDisplay
+ * @stability: Stable
+ * @include: channel-inputs.h
+ *
+ * Spice supports sending keyboard key events and keyboard leds
+ * synchronization. The key events are sent using
+ * spice_inputs_key_press() and spice_inputs_key_release() using PC AT
+ * scancode.
+ *
+ * Guest keyboard leds state can be manipulated with
+ * spice_inputs_set_key_locks(). When key lock change, a notification
+ * is emitted with #SpiceInputsChannel::inputs-modifiers signal.
+ */
+
 #define SPICE_INPUTS_CHANNEL_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_INPUTS_CHANNEL, spice_inputs_channel))
 
@@ -98,13 +117,21 @@ static void spice_inputs_channel_class_init(SpiceInputsChannelClass *klass)
         (gobject_class, PROP_KEY_MODIFIERS,
          g_param_spec_int("key-modifiers",
                           "Key modifiers",
-                          "Guest keyboard modifier state (derived from kbd leds)",
+                          "Guest keyboard lock/led state",
                           0, INT_MAX, 0,
                           G_PARAM_READABLE |
                           G_PARAM_STATIC_NAME |
                           G_PARAM_STATIC_NICK |
                           G_PARAM_STATIC_BLURB));
 
+    /**
+     * SpiceInputsChannel::inputs-modifier:
+     * @display: the #SpiceInputsChannel that emitted the signal
+     *
+     * The #SpiceInputsChannel::inputs-modifier signal is emitted when
+     * the guest keyboard locks are changed. You can read the current
+     * state from #SpiceInputsChannel:key-modifiers property.
+     **/
     /* TODO: use notify instead? */
     signals[SPICE_INPUTS_MODIFIERS] =
         g_signal_new("inputs-modifiers",
@@ -439,7 +466,7 @@ void spice_inputs_button_release(SpiceInputsChannel *channel, gint button,
 /**
  * spice_inputs_key_press:
  * @channel:
- * @scancode: key scancode
+ * @scancode: a PC AT key scancode
  *
  * Press a key.
  **/
@@ -468,7 +495,7 @@ void spice_inputs_key_press(SpiceInputsChannel *channel, guint scancode)
 /**
  * spice_inputs_key_release:
  * @channel:
- * @scancode: key scancode
+ * @scancode: a PC AT key scancode
  *
  * Release a key.
  **/
@@ -521,7 +548,7 @@ static spice_msg_out* set_key_locks(SpiceInputsChannel *channel, guint locks)
 /**
  * spice_inputs_set_key_locks:
  * @channel:
- * @locks: SPICE_INPUTS_*_LOCK modifiers flags
+ * @locks: #SpiceInputsLock modifiers flags
  *
  * Set the keyboard locks on the guest (Caps, Num, Scroll..)
  **/

@@ -32,6 +32,7 @@ G_BEGIN_DECLS
 typedef struct _SpiceGrabSequence SpiceGrabSequence;
 
 struct _SpiceGrabSequence {
+        /*< private >*/
 	guint nkeysyms;
 	guint *keysyms;
 

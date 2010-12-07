@@ -21,8 +21,25 @@
 
 #include "spice-util.h"
 
+/**
+ * SECTION:spice-util
+ * @short_description: version and debugging functions
+ * @title: Utilities
+ * @section_id:
+ * @stability: Stable
+ * @include: spice-util.h
+ *
+ * Various functions for debugging and informational purposes.
+ */
+
 static gboolean debugFlag = FALSE;
 
+/**
+ * spice_util_set_debug:
+ * @enabled: %TRUE or %FALSE
+ *
+ * Enable or disable Spice-GTK debugging messages.
+ **/
 void spice_util_set_debug(gboolean enabled)
 {
     debugFlag = enabled;
@@ -33,6 +50,11 @@ gboolean spice_util_get_debug(void)
     return debugFlag || g_getenv("SPICE_DEBUG") != NULL;
 }
 
+/**
+ * spice_util_get_version_string:
+ *
+ * Returns: Spice-GTK version as a const string.
+ **/
 const gchar *spice_util_get_version_string(void)
 {
     return VERSION;

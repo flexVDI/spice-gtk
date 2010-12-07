@@ -19,6 +19,19 @@
  * simple audio init dispatcher
  */
 
+/**
+ * SECTION:spice-audio
+ * @short_description: a helper to play and to record audio channels
+ * @title: Spice Audio
+ * @section_id:
+ * @see_also: #SpiceRecordChannel, and #SpicePlaybackChannel
+ * @stability: Stable
+ * @include: spice-audio.h
+ *
+ * A class that handles the playback and record channels for your
+ * application, and connect them to the default sound system.
+ */
+
 #include "spice-client.h"
 #include "spice-common.h"
 
@@ -37,6 +50,17 @@ static void spice_audio_init(SpiceAudio *self G_GNUC_UNUSED)
 }
 
 
+/**
+ * spice_audio_new:
+ * @session: the #SpiceSession to connect to
+ * @context: a #GMainContext to attach to (or %NULL for default).
+ * @name: a name for the audio channels (or %NULL for default).
+ *
+ * Once instantiated, #SpiceAudio will handle the playback and record
+ * channels to stream to your local audio system.
+ *
+ * Returns: a new #SpiceAudio instance.
+ **/
 SpiceAudio *spice_audio_new(SpiceSession *session, GMainContext *context,
                          const char *name)
 {

@@ -23,6 +23,25 @@
 
 #include "spice-marshal.h"
 
+/**
+ * SECTION:channel-playback
+ * @short_description: audio stream for playback
+ * @title: Playback Channel
+ * @section_id:
+ * @see_also: #SpiceChannel, and #SpiceAudio
+ * @stability: Stable
+ * @include: channel-playback.h
+ *
+ * #SpicePlaybackChannel class handles an audio playback stream. The
+ * audio data is received via #SpicePlaybackChannel::playback-data
+ * signal, and is controlled by the guest with
+ * #SpicePlaybackChannel::playback-stop and
+ * #SpicePlaybackChannel::playback-start signal events.
+ *
+ * Note: You may be interested to let the #SpiceAudio class play and
+ * record audio channels for your application.
+ */
+
 #define SPICE_PLAYBACK_CHANNEL_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_PLAYBACK_CHANNEL, spice_playback_channel))
 
@@ -83,6 +102,16 @@ static void spice_playback_channel_class_init(SpicePlaybackChannelClass *klass)
     gobject_class->finalize     = spice_playback_channel_finalize;
     channel_class->handle_msg   = spice_playback_handle_msg;
 
+    /**
+     * SpicePlaybackChannel::playback-start:
+     * @channel: the #SpicePlaybackChannel that emitted the signal
+     * @format: a #SPICE_AUDIO_FMT
+     * @channels: number of channels
+     * @rate: audio rate
+     *
+     * Notify when the playback should start, and provide audio format
+     * characteristics.
+     **/
     signals[SPICE_PLAYBACK_START] =
         g_signal_new("playback-start",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -94,6 +123,14 @@ static void spice_playback_channel_class_init(SpicePlaybackChannelClass *klass)
                      3,
                      G_TYPE_INT, G_TYPE_INT, G_TYPE_INT);
 
+    /**
+     * SpicePlaybackChannel::playback-data:
+     * @channel: the #SpicePlaybackChannel that emitted the signal
+     * @data: pointer to audio data
+     * @data_size: size in byte of @data
+     *
+     * Provide audio data to be played.
+     **/
     signals[SPICE_PLAYBACK_DATA] =
         g_signal_new("playback-data",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -105,6 +142,12 @@ static void spice_playback_channel_class_init(SpicePlaybackChannelClass *klass)
                      2,
                      G_TYPE_POINTER, G_TYPE_INT);
 
+    /**
+     * SpicePlaybackChannel::playback-stop:
+     * @channel: the #SpicePlaybackChannel that emitted the signal
+     *
+     * Notify when the playback should stop.
+     **/
     signals[SPICE_PLAYBACK_STOP] =
         g_signal_new("playback-stop",
                      G_OBJECT_CLASS_TYPE(gobject_class),

@@ -48,6 +48,7 @@ struct _SpiceRecordChannelClass {
     void (*record_data)(SpiceRecordChannel *channel, gpointer *data, gint size);
     void (*record_stop)(SpiceRecordChannel *channel);
 
+    /*< private >*/
     /*
      * If adding fields to this struct, remove corresponding
      * amount of padding to avoid changing overall struct size

@@ -36,13 +36,27 @@ static void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out, gb
 static void spice_channel_send_link(SpiceChannel *channel);
 static void channel_disconnect(SpiceChannel *channel);
 
+/**
+ * SECTION:spice-channel
+ * @short_description: the base channel class
+ * @title: Spice Channel
+ * @section_id:
+ * @see_also: #SpiceSession, #SpiceMainChannel and other channels
+ * @stability: Stable
+ * @include: spice-channel.h
+ *
+ * #SpiceChannel is the base class for the different kind of Spice
+ * channel connections, such as #SpiceMainChannel, or
+ * #SpiceInputsChannel.
+ */
+
 /* ------------------------------------------------------------------ */
 /* gobject glue                                                       */
 
 #define SPICE_CHANNEL_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_CHANNEL, spice_channel))
 
-G_DEFINE_TYPE (SpiceChannel, spice_channel, G_TYPE_OBJECT);
+G_DEFINE_TYPE(SpiceChannel, spice_channel, G_TYPE_OBJECT);
 
 /* Properties */
 enum {
@@ -252,6 +266,14 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
                           G_PARAM_STATIC_NICK |
                           G_PARAM_STATIC_BLURB));
 
+    /**
+     * SpiceChannel::channel-event:
+     * @channel: the channel that emitted the signal
+     * @event: a #SpiceChannelEvent
+     *
+     * The #SpiceChannel::channel-event signal is emitted when the
+     * state of the connection change.
+     **/
     signals[SPICE_CHANNEL_EVENT] =
         g_signal_new("channel-event",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -263,6 +285,15 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
                      1,
                      G_TYPE_INT);
 
+    /**
+     * SpiceChannel::open-fd:
+     * @channel: the channel that emitted the signal
+     * @with_tls: wether TLS connection is requested
+     *
+     * The #SpiceChannel::open-fd signal is emitted when a new
+     * connection is requested. This signal is emitted when the
+     * connection is made with spice_session_open_fd().
+     **/
     signals[SPICE_CHANNEL_OPEN_FD] =
         g_signal_new("open-fd",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -1007,7 +1038,7 @@ static void spice_channel_recv_msg(SpiceChannel *channel)
  *
  * Create a new #SpiceChannel of type @type, and channel ID @id.
  *
- * Returns:
+ * Returns: a #SpiceChannel
  **/
 SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
 {
@@ -1301,7 +1332,7 @@ static gboolean channel_connect(SpiceChannel *channel)
  *
  * Connect the channel, using #SpiceSession connection informations
  *
- * Returns: #TRUE on success.
+ * Returns: %TRUE on success.
  **/
 gboolean spice_channel_connect(SpiceChannel *channel)
 {
@@ -1315,7 +1346,7 @@ gboolean spice_channel_connect(SpiceChannel *channel)
  *
  * Connect the channel using @fd socket.
  *
- * Returns: #TRUE on success.
+ * Returns: %TRUE on success.
  **/
 gboolean spice_channel_open_fd(SpiceChannel *channel, int fd)
 {
@@ -1385,8 +1416,9 @@ static void channel_disconnect(SpiceChannel *channel)
  * @channel:
  * @reason: a channel event emitted on main context (or #SPICE_CHANNEL_NONE)
  *
- * Close socket and reset connection specific data, then emit @reason
- * on main context if not #SPICE_CHANNEL_NONE.
+ * Close the socket and reset connection specific data. Finally, emit
+ * @reason #SpiceChannel::channel-event on main context if not
+ * #SPICE_CHANNEL_NONE.
  **/
 void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
 {
@@ -1429,7 +1461,7 @@ static gboolean test_capability(GArray *caps, guint32 cap)
  *
  * Test availability of specific channel-kind capability of the remote.
  *
- * Returns: #TRUE if @cap, a specific channel capability, is available.
+ * Returns: %TRUE if @cap, a specific channel capability, is available.
  **/
 gboolean spice_channel_test_capability(SpiceChannel *self, guint32 cap)
 {

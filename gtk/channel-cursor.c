@@ -22,6 +22,22 @@
 #include "spice-channel-cache.h"
 #include "spice-marshal.h"
 
+/**
+ * SECTION:channel-cursor
+ * @short_description: update cursor shape and position
+ * @title: Cursor Channel
+ * @section_id:
+ * @see_also: #SpiceChannel, and the GTK widget #SpiceDisplay
+ * @stability: Stable
+ * @include: channel-cursor.h
+ *
+ * The Spice protocol defines a set of messages for controlling cursor
+ * shape and position on the remote display area. The cursor changes
+ * that should be reflected on the display are notified by
+ * signals. See for example #SpiceCursorChannel::cursor-set
+ * #SpiceCursorChannel::cursor-move signals.
+ */
+
 #define SPICE_CURSOR_CHANNEL_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_CURSOR_CHANNEL, spice_cursor_channel))
 
@@ -79,6 +95,18 @@ static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
     gobject_class->finalize     = spice_cursor_channel_finalize;
     channel_class->handle_msg   = spice_cursor_handle_msg;
 
+    /**
+     * SpiceCursorChannel::cursor-set:
+     * @cursor: the #SpiceCursorChannel that emitted the signal
+     * @width: width of the shape
+     * @height: height of the shape
+     * @hot_x: position of hot spot on x axis
+     * @hot_y: position of hot spot on y axis
+     * @rgba: shape data
+     *
+     * The #SpiceCursorChannel::cursor-set signal is emitted to modify
+     * cursor aspect and position on the display area.
+     **/
     signals[SPICE_CURSOR_SET] =
         g_signal_new("cursor-set",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -92,6 +120,15 @@ static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
                      G_TYPE_INT, G_TYPE_INT,
                      G_TYPE_POINTER);
 
+    /**
+     * SpiceCursorChannel::cursor-move:
+     * @cursor: the #SpiceCursorChannel that emitted the signal
+     * @x: x position
+     * @y: y position
+     *
+     * The #SpiceCursorChannel::cursor-move signal is emitted to update
+     * the cursor position on the display area.
+     **/
     signals[SPICE_CURSOR_MOVE] =
         g_signal_new("cursor-move",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -103,6 +140,13 @@ static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
                      2,
                      G_TYPE_INT, G_TYPE_INT);
 
+    /**
+     * SpiceCursorChannel::cursor-hide:
+     * @cursor: the #SpiceCursorChannel that emitted the signal
+     *
+     * The #SpiceCursorChannel::cursor-hide signal is emitted to hide
+     * the cursor/pointer on the display area.
+     **/
     signals[SPICE_CURSOR_HIDE] =
         g_signal_new("cursor-hide",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -113,6 +157,13 @@ static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
                      G_TYPE_NONE,
                      0);
 
+    /**
+     * SpiceCursorChannel::cursor-reset:
+     * @cursor: the #SpiceCursorChannel that emitted the signal
+     *
+     * The #SpiceCursorChannel::cursor-reset signal is emitted to
+     * reset the cursor to its default context.
+     **/
     signals[SPICE_CURSOR_RESET] =
         g_signal_new("cursor-reset",
                      G_OBJECT_CLASS_TYPE(gobject_class),

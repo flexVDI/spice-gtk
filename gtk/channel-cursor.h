@@ -49,6 +49,7 @@ struct _SpiceCursorChannelClass {
     void (*cursor_hide)(SpiceCursorChannel *channel);
     void (*cursor_reset)(SpiceCursorChannel *channel);
 
+    /*< private >*/
     /* Do not add fields to this struct */
 };
 

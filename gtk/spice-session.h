@@ -42,10 +42,11 @@ struct _SpiceSessionClass
 {
     GObjectClass parent_class;
 
-    /* Signals */
+    /* signals */
     void (*channel_new)(SpiceSession *session, SpiceChannel *channel);
     void (*channel_destroy)(SpiceSession *session, SpiceChannel *channel);
 
+    /*< private >*/
     /*
      * If adding fields to this struct, remove corresponding
      * amount of padding to avoid changing overall struct size

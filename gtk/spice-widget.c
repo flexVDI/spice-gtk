@@ -31,6 +31,17 @@
 
 #include <spice/vd_agent.h>
 
+/**
+ * SECTION:spice-widget
+ * @short_description: a GTK display widget
+ * @title: Spice Display
+ * @section_id:
+ * @stability: Stable
+ * @include: spice-widget.h
+ *
+ * Various functions for debugging and informational purposes.
+ */
+
 #define SPICE_DISPLAY_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_DISPLAY, spice_display))
 

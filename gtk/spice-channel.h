@@ -34,6 +34,20 @@ G_BEGIN_DECLS
 typedef struct spice_msg_in  spice_msg_in;
 typedef struct spice_msg_out spice_msg_out;
 
+/**
+ * SpiceChannelEvent:
+ *
+ * @SPICE_CHANNEL_NONE: no event, or ignored event
+ * @SPICE_CHANNEL_OPENED: connection is authentified and ready
+ * @SPICE_CHANNEL_CLOSED: connection is closed normally
+ * @SPICE_CHANNEL_ERROR_CONNECT: connection error
+ * @SPICE_CHANNEL_ERROR_TLS: SSL error
+ * @SPICE_CHANNEL_ERROR_LINK: error during link process
+ * @SPICE_CHANNEL_ERROR_AUTH: authentication error
+ * @SPICE_CHANNEL_ERROR_IO: IO error
+ *
+ * An event, emitted by #SpiceChannel::channel-event signal.
+ **/
 typedef enum
 {
     SPICE_CHANNEL_NONE = 0,
@@ -57,16 +71,19 @@ struct _SpiceChannelClass
 {
     GObjectClass parent_class;
 
+    /*< private >*/
     /* virtual methods, coroutine context */
     void (*handle_msg)(SpiceChannel *channel, spice_msg_in *msg);
     void (*channel_up)(SpiceChannel *channel);
     void (*iterate_write)(SpiceChannel *channel);
     void (*iterate_read)(SpiceChannel *channel);
 
+    /*< public >*/
     /* signals, system context */
     void (*channel_event)(SpiceChannel *channel, SpiceChannelEvent event);
     void (*open_fd)(SpiceChannel *channel, int with_tls);
 
+    /*< private >*/
     /*
      * If adding fields to this struct, remove corresponding
      * amount of padding to avoid changing overall struct size

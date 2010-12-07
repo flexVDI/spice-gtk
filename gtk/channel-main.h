@@ -46,6 +46,7 @@ struct _SpiceMainChannelClass {
     void (*mouse_update)(SpiceChannel *channel);
     void (*agent_update)(SpiceChannel *channel);
 
+    /*< private >*/
     /* Do not add fields to this struct */
 };
 

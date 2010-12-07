@@ -45,6 +45,37 @@ struct spice_session {
     gboolean          client_provided_sockets;
 };
 
+/**
+ * SECTION:spice-session
+ * @short_description: handles connection details, and active channels
+ * @title: Spice Session
+ * @section_id:
+ * @see_also: #SpiceChannel, and the GTK widget #SpiceDisplay
+ * @stability: Stable
+ * @include: spice-session.h
+ *
+ * The #SpiceSession class handles all the #SpiceChannel connections.
+ * It's also the class that contains connections informations, such as
+ * #SpiceSession:host and #SpiceSession:port.
+ *
+ * You can simply set the property #SpiceSession:uri to something like
+ * "spice://127.0.0.1?port=5930" to configure your connection details.
+ *
+ * You may want to connect to #SpiceSession::channel-new signal, to be
+ * informed of the availability of channels and to interact with
+ * them.
+ *
+ * For example, when the #SpiceInputsChannel is available and get the
+ * event #SPICE_CHANNEL_OPENED, you can send key events with
+ * spice_inputs_key_press(). When the #SpiceMainChannel is available,
+ * you can start sharing the clipboard...  .
+ *
+ *
+ * Once #SpiceSession properties set, you can call
+ * spice_session_connect() to start connecting and communicating with
+ * a Spice server.
+ */
+
 /* ------------------------------------------------------------------ */
 /* gobject glue                                                       */
 
@@ -285,7 +316,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
         (gobject_class, PROP_HOST,
          g_param_spec_string("host",
                              "Host",
-                             "remote host",
+                             "Remote host",
                              NULL,
                              G_PARAM_READWRITE |
                              G_PARAM_CONSTRUCT |
@@ -297,7 +328,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
         (gobject_class, PROP_PORT,
          g_param_spec_string("port",
                              "Port",
-                             "remote port (plaintext)",
+                             "Remote port (plaintext)",
                              NULL,
                              G_PARAM_READWRITE |
                              G_PARAM_CONSTRUCT |
@@ -309,7 +340,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
         (gobject_class, PROP_TLS_PORT,
          g_param_spec_string("tls-port",
                              "TLS port",
-                             "remote port (encrypted)",
+                             "Remote port (encrypted)",
                              NULL,
                              G_PARAM_READWRITE |
                              G_PARAM_CONSTRUCT |
@@ -365,6 +396,13 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              G_PARAM_STATIC_NICK |
                              G_PARAM_STATIC_BLURB));
 
+    /**
+     * SpiceSession::channel-new:
+     * @session: the session that emitted the signal
+     * @channel: the new #SpiceChannel
+     *
+     * The #SpiceSession::channel-new signal is emitted each time a #SpiceChannel is created.
+     **/
     signals[SPICE_SESSION_CHANNEL_NEW] =
         g_signal_new("channel-new",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -376,6 +414,13 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                      1,
                      SPICE_TYPE_CHANNEL);
 
+    /**
+     * SpiceSession::channel-destroy:
+     * @session: the session that emitted the signal
+     * @channel: the destroyed #SpiceChannel
+     *
+     * The #SpiceSession::channel-destroy signal is emitted each time a #SpiceChannel is destroyed.
+     **/
     signals[SPICE_SESSION_CHANNEL_DESTROY] =
         g_signal_new("channel-destroy",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -393,12 +438,28 @@ static void spice_session_class_init(SpiceSessionClass *klass)
 /* ------------------------------------------------------------------ */
 /* public functions                                                   */
 
+/**
+ * spice_session_new:
+ *
+ * Creates a new Spice session.
+ *
+ * Returns: a new #SpiceSession
+ **/
 SpiceSession *spice_session_new(void)
 {
     return SPICE_SESSION(g_object_new(SPICE_TYPE_SESSION,
                                       NULL));
 }
 
+/**
+ * spice_session_connect:
+ * @session: 
+ *
+ * Open the session using the #SpiceSession:host and
+ * #SpiceSession:port.
+ *
+ * Returns: %FALSE if the connection failed.
+ **/
 gboolean spice_session_connect(SpiceSession *session)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
@@ -412,6 +473,17 @@ gboolean spice_session_connect(SpiceSession *session)
     return spice_channel_connect(s->cmain);
 }
 
+/**
+ * spice_session_open_fd:
+ * @session: 
+ * @fd: a file descriptor
+ *
+ * Open the session using the provided @fd socket file
+ * descriptor. This is useful if you create the fd yourself, for
+ * example to setup a SSH tunnel.
+ *
+ * Returns: 
+ **/
 gboolean spice_session_open_fd(SpiceSession *session, int fd)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
@@ -426,6 +498,7 @@ gboolean spice_session_open_fd(SpiceSession *session, int fd)
     return spice_channel_open_fd(s->cmain, fd);
 }
 
+G_GNUC_INTERNAL
 gboolean spice_session_get_client_provided_socket(SpiceSession *session)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
@@ -434,6 +507,12 @@ gboolean spice_session_get_client_provided_socket(SpiceSession *session)
     return s->client_provided_sockets;
 }
 
+/**
+ * spice_session_disconnect:
+ * @session: 
+ *
+ * Disconnect the @session, and destroy all channels.
+ **/
 void spice_session_disconnect(SpiceSession *session)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
@@ -457,6 +536,14 @@ void spice_session_disconnect(SpiceSession *session)
     s->connection_id = 0;
 }
 
+/**
+ * spice_session_get_channels:
+ * @session: 
+ *
+ * Get the list of current channels associated with this @session.
+ *
+ * Returns: a #GList of unowned SpiceChannels.
+ **/
 GList *spice_session_get_channels(SpiceSession *session)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);

@@ -52,6 +52,7 @@ struct _SpiceDisplayClass {
     void (*mouse_grab)(SpiceChannel *channel, gint grabbed);
     void (*keyboard_grab)(SpiceChannel *channel, gint grabbed);
 
+    /*< private >*/
     /*
      * If adding fields to this struct, remove corresponding
      * amount of padding to avoid changing overall struct size

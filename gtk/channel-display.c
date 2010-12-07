@@ -27,6 +27,25 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
+/**
+ * SECTION:channel-display
+ * @short_description: remote display area
+ * @title: Display Channel
+ * @section_id:
+ * @see_also: #SpiceChannel, and the GTK widget #SpiceDisplay
+ * @stability: Stable
+ * @include: channel-display.h
+ *
+ * A class that handles the rendering of the remote display and inform
+ * of its updates.
+ *
+ * The creation of the main graphic buffer is signaled with
+ * #SpiceDisplayChannel::display-primary-create.
+ *
+ * The update of regions is notified by
+ * #SpiceDisplayChannel::display-invalidate signals.
+ */
+
 #define SPICE_DISPLAY_CHANNEL_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_DISPLAY_CHANNEL, spice_display_channel))
 
@@ -89,6 +108,20 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
     channel_class->handle_msg   = spice_display_handle_msg;
     channel_class->channel_up   = spice_display_channel_up;
 
+    /**
+     * SpiceDisplayChannel::display-primary-create:
+     * @display: the #SpiceDisplayChannel that emitted the signal
+     * @format: %SPICE_SURFACE_FMT_32_xRGB or %SPICE_SURFACE_FMT_16_555;
+     * @width: width resolution
+     * @height: height resolution
+     * @stride: the buffer stride ("width" padding)
+     * @shmid: identifier of the shared memory segment associated with
+     * the @imgdata, or -1 if not shm
+     * @imgdata: pointer to surface buffer
+     *
+     * The #SpiceDisplayChannel::display-primary-create signal
+     * provides main display buffer data.
+     **/
     signals[SPICE_DISPLAY_PRIMARY_CREATE] =
         g_signal_new("display-primary-create",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -102,6 +135,14 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
                      G_TYPE_INT, G_TYPE_INT, G_TYPE_INT,
                      G_TYPE_INT, G_TYPE_INT, G_TYPE_POINTER);
 
+    /**
+     * SpiceDisplayChannel::display-primary-destroy:
+     * @display: the #SpiceDisplayChannel that emitted the signal
+     *
+     * The #SpiceDisplayChannel::display-primary-destroy signal is
+     * emitted when the primary surface is freed and should not be
+     * accessed anymore.
+     **/
     signals[SPICE_DISPLAY_PRIMARY_DESTROY] =
         g_signal_new("display-primary-destroy",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -113,6 +154,18 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
                      G_TYPE_NONE,
                      0);
 
+    /**
+     * SpiceDisplayChannel::display-invalidate:
+     * @display: the #SpiceDisplayChannel that emitted the signal
+     * @x: x position
+     * @y: y position
+     * @width: width
+     * @height: height
+     *
+     * The #SpiceDisplayChannel::display-invalidate signal is emitted
+     * when the rectangular region x/y/w/h of the primary buffer is
+     * updated.
+     **/
     signals[SPICE_DISPLAY_INVALIDATE] =
         g_signal_new("display-invalidate",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -125,6 +178,14 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
                      4,
                      G_TYPE_INT, G_TYPE_INT, G_TYPE_INT, G_TYPE_INT);
 
+    /**
+     * SpiceDisplayChannel::display-mark:
+     * @display: the #SpiceDisplayChannel that emitted the signal
+     *
+     * The #SpiceDisplayChannel::display-mark signal is emitted when
+     * the %RED_DISPLAY_MARK command is received, and the display
+     * should be exposed.
+     **/
     signals[SPICE_DISPLAY_MARK] =
         g_signal_new("display-mark",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -1015,4 +1076,3 @@ static void spice_display_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
     g_return_if_fail(display_handlers[type] != NULL);
     display_handlers[type](channel, msg);
 }
-

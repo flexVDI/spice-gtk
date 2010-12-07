@@ -24,6 +24,22 @@
 
 #include <spice/vd_agent.h>
 
+/**
+ * SECTION:channel-main
+ * @short_description: the main Spice channel
+ * @title: Main Channel
+ * @section_id:
+ * @see_also: #SpiceChannel, and the GTK widget #SpiceDisplay
+ * @stability: Stable
+ * @include: channel-main.h
+ *
+ * The main channel is the Spice session control channel. It handles
+ * communication initialization (channels list), migrations, mouse
+ * modes, multimedia time, and agent communication.
+ *
+ *
+ */
+
 #define SPICE_MAIN_CHANNEL_GET_PRIVATE(obj)                             \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_MAIN_CHANNEL, spice_main_channel))
 
@@ -222,11 +238,22 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
     channel_class->handle_msg    = spice_main_handle_msg;
     channel_class->iterate_write = spice_channel_iterate_write;
 
+    /**
+     * SpiceMainChannel:mouse-mode:
+     *
+     * Spice protocol specifies two mouse modes, client mode and
+     * server mode. In client mode (%SPICE_MOUSE_MODE_CLIENT), the
+     * affective mouse is the client side mouse: the client sends
+     * mouse position within the display and the server sends mouse
+     * shape messages. In server mode (%SPICE_MOUSE_MODE_SERVER), the
+     * client sends relative mouse movements and the server sends
+     * position and shape commands.
+     **/
     g_object_class_install_property
         (gobject_class, PROP_MOUSE_MODE,
          g_param_spec_int("mouse-mode",
                           "Mouse mode",
-                          "",
+                          "Mouse mode",
                           0, INT_MAX, 0,
                           G_PARAM_READABLE |
                           G_PARAM_STATIC_NAME |
@@ -237,7 +264,7 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
         (gobject_class, PROP_AGENT_CONNECTED,
          g_param_spec_boolean("agent-connected",
                               "Agent connected",
-                              "",
+                              "Whether the agent is connected",
                               FALSE,
                               G_PARAM_READABLE |
                               G_PARAM_STATIC_NAME |
@@ -257,27 +284,30 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
 
     g_object_class_install_property
         (gobject_class, PROP_DISPLAY_DISABLE_WALLPAPER,
-         g_param_spec_boolean("display-disable-wallpaper",
-                              "Disable wallpaper",
-                              "", FALSE,
+         g_param_spec_boolean("disable-wallpaper",
+                              "Disable guest wallpaper",
+                              "Disable guest wallpaper",
+                              FALSE,
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
                               G_PARAM_STATIC_STRINGS));
 
     g_object_class_install_property
         (gobject_class, PROP_DISPLAY_DISABLE_FONT_SMOOTH,
-         g_param_spec_boolean("display-disable-font-smooth",
-                              "Disable font smooth",
-                              "", FALSE,
+         g_param_spec_boolean("disable-font-smooth",
+                              "Disable guest font smooth",
+                              "Disable guest font smoothing",
+                              FALSE,
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
                               G_PARAM_STATIC_STRINGS));
 
     g_object_class_install_property
         (gobject_class, PROP_DISPLAY_DISABLE_ANIMATION,
-         g_param_spec_boolean("display-disable-animation",
-                              "Disable animations",
-                              "", FALSE,
+         g_param_spec_boolean("disable-animation",
+                              "Disable guest animations",
+                              "Disable guest animations",
+                              FALSE,
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
                               G_PARAM_STATIC_STRINGS));
@@ -285,8 +315,8 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
     g_object_class_install_property
         (gobject_class, PROP_DISPLAY_SET_COLOR_DEPTH,
          g_param_spec_boolean("set-color-depth",
-                              "Set color depth",
-                              "", FALSE,
+                              "set color depth",
+                              "Set display color depth", FALSE,
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
                               G_PARAM_STATIC_STRINGS));
@@ -295,11 +325,18 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
         (gobject_class, PROP_DISPLAY_COLOR_DEPTH,
          g_param_spec_uint("color-depth",
                            "Color depth",
-                           "", 8, 32, 32,
+                           "Color depth", 8, 32, 32,
                            G_PARAM_READWRITE |
                            G_PARAM_CONSTRUCT |
                            G_PARAM_STATIC_STRINGS));
 
+    /* TODO use notify instead */
+    /**
+     * SpiceMainChannel::main-mouse-update:
+     * @main: the #SpiceMainChannel that emitted the signal
+     *
+     * Notify when the mouse mode has changed.
+     **/
     signals[SPICE_MAIN_MOUSE_UPDATE] =
         g_signal_new("main-mouse-update",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -310,6 +347,14 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                      G_TYPE_NONE,
                      0);
 
+    /* TODO use notify instead */
+    /**
+     * SpiceMainChannel::main-clipboard:
+     * @main: the #SpiceMainChannel that emitted the signal
+     *
+     * Notify when the %SpiceMainChannel:agent-connected or
+     * %SpiceMainChannel:agent-caps-0 property change.
+     **/
     signals[SPICE_MAIN_AGENT_UPDATE] =
         g_signal_new("main-agent-update",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -319,7 +364,15 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                      g_cclosure_marshal_VOID__VOID,
                      G_TYPE_NONE,
                      0);
-
+    /**
+     * SpiceMainChannel::main-clipboard:
+     * @main: the #SpiceMainChannel that emitted the signal
+     * @type: the VD_AGENT_CLIPBOARD data type
+     * @data: clipboard data
+     * @size: size of @data in bytes
+     *
+     * Provides guest clipboard data requested by spice_main_clipboard_request().
+     **/
     signals[SPICE_MAIN_CLIPBOARD] =
         g_signal_new("main-clipboard",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -331,6 +384,15 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                      3,
                      G_TYPE_UINT, G_TYPE_POINTER, G_TYPE_UINT);
 
+    /**
+     * SpiceMainChannel::main-clipboard-grab:
+     * @main: the #SpiceMainChannel that emitted the signal
+     * @types: the VD_AGENT_CLIPBOARD data types
+     * @ntypes: the number of @types
+     *
+     * Inform when clipboard data is available from the guest, and for
+     * which @types.
+     **/
     signals[SPICE_MAIN_CLIPBOARD_GRAB] =
         g_signal_new("main-clipboard-grab",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -342,6 +404,15 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                      2,
                      G_TYPE_POINTER, G_TYPE_UINT);
 
+    /**
+     * SpiceMainChannel::main-clipboard-request:
+     * @main: the #SpiceMainChannel that emitted the signal
+     * @types: the VD_AGENT_CLIPBOARD request type
+     * Returns: %TRUE if the request is successful
+     *
+     * Request clipbard data from the client.
+     *
+     **/
     signals[SPICE_MAIN_CLIPBOARD_REQUEST] =
         g_signal_new("main-clipboard-request",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -353,6 +424,14 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                      1,
                      G_TYPE_UINT);
 
+    /**
+     * SpiceMainChannel::main-clipboard-release:
+     * @main: the #SpiceMainChannel that emitted the signal
+     *
+     * Inform when the clipboard is released from the guest, when no
+     * clipboard data is available from the guest.
+     *
+     **/
     signals[SPICE_MAIN_CLIPBOARD_RELEASE] =
         g_signal_new("main-clipboard-release",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -1000,9 +1079,9 @@ static gboolean timer_set_display(gpointer data)
 /**
  * spice_main_set_display:
  * @channel:
- * @id: TODO: display channel id? or monitor id?
- * @x: ..
- * @y: ..
+ * @id: display channel ID
+ * @x: x position
+ * @y: y position
  * @width: display width
  * @height: display height
  *
@@ -1034,10 +1113,10 @@ void spice_main_set_display(SpiceMainChannel *channel, int id,
 /**
  * spice_main_clipboard_grab:
  * @channel:
- * @types: an array of #VD_AGENT_CLIPBOARD types
- * @ntypes: the number of types in @types
+ * @types: an array of #VD_AGENT_CLIPBOARD types available in the clipboard
+ * @ntypes: the number of @types
  *
- * Grab the guest clipboard for  #VD_AGENT_CLIPBOARD @types.
+ * Grab the guest clipboard, with #VD_AGENT_CLIPBOARD @types.
  **/
 void spice_main_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int ntypes)
 {
@@ -1051,8 +1130,8 @@ void spice_main_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int nt
  * spice_main_clipboard_release:
  * @channel:
  *
- * Release clipboard, when client loose clipboard, inform guest no
- * clipboard data is available.
+ * Release the clipboard (for example, when the client looses the
+ * clipboard grab): Inform the guest no clipboard data is available.
  **/
 void spice_main_clipboard_release(SpiceMainChannel *channel)
 {
@@ -1069,7 +1148,7 @@ void spice_main_clipboard_release(SpiceMainChannel *channel)
  * @data: clipboard data
  * @size: data length in bytes
  *
- * Send clipboard data to guest.
+ * Send the clipboard data to the guest.
  **/
 void spice_main_clipboard_notify(SpiceMainChannel *channel,
                                  guint32 type, const guchar *data, size_t size)
@@ -1085,8 +1164,8 @@ void spice_main_clipboard_notify(SpiceMainChannel *channel,
  * @channel:
  * @type: a #VD_AGENT_CLIPBOARD type
  *
- * Request clipboard data of @type from guest. The reply is sent
- * through ::main-clipboard signal.
+ * Request clipboard data of @type from the guest. The reply is sent
+ * through the #SpiceMainChannel::main-clipboard signal.
  **/
 void spice_main_clipboard_request(SpiceMainChannel *channel, guint32 type)
 {

@@ -48,6 +48,7 @@ struct _SpicePlaybackChannelClass {
     void (*playback_data)(SpicePlaybackChannel *channel, gpointer *data, gint size);
     void (*playback_stop)(SpicePlaybackChannel *channel);
 
+    /*< private >*/
     /*
      * If adding fields to this struct, remove corresponding
      * amount of padding to avoid changing overall struct size

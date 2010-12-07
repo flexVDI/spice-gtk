@@ -24,6 +24,27 @@
 #include "spice-marshal.h"
 #include "spice-session-priv.h"
 
+/**
+ * SECTION:channel-record
+ * @short_description: audio stream for recording
+ * @title: Record Channel
+ * @section_id:
+ * @see_also: #SpiceChannel, and #SpiceAudio
+ * @stability: Stable
+ * @include: channel-record.h
+ *
+ * #SpiceRecordChannel class handles an audio recording stream. The
+ * audio stream should start when #SpiceRecordChannel::record-start is
+ * emitted and should be stopped when #SpiceRecordChannel::record-stop
+ * is received.
+ *
+ * The audio is sent to the guest by calling spice_record_send_data()
+ * with the recorded PCM data.
+ *
+ * Note: You may be interested to let the #SpiceAudio class play and
+ * record audio channels for your application.
+ */
+
 #define SPICE_RECORD_CHANNEL_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_RECORD_CHANNEL, spice_record_channel))
 
@@ -95,6 +116,16 @@ static void spice_record_channel_class_init(SpiceRecordChannelClass *klass)
     channel_class->handle_msg   = spice_record_handle_msg;
     channel_class->channel_up   = channel_up;
 
+    /**
+     * SpiceRecordChannel::record-start:
+     * @channel: the #SpiceRecordChannel that emitted the signal
+     * @format: a #SPICE_AUDIO_FMT
+     * @channels: number of channels
+     * @rate: audio rate
+     *
+     * Notify when the recording should start, and provide audio format
+     * characteristics.
+     **/
     signals[SPICE_RECORD_START] =
         g_signal_new("record-start",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -106,6 +137,12 @@ static void spice_record_channel_class_init(SpiceRecordChannelClass *klass)
                      3,
                      G_TYPE_INT, G_TYPE_INT, G_TYPE_INT);
 
+    /**
+     * SpiceRecordChannel::record-stop:
+     * @channel: the #SpiceRecordChannel that emitted the signal
+     *
+     * Notify when the recording should stop.
+     **/
     signals[SPICE_RECORD_STOP] =
         g_signal_new("record-stop",
                      G_OBJECT_CLASS_TYPE(gobject_class),

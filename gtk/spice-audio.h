@@ -50,6 +50,8 @@ struct _SpiceAudio {
 
 struct _SpiceAudioClass {
     GObjectClass parent_class;
+
+    /*< private >*/
     gchar _spice_reserved[SPICE_RESERVED_PADDING];
 };
 
