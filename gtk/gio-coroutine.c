@@ -194,3 +194,33 @@ void g_signal_emit_main_context(GObject *object,
     coroutine_yield(NULL);
 }
 
+static gboolean notify_main_context(gpointer opaque)
+{
+    struct signal_data *signal = opaque;
+
+    g_object_notify(signal->object, signal->params);
+    coroutine_yieldto(signal->caller, NULL);
+
+    return FALSE;
+}
+
+/* coroutine -> main context */
+void g_object_notify_main_context(GObject *object,
+                                  const gchar *property_name)
+{
+    struct signal_data data;
+
+    data.object = object;
+    data.caller = coroutine_self();
+    data.params = (gpointer)property_name;
+
+    g_idle_add(notify_main_context, &data);
+
+    /* This switches to the system coroutine context, lets
+     * the idle function run to dispatch the signal, and
+     * finally returns once complete. ie this is synchronous
+     * from the POV of the coroutine despite there being
+     * an idle function involved
+     */
+    coroutine_yield(NULL);
+}

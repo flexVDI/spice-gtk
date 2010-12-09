@@ -59,6 +59,7 @@ void         g_io_wakeup            (struct wait_queue *wait);
 GIOCondition g_io_wait_interruptable(struct wait_queue *wait, GSocket *sock, GIOCondition cond);
 void         g_signal_emit_main_context(GObject *object, GSignalEmitMainFunc func,
                                         int signum, gpointer params);
+void         g_object_notify_main_context(GObject *object, const gchar *property_name);
 
 G_END_DECLS
 

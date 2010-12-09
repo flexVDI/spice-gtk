@@ -773,6 +773,7 @@ static void set_mouse_mode(SpiceMainChannel *channel, uint32_t supported, uint32
     if (c->mouse_mode != current) {
         c->mouse_mode = current;
         emit_main_context(channel, SPICE_MAIN_MOUSE_UPDATE);
+        g_object_notify_main_context(G_OBJECT(channel), "mouse-mode");
     }
 
     /* switch to client mode if possible */
