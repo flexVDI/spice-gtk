@@ -40,6 +40,13 @@ GType spice_grab_sequence_get_type(void)
 }
 
 
+/**
+ * spice_grab_sequence_new:
+ * @nkeysyms: GDK_ key values
+ * @keysyms: number of key values in @nkeysyms
+ *
+ * Returns: a new #SpiceGrabSequence.
+ **/
 SpiceGrabSequence *spice_grab_sequence_new(guint nkeysyms, guint *keysyms)
 {
 	SpiceGrabSequence *sequence;
@@ -53,6 +60,12 @@ SpiceGrabSequence *spice_grab_sequence_new(guint nkeysyms, guint *keysyms)
 }
 
 
+/**
+ * spice_grab_sequence_new_from_string:
+ * @str: a string of '+' seperated key names (ex: "Control_L+Alt_L")
+ *
+ * Returns: a new #SpiceGrabSequence.
+ **/
 SpiceGrabSequence *spice_grab_sequence_new_from_string(const gchar *str)
 {
 	gchar **keysymstr;
@@ -77,6 +90,12 @@ SpiceGrabSequence *spice_grab_sequence_new_from_string(const gchar *str)
 }
 
 
+/**
+ * spice_grab_sequence_copy:
+ * @srcSequence: sequence to copy
+ *
+ * Returns: a copy of @srcSequence
+ **/
 SpiceGrabSequence *spice_grab_sequence_copy(SpiceGrabSequence *srcSequence)
 {
 	SpiceGrabSequence *sequence;
@@ -90,12 +109,24 @@ SpiceGrabSequence *spice_grab_sequence_copy(SpiceGrabSequence *srcSequence)
 }
 
 
+/**
+ * spice_grab_sequence_free:
+ * @sequence:
+ *
+ * Free @sequence.
+ **/
 void spice_grab_sequence_free(SpiceGrabSequence *sequence)
 {
 	g_slice_free(SpiceGrabSequence, sequence);
 }
 
 
+/**
+ * spice_grab_sequence_as_string:
+ * @sequence:
+ *
+ * Returns: a newly allocated string representing the key sequence
+ **/
 gchar *spice_grab_sequence_as_string(SpiceGrabSequence *sequence)
 {
 	GString *str = g_string_new("");

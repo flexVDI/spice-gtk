@@ -39,7 +39,25 @@
  * @stability: Stable
  * @include: spice-widget.h
  *
- * Various functions for debugging and informational purposes.
+ * A GTK widget that displays a SPICE server. It sends keyboard/mouse
+ * events and can also share clipboard...
+ *
+ * Arbitrary key events can be sent thanks to spice_display_send_keys().
+ *
+ * The widget will optionally grab the keyboard and the mouse when
+ * focused if the properties #SpiceDisplay:grab-keyboard and
+ * #SpiceDisplay:grab-mouse are #TRUE respectively.  It can be
+ * ungrabbed with spice_display_mouse_ungrab(), and by setting a key
+ * combination with spice_display_set_grab_keys().
+ *
+ * Client and guest clipboards will be shared automatically if
+ * #SpiceDisplay:auto-clipboard is set to #TRUE. Alternatively, you
+ * can send clipboard data from client to guest with
+ * spice_display_copy_to_guest().
+
+ * Finally, spice_display_get_pixbuf() will take a screenshot of the
+ * current display and return an #GdkPixbuf (that you can then easily
+ * save to disk).
  */
 
 #define SPICE_DISPLAY_GET_PRIVATE(obj)                                  \
@@ -404,6 +422,14 @@ static void spice_sync_keyboard_lock_modifiers(SpiceDisplay *display)
         spice_inputs_set_key_locks(d->inputs, modifiers);
 }
 
+/**
+ * spice_display_set_grab_keys:
+ * @display:
+ * @seq: key sequence
+ *
+ * Set the key combination to grab/ungrab the keyboard. The default is
+ * "Control L + Alt L".
+ **/
 void spice_display_set_grab_keys(SpiceDisplay *display, SpiceGrabSequence *seq)
 {
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
@@ -420,6 +446,12 @@ void spice_display_set_grab_keys(SpiceDisplay *display, SpiceGrabSequence *seq)
     d->activeseq = g_new0(gboolean, d->grabseq->nkeysyms);
 }
 
+/**
+ * spice_display_get_grab_keys:
+ * @display:
+ *
+ * Returns: the current grab key combination.
+ **/
 SpiceGrabSequence *spice_display_get_grab_keys(SpiceDisplay *display)
 {
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
@@ -1342,6 +1374,13 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                               G_PARAM_STATIC_NICK |
                               G_PARAM_STATIC_BLURB));
 
+    /**
+     * SpiceDisplay::mouse-grab:
+     * @display: the #SpiceDisplay that emitted the signal
+     * @status: 1 if grabbed, 0 otherwise.
+     *
+     * Notify when the mouse grab is active or not.
+     **/
     signals[SPICE_DISPLAY_MOUSE_GRAB] =
         g_signal_new("mouse-grab",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -1353,6 +1392,13 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                      1,
                      G_TYPE_INT);
 
+    /**
+     * SpiceDisplay::keyboard-grab:
+     * @display: the #SpiceDisplay that emitted the signal
+     * @status: 1 if grabbed, 0 otherwise.
+     *
+     * Notify when the keyboard grab is active or not.
+     **/
     signals[SPICE_DISPLAY_KEYBOARD_GRAB] =
         g_signal_new("keyboard-grab",
                      G_OBJECT_CLASS_TYPE(gobject_class),
@@ -1833,6 +1879,13 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
     return;
 }
 
+/**
+ * spice_display_new:
+ * @session: a #SpiceSession
+ * @id: the display channel ID to associate with #SpiceDisplay
+ *
+ * Returns: a new #SpiceDisplay widget.
+ **/
 SpiceDisplay *spice_display_new(SpiceSession *session, int id)
 {
     SpiceDisplay *display;
@@ -1857,11 +1910,23 @@ SpiceDisplay *spice_display_new(SpiceSession *session, int id)
     return display;
 }
 
+/**
+ * spice_display_mouse_ungrab:
+ * @display:
+ *
+ * Ungrab the mouse.
+ **/
 void spice_display_mouse_ungrab(SpiceDisplay *display)
 {
     try_mouse_ungrab(GTK_WIDGET(display));
 }
 
+/**
+ * spice_display_copy_to_guest:
+ * @display:
+ *
+ * Copy client-side clipboard to guest clipboard.
+ **/
 void spice_display_copy_to_guest(SpiceDisplay *display)
 {
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
@@ -1876,6 +1941,14 @@ void spice_display_paste_from_guest(SpiceDisplay *display)
     g_warning("%s: TODO", __FUNCTION__);
 }
 
+/**
+ * spice_display_get_pixbuf:
+ * @display:
+ *
+ * Take a screenshot of the display.
+ *
+ * Returns: a #GdkPixbuf with the screenshot image buffer
+ **/
 GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
 {
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);

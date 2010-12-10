@@ -100,8 +100,8 @@ static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
      * @cursor: the #SpiceCursorChannel that emitted the signal
      * @width: width of the shape
      * @height: height of the shape
-     * @hot_x: position of hot spot on x axis
-     * @hot_y: position of hot spot on y axis
+     * @hot_x: horizontal offset of the 'hotspot' of the cursor
+     * @hot_y: vertical offset of the 'hotspot' of the cursor
      * @rgba: shape data
      *
      * The #SpiceCursorChannel::cursor-set signal is emitted to modify
