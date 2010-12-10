@@ -163,6 +163,14 @@ static struct format_table {
     XVisualInfo           xvisual;
 } format_table[] = {
     {
+        .spice = SPICE_SURFACE_FMT_32_ARGB, /* FIXME: is that correct xvisual? */
+        .xvisual = {
+            .depth      = 24,
+            .red_mask   = 0xff0000,
+            .green_mask = 0x00ff00,
+            .blue_mask  = 0x0000ff,
+        },
+    },{
         .spice = SPICE_SURFACE_FMT_32_xRGB,
         .xvisual = {
             .depth      = 24,
@@ -729,8 +737,7 @@ static int ximage_create(GtkWidget *widget)
         g_return_val_if_fail(d->vi != NULL, 1);
     }
     if (d->convert) {
-        g_critical("format conversion not implemented yet");
-        return 1;
+        g_critical("format conversion not implemented for %d, FIXME?", d->format);
     }
 
     d->gc = XCreateGC(d->dpy, gdk_x11_drawable_get_xid(window),

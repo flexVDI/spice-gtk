@@ -333,8 +333,6 @@ void spice_inputs_motion(SpiceInputsChannel *channel, gint dx, gint dy,
 
     if (c->motion_count < SPICE_INPUT_MOTION_ACK_BUNCH * 2) {
         send_motion(channel);
-    } else {
-        SPICE_DEBUG("over SPICE_INPUT_MOTION_ACK_BUNCH * 2, dropping");
     }
 }
 

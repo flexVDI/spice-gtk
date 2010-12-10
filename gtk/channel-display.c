@@ -55,6 +55,7 @@ struct spice_display_channel {
     display_cache               palettes;
     SpiceImageCache             image_cache;
     SpicePaletteCache           palette_cache;
+    SpiceImageSurfaces          image_surfaces;
     SpiceGlzDecoderWindow       *glz_window;
     display_stream              **streams;
     int                         nstreams;
@@ -82,6 +83,7 @@ static void palette_clear(SpicePaletteCache *cache);
 static void image_clear(SpiceImageCache *cache);
 static void clear_surfaces(SpiceChannel *channel);
 static void clear_streams(SpiceChannel *channel);
+static display_surface *find_surface(spice_display_channel *c, int surface_id);
 
 /* ------------------------------------------------------------------ */
 
@@ -274,9 +276,11 @@ static void image_put(SpiceImageCache *cache, uint64_t id, pixman_image_t *image
         SPICE_CONTAINEROF(cache, spice_display_channel, image_cache);
     display_cache_item *item;
 
-#if 1 /* TODO: temporary sanity check */
-    g_warn_if_fail(cache_find(&c->images, id) == NULL);
-#endif
+    item = cache_find(&c->images, id);
+    if (item) {
+        cache_ref(item);
+        return;
+    }
 
     item = cache_add(&c->images, id);
     item->ptr = pixman_image_ref(image);
@@ -304,8 +308,10 @@ static void image_remove(SpiceImageCache *cache, uint64_t id)
 
     item = cache_find(&c->images, id);
     g_return_if_fail(item != NULL);
-    pixman_image_unref(item->ptr);
-    cache_del(&c->images, item);
+    if (cache_unref(item)) {
+        pixman_image_unref(item->ptr);
+        cache_del(&c->images, item);
+    }
 }
 
 static void image_clear(SpiceImageCache *cache)
@@ -433,6 +439,18 @@ static pixman_image_t* image_get_lossless(SpiceImageCache *cache, uint64_t id)
 }
 #endif
 
+SpiceCanvas *surfaces_get(SpiceImageSurfaces *surfaces,
+                          uint32_t surface_id)
+{
+    spice_display_channel *c =
+        SPICE_CONTAINEROF(surfaces, spice_display_channel, image_surfaces);
+
+    display_surface *s =
+        find_surface(c, surface_id);
+
+    return s ? s->canvas : NULL;
+}
+
 static SpiceImageCacheOps image_cache_ops = {
     .put = image_put,
     .get = image_get,
@@ -450,6 +468,10 @@ static SpicePaletteCacheOps palette_cache_ops = {
     .release = palette_release,
 };
 
+static SpiceImageSurfacesOps image_surfaces_ops = {
+    .get = surfaces_get
+};
+
 static void spice_display_channel_init(SpiceDisplayChannel *channel)
 {
     spice_display_channel *c;
@@ -462,6 +484,7 @@ static void spice_display_channel_init(SpiceDisplayChannel *channel)
     cache_init(&c->palettes, "palette");
     c->image_cache.ops = &image_cache_ops;
     c->palette_cache.ops = &palette_cache_ops;
+    c->image_surfaces.ops = &image_surfaces_ops;
 }
 
 /* ------------------------------------------------------------------ */
@@ -509,7 +532,7 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
                                              &c->image_cache,
                                              &c->palette_cache,
 #endif
-                                             NULL, // &csurfaces.base,
+                                             &c->image_surfaces,
                                              surface->glz_decoder,
                                              surface->jpeg_decoder,
                                              surface->zlib_decoder);
@@ -539,9 +562,8 @@ static void destroy_canvas(display_surface *surface)
     surface->canvas = NULL;
 }
 
-static display_surface *find_surface(SpiceChannel *channel, int surface_id)
+static display_surface *find_surface(spice_display_channel *c, int surface_id)
 {
-    spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     display_surface *surface;
     RingItem *item;
 
@@ -605,8 +627,9 @@ static void spice_display_channel_up(SpiceChannel *channel)
 
 #define DRAW(type) {                                                    \
         display_surface *surface =                                      \
-            find_surface(channel, op->base.surface_id);                 \
-        g_return_if_fail(surface != NULL);                                        \
+            find_surface(SPICE_DISPLAY_CHANNEL(channel)->priv,          \
+                op->base.surface_id);                                   \
+        g_return_if_fail(surface != NULL);                              \
         surface->canvas->ops->draw_##type(surface->canvas, &op->base.box, \
                                           &op->base.clip, &op->data);   \
         if (surface->primary) {                                         \
@@ -619,7 +642,7 @@ static void display_handle_mode(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     SpiceMsgDisplayMode *mode = spice_msg_in_parsed(in);
-    display_surface *surface = find_surface(channel, 0);
+    display_surface *surface = find_surface(c, 0);
 
     g_warn_if_fail(c->mark == FALSE);
 
@@ -652,7 +675,7 @@ static void display_handle_mode(SpiceChannel *channel, spice_msg_in *in)
 static void display_handle_mark(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
-    display_surface *surface = find_surface(channel, 0);
+    display_surface *surface = find_surface(c, 0);
 
     SPICE_DEBUG("%s", __FUNCTION__);
     g_return_if_fail(surface != NULL);
@@ -676,7 +699,8 @@ static void display_handle_reset(SpiceChannel *channel, spice_msg_in *in)
 static void display_handle_copy_bits(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgDisplayCopyBits *op = spice_msg_in_parsed(in);
-    display_surface *surface = find_surface(channel, op->base.surface_id);
+    spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
+    display_surface *surface = find_surface(c, op->base.surface_id);
 
     g_return_if_fail(surface != NULL);
     surface->canvas->ops->copy_bits(surface->canvas, &op->base.box,
@@ -779,7 +803,7 @@ static void display_handle_stream_create(SpiceChannel *channel, spice_msg_in *in
     spice_msg_in_ref(in);
     st->clip = &op->clip;
     st->codec = op->codec_type;
-    st->surface = find_surface(channel, op->surface_id);
+    st->surface = find_surface(c, op->surface_id);
 
     region_init(&st->region);
     display_update_stream_region(st);
@@ -1014,11 +1038,17 @@ static void display_handle_surface_create(SpiceChannel *channel, spice_msg_in *i
 static void display_handle_surface_destroy(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgSurfaceDestroy *destroy = spice_msg_in_parsed(in);
+    spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     display_surface *surface;
 
     g_return_if_fail(destroy != NULL);
 
-    surface = find_surface(channel, destroy->surface_id);
+    surface = find_surface(c, destroy->surface_id);
+    if (surface == NULL) {
+        /* this is not a problem in spicec, it happens as well and returns.. */
+        /* g_warn_if_reached(); */
+        return;
+    }
     if (surface->primary) {
         emit_main_context(channel, SPICE_DISPLAY_PRIMARY_DESTROY);
     }
