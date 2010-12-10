@@ -836,7 +836,7 @@ static void display_handle_stream_data(SpiceChannel *channel, spice_msg_in *in)
         int stride;
 
         data = st->out_frame;
-        stride = info->src_width * sizeof(uint32_t);
+        stride = info->stream_width * sizeof(uint32_t);
         if (!(info->flags & SPICE_STREAM_FLAGS_TOP_DOWN)) {
             data += stride * (info->src_height - 1);
             stride = -stride;

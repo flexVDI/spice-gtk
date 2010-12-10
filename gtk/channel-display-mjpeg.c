@@ -96,7 +96,7 @@ void stream_mjpeg_data(display_stream *st)
     uint8_t *line, *dest;
     int i;
 
-    line = malloc(width * 4);
+    line = malloc(width * 3);
     dest = malloc(width * height * 4);
 
     if (st->out_frame) {
