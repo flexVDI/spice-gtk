@@ -11,7 +11,7 @@ def camel_to_underscores(s, upper = False):
             res = res + c.upper()
         else:
             res = res + c.lower()
-        return res
+    return res
 
 def underscores_to_camel(s):
     res = ""
