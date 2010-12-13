@@ -77,6 +77,7 @@ struct spice_display {
     gint                    width, height, stride;
     gint                    shmid;
     gpointer                data;
+    gpointer                data_origin;
     gboolean                clipboard_by_guest; /* hack? */
 
     gint                    ww, wh, mx, my;
@@ -680,20 +681,24 @@ static XVisualInfo *get_visual_for_format(GtkWidget *widget, enum SpiceSurfaceFm
     GdkScreen    *screen = gdk_drawable_get_screen(drawable);
     XVisualInfo  template;
     int          found, i;
+    XVisualInfo *vi;
 
     for (i = 0; i < SPICE_N_ELEMENTS(format_table); i++) {
         if (format == format_table[i].spice)
             break;
     }
-    if (i == SPICE_N_ELEMENTS(format_table))
+    if (i == SPICE_N_ELEMENTS(format_table)) {
+        g_warn_if_reached();
         return NULL;
+    }
 
     template = format_table[i].xvisual;
     template.screen = gdk_x11_screen_get_screen_number(screen);
-    return XGetVisualInfo(gdk_x11_display_get_xdisplay(display),
+    vi = XGetVisualInfo(gdk_x11_display_get_xdisplay(display),
                           VisualScreenMask | VisualDepthMask |
                           VisualRedMaskMask | VisualGreenMaskMask | VisualBlueMaskMask,
                           &template, &found);
+    return vi;
 }
 
 static XVisualInfo *get_visual_default(GtkWidget *widget)
@@ -734,14 +739,18 @@ static int ximage_create(GtkWidget *widget)
     if (d->vi == NULL) {
         d->convert = true;
         d->vi = get_visual_default(widget);
+        d->vi = get_visual_for_format(widget, SPICE_SURFACE_FMT_32_xRGB);
         g_return_val_if_fail(d->vi != NULL, 1);
     }
     if (d->convert) {
-        g_critical("format conversion not implemented for %d, FIXME?", d->format);
+        d->data = g_malloc0(d->height * d->stride); /* pixels are 32 bits */
     }
 
     d->gc = XCreateGC(d->dpy, gdk_x11_drawable_get_xid(window),
                       GCForeground | GCBackground, &gcval);
+
+    if (d->convert) /* do not use shm when doing color format conversion */
+        goto xcreate;
 
     if (d->have_mitshm && d->shmid != -1) {
         if (!XShmQueryExtension(d->dpy)) {
@@ -770,6 +779,7 @@ shm_fail:
     d->have_mitshm = false;
     if (old_handler)
         XSetErrorHandler(old_handler);
+xcreate:
     d->ximage = XCreateImage(d->dpy, d->vi->visual, d->vi->depth, ZPixmap, 0,
                              d->data, d->width, d->height, 32, d->stride);
     return 0;
@@ -783,6 +793,8 @@ static void ximage_destroy(GtkWidget *widget)
     if (d->ximage) {
         XDestroyImage(d->ximage);
         d->ximage = NULL;
+        if (d->convert)
+            d->data = 0;
     }
     if (d->shminfo) {
         XShmDetach(d->dpy, d->shminfo);
@@ -794,6 +806,20 @@ static void ximage_destroy(GtkWidget *widget)
         d->gc = NULL;
     }
 }
+
+#define CONVERT_0565_TO_0888(s)                                         \
+    (((((s) << 3) & 0xf8) | (((s) >> 2) & 0x7)) |                       \
+     ((((s) << 5) & 0xfc00) | (((s) >> 1) & 0x300)) |                   \
+     ((((s) << 8) & 0xf80000) | (((s) << 3) & 0x70000)))
+
+#define CONVERT_0565_TO_8888(s) (CONVERT_0565_TO_0888(s) | 0xff000000)
+
+#define CONVERT_0555_TO_0888(s)                                         \
+    (((((s) & 0x001f) << 3) | (((s) & 0x001c) >> 2)) |                  \
+     ((((s) & 0x03e0) << 6) | (((s) & 0x0380) << 1)) |                  \
+     ((((s) & 0x7c00) << 9) | ((((s) & 0x7000)) << 4)))
+
+#define CONVERT_0555_TO_8888(s) (CONVERT_0555_TO_0888(s) | 0xff000000)
 
 static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
 {
@@ -814,12 +840,46 @@ static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
         ximage_create(widget);
     }
 
+    if (d->convert) {
+        int i, j, maxy, maxx;
+        guint32 *dest = d->data;
+        guint16 *src = d->data_origin;
+
+        g_return_val_if_fail(d->format == SPICE_SURFACE_FMT_16_555 ||
+                             d->format == SPICE_SURFACE_FMT_16_565, false);
+
+        dest +=  (d->stride / 4) * expose->area.y;
+        src += (d->stride / 2) * expose->area.y;
+
+        maxy = MIN(expose->area.y + expose->area.height, d->height);
+        maxx = MIN(expose->area.x + expose->area.width, d->width);
+        if (d->format == SPICE_SURFACE_FMT_16_555) {
+            for (j = expose->area.y; j < maxy; j++) {
+                for (i = expose->area.x; i < maxx; i++) {
+                    dest[i] = CONVERT_0555_TO_0888(src[i]);
+                }
+
+                dest += d->stride / 4;
+                src += d->stride / 2;
+            }
+        } else if (d->format == SPICE_SURFACE_FMT_16_565) {
+            for (j = expose->area.y; j < maxy; j++) {
+                for (i = expose->area.x; i < maxx; i++) {
+                    dest[i] = CONVERT_0565_TO_0888(src[i]);
+                }
+
+                dest += d->stride / 4;
+                src += d->stride / 2;
+            }
+        }
+    }
+
     if (expose->area.x >= d->mx &&
         expose->area.y >= d->my &&
         expose->area.x + expose->area.width  <= d->mx + d->width &&
         expose->area.y + expose->area.height <= d->my + d->height) {
         /* area is completely inside the guest screen -- blit it */
-        if (d->have_mitshm) {
+        if (d->have_mitshm && d->shminfo) {
             XShmPutImage(d->dpy, gdk_x11_drawable_get_xid(window),
                          d->gc, d->ximage,
                          expose->area.x - d->mx, expose->area.y - d->my,
@@ -849,7 +909,7 @@ static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
             XFillRectangle(d->dpy, gdk_x11_drawable_get_xid(window),
                            d->gc, 0, y2, d->ww, d->wh - y2);
         }
-        if (d->have_mitshm) {
+        if (d->have_mitshm && d->shminfo) {
             XShmPutImage(d->dpy, gdk_x11_drawable_get_xid(window),
                          d->gc, d->ximage,
                          0, 0, d->mx, d->my, d->width, d->height,
@@ -1446,7 +1506,7 @@ static void primary_create(SpiceChannel *channel, gint format,
     d->format = format;
     d->stride = stride;
     d->shmid  = shmid;
-    d->data   = imgdata;
+    d->data_origin = d->data = imgdata;
 
     if (d->width != width || d->height != height) {
         d->width  = width;
@@ -1469,6 +1529,7 @@ static void primary_destroy(SpiceChannel *channel, gpointer data)
     d->stride = 0;
     d->shmid  = 0;
     d->data   = 0;
+    d->data_origin = 0;
     ximage_destroy(GTK_WIDGET(display));
 }
 
@@ -1964,7 +2025,7 @@ GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
     guchar *src, *data, *dest;
 
     g_return_val_if_fail(d != NULL, NULL);
-    g_return_val_if_fail(d->format == SPICE_SURFACE_FMT_32_xRGB, NULL);
+    /* TODO: ensure d->data has been exposed? */
 
     data = g_malloc(d->width * d->height * 3);
     src = d->data;
