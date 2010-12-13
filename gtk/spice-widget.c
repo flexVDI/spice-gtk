@@ -777,6 +777,8 @@ static int ximage_create(GtkWidget *widget)
 
 shm_fail:
     d->have_mitshm = false;
+    g_free(d->shminfo);
+    d->shminfo = NULL;
     if (old_handler)
         XSetErrorHandler(old_handler);
 xcreate:
@@ -791,6 +793,10 @@ static void ximage_destroy(GtkWidget *widget)
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     if (d->ximage) {
+        /* avoid XDestroy to free shared memory, owned and freed by
+           channel-display itself */
+        if (d->ximage->data == d->data_origin)
+            d->ximage->data = NULL;
         XDestroyImage(d->ximage);
         d->ximage = NULL;
         if (d->convert)
@@ -1526,6 +1532,7 @@ static void primary_destroy(SpiceChannel *channel, gpointer data)
     SpiceDisplay *display = SPICE_DISPLAY(data);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
+    ximage_destroy(GTK_WIDGET(display));
     d->format = 0;
     d->width  = 0;
     d->height = 0;
@@ -1533,7 +1540,6 @@ static void primary_destroy(SpiceChannel *channel, gpointer data)
     d->shmid  = 0;
     d->data   = 0;
     d->data_origin = 0;
-    ximage_destroy(GTK_WIDGET(display));
 }
 
 static void invalidate(SpiceChannel *channel,
