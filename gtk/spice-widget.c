@@ -847,21 +847,24 @@ static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
     }
 
     if (d->convert) {
-        int i, j, maxy, maxx;
+        int i, j, maxy, maxx, miny, minx;
         guint32 *dest = d->data;
         guint16 *src = d->data_origin;
 
         g_return_val_if_fail(d->format == SPICE_SURFACE_FMT_16_555 ||
                              d->format == SPICE_SURFACE_FMT_16_565, false);
 
-        dest +=  (d->stride / 4) * expose->area.y;
-        src += (d->stride / 2) * expose->area.y;
+        miny = MAX(expose->area.y - d->my, 0);
+        minx = MAX(expose->area.x - d->mx, 0);
+        maxy = MIN(expose->area.y - d->my + expose->area.height, d->height);
+        maxx = MIN(expose->area.x - d->mx + expose->area.width, d->width);
 
-        maxy = MIN(expose->area.y + expose->area.height, d->height);
-        maxx = MIN(expose->area.x + expose->area.width, d->width);
+        dest +=  (d->stride / 4) * miny;
+        src += (d->stride / 2) * miny;
+
         if (d->format == SPICE_SURFACE_FMT_16_555) {
-            for (j = expose->area.y; j < maxy; j++) {
-                for (i = expose->area.x; i < maxx; i++) {
+            for (j = miny; j < maxy; j++) {
+                for (i = minx; i < maxx; i++) {
                     dest[i] = CONVERT_0555_TO_0888(src[i]);
                 }
 
@@ -869,8 +872,8 @@ static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
                 src += d->stride / 2;
             }
         } else if (d->format == SPICE_SURFACE_FMT_16_565) {
-            for (j = expose->area.y; j < maxy; j++) {
-                for (i = expose->area.x; i < maxx; i++) {
+            for (j = miny; j < maxy; j++) {
+                for (i = minx; i < maxx; i++) {
                     dest[i] = CONVERT_0565_TO_0888(src[i]);
                 }
 
