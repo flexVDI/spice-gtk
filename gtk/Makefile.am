@@ -7,7 +7,9 @@ EXTRA_DIST =					\
 	spice-marshal.txt			\
 	keymap-gen.pl				\
 	keymaps.csv				\
-	decode-glz-tmpl.c
+	decode-glz-tmpl.c			\
+	map-file				\
+	$(NULL)
 
 bin_PROGRAMS = spicy snappy
 lib_LTLIBRARIES = \
