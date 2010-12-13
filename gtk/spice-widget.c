@@ -148,7 +148,7 @@ static void try_keyboard_grab(GtkWidget *widget);
 static void try_keyboard_ungrab(GtkWidget *widget);
 static void try_mouse_grab(GtkWidget *widget);
 static void try_mouse_ungrab(GtkWidget *widget);
-static void recalc_geometry(GtkWidget *widget);
+static void recalc_geometry(GtkWidget *widget, gboolean set_display);
 static void clipboard_owner_change(GtkClipboard *clipboard,
                                    GdkEventOwnerChange *event, gpointer user_data);
 static void disconnect_main(SpiceDisplay *display);
@@ -254,7 +254,7 @@ static void spice_display_set_property(GObject      *object,
         d->resize_guest_enable = g_value_get_boolean(value);
         if (d->resize_guest_enable) {
             gtk_widget_set_size_request(GTK_WIDGET(display), 640, 480);
-            recalc_geometry(GTK_WIDGET(display));
+            recalc_geometry(GTK_WIDGET(display), TRUE);
         } else {
             gtk_widget_set_size_request(GTK_WIDGET(display),
                                         d->width, d->height);
@@ -652,7 +652,7 @@ static void try_mouse_ungrab(GtkWidget *widget)
     g_signal_emit(widget, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, false);
 }
 
-static void recalc_geometry(GtkWidget *widget)
+static void recalc_geometry(GtkWidget *widget, gboolean set_display)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
@@ -665,8 +665,8 @@ static void recalc_geometry(GtkWidget *widget)
         d->my = (d->wh - d->height) / 2;
 
     SPICE_DEBUG("%s: guest %dx%d, window %dx%d, offset +%d+%d", __FUNCTION__,
-            d->width, d->height, d->ww, d->wh, d->mx, d->my);
-    if (d->resize_guest_enable) {
+                d->width, d->height, d->ww, d->wh, d->mx, d->my);
+    if (d->resize_guest_enable && set_display) {
         spice_main_set_display(d->main, d->channel_id,
                                0, 0, d->ww, d->wh);
     }
@@ -1252,7 +1252,7 @@ static gboolean configure_event(GtkWidget *widget, GdkEventConfigure *conf)
     if (conf->width != d->ww  || conf->height != d->wh) {
         d->ww = conf->width;
         d->wh = conf->height;
-        recalc_geometry(widget);
+        recalc_geometry(widget, TRUE);
     }
     return true;
 }
@@ -1502,6 +1502,7 @@ static void primary_create(SpiceChannel *channel, gint format,
 {
     SpiceDisplay *display = data;
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    gboolean set_display = FALSE;
 
     d->format = format;
     d->stride = stride;
@@ -1509,9 +1510,11 @@ static void primary_create(SpiceChannel *channel, gint format,
     d->data_origin = d->data = imgdata;
 
     if (d->width != width || d->height != height) {
+        if (d->width != 0 && d->height != 0)
+            set_display = TRUE;
         d->width  = width;
         d->height = height;
-        recalc_geometry(GTK_WIDGET(display));
+        recalc_geometry(GTK_WIDGET(display), set_display);
         if (!d->resize_guest_enable) {
             gtk_widget_set_size_request(GTK_WIDGET(display), width, height);
         }
