@@ -574,7 +574,7 @@ void agent_monitors_config(SpiceMainChannel *channel)
     size = sizeof(VDAgentMonitorsConfig) + sizeof(VDAgentMonConfig) * monitors * 2;
     mon = spice_malloc0(size);
 
-    mon->num_of_monitors = monitors * 2;
+    mon->num_of_monitors = monitors;
     mon->flags = 0;
     for (i = 0; i < monitors; i++) {
         mon->monitors[i].depth  = 32;
@@ -582,11 +582,6 @@ void agent_monitors_config(SpiceMainChannel *channel)
         mon->monitors[i].height = c->display[i].height;
         mon->monitors[i].x = c->display[i].x;
         mon->monitors[i].y = c->display[i].y;
-        mon->monitors[i * 2 + 1].depth  = 16;
-        mon->monitors[i * 2 + 1].width  = c->display[i].width;
-        mon->monitors[i * 2 + 1].height = c->display[i].height;
-        mon->monitors[i * 2 + 1].x = c->display[i].x;
-        mon->monitors[i * 2 + 1].y = c->display[i].y;
         SPICE_DEBUG("%s: #%d %dx%d+%d+%d @ %d bpp", __FUNCTION__, i,
                     mon->monitors[i].width, mon->monitors[i].height,
                     mon->monitors[i].x, mon->monitors[i].y,
