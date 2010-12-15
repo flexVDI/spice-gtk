@@ -24,6 +24,9 @@
 #include "lz.h"
 #include "region.h"
 #include "draw.h"
+#ifdef WIN32
+#include <windows.h>
+#endif
 
 typedef void (*spice_destroy_fn_t)(void *data);
 
