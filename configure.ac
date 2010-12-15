@@ -102,6 +102,8 @@ AM_CONDITIONAL(OS_WIN32, test "$os_win32" = "yes")
 AM_CONDITIONAL(OS_UNIX, test "$os_win32" != "yes")
 AM_CONDITIONAL(OS_LINUX, test "$os_linux" = "yes")
 
+AC_CHECK_HEADERS([sys/ipc.h sys/shm.h])
+
 dnl =========================================================================
 dnl Chek optional features
 PKG_CHECK_MODULES(PROTOCOL, spice-protocol >= 0.6.3)
@@ -157,6 +159,13 @@ AS_IF([test "x$have_pulse" = "xyes"],
 AM_CONDITIONAL([HAVE_PULSE], [test "x$have_pulse" = "xyes"])
 AC_SUBST(PULSE_CFLAGS)
 AC_SUBST(PULSE_LIBS)
+
+AC_ARG_WITH([x11],
+    AS_HELP_STRING([--with-x11], [Use x11/shm display backend instead of cairo.]))
+
+AS_IF([test "x$with_x11" = "xyes"],
+      [AC_DEFINE([WITH_X11], 1, [Use X11 backend?])])
+AM_CONDITIONAL([WITH_X11], [test "x$with_x11" = "xyes"])
 
 # Add parameter for (partial) static linkage of spice client.
 # this is used to achive single binary package for all (?) distros.
@@ -417,6 +426,7 @@ echo "
         c++ compiler:	          ${CXX}
 
         Coroutine:                ${with_coroutine}
+        Target:                   ${red_target}
 
         Now type 'make' to build $PACKAGE
 "

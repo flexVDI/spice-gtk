@@ -28,8 +28,6 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#include <sys/socket.h>
-
 #include "gio-coroutine.h"
 
 static void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out, gboolean buffered);
@@ -419,7 +417,7 @@ void spice_msg_in_hexdump(spice_msg_in *in)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(in->channel);
 
-    fprintf(stderr, "--\n<< hdr: %s serial %ld type %d size %d sub-list %d\n",
+    fprintf(stderr, "--\n<< hdr: %s serial %" PRIu64 " type %d size %d sub-list %d\n",
             c->name, in->header.serial, in->header.type,
             in->header.size, in->header.sub_list);
     hexdump("<< msg", in->data, in->dpos);
@@ -430,7 +428,7 @@ void spice_msg_out_hexdump(spice_msg_out *out, unsigned char *data, int len)
 {
     spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(out->channel);
 
-    fprintf(stderr, "--\n>> hdr: %s serial %ld type %d size %d sub-list %d\n",
+    fprintf(stderr, "--\n>> hdr: %s serial %" PRIu64 " type %d size %d sub-list %d\n",
             c->name, out->header->serial, out->header->type,
             out->header->size, out->header->sub_list);
     hexdump(">> msg", data, len);
@@ -727,7 +725,8 @@ static void spice_channel_recv_auth(SpiceChannel *channel)
 
     rc = spice_channel_read(channel, &link_res, sizeof(link_res));
     if (rc != sizeof(link_res)) {
-        g_critical("incomplete auth reply (%d/%zd)", rc, sizeof(link_res));
+        g_critical("incomplete auth reply (%d/%" G_GSIZE_FORMAT ")",
+                   rc, sizeof(link_res));
         return;
     }
 
@@ -809,7 +808,8 @@ static void spice_channel_recv_link_hdr(SpiceChannel *channel)
 
     rc = spice_channel_read(channel, &c->peer_hdr, sizeof(c->peer_hdr));
     if (rc != sizeof(c->peer_hdr)) {
-        g_critical("incomplete link header (%d/%zd)", rc, sizeof(c->peer_hdr));
+        g_critical("incomplete link header (%d/%" G_GSIZE_FORMAT ")",
+                   rc, sizeof(c->peer_hdr));
         return;
     }
     g_return_if_fail(c->peer_hdr.magic == SPICE_MAGIC);

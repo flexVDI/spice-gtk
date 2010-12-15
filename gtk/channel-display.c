@@ -15,6 +15,18 @@
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#ifdef HAVE_SYS_SHM_H
+#include <sys/shm.h>
+#endif
+
+#ifdef HAVE_SYS_IPC_H
+#include <sys/ipc.h>
+#endif
+
 #include "spice-client.h"
 #include "spice-common.h"
 
@@ -23,9 +35,6 @@
 #include "spice-channel-priv.h"
 #include "channel-display-priv.h"
 #include "decode.h"
-
-#include <sys/ipc.h>
-#include <sys/shm.h>
 
 /**
  * SECTION:channel-display
@@ -60,6 +69,9 @@ struct spice_display_channel {
     display_stream              **streams;
     int                         nstreams;
     gboolean                    mark;
+#ifdef WIN32
+    HDC dc;
+#endif
 };
 
 G_DEFINE_TYPE(SpiceDisplayChannel, spice_display_channel, SPICE_TYPE_CHANNEL)
@@ -494,6 +506,7 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
 
     if (surface->primary) {
+#ifdef HAVE_SYS_SHM_H
         surface->shmid = shmget(IPC_PRIVATE, surface->size, IPC_CREAT | 0777);
         if (surface->shmid >= 0) {
             surface->data = shmat(surface->shmid, 0, 0);
@@ -502,6 +515,7 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
                 surface->shmid = -1;
             }
         }
+#endif
     } else {
         surface->shmid = -1;
     }
@@ -552,9 +566,12 @@ static void destroy_canvas(display_surface *surface)
 
     if (surface->shmid == -1) {
         free(surface->data);
-    } else {
+    }
+#ifdef HAVE_SYS_SHM_H
+    else {
         shmdt(surface->data);
     }
+#endif
     surface->shmid = -1;
     surface->data = NULL;
 
@@ -665,9 +682,11 @@ static void display_handle_mode(SpiceChannel *channel, spice_msg_in *in)
     emit_main_context(channel, SPICE_DISPLAY_PRIMARY_CREATE,
                       surface->format, surface->width, surface->height,
                       surface->stride, surface->shmid, surface->data);
+#ifdef HAVE_SYS_SHM_H
     if (surface->shmid != -1) {
         shmctl(surface->shmid, IPC_RMID, 0);
     }
+#endif
     ring_add(&c->surfaces, &surface->link);
 }
 
@@ -841,8 +860,12 @@ static void display_handle_stream_data(SpiceChannel *channel, spice_msg_in *in)
             data += stride * (info->src_height - 1);
             stride = -stride;
         }
-        st->surface->canvas->ops->put_image
-            (st->surface->canvas, &info->dest, data,
+        st->surface->canvas->ops->put_image(
+             st->surface->canvas,
+#ifdef WIN32
+             c->dc,
+#endif
+             &info->dest, data,
              info->src_width, info->src_height, stride,
              st->have_region ? &st->region : NULL);
         if (st->surface->primary)

@@ -64,6 +64,7 @@ libspice_client_gtk_la_LDFLAGS =	\
 	$(NULL)
 
 libspice_client_gtk_la_LIBADD =		\
+	libspice-client-glib.la		\
 	$(GTK2_LIBS)			\
 	$(NULL)
 
@@ -77,6 +78,16 @@ libspice_client_gtk_la_SOURCES =	\
 	spice-grabsequence.c		\
 	spice-grabsequence.h		\
 	$(NULL)
+
+if WITH_X11
+libspice_client_gtk_la_SOURCES +=	\
+	spice-widget-x11.c		\
+	$(NULL)
+else
+libspice_client_gtk_la_SOURCES +=	\
+	spice-widget-cairo.c		\
+	$(NULL)
+endif
 
 libspice_client_gtkincludedir = $(includedir)/spice-client-gtk
 libspice_client_gtkinclude_HEADERS =	\

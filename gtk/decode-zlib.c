@@ -17,7 +17,10 @@
 */
 #include "decode.h"
 
+#ifndef __GNUC__
 #define ZLIB_WINAPI
+#endif
+
 #include <zlib.h>
 
 typedef struct GlibZlibDecoder

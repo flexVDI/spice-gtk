@@ -39,6 +39,9 @@ typedef struct GlibJpegDecoder
     int      _height;
 } GlibJpegDecoder;
 
+#if JPEG_LIB_VERSION < 70
+#define jpeg_boolean boolean
+#endif
 
 static void begin_decode(SpiceJpegDecoder *decoder,
                          uint8_t* data, int data_size,
@@ -138,7 +141,7 @@ static void jpeg_decoder_init_source(j_decompress_ptr cinfo)
 {
 }
 
-static boolean jpeg_decoder_fill_input_buffer(j_decompress_ptr cinfo)
+static jpeg_boolean jpeg_decoder_fill_input_buffer(j_decompress_ptr cinfo)
 {
     g_warning("no more data for jpeg");
     return FALSE;
