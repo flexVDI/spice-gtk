@@ -837,11 +837,11 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
     }
 
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
-        if (conn->audio == NULL)
-            return;
         SPICE_DEBUG("zap audio channel");
-        g_object_unref(conn->audio);
-        conn->audio = NULL;
+        if (conn->audio != NULL) {
+            g_object_unref(conn->audio);
+            conn->audio = NULL;
+        }
     }
 
     conn->channels--;

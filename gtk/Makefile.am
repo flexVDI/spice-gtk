@@ -122,8 +122,6 @@ libspice_client_glib_la_SOURCES =	\
 	spice-channel-priv.h		\
 	spice-marshal.c			\
 	spice-marshal.h			\
-	spice-pulse.c			\
-	spice-pulse.h			\
 	generated_demarshallers.c	\
 	generated_demarshallers1.c	\
 	generated_marshallers.c		\
@@ -174,6 +172,13 @@ libspice_client_glib_la_SOURCES =	\
 	$(COMMON_DIR)/region.c		\
 	$(COMMON_DIR)/region.h		\
 	$(NULL)
+
+if HAVE_PULSE
+libspice_client_glib_la_SOURCES +=	\
+	spice-pulse.c			\
+	spice-pulse.h			\
+	$(NULL)
+endif
 
 if WITH_UCONTEXT
 libspice_client_glib_la_SOURCES += continuation.h continuation.c coroutine_ucontext.c

@@ -141,7 +141,20 @@ PKG_CHECK_MODULES(GIO, gio-2.0 >= 2.10.0)
 AC_SUBST(GIO_CFLAGS)
 AC_SUBST(GIO_LIBS)
 
-PKG_CHECK_MODULES(PULSE, libpulse libpulse-mainloop-glib)
+AC_ARG_WITH([pulse],
+    AS_HELP_STRING([--without-pulse], [Ignore presence of PulseAudio and disable it]))
+
+AS_IF([test "x$with_pulse" != "xno"],
+      [PKG_CHECK_MODULES(PULSE, libpulse libpulse-mainloop-glib, [have_pulse=yes], [have_pulse=no])],
+      [have_pulse=no])
+
+AS_IF([test "x$have_pulse" = "xyes"],
+      [AC_DEFINE([HAVE_PULSE], 1, [Have pulseaudio?])],
+      [AS_IF([test "x$with_pulse" = "xyes"],
+             [AC_MSG_ERROR([PulseAudio requested but not found])
+      ])
+])
+AM_CONDITIONAL([HAVE_PULSE], [test "x$have_pulse" = "xyes"])
 AC_SUBST(PULSE_CFLAGS)
 AC_SUBST(PULSE_LIBS)
 
@@ -201,7 +214,7 @@ if test "$with_coroutine" = "ucontext"; then
 fi
 
 if test "$with_coroutine" = "gthread"; then
-  PKG_CHECK_MODULES(GTHREAD, gthread-2.0 > $GTHREAD_REQUIRED)
+  PKG_CHECK_MODULES(GTHREAD, gthread-2.0 > 2.0.0)
   WITH_UCONTEXT=0
 fi
 AC_SUBST(GTHREAD_CFLAGS)

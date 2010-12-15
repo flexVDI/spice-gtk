@@ -32,11 +32,18 @@
  * application, and connect them to the default sound system.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include "spice-client.h"
 #include "spice-common.h"
 
 #include "spice-audio.h"
+
+#ifdef HAVE_PULSE
 #include "spice-pulse.h"
+#endif
 
 G_DEFINE_ABSTRACT_TYPE(SpiceAudio, spice_audio, G_TYPE_OBJECT)
 
@@ -59,7 +66,7 @@ static void spice_audio_init(SpiceAudio *self G_GNUC_UNUSED)
  * Once instantiated, #SpiceAudio will handle the playback and record
  * channels to stream to your local audio system.
  *
- * Returns: a new #SpiceAudio instance.
+ * Returns: a new #SpiceAudio instance or %NULL if no backend or failed.
  **/
 SpiceAudio *spice_audio_new(SpiceSession *session, GMainContext *context,
                          const char *name)
@@ -71,6 +78,8 @@ SpiceAudio *spice_audio_new(SpiceSession *session, GMainContext *context,
     if (name == NULL)
       name = "spice";
 
+#ifdef HAVE_PULSE
     audio = SPICE_AUDIO(spice_pulse_new(session, context, name));
+#endif
     return audio;
 }
