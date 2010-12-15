@@ -115,7 +115,7 @@ static inline uint32_t canvas_16bpp_to_32bpp(uint32_t color)
 
     return ret;
 }
-#ifdef WIN32
+#if defined(WIN32) && defined(GDI_CANVAS)
 static HDC create_compatible_dc()
 {
     HDC dc = CreateCompatibleDC(NULL);
@@ -146,7 +146,7 @@ typedef struct QuicData {
     jmp_buf jmp_env;
     char message_buf[512];
     SpiceChunks *chunks;
-    int current_chunk;
+    uint32_t current_chunk;
 } QuicData;
 
 typedef struct CanvasBase {
@@ -809,8 +809,8 @@ static pixman_image_t *canvas_get_lz(CanvasBase *canvas, SpiceImage *image, int 
         CANVAS_ERROR("unexpected LZ image type");
     }
 
-    ASSERT(width == image->descriptor.width);
-    ASSERT(height == image->descriptor.height);
+    ASSERT((unsigned)width == image->descriptor.width);
+    ASSERT((unsigned)height == image->descriptor.height);
 
     ASSERT((image->descriptor.type == SPICE_IMAGE_TYPE_LZ_PLT) || (n_comp_pixels == width * height));
 #ifdef WIN32
@@ -3309,7 +3309,7 @@ static void unimplemented_op(SpiceCanvas *canvas)
 inline static void canvas_base_init_ops(SpiceCanvasOps *ops)
 {
     void **ops_cast;
-    int i;
+    unsigned i;
 
     ops_cast = (void **)ops;
     for (i = 0; i < sizeof(SpiceCanvasOps) / sizeof(void *); i++) {

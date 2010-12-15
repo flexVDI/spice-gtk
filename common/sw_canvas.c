@@ -976,8 +976,8 @@ static void canvas_put_image(SpiceCanvas *spice_canvas,
 {
     SwCanvas *canvas = (SwCanvas *)spice_canvas;
     pixman_image_t *src;
-    int dest_width;
-    int dest_height;
+    uint32_t dest_width;
+    uint32_t dest_height;
     double sx, sy;
     pixman_transform_t transform;
 

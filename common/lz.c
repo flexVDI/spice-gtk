@@ -633,7 +633,7 @@ void lz_decode(LzContext *lz, LzImageType to_type, uint8_t *buf)
     Encoder *encoder = (Encoder *)lz;
     size_t out_size = 0;
     size_t alpha_size = 0;
-    int size = 0;
+    size_t size = 0;
     if (IS_IMAGE_TYPE_PLT[encoder->type]) {
         if (to_type == encoder->type) {
             size = encoder->height * encoder->stride;
