@@ -536,7 +536,7 @@ static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
         return false;
 
     if (!d->ximage) {
-        spicex_image_create(widget);
+        spicex_image_create(display);
     }
 
     if (d->convert) {
@@ -544,7 +544,7 @@ static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
             return false;
     }
 
-    spicex_expose_event(widget, expose);
+    spicex_expose_event(display, expose);
     return true;
 }
 
@@ -1150,7 +1150,7 @@ static void primary_destroy(SpiceChannel *channel, gpointer data)
     SpiceDisplay *display = SPICE_DISPLAY(data);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
-    spicex_image_destroy(GTK_WIDGET(display));
+    spicex_image_destroy(display);
     d->format = 0;
     d->width  = 0;
     d->height = 0;
@@ -1164,9 +1164,11 @@ static void invalidate(SpiceChannel *channel,
                        gint x, gint y, gint w, gint h, gpointer data)
 {
     SpiceDisplay *display = data;
-    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    /* TODO: do color convert here */
+    spicex_image_invalidate(display, &x, &y, &w, &h);
     gtk_widget_queue_draw_area(GTK_WIDGET(display),
-                               x + d->mx, y + d->my, w, h);
+                               x, y, w, h);
 }
 
 static void mark(SpiceChannel *channel, gint mark, gpointer data)

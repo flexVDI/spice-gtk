@@ -119,11 +119,10 @@ static int catch_no_mitshm(Display * dpy, XErrorEvent * event)
 }
 
 G_GNUC_INTERNAL
-int spicex_image_create(GtkWidget *widget)
+int spicex_image_create(SpiceDisplay *display)
 {
-    SpiceDisplay    *display = SPICE_DISPLAY(widget);
     spice_display   *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    GdkDrawable     *window = gtk_widget_get_window(widget);
+    GdkDrawable     *window = gtk_widget_get_window(GTK_WIDGET(display));
     GdkDisplay      *gtkdpy = gdk_drawable_get_display(window);
     void            *old_handler = NULL;
     XGCValues       gcval = {
@@ -133,11 +132,11 @@ int spicex_image_create(GtkWidget *widget)
 
     d->dpy = gdk_x11_display_get_xdisplay(gtkdpy);
     d->convert = false;
-    d->vi = get_visual_for_format(widget, d->format);
+    d->vi = get_visual_for_format(GTK_WIDGET(display), d->format);
     if (d->vi == NULL) {
         d->convert = true;
-        d->vi = get_visual_default(widget);
-        d->vi = get_visual_for_format(widget, SPICE_SURFACE_FMT_32_xRGB);
+        d->vi = get_visual_default(GTK_WIDGET(display));
+        d->vi = get_visual_for_format(GTK_WIDGET(display), SPICE_SURFACE_FMT_32_xRGB);
         g_return_val_if_fail(d->vi != NULL, 1);
     }
     if (d->convert) {
@@ -186,9 +185,8 @@ int spicex_image_create(GtkWidget *widget)
 }
 
 G_GNUC_INTERNAL
-void spicex_image_destroy(GtkWidget *widget)
+void spicex_image_destroy(SpiceDisplay *display)
 {
-    SpiceDisplay *display = SPICE_DISPLAY(widget);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     if (d->ximage) {
@@ -210,13 +208,16 @@ void spicex_image_destroy(GtkWidget *widget)
         XFreeGC(d->dpy, d->gc);
         d->gc = NULL;
     }
+    if (d->convert && d->data) {
+        g_free(d->data);
+        d->data = NULL;
+    }
 }
 
 G_GNUC_INTERNAL
-void spicex_expose_event(GtkWidget *widget, GdkEventExpose *expose)
+void spicex_expose_event(SpiceDisplay *display, GdkEventExpose *expose)
 {
-    SpiceDisplay *display = SPICE_DISPLAY(widget);
-    GdkDrawable *window = gtk_widget_get_window(widget);
+    GdkDrawable *window = gtk_widget_get_window(GTK_WIDGET(display));
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     if (expose->area.x >= d->mx &&
@@ -360,4 +361,14 @@ void spicex_sync_keyboard_lock_modifiers(SpiceDisplay *display)
     modifiers = get_keyboard_lock_modifiers(x_display);
     if (d->inputs)
         spice_inputs_set_key_locks(d->inputs, modifiers);
+}
+
+G_GNUC_INTERNAL
+void spicex_image_invalidate (SpiceDisplay *display,
+                              gint *x, gint *y, gint *w, gint *h)
+{
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    /* Offset the Spice region to produce expose region */
+    *x += d->mx;
+    *y += d->my;
 }

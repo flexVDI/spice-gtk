@@ -51,14 +51,15 @@ struct spice_display {
     enum SpiceSurfaceFmt    format;
     gint                    width, height, stride;
     gint                    shmid;
-    gpointer                data;
-    gpointer                data_origin;
+    gpointer                data_origin; /* the original display image data */
+    gpointer                data; /* converted if necessary to 32 bits */
     gboolean                clipboard_by_guest; /* hack? */
 
     gint                    ww, wh, mx, my;
 
     bool                    convert;
     bool                    have_mitshm;
+    /* TODO: make a display object instead? */
 #ifdef WITH_X11
     Display                 *dpy;
     XVisualInfo             *vi;
@@ -66,8 +67,10 @@ struct spice_display {
     XShmSegmentInfo         *shminfo;
     GC                      gc;
 #else
-    void                    *ximage;
+    cairo_surface_t         *ximage;
+    cairo_surface_t         *ximage_cache;
 #endif
+    gboolean                allow_scaling;
 
     GtkClipboard            *clipboard;
     bool                    clip_hasdata;
@@ -101,9 +104,10 @@ struct spice_display {
     gint                    mark;
 };
 
-int      spicex_image_create                 (GtkWidget *widget);
-void     spicex_image_destroy                (GtkWidget *widget);
-void     spicex_expose_event                 (GtkWidget *widget, GdkEventExpose *expose);
+int      spicex_image_create                 (SpiceDisplay *display);
+void     spicex_image_destroy                (SpiceDisplay *display);
+void     spicex_image_invalidate             (SpiceDisplay *display, gint *x, gint *y, gint *w, gint *h);
+void     spicex_expose_event                 (SpiceDisplay *display, GdkEventExpose *expose);
 void     spicex_sync_keyboard_lock_modifiers (SpiceDisplay *display);
 
 G_END_DECLS

@@ -143,6 +143,10 @@ PKG_CHECK_MODULES(GIO, gio-2.0 >= 2.10.0)
 AC_SUBST(GIO_CFLAGS)
 AC_SUBST(GIO_LIBS)
 
+PKG_CHECK_MODULES(CAIRO, cairo >= 1.2.0)
+AC_SUBST(CAIRO_CFLAGS)
+AC_SUBST(CAIRO_LIBS)
+
 AC_ARG_WITH([pulse],
     AS_HELP_STRING([--without-pulse], [Ignore presence of PulseAudio and disable it]))
 

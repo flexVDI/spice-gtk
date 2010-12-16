@@ -46,6 +46,7 @@ SPICE_COMMON_CPPFLAGS = \
 	$(CELT051_CFLAGS)		\
 	$(PULSE_CFLAGS)			\
 	$(GTK2_CFLAGS)			\
+	$(CAIRO_CFLAGS)			\
 	$(GLIB2_CFLAGS)			\
 	$(GIO_CFLAGS)			\
 	$(GOBJECT2_CFLAGS)		\
@@ -66,6 +67,7 @@ libspice_client_gtk_la_LDFLAGS =	\
 libspice_client_gtk_la_LIBADD =		\
 	libspice-client-glib.la		\
 	$(GTK2_LIBS)			\
+	$(CAIRO_LIBS)			\
 	$(NULL)
 
 libspice_client_gtk_la_SOURCES =	\
