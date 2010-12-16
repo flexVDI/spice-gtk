@@ -147,22 +147,47 @@ PKG_CHECK_MODULES(CAIRO, cairo >= 1.2.0)
 AC_SUBST(CAIRO_CFLAGS)
 AC_SUBST(CAIRO_LIBS)
 
-AC_ARG_WITH([pulse],
-    AS_HELP_STRING([--without-pulse], [Ignore presence of PulseAudio and disable it]))
+PKG_CHECK_MODULES(GTHREAD, gthread-2.0 > 2.0.0)
+AC_SUBST(GTHREAD_CFLAGS)
+AC_SUBST(GTHREAD_LIBS)
 
-AS_IF([test "x$with_pulse" != "xno"],
+AC_ARG_WITH([audio],
+    AS_HELP_STRING([--with-audio], [Select audio backend @<:@default=pulse@:>@]), [], [with_audio=pulse])
+
+case $with_audio in
+  gstreamer|pulse|no*)
+    ;;
+  *)
+    AC_MSG_ERROR(Unsupported audio backend)
+esac
+
+AS_IF([test "x$with_audio" = "xpulse"],
       [PKG_CHECK_MODULES(PULSE, libpulse libpulse-mainloop-glib, [have_pulse=yes], [have_pulse=no])],
       [have_pulse=no])
 
 AS_IF([test "x$have_pulse" = "xyes"],
-      [AC_DEFINE([HAVE_PULSE], 1, [Have pulseaudio?])],
-      [AS_IF([test "x$with_pulse" = "xyes"],
+      [AC_DEFINE([WITH_PULSE], 1, [Have pulseaudio?])],
+      [AS_IF([test "x$with_audio" = "xpulse"],
              [AC_MSG_ERROR([PulseAudio requested but not found])
       ])
 ])
-AM_CONDITIONAL([HAVE_PULSE], [test "x$have_pulse" = "xyes"])
+AM_CONDITIONAL([WITH_PULSE], [test "x$have_pulse" = "xyes"])
 AC_SUBST(PULSE_CFLAGS)
 AC_SUBST(PULSE_LIBS)
+
+AS_IF([test "x$with_audio" = "xgstreamer"],
+      [PKG_CHECK_MODULES(GST, gstreamer-0.10 gstreamer-base-0.10, [have_gst=yes GST_LIBS="$GST_LIBS -lgstapp-0.10"], [have_gst=no])],
+      [have_gst=no])
+
+AS_IF([test "x$have_gst" = "xyes"],
+      [AC_DEFINE([WITH_GSTAUDIO], 1, [Have GStreamer?])],
+      [AS_IF([test "x$with_audio" = "xgstreamer"],
+             [AC_MSG_ERROR([GStreamer requested but not found])
+      ])
+])
+AM_CONDITIONAL([WITH_GSTAUDIO], [test "x$have_gst" = "xyes"])
+AC_SUBST(GST_CFLAGS)
+AC_SUBST(GST_LIBS)
 
 AC_ARG_WITH([x11],
     AS_HELP_STRING([--with-x11], [Use x11/shm display backend instead of cairo.]))
@@ -227,11 +252,10 @@ if test "$with_coroutine" = "ucontext"; then
 fi
 
 if test "$with_coroutine" = "gthread"; then
-  PKG_CHECK_MODULES(GTHREAD, gthread-2.0 > 2.0.0)
+  # gthread is required anyway
   WITH_UCONTEXT=0
 fi
-AC_SUBST(GTHREAD_CFLAGS)
-AC_SUBST(GTHREAD_LIBS)
+
 AC_DEFINE_UNQUOTED(WITH_UCONTEXT,[$WITH_UCONTEXT], [Whether to use ucontext coroutine impl])
 AM_CONDITIONAL(WITH_UCONTEXT, [test "$WITH_UCONTEXT" != "0"])
 
@@ -372,7 +396,7 @@ AC_MSG_RESULT([$warn_unused_result])
 
 AC_SUBST(SPICE_CFLAGS)
 
-SPICE_GLIB_CFLAGS="$PROTOCOL_CFLAGS $PIXMAN_CFLAGS $CELT051_CFLAGS $PULSE_CFLAGS $GLIB2_CFLAGS $GIO_CFLAGS $GOBJECT2_CFLAGS $SSL_CFLAGS"
+SPICE_GLIB_CFLAGS="$PROTOCOL_CFLAGS $PIXMAN_CFLAGS $CELT051_CFLAGS $PULSE_CFLAGS $GST_CFLAGS $GLIB2_CFLAGS $GIO_CFLAGS $GOBJECT2_CFLAGS $SSL_CFLAGS"
 SPICE_GTK_CFLAGS="$SPICE_GLIB_CFLAGS $GTK2_CFLAGS "
 
 AC_SUBST(SPICE_GLIB_CFLAGS)
@@ -430,6 +454,7 @@ echo "
         c++ compiler:	          ${CXX}
 
         Coroutine:                ${with_coroutine}
+        Audio:                    ${with_audio}
         Target:                   ${red_target}
 
         Now type 'make' to build $PACKAGE

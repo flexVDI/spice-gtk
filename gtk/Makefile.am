@@ -51,6 +51,7 @@ SPICE_COMMON_CPPFLAGS = \
 	$(GIO_CFLAGS)			\
 	$(GOBJECT2_CFLAGS)		\
 	$(SSL_CFLAGS)			\
+	$(GST_CFLAGS)			\
 	$(NULL)
 
 AM_CPPFLAGS = \
@@ -114,6 +115,7 @@ libspice_client_glib_la_LIBADD =	\
 	$(PIXMAN_LIBS)			\
 	$(SSL_LIBS)			\
 	$(PULSE_LIBS)			\
+	$(GST_LIBS)			\
 	$(NULL)
 
 libspice_client_glib_la_SOURCES =	\
@@ -186,10 +188,17 @@ libspice_client_glib_la_SOURCES =	\
 	$(COMMON_DIR)/region.h		\
 	$(NULL)
 
-if HAVE_PULSE
+if WITH_PULSE
 libspice_client_glib_la_SOURCES +=	\
 	spice-pulse.c			\
 	spice-pulse.h			\
+	$(NULL)
+endif
+
+if WITH_GSTAUDIO
+libspice_client_glib_la_SOURCES +=	\
+	spice-gstaudio.c		\
+	spice-gstaudio.h		\
 	$(NULL)
 endif
 

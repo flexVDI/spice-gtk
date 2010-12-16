@@ -310,8 +310,9 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
     p->state = state;
 }
 
-static void playback_data(SpicePlaybackChannel *channel, gpointer *audio, gint size,
-                       gpointer data)
+static void playback_data(SpicePlaybackChannel *channel,
+                          gpointer *audio, gint size,
+                          gpointer data)
 {
     SpicePulse *pulse = data;
     spice_pulse *p = SPICE_PULSE_GET_PRIVATE(pulse);
@@ -507,6 +508,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     spice_pulse *p = pulse->priv;
 
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
+        g_return_if_fail(p->pchannel == NULL);
         p->pchannel = g_object_ref(channel);
         g_signal_connect(channel, "playback-start",
                          G_CALLBACK(playback_start), pulse);
@@ -520,6 +522,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     }
 
     if (SPICE_IS_RECORD_CHANNEL(channel)) {
+        g_return_if_fail(p->rchannel == NULL);
         p->rchannel = g_object_ref(channel);
         g_signal_connect(channel, "record-start",
                          G_CALLBACK(record_start), pulse);

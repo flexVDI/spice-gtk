@@ -41,8 +41,11 @@
 
 #include "spice-audio.h"
 
-#ifdef HAVE_PULSE
+#ifdef WITH_PULSE
 #include "spice-pulse.h"
+#endif
+#ifdef WITH_GSTAUDIO
+#include "spice-gstaudio.h"
 #endif
 
 G_DEFINE_ABSTRACT_TYPE(SpiceAudio, spice_audio, G_TYPE_OBJECT)
@@ -78,8 +81,11 @@ SpiceAudio *spice_audio_new(SpiceSession *session, GMainContext *context,
     if (name == NULL)
       name = "spice";
 
-#ifdef HAVE_PULSE
+#ifdef WITH_PULSE
     audio = SPICE_AUDIO(spice_pulse_new(session, context, name));
+#endif
+#ifdef WITH_GSTAUDIO
+    audio = SPICE_AUDIO(spice_gstaudio_new(session, context, name));
 #endif
     return audio;
 }
