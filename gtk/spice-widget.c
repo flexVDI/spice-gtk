@@ -58,6 +58,7 @@ enum {
     PROP_MOUSE_GRAB,
     PROP_RESIZE_GUEST,
     PROP_AUTO_CLIPBOARD,
+    PROP_SCALING,
 };
 
 /* Signals */
@@ -105,6 +106,9 @@ static void spice_display_get_property(GObject    *object,
     case PROP_AUTO_CLIPBOARD:
         g_value_set_boolean(value, d->auto_clipboard_enable);
         break;
+    case PROP_SCALING:
+        g_value_set_boolean(value, d->allow_scaling);
+	break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
         break;
@@ -142,6 +146,14 @@ static void spice_display_set_property(GObject      *object,
         } else {
             gtk_widget_set_size_request(GTK_WIDGET(display),
                                         d->width, d->height);
+        }
+        break;
+    case PROP_SCALING:
+        d->allow_scaling = g_value_get_boolean(value);
+        if (d->ximage) {
+            int ww, wh;
+            gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
+            gtk_widget_queue_draw_area(GTK_WIDGET(display), 0, 0, ww, wh);
         }
         break;
     case PROP_AUTO_CLIPBOARD:
@@ -774,17 +786,32 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    int ww, wh;
 
     if (!d->inputs)
         return true;
+
+    gdk_drawable_get_size(gtk_widget_get_window(widget), &ww, &wh);
+    if (d->allow_scaling) {
+        double sx, sy;
+        sx = (double)d->width / (double)ww;
+        sy = (double)d->height / (double)wh;
+
+        /* Scaling the desktop, so scale the mouse coords
+         * by same ratio */
+        motion->x *= sx;
+        motion->y *= sy;
+    } else {
+        motion->x -= d->mx;
+        motion->y -= d->my;
+    }
+
     switch (d->mouse_mode) {
     case SPICE_MOUSE_MODE_CLIENT:
-        if (motion->x >= d->mx            &&
-            motion->x <  d->mx + d->width &&
-            motion->y >= d->my            &&
-            motion->y <  d->my + d->height) {
+        if (motion->x >= 0 && motion->x < d->width &&
+            motion->y >= 0 && motion->y < d->height) {
             spice_inputs_position(d->inputs,
-                                  motion->x - d->mx, motion->y - d->my,
+                                  motion->x, motion->y,
                                   d->channel_id,
                                   button_mask_gdk_to_spice(motion->state));
         }
@@ -1023,9 +1050,7 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                               TRUE,
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
-                              G_PARAM_STATIC_NAME |
-                              G_PARAM_STATIC_NICK |
-                              G_PARAM_STATIC_BLURB));
+                              G_PARAM_STATIC_STRINGS));
 
     g_object_class_install_property
         (gobject_class, PROP_MOUSE_GRAB,
@@ -1035,9 +1060,7 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                               TRUE,
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
-                              G_PARAM_STATIC_NAME |
-                              G_PARAM_STATIC_NICK |
-                              G_PARAM_STATIC_BLURB));
+                              G_PARAM_STATIC_STRINGS));
 
     g_object_class_install_property
         (gobject_class, PROP_RESIZE_GUEST,
@@ -1048,9 +1071,7 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                               FALSE,
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
-                              G_PARAM_STATIC_NAME |
-                              G_PARAM_STATIC_NICK |
-                              G_PARAM_STATIC_BLURB));
+                              G_PARAM_STATIC_STRINGS));
 
     g_object_class_install_property
         (gobject_class, PROP_AUTO_CLIPBOARD,
@@ -1061,10 +1082,16 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                               FALSE,
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
-                              G_PARAM_STATIC_NAME |
-                              G_PARAM_STATIC_NICK |
-                              G_PARAM_STATIC_BLURB));
+                              G_PARAM_STATIC_STRINGS));
 
+    g_object_class_install_property
+        (gobject_class, PROP_SCALING,
+         g_param_spec_boolean("scaling", "Scaling",
+                              "Whether we should use scaling",
+                              FALSE,
+                              G_PARAM_READWRITE |
+                              G_PARAM_CONSTRUCT |
+                              G_PARAM_STATIC_STRINGS));
     /**
      * SpiceDisplay::mouse-grab:
      * @display: the #SpiceDisplay that emitted the signal

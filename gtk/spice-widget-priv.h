@@ -59,6 +59,8 @@ struct spice_display {
 
     bool                    convert;
     bool                    have_mitshm;
+    gboolean                allow_scaling;
+
     /* TODO: make a display object instead? */
 #ifdef WITH_X11
     Display                 *dpy;
@@ -70,7 +72,6 @@ struct spice_display {
     cairo_surface_t         *ximage;
     cairo_surface_t         *ximage_cache;
 #endif
-    gboolean                allow_scaling;
 
     GtkClipboard            *clipboard;
     bool                    clip_hasdata;
