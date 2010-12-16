@@ -465,6 +465,7 @@ static const char *spice_properties[] = {
     "grab-keyboard",
     "grab-mouse",
     "resize-guest",
+    "scaling",
     "auto-clipboard"
 };
 
@@ -480,6 +481,10 @@ static const GtkToggleActionEntry tentries[] = {
     },{
 	.name        = "resize-guest",
 	.label       = N_("Resize guest to match window size"),
+	.callback    = G_CALLBACK(menu_cb_bool_prop),
+    },{
+	.name        = "scaling",
+	.label       = N_("Scale display"),
 	.callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
 	.name        = "auto-clipboard",
@@ -521,6 +526,7 @@ static char ui_xml[] =
 "      <menuitem action='grab-keyboard'/>\n"
 "      <menuitem action='grab-mouse'/>\n"
 "      <menuitem action='resize-guest'/>\n"
+"      <menuitem action='scaling'/>\n"
 "      <menuitem action='auto-clipboard'/>\n"
 "    </menu>\n"
 "    <menu action='HelpMenu'>\n"
