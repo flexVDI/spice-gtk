@@ -1453,6 +1453,7 @@ static void clipboard_received_cb(GtkClipboard *clipboard,
     len = gtk_selection_data_get_length(selection_data);
     if (len == -1) {
         SPICE_DEBUG("empty clipboard");
+        len = 0;
     } else if (len == 0) {
         SPICE_DEBUG("TODO: what should be done here?");
     } else {
