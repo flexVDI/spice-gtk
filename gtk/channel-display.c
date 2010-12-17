@@ -349,7 +349,8 @@ static void palette_put(SpicePaletteCache *cache, SpicePalette *palette)
     display_cache_item *item;
 
     item = cache_add(&c->palettes, palette->unique);
-    item->ptr = palette;
+    item->ptr = g_memdup(palette, sizeof(SpicePalette) +
+                         palette->num_ents * sizeof(palette->ents[0]));
 }
 
 static SpicePalette *palette_get(SpicePaletteCache *cache, uint64_t id)
@@ -375,6 +376,7 @@ static void palette_remove(SpicePaletteCache *cache, uint32_t id)
     item = cache_find(&c->palettes, id);
     if (item) {
         if (cache_unref(item)) {
+            g_free(item->ptr);
             cache_del(&c->palettes, item);
         }
     }
