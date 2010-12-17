@@ -195,6 +195,9 @@ static void spice_display_finalize(GObject *obj)
         d->grabseq = NULL;
     }
 
+    g_free(d->clip_targets);
+    d->clip_targets = NULL;
+
     G_OBJECT_CLASS(spice_display_parent_class)->finalize(obj);
 }
 
@@ -1429,12 +1432,20 @@ static gboolean clipboard_grab(SpiceMainChannel *main,
         }
     }
 
+    g_free(d->clip_targets);
+    d->nclip_targets = i;
+    d->clip_targets = g_memdup(targets, sizeof(GtkTargetEntry) * i);
+
+    if (!d->auto_clipboard_enable)
+        goto skip_grab_clipboard;
+
     if (!gtk_clipboard_set_with_data(d->clipboard, targets, i,
                                      clipboard_get, clipboard_clear, display)) {
         g_warning("clipboard grab failed");
         return FALSE;
     }
 
+skip_grab_clipboard:
     d->clipboard_by_guest = TRUE;
     return TRUE;
 }
@@ -1663,7 +1674,18 @@ void spice_display_copy_to_guest(SpiceDisplay *display)
 
 void spice_display_paste_from_guest(SpiceDisplay *display)
 {
-    g_warning("%s: TODO", __FUNCTION__);
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    if (!d->clipboard_by_guest) {
+        g_warning("Guest clipboard is not available.");
+        return;
+    }
+
+    if (!gtk_clipboard_set_with_data(d->clipboard, d->clip_targets, d->nclip_targets,
+                                     clipboard_get, clipboard_clear, display)) {
+        g_warning("Clipboard grab failed");
+        return;
+    }
 }
 
 /**
