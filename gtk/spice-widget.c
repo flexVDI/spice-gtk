@@ -1082,7 +1082,7 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                               "Auto clipboard",
                               "Automatically relay clipboard changes between "
                               "host and guest.",
-                              FALSE,
+                              TRUE,
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
                               G_PARAM_STATIC_STRINGS));
@@ -1389,7 +1389,11 @@ static void clipboard_get(GtkClipboard *clipboard, GtkSelectionData *selection_d
     ri.timeout_handler = g_timeout_add_seconds(7, clipboard_timeout, &ri);
     spice_main_clipboard_request(d->main, atom2agent[info].vdagent);
 
+    /* apparently, this is needed to avoid dead-lock, from
+       gtk_dialog_run */
+    GDK_THREADS_LEAVE();
     g_main_loop_run(ri.loop);
+    GDK_THREADS_ENTER();
 
     g_main_loop_unref(ri.loop);
     ri.loop = NULL;
