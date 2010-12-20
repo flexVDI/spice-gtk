@@ -494,21 +494,24 @@ static void recalc_geometry(GtkWidget *widget, gboolean set_display)
 
 #define CONVERT_0555_TO_8888(s) (CONVERT_0555_TO_0888(s) | 0xff000000)
 
-static gboolean expose_event_convert(GtkWidget *widget, GdkEventExpose *expose)
+static gboolean do_color_convert(SpiceDisplay *display,
+                                 gint x, gint y, gint w, gint h)
 {
-    SpiceDisplay *display = SPICE_DISPLAY(widget);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
     int i, j, maxy, maxx, miny, minx;
     guint32 *dest = d->data;
     guint16 *src = d->data_origin;
 
+    if (!d->convert)
+        return true;
+
     g_return_val_if_fail(d->format == SPICE_SURFACE_FMT_16_555 ||
                          d->format == SPICE_SURFACE_FMT_16_565, false);
 
-    miny = MAX(expose->area.y - d->my, 0);
-    minx = MAX(expose->area.x - d->mx, 0);
-    maxy = MIN(expose->area.y - d->my + expose->area.height, d->height);
-    maxx = MIN(expose->area.x - d->mx + expose->area.width, d->width);
+    miny = MAX(y, 0);
+    minx = MAX(x, 0);
+    maxy = MIN(y + h, d->height);
+    maxx = MIN(x + w, d->width);
 
     dest +=  (d->stride / 4) * miny;
     src += (d->stride / 2) * miny;
@@ -552,11 +555,6 @@ static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
 
     if (!d->ximage) {
         spicex_image_create(display);
-    }
-
-    if (d->convert) {
-        if (!expose_event_convert(widget, expose))
-            return false;
     }
 
     spicex_expose_event(display, expose);
@@ -1195,7 +1193,9 @@ static void invalidate(SpiceChannel *channel,
 {
     SpiceDisplay *display = data;
 
-    /* TODO: do color convert here */
+    if (!do_color_convert(display, x, y, w, h))
+        return;
+
     spicex_image_invalidate(display, &x, &y, &w, &h);
     gtk_widget_queue_draw_area(GTK_WIDGET(display),
                                x, y, w, h);

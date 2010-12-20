@@ -118,7 +118,7 @@ static gboolean draw_event(SpiceDisplay *display, cairo_t *cr)
         cairo_fill(cr);
     }
 
-    /* Draw the VNC display */
+    /* Draw the display */
     if (d->ximage) {
         if (d->allow_scaling) {
             double sx, sy;
@@ -166,8 +166,6 @@ void spicex_image_invalidate(SpiceDisplay *display,
 {
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
     int ww, wh;
-
-    /* FIXME: something goes wrong in 16 bits */
 
     gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
 
