@@ -700,7 +700,9 @@ static void display_handle_mark(SpiceChannel *channel, spice_msg_in *in)
 
     SPICE_DEBUG("%s", __FUNCTION__);
     g_return_if_fail(surface != NULL);
+#ifdef EXTRA_CHECKS
     g_warn_if_fail(c->mark == FALSE);
+#endif
 
     c->mark = TRUE;
     emit_main_context(channel, SPICE_DISPLAY_MARK, TRUE);

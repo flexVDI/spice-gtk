@@ -421,9 +421,11 @@ static void cursor_handle_move(SpiceChannel *channel, spice_msg_in *in)
 /* coroutine context */
 static void cursor_handle_hide(SpiceChannel *channel, spice_msg_in *in)
 {
+#ifdef EXTRA_CHECKS
     spice_cursor_channel *c = SPICE_CURSOR_CHANNEL(channel)->priv;
 
     g_return_if_fail(c->init_done == TRUE);
+#endif
 
     emit_main_context(channel, SPICE_CURSOR_HIDE);
 }

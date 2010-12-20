@@ -612,10 +612,8 @@ GSocket* spice_session_channel_open_host(SpiceSession *session, gboolean use_tls
     GSocket *sock = NULL;
     int port;
 
-    if (use_tls)
-        g_return_val_if_fail(s->tls_port != NULL, NULL);
-    else
-        g_return_val_if_fail(s->port != NULL, NULL);
+    if ((use_tls && !s->tls_port) || (!use_tls && !s->port))
+        return NULL;
 
     port = atoi(use_tls ? s->tls_port : s->port);
 

@@ -926,8 +926,8 @@ static void main_agent_handle_msg(SpiceChannel *channel,
     case VD_AGENT_REPLY:
     {
         VDAgentReply *reply = payload;
-        g_debug("%s: reply: type %d, %s", __FUNCTION__, reply->type,
-                reply->error == VD_AGENT_SUCCESS ? "success" : "error");
+        SPICE_DEBUG("%s: reply: type %d, %s", __FUNCTION__, reply->type,
+                    reply->error == VD_AGENT_SUCCESS ? "success" : "error");
         break;
     }
     default:
@@ -1094,6 +1094,7 @@ void spice_main_set_display(SpiceMainChannel *channel, int id,
 {
     spice_main_channel *c;
 
+    g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
     c = SPICE_MAIN_CHANNEL(channel)->priv;
@@ -1121,6 +1122,7 @@ void spice_main_set_display(SpiceMainChannel *channel, int id,
  **/
 void spice_main_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int ntypes)
 {
+    g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
     agent_clipboard_grab(channel, types, ntypes);
@@ -1136,6 +1138,7 @@ void spice_main_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int nt
  **/
 void spice_main_clipboard_release(SpiceMainChannel *channel)
 {
+    g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
     agent_clipboard_release(channel);
@@ -1154,6 +1157,7 @@ void spice_main_clipboard_release(SpiceMainChannel *channel)
 void spice_main_clipboard_notify(SpiceMainChannel *channel,
                                  guint32 type, const guchar *data, size_t size)
 {
+    g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
     agent_clipboard_notify(channel, type, data, size);
@@ -1170,6 +1174,7 @@ void spice_main_clipboard_notify(SpiceMainChannel *channel,
  **/
 void spice_main_clipboard_request(SpiceMainChannel *channel, guint32 type)
 {
+    g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
     agent_clipboard_request(channel, type);
