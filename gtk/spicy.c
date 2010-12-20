@@ -47,7 +47,7 @@ struct spice_window {
     GtkWidget        *menubar, *toolbar;
     GtkWidget        *ritem, *rmenu;
     GtkRecentFilter  *rfilter;
-    GtkWidget        *hbox, *status, *st[STATE_MAX];
+    GtkWidget        *statusbar, *status, *st[STATE_MAX];
     GtkActionGroup   *ag;
     GtkAccelGroup    *accel;
     GtkUIManager     *ui;
@@ -268,10 +268,8 @@ static void menu_cb_toolbar(GtkToggleAction *action, gpointer data)
     struct spice_window *win = data;
     gboolean state = gtk_toggle_action_get_active(action);
 
-    if (state)
-        gtk_widget_show(win->toolbar);
-    else
-        gtk_widget_hide(win->toolbar);
+    gtk_widget_set_visible(win->toolbar, state);
+    g_key_file_set_boolean(keyfile, "ui", "toolbar", state);
 }
 
 static void menu_cb_statusbar(GtkToggleAction *action, gpointer data)
@@ -279,10 +277,8 @@ static void menu_cb_statusbar(GtkToggleAction *action, gpointer data)
     struct spice_window *win = data;
     gboolean state = gtk_toggle_action_get_active(action);
 
-    if (state)
-        gtk_widget_show(win->hbox);
-    else
-        gtk_widget_hide(win->hbox);
+    gtk_widget_set_visible(win->statusbar, state);
+    g_key_file_set_boolean(keyfile, "ui", "statusbar", state);
 }
 
 static void menu_cb_about(GtkAction *action, void *data)
@@ -336,12 +332,19 @@ static gboolean window_state_cb(GtkWidget *widget, GdkEventWindowState *event,
         if (win->fullscreen) {
             gtk_widget_hide(win->menubar);
             gtk_widget_hide(win->toolbar);
-            gtk_widget_hide(win->hbox);
+            gtk_widget_hide(win->statusbar);
             gtk_widget_grab_focus(win->spice);
         } else {
+            gboolean state;
+            GtkAction *toggle;
+
             gtk_widget_show(win->menubar);
-            gtk_widget_show(win->toolbar);
-            gtk_widget_show(win->hbox);
+            toggle = gtk_action_group_get_action(win->ag, "Toolbar");
+            state = gtk_toggle_action_get_active(GTK_TOGGLE_ACTION(toggle));
+            gtk_widget_set_visible(win->toolbar, state);
+            toggle = gtk_action_group_get_action(win->ag, "Statusbar");
+            state = gtk_toggle_action_get_active(GTK_TOGGLE_ACTION(toggle));
+            gtk_widget_set_visible(win->statusbar, state);
         }
     }
     return TRUE;
@@ -355,10 +358,10 @@ static void mouse_grab_cb(GtkWidget *widget, gint grabbed, gpointer data)
     update_status(win);
 }
 
-static void restore_configuration(GtkWidget *spice)
+static void restore_configuration(struct spice_window *win)
 {
     gboolean state;
-    gchar **keys;
+    gchar **keys = NULL;
     gsize nkeys, i;
     GError *error = NULL;
 
@@ -370,18 +373,30 @@ static void restore_configuration(GtkWidget *spice)
         return;
     }
 
-    g_return_if_fail(keys != NULL);
+    g_return_if_fail(nkeys >= 0);
+    if (nkeys > 0)
+        g_return_if_fail(keys != NULL);
+
     for (i = 0; i < nkeys; ++i) {
         state = g_key_file_get_boolean(keyfile, "general", keys[i], &error);
         if (error != NULL) {
-            g_error_free(error);
-            error = NULL;
+            g_clear_error(&error);
             continue;
         }
-        g_object_set(G_OBJECT(spice), keys[i], state, NULL);
+        g_object_set(G_OBJECT(win->spice), keys[i], state, NULL);
     }
 
     g_strfreev(keys);
+
+    state = g_key_file_get_boolean(keyfile, "ui", "toolbar", &error);
+    if (error == NULL)
+        gtk_widget_set_visible(win->toolbar, state);
+    g_clear_error(&error);
+
+    state = g_key_file_get_boolean(keyfile, "ui", "statusbar", &error);
+    if (error == NULL)
+        gtk_widget_set_visible(win->statusbar, state);
+    g_clear_error(&error);
 }
 
 /* ------------------------------------------------------------------ */
@@ -547,6 +562,8 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
 {
     char title[32];
     struct spice_window *win;
+    GtkAction *toggle;
+    gboolean state;
     GtkWidget *vbox, *frame;
     GError *err = NULL;
     int i;
@@ -602,13 +619,12 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
 
     /* spice display */
     win->spice = GTK_WIDGET(spice_display_new(conn->session, id));
-    restore_configuration(win->spice);
 
     g_signal_connect(G_OBJECT(win->spice), "mouse-grab",
 		     G_CALLBACK(mouse_grab_cb), win);
 
     /* status line */
-    win->hbox = gtk_hbox_new(FALSE, 1);
+    win->statusbar = gtk_hbox_new(FALSE, 1);
 
     win->status = gtk_label_new("status line");
     gtk_misc_set_alignment(GTK_MISC(win->status), 0, 0.5);
@@ -616,14 +632,14 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
     update_status(win);
 
     frame = gtk_frame_new(NULL);
-    gtk_box_pack_start(GTK_BOX(win->hbox), frame, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(win->statusbar), frame, TRUE, TRUE, 0);
     gtk_container_add(GTK_CONTAINER(frame), win->status);
 
     for (i = 0; i < STATE_MAX; i++) {
         win->st[i] = gtk_label_new(_("?"));
         gtk_label_set_width_chars(GTK_LABEL(win->st[i]), 5);
         frame = gtk_frame_new(NULL);
-        gtk_box_pack_end(GTK_BOX(win->hbox), frame, FALSE, FALSE, 0);
+        gtk_box_pack_end(GTK_BOX(win->statusbar), frame, FALSE, FALSE, 0);
         gtk_container_add(GTK_CONTAINER(frame), win->st[i]);
     }
 
@@ -634,22 +650,31 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
     gtk_box_pack_start(GTK_BOX(vbox), win->menubar, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(vbox), win->toolbar, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(vbox), win->spice, TRUE, TRUE, 0);
-    gtk_box_pack_end(GTK_BOX(vbox), win->hbox, FALSE, TRUE, 0);
+    gtk_box_pack_end(GTK_BOX(vbox), win->statusbar, FALSE, TRUE, 0);
 
+    /* show window */
+    if (fullscreen)
+        gtk_window_fullscreen(GTK_WINDOW(win->toplevel));
+
+    gtk_widget_show_all(win->toplevel);
+
+    restore_configuration(win);
 
     /* init toggle actions */
     for (i = 0; i < G_N_ELEMENTS(spice_properties); i++) {
-        GtkAction *toggle;
-        gboolean state;
         toggle = gtk_action_group_get_action(win->ag, spice_properties[i]);
         g_object_get(win->spice, spice_properties[i], &state, NULL);
         gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(toggle), state);
     }
 
-    /* show window */
-    if (fullscreen)
-        gtk_window_fullscreen(GTK_WINDOW(win->toplevel));
-    gtk_widget_show_all(win->toplevel);
+    toggle = gtk_action_group_get_action(win->ag, "Toolbar");
+    state = gtk_widget_get_visible(win->toolbar);
+    gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(toggle), state);
+
+    toggle = gtk_action_group_get_action(win->ag, "Statusbar");
+    state = gtk_widget_get_visible(win->statusbar);
+    gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(toggle), state);
+
     gtk_widget_grab_focus(win->spice);
     return win;
 }
