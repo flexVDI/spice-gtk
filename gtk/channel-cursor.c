@@ -306,6 +306,8 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
     size_t size;
     gint i, pix_mask, pix;
     const guint8* data;
+    guint8 *rgba;
+    guint8 val;
 
     SPICE_DEBUG("%s: type %d, %" PRIx64 ", %dx%d, flags %d, size %d",
             __FUNCTION__, hdr->type, hdr->unique, hdr->width, hdr->height,
@@ -377,6 +379,14 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
                   hdr->type);
         cursor->default_cursor = TRUE;
         break;
+    }
+
+    rgba = (guint8*)cursor->data;
+    for (i = 0; i < hdr->width * hdr->height; i++) {
+        val = rgba[0];
+        rgba[0] = rgba[2];
+        rgba[2] = val;
+        rgba += 4;
     }
 
     if (cursor && (scursor->flags & SPICE_CURSOR_FLAGS_CACHE_ME)) {
