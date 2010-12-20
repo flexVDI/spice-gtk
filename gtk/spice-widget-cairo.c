@@ -203,10 +203,10 @@ void spicex_image_invalidate(SpiceDisplay *display,
          * when drawing. This "fix" is somewhat dubious though. The
          * true mistake & fix almost certainly lies elsewhere.
          */
-        x -= 2;
-        y -= 2;
-        w += 4;
-        h += 4;
+        *x -= 2;
+        *y -= 2;
+        *w += 4;
+        *h += 4;
     } else {
         /* Offset the Spice region to produce expose region */
         *x += d->mx;
