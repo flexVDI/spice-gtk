@@ -1218,27 +1218,35 @@ static void cursor_set(SpiceCursorChannel *channel,
 {
     SpiceDisplay *display = data;
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    GdkDrawable *window;
-    GdkDisplay *gtkdpy;
-    GdkPixbuf *pixbuf;
 
-    window = gtk_widget_get_window(GTK_WIDGET(display));
-    if (!window)
-        return;
-    gtkdpy = gdk_drawable_get_display(window);
-
-    pixbuf = gdk_pixbuf_new_from_data(rgba,
-                                      GDK_COLORSPACE_RGB,
-                                      TRUE, 8,
-                                      width,
-                                      height,
-                                      width * 4,
-                                      NULL, NULL);
-    if (d->mouse_cursor)
+    if (d->mouse_cursor) {
         gdk_cursor_unref(d->mouse_cursor);
-    d->mouse_cursor = gdk_cursor_new_from_pixbuf(gtkdpy, pixbuf,
-                                                 hot_x, hot_y);
-    g_object_unref(pixbuf);
+        d->mouse_cursor = NULL;
+    }
+
+    if (rgba != NULL) {
+        GdkPixbuf *pixbuf;
+        GdkDrawable *window;
+        GdkDisplay *gtkdpy;
+
+        window = gtk_widget_get_window(GTK_WIDGET(display));
+        if (window)
+            gtkdpy = gdk_drawable_get_display(window);
+        else
+            gtkdpy = gdk_display_get_default(); /* TODO: is this a good fallback? */
+
+        pixbuf = gdk_pixbuf_new_from_data(rgba,
+                                          GDK_COLORSPACE_RGB,
+                                          TRUE, 8,
+                                          width,
+                                          height,
+                                          width * 4,
+                                          NULL, NULL);
+        d->mouse_cursor = gdk_cursor_new_from_pixbuf(gtkdpy, pixbuf,
+                                                     hot_x, hot_y);
+        g_object_unref(pixbuf);
+    }
+
     update_mouse_pointer(display);
 }
 

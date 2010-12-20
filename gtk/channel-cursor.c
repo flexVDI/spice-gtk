@@ -41,10 +41,13 @@
 #define SPICE_CURSOR_CHANNEL_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_CURSOR_CHANNEL, spice_cursor_channel))
 
-typedef struct display_cursor {
+typedef struct display_cursor display_cursor;
+
+struct display_cursor {
     SpiceCursorHeader           hdr;
-    uint8_t                     data[];
-} display_cursor;
+    gboolean                    default_cursor;
+    guint32                     data[];
+};
 
 struct spice_cursor_channel {
     display_cache               cursors;
@@ -102,7 +105,7 @@ static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
      * @height: height of the shape
      * @hot_x: horizontal offset of the 'hotspot' of the cursor
      * @hot_y: vertical offset of the 'hotspot' of the cursor
-     * @rgba: shape data
+     * @rgba: 32bits shape data, or %NULL if default cursor
      *
      * The #SpiceCursorChannel::cursor-set signal is emitted to modify
      * cursor aspect and position on the display area.
@@ -232,15 +235,16 @@ static void do_emit_main_context(GObject *object, int signum, gpointer params)
 
 /* ------------------------------------------------------------------ */
 
-static void mono_cursor(display_cursor *cursor, uint8_t *data)
+static void mono_cursor(display_cursor *cursor, const guint8 *data)
 {
-    uint8_t *xor, *and, *dest;
+    const guint8 *xor, *and;
+    guint8 *dest;
     int bpl, x, y, bit;
 
     bpl = (cursor->hdr.width + 7) / 8;
     and = data;
     xor = and + bpl * cursor->hdr.height;
-    dest  = cursor->data;
+    dest  = (uint8_t *)cursor->data;
     for (y = 0; y < cursor->hdr.height; y++) {
         bit = 0x80;
         for (x = 0; x < cursor->hdr.width; x++, dest += 4) {
@@ -283,6 +287,16 @@ static void mono_cursor(display_cursor *cursor, uint8_t *data)
     }
 }
 
+static guint8 get_pix_mask(const guint8 *data, gint offset, gint pix_index)
+{
+    return data[offset + (pix_index >> 3)] & (0x80 >> (pix_index % 8));
+}
+
+static guint32 get_pix_hack(gint pix_index, gint width)
+{
+    return (((pix_index % width) ^ (pix_index / width)) & 1) ? 0xc0303030 : 0x30505050;
+}
+
 static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
 {
     spice_cursor_channel *c = SPICE_CURSOR_CHANNEL(channel)->priv;
@@ -290,6 +304,8 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
     display_cache_item *item;
     display_cursor *cursor;
     size_t size;
+    gint i, pix_mask, pix;
+    const guint8* data;
 
     SPICE_DEBUG("%s: type %d, %" PRIx64 ", %dx%d, flags %d, size %d",
             __FUNCTION__, hdr->type, hdr->unique, hdr->width, hdr->height,
@@ -309,19 +325,57 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
     size = 4 * hdr->width * hdr->height;
     cursor = spice_malloc(sizeof(*cursor) + size);
     cursor->hdr = *hdr;
+    cursor->default_cursor = FALSE;
+    data = scursor->data;
 
     switch (hdr->type) {
     case SPICE_CURSOR_TYPE_MONO:
-        mono_cursor(cursor, scursor->data);
+        mono_cursor(cursor, data);
         break;
     case SPICE_CURSOR_TYPE_ALPHA:
-        memcpy(cursor->data, scursor->data, size);
+        memcpy(cursor->data, data, size);
+        break;
+    case SPICE_CURSOR_TYPE_COLOR32:
+        memcpy(cursor->data, data, size);
+        for (i = 0; i < hdr->width * hdr->height; i++) {
+            pix_mask = get_pix_mask(data, size, i);
+            if (pix_mask && *((guint32*)data + i) == 0xffffff) {
+                cursor->data[i] = get_pix_hack(i, hdr->width);
+            } else {
+                cursor->data[i] |= (pix_mask ? 0 : 0xff000000);
+            }
+        }
+        break;
+    case SPICE_CURSOR_TYPE_COLOR16:
+        for (i = 0; i < hdr->width * hdr->height; i++) {
+            pix_mask = get_pix_mask(data, size, i);
+            pix = *((guint16*)data + i);
+            if (pix_mask && pix == 0x7fff) {
+                cursor->data[i] = get_pix_hack(i, hdr->width);
+            } else {
+                cursor->data[i] |= ((pix & 0x1f) << 3) | ((pix & 0x3e0) << 6) |
+                    ((pix & 0x7c00) << 9) | (pix_mask ? 0 : 0xff000000);
+            }
+        }
+        break;
+    case SPICE_CURSOR_TYPE_COLOR4:
+        size = (SPICE_ALIGN(hdr->width, 2) / 2) * hdr->height;
+        for (i = 0; i < hdr->width * hdr->height; i++) {
+            pix_mask = get_pix_mask(data, size + (sizeof(uint32_t) << 4), i);
+            int idx = (i & 1) ? (data[i >> 1] & 0x0f) : ((data[i >> 1] & 0xf0) >> 4);
+            pix = *((uint32_t*)(data + size) + idx);
+            if (pix_mask && pix == 0xffffff) {
+                cursor->data[i] = get_pix_hack(i, hdr->width);
+            } else {
+                cursor->data[i] = pix | (pix_mask ? 0 : 0xff000000);
+            }
+        }
+
         break;
     default:
         g_warning("%s: unimplemented cursor type %d", __FUNCTION__,
                   hdr->type);
-        free(cursor);
-        cursor = NULL;
+        cursor->default_cursor = TRUE;
         break;
     }
 
@@ -362,7 +416,7 @@ static void emit_cursor_set(SpiceChannel *channel, display_cursor *cursor)
     emit_main_context(channel, SPICE_CURSOR_SET,
                       cursor->hdr.width, cursor->hdr.height,
                       cursor->hdr.hot_spot_x, cursor->hdr.hot_spot_y,
-                      cursor->data);
+                      cursor->default_cursor ? NULL : cursor->data);
 }
 
 /* coroutine context */
@@ -377,8 +431,7 @@ static void cursor_handle_init(SpiceChannel *channel, spice_msg_in *in)
     delete_cursor_all(channel);
     cursor = set_cursor(channel, &init->cursor);
     c->init_done = TRUE;
-    if (cursor != NULL)
-        emit_cursor_set(channel, cursor);
+    emit_cursor_set(channel, cursor);
 }
 
 /* coroutine context */
