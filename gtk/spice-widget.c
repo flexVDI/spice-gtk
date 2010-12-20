@@ -795,7 +795,7 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
         return true;
 
     gdk_drawable_get_size(gtk_widget_get_window(widget), &ww, &wh);
-    if (d->allow_scaling) {
+    if (spicex_is_scaled(display)) {
         double sx, sy;
         sx = (double)d->width / (double)ww;
         sy = (double)d->height / (double)wh;

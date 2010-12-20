@@ -213,3 +213,10 @@ void spicex_image_invalidate(SpiceDisplay *display,
         *y += d->my;
     }
 }
+
+G_GNUC_INTERNAL
+gboolean spicex_is_scaled(SpiceDisplay *display)
+{
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    return d->allow_scaling;
+}

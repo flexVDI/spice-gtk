@@ -372,3 +372,9 @@ void spicex_image_invalidate (SpiceDisplay *display,
     *x += d->mx;
     *y += d->my;
 }
+
+G_GNUC_INTERNAL
+gboolean spicex_is_scaled(SpiceDisplay *display)
+{
+    return FALSE; /* backend doesn't support scaling yet */
+}
