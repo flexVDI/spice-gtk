@@ -15,9 +15,10 @@
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
+#include <math.h>
+
 #include "spice-widget.h"
 #include "spice-widget-priv.h"
-
 #include "vncdisplaykeymap.h"
 
 /**
@@ -465,10 +466,12 @@ static void recalc_geometry(GtkWidget *widget, gboolean set_display)
 
     d->mx = 0;
     d->my = 0;
-    if (d->ww > d->width)
-        d->mx = (d->ww - d->width) / 2;
-    if (d->wh > d->height)
-        d->my = (d->wh - d->height) / 2;
+    if (!spicex_is_scaled(display)) {
+        if (d->ww > d->width)
+            d->mx = (d->ww - d->width) / 2;
+        if (d->wh > d->height)
+            d->my = (d->wh - d->height) / 2;
+    }
 
     SPICE_DEBUG("%s: guest %dx%d, window %dx%d, offset +%d+%d", __FUNCTION__,
                 d->width, d->height, d->ww, d->wh, d->mx, d->my);
@@ -798,10 +801,11 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
         sx = (double)d->width / (double)ww;
         sy = (double)d->height / (double)wh;
 
-        /* Scaling the desktop, so scale the mouse coords
-         * by same ratio */
-        motion->x *= sx;
-        motion->y *= sy;
+        /* Scaling the desktop, so scale the mouse coords by same
+         * ratio - ceil() seems to be more accurate - not sure
+         * though - scaling is more likely reversible.. */
+        motion->x = ceil(motion->x * sx);
+        motion->y = ceil(motion->y * sy);
     } else {
         motion->x -= d->mx;
         motion->y -= d->my;
@@ -821,17 +825,20 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
         if (d->mouse_grab_active) {
             if (d->mouse_last_x != -1 &&
                 d->mouse_last_y != -1) {
-                spice_inputs_motion(d->inputs,
-                                    motion->x - d->mouse_last_x,
-                                    motion->y - d->mouse_last_y,
+                gint dx = motion->x - d->mouse_last_x;
+                gint dy = motion->y - d->mouse_last_y;
+
+                spice_inputs_motion(d->inputs, dx, dy,
                                     button_mask_gdk_to_spice(motion->state));
             }
+
             d->mouse_last_x = motion->x;
             d->mouse_last_y = motion->y;
             mouse_check_edges(widget, motion);
         }
         break;
     default:
+        g_warn_if_reached();
         break;
     }
     return true;
@@ -1275,14 +1282,27 @@ static void cursor_move(SpiceCursorChannel *channel, gint x, gint y, gpointer da
     int wx, wy;
 
     SPICE_DEBUG("%s: +%d+%d", __FUNCTION__, x, y);
-    d->mouse_guest_x = x;
-    d->mouse_guest_y = y;
+
     d->mouse_last_x = x;
     d->mouse_last_y = y;
+    d->mouse_guest_x = x;
+    d->mouse_guest_y = y;
+
+    if (spicex_is_scaled(display)) {
+        gint ww, wh;
+
+        gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
+        x = x * ((double)ww / (double)(d->width));
+        y = y * ((double)wh / (double)(d->height));
+    } else {
+        /* black borders offset */
+        x += d->mx;
+        y += d->my;
+    }
+
     if (d->mouse_grab_active) {
         gdk_window_get_origin(drawable, &wx, &wy);
-        gdk_display_warp_pointer(gdk_drawable_get_display(drawable),
-                                 screen, wx + d->mx + x, wy + d->my + y);
+        gdk_display_warp_pointer(gdk_drawable_get_display(drawable), screen, x + wx, y + wy);
     }
 }
 
