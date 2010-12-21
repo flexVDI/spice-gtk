@@ -313,6 +313,9 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
             __FUNCTION__, hdr->type, hdr->unique, hdr->width, hdr->height,
             scursor->flags, scursor->data_size);
 
+    if (scursor->flags & SPICE_CURSOR_FLAGS_NONE)
+        return NULL;
+
     if (scursor->flags & SPICE_CURSOR_FLAGS_FROM_CACHE) {
         item = cache_find(&c->cursors, hdr->unique);
         if (!item) {
@@ -320,9 +323,8 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
         }
         return item->ptr;
     }
-    if (scursor->data_size == 0) {
-        return NULL;
-    }
+
+    g_return_val_if_fail(scursor->data_size != 0, NULL);
 
     size = 4 * hdr->width * hdr->height;
     cursor = spice_malloc(sizeof(*cursor) + size);
@@ -378,7 +380,7 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
         g_warning("%s: unimplemented cursor type %d", __FUNCTION__,
                   hdr->type);
         cursor->default_cursor = TRUE;
-        break;
+        goto cache_add;
     }
 
     rgba = (guint8*)cursor->data;
@@ -389,6 +391,7 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
         rgba += 4;
     }
 
+cache_add:
     if (cursor && (scursor->flags & SPICE_CURSOR_FLAGS_CACHE_ME)) {
         item = cache_add(&c->cursors, hdr->unique);
         item->ptr = cursor;
@@ -441,7 +444,10 @@ static void cursor_handle_init(SpiceChannel *channel, spice_msg_in *in)
     delete_cursor_all(channel);
     cursor = set_cursor(channel, &init->cursor);
     c->init_done = TRUE;
-    emit_cursor_set(channel, cursor);
+    if (init->visible && cursor)
+        emit_cursor_set(channel, cursor);
+    else
+        emit_main_context(channel, SPICE_CURSOR_HIDE);
 }
 
 /* coroutine context */
