@@ -7,24 +7,27 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = spice-client-glib.pc spice-client-gtk.pc
 
 INTLTOOL_FILES = intltool-extract.in		\
-                 intltool-merge.in		\
-                 intltool-update.in
+		 intltool-merge.in		\
+		 intltool-update.in		\
+		 $(NULL)
 
 DISTCLEANFILES = $(pkgconfig_DATA)		\
 		 intltool-extract		\
-                 intltool-merge			\
-                 intltool-update		\
-                 gnome-doc-utils.make		\
-                 gtk-doc.make                   \
-                 po/.intltool-merge-cache
+		 intltool-merge			\
+		 intltool-update		\
+		 gnome-doc-utils.make		\
+		 gtk-doc.make			\
+		 po/.intltool-merge-cache	\
+		 $(NULL)
 
 EXTRA_DIST = spice.proto			\
 	     spice1.proto			\
 	     spice_codegen.py			\
 	     build-aux/git-version-gen		\
-             gtk-doc.make			\
+	     gtk-doc.make			\
 	     .version				\
-	     $(INTLTOOL_FILES)
+	     $(INTLTOOL_FILES)			\
+	     $(NULL)
 
 MAINTAINERCLEANFILES =				\
 	ABOUT-NLS				\

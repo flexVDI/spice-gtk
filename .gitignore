@@ -65,6 +65,7 @@
 /m4/inttypes-pri.m4
 /m4/inttypes_h.m4
 /m4/lcmessage.m4
+/m4/ld-version.m4
 /m4/lib-ld.m4
 /m4/lib-link.m4
 /m4/lib-prefix.m4

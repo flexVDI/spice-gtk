@@ -1,0 +1,46 @@
+v0.3
+====
+
+- fix Windows QXL driver support
+- fully asynchronous operations using coroutines
+  (thanks go to gtk-vnc devs)
+- cairo display (old XShm display can be enabled with --with-x11)
+- scaling support for cairo display
+- experimental audio support using GStreamer
+- API reference gtk-doc
+- more cursor type support
+- various fixes and cleanup
+
+v0.2
+====
+
+- gtk: disconnect record stream when record_stop()
+- README: add a few missing dependencies
+- build: use git-version-gen
+- build: re-enable -Wflags, and fix a few warnings
+- build: fix make -j
+- gtk: add zlib decoder
+- gtk: add jpeg decoder
+- gtk: progressive agent message recomposition
+- gtk: add dispay config
+- gtk: add clipboard sharing for text
+- TODO: update
+- gtk: put some g_message() under SPICE_DEBUG
+- gtk: add channel.set_capability()
+- gtk: add {session,channel}_open_fd()
+- gtk: add CELT playback
+- gtk: add CELT recording
+- gtk: save/restore spicy configuration
+- gtk: don't uncork new streams
+- gtk: delay PA stream creation when context is ready
+- gtk: visibility option for statusbar/toolbar in spicy
+
+v0.1.0
+======
+
+- desktop display, using GLZ compression
+- audio playback/recording with PulseAudio
+- video in mjpeg
+- python and gobject-introspection modules
+- spicy: a simple Gtk client
+- snappy: a command line screenshot tool

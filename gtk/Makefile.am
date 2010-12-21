@@ -74,6 +74,7 @@ libspice_client_gtk_la_LIBADD =		\
 libspice_client_gtk_la_SOURCES =	\
 	spice-widget.c			\
 	spice-widget.h			\
+	spice-widget-priv.h		\
 	spice-widget-enums.c		\
 	spice-widget-enums.h		\
 	vncdisplaykeymap.c		\
