@@ -567,6 +567,7 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
     GtkWidget *vbox, *frame;
     GError *err = NULL;
     int i;
+    SpiceGrabSequence *seq;
 
     win = malloc(sizeof(*win));
     if (NULL == win)
@@ -619,6 +620,9 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
 
     /* spice display */
     win->spice = GTK_WIDGET(spice_display_new(conn->session, id));
+    seq = spice_grab_sequence_new_from_string("Shift+F12");
+    spice_display_set_grab_keys(SPICE_DISPLAY(win->spice), seq);
+    spice_grab_sequence_free(seq);
 
     g_signal_connect(G_OBJECT(win->spice), "mouse-grab",
 		     G_CALLBACK(mouse_grab_cb), win);
