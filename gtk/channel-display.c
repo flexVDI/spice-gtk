@@ -616,8 +616,12 @@ static void emit_invalidate(SpiceChannel *channel, SpiceRect *bbox)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
 
-    if (!c->mark)
-        return;
+    /* FIXME: we shouldn't invalidate before the mark is sent, but
+       server-side is not correct in this regard... */
+    if (!c->mark) {
+        c->mark = TRUE;
+        emit_main_context(channel, SPICE_DISPLAY_MARK, TRUE);
+    }
 
     emit_main_context(channel, SPICE_DISPLAY_INVALIDATE,
                       bbox->left, bbox->top,
