@@ -120,6 +120,8 @@ void spice_msg_out_hexdump(spice_msg_out *out, unsigned char *data, int len);
 
 void spice_channel_wakeup(SpiceChannel *channel);
 
+SpiceSession* spice_channel_get_session(SpiceChannel *channel);
+
 /* channel-base.c */
 /* coroutine context */
 void spice_channel_handle_set_ack(SpiceChannel *channel, spice_msg_in *in);

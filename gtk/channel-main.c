@@ -798,6 +798,7 @@ static void main_handle_init(SpiceChannel *channel, spice_msg_in *in)
     spice_msg_out *out;
 
     g_object_get(channel, "spice-session", &session, NULL);
+    session = spice_channel_get_session(channel);
     spice_session_set_connection_id(session, init->session_id);
 
     out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_ATTACH_CHANNELS);
@@ -821,7 +822,7 @@ static void main_handle_mm_time(SpiceChannel *channel, spice_msg_in *in)
     SpiceSession *session;
     SpiceMsgMainMultiMediaTime *msg = spice_msg_in_parsed(in);
 
-    g_object_get(channel, "spice-session", &session, NULL);
+    session = spice_channel_get_session(channel);
     spice_session_set_mm_time(session, msg->time);
 }
 
@@ -833,7 +834,7 @@ static void main_handle_channels_list(SpiceChannel *channel, spice_msg_in *in)
     SpiceChannel *add;
     int i;
 
-    g_object_get(channel, "spice-session", &session, NULL);
+    session = spice_channel_get_session(channel);
     for (i = 0; i < msg->num_of_channels; i++) {
         add = spice_channel_new(session, msg->channels[i].type,
                                 msg->channels[i].id);
