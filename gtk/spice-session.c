@@ -43,6 +43,7 @@ struct spice_session {
     Ring              channels;
     guint32           mm_time;
     gboolean          client_provided_sockets;
+    guint64           mm_time_at_clock;
 };
 
 /**
@@ -453,7 +454,7 @@ SpiceSession *spice_session_new(void)
 
 /**
  * spice_session_connect:
- * @session: 
+ * @session:
  *
  * Open the session using the #SpiceSession:host and
  * #SpiceSession:port.
@@ -475,14 +476,14 @@ gboolean spice_session_connect(SpiceSession *session)
 
 /**
  * spice_session_open_fd:
- * @session: 
+ * @session:
  * @fd: a file descriptor
  *
  * Open the session using the provided @fd socket file
  * descriptor. This is useful if you create the fd yourself, for
  * example to setup a SSH tunnel.
  *
- * Returns: 
+ * Returns:
  **/
 gboolean spice_session_open_fd(SpiceSession *session, int fd)
 {
@@ -509,7 +510,7 @@ gboolean spice_session_get_client_provided_socket(SpiceSession *session)
 
 /**
  * spice_session_disconnect:
- * @session: 
+ * @session:
  *
  * Disconnect the @session, and destroy all channels.
  **/
@@ -538,7 +539,7 @@ void spice_session_disconnect(SpiceSession *session)
 
 /**
  * spice_session_get_channels:
- * @session: 
+ * @session:
  *
  * Get the list of current channels associated with this @session.
  *
@@ -698,14 +699,26 @@ int spice_session_get_connection_id(SpiceSession *session)
     return s->connection_id;
 }
 
+#if !GLIB_CHECK_VERSION(2,28,0)
+static guint64 g_get_monotonic_clock(void)
+{
+    GTimeVal tv;
+
+    /* TODO: support real monotonic clock? */
+    g_get_current_time (&tv);
+
+    return (((gint64) tv.tv_sec) * 1000000) + tv.tv_usec;
+}
+#endif
+
 G_GNUC_INTERNAL
 guint32 spice_session_get_mm_time(SpiceSession *session)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
 
     g_return_val_if_fail(s != NULL, 0);
-    /* TODO make use of mm_time */
-    return s->mm_time;
+
+    return s->mm_time + (g_get_monotonic_clock() - s->mm_time_at_clock) / 1000;
 }
 
 G_GNUC_INTERNAL
@@ -717,4 +730,5 @@ void spice_session_set_mm_time(SpiceSession *session, guint32 time)
     SPICE_DEBUG("set mm time: %u", time);
 
     s->mm_time = time;
+    s->mm_time_at_clock = g_get_monotonic_clock();
 }

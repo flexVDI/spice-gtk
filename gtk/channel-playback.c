@@ -20,6 +20,7 @@
 #include "spice-client.h"
 #include "spice-common.h"
 #include "spice-channel-priv.h"
+#include "spice-session-priv.h"
 
 #include "spice-marshal.h"
 
@@ -49,6 +50,8 @@ struct spice_playback_channel {
     int                         mode;
     CELTMode                    *celt_mode;
     CELTDecoder                 *celt_decoder;
+    guint32                     frame_count;
+    guint32                     last_time;
 };
 
 G_DEFINE_TYPE(SpicePlaybackChannel, spice_playback_channel, SPICE_TYPE_CHANNEL)
@@ -57,6 +60,7 @@ enum {
     SPICE_PLAYBACK_START,
     SPICE_PLAYBACK_DATA,
     SPICE_PLAYBACK_STOP,
+    SPICE_PLAYBACK_GET_DELAY,
 
     SPICE_PLAYBACK_LAST_SIGNAL,
 };
@@ -158,6 +162,22 @@ static void spice_playback_channel_class_init(SpicePlaybackChannelClass *klass)
                      G_TYPE_NONE,
                      0);
 
+    /**
+     * SpicePlaybackChannel::playback-get-delay:
+     * @channel: the #SpicePlaybackChannel that emitted the signal
+     *
+     * Notify when the current playback delay is requested
+     **/
+    signals[SPICE_PLAYBACK_GET_DELAY] =
+        g_signal_new("playback-get-delay",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_FIRST,
+                     0,
+                     NULL, NULL,
+                     g_cclosure_marshal_VOID__VOID,
+                     G_TYPE_NONE,
+                     0);
+
     g_type_class_add_private(klass, sizeof(spice_playback_channel));
 }
 
@@ -177,10 +197,14 @@ struct SPICE_PLAYBACK_DATA {
 struct SPICE_PLAYBACK_STOP {
 };
 
+struct SPICE_PLAYBACK_GET_DELAY {
+};
+
 /* main context */
 static void do_emit_main_context(GObject *object, int signum, gpointer params)
 {
     switch (signum) {
+    case SPICE_PLAYBACK_GET_DELAY:
     case SPICE_PLAYBACK_STOP: {
         g_signal_emit(object, signals[signum], 0);
         break;
@@ -220,6 +244,8 @@ static void playback_handle_data(SpiceChannel *channel, spice_msg_in *in)
     SPICE_DEBUG("%s: time %d data %p size %d", __FUNCTION__,
             packet->time, packet->data, packet->data_size);
 
+    c->last_time = packet->time;
+
     switch (c->mode) {
     case SPICE_AUDIO_DATA_MODE_RAW:
         emit_main_context(channel, SPICE_PLAYBACK_DATA,
@@ -243,6 +269,10 @@ static void playback_handle_data(SpiceChannel *channel, spice_msg_in *in)
     default:
         g_warning("%s: unhandled mode", __FUNCTION__);
         break;
+    }
+
+    if ((c->frame_count++ % 100) == 0) {
+        emit_main_context(channel, SPICE_PLAYBACK_GET_DELAY);
     }
 }
 
@@ -275,6 +305,9 @@ static void playback_handle_start(SpiceChannel *channel, spice_msg_in *in)
 
     SPICE_DEBUG("%s: fmt %d channels %d freq %d time %d", __FUNCTION__,
             start->format, start->channels, start->frequency, start->time);
+
+    c->frame_count = 0;
+    c->last_time = start->time;
 
     switch (c->mode) {
     case SPICE_AUDIO_DATA_MODE_RAW:
@@ -333,4 +366,17 @@ static void spice_playback_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
     g_return_if_fail(type < SPICE_N_ELEMENTS(playback_handlers));
     g_return_if_fail(playback_handlers[type] != NULL);
     playback_handlers[type](channel, msg);
+}
+
+void spice_playback_channel_set_delay(SpicePlaybackChannel *channel, guint32 delay_ms)
+{
+    spice_playback_channel *c;
+
+    g_return_if_fail(SPICE_IS_PLAYBACK_CHANNEL(channel));
+
+    SPICE_DEBUG("playback set_delay %d ms", delay_ms);
+
+    c = channel->priv;
+    spice_session_set_mm_time(spice_channel_get_session(SPICE_CHANNEL(channel)),
+                              c->last_time - delay_ms);
 }

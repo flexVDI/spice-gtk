@@ -471,6 +471,15 @@
   (return-type "GType")
 )
 
+(define-method set_delay
+  (of-object "SpicePlaybackChannel")
+  (c-name "spice_playback_channel_set_delay")
+  (return-type "none")
+  (parameters
+    '("guint32" "delay_ms")
+  )
+)
+
 
 
 ;; From channel-record.h

@@ -56,7 +56,8 @@ struct _SpicePlaybackChannelClass {
     gchar _spice_reserved[SPICE_RESERVED_PADDING];
 };
 
-GType	        spice_playback_channel_get_type(void);
+GType           spice_playback_channel_get_type(void);
+void            spice_playback_channel_set_delay(SpicePlaybackChannel *channel, guint32 delay_ms);
 
 G_END_DECLS
 
