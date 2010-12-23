@@ -188,6 +188,17 @@ static void stream_uncork(SpicePulse *pulse, struct stream *s)
     }
 }
 
+static void pulse_flush_cb(pa_stream *pastream, int success, void *data)
+{
+    struct stream *s = data;
+
+    if (!success)
+        g_warning("pulseaudio flush operation failed");
+
+    pa_operation_unref(s->cork_op);
+    s->cork_op = NULL;
+}
+
 static void pulse_cork_cb(pa_stream *pastream, int success, void *data)
 {
     struct stream *s = data;
@@ -196,7 +207,10 @@ static void pulse_cork_cb(pa_stream *pastream, int success, void *data)
         g_warning("pulseaudio cork operation failed");
 
     pa_operation_unref(s->cork_op);
-    s->cork_op = NULL;
+
+    if (!(s->cork_op = pa_stream_flush(s->stream, pulse_flush_cb, s))) {
+        g_warning("pa_stream_flush() failed");
+    }
 }
 
 static void stream_cork(SpicePulse *pulse, struct stream *s)
