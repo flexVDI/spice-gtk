@@ -33,6 +33,7 @@
 #include "spice-marshal.h"
 #include "spice-channel-cache.h"
 #include "spice-channel-priv.h"
+#include "spice-session-priv.h"
 #include "channel-display-priv.h"
 #include "decode.h"
 
@@ -96,6 +97,7 @@ static void image_clear(SpiceImageCache *cache);
 static void clear_surfaces(SpiceChannel *channel);
 static void clear_streams(SpiceChannel *channel);
 static display_surface *find_surface(spice_display_channel *c, int surface_id);
+static gboolean display_stream_render(display_stream *st);
 
 /* ------------------------------------------------------------------ */
 
@@ -831,6 +833,8 @@ static void display_handle_stream_create(SpiceChannel *channel, spice_msg_in *in
     st->clip = &op->clip;
     st->codec = op->codec_type;
     st->surface = find_surface(c, op->surface_id);
+    st->msgq = g_queue_new();
+    st->channel = channel;
 
     region_init(&st->region);
     display_update_stream_region(st);
@@ -842,45 +846,114 @@ static void display_handle_stream_create(SpiceChannel *channel, spice_msg_in *in
     }
 }
 
+/* coroutine or main context */
+static gboolean display_stream_schedule(display_stream *st)
+{
+    guint32 time, d;
+    SpiceMsgDisplayStreamData *op;
+    spice_msg_in *in;
+
+    if (st->timeout)
+        return TRUE;
+
+    time = spice_session_get_mm_time(spice_channel_get_session(st->channel));
+
+    in = g_queue_peek_head(st->msgq);
+    g_return_val_if_fail(in != NULL, TRUE);
+
+    op = spice_msg_in_parsed(in);
+    if (time < op->multi_media_time) {
+        d = op->multi_media_time - time;
+        SPICE_DEBUG("scheduling next stream render in %u ms", d);
+        st->timeout = g_timeout_add(d, (GSourceFunc)display_stream_render, st);
+        return TRUE;
+    } else {
+        in = g_queue_pop_head(st->msgq);
+        spice_msg_in_unref(in);
+        if (g_queue_get_length(st->msgq) == 0)
+            return TRUE;
+    }
+
+    return FALSE;
+}
+
+/* main context */
+static gboolean display_stream_render(display_stream *st)
+{
+    spice_msg_in *in;
+
+    st->timeout = 0;
+    do {
+        in = g_queue_pop_head(st->msgq);
+
+        g_return_val_if_fail(in != NULL, FALSE);
+
+        st->msg_data = in;
+        switch (st->codec) {
+        case SPICE_VIDEO_CODEC_TYPE_MJPEG:
+            stream_mjpeg_data(st);
+            break;
+        }
+
+        if (st->out_frame) {
+            SpiceMsgDisplayStreamCreate *info = spice_msg_in_parsed(st->msg_create);
+            uint8_t *data;
+            int stride;
+
+            data = st->out_frame;
+            stride = info->stream_width * sizeof(uint32_t);
+            if (!(info->flags & SPICE_STREAM_FLAGS_TOP_DOWN)) {
+                data += stride * (info->src_height - 1);
+                stride = -stride;
+            }
+
+            st->surface->canvas->ops->put_image(
+                st->surface->canvas,
+#ifdef WIN32
+                c->dc,
+#endif
+                &info->dest, data,
+                info->src_width, info->src_height, stride,
+                st->have_region ? &st->region : NULL);
+
+            if (st->surface->primary)
+                g_signal_emit(st->channel, signals[SPICE_DISPLAY_INVALIDATE], 0,
+                    info->dest.left, info->dest.top,
+                    info->dest.right - info->dest.left,
+                    info->dest.bottom - info->dest.top);
+        }
+
+        st->msg_data = NULL;
+        spice_msg_in_unref(in);
+
+        in = g_queue_peek_head(st->msgq);
+        if (in == NULL)
+            break;
+
+        if (display_stream_schedule(st))
+            return FALSE;
+    } while (1);
+
+    return FALSE;
+}
+
 /* coroutine context */
 static void display_handle_stream_data(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     SpiceMsgDisplayStreamData *op = spice_msg_in_parsed(in);
     display_stream *st = c->streams[op->id];
+    guint32 time;
 
-    st->msg_data = in;
-
-    switch (st->codec) {
-    case SPICE_VIDEO_CODEC_TYPE_MJPEG:
-        stream_mjpeg_data(st);
-        break;
+    time = spice_session_get_mm_time(spice_channel_get_session(channel));
+    if (op->multi_media_time < time) {
+        SPICE_DEBUG("stream data too late by %u ms, dropin", time - op->multi_media_time);
+        return;
     }
 
-    if (st->out_frame) {
-        SpiceMsgDisplayStreamCreate *info = spice_msg_in_parsed(st->msg_create);
-        uint8_t *data;
-        int stride;
-
-        data = st->out_frame;
-        stride = info->stream_width * sizeof(uint32_t);
-        if (!(info->flags & SPICE_STREAM_FLAGS_TOP_DOWN)) {
-            data += stride * (info->src_height - 1);
-            stride = -stride;
-        }
-        st->surface->canvas->ops->put_image(
-             st->surface->canvas,
-#ifdef WIN32
-             c->dc,
-#endif
-             &info->dest, data,
-             info->src_width, info->src_height, stride,
-             st->have_region ? &st->region : NULL);
-        if (st->surface->primary)
-            emit_invalidate(channel, &info->dest);
-    }
-
-    st->msg_data = NULL;
+    spice_msg_in_ref(in);
+    g_queue_push_tail(st->msgq, in);
+    display_stream_schedule(st);
 }
 
 /* coroutine context */
@@ -897,6 +970,11 @@ static void display_handle_stream_clip(SpiceChannel *channel, spice_msg_in *in)
     st->msg_clip = in;
     st->clip = &op->clip;
     display_update_stream_region(st);
+}
+
+static void _msg_in_unref_func(gpointer data, gpointer user_data)
+{
+    spice_msg_in_unref(data);
 }
 
 static void destroy_stream(SpiceChannel *channel, int id)
@@ -919,6 +997,11 @@ static void destroy_stream(SpiceChannel *channel, int id)
     if (st->msg_clip)
         spice_msg_in_unref(st->msg_clip);
     spice_msg_in_unref(st->msg_create);
+
+    g_queue_foreach(st->msgq, _msg_in_unref_func, NULL);
+    g_queue_free(st->msgq);
+    if (st->timeout != 0)
+        g_source_remove(st->timeout);
     free(st);
     c->streams[id] = NULL;
 }

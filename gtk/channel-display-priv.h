@@ -66,6 +66,9 @@ typedef struct display_stream {
     struct jpeg_error_mgr          mjpeg_jerr;
 
     uint8_t                     *out_frame;
+    GQueue                      *msgq;
+    guint                       timeout;
+    SpiceChannel                *channel;
 } display_stream;
 
 /* channel-display-mjpeg.c */

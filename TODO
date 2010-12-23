@@ -1,11 +1,8 @@
 * multihead
 * client migration support.
-* mm time handling.
 * use libspice-common instead of common/
 * clipboard images
 * TunnelChannel?
 * protocol <1 support?
 * win32
-* i18 in libs
-* complete documentation.
 * use GStreamer
