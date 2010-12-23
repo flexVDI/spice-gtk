@@ -264,9 +264,31 @@ static void stream_state_callback(pa_stream *s, void *userdata)
     }
 }
 
+static void stream_underflow_cb(pa_stream *s, void *userdata)
+{
+    SPICE_DEBUG("PA stream underflow!!");
+
+#ifdef PULSE_ADJUST_LATENCY
+    const pa_buffer_attr *buffer_attr;
+    pa_buffer_attr new_buffer_attr;
+    pa_operation *op;
+
+    buffer_attr = pa_stream_get_buffer_attr(s);
+    g_return_if_fail(buffer_attr != NULL);
+
+    new_buffer_attr = *buffer_attr;
+    new_buffer_attr.tlength *= 2;
+    new_buffer_attr.minreq *= 2;
+    op = pa_stream_set_buffer_attr(s, &new_buffer_attr, NULL, NULL);
+    pa_operation_unref(op);
+#endif
+}
+
 static void create_playback(SpicePulse *pulse)
 {
     spice_pulse *p = SPICE_PULSE_GET_PRIVATE(pulse);
+    pa_stream_flags_t flags;
+    pa_buffer_attr buffer_attr = { 0, };
 
     g_return_if_fail(p != NULL);
     g_return_if_fail(p->context != NULL);
@@ -277,9 +299,17 @@ static void create_playback(SpicePulse *pulse)
     p->playback.stream = pa_stream_new(p->context, "playback",
                                        &p->playback.spec, NULL);
     pa_stream_set_state_callback(p->playback.stream, stream_state_callback, pulse);
+    pa_stream_set_underflow_callback(p->playback.stream, stream_underflow_cb, pulse);
+
+    /* FIXME: we might want customizable latency */
+    buffer_attr.maxlength = -1;
+    buffer_attr.prebuf = pa_usec_to_bytes(10 * PA_USEC_PER_MSEC, &p->playback.spec);
+    buffer_attr.tlength = pa_usec_to_bytes(20 * PA_USEC_PER_MSEC, &p->playback.spec);
+    buffer_attr.minreq = pa_usec_to_bytes(10 * PA_USEC_PER_MSEC, &p->playback.spec);
+    flags = PA_STREAM_INTERPOLATE_TIMING | PA_STREAM_NOT_MONOTONIC | PA_STREAM_AUTO_TIMING_UPDATE;
 
     if (pa_stream_connect_playback(p->playback.stream,
-                                   NULL, NULL, 0, NULL, NULL) < 0) {
+                                   NULL, &buffer_attr, flags, NULL, NULL) < 0) {
         g_warning("pa_stream_connect_playback() failed: %s",
                   pa_strerror(pa_context_errno(p->context)));
     }
