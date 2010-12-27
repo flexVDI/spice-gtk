@@ -378,7 +378,7 @@ spice-client-gtk.defs: $(libspice_client_gtkinclude_HEADERS) $(libspice_client_g
 	$(AM_V_GEN)$(PYTHON) $(CODEGENDIR)/h2def.py -f spice-client-gtk-manual.defs $(libspice_client_gtkinclude_HEADERS) $(libspice_client_glibinclude_HEADERS) > $@
 
 spice-client-gtk-module.defs.c: spice-client-gtk.override spice-client-gtk.defs spice-client-gtk-manual.defs
-	@cat spice-client-gtk.defs spice-client-gtk-manual.defs > tmp.defs
+	@cat $(srcdir)/spice-client-gtk.defs $(srcdir)/spice-client-gtk-manual.defs > tmp.defs
 	$(AM_V_GEN)pygobject-codegen-2.0 --prefix spice \
 			  --register $(DEFSDIR)/gdk-types.defs \
 			  --register $(DEFSDIR)/gtk-types.defs \
@@ -386,7 +386,7 @@ spice-client-gtk-module.defs.c: spice-client-gtk.override spice-client-gtk.defs 
 			  tmp.defs > $@
 	@rm tmp.defs
 
-CLEANFILES += spice-client-gtk.defs spice-client-gtk-module.defs.c
+CLEANFILES += spice-client-gtk-module.defs.c
 EXTRA_DIST += spice-client-gtk.override spice-client-gtk-manual.defs spice-client-gtk.defs
 else
 EXTRA_DIST += spice-client-gtk.override spice-client-gtk-module.c spice-client-gtk-manual.defs
