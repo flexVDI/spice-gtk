@@ -488,6 +488,17 @@ static SpiceImageSurfacesOps image_surfaces_ops = {
     .get = surfaces_get
 };
 
+#if defined(WIN32)
+static HDC create_compatible_dc(void)
+{
+    HDC dc = CreateCompatibleDC(NULL);
+    if (!dc) {
+        g_warning("create compatible DC failed");
+    }
+    return dc;
+}
+#endif
+
 static void spice_display_channel_init(SpiceDisplayChannel *channel)
 {
     spice_display_channel *c;
@@ -501,6 +512,9 @@ static void spice_display_channel_init(SpiceDisplayChannel *channel)
     c->image_cache.ops = &image_cache_ops;
     c->palette_cache.ops = &palette_cache_ops;
     c->image_surfaces.ops = &image_surfaces_ops;
+#if defined(WIN32)
+    c->dc = create_compatible_dc();
+#endif
 }
 
 /* ------------------------------------------------------------------ */
@@ -910,7 +924,7 @@ static gboolean display_stream_render(display_stream *st)
             st->surface->canvas->ops->put_image(
                 st->surface->canvas,
 #ifdef WIN32
-                c->dc,
+                SPICE_DISPLAY_CHANNEL(st->channel)->priv->dc,
 #endif
                 &info->dest, data,
                 info->src_width, info->src_height, stride,
