@@ -826,18 +826,45 @@ static void main_handle_mm_time(SpiceChannel *channel, spice_msg_in *in)
     spice_session_set_mm_time(session, msg->time);
 }
 
+typedef struct channel_new {
+    SpiceSession *session;
+    int type;
+    int id;
+} channel_new_t;
+
+static gboolean _channel_new(channel_new_t *c)
+{
+    SpiceChannel *channel;
+
+    g_return_val_if_fail(c != NULL, FALSE);
+
+    channel = spice_channel_new(c->session, c->type, c->id);
+
+    g_warn_if_fail(channel != NULL);
+    g_object_unref(c->session);
+    g_free(c);
+
+    return FALSE;
+}
+
 /* coroutine context */
 static void main_handle_channels_list(SpiceChannel *channel, spice_msg_in *in)
 {
     SpiceMsgChannels *msg = spice_msg_in_parsed(in);
     SpiceSession *session;
-    SpiceChannel *add;
     int i;
 
     session = spice_channel_get_session(channel);
     for (i = 0; i < msg->num_of_channels; i++) {
-        add = spice_channel_new(session, msg->channels[i].type,
-                                msg->channels[i].id);
+        channel_new_t *c;
+
+        c = g_new(channel_new_t, 1);
+        c->session = g_object_ref(session);
+        c->type = msg->channels[i].type;
+        c->id = msg->channels[i].id;
+        /* no need to explicitely switch to main context, since
+           synchronous call is not needed. */
+        g_idle_add((GSourceFunc)_channel_new, c);
     }
 }
 
