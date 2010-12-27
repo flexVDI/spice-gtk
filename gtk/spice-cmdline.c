@@ -94,10 +94,10 @@ GOptionGroup *spice_cmdline_get_option_group(void)
 void spice_cmdline_session_setup(SpiceSession *session)
 {
     if (ca_file == NULL) {
-        char *home = getenv("HOME");
-        size_t size = strlen(home) + 32;
-        ca_file = malloc(size);
-        snprintf(ca_file, size, "%s/.spicec/spice_truststore.pem", home);
+        const char *homedir = g_getenv("HOME");
+        if (!homedir)
+            homedir = g_get_home_dir();
+        ca_file = g_strdup_printf("%s/.spicec/spice_truststore.pem", homedir);
     }
 
     if (uri)
