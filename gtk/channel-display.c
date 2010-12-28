@@ -533,6 +533,8 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
                 surface->shmid = -1;
             }
         }
+#else
+        surface->shmid = -1;
 #endif
     } else {
         surface->shmid = -1;

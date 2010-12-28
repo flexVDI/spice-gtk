@@ -545,10 +545,10 @@ static void spice_channel_flush_wire(SpiceChannel *channel,
     spice_channel *c = channel->priv;
     const char *ptr = data;
     size_t offset = 0;
+    GIOCondition cond;
 
     while (offset < datalen) {
         int ret;
-        GIOCondition cond;
 
         if (c->has_error) return;
 
@@ -568,11 +568,12 @@ static void spice_channel_flush_wire(SpiceChannel *channel,
             ret = g_socket_send(c->sock, ptr+offset, datalen-offset,
                                 NULL, &error);
             if (ret < 0) {
-                if (error) {
-                    if (error->code == G_IO_ERROR_WOULD_BLOCK)
-                        cond |= G_IO_OUT;
-                    g_error_free(error);
+                if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
+                    cond = G_IO_OUT;
+                } else {
+                    SPICE_DEBUG("Send error %s", error->message);
                 }
+                g_clear_error(&error);
                 ret = -1;
             }
         }
@@ -630,13 +631,12 @@ reread:
         GError *error = NULL;
         ret = g_socket_receive(c->sock, data, len, NULL, &error);
         if (ret < 0) {
-            if (error) {
-                if (error->code == G_IO_ERROR_WOULD_BLOCK)
-                    cond = G_IO_IN;
-                g_error_free(error);
+            if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
+                cond = G_IO_IN;
             } else {
                 SPICE_DEBUG("Read error %s", error->message);
             }
+            g_clear_error(&error);
             ret = -1;
         }
     }
@@ -1157,7 +1157,12 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
         }
 
         SPICE_CHANNEL_GET_CLASS(channel)->iterate_write(channel);
-    } while (!(ret = g_io_wait_interruptable(&c->wait, c->sock, G_IO_IN)));
+        ret = g_io_wait_interruptable(&c->wait, c->sock, G_IO_IN);
+#ifdef WIN32
+        /* FIXME: windows gsocket is buggy, it doesn't return correct condition... */
+        ret = g_socket_condition_check(c->sock, G_IO_IN);
+#endif
+    } while (ret == 0); /* ret == 0 means no IO condition, but woken up */
     /* TODO: check ret if error */
 
     SPICE_CHANNEL_GET_CLASS(channel)->iterate_read(channel);

@@ -580,10 +580,9 @@ static GSocket *channel_connect_socket(GSocketAddress *sockaddr,
     g_socket_set_blocking(sock, FALSE);
     if (!g_socket_connect(sock, sockaddr, NULL, error)) {
         if (*error && (*error)->code == G_IO_ERROR_PENDING) {
-            g_error_free(*error);
-            *error = NULL;
+            g_clear_error(error);
             SPICE_DEBUG("Socket pending");
-            g_io_wait(sock, G_IO_OUT|G_IO_ERR|G_IO_HUP);
+            g_io_wait(sock, G_IO_OUT | G_IO_ERR | G_IO_HUP);
 
             if (!g_socket_check_connect_result(sock, error)) {
                 SPICE_DEBUG("Failed to connect %s", (*error)->message);
