@@ -39,7 +39,7 @@ typedef struct GlibJpegDecoder
     int      _height;
 } GlibJpegDecoder;
 
-#if JPEG_LIB_VERSION < 70
+#ifndef jpeg_boolean
 #define jpeg_boolean boolean
 #endif
 
