@@ -56,5 +56,19 @@ $(top_srcdir)/.version:
 
 DISTCHECK_CONFIGURE_FLAGS = --enable-introspection --enable-werror --enable-gtk-doc
 
+spicy-for-windows.exe:
+	PATH=$$PATH:/usr/i686-pc-mingw32/sys-root/mingw/bin/:/usr/i686-pc-mingw32/sys-root/mingw/lib \
+	 nsiswrapper --run --name "spicy" --outfile "spicy-for-windows.exe" --with-gtk \
+	 /usr/i686-pc-mingw32/sys-root/mingw/bin/spicy.exe /usr/i686-pc-mingw32/sys-root/mingw/bin/snappy.exe \
+	 /usr/i686-pc-mingw32/sys-root/mingw/bin/libpangoft2-1.0-0.dll \
+	 /usr/i686-pc-mingw32/sys-root/mingw/bin/libgdk_pixbuf-2.0-0.dll \
+	 /usr/i686-pc-mingw32/sys-root/mingw/bin/libgdk-win32-2.0-0.dll \
+	 /usr/i686-pc-mingw32/sys-root/mingw/bin/gst-*.exe \
+	 /usr/i686-pc-mingw32/sys-root/mingw/lib/gstreamer-0.10/libgstaudio*.dll \
+	 /usr/i686-pc-mingw32/sys-root/mingw/lib/gstreamer-0.10/libgstdirectsoundsink.dll \
+	 /usr/i686-pc-mingw32/sys-root/mingw/lib/gstreamer-0.10/libgstapp.dll \
+	 /usr/i686-pc-mingw32/sys-root/mingw/lib/gstreamer-0.10/libgstautodetect.dll \
+	 /usr/i686-pc-mingw32/sys-root/mingw/lib/gstreamer-0.10/libgstcoreelements.dll
+
 -include $(top_srcdir)/git.mk
 
