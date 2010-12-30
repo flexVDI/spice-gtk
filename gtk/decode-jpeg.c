@@ -39,7 +39,7 @@ typedef struct GlibJpegDecoder
     int      _height;
 } GlibJpegDecoder;
 
-#ifndef jpeg_boolean
+#if !defined(jpeg_boolean) && !defined(__MINGW32__)
 #define jpeg_boolean boolean
 #endif
 
