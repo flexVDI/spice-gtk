@@ -166,7 +166,7 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
             g_strdup_printf("audio/x-raw-int,channels=%d,rate=%d,signed=(boolean)true,"
                             "width=16,depth=16,endianness=1234", channels, frequency);
         gchar *pipeline =
-            g_strdup_printf("appsrc is-live=1 caps=\"%s\" name=\"appsrc\" ! queue ! "
+            g_strdup_printf("appsrc is-live=1 do-timestamp=1 caps=\"%s\" name=\"appsrc\" ! queue ! "
                             "audioconvert ! audioresample ! autoaudiosink name=\"audiosink\"", audio_caps);
         p->playback.pipe = gst_parse_launch(pipeline, &error);
         if (p->playback.pipe == NULL) {
