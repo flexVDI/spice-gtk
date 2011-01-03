@@ -37,6 +37,8 @@ struct stream {
     GstElement              *pipe;
     GstElement              *src;
     GstElement              *sink;
+    guint                   rate;
+    guint                   channels;
 };
 
 struct spice_gstaudio {
@@ -61,7 +63,7 @@ static void spice_gstaudio_finalize(GObject *obj)
 void stream_dispose(struct stream *s)
 {
     if (s->pipe) {
-        gst_element_set_state (s->pipe, GST_STATE_PLAYING);
+        gst_element_set_state(s->pipe, GST_STATE_NULL);
         gst_object_unref(s->pipe);
         s->pipe = NULL;
     }
@@ -119,12 +121,113 @@ static void spice_gstaudio_class_init(SpiceGstAudioClass *klass)
     g_type_class_add_private(klass, sizeof(spice_gstaudio));
 }
 
+static void record_new_buffer(GstAppSink *appsink, gpointer data)
+{
+    SpiceGstAudio *gstaudio = data;
+    spice_gstaudio *p = gstaudio->priv;
+    GstMessage *msg;
+
+    g_return_if_fail(p != NULL);
+
+    msg = gst_message_new_application(GST_OBJECT(p->record.pipe), NULL);
+    gst_element_post_message(p->record.pipe, msg);
+}
+
 static void record_stop(SpiceRecordChannel *channel, gpointer data)
 {
-    /* SpiceGstAudio *gstaudio = data; */
-    /* spice_gstaudio *p = gstaudio->priv; */
+    SpiceGstAudio *gstaudio = data;
+    spice_gstaudio *p = gstaudio->priv;
 
     SPICE_DEBUG("%s", __FUNCTION__);
+    if (p->record.pipe)
+        gst_element_set_state(p->record.pipe, GST_STATE_READY);
+}
+
+static gboolean record_bus_cb(GstBus *bus, GstMessage *msg, gpointer data)
+{
+    SpiceGstAudio *gstaudio = data;
+    spice_gstaudio *p = gstaudio->priv;
+
+    g_return_val_if_fail(p != NULL, FALSE);
+
+    switch (GST_MESSAGE_TYPE(msg)) {
+    case GST_MESSAGE_APPLICATION: {
+        GstBuffer *b;
+
+        b = gst_app_sink_pull_buffer(GST_APP_SINK(p->record.sink));
+        if (!b) {
+            if (!gst_app_sink_is_eos(GST_APP_SINK(p->record.sink)))
+                g_warning("eos not reached, but can't pull new buffer");
+            return TRUE;
+        }
+
+        spice_record_send_data(SPICE_RECORD_CHANNEL(p->rchannel),
+                               /* FIXME: server side doesn't care about ts?
+                                  what is the unit? ms apparently */
+                               GST_BUFFER_DATA(b), GST_BUFFER_SIZE(b), 0);
+        break;
+    }
+    default:
+        break;
+    }
+
+    return TRUE;
+}
+
+static void record_start(SpiceRecordChannel *channel, gint format, gint channels,
+                         gint frequency, gpointer data)
+{
+    SpiceGstAudio *gstaudio = data;
+    spice_gstaudio *p = gstaudio->priv;
+
+    g_return_if_fail(p != NULL);
+    g_return_if_fail(format == SPICE_AUDIO_FMT_S16);
+
+    if (p->record.pipe &&
+        (p->record.rate != frequency ||
+         p->record.channels != channels)) {
+        record_stop(channel, data);
+        gst_object_unref(p->record.pipe);
+        p->record.pipe = NULL;
+    }
+
+    if (!p->record.pipe) {
+        GError *error = NULL;
+        GstBus *bus;
+        gchar *audio_caps =
+            g_strdup_printf("audio/x-raw-int,channels=%d,rate=%d,signed=(boolean)true,"
+                            "width=16,depth=16,endianness=1234", channels, frequency);
+        gchar *pipeline =
+            g_strdup_printf("autoaudiosrc name=audiosrc ! queue ! audioconvert ! audioresample ! "
+                            "appsink caps=\"%s\" name=appsink", audio_caps);
+
+        p->record.pipe = gst_parse_launch(pipeline, &error);
+        if (p->record.pipe == NULL) {
+            g_warning("Failed to create pipeline: %s", error->message);
+            goto lerr;
+        }
+
+        bus = gst_pipeline_get_bus(GST_PIPELINE(p->record.pipe));
+        gst_bus_add_watch(bus, record_bus_cb, data);
+        gst_object_unref(GST_OBJECT(bus));
+
+        p->record.src = gst_bin_get_by_name(GST_BIN(p->record.pipe), "audiosrc");
+        p->record.sink = gst_bin_get_by_name(GST_BIN(p->record.pipe), "appsink");
+        p->record.rate = frequency;
+        p->record.channels = channels;
+
+        gst_app_sink_set_emit_signals(GST_APP_SINK(p->record.sink), TRUE);
+        g_signal_connect(p->record.sink, "new-buffer",
+                         G_CALLBACK(record_new_buffer), data);
+
+lerr:
+        g_clear_error(&error);
+        g_free(audio_caps);
+        g_free(pipeline);
+    }
+
+    if (p->record.pipe)
+        gst_element_set_state(p->record.pipe, GST_STATE_PLAYING);
 }
 
 static void channel_event(SpiceChannel *channel, SpiceChannelEvent event,
@@ -152,6 +255,15 @@ static void channel_event(SpiceChannel *channel, SpiceChannelEvent event,
     }
 }
 
+static void playback_stop(SpicePlaybackChannel *channel, gpointer data)
+{
+    SpiceGstAudio *gstaudio = data;
+    spice_gstaudio *p = SPICE_GSTAUDIO_GET_PRIVATE(gstaudio);
+
+    if (p->playback.pipe)
+        gst_element_set_state(p->playback.pipe, GST_STATE_READY);
+}
+
 static void playback_start(SpicePlaybackChannel *channel, gint format, gint channels,
                            gint frequency, gpointer data)
 {
@@ -159,6 +271,15 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
     spice_gstaudio *p = SPICE_GSTAUDIO_GET_PRIVATE(gstaudio);
 
     g_return_if_fail(p != NULL);
+    g_return_if_fail(format == SPICE_AUDIO_FMT_S16);
+
+    if (p->playback.pipe &&
+        (p->playback.rate != frequency ||
+         p->playback.channels != channels)) {
+        playback_stop(channel, data);
+        gst_object_unref(p->playback.pipe);
+        p->playback.pipe = NULL;
+    }
 
     if (!p->playback.pipe) {
         GError *error = NULL;
@@ -175,6 +296,8 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
         }
         p->playback.src = gst_bin_get_by_name(GST_BIN(p->playback.pipe), "appsrc");
         p->playback.sink = gst_bin_get_by_name(GST_BIN(p->playback.pipe), "audiosink");
+        p->playback.rate = frequency;
+        p->playback.channels = channels;
 
 lerr:
         g_clear_error(&error);
@@ -183,7 +306,7 @@ lerr:
     }
 
     if (p->playback.pipe)
-        gst_element_set_state (p->playback.pipe, GST_STATE_PLAYING);
+        gst_element_set_state(p->playback.pipe, GST_STATE_PLAYING);
 }
 
 static void playback_data(SpicePlaybackChannel *channel,
@@ -198,18 +321,9 @@ static void playback_data(SpicePlaybackChannel *channel,
 
     audio = g_memdup(audio, size); /* TODO: try to avoid memory copy */
     buf = gst_app_buffer_new(audio, size, g_free, audio);
-    gst_app_src_push_buffer(GST_APP_SRC (p->playback.src), buf);
+    gst_app_src_push_buffer(GST_APP_SRC(p->playback.src), buf);
 }
 
-
-static void playback_stop(SpicePlaybackChannel *channel, gpointer data)
-{
-    SpiceGstAudio *gstaudio = data;
-    spice_gstaudio *p = SPICE_GSTAUDIO_GET_PRIVATE(gstaudio);
-
-    if (p->playback.pipe)
-        gst_element_set_state (p->playback.pipe, GST_STATE_READY);
-}
 
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
@@ -233,6 +347,10 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     if (SPICE_IS_RECORD_CHANNEL(channel)) {
         g_return_if_fail(p->rchannel == NULL);
         p->rchannel = g_object_ref(channel);
+        g_signal_connect(channel, "record-start",
+                         G_CALLBACK(record_start), gstaudio);
+        g_signal_connect(channel, "record-stop",
+                         G_CALLBACK(record_stop), gstaudio);
         g_signal_connect(channel, "channel-event",
                          G_CALLBACK(channel_event), gstaudio);
         spice_channel_connect(channel);
