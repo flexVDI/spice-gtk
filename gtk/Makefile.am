@@ -13,8 +13,8 @@ EXTRA_DIST =					\
 
 bin_PROGRAMS = spicy snappy
 lib_LTLIBRARIES = \
-	libspice-client-gtk.la		\
-	libspice-client-glib.la
+	libspice-client-glib.la		\
+	libspice-client-gtk.la
 
 if HAVE_LD_VERSION_SCRIPT
 VERSION_LDFLAGS = -Wl,--version-script=${srcdir}/map-file
