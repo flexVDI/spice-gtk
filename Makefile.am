@@ -66,6 +66,7 @@ spicy-for-windows.exe:
 	 /usr/i686-pc-mingw32/sys-root/mingw/bin/gst-*.exe \
 	 /usr/i686-pc-mingw32/sys-root/mingw/lib/gstreamer-0.10/libgstaudio*.dll \
 	 /usr/i686-pc-mingw32/sys-root/mingw/lib/gstreamer-0.10/libgstdirectsoundsink.dll \
+	 /usr/i686-pc-mingw32/sys-root/mingw/lib/gstreamer-0.10/libgstdirectsoundsrc.dll \
 	 /usr/i686-pc-mingw32/sys-root/mingw/lib/gstreamer-0.10/libgstapp.dll \
 	 /usr/i686-pc-mingw32/sys-root/mingw/lib/gstreamer-0.10/libgstautodetect.dll \
 	 /usr/i686-pc-mingw32/sys-root/mingw/lib/gstreamer-0.10/libgstcoreelements.dll

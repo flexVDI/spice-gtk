@@ -116,6 +116,7 @@ Section "spicy"
   File "/usr/i686-pc-mingw32/sys-root/mingw/lib/gstreamer-0.10/libgstautodetect.dll"
   File "/usr/i686-pc-mingw32/sys-root/mingw/lib/gstreamer-0.10/libgstcoreelements.dll"
   File "/usr/i686-pc-mingw32/sys-root/mingw/lib/gstreamer-0.10/libgstdirectsoundsink.dll"
+  File "/usr/i686-pc-mingw32/sys-root/mingw/lib/gstreamer-0.10/libgstdirectsoundsrc.dll"
 
   SetOutPath "$INSTDIR\lib"
   File /r "/usr/i686-pc-mingw32/sys-root/mingw/lib/gtk-2.0"
@@ -146,6 +147,7 @@ Section "Uninstall"
 
   RMDir /r "$INSTDIR\lib\gtk-2.0"
 
+  Delete /rebootok "$INSTDIR\lib\gstreamer-0.10\libgstdirectsoundsrc.dll"
   Delete /rebootok "$INSTDIR\lib\gstreamer-0.10\libgstdirectsoundsink.dll"
   Delete /rebootok "$INSTDIR\lib\gstreamer-0.10\libgstcoreelements.dll"
   Delete /rebootok "$INSTDIR\lib\gstreamer-0.10\libgstautodetect.dll"
