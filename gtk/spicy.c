@@ -734,7 +734,7 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
         connection_disconnect(conn);
         break;
     case SPICE_CHANNEL_ERROR_CONNECT:
-        g_warning("main channel: failed to connect");
+        g_message("main channel: failed to connect");
         rc = connect_dialog(NULL, conn->session);
         if (rc == 0) {
             connection_connect(conn);
