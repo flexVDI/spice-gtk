@@ -34,7 +34,6 @@
 /spice-channel-enums.c
 /spice-channel-enums.h
 /spice-client-gtk-module.defs.c
-/spice-client-gtk.defs
 /spice-marshal.c
 /spice-marshal.h
 /spice-widget-enums.c
