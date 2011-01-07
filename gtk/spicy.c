@@ -730,10 +730,9 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
         recent_add(conn->session);
         break;
     case SPICE_CHANNEL_CLOSED:
+        /* this event is only sent if the channel was succesfully opened before */
         g_message("main channel: closed");
-        /* nothing: the channel might be a previous attempt to
-           connect, don't call connection_disconnect() to let the
-           following connect() attempt continue */
+        connection_disconnect(conn);
         break;
     case SPICE_CHANNEL_ERROR_CONNECT:
         g_message("main channel: failed to connect");

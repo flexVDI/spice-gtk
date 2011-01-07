@@ -1280,7 +1280,6 @@ connected:
 cleanup:
     SPICE_DEBUG("Doing final channel cleanup");
     channel_disconnect(channel);
-    emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_CLOSED);
 
     g_idle_add(spice_channel_delayed_unref, data);
 
@@ -1398,7 +1397,6 @@ static void channel_disconnect(SpiceChannel *channel)
         g_object_unref(c->sock);
         c->sock = NULL;
     }
-    c->state = SPICE_CHANNEL_STATE_UNCONNECTED;
     free(c->peer_msg);
     c->peer_msg = NULL;
     c->peer_pos = 0;
@@ -1414,6 +1412,10 @@ static void channel_disconnect(SpiceChannel *channel)
     g_array_set_size(c->remote_caps, 0);
     g_array_set_size(c->common_caps, 0);
     g_array_set_size(c->caps, 0);
+
+    if (c->state == SPICE_CHANNEL_STATE_READY)
+        emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_CLOSED);
+    c->state = SPICE_CHANNEL_STATE_UNCONNECTED;
 }
 
 /**
@@ -1438,8 +1440,6 @@ void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
     c->fd = -1;
     c->has_error = 1;
     spice_channel_wakeup(channel);
-
-    /* channel_disconnect(channel); */
 
     if (reason != SPICE_CHANNEL_NONE) {
         g_signal_emit(G_OBJECT(channel), signals[SPICE_CHANNEL_EVENT], 0, reason);
