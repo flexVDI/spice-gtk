@@ -356,8 +356,12 @@ void spicex_sync_keyboard_lock_modifiers(SpiceDisplay *display)
     Display *x_display;
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
     guint32 modifiers;
+    GdkWindow *w;
 
-    x_display = GDK_WINDOW_XDISPLAY(gtk_widget_get_parent_window(GTK_WIDGET(display)));
+    w = gtk_widget_get_parent_window(GTK_WIDGET(display));
+    g_return_if_fail(w != NULL);
+
+    x_display = GDK_WINDOW_XDISPLAY(w);
     modifiers = get_keyboard_lock_modifiers(x_display);
     if (d->inputs)
         spice_inputs_set_key_locks(d->inputs, modifiers);
