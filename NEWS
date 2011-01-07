@@ -1,3 +1,10 @@
+v0.4
+====
+
+- sync video with pulseaudio backend
+- build with mingw, and run on Windows
+- various minor fixes
+
 v0.3
 ====
 

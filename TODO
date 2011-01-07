@@ -1,8 +1,7 @@
-* multihead
+* sync audio with GStreamer backend
 * client migration support.
+* multihead
 * use libspice-common instead of common/
 * clipboard images
 * TunnelChannel?
 * protocol <1 support?
-* win32
-* use GStreamer
