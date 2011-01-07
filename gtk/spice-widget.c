@@ -1002,6 +1002,9 @@ static void clipboard_owner_change(GtkClipboard        *clipboard,
     SpiceDisplay *display = data;
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
+    if (d->main == NULL)
+        return;
+
     if (d->clip_grabbed) {
         d->clip_grabbed = false;
         spice_main_clipboard_release(d->main);
@@ -1324,6 +1327,8 @@ static void disconnect_main(SpiceDisplay *display)
     g_signal_handlers_disconnect_by_func(d->main, G_CALLBACK(mouse_update),
                                          display);
     d->main = NULL;
+    d->clipboard_by_guest = FALSE;
+    d->clip_grabbed = FALSE;
 }
 
 static void disconnect_display(SpiceDisplay *display)
