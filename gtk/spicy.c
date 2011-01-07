@@ -734,6 +734,10 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
         g_message("main channel: closed");
         connection_disconnect(conn);
         break;
+    case SPICE_CHANNEL_ERROR_IO:
+        connection_disconnect(conn);
+        break;
+    case SPICE_CHANNEL_ERROR_LINK:
     case SPICE_CHANNEL_ERROR_CONNECT:
         g_message("main channel: failed to connect");
         rc = connect_dialog(NULL, conn->session);

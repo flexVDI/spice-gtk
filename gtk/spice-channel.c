@@ -740,6 +740,7 @@ static void spice_channel_recv_auth(SpiceChannel *channel)
     if (rc != sizeof(link_res)) {
         g_critical("incomplete auth reply (%d/%" G_GSIZE_FORMAT ")",
                    rc, sizeof(link_res));
+        emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_LINK);
         return;
     }
 
@@ -823,9 +824,12 @@ static void spice_channel_recv_link_hdr(SpiceChannel *channel)
     if (rc != sizeof(c->peer_hdr)) {
         g_critical("incomplete link header (%d/%" G_GSIZE_FORMAT ")",
                    rc, sizeof(c->peer_hdr));
-        return;
+        goto error;
     }
-    g_return_if_fail(c->peer_hdr.magic == SPICE_MAGIC);
+    if (c->peer_hdr.magic != SPICE_MAGIC) {
+        g_critical("invalid SPICE_MAGIC!");
+        goto error;
+    }
 
     if (c->peer_hdr.major_version != c->link_hdr.major_version) {
         if (c->peer_hdr.major_version == 1) {
@@ -838,11 +842,15 @@ static void spice_channel_recv_link_hdr(SpiceChannel *channel)
         }
         g_critical("major mismatch (got %d, expected %d)",
                    c->peer_hdr.major_version, c->link_hdr.major_version);
-        return;
+        goto error;
     }
 
     c->peer_msg = spice_malloc(c->peer_hdr.size);
     c->state = SPICE_CHANNEL_STATE_LINK_MSG;
+    return;
+
+error:
+    emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_LINK);
 }
 
 /* coroutine context */
@@ -857,8 +865,9 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
                             c->peer_hdr.size - c->peer_pos);
     c->peer_pos += rc;
     if (c->peer_pos != c->peer_hdr.size) {
-        g_warning("%s: %s: incomplete link reply (%d/%d)",
+        g_critical("%s: %s: incomplete link reply (%d/%d)",
                   c->name, __FUNCTION__, rc, c->peer_hdr.size);
+        emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_LINK);
         return;
     }
     switch (c->peer_msg->error) {
