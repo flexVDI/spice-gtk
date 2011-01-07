@@ -670,13 +670,26 @@ reread:
  * Fill the 'data' buffer up with exactly 'len' bytes worth of data
  */
 /* coroutine context */
-static int spice_channel_read(SpiceChannel *channel, void *data, size_t len)
+static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
 {
     spice_channel *c = channel->priv;
+    gsize len = length;
+    int ret;
 
     if (c->has_error) return 0; /* has_error is set by disconnect(), return no error */
 
-    return spice_channel_read_wire(channel, data, len);
+    while (len > 0) {
+        ret = spice_channel_read_wire(channel, data, len);
+        if (ret <= 0)
+            return ret;
+        g_assert(ret <= len);
+        len -= ret;
+        data = ((char*)data) + ret;
+        if (len > 0)
+            SPICE_DEBUG("still needs %" G_GSIZE_FORMAT, len);
+    }
+
+    return length;
 }
 
 /* coroutine context */
