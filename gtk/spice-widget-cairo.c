@@ -155,12 +155,6 @@ void spicex_expose_event(SpiceDisplay *display, GdkEventExpose *expose)
 }
 
 G_GNUC_INTERNAL
-void spicex_sync_keyboard_lock_modifiers(SpiceDisplay *display)
-{
-    SPICE_DEBUG("not implemented - to move to spice-widget-win32.c");
-}
-
-G_GNUC_INTERNAL
 void spicex_image_invalidate(SpiceDisplay *display,
                              gint *x, gint *y, gint *w, gint *h)
 {

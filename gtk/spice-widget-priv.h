@@ -26,7 +26,6 @@ G_BEGIN_DECLS
 
 #ifdef WITH_X11
 #include <X11/Xlib.h>
-#include <X11/XKBlib.h>
 #include <X11/extensions/XShm.h>
 #include <gdk/gdkx.h>
 #endif
@@ -111,7 +110,6 @@ int      spicex_image_create                 (SpiceDisplay *display);
 void     spicex_image_destroy                (SpiceDisplay *display);
 void     spicex_image_invalidate             (SpiceDisplay *display, gint *x, gint *y, gint *w, gint *h);
 void     spicex_expose_event                 (SpiceDisplay *display, GdkEventExpose *expose);
-void     spicex_sync_keyboard_lock_modifiers (SpiceDisplay *display);
 gboolean spicex_is_scaled                    (SpiceDisplay *display);
 
 G_END_DECLS

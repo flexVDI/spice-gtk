@@ -196,6 +196,8 @@ AS_IF([test "x$with_x11" = "xyes"],
       [AC_DEFINE([WITH_X11], 1, [Use X11 backend?])])
 AM_CONDITIONAL([WITH_X11], [test "x$with_x11" = "xyes"])
 
+AC_CHECK_HEADERS([X11/XKBlib.h])
+
 # Add parameter for (partial) static linkage of spice client.
 # this is used to achive single binary package for all (?) distros.
 AC_ARG_ENABLE(static-linkage, 
