@@ -236,13 +236,9 @@ spicy_SOURCES =				\
 	spice-cmdline.c			\
 	$(NULL)
 
-spicy_DEPENDENCIES =			\
-	$(lib_LTLIBRARIES)		\
-	$(NULL)
-
-spicy_LDFLAGS =				\
-	-lspice-client-gtk		\
-	-lspice-client-glib		\
+spicy_LDADD =				\
+	libspice-client-gtk.la		\
+	libspice-client-glib.la		\
 	$(NULL)
 
 
@@ -252,12 +248,8 @@ snappy_SOURCES =			\
 	spice-cmdline.c			\
 	$(NULL)
 
-snappy_DEPENDENCIES =			\
-	$(lib_LTLIBRARIES)		\
-	$(NULL)
-
-snappy_LDFLAGS =			\
-	-lspice-client-glib		\
+snappy_LDADD =				\
+	libspice-client-glib.la		\
 	$(NULL)
 
 
