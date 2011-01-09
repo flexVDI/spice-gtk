@@ -444,7 +444,7 @@ doc/reference/Makefile
 ])
 
 dnl ==========================================================================
-echo "
+AC_MSG_NOTICE([
 
         Spice-Gtk $VERSION
         ==============
@@ -458,4 +458,5 @@ echo "
         Target:                   ${red_target}
 
         Now type 'make' to build $PACKAGE
-"
+
+])
