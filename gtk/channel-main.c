@@ -1170,6 +1170,11 @@ void spice_main_clipboard_release(SpiceMainChannel *channel)
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
+    spice_main_channel *c = channel->priv;
+
+    if (!c->agent_connected)
+        return;
+
     agent_clipboard_release(channel);
     spice_channel_wakeup(SPICE_CHANNEL(channel));
 }
