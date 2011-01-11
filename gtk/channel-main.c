@@ -797,7 +797,6 @@ static void main_handle_init(SpiceChannel *channel, spice_msg_in *in)
     SpiceSession *session;
     spice_msg_out *out;
 
-    g_object_get(channel, "spice-session", &session, NULL);
     session = spice_channel_get_session(channel);
     spice_session_set_connection_id(session, init->session_id);
 
