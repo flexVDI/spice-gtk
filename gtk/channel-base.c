@@ -105,8 +105,8 @@ void spice_channel_handle_wait_for_channels(SpiceChannel *channel, spice_msg_in 
 G_GNUC_INTERNAL
 void spice_channel_handle_migrate(SpiceChannel *channel, spice_msg_in *in)
 {
-    /* spice_channel *c = channel->priv;
-       SpiceMsgMigrate *mig = spice_msg_in_parsed(in); */
+    /* spice_channel *c = channel->priv; */
+    SpiceMsgMigrate *mig = spice_msg_in_parsed(in);
 
-    SPICE_DEBUG("%s TODO", __FUNCTION__);
+    SPICE_DEBUG("%s: channel %p flags %u", __FUNCTION__, channel, mig->flags);
 }

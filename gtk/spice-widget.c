@@ -1634,6 +1634,8 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
     int id;
 
     g_object_get(channel, "channel-id", &id, NULL);
+    SPICE_DEBUG("channel_destroy %d", id);
+
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
         disconnect_main(display);
         return;

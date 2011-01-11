@@ -524,6 +524,7 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
 
     if (surface->primary) {
+        SPICE_DEBUG("display: create primary canvas");
 #ifdef HAVE_SYS_SHM_H
         surface->shmid = shmget(IPC_PRIVATE, surface->size, IPC_CREAT | 0777);
         if (surface->shmid >= 0) {

@@ -1038,9 +1038,10 @@ static void main_handle_agent_token(SpiceChannel *channel, spice_msg_in *in)
 /* coroutine context */
 static void main_handle_migrate_begin(SpiceChannel *channel, spice_msg_in *in)
 {
-    /* SpiceMsgMainMigrationBegin *mig = spice_msg_in_parsed(in); */
+    SpiceMsgMainMigrationBegin *mig = spice_msg_in_parsed(in);
 
-    g_warning("%s: TODO", __FUNCTION__);
+    SPICE_DEBUG("migrate_begin %d %s %d %d",
+                mig->host_size, mig->host_data, mig->port, mig->sport);
 }
 
 /* coroutine context */
