@@ -1247,6 +1247,8 @@ reconnect:
         goto cleanup;
     }
 
+    c->has_error = FALSE;
+
     if (c->tls) {
         gchar *ca_file;
         int rc;
@@ -1311,10 +1313,30 @@ cleanup:
     return NULL;
 }
 
+static gboolean connect_delayed(gpointer data)
+{
+    SpiceChannel *channel = data;
+    spice_channel *c = channel->priv;
+    struct coroutine *co;
+
+    SPICE_DEBUG("Open coroutine starting");
+    c->connect_delayed_id = 0;
+
+    co = &c->coroutine;
+
+    co->stack_size = 16 << 20;
+    co->entry = spice_channel_coroutine;
+    co->release = NULL;
+
+    coroutine_init(co);
+    coroutine_yieldto(co, channel);
+
+    return FALSE;
+}
+
 static gboolean channel_connect(SpiceChannel *channel)
 {
     spice_channel *c = channel->priv;
-    struct coroutine *co;
 
     g_return_val_if_fail(c != NULL, FALSE);
 
@@ -1324,9 +1346,11 @@ static gboolean channel_connect(SpiceChannel *channel)
         return false;
     }
     if (c->state != SPICE_CHANNEL_STATE_UNCONNECTED) {
+        g_warning("Invalid channel_connect state: %d", c->state);
         return true;
     }
 
+    c->state = SPICE_CHANNEL_STATE_CONNECTING;
     if (spice_session_get_client_provided_socket(c->session)) {
         if (c->fd == -1) {
             g_signal_emit(channel, signals[SPICE_CHANNEL_OPEN_FD], 0, c->tls);
@@ -1337,18 +1361,8 @@ static gboolean channel_connect(SpiceChannel *channel)
     g_return_val_if_fail(c->sock == NULL, FALSE);
     g_object_ref(G_OBJECT(channel)); /* Unref'd when co-routine exits */
 
-    /* ----------- FIXME gtk-vnc does that in idle */
-    SPICE_DEBUG("Open coroutine starting");
-    c->open_id = 0;
-
-    co = &c->coroutine;
-
-    co->stack_size = 16 << 20;
-    co->entry = spice_channel_coroutine;
-    co->release = NULL;
-
-    coroutine_init(co);
-    coroutine_yieldto(co, channel);
+    /* we connect in idle, to let previous coroutine exit, if present */
+    c->connect_delayed_id = g_idle_add(connect_delayed, channel);
 
     return true;
 }
@@ -1398,9 +1412,9 @@ static void channel_disconnect(SpiceChannel *channel)
         return;
     }
 
-    if (c->open_id) {
-        g_source_remove(c->open_id);
-        c->open_id = 0;
+    if (c->connect_delayed_id) {
+        g_source_remove(c->connect_delayed_id);
+        c->connect_delayed_id = 0;
     }
 
     if (c->tls) {
@@ -1455,12 +1469,14 @@ void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
 
     g_return_if_fail(c != NULL);
 
-    if (c->state == SPICE_CHANNEL_STATE_UNCONNECTED) {
+    if (c->state == SPICE_CHANNEL_STATE_UNCONNECTED)
         return;
-    }
 
-    c->fd = -1;
-    c->has_error = 1;
+    if (reason == SPICE_CHANNEL_SWITCHING)
+        c->state = SPICE_CHANNEL_STATE_SWITCHING;
+
+    c->fd = -1; /* TODO: why not after wakeup? is client fd closed by gsocket? */
+    c->has_error = TRUE;
     spice_channel_wakeup(channel);
 
     if (reason != SPICE_CHANNEL_NONE) {

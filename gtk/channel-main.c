@@ -1043,12 +1043,46 @@ static void main_handle_migrate_begin(SpiceChannel *channel, spice_msg_in *in)
                 mig->host_size, mig->host_data, mig->port, mig->sport);
 }
 
+/* main context */
+static gboolean switch_host_delayed(gpointer data)
+{
+    SpiceChannel *channel = data;
+
+    spice_channel_disconnect(channel, SPICE_CHANNEL_SWITCHING);
+    spice_channel_connect(channel);
+
+    return FALSE;
+}
+
 /* coroutine context */
 static void main_handle_migrate_switch_host(SpiceChannel *channel, spice_msg_in *in)
 {
-    /* SpiceMsgMainMigrationSwitchHost *mig = spice_msg_in_parsed(in); */
+    SpiceMsgMainMigrationSwitchHost *mig = spice_msg_in_parsed(in);
+    SpiceSession *session;
+    char *host = (char *)mig->host_data;
+    char *subject = NULL, *port, *tlsport;
 
-    g_warning("%s: TODO", __FUNCTION__);
+    g_return_if_fail(host[mig->host_size - 1] == '\0');
+    if (mig->cert_subject_size) {
+        subject = (char *)mig->cert_subject_data;
+        g_return_if_fail(subject[mig->cert_subject_size - 1] == '\0');
+    }
+
+    SPICE_DEBUG("migrate_switch %s %d %d",
+                host, mig->port, mig->sport);
+
+    session = spice_channel_get_session(channel);
+    spice_session_migrate_disconnect(session);
+
+    g_object_set(session,
+                 "host", host,
+                 "port", port = g_strdup_printf("%d", mig->port),
+                 "tls-port", tlsport = g_strdup_printf("%d", mig->sport),
+                 NULL);
+    g_free(port);
+    g_free(tlsport);
+
+    g_idle_add(switch_host_delayed, channel); /* TODO: track source id */
 }
 
 /* coroutine context */

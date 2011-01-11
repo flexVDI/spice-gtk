@@ -52,16 +52,18 @@ struct spice_msg_in {
 
 enum spice_channel_state {
     SPICE_CHANNEL_STATE_UNCONNECTED = 0,
+    SPICE_CHANNEL_STATE_CONNECTING,
     SPICE_CHANNEL_STATE_LINK_HDR,
     SPICE_CHANNEL_STATE_LINK_MSG,
     SPICE_CHANNEL_STATE_AUTH,
     SPICE_CHANNEL_STATE_READY,
+    SPICE_CHANNEL_STATE_SWITCHING,
 };
 
 struct spice_channel {
     SpiceSession                *session;
     struct coroutine            coroutine;
-    guint                       open_id;
+    guint                       connect_delayed_id;
     GSocket                     *sock;
     int                         fd;
     gboolean                    has_error;

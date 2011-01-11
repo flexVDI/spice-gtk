@@ -508,6 +508,29 @@ gboolean spice_session_get_client_provided_socket(SpiceSession *session)
     return s->client_provided_sockets;
 }
 
+G_GNUC_INTERNAL
+void spice_session_migrate_disconnect(SpiceSession *session)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    struct channel *item;
+    RingItem *ring, *next;
+
+    g_return_if_fail(s != NULL);
+    g_return_if_fail(s->cmain != NULL);
+
+    /* disconnect/destroy all but main channel */
+
+    for (ring = ring_get_head(&s->channels); ring != NULL; ring = next) {
+        next = ring_next(&s->channels, ring);
+        item = SPICE_CONTAINEROF(ring, struct channel, link);
+        if (item->channel != s->cmain)
+            spice_channel_destroy(item->channel); /* /!\ item and channel are destroy() after this call */
+    }
+
+    g_return_if_fail(!ring_is_empty(&s->channels) &&
+                     ring_get_head(&s->channels) == ring_get_tail(&s->channels));
+}
+
 /**
  * spice_session_disconnect:
  * @session:

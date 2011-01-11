@@ -34,6 +34,8 @@ void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel)
 void spice_session_set_mm_time(SpiceSession *session, guint32 time);
 guint32 spice_session_get_mm_time(SpiceSession *session);
 
+void spice_session_migrate_disconnect(SpiceSession *session);
+
 G_END_DECLS
 
 #endif /* __SPICE_CLIENT_SESSION_PRIV_H__ */

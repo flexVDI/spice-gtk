@@ -729,6 +729,9 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
         g_message("main channel: opened");
         recent_add(conn->session);
         break;
+    case SPICE_CHANNEL_SWITCHING:
+        g_message("main channel: switching host");
+        break;
     case SPICE_CHANNEL_CLOSED:
         /* this event is only sent if the channel was succesfully opened before */
         g_message("main channel: closed");

@@ -90,6 +90,7 @@
   (values
     '("none" "SPICE_CHANNEL_NONE")
     '("opened" "SPICE_CHANNEL_OPENED")
+    '("switching" "SPICE_CHANNEL_SWITCHING")
     '("closed" "SPICE_CHANNEL_CLOSED")
     '("error-connect" "SPICE_CHANNEL_ERROR_CONNECT")
     '("error-tls" "SPICE_CHANNEL_ERROR_TLS")

@@ -77,6 +77,8 @@ static const char *context_state_names[] = {
 static void channel_event(SpiceChannel *channel, SpiceChannelEvent event,
                           gpointer data);
 static void stream_stop(SpicePulse *pulse, struct stream *s);
+static void channel_new(SpiceSession *s, SpiceChannel *channel,
+                        gpointer data);
 
 static void spice_pulse_finalize(GObject *obj)
 {
@@ -131,6 +133,8 @@ static void spice_pulse_dispose(GObject *obj)
     }
 
     if (p->session != NULL) {
+        g_signal_handlers_disconnect_by_func(p->session,
+                                             channel_new, obj);
         g_object_unref(p->session);
         p->session = NULL;
     }
