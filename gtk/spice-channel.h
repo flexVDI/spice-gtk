@@ -79,16 +79,18 @@ struct _SpiceChannelClass
     void (*iterate_read)(SpiceChannel *channel);
 
     /*< public >*/
-    /* signals, system context */
+    /* signals, main context */
     void (*channel_event)(SpiceChannel *channel, SpiceChannelEvent event);
     void (*open_fd)(SpiceChannel *channel, int with_tls);
 
     /*< private >*/
+    /* virtual method, any context */
+    void (*channel_disconnect)(SpiceChannel *channel);
     /*
      * If adding fields to this struct, remove corresponding
      * amount of padding to avoid changing overall struct size
      */
-    gchar _spice_reserved[SPICE_RESERVED_PADDING - 3 * sizeof(void*)];
+    gchar _spice_reserved[SPICE_RESERVED_PADDING - 4 * sizeof(void*)];
 };
 
 GType spice_channel_get_type(void) G_GNUC_CONST;

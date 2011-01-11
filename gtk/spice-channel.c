@@ -221,6 +221,7 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
 
     klass->iterate_write = spice_channel_iterate_write;
     klass->iterate_read  = spice_channel_iterate_read;
+    klass->channel_disconnect = channel_disconnect;
 
     gobject_class->constructed  = spice_channel_constructed;
     gobject_class->dispose      = spice_channel_dispose;
@@ -836,7 +837,7 @@ static void spice_channel_recv_link_hdr(SpiceChannel *channel)
             /* enter spice 0.4 mode */
             g_object_set(c->session, "protocol", 1, NULL);
             SPICE_DEBUG("%s: switching to protocol 1 (spice 0.4)", c->name);
-            channel_disconnect(channel);
+            SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
             spice_channel_connect(channel);
             return;
         }
@@ -877,13 +878,13 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
     case SPICE_LINK_ERR_NEED_SECURED:
         c->tls = true;
         SPICE_DEBUG("%s: switching to tls", c->name);
-        channel_disconnect(channel);
+        SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
         spice_channel_connect(channel);
         return;
     default:
         g_warning("%s: %s: unhandled error %d",
                 c->name, __FUNCTION__, c->peer_msg->error);
-        channel_disconnect(channel);
+        SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
         emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_LINK);
         return;
     }
@@ -1301,7 +1302,7 @@ connected:
 
 cleanup:
     SPICE_DEBUG("Doing final channel cleanup");
-    channel_disconnect(channel);
+    SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
 
     g_idle_add(spice_channel_delayed_unref, data);
 
@@ -1386,7 +1387,6 @@ gboolean spice_channel_open_fd(SpiceChannel *channel, int fd)
     return channel_connect(channel);
 }
 
-/* TODO: make this a vmethod, and implement in all childs? */
 /* system or coroutine context */
 static void channel_disconnect(SpiceChannel *channel)
 {
