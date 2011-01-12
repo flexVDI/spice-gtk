@@ -58,7 +58,7 @@ gboolean     g_condition_wait       (g_condition_wait_func func, gpointer data);
 void         g_io_wakeup            (struct wait_queue *wait);
 GIOCondition g_io_wait_interruptable(struct wait_queue *wait, GSocket *sock, GIOCondition cond);
 void         g_signal_emit_main_context(GObject *object, GSignalEmitMainFunc func,
-                                        int signum, gpointer params);
+                                        int signum, gpointer params, const char *debug_info);
 void         g_object_notify_main_context(GObject *object, const gchar *property_name);
 
 G_END_DECLS

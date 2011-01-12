@@ -157,6 +157,7 @@ struct signal_data
     int signum;
     gpointer params;
     GSignalEmitMainFunc func;
+    const char *debug_info;
 };
 
 static gboolean emit_main_context(gpointer opaque)
@@ -173,7 +174,8 @@ static gboolean emit_main_context(gpointer opaque)
 void g_signal_emit_main_context(GObject *object,
                                 GSignalEmitMainFunc emit_main_func,
                                 int signum,
-                                gpointer params)
+                                gpointer params,
+                                const char *debug_info)
 {
     struct signal_data data;
 
@@ -182,7 +184,7 @@ void g_signal_emit_main_context(GObject *object,
     data.signum = signum;
     data.params = params;
     data.func = emit_main_func;
-
+    data.debug_info = debug_info;
     g_idle_add(emit_main_context, &data);
 
     /* This switches to the system coroutine context, lets

@@ -226,13 +226,6 @@ static void do_emit_main_context(GObject *object, int signum, gpointer params)
     }
 }
 
-/* coroutine context */
-#define emit_main_context(object, event, args...)                       \
-    G_STMT_START {                                                      \
-        g_signal_emit_main_context(G_OBJECT(object), do_emit_main_context, \
-                                   event, &((struct event) { args }));  \
-    } G_STMT_END
-
 /* ------------------------------------------------------------------ */
 
 /* coroutine context */

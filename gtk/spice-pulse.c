@@ -580,9 +580,11 @@ static void channel_event(SpiceChannel *channel, SpiceChannelEvent event,
         break;
     case SPICE_CHANNEL_CLOSED:
         if (channel == p->pchannel) {
+            SPICE_DEBUG("playback closed");
             p->pchannel = NULL;
             g_object_unref(channel);
         } else if (channel == p->rchannel) {
+            SPICE_DEBUG("record closed");
             record_stop(SPICE_RECORD_CHANNEL(channel), pulse);
             p->rchannel = NULL;
             g_object_unref(channel);

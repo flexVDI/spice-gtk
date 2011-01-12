@@ -133,6 +133,14 @@ void spice_channel_handle_disconnect(SpiceChannel *channel, spice_msg_in *in);
 void spice_channel_handle_wait_for_channels(SpiceChannel *channel, spice_msg_in *in);
 void spice_channel_handle_migrate(SpiceChannel *channel, spice_msg_in *in);
 
+/* coroutine context */
+#define emit_main_context(object, event, args...)                       \
+    G_STMT_START {                                                      \
+        g_signal_emit_main_context(G_OBJECT(object), do_emit_main_context, \
+                                   event, &((struct event) { args }), G_STRLOC); \
+    } G_STMT_END
+
+
 G_END_DECLS
 
 #endif /* __SPICE_CLIENT_CHANNEL_PRIV_H__ */

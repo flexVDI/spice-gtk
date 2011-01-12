@@ -526,14 +526,6 @@ static void do_emit_main_context(GObject *object, int signum, gpointer params)
     }
 }
 
-/* coroutine context */
-#define emit_main_context(object, event, args...)                       \
-    G_STMT_START {                                                      \
-        g_signal_emit_main_context(G_OBJECT(object), do_emit_main_context, \
-                                   event, &((struct event) { args }));  \
-    } G_STMT_END
-
-
 /*
  * Write all 'data' of length 'datalen' bytes out to
  * the wire
@@ -1186,7 +1178,12 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
         ret = g_socket_condition_check(c->sock, G_IO_IN);
 #endif
     } while (ret == 0); /* ret == 0 means no IO condition, but woken up */
-    /* TODO: check ret if error */
+
+    if (ret & (G_IO_ERR|G_IO_HUP)) {
+        SPICE_DEBUG("got socket error before read(): %d", ret);
+        c->has_error = TRUE;
+        return FALSE;
+    }
 
     SPICE_CHANNEL_GET_CLASS(channel)->iterate_read(channel);
 
@@ -1217,7 +1214,7 @@ static void *spice_channel_coroutine(void *data)
     spice_channel *c = channel->priv;
     int ret;
 
-    SPICE_DEBUG("Started background coroutine");
+    SPICE_DEBUG("Started background coroutine %p", &c->coroutine);
 
     if (spice_session_get_client_provided_socket(c->session)) {
         if (c->fd < 0) {
@@ -1319,7 +1316,7 @@ static gboolean connect_delayed(gpointer data)
     spice_channel *c = channel->priv;
     struct coroutine *co;
 
-    SPICE_DEBUG("Open coroutine starting");
+    SPICE_DEBUG("Open coroutine starting %p", channel);
     c->connect_delayed_id = 0;
 
     co = &c->coroutine;
