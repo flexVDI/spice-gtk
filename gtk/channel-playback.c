@@ -234,8 +234,13 @@ static void playback_handle_data(SpiceChannel *channel, spice_msg_in *in)
     spice_playback_channel *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackPacket *packet = spice_msg_in_parsed(in);
 
+#ifdef DEBUG
     SPICE_DEBUG("%s: time %d data %p size %d", __FUNCTION__,
             packet->time, packet->data, packet->data_size);
+#endif
+
+    if (c->last_time > packet->time)
+        g_warn_if_reached();
 
     c->last_time = packet->time;
 
