@@ -46,7 +46,6 @@ struct spice_window {
     GtkWidget        *toplevel, *spice;
     GtkWidget        *menubar, *toolbar;
     GtkWidget        *ritem, *rmenu;
-    GtkRecentFilter  *rfilter;
     GtkWidget        *statusbar, *status, *st[STATE_MAX];
     GtkActionGroup   *ag;
     GtkUIManager     *ui;
@@ -121,21 +120,52 @@ static int ask_user(GtkWidget *parent, char *title, char *message,
     return retval;
 }
 
+static struct {
+    const char *text;
+    const char *prop;
+    GtkWidget *entry;
+} connect_entries[] = {
+    { .text = N_("Hostname"),   .prop = "host"      },
+    { .text = N_("Port"),       .prop = "port"      },
+    { .text = N_("TLS Port"),   .prop = "tls-port"  },
+};
+
+static void recent_item_activated_dialog_cb(GtkRecentChooser *chooser, gpointer data)
+{
+    GtkRecentInfo *info;
+    gchar *txt = NULL;
+    const gchar *uri;
+    SpiceSession *session = data;
+
+    info = gtk_recent_chooser_get_current_item(chooser);
+
+    uri = gtk_recent_info_get_uri(info);
+    g_return_if_fail(uri != NULL);
+
+    g_object_set(session, "uri", uri, NULL);
+
+    g_object_get(session, "host", &txt, NULL);
+    gtk_entry_set_text(GTK_ENTRY(connect_entries[0].entry), txt ? txt : "");
+    g_free(txt);
+
+    g_object_get(session, "port", &txt, NULL);
+    gtk_entry_set_text(GTK_ENTRY(connect_entries[1].entry), txt ? txt : "");
+    g_free(txt);
+
+    g_object_get(session, "tls-port", &txt, NULL);
+    gtk_entry_set_text(GTK_ENTRY(connect_entries[2].entry), txt ? txt : "");
+    g_free(txt);
+
+    gtk_recent_info_unref(info);
+}
+
 static int connect_dialog(GtkWidget *parent, SpiceSession *session)
 {
-    static const struct {
-        const char *text;
-        const char *prop;
-    } entries[] = {
-        { .text = N_("Hostname"),   .prop = "host"      },
-        { .text = N_("Port"),       .prop = "port"      },
-        { .text = N_("TLS Port"),   .prop = "tls-port"  },
-    };
-    GtkWidget *we[SPICE_N_ELEMENTS(entries)];
-    GtkWidget *dialog, *area, *label;
+    GtkWidget *dialog, *area, *label, *recent;
     GtkTable *table;
     const gchar *txt;
     int i, retval;
+    GtkRecentFilter  *rfilter;
 
     /* Create the widgets */
     dialog = gtk_dialog_new_with_buttons(_("Connect to SPICE"),
@@ -153,27 +183,40 @@ static int connect_dialog(GtkWidget *parent, SpiceSession *session)
     gtk_table_set_row_spacings(table, 5);
     gtk_table_set_col_spacings(table, 5);
 
-    for (i = 0; i < SPICE_N_ELEMENTS(entries); i++) {
-        label = gtk_label_new(entries[i].text);
+    for (i = 0; i < SPICE_N_ELEMENTS(connect_entries); i++) {
+        label = gtk_label_new(connect_entries[i].text);
         gtk_misc_set_alignment(GTK_MISC(label), 0, 0.5);
         gtk_table_attach_defaults(table, label, 0, 1, i, i+1);
-        we[i] = gtk_entry_new();
-        gtk_table_attach_defaults(table, we[i], 1, 2, i, i+1);
-        g_object_get(session, entries[i].prop, &txt, NULL);
+        connect_entries[i].entry = GTK_WIDGET(gtk_entry_new());
+        gtk_table_attach_defaults(table, connect_entries[i].entry, 1, 2, i, i+1);
+        g_object_get(session, connect_entries[i].prop, &txt, NULL);
         SPICE_DEBUG("%s: #%i [%s]: \"%s\"",
-                __FUNCTION__, i, entries[i].prop, txt);
+                __FUNCTION__, i, connect_entries[i].prop, txt);
         if (txt) {
-            gtk_entry_set_text(GTK_ENTRY(we[i]), txt);
+            gtk_entry_set_text(GTK_ENTRY(connect_entries[i].entry), txt);
         }
     }
+
+    label = gtk_label_new("Recent connexions:");
+    gtk_box_pack_start(GTK_BOX(area), label, TRUE, TRUE, 0);
+    gtk_misc_set_alignment(GTK_MISC(label), 0, 0.5);
+    recent = GTK_WIDGET(gtk_recent_chooser_widget_new());
+    gtk_box_pack_start(GTK_BOX(area), recent, TRUE, TRUE, 0);
+
+    rfilter = gtk_recent_filter_new();
+    gtk_recent_filter_add_mime_type(rfilter, "application/x-spice");
+    gtk_recent_chooser_set_filter(GTK_RECENT_CHOOSER(recent), rfilter);
+    gtk_recent_chooser_set_local_only(GTK_RECENT_CHOOSER(recent), FALSE);
+    g_signal_connect(recent, "item-activated",
+                     G_CALLBACK(recent_item_activated_dialog_cb), session);
 
     /* show and wait for response */
     gtk_widget_show_all(dialog);
     switch (gtk_dialog_run(GTK_DIALOG(dialog))) {
     case GTK_RESPONSE_ACCEPT:
-        for (i = 0; i < SPICE_N_ELEMENTS(entries); i++) {
-            txt = gtk_entry_get_text(GTK_ENTRY(we[i]));
-            g_object_set(session, entries[i].prop, txt, NULL);
+        for (i = 0; i < SPICE_N_ELEMENTS(connect_entries); i++) {
+            txt = gtk_entry_get_text(GTK_ENTRY(connect_entries[i].entry));
+            g_object_set(session, connect_entries[i].prop, txt, NULL);
         }
 	retval = 0;
 	break;
@@ -584,6 +627,7 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
     GError *err = NULL;
     int i;
     SpiceGrabSequence *seq;
+    GtkRecentFilter  *rfilter;
 
     win = malloc(sizeof(*win));
     if (NULL == win)
@@ -627,9 +671,9 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
     win->ritem  = gtk_ui_manager_get_widget
         (win->ui, "/MainMenu/FileMenu/FileRecentMenu");
     win->rmenu = gtk_recent_chooser_menu_new();
-    win->rfilter = gtk_recent_filter_new();
-    gtk_recent_filter_add_mime_type(win->rfilter, "application/x-spice");
-    gtk_recent_chooser_add_filter(GTK_RECENT_CHOOSER(win->rmenu), win->rfilter);
+    rfilter = gtk_recent_filter_new();
+    gtk_recent_filter_add_mime_type(rfilter, "application/x-spice");
+    gtk_recent_chooser_add_filter(GTK_RECENT_CHOOSER(win->rmenu), rfilter);
     gtk_recent_chooser_set_local_only(GTK_RECENT_CHOOSER(win->rmenu), FALSE);
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(win->ritem), win->rmenu);
     g_signal_connect(win->rmenu, "item-activated",
