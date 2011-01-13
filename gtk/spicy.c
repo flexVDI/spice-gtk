@@ -49,7 +49,6 @@ struct spice_window {
     GtkRecentFilter  *rfilter;
     GtkWidget        *statusbar, *status, *st[STATE_MAX];
     GtkActionGroup   *ag;
-    GtkAccelGroup    *accel;
     GtkUIManager     *ui;
     bool             fullscreen;
     bool             mouse_grabbed;
@@ -595,8 +594,8 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
     gtk_action_group_add_toggle_actions(win->ag, tentries,
 					G_N_ELEMENTS(tentries), win);
     gtk_ui_manager_insert_action_group(win->ui, win->ag, 0);
-    win->accel = gtk_ui_manager_get_accel_group(win->ui);
-    gtk_window_add_accel_group(GTK_WINDOW(win->toplevel), win->accel);
+    gtk_window_add_accel_group(GTK_WINDOW(win->toplevel),
+                               gtk_ui_manager_get_accel_group(win->ui));
 
     err = NULL;
     if (!gtk_ui_manager_add_ui_from_string(win->ui, ui_xml, -1, &err)) {
@@ -686,12 +685,9 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
 static void destroy_spice_window(spice_window *win)
 {
     SPICE_DEBUG("destroy window (#%d)", win->id);
-    gtk_widget_destroy(win->toplevel);
-#if 0 /* FIXME: triggers gobject warning */
     g_object_unref(win->ag);
-#endif
     g_object_unref(win->ui);
-    g_object_unref(win->accel);
+    gtk_widget_destroy(win->toplevel);
     free(win);
 }
 
