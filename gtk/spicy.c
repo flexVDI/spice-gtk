@@ -138,7 +138,7 @@ static int connect_dialog(GtkWidget *parent, SpiceSession *session)
     int i, retval;
 
     /* Create the widgets */
-    dialog = gtk_dialog_new_with_buttons(_("Connect"),
+    dialog = gtk_dialog_new_with_buttons(_("Connect to SPICE"),
 					 parent ? GTK_WINDOW(parent) : NULL,
                                          GTK_DIALOG_DESTROY_WITH_PARENT,
 					 GTK_STOCK_OK,
@@ -557,6 +557,23 @@ static char ui_xml[] =
 "  </toolbar>\n"
 "</ui>\n";
 
+static void recent_item_activated_cb(GtkRecentChooser *chooser, gpointer data)
+{
+    GtkRecentInfo *info;
+    struct spice_connection *conn;
+    const char *uri;
+
+    info = gtk_recent_chooser_get_current_item(chooser);
+
+    uri = gtk_recent_info_get_uri(info);
+    g_return_if_fail(uri != NULL);
+
+    conn = connection_new();
+    g_object_set(conn->session, "uri", uri, NULL);
+    gtk_recent_info_unref(info);
+    connection_connect(conn);
+}
+
 static spice_window *create_spice_window(spice_connection *conn, int id)
 {
     char title[32];
@@ -615,6 +632,8 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
     gtk_recent_chooser_add_filter(GTK_RECENT_CHOOSER(win->rmenu), win->rfilter);
     gtk_recent_chooser_set_local_only(GTK_RECENT_CHOOSER(win->rmenu), FALSE);
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(win->ritem), win->rmenu);
+    g_signal_connect(win->rmenu, "item-activated",
+                     G_CALLBACK(recent_item_activated_cb), win);
 
     /* spice display */
     win->spice = GTK_WIDGET(spice_display_new(conn->session, id));
@@ -702,15 +721,18 @@ static void recent_add(SpiceSession *session)
         .app_name     = "spicy",
         .app_exec     = "spicy --uri=%u",
     };
-    char *host, *uri;
+    char *host, *port, *uri;
 
-    g_object_get(session, "uri", &uri, "host", &host, NULL);
+    g_object_get(session, "uri", &uri, "host", &host, "port", &port, NULL);
     SPICE_DEBUG("%s: %s", __FUNCTION__, uri);
-    snprintf(name, sizeof(name), "%s (spice)", host);
+    snprintf(name, sizeof(name), "%s:%s", host, port);
 
     recent = gtk_recent_manager_get_default();
     if (!gtk_recent_manager_add_full(recent, uri, &meta))
         g_warning("Recent item couldn't be added successfully");
+
+    g_free(host);
+    g_free(port);
 }
 
 static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
