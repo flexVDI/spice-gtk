@@ -438,6 +438,8 @@ spice-client-gtk.pc
 common/Makefile
 common/win/Makefile
 common/win/my_getopt-1.5/Makefile
+data/Makefile
+data/spicy.desktop.in
 po/Makefile.in
 python_modules/Makefile
 gtk/Makefile

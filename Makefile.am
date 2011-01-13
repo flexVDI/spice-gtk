@@ -1,7 +1,7 @@
 ACLOCAL_AMFLAGS = -I m4
 NULL =
 
-SUBDIRS = common gtk po python_modules doc
+SUBDIRS = common gtk po python_modules doc data
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = spice-client-glib.pc spice-client-gtk.pc
