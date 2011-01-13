@@ -606,16 +606,15 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
     win->menubar = gtk_ui_manager_get_widget(win->ui, "/MainMenu");
     win->toolbar = gtk_ui_manager_get_widget(win->ui, "/ToolBar");
 
-#if 0 /* FIXME: filtering doesn't work, dunno why */
     /* recent menu */
     win->ritem  = gtk_ui_manager_get_widget
         (win->ui, "/MainMenu/FileMenu/FileRecentMenu");
     win->rmenu = gtk_recent_chooser_menu_new();
     win->rfilter = gtk_recent_filter_new();
-    gtk_recent_filter_add_mime_type(win->rfilter, "application/spice");
-    gtk_recent_chooser_set_filter(GTK_RECENT_CHOOSER(win->rmenu), win->rfilter);
+    gtk_recent_filter_add_mime_type(win->rfilter, "application/x-spice");
+    gtk_recent_chooser_add_filter(GTK_RECENT_CHOOSER(win->rmenu), win->rfilter);
+    gtk_recent_chooser_set_local_only(GTK_RECENT_CHOOSER(win->rmenu), FALSE);
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(win->ritem), win->rmenu);
-#endif
 
     /* spice display */
     win->spice = GTK_WIDGET(spice_display_new(conn->session, id));
@@ -699,7 +698,7 @@ static void recent_add(SpiceSession *session)
     char name[256];
     GtkRecentData meta = {
         .display_name = name,
-        .mime_type    = "application/spice",
+        .mime_type    = "application/x-spice",
         .app_name     = "spicy",
         .app_exec     = "spicy --uri=%u",
     };
@@ -710,7 +709,8 @@ static void recent_add(SpiceSession *session)
     snprintf(name, sizeof(name), "%s (spice)", host);
 
     recent = gtk_recent_manager_get_default();
-    gtk_recent_manager_add_full(recent, uri, &meta);
+    if (!gtk_recent_manager_add_full(recent, uri, &meta))
+        g_warning("Recent item couldn't be added successfully");
 }
 
 static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
