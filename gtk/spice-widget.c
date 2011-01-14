@@ -566,6 +566,25 @@ static gboolean do_color_convert(SpiceDisplay *display,
     return true;
 }
 
+
+#if GTK_CHECK_VERSION (2, 91, 0)
+static gboolean draw_event(GtkWidget *widget, cairo_t *cr)
+{
+    SpiceDisplay *display = SPICE_DISPLAY(widget);
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    if (d->mark == 0 || d->data == NULL)
+        return false;
+
+    if (!d->ximage) {
+        spicex_image_create(display);
+    }
+
+    spicex_draw_event(display, cr);
+
+    return true;
+}
+#else
 static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
@@ -587,6 +606,7 @@ static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
     spicex_expose_event(display, expose);
     return true;
 }
+#endif
 
 /* ---------------------------------------------------------------- */
 
@@ -1058,7 +1078,11 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
     GtkObjectClass *gtkobject_class = GTK_OBJECT_CLASS(klass);
     GtkWidgetClass *gtkwidget_class = GTK_WIDGET_CLASS(klass);
 
+#if GTK_CHECK_VERSION (2, 91, 0)
+    gtkwidget_class->draw = draw_event;
+#else
     gtkwidget_class->expose_event = expose_event;
+#endif
     gtkwidget_class->key_press_event = key_event;
     gtkwidget_class->key_release_event = key_event;
     gtkwidget_class->enter_notify_event = enter_event;

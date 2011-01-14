@@ -22,6 +22,16 @@
 #include "config.h"
 #endif
 
+/* Some compatibility defines to let us build on both Gtk2 and Gtk3 */
+#if GTK_CHECK_VERSION (2, 91, 0)
+
+static inline void gdk_drawable_get_size(GdkWindow *w, gint *ww, gint *wh)
+{
+       *ww = gdk_window_get_width(w);
+       *wh = gdk_window_get_height(w);
+}
+#endif
+
 G_GNUC_INTERNAL
 int spicex_image_create(SpiceDisplay *display)
 {
@@ -84,7 +94,8 @@ static void setup_surface_cache(spice_display *d, cairo_t *crWin)
     cairo_destroy(crCache);
 }
 
-static gboolean draw_event(SpiceDisplay *display, cairo_t *cr)
+G_GNUC_INTERNAL
+void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
 {
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
     int fbw = d->width, fbh = d->height;
@@ -132,14 +143,13 @@ static gboolean draw_event(SpiceDisplay *display, cairo_t *cr)
         }
         cairo_paint(cr);
     }
-    return TRUE;
 }
 
+#if ! GTK_CHECK_VERSION (2, 91, 0)
 G_GNUC_INTERNAL
 void spicex_expose_event(SpiceDisplay *display, GdkEventExpose *expose)
 {
     cairo_t *cr;
-    gboolean ret;
 
     cr = gdk_cairo_create(gtk_widget_get_window(GTK_WIDGET(display)));
     cairo_rectangle(cr,
@@ -149,10 +159,11 @@ void spicex_expose_event(SpiceDisplay *display, GdkEventExpose *expose)
                     expose->area.height);
     cairo_clip(cr);
 
-    ret = draw_event(display, cr);
+    spicex_draw_event(display, cr);
 
     cairo_destroy(cr);
 }
+#endif
 
 G_GNUC_INTERNAL
 void spicex_image_invalidate(SpiceDisplay *display,
