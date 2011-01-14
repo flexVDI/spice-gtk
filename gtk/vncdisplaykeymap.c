@@ -42,6 +42,12 @@
  * THE SOFTWARE.
  */
 
+
+/* Compatability code to allow build on Gtk2 and Gtk3 */
+#ifndef GDK_Tab
+#define GDK_Tab GDK_KEY_Tab
+#endif
+
 /* keycode translation for sending ISO_Left_Send
  * to vncserver
  */
@@ -53,7 +59,7 @@ static struct {
 
 static unsigned int ref_count_for_untranslated_keys = 0;
 
-#if defined(GDK_WINDOWING_X11)
+#ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
 #include <X11/XKBlib.h>
 #include <stdbool.h>
@@ -68,11 +74,39 @@ static unsigned int ref_count_for_untranslated_keys = 0;
 /* Xorg Cygwin aka XWin (offset + mangled XT keycodes) */
 #include "vncdisplaykeymap_xorgxwin2xtkbd.c"
 
+/* Gtk2 compat */
+#ifndef GDK_IS_X11_DISPLAY
+#define GDK_IS_X11_DISPLAY(dpy) 1
+#endif
+#endif
+
+#ifdef GDK_WINDOWING_WIN32
+/* Win32 native virtual keycodes */
+#include "vncdisplaykeymap_win322xtkbd.c"
+
+/* Gtk2 compat */
+#ifndef GDK_IS_WIN32_DISPLAY
+#define GDK_IS_WIN32_DISPLAY(dpy) 1
+#endif
+#endif
+
+#ifdef GDK_WINDOWING_QUARTZ
+/* OS-X native keycodes */
+#include "vncdisplaykeymap_osx2xtkbd.c"
+
+/* Gtk2 compat */
+#ifndef GDK_IS_QUARTZ_DISPLAY
+#define GDK_IS_QUARTZ_DISPLAY(dpy) 1
+#endif
+#endif
+
+#ifdef GDK_WINDOWING_X11
+
 #define STRPREFIX(a,b) (strncmp((a),(b),strlen((b))) == 0)
 
-static gboolean check_for_xwin(void)
+static gboolean check_for_xwin(GdkDisplay *dpy)
 {
-	char *vendor = ServerVendor(GDK_DISPLAY());
+	char *vendor = ServerVendor(gdk_x11_display_get_xdisplay(dpy));
 
 	if (strstr(vendor, "Cygwin/X"))
 		return TRUE;
@@ -80,12 +114,13 @@ static gboolean check_for_xwin(void)
 	return FALSE;
 }
 
-static gboolean check_for_xquartz(void)
+static gboolean check_for_xquartz(GdkDisplay *dpy)
 {
 	int nextensions;
 	int i;
 	gboolean match = FALSE;
-	char **extensions = XListExtensions(GDK_DISPLAY(), &nextensions);
+	char **extensions = XListExtensions(gdk_x11_display_get_xdisplay(dpy),
+					    &nextensions);
 	for (i = 0 ; extensions != NULL && i < nextensions ; i++) {
 		if (strcmp(extensions[i], "Apple-WM") == 0 ||
 		    strcmp(extensions[i], "Apple-DRI") == 0)
@@ -96,102 +131,98 @@ static gboolean check_for_xquartz(void)
 
 	return match;
 }
+#endif
 
 const guint16 const *vnc_display_keymap_gdk2xtkbd_table(size_t *maplen)
 {
-	XkbDescPtr desc;
-	const gchar *keycodes = NULL;
+	GdkDisplay *dpy = gdk_display_get_default();
 
-	/* There is no easy way to determine what X11 server
-	 * and platform & keyboard driver is in use. Thus we
-	 * do best guess heuristics.
-	 *
-	 * This will need more work for people with other
-	 * X servers..... patches welcomed.
-	 */
+#ifdef GDK_WINDOWING_X11
+	if (GDK_IS_X11_DISPLAY(dpy)) {
+		XkbDescPtr desc;
+		const gchar *keycodes = NULL;
 
-	desc = XkbGetKeyboard(GDK_DISPLAY(), XkbGBN_AllComponentsMask,
-			      XkbUseCoreKbd);
-	if (desc) {
-		if (desc->names) {
-			keycodes = gdk_x11_get_xatom_name(desc->names->keycodes);
-			if (!keycodes)
-				g_warning("could not lookup keycode name");
+		/* There is no easy way to determine what X11 server
+		 * and platform & keyboard driver is in use. Thus we
+		 * do best guess heuristics.
+		 *
+		 * This will need more work for people with other
+		 * X servers..... patches welcomed.
+		 */
+
+		desc = XkbGetKeyboard(gdk_x11_display_get_xdisplay(dpy),
+				      XkbGBN_AllComponentsMask,
+				      XkbUseCoreKbd);
+		if (desc) {
+			if (desc->names) {
+				keycodes = gdk_x11_get_xatom_name(desc->names->keycodes);
+				if (!keycodes)
+					g_warning("could not lookup keycode name");
+			}
+			XkbFreeClientMap(desc, XkbGBN_AllComponentsMask, True);
 		}
-		XkbFreeClientMap(desc, XkbGBN_AllComponentsMask, True);
+
+		if (check_for_xwin(dpy)) {
+			VNC_DEBUG("Using xwin keycode mapping");
+			*maplen = G_N_ELEMENTS(keymap_xorgxwin2xtkbd);
+			return keymap_xorgxwin2xtkbd;
+		} else if (check_for_xquartz(dpy)) {
+			VNC_DEBUG("Using xquartz keycode mapping");
+			*maplen = G_N_ELEMENTS(keymap_xorgxquartz2xtkbd);
+			return keymap_xorgxquartz2xtkbd;
+		} else if (keycodes && STRPREFIX(keycodes, "evdev_")) {
+			VNC_DEBUG("Using evdev keycode mapping");
+			*maplen = G_N_ELEMENTS(keymap_xorgevdev2xtkbd);
+			return keymap_xorgevdev2xtkbd;
+		} else if (keycodes && STRPREFIX(keycodes, "xfree86_")) {
+			VNC_DEBUG("Using xfree86 keycode mapping");
+			*maplen = G_N_ELEMENTS(keymap_xorgkbd2xtkbd);
+			return keymap_xorgkbd2xtkbd;
+		} else {
+			g_warning("Unknown keycode mapping '%s'.\n"
+				  "Please report to gtk-vnc-list@gnome.org\n"
+				  "including the following information:\n"
+				  "\n"
+				  "  - Operating system\n"
+				  "  - GDK build\n"
+				  "  - X11 Server\n"
+				  "  - xprop -root\n"
+				  "  - xdpyinfo\n",
+				  keycodes);
+			return NULL;
+		}
 	}
+#endif
 
-	if (check_for_xwin()) {
-		VNC_DEBUG("Using xwin keycode mapping");
-		*maplen = G_N_ELEMENTS(keymap_xorgxwin2xtkbd);
-		return keymap_xorgxwin2xtkbd;
-	} else if (check_for_xquartz()) {
-		VNC_DEBUG("Using xquartz keycode mapping");
-		*maplen = G_N_ELEMENTS(keymap_xorgxquartz2xtkbd);
-		return keymap_xorgxquartz2xtkbd;
-	} else if (keycodes && STRPREFIX(keycodes, "evdev_")) {
-		VNC_DEBUG("Using evdev keycode mapping");
-		*maplen = G_N_ELEMENTS(keymap_xorgevdev2xtkbd);
-		return keymap_xorgevdev2xtkbd;
-	} else if (keycodes && STRPREFIX(keycodes, "xfree86_")) {
-		VNC_DEBUG("Using xfree86 keycode mapping");
-		*maplen = G_N_ELEMENTS(keymap_xorgkbd2xtkbd);
-		return keymap_xorgkbd2xtkbd;
-	} else {
-               g_warning("Unknown keycode mapping '%s'.\n"
-			 "Please report to gtk-vnc-list@gnome.org\n"
-                         "including the following information:\n"
-                         "\n"
-                         "  - Operating system\n"
-                         "  - GTK build\n"
-                         "  - X11 Server\n"
-                         "  - xprop -root\n"
-                         "  - xdpyinfo\n",
-			 keycodes);
-               return NULL;
+#ifdef GDK_WINDOWING_WIN32
+	if (GDK_IS_WIN32_DISPLAY(dpy)) {
+		VNC_DEBUG("Using Win32 virtual keycode mapping");
+		*maplen = sizeof(keymap_win322xtkbd);
+		return keymap_win322xtkbd;
 	}
-}
+#endif
 
-#elif defined(GDK_WINDOWING_WIN32)
-/* Win32 native virtual keycodes */
-#include "vncdisplaykeymap_win322xtkbd.c"
+#ifdef GDK_WINDOWING_QUARTZ
+	if (GDK_IS_QUARTZ_DISPLAY(dpy)) {
+		VNC_DEBUG("Using OS-X virtual keycode mapping");
+		*maplen = sizeof(keymap_osx2xtkbd);
+		return keymap_osx2xtkbd;
+	}
+#endif
 
-const guint16 const *vnc_display_keymap_gdk2xtkbd_table(size_t *maplen)
-{
-	VNC_DEBUG("Using Win32 virtual keycode mapping");
-	*maplen = sizeof(keymap_win322xtkbd);
-	return keymap_win322xtkbd;
-}
-
-#elif defined(GDK_WINDOWING_QUARTZ)
-/* OS-X native keycodes */
-#include "vncdisplaykeymap_osx2xtkbd.c"
-
-const guint16 const *vnc_display_keymap_gdk2xtkbd_table(size_t *maplen)
-{
-	VNC_DEBUG("Using OS-X virtual keycode mapping");
-	*maplen = sizeof(keymap_osx2xtkbd);
-	return keymap_osx2xtkbd;
-}
-
-
-#else
-
-const guint16 const *vnc_display_keymap_gdk2xtkbd_table(size_t *maplen)
-{
 	g_warning("Unsupported GDK Windowing platform.\n"
+		  "Disabling extended keycode tables.\n"
 		  "Please report to gtk-vnc-list@gnome.org\n"
 		  "including the following information:\n"
 		  "\n"
 		  "  - Operating system\n"
-		  "  - GTK Windowing system build\n");
+		  "  - GDK Windowing system build\n");
 	return NULL;
 }
-#endif
 
 guint16 vnc_display_keymap_gdk2xtkbd(const guint16 const *keycode_map,
-                                     size_t keycode_maplen,
-                                     guint16 keycode)
+				     size_t keycode_maplen,
+				     guint16 keycode)
 {
 	if (!keycode_map)
 		return 0;
