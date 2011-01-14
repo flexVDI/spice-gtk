@@ -13,6 +13,7 @@ NULL=
 
 EXTRA_DIST =					\
 	spicy-for-windows.nsis			\
+	spice-mime.xml.in spicy.desktop.in      \
 	$(desktop_in_files)			\
 	$(NULL)
 

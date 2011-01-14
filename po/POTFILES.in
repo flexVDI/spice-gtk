@@ -1,3 +1,5 @@
 gtk/spicy.c
 gtk/snappy.c
 gtk/spice-cmdline.c
+data/spicy.desktop.in.in
+data/spice-mime.xml.in
