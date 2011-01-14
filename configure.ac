@@ -219,6 +219,18 @@ AC_SUBST(GST_LIBS)
 AC_ARG_WITH([x11],
     AS_HELP_STRING([--with-x11], [Use x11/shm display backend instead of cairo.]))
 
+AC_MSG_CHECKING([What rendering backend to use..])
+if [test "x$with_x11" = "xyes" ]
+then
+  if [test "$GTK_API_VERSION" = "3.0" ]
+  then
+    AC_MSG_ERROR([X11 SHM backend is not compatible with GTK3])
+  fi
+  AC_MSG_RESULT([x11])
+else
+  AC_MSG_RESULT([cairo])
+fi
+
 AS_IF([test "x$with_x11" = "xyes"],
       [AC_DEFINE([WITH_X11], 1, [Use X11 backend?])])
 AM_CONDITIONAL([WITH_X11], [test "x$with_x11" = "xyes"])
@@ -301,7 +313,13 @@ AC_ARG_WITH(python,
    *)      AC_MSG_ERROR([bad value ${withval} for python option]) ;;
  esac],[withval=yes])
 
-WITH_PYTHON=$withval
+if test "$with_gtk" = "3.0"
+then
+  WITH_PYTHON=no
+else
+  WITH_PYTHON=$withval
+fi
+
 if test "$WITH_PYTHON" = "yes"; then
   PKG_CHECK_MODULES(PYGTK, pygtk-2.0 >= 2.0.0)
   AC_SUBST(PYGTK_CFLAGS)
