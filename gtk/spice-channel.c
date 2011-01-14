@@ -1270,7 +1270,7 @@ reconnect:
             g_critical("SSL_new failed");
             goto cleanup;
         }
-        rc = SSL_set_fd(c->ssl, c->fd);
+        rc = SSL_set_fd(c->ssl, g_socket_get_fd(c->sock));
         if (rc <= 0) {
             g_critical("SSL_set_fd failed");
             goto cleanup;

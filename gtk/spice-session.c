@@ -189,7 +189,7 @@ static int spice_uri_parse(SpiceSession *session, const char *uri)
         if (uri[pos] == 0) {
             break;
         }
-        if (sscanf(uri+pos, "%31[a-zA-Z0-9]=%127[^;&]%n", key, value, &len) != 2)
+        if (sscanf(uri+pos, "%31[-a-zA-Z0-9]=%127[^;&]%n", key, value, &len) != 2)
             goto fail;
         pos += len;
         if (strcmp(key, "port") == 0) {
