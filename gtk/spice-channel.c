@@ -682,8 +682,10 @@ static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
         g_assert(ret <= len);
         len -= ret;
         data = ((char*)data) + ret;
+#if DEBUG
         if (len > 0)
             SPICE_DEBUG("still needs %" G_GSIZE_FORMAT, len);
+#endif
     }
 
     return length;

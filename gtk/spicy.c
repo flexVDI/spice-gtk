@@ -758,25 +758,24 @@ static void destroy_spice_window(spice_window *win)
 static void recent_add(SpiceSession *session)
 {
     GtkRecentManager *recent;
-    char name[256];
     GtkRecentData meta = {
-        .display_name = name,
         .mime_type    = "application/x-spice",
         .app_name     = "spicy",
         .app_exec     = "spicy --uri=%u",
     };
-    char *host, *port, *uri;
+    char *uri;
 
-    g_object_get(session, "uri", &uri, "host", &host, "port", &port, NULL);
+    g_object_get(session, "uri", &uri, NULL);
     SPICE_DEBUG("%s: %s", __FUNCTION__, uri);
-    snprintf(name, sizeof(name), "%s:%s", host, port);
+
+    g_return_if_fail(g_str_has_prefix(uri, "spice://"));
 
     recent = gtk_recent_manager_get_default();
+    meta.display_name = uri + 8;
     if (!gtk_recent_manager_add_full(recent, uri, &meta))
         g_warning("Recent item couldn't be added successfully");
 
-    g_free(host);
-    g_free(port);
+    g_free(uri);
 }
 
 static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
