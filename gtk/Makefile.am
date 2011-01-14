@@ -13,8 +13,15 @@ EXTRA_DIST =					\
 
 bin_PROGRAMS = spicy snappy
 lib_LTLIBRARIES = \
-	libspice-client-glib-2.0.la		\
+	libspice-client-glib-2.0.la
+
+if HAVE_GTK_2
+lib_LTLIBRARIES += \
 	libspice-client-gtk-2.0.la
+else
+lib_LTLIBRARIES += \
+	libspice-client-gtk-3.0.la
+endif
 
 if HAVE_LD_VERSION_SCRIPT
 VERSION_LDFLAGS = -Wl,--version-script=${srcdir}/map-file
@@ -45,7 +52,7 @@ SPICE_COMMON_CPPFLAGS = \
 	$(PIXMAN_CFLAGS)		\
 	$(CELT051_CFLAGS)		\
 	$(PULSE_CFLAGS)			\
-	$(GTK2_CFLAGS)			\
+	$(GTK_CFLAGS)			\
 	$(CAIRO_CFLAGS)			\
 	$(GLIB2_CFLAGS)			\
 	$(GIO_CFLAGS)			\
@@ -59,19 +66,19 @@ AM_CPPFLAGS = \
 	$(SPICE_CFLAGS)
 
 # http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-libspice_client_gtk_2_0_la_LDFLAGS =	\
+SPICE_GTK_LDFLAGS_COMMON =		\
 	-version-number 1:0:0		\
 	-no-undefined			\
 	$(VERSION_LDFLAGS)		\
 	$(NULL)
 
-libspice_client_gtk_2_0_la_LIBADD =	\
+SPICE_GTK_LIBADD_COMMON =		\
 	libspice-client-glib-2.0.la	\
-	$(GTK2_LIBS)			\
+	$(GTK_LIBS)			\
 	$(CAIRO_LIBS)			\
 	$(NULL)
 
-libspice_client_gtk_2_0_la_SOURCES =	\
+SPICE_GTK_SOURCES_COMMON =		\
 	spice-widget.c			\
 	spice-widget.h			\
 	spice-widget-priv.h		\
@@ -84,16 +91,27 @@ libspice_client_gtk_2_0_la_SOURCES =	\
 	$(NULL)
 
 if WITH_X11
-libspice_client_gtk_2_0_la_SOURCES +=	\
+SPICE_GTK_SOURCES_COMMON +=		\
 	spice-widget-x11.c		\
 	$(NULL)
 else
-libspice_client_gtk_2_0_la_SOURCES +=	\
+SPICE_GTK_SOURCES_COMMON +=		\
 	spice-widget-cairo.c		\
 	$(NULL)
 endif
 
-libspice_client_gtkincludedir = $(includedir)/spice-client-gtk-2.0
+if HAVE_GTK_2
+libspice_client_gtk_2_0_la_LDFLAGS = $(SPICE_GTK_LDFLAGS_COMMON)
+libspice_client_gtk_2_0_la_LIBADD = $(SPICE_GTK_LIBADD_COMMON)
+libspice_client_gtk_2_0_la_SOURCES = $(SPICE_GTK_SOURCES_COMMON)
+else
+libspice_client_gtk_3_0_la_LDFLAGS = $(SPICE_GTK_LDFLAGS_COMMON)
+libspice_client_gtk_3_0_la_LIBADD = $(SPICE_GTK_LIBADD_COMMON)
+libspice_client_gtk_3_0_la_SOURCES = $(SPICE_GTK_SOURCES_COMMON)
+endif
+
+
+libspice_client_gtkincludedir = $(includedir)/spice-client-gtk-$(SPICE_GTK_API_VERSION)
 libspice_client_gtkinclude_HEADERS =	\
 	spice-widget.h			\
 	spice-widget-enums.h		\
@@ -237,7 +255,7 @@ spicy_SOURCES =				\
 	$(NULL)
 
 spicy_LDADD =				\
-	libspice-client-gtk-2.0.la		\
+	libspice-client-gtk-$(SPICE_GTK_API_VERSION).la		\
 	libspice-client-glib-2.0.la		\
 	$(NULL)
 
@@ -358,8 +376,8 @@ CLEANFILES = $(BUILT_SOURCES)
 if WITH_PYTHON
 pyexec_LTLIBRARIES = SpiceClientGtk.la
 
-SpiceClientGtk_la_LIBADD = libspice-client-gtk-2.0.la libspice-client-glib-2.0.la @PYGTK_LIBS@
-SpiceClientGtk_la_CFLAGS = @GTK2_CFLAGS@ @PYTHON_INCLUDES@ @PYGTK_CFLAGS@
+SpiceClientGtk_la_LIBADD = libspice-client-gtk-2.0.la libspice-client-glib-2.0.la $(PYGTK_LIBS)
+SpiceClientGtk_la_CFLAGS = $(GTK_CFLAGS) $(PYTHON_INCLUDES) $(PYGTK_CFLAGS)
 SpiceClientGtk_la_LDFLAGS = -module -avoid-version -fPIC
 SpiceClientGtk_la_SOURCES = spice-client-gtk-module.c spice-client-gtk-module.defs.c
 
@@ -407,12 +425,20 @@ SpiceClientGLib_2_0_gir_LIBS = libspice-client-glib-2.0.la
 SpiceClientGLib_2_0_gir_FILES = $(glib_introspection_files)
 INTROSPECTION_GIRS += SpiceClientGLib-2.0.gir
 
+if HAVE_GTK_2
 SpiceClientGtk-2.0.gir: libspice-client-gtk-2.0.la SpiceClientGLib-2.0.gir
 SpiceClientGtk_2_0_gir_INCLUDES = GObject-2.0 Gtk-2.0 SpiceClientGLib-2.0
 SpiceClientGtk_2_0_gir_CFLAGS = $(SPICE_COMMON_CPPFLAGS)
 SpiceClientGtk_2_0_gir_LIBS = libspice-client-gtk-2.0.la libspice-client-glib-2.0.la
 SpiceClientGtk_2_0_gir_FILES = $(gtk_introspection_files)
-INTROSPECTION_GIRS += SpiceClientGtk-2.0.gir
+else
+SpiceClientGtk-3.0.gir: libspice-client-gtk-3.0.la SpiceClientGLib-2.0.gir
+SpiceClientGtk_3_0_gir_INCLUDES = GObject-2.0 Gtk-3.0 SpiceClientGLib-2.0
+SpiceClientGtk_3_0_gir_CFLAGS = $(SPICE_COMMON_CPPFLAGS)
+SpiceClientGtk_3_0_gir_LIBS = libspice-client-gtk-3.0.la libspice-client-glib-2.0.la
+SpiceClientGtk_3_0_gir_FILES = $(gtk_introspection_files)
+endif
+INTROSPECTION_GIRS += SpiceClientGtk-$(SPICE_GTK_API_VERSION).gir
 
 girdir = $(datadir)/gir-1.0
 gir_DATA = $(INTROSPECTION_GIRS)

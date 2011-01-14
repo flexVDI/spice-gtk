@@ -127,9 +127,36 @@ AC_SUBST(SSL_CFLAGS)
 AC_SUBST(SSL_LIBS)
 SPICE_REQUIRES+=" openssl"
 
-PKG_CHECK_MODULES(GTK2, gtk+-2.0)
-AC_SUBST(GTK2_CFLAGS)
-AC_SUBST(GTK2_LIBS)
+AC_MSG_CHECKING([which gtk+ version to compile against])
+AC_ARG_WITH([gtk],
+  [AS_HELP_STRING([--with-gtk=2.0|3.0],[which gtk+ version to compile against (default: 2.0)])],
+  [case "$with_gtk" in
+     2.0|3.0) ;;
+     *) AC_MSG_ERROR([invalid gtk version specified]) ;;
+   esac],
+  [with_gtk=2.0])
+AC_MSG_RESULT([$with_gtk])
+
+case "$with_gtk" in
+  2.0) GTK_API_VERSION=2.0
+       GTK_REQUIRED=2.18.0
+       SPICE_GTK_API_VERSION=2.0
+       ;;
+  3.0) GTK_API_VERSION=3.0
+       GTK_REQUIRED=2.91.3
+       SPICE_GTK_API_VERSION=3.0
+       ;;
+esac
+
+AC_SUBST([GTK_API_VERSION])
+AC_SUBST([GTK_REQUIRED])
+AC_SUBST([SPICE_GTK_API_VERSION])
+AM_CONDITIONAL([HAVE_GTK_2],[test "$with_gtk" = "2.0"])
+AM_CONDITIONAL([HAVE_GTK_3],[test "$with_gtk" = "3.0"])
+
+PKG_CHECK_MODULES(GTK, gtk+-$GTK_API_VERSION >= $GTK_REQUIRED)
+AC_SUBST(GTK_CFLAGS)
+AC_SUBST(GTK_LIBS)
 
 PKG_CHECK_MODULES(GLIB2, glib-2.0 >= 2.22)
 AC_SUBST(GLIB2_CFLAGS)
@@ -399,7 +426,7 @@ AC_MSG_RESULT([$warn_unused_result])
 AC_SUBST(SPICE_CFLAGS)
 
 SPICE_GLIB_CFLAGS="$PROTOCOL_CFLAGS $PIXMAN_CFLAGS $CELT051_CFLAGS $PULSE_CFLAGS $GST_CFLAGS $GLIB2_CFLAGS $GIO_CFLAGS $GOBJECT2_CFLAGS $SSL_CFLAGS"
-SPICE_GTK_CFLAGS="$SPICE_GLIB_CFLAGS $GTK2_CFLAGS "
+SPICE_GTK_CFLAGS="$SPICE_GLIB_CFLAGS $GTK_CFLAGS "
 
 AC_SUBST(SPICE_GLIB_CFLAGS)
 AC_SUBST(SPICE_GTK_CFLAGS)
@@ -435,6 +462,7 @@ AC_OUTPUT([
 Makefile
 spice-client-glib-2.0.pc
 spice-client-gtk-2.0.pc
+spice-client-gtk-3.0.pc
 common/Makefile
 common/win/Makefile
 common/win/my_getopt-1.5/Makefile
@@ -455,11 +483,12 @@ AC_MSG_NOTICE([
 
         prefix:                   ${prefix}
         c compiler:               ${CC}
-        c++ compiler:	          ${CXX}
+        c++ compiler:             ${CXX}
 
         Coroutine:                ${with_coroutine}
         Audio:                    ${with_audio}
         Target:                   ${red_target}
+        Gtk:                      $GTK_API_VERSION
 
         Now type 'make' to build $PACKAGE
 

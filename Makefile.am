@@ -4,7 +4,7 @@ NULL =
 SUBDIRS = common gtk po python_modules doc data
 
 pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = spice-client-glib-2.0.pc spice-client-gtk-2.0.pc
+pkgconfig_DATA = spice-client-glib-2.0.pc spice-client-gtk-$(SPICE_GTK_API_VERSION).pc
 
 INTLTOOL_FILES = intltool-extract.in		\
 		 intltool-merge.in		\
