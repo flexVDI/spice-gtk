@@ -30,6 +30,21 @@
 #include "spice-widget-priv.h"
 #include "vncdisplaykeymap.h"
 
+/* Some compatibility defines to let us build on both Gtk2 and Gtk3 */
+#if GTK_CHECK_VERSION (2, 91, 0)
+
+static inline void gdk_drawable_get_size(GdkWindow *w, gint *ww, gint *wh)
+{
+       *ww = gdk_window_get_width(w);
+       *wh = gdk_window_get_height(w);
+}
+
+#define GtkObject GtkWidget
+#define GtkObjectClass GtkWidgetClass
+#define GTK_OBJECT_CLASS(c) GTK_WIDGET_CLASS(c)
+
+#endif
+
 /**
  * SECTION:spice-widget
  * @short_description: a GTK display widget
@@ -357,7 +372,7 @@ static void try_keyboard_ungrab(GtkWidget *widget)
 static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
 {
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    GdkDrawable *window = gtk_widget_get_window(GTK_WIDGET(display));
+    GdkWindow *window = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
     GdkGrabStatus status;
 
     status = gdk_pointer_grab(window, FALSE,
@@ -381,7 +396,7 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
 static void update_mouse_pointer(SpiceDisplay *display)
 {
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    GdkDrawable *window = gtk_widget_get_window(GTK_WIDGET(display));
+    GdkWindow *window = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
 
     if (!window)
         return;
@@ -427,8 +442,7 @@ static void mouse_check_edges(GtkWidget *widget, GdkEventMotion *motion)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    GdkDrawable *drawable = GDK_DRAWABLE(gtk_widget_get_window(widget));
-    GdkScreen *screen = gdk_drawable_get_screen(drawable);
+    GdkScreen *screen = gtk_widget_get_screen(widget);
     int x = (int)motion->x_root;
     int y = (int)motion->y_root;
 
@@ -448,7 +462,7 @@ static void mouse_check_edges(GtkWidget *widget, GdkEventMotion *motion)
     if (motion->y == (d->wh - 1)) y -= 100;
 
     if (x != (int)motion->x_root || y != (int)motion->y_root) {
-        gdk_display_warp_pointer(gdk_drawable_get_display(drawable),
+        gdk_display_warp_pointer(gtk_widget_get_display(widget),
                                  screen, x, y);
         d->mouse_last_x = -1;
         d->mouse_last_y = -1;
@@ -1246,14 +1260,9 @@ static void cursor_set(SpiceCursorChannel *channel,
 
     if (rgba != NULL) {
         GdkPixbuf *pixbuf;
-        GdkDrawable *window;
         GdkDisplay *gtkdpy;
 
-        window = gtk_widget_get_window(GTK_WIDGET(display));
-        if (window)
-            gtkdpy = gdk_drawable_get_display(window);
-        else
-            gtkdpy = gdk_display_get_default(); /* TODO: is this a good fallback? */
+        gtkdpy = gtk_widget_get_display(GTK_WIDGET(display));
 
         pixbuf = gdk_pixbuf_new_from_data(rgba,
                                           GDK_COLORSPACE_RGB,
@@ -1274,11 +1283,6 @@ static void cursor_hide(SpiceCursorChannel *channel, gpointer data)
 {
     SpiceDisplay *display = data;
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    GdkDrawable *window;
-
-    window = gtk_widget_get_window(GTK_WIDGET(display));
-    if (!window)
-        return;
 
     if (d->mouse_cursor)
         gdk_cursor_unref(d->mouse_cursor);
@@ -1290,8 +1294,7 @@ static void cursor_move(SpiceCursorChannel *channel, gint x, gint y, gpointer da
 {
     SpiceDisplay *display = data;
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    GdkDrawable *drawable = GDK_DRAWABLE(gtk_widget_get_window(GTK_WIDGET(display)));
-    GdkScreen *screen = gdk_drawable_get_screen(drawable);
+    GdkScreen *screen = gtk_widget_get_screen(GTK_WIDGET(display));
     int wx, wy;
 
     SPICE_DEBUG("%s: +%d+%d", __FUNCTION__, x, y);
@@ -1314,8 +1317,8 @@ static void cursor_move(SpiceCursorChannel *channel, gint x, gint y, gpointer da
     }
 
     if (d->mouse_grab_active) {
-        gdk_window_get_origin(drawable, &wx, &wy);
-        gdk_display_warp_pointer(gdk_drawable_get_display(drawable), screen, x + wx, y + wy);
+        gdk_window_get_origin(GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display))), &wx, &wy);
+        gdk_display_warp_pointer(gtk_widget_get_display(GTK_WIDGET(display)), screen, x + wx, y + wy);
     }
 }
 
