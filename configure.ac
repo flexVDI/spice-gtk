@@ -433,8 +433,8 @@ m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
 AC_OUTPUT([
 Makefile
-spice-client-glib.pc
-spice-client-gtk.pc
+spice-client-glib-2.0.pc
+spice-client-gtk-2.0.pc
 common/Makefile
 common/win/Makefile
 common/win/my_getopt-1.5/Makefile

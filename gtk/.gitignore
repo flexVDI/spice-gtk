@@ -16,10 +16,10 @@
 /ID
 /Makefile
 /Makefile.in
-/SpiceClientGLib-1.0.gir
-/SpiceClientGLib-1.0.typelib
-/SpiceClientGtk-1.0.gir
-/SpiceClientGtk-1.0.typelib
+/SpiceClientGLib-2.0.gir
+/SpiceClientGLib-2.0.typelib
+/SpiceClientGtk-2.0.gir
+/SpiceClientGtk-2.0.typelib
 /SpiceClientGtk.la
 /TAGS
 /_libs
@@ -27,8 +27,8 @@
 /generated_demarshallers1.c
 /generated_marshallers.c
 /generated_marshallers1.c
-/libspice-client-glib.la
-/libspice-client-gtk.la
+/libspice-client-glib-2.0.la
+/libspice-client-gtk-2.0.la
 /snappy
 /so_locations
 /spice-channel-enums.c
