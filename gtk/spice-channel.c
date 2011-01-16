@@ -1530,13 +1530,13 @@ static gboolean channel_connect(SpiceChannel *channel)
         return true;
     }
 
-    c->state = SPICE_CHANNEL_STATE_CONNECTING;
     if (spice_session_get_client_provided_socket(c->session)) {
         if (c->fd == -1) {
             g_signal_emit(channel, signals[SPICE_CHANNEL_OPEN_FD], 0, c->tls);
             return true;
         }
     }
+    c->state = SPICE_CHANNEL_STATE_CONNECTING;
 
     g_return_val_if_fail(c->sock == NULL, FALSE);
     g_object_ref(G_OBJECT(channel)); /* Unref'd when co-routine exits */
