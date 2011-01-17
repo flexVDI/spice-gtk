@@ -174,7 +174,7 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
     char host[128], key[32], value[128];
-    char *port = NULL, *tls_port = NULL, *scheme = NULL, *uri = NULL;
+    char *port = NULL, *tls_port = NULL, *scheme = NULL, *uri = NULL, *password = NULL;
     int len, pos = 0;
 
     if (original_uri == NULL)
@@ -209,6 +209,8 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
             port = strdup(value);
         } else if (strcmp(key, "tls-port") == 0) {
             tls_port = strdup(value);
+        } else if (strcmp(key, "password") == 0) {
+            password = strdup(value);
         } else {
             goto fail;
         }
@@ -220,15 +222,18 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
     free(s->host);
     free(s->port);
     free(s->tls_port);
+    free(s->password);
     s->host = strdup(host);
     s->port = port;
     s->tls_port = tls_port;
+    s->password = password;
     return 0;
 
 fail:
     free(scheme);
     free(port);
     free(tls_port);
+    free(password);
     return -1;
 }
 
