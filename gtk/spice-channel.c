@@ -1482,12 +1482,21 @@ connected:
     while ((ret = spice_channel_iterate(channel)))
         ;
 
+    /* TODO: improve it, this is a bit hairy, c->coroutine will be
+       overwritten on (re)connect, so we skip the normal cleanup
+       path. Ideally, we shouldn't use the same channel structure? */
+    if (c->state == SPICE_CHANNEL_STATE_CONNECTING) {
+        g_object_unref(channel);
+        goto end;
+    }
+
 cleanup:
     SPICE_DEBUG("Doing final channel cleanup");
     SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
 
     g_idle_add(spice_channel_delayed_unref, data);
 
+end:
     /* Co-routine exits now - the SpiceChannel object may no longer exist,
        so don't do anything else now unless you like SEGVs */
     return NULL;
@@ -1592,6 +1601,8 @@ static void channel_disconnect(SpiceChannel *channel)
         return;
     }
 
+    c->has_error = TRUE; /* break the loop */
+
     if (c->connect_delayed_id) {
         g_source_remove(c->connect_delayed_id);
         c->connect_delayed_id = 0;
@@ -1613,6 +1624,8 @@ static void channel_disconnect(SpiceChannel *channel)
         g_object_unref(c->sock);
         c->sock = NULL;
     }
+    c->fd = -1;
+
     free(c->peer_msg);
     c->peer_msg = NULL;
     c->peer_pos = 0;
@@ -1655,8 +1668,7 @@ void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
     if (reason == SPICE_CHANNEL_SWITCHING)
         c->state = SPICE_CHANNEL_STATE_SWITCHING;
 
-    c->fd = -1; /* TODO: why not after wakeup? is client fd closed by gsocket? */
-    c->has_error = TRUE;
+    c->has_error = TRUE; /* break the loop */
     spice_channel_wakeup(channel);
 
     if (reason != SPICE_CHANNEL_NONE) {
