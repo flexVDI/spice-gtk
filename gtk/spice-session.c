@@ -204,6 +204,7 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
             tls_port = g_strdup(value);
         } else if (g_str_equal(key, "password")) {
             password = g_strdup(value);
+            g_warning("password may be visible in process listings");
         } else {
             g_warning("unknown key in spice URI parsing: %s", key);
             goto fail;
@@ -216,6 +217,7 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
     }
 
     /* parsed ok -> apply */
+    g_free(uri);
     g_free(s->host);
     g_free(s->port);
     g_free(s->tls_port);
@@ -227,9 +229,10 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
     return 0;
 
 fail:
-    free(port);
-    free(tls_port);
-    free(password);
+    g_free(uri);
+    g_free(port);
+    g_free(tls_port);
+    g_free(password);
     return -1;
 }
 
