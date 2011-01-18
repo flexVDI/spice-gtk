@@ -16,6 +16,7 @@
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
 #include <gio/gio.h>
+#include <glib.h>
 #include "spice-client.h"
 #include "spice-common.h"
 
@@ -169,15 +170,27 @@ static int spice_uri_create(SpiceSession *session, char *dest, int len)
     return pos;
 }
 
-static int spice_uri_parse(SpiceSession *session, const char *uri)
+static int spice_uri_parse(SpiceSession *session, const char *original_uri)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
     char host[128], key[32], value[128];
-    char *port = NULL, *tls_port = NULL;
+    char *port = NULL, *tls_port = NULL, *scheme = NULL, *uri = NULL, *password = NULL;
     int len, pos = 0;
 
-    if (uri == NULL)
+    if (original_uri == NULL)
         goto fail;
+
+    if ((scheme = g_uri_parse_scheme(original_uri)) == NULL)
+        goto fail;
+
+    if (strcmp(scheme, "spice") != 0)
+        goto fail;
+
+    free(scheme);
+
+    if ((uri = g_uri_unescape_string(original_uri, NULL)) == NULL)
+        goto fail;
+
     if (sscanf(uri, "spice://%127[-.0-9a-zA-Z]%n", host, &len) != 1)
         goto fail;
     pos += len;
@@ -196,6 +209,8 @@ static int spice_uri_parse(SpiceSession *session, const char *uri)
             port = strdup(value);
         } else if (strcmp(key, "tls-port") == 0) {
             tls_port = strdup(value);
+        } else if (strcmp(key, "password") == 0) {
+            password = strdup(value);
         } else {
             goto fail;
         }
@@ -207,14 +222,18 @@ static int spice_uri_parse(SpiceSession *session, const char *uri)
     free(s->host);
     free(s->port);
     free(s->tls_port);
+    free(s->password);
     s->host = strdup(host);
     s->port = port;
     s->tls_port = tls_port;
+    s->password = password;
     return 0;
 
 fail:
+    free(scheme);
     free(port);
     free(tls_port);
+    free(password);
     return -1;
 }
 
