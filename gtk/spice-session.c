@@ -116,8 +116,6 @@ static void spice_session_init(SpiceSession *session)
     s = session->priv = SPICE_SESSION_GET_PRIVATE(session);
     memset(s, 0, sizeof(*s));
 
-    s->host = strdup("localhost");
-
     ring_init(&s->channels);
 }
 
@@ -333,7 +331,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
          g_param_spec_string("host",
                              "Host",
                              "Remote host",
-                             NULL,
+                             "localhost",
                              G_PARAM_READWRITE |
                              G_PARAM_CONSTRUCT |
                              G_PARAM_STATIC_NAME |
