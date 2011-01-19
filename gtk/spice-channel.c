@@ -700,7 +700,7 @@ static void spice_channel_send_auth(SpiceChannel *channel)
     int nRSASize;
     BIO *bioKey;
     RSA *rsa;
-    const char *password;
+    char *password;
     uint8_t *encrypted;
     int rc;
 
@@ -719,14 +719,15 @@ static void spice_channel_send_auth(SpiceChannel *channel)
     */
     g_object_get(c->session, "password", &password, NULL);
     if (password == NULL)
-        password = "";
+        password = g_strdup("");
     rc = RSA_public_encrypt(strlen(password) + 1, (uint8_t*)password,
                             encrypted, rsa, RSA_PKCS1_OAEP_PADDING);
-    g_return_if_fail(rc > 0);
+    g_warn_if_fail(rc > 0);
 
     spice_channel_write(channel, encrypted, nRSASize);
     memset(encrypted, 0, nRSASize);
     BIO_free(bioKey);
+    g_free(password);
 }
 
 /* coroutine context */
@@ -745,6 +746,7 @@ static void spice_channel_recv_auth(SpiceChannel *channel)
     }
 
     if (link_res != SPICE_LINK_ERR_OK) {
+        g_critical("link result: reply %d", link_res);
         emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_AUTH);
         return;
     }
@@ -1514,7 +1516,7 @@ static gboolean connect_delayed(gpointer data)
 
     co = &c->coroutine;
 
-    co->stack_size = 16 << 20;
+    co->stack_size = 16 << 20; /* 16Mb */
     co->entry = spice_channel_coroutine;
     co->release = NULL;
 
