@@ -697,13 +697,14 @@ void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
     struct channel *item = NULL;
-    RingItem *ring;
+    RingItem *ring, *next;
 
     g_return_if_fail(s != NULL);
     g_return_if_fail(channel != NULL);
 
     for (ring = ring_get_head(&s->channels); ring != NULL;
-         ring = ring_next(&s->channels, ring)) {
+         ring = next) {
+        next = ring_next(&s->channels, ring);
         item = SPICE_CONTAINEROF(ring, struct channel, link);
         if (item->channel == channel) {
             ring_remove(&item->link);
