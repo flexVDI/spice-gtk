@@ -1053,7 +1053,7 @@ static void main_handle_migrate_switch_host(SpiceChannel *channel, spice_msg_in 
     SpiceMsgMainMigrationSwitchHost *mig = spice_msg_in_parsed(in);
     SpiceSession *session;
     char *host = (char *)mig->host_data;
-    char *subject = NULL, *port, *tlsport;
+    char *subject = NULL;
 
     g_return_if_fail(host[mig->host_size - 1] == '\0');
     if (mig->cert_subject_size) {
@@ -1067,13 +1067,9 @@ static void main_handle_migrate_switch_host(SpiceChannel *channel, spice_msg_in 
     session = spice_channel_get_session(channel);
     spice_session_migrate_disconnect(session);
 
-    g_object_set(session,
-                 "host", host,
-                 "port", port = g_strdup_printf("%d", mig->port),
-                 "tls-port", tlsport = g_strdup_printf("%d", mig->sport),
-                 NULL);
-    g_free(port);
-    g_free(tlsport);
+    g_object_set(session, "host", host, NULL);
+    spice_session_set_port(session, mig->port, FALSE);
+    spice_session_set_port(session, mig->sport, TRUE);
 
     g_idle_add(switch_host_delayed, channel); /* TODO: track source id */
 }

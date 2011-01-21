@@ -768,3 +768,17 @@ void spice_session_set_mm_time(SpiceSession *session, guint32 time)
     s->mm_time = time;
     s->mm_time_at_clock = g_get_monotonic_clock();
 }
+
+G_GNUC_INTERNAL
+void spice_session_set_port(SpiceSession *session, int port, gboolean tls)
+{
+    const char *prop = tls ? "tls-port" : "port";
+    char *tmp;
+
+    g_return_if_fail(session != NULL);
+
+    /* old spicec client doesn't accept port == 0, see Migrate::start */
+    tmp = port > 0 ? g_strdup_printf("%d", port) : NULL;
+    g_object_set(session, prop, tmp, NULL);
+    g_free(tmp);
+}
