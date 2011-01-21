@@ -18,6 +18,7 @@
 #include "spice-client.h"
 #include "spice-common.h"
 
+#include "spice-session-priv.h"
 #include "spice-channel-priv.h"
 
 /* coroutine context */
@@ -101,12 +102,50 @@ void spice_channel_handle_wait_for_channels(SpiceChannel *channel, spice_msg_in 
     SPICE_DEBUG("%s TODO", __FUNCTION__);
 }
 
+static void
+get_msg_handler(SpiceChannel *channel, spice_msg_in *in, gpointer data)
+{
+    spice_msg_in **msg = data;
+
+    g_return_if_fail(msg != NULL);
+    g_return_if_fail(*msg == NULL);
+
+    spice_msg_in_ref(in);
+    *msg = in;
+}
+
 /* coroutine context */
 G_GNUC_INTERNAL
 void spice_channel_handle_migrate(SpiceChannel *channel, spice_msg_in *in)
 {
-    /* spice_channel *c = channel->priv; */
+    spice_msg_out *out;
+    spice_msg_in *data = NULL;
     SpiceMsgMigrate *mig = spice_msg_in_parsed(in);
+    spice_channel *c = channel->priv;
 
-    SPICE_DEBUG("%s: channel %p flags %u", __FUNCTION__, channel, mig->flags);
+    SPICE_DEBUG("%s: channel %s flags %u", __FUNCTION__, c->name, mig->flags);
+    if (mig->flags & SPICE_MIGRATE_NEED_FLUSH) {
+        /* iterate_write is blocking and flushing all pending write */
+        SPICE_CHANNEL_GET_CLASS(channel)->iterate_write(channel);
+
+        out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MIGRATE_FLUSH_MARK);
+        spice_msg_out_send_internal(out);
+        spice_msg_out_unref(out);
+        SPICE_CHANNEL_GET_CLASS(channel)->iterate_write(channel);
+    }
+    if (mig->flags & SPICE_MIGRATE_NEED_DATA_TRANSFER) {
+        spice_channel_recv_msg(channel, get_msg_handler, &data);
+        if (!data || data->header.type != SPICE_MSG_MIGRATE_DATA) {
+            g_warning("expected SPICE_MSG_MIGRATE_DATA, got %d", data->header.type);
+        }
+    }
+
+    spice_session_channel_migrate(c->session, channel);
+
+    if (mig->flags & SPICE_MIGRATE_NEED_DATA_TRANSFER) {
+        out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MIGRATE_DATA);
+        spice_marshaller_add(out->marshaller, data->data, data->header.size);
+        spice_msg_out_send_internal(out);
+        spice_msg_out_unref(out);
+    }
 }

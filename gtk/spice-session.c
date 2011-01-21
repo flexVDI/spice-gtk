@@ -19,6 +19,7 @@
 #include <glib.h>
 #include "spice-client.h"
 #include "spice-common.h"
+#include "spice-channel-priv.h"
 
 #include "spice-session-priv.h"
 
@@ -45,6 +46,8 @@ struct spice_session {
     guint32           mm_time;
     gboolean          client_provided_sockets;
     guint64           mm_time_at_clock;
+    SpiceSession      *migration;
+    guint             migration_left;
     gboolean          disconnecting;
 };
 
@@ -565,6 +568,76 @@ void spice_session_migrate_disconnect(SpiceSession *session)
 
     g_return_if_fail(!ring_is_empty(&s->channels) &&
                      ring_get_head(&s->channels) == ring_get_tail(&s->channels));
+}
+
+G_GNUC_INTERNAL
+void spice_session_set_migration(SpiceSession *session, SpiceSession *migration)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    spice_session *m = SPICE_SESSION_GET_PRIVATE(migration);
+    gchar *tmp;
+
+    g_return_if_fail(s != NULL);
+
+    g_warn_if_fail(s->migration == NULL);
+    s->migration = g_object_ref(migration);
+
+    tmp = s->host;
+    s->host = m->host;
+    m->host = tmp;
+
+    tmp = s->port;
+    s->port = m->port;
+    m->port = tmp;
+
+    tmp = s->tls_port;
+    s->tls_port = m->tls_port;
+    m->tls_port = tmp;
+
+    SPICE_DEBUG("migration channels left:%d (in migration:%d)",
+                ring_get_length(&s->channels), ring_get_length(&m->channels));
+    s->migration_left = ring_get_length(&s->channels);
+}
+
+G_GNUC_INTERNAL
+void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    RingItem *ring, *next;
+    struct channel *c;
+    gint id, type;
+
+    g_return_if_fail(s != NULL);
+    g_return_if_fail(s->migration != NULL);
+    g_return_if_fail(SPICE_IS_CHANNEL(channel));
+
+    id = spice_channel_get_channel_id(channel);
+    type = spice_channel_get_channel_type(channel);
+    SPICE_DEBUG("migrating channel id:%d type:%d", id, type);
+
+    for (ring = ring_get_head(&s->migration->priv->channels);
+         ring != NULL; ring = next) {
+        next = ring_next(&s->migration->priv->channels, ring);
+        c = SPICE_CONTAINEROF(ring, struct channel, link);
+        if (c == NULL || c->channel == NULL) {
+            g_warn_if_reached();
+            continue;
+        }
+
+        if (id == spice_channel_get_channel_id(c->channel) &&
+            type == spice_channel_get_channel_type(c->channel))
+            break;
+    }
+    g_return_if_fail(ring != NULL);
+
+    spice_channel_swap(channel, c->channel);
+    s->migration_left--;
+    if (s->migration_left == 0) {
+        SPICE_DEBUG("all channel migrated");
+        spice_session_disconnect(s->migration);
+        g_object_unref(s->migration);
+        s->migration = NULL;
+    }
 }
 
 /**

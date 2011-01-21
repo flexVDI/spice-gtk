@@ -71,6 +71,16 @@ struct spice_main_channel {
     GQueue                      *agent_msg_queue;
 };
 
+typedef struct spice_migrate spice_migrate;
+
+struct spice_migrate {
+    struct coroutine *from;
+    SpiceMsgMainMigrationBegin *info;
+    SpiceSession *session;
+    guint nchannels;
+    SpiceChannel *channel;
+};
+
 G_DEFINE_TYPE(SpiceMainChannel, spice_main_channel, SPICE_TYPE_CHANNEL)
 
 /* Properties */
@@ -101,6 +111,8 @@ static guint signals[SPICE_MAIN_LAST_SIGNAL];
 
 static void spice_main_handle_msg(SpiceChannel *channel, spice_msg_in *msg);
 static void agent_send_msg_queue(SpiceMainChannel *channel);
+static void migrate_channel_event_cb(SpiceChannel *channel, SpiceChannelEvent event,
+                                     gpointer data);
 
 /* ------------------------------------------------------------------ */
 
@@ -824,6 +836,7 @@ typedef struct channel_new {
     int id;
 } channel_new_t;
 
+/* main context */
 static gboolean _channel_new(channel_new_t *c)
 {
     SpiceChannel *channel;
@@ -1027,13 +1040,154 @@ static void main_handle_agent_token(SpiceChannel *channel, spice_msg_in *in)
     agent_send_msg_queue(SPICE_MAIN_CHANNEL(channel));
 }
 
+/* main context */
+static void migrate_channel_new_cb(SpiceSession *s, SpiceChannel *channel, gpointer data)
+{
+    g_signal_connect(channel, "channel-event",
+                     G_CALLBACK(migrate_channel_event_cb), data);
+}
+
+static void migrate_channel_connect(spice_migrate *mig, int type, int id)
+{
+    SPICE_DEBUG("migrate_channel_connect %d:%d", type, id);
+
+    SpiceChannel *newc = spice_channel_new(mig->session, type, id);
+    spice_channel_connect(newc);
+    mig->nchannels++;
+}
+
+/* main context */
+static void migrate_channel_event_cb(SpiceChannel *channel, SpiceChannelEvent event,
+                                     gpointer data)
+{
+    spice_migrate *mig = data;
+    spice_channel *c = SPICE_CHANNEL(channel)->priv;
+    SpiceSession *session;
+
+    g_return_if_fail(mig->nchannels > 0);
+    g_signal_handlers_disconnect_by_func(channel, migrate_channel_event_cb, data);
+
+    session = spice_channel_get_session(mig->channel);
+
+    switch (event) {
+    case SPICE_CHANNEL_OPENED:
+        c->state = SPICE_CHANNEL_STATE_MIGRATING;
+
+        if (c->channel_type == SPICE_CHANNEL_MAIN) {
+            /* now connect the rest of the channels */
+            GList *channels, *l;
+            l = channels = spice_session_get_channels(session);
+            while (l != NULL) {
+                spice_channel *curc = SPICE_CHANNEL(l->data)->priv;
+                l = l->next;
+                if (curc->channel_type == SPICE_CHANNEL_MAIN)
+                    continue;
+                migrate_channel_connect(mig, curc->channel_type, curc->channel_id);
+            }
+            g_list_free(channels);
+        }
+
+        mig->nchannels--;
+        SPICE_DEBUG("migration: channel opened chan:%p, left %d", channel, mig->nchannels);
+        if (mig->nchannels == 0)
+            coroutine_yieldto(mig->from, NULL);
+        break;
+    default:
+        g_warning("error or unhandled channel event during migration: %d", event);
+        /* go back to main channel to report error */
+        coroutine_yieldto(mig->from, NULL);
+    }
+}
+
+#ifdef __GNUC__
+typedef struct __attribute__ ((__packed__)) OldRedMigrationBegin {
+#else
+typedef struct __declspec(align(1)) OldRedMigrationBegin {
+#endif
+    uint16_t port;
+    uint16_t sport;
+    char host[0];
+} OldRedMigrationBegin;
+
+/* main context */
+static gboolean migrate_connect(gpointer data)
+{
+    spice_migrate *mig = data;
+    spice_channel *c;
+    int port, sport;
+    const char *host;
+    SpiceSession *session;
+
+    g_return_val_if_fail(mig != NULL, FALSE);
+    g_return_val_if_fail(mig->info != NULL, FALSE);
+    g_return_val_if_fail(mig->nchannels == 0, FALSE);
+    c = SPICE_CHANNEL(mig->channel)->priv;
+    g_return_val_if_fail(c != NULL, FALSE);
+
+    if ((c->peer_hdr.major_version == 1) &&
+        (c->peer_hdr.minor_version < 2)) {
+        OldRedMigrationBegin *info = (OldRedMigrationBegin *)mig->info;
+        SPICE_DEBUG("migrate_begin old %s %d %d",
+                    info->host, info->port, info->sport);
+        port = info->port;
+        sport = info->sport;
+        host = info->host;
+    } else {
+        SpiceMsgMainMigrationBegin *info = mig->info;
+        SPICE_DEBUG("migrate_begin %d %s %d %d",
+                    info->host_size, info->host_data, info->port, info->sport);
+        port = info->port;
+        sport = info->sport;
+        host = (char*)info->host_data;
+    }
+
+    session = spice_channel_get_session(mig->channel);
+
+    if (g_getenv("SPICE_MIG_HOST"))
+        host = g_getenv("SPICE_MIG_HOST");
+
+    mig->session = spice_session_new_from_session(session);
+    g_object_set(mig->session, "host", host, NULL);
+    spice_session_set_port(mig->session, port, FALSE);
+    spice_session_set_port(mig->session, sport, TRUE);
+    g_signal_connect(mig->session, "channel-new",
+                     G_CALLBACK(migrate_channel_new_cb), mig);
+
+    /* the migration process is in 2 steps, first the main channel and
+       then the rest of the channels */
+    migrate_channel_connect(mig, SPICE_CHANNEL_MAIN, 0);
+
+    return FALSE;
+}
+
 /* coroutine context */
 static void main_handle_migrate_begin(SpiceChannel *channel, spice_msg_in *in)
 {
-    SpiceMsgMainMigrationBegin *mig = spice_msg_in_parsed(in);
+    SpiceMsgMainMigrationBegin *msg = spice_msg_in_parsed(in);
+    spice_migrate mig = { 0, };
+    spice_msg_out *out;
+    int reply_type;
 
-    SPICE_DEBUG("migrate_begin %d %s %d %d",
-                mig->host_size, mig->host_data, mig->port, mig->sport);
+    mig.channel = channel;
+    mig.info = msg;
+    mig.from = coroutine_self();
+    g_idle_add(migrate_connect, &mig); /* TODO: track idle */
+
+    /* switch to main loop and wait for connections */
+    coroutine_yield(NULL);
+
+    if (mig.nchannels != 0) {
+        reply_type = SPICE_MSGC_MAIN_MIGRATE_CONNECT_ERROR;
+    } else {
+        SPICE_DEBUG("migration: connections all ok");
+        reply_type = SPICE_MSGC_MAIN_MIGRATE_CONNECTED;
+        spice_session_set_migration(spice_channel_get_session(channel), mig.session);
+    }
+    g_object_unref(mig.session);
+
+    out = spice_msg_out_new(SPICE_CHANNEL(channel), reply_type);
+    spice_msg_out_send(out);
+    spice_msg_out_unref(out);
 }
 
 /* main context */
