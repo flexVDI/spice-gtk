@@ -130,6 +130,10 @@ void spice_channel_wakeup(SpiceChannel *channel);
 
 SpiceSession* spice_channel_get_session(SpiceChannel *channel);
 
+/* coroutine context */
+typedef void (*handler_msg_in)(SpiceChannel *channel, spice_msg_in *msg, gpointer data);
+void spice_channel_recv_msg(SpiceChannel *channel, handler_msg_in handler, gpointer data);
+
 /* channel-base.c */
 /* coroutine context */
 void spice_channel_handle_set_ack(SpiceChannel *channel, spice_msg_in *in);

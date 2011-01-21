@@ -996,7 +996,9 @@ static void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out, gb
 }
 
 /* coroutine context */
-static void spice_channel_recv_msg(SpiceChannel *channel)
+G_GNUC_INTERNAL
+void spice_channel_recv_msg(SpiceChannel *channel,
+                            handler_msg_in msg_handler, gpointer data)
 {
     spice_channel *c = channel->priv;
     spice_msg_in *in;
@@ -1050,7 +1052,7 @@ static void spice_channel_recv_msg(SpiceChannel *channel)
                            c->name, sub_in->header.type);
                 return;
             }
-            SPICE_CHANNEL_GET_CLASS(channel)->handle_msg(channel, sub_in);
+            msg_handler(channel, sub_in, data);
             spice_msg_in_unref(sub_in);
         }
     }
@@ -1076,11 +1078,11 @@ static void spice_channel_recv_msg(SpiceChannel *channel)
     }
 
     /* process message */
-    SPICE_CHANNEL_GET_CLASS(channel)->handle_msg(channel, in);
+    c->msg_in = NULL; /* the function is reentrant, reset state */
+    msg_handler(channel, in, data);
 
     /* release message */
-    spice_msg_in_unref(c->msg_in);
-    c->msg_in = NULL;
+    spice_msg_in_unref(in);
 }
 
 /**
@@ -1366,7 +1368,8 @@ static void spice_channel_iterate_read(SpiceChannel *channel)
         spice_channel_recv_auth(channel);
         break;
     case SPICE_CHANNEL_STATE_READY:
-        spice_channel_recv_msg(channel);
+        spice_channel_recv_msg(channel,
+            (handler_msg_in)SPICE_CHANNEL_GET_CLASS(channel)->handle_msg, NULL);
         break;
     default:
         g_critical("unknown state %d", c->state);
@@ -1523,7 +1526,7 @@ connected:
     }
 
 cleanup:
-    SPICE_DEBUG("Doing final channel cleanup");
+    SPICE_DEBUG("Coroutine exit");
     SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
 
     g_idle_add(spice_channel_delayed_unref, data);
