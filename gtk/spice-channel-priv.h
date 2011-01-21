@@ -134,6 +134,9 @@ void spice_channel_handle_disconnect(SpiceChannel *channel, spice_msg_in *in);
 void spice_channel_handle_wait_for_channels(SpiceChannel *channel, spice_msg_in *in);
 void spice_channel_handle_migrate(SpiceChannel *channel, spice_msg_in *in);
 
+gint spice_channel_get_channel_id(SpiceChannel *channel);
+gint spice_channel_get_channel_type(SpiceChannel *channel);
+
 /* coroutine context */
 #define emit_main_context(object, event, args...)                       \
     G_STMT_START {                                                      \

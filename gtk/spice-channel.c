@@ -196,6 +196,24 @@ static void spice_channel_get_property(GObject    *gobject,
     }
 }
 
+G_GNUC_INTERNAL
+gint spice_channel_get_channel_id(SpiceChannel *channel)
+{
+    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+
+    g_return_val_if_fail(c != NULL, 0);
+    return c->channel_id;
+}
+
+G_GNUC_INTERNAL
+gint spice_channel_get_channel_type(SpiceChannel *channel)
+{
+    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+
+    g_return_val_if_fail(c != NULL, 0);
+    return c->channel_type;
+}
+
 static void spice_channel_set_property(GObject      *gobject,
                                        guint         prop_id,
                                        const GValue *value,
