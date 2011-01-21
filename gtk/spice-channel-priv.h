@@ -61,12 +61,17 @@ enum spice_channel_state {
 };
 
 struct spice_channel {
+    /* swapped on migration */
+    SSL_CTX                     *ctx;
+    SSL                         *ssl;
+    GSocket                     *sock;
+
+    /* not swapped */
     SpiceSession                *session;
     struct coroutine            coroutine;
-    guint                       connect_delayed_id;
-    GSocket                     *sock;
     int                         fd;
     gboolean                    has_error;
+    guint                       connect_delayed_id;
 
     int                         wait_interruptable;
     struct wait_queue           wait;
@@ -79,8 +84,6 @@ struct spice_channel {
     spice_parse_channel_func_t  parser;
     SpiceMessageMarshallers     *marshallers;
     guint                       channel_watch;
-    SSL_CTX                     *ctx;
-    SSL                         *ssl;
     int                         tls;
 
     int                         connection_id;
