@@ -1383,6 +1383,12 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
     GIOCondition ret;
 
     do {
+        while (c->state == SPICE_CHANNEL_STATE_MIGRATING) {
+            /* freeze coroutine */
+            coroutine_yield(NULL);
+            g_return_val_if_fail(c->state != SPICE_CHANNEL_STATE_MIGRATING, FALSE);
+        }
+
         if (c->has_error) {
             SPICE_DEBUG("channel has error, breaking loop");
             return FALSE;
@@ -1704,7 +1710,12 @@ void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
         c->state = SPICE_CHANNEL_STATE_SWITCHING;
 
     c->has_error = TRUE; /* break the loop */
-    spice_channel_wakeup(channel);
+
+    if (c->state == SPICE_CHANNEL_STATE_MIGRATING) {
+        c->state = SPICE_CHANNEL_STATE_READY;
+        coroutine_yieldto(&c->coroutine, NULL);
+    } else
+        spice_channel_wakeup(channel);
 
     if (reason != SPICE_CHANNEL_NONE) {
         g_signal_emit(G_OBJECT(channel), signals[SPICE_CHANNEL_EVENT], 0, reason);
