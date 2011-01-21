@@ -462,8 +462,30 @@ static void spice_session_class_init(SpiceSessionClass *klass)
  **/
 SpiceSession *spice_session_new(void)
 {
-    return SPICE_SESSION(g_object_new(SPICE_TYPE_SESSION,
-                                      NULL));
+    return SPICE_SESSION(g_object_new(SPICE_TYPE_SESSION, NULL));
+}
+
+G_GNUC_INTERNAL
+SpiceSession *spice_session_new_from_session(SpiceSession *session)
+{
+    SpiceSession *copy = SPICE_SESSION(g_object_new(SPICE_TYPE_SESSION,
+                                                    "host", NULL,
+                                                    "ca-file", NULL,
+                                                    NULL));
+    spice_session *c = copy->priv, *s = session->priv;
+
+    g_object_get(session,
+                 "host", &c->host,
+                 "tls-port", &c->tls_port,
+                 "password", &c->password,
+                 "ca-file", &c->ca_file,
+                 NULL);
+
+    c->client_provided_sockets = s->client_provided_sockets;
+    c->protocol = s->protocol;
+    c->connection_id = s->connection_id;
+
+    return copy;
 }
 
 /**

@@ -23,6 +23,8 @@
 
 G_BEGIN_DECLS
 
+SpiceSession *spice_session_new_from_session(SpiceSession *session);
+
 void spice_session_set_connection_id(SpiceSession *session, int id);
 int spice_session_get_connection_id(SpiceSession *session);
 gboolean spice_session_get_client_provided_socket(SpiceSession *session);
