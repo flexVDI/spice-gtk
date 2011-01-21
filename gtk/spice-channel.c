@@ -153,7 +153,7 @@ static void spice_channel_finalize(GObject *gobject)
     SpiceChannel *channel = SPICE_CHANNEL(gobject);
     spice_channel *c = channel->priv;
 
-    SPICE_DEBUG("%s: %s", c->name, __FUNCTION__);
+    SPICE_DEBUG("%s: %s %p", c->name, __FUNCTION__, gobject);
 
     if (c->caps)
         g_array_free(c->caps, TRUE);
@@ -1776,7 +1776,34 @@ void spice_channel_set_capability(SpiceChannel *channel, guint32 cap)
 G_GNUC_INTERNAL
 SpiceSession* spice_channel_get_session(SpiceChannel *channel)
 {
-    spice_channel *c = channel->priv;
+    g_return_val_if_fail(SPICE_IS_CHANNEL(channel), NULL);
 
-    return c->session;
+    return channel->priv->session;
+}
+
+G_GNUC_INTERNAL
+void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap)
+{
+    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    spice_channel *s = SPICE_CHANNEL_GET_PRIVATE(swap);
+
+    g_return_if_fail(c != NULL);
+    g_return_if_fail(s != NULL);
+
+    g_return_if_fail(s->session != NULL);
+    g_return_if_fail(s->sock != NULL);
+
+    {
+        GSocket *sock = c->sock;
+        SSL_CTX *ctx = c->ctx;
+        SSL *ssl = c->ssl;
+
+        c->sock = s->sock;
+        c->ctx = s->ctx;
+        c->ssl = s->ssl;
+
+        s->sock = sock;
+        s->ctx = ctx;
+        s->ssl = ssl;
+    }
 }
