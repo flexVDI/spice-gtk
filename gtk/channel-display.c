@@ -728,8 +728,15 @@ static void display_handle_mark(SpiceChannel *channel, spice_msg_in *in)
 static void display_handle_reset(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
+    display_surface *surface = find_surface(c, 0);
 
-    g_warning("%s: TODO", __FUNCTION__);
+    SPICE_DEBUG("%s: TODO detach_from_screen", __FUNCTION__);
+
+    if (surface != NULL)
+        surface->canvas->ops->clear(surface->canvas);
+
+    palette_clear(&c->palette_cache);
+
     c->mark = FALSE;
     emit_main_context(channel, SPICE_DISPLAY_MARK, FALSE);
 }
