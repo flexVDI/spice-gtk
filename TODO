@@ -5,3 +5,4 @@
 * clipboard images
 * TunnelChannel?
 * protocol <1 support?
+* fix mouse on client hitting real screen borders in server mode
