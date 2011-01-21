@@ -45,6 +45,7 @@ struct spice_session {
     guint32           mm_time;
     gboolean          client_provided_sockets;
     guint64           mm_time_at_clock;
+    gboolean          disconnecting;
 };
 
 /**
@@ -558,10 +559,11 @@ void spice_session_disconnect(SpiceSession *session)
 
     g_return_if_fail(s != NULL);
 
-    if (s->cmain == NULL) {
+    SPICE_DEBUG("session: disconnecting %d", s->disconnecting);
+    if (s->disconnecting)
         return;
-    }
 
+    s->disconnecting = TRUE;
     s->cmain = NULL;
 
     for (ring = ring_get_head(&s->channels); ring != NULL; ring = next) {
@@ -571,6 +573,7 @@ void spice_session_disconnect(SpiceSession *session)
     }
 
     s->connection_id = 0;
+    s->disconnecting = FALSE;
 }
 
 /**
@@ -713,6 +716,8 @@ void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel)
             return;
         }
     }
+
+    g_warn_if_reached();
 }
 
 G_GNUC_INTERNAL
