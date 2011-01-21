@@ -769,10 +769,21 @@ static void spice_channel_recv_auth(SpiceChannel *channel)
         return;
     }
 
-    SPICE_DEBUG("%s: channel up", c->name);
     c->state = SPICE_CHANNEL_STATE_READY;
 
     emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_OPENED);
+
+    if (c->state != SPICE_CHANNEL_STATE_MIGRATING)
+        spice_channel_up(channel);
+}
+
+G_GNUC_INTERNAL
+void spice_channel_up(SpiceChannel *channel)
+{
+    spice_channel *c = channel->priv;
+
+    SPICE_DEBUG("%s: channel up, state %d", c->name, c->state);
+
     if (SPICE_CHANNEL_GET_CLASS(channel)->channel_up)
         SPICE_CHANNEL_GET_CLASS(channel)->channel_up(channel);
 }

@@ -58,6 +58,7 @@ enum spice_channel_state {
     SPICE_CHANNEL_STATE_AUTH,
     SPICE_CHANNEL_STATE_READY,
     SPICE_CHANNEL_STATE_SWITCHING,
+    SPICE_CHANNEL_STATE_MIGRATING,
 };
 
 struct spice_channel {
@@ -124,6 +125,7 @@ void spice_msg_out_send(spice_msg_out *out);
 void spice_msg_out_send_internal(spice_msg_out *out);
 void spice_msg_out_hexdump(spice_msg_out *out, unsigned char *data, int len);
 
+void spice_channel_up(SpiceChannel *channel);
 void spice_channel_wakeup(SpiceChannel *channel);
 
 SpiceSession* spice_channel_get_session(SpiceChannel *channel);
