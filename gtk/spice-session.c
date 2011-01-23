@@ -102,6 +102,7 @@ enum {
     PROP_IPV6,
     PROP_PROTOCOL,
     PROP_URI,
+    PROP_CLIENT_SOCKETS,
 };
 
 /* signals */
@@ -269,6 +270,9 @@ static void spice_session_get_property(GObject    *gobject,
         len = spice_uri_create(session, buf, sizeof(buf));
         g_value_set_string(value, len ? buf : NULL);
         break;
+    case PROP_CLIENT_SOCKETS:
+        g_value_set_boolean(value, s->client_provided_sockets);
+	break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -317,6 +321,9 @@ static void spice_session_set_property(GObject      *gobject,
         str = g_value_get_string(value);
         if (str != NULL)
             spice_uri_parse(session, str);
+        break;
+    case PROP_CLIENT_SOCKETS:
+        s->client_provided_sockets = g_value_get_boolean(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -416,6 +423,16 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              G_PARAM_STATIC_NAME |
                              G_PARAM_STATIC_NICK |
                              G_PARAM_STATIC_BLURB));
+
+    g_object_class_install_property
+        (gobject_class, PROP_CLIENT_SOCKETS,
+         g_param_spec_boolean("client-sockets",
+                          "Client sockets",
+                          "Sockets are provided by the client",
+                          FALSE,
+                          G_PARAM_READWRITE |
+                          G_PARAM_CONSTRUCT |
+                          G_PARAM_STATIC_STRINGS));
 
     /**
      * SpiceSession::channel-new:

@@ -104,6 +104,7 @@ enum {
     SPICE_MAIN_CLIPBOARD_GRAB,
     SPICE_MAIN_CLIPBOARD_REQUEST,
     SPICE_MAIN_CLIPBOARD_RELEASE,
+    SPICE_MIGRATION_STARTED,
     SPICE_MAIN_LAST_SIGNAL,
 };
 
@@ -453,6 +454,29 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                      g_cclosure_marshal_VOID__VOID,
                      G_TYPE_NONE,
                      0);
+
+    /**
+     * SpiceMainChannel::migration-started:
+     * @main: the #SpiceMainChannel that emitted the signal
+     * @session: a migration #SpiceSession
+     *
+     * Inform when migration is starting. Application wishing to make
+     * connections themself can set the #SpiceSession:client-sockets
+     * to @TRUE, then follow #SpiceSession::channel-new creation, and
+     * use spice_channel_open_fd() once the socket is created.
+     *
+     **/
+    signals[SPICE_MIGRATION_STARTED] =
+        g_signal_new("migration-started",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_LAST,
+                     0,
+                     NULL, NULL,
+                     g_cclosure_marshal_VOID__OBJECT,
+                     G_TYPE_NONE,
+                     1,
+                     G_TYPE_OBJECT);
+
 
     g_type_class_add_private(klass, sizeof(spice_main_channel));
 }
@@ -1152,6 +1176,9 @@ static gboolean migrate_connect(gpointer data)
     spice_session_set_port(mig->session, sport, TRUE);
     g_signal_connect(mig->session, "channel-new",
                      G_CALLBACK(migrate_channel_new_cb), mig);
+
+    g_signal_emit(mig->channel, signals[SPICE_MIGRATION_STARTED], 0,
+                  mig->session);
 
     /* the migration process is in 2 steps, first the main channel and
        then the rest of the channels */
