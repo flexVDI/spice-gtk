@@ -8,14 +8,14 @@ Please report bugs at: spice-devel@lists.freedesktop.org
 What you can find here
 ----------------------
 
-libspice-client-glib
+libspice-client-glib-2.0
    provides glib objects for spice protocol decoding and surface rendering.
       * SpiceSession (see spice-session.h).
       * SpiceChannel (see spice-channel.h).
       * SpiceAudio (see spice-audio.h).
       * Various Spice<Type>Channel (see channel-<type>.h).
 
-libspice-client-gtk
+libspice-client-gtk-{2.0,3.0}
    provides gtk widget to show spice display and accept user input.
       * SpiceDisplay (see spice-widget.h)
 
@@ -27,33 +27,27 @@ snappy
    Command line tool, connects to spice server and writes out a
    screen shot.
 
-SpiceClientGtk python module.
+SpiceClientGtk python module (only built with Gtk+ 2.0)
 
 SpiceClientGlib and SpiceClientGtk GObject-introspection modules.
 
 Build depedencies:
 ------------------
 
-On Fedora:
+On Fedora: gtk2-devel or gtk3-devel and
 
-spice-protocol pygtk2-devel intltool celt051-devel gtk2-devel
+spice-protocol pygtk2-devel intltool celt051-devel
 openssl-devel pulseaudio-libs-devel pixman-devel python perl-Text-CSV
 gobject-introspection-devel libjpeg-turbo-devel zlib-devel
+
+You can also build with the experimental GStreamer backend.
 
 current state
 -------------
 
-spicy app starts becoming usable.
+Some features are missing, see TODO
 
-Some features are missing:
-  - No client migration support.
-  - No mm time handling.
-  - Most channel implementations are incomplete.
-  - Almost no documentation.
-  - Probably more ...
-
-
-Copyright 2009 Red Hat, Inc. and/or its affiliates.
+Copyright 2009-2011 Red Hat, Inc. and/or its affiliates.
 
 This program and libraries is free software; you can redistribute it
 and/or modify it under the terms of the GNU Lesser General Public

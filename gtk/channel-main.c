@@ -1181,6 +1181,7 @@ static gboolean migrate_connect(gpointer data)
         port = info->port;
         sport = info->sport;
         host = (char*)info->host_data;
+        /* TODO: add info->pub_key_data check */
     }
 
     session = spice_channel_get_session(mig->channel);
