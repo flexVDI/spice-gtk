@@ -69,6 +69,8 @@ struct spice_main_channel {
     } display[1];
     gint                        timer_id;
     GQueue                      *agent_msg_queue;
+
+    guint                       switch_host_delayed_id;
 };
 
 typedef struct spice_migrate spice_migrate;
@@ -215,13 +217,24 @@ static void spice_main_set_property(GObject *gobject, guint prop_id,
     }
 }
 
-static void spice_main_channel_finalize(GObject *obj)
+static void spice_main_channel_dispose(GObject *obj)
 {
     spice_main_channel *c = SPICE_MAIN_CHANNEL(obj)->priv;
 
     if (c->timer_id) {
         g_source_remove(c->timer_id);
+        c->timer_id = 0;
     }
+
+    if (c->switch_host_delayed_id) {
+        g_source_remove(c->switch_host_delayed_id);
+        c->switch_host_delayed_id = 0;
+    }
+}
+
+static void spice_main_channel_finalize(GObject *obj)
+{
+    spice_main_channel *c = SPICE_MAIN_CHANNEL(obj)->priv;
 
     g_free(c->agent_msg_data);
     g_queue_free(c->agent_msg_queue);
@@ -244,6 +257,7 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
     SpiceChannelClass *channel_class = SPICE_CHANNEL_CLASS(klass);
 
+    gobject_class->dispose      = spice_main_channel_dispose;
     gobject_class->finalize     = spice_main_channel_finalize;
     gobject_class->get_property = spice_main_get_property;
     gobject_class->set_property = spice_main_set_property;
@@ -1221,7 +1235,11 @@ static void main_handle_migrate_begin(SpiceChannel *channel, spice_msg_in *in)
 static gboolean switch_host_delayed(gpointer data)
 {
     SpiceChannel *channel = data;
+    spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
 
+    g_warn_if_fail(c->switch_host_delayed_id != 0);
+
+    c->switch_host_delayed_id = 0;
     spice_channel_disconnect(channel, SPICE_CHANNEL_SWITCHING);
     spice_channel_connect(channel);
 
@@ -1235,8 +1253,10 @@ static void main_handle_migrate_switch_host(SpiceChannel *channel, spice_msg_in 
     SpiceSession *session;
     char *host = (char *)mig->host_data;
     char *subject = NULL;
+    spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
 
     g_return_if_fail(host[mig->host_size - 1] == '\0');
+
     if (mig->cert_subject_size) {
         subject = (char *)mig->cert_subject_data;
         g_return_if_fail(subject[mig->cert_subject_size - 1] == '\0');
@@ -1245,6 +1265,12 @@ static void main_handle_migrate_switch_host(SpiceChannel *channel, spice_msg_in 
     SPICE_DEBUG("migrate_switch %s %d %d",
                 host, mig->port, mig->sport);
 
+    if (c->switch_host_delayed_id != 0) {
+        g_warning("Switching host already in progress, aborting it");
+        g_warn_if_fail(g_source_remove(c->switch_host_delayed_id));
+        c->switch_host_delayed_id = 0;
+    }
+
     session = spice_channel_get_session(channel);
     spice_session_migrate_disconnect(session);
 
@@ -1252,7 +1278,7 @@ static void main_handle_migrate_switch_host(SpiceChannel *channel, spice_msg_in 
     spice_session_set_port(session, mig->port, FALSE);
     spice_session_set_port(session, mig->sport, TRUE);
 
-    g_idle_add(switch_host_delayed, channel); /* TODO: track source id */
+    c->switch_host_delayed_id = g_idle_add(switch_host_delayed, channel);
 }
 
 /* coroutine context */
