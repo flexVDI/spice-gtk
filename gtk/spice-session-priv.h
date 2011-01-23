@@ -39,6 +39,7 @@ guint32 spice_session_get_mm_time(SpiceSession *session);
 
 void spice_session_migrate_disconnect(SpiceSession *session);
 void spice_session_set_migration(SpiceSession *session, SpiceSession *migration);
+void spice_session_abort_migration(SpiceSession *session);
 
 void spice_session_set_port(SpiceSession *session, int port, gboolean tls);
 

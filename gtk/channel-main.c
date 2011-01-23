@@ -230,6 +230,9 @@ static void spice_main_channel_dispose(GObject *obj)
         g_source_remove(c->switch_host_delayed_id);
         c->switch_host_delayed_id = 0;
     }
+
+    if (G_OBJECT_CLASS(spice_main_channel_parent_class)->dispose)
+        G_OBJECT_CLASS(spice_main_channel_parent_class)->dispose(obj);
 }
 
 static void spice_main_channel_finalize(GObject *obj)
@@ -907,6 +910,7 @@ static void main_handle_channels_list(SpiceChannel *channel, spice_msg_in *in)
         c->id = msg->channels[i].id;
         /* no need to explicitely switch to main context, since
            synchronous call is not needed. */
+        /* no need to track idle, session is refed */
         g_idle_add((GSourceFunc)_channel_new, c);
     }
 }
@@ -1212,13 +1216,17 @@ static void main_handle_migrate_begin(SpiceChannel *channel, spice_msg_in *in)
     mig.channel = channel;
     mig.info = msg;
     mig.from = coroutine_self();
-    g_idle_add(migrate_connect, &mig); /* TODO: track idle */
+
+    /* no need to track idle, call is sync for this coroutine */
+    g_idle_add(migrate_connect, &mig);
 
     /* switch to main loop and wait for connections */
     coroutine_yield(NULL);
+    g_return_if_fail(mig.session != NULL);
 
     if (mig.nchannels != 0) {
         reply_type = SPICE_MSGC_MAIN_MIGRATE_CONNECT_ERROR;
+        spice_session_disconnect(mig.session);
     } else {
         SPICE_DEBUG("migration: connections all ok");
         reply_type = SPICE_MSGC_MAIN_MIGRATE_CONNECTED;
@@ -1285,7 +1293,11 @@ static void main_handle_migrate_switch_host(SpiceChannel *channel, spice_msg_in 
 static void main_handle_migrate_cancel(SpiceChannel *channel,
                                        spice_msg_in *in G_GNUC_UNUSED)
 {
-    g_warning("%s: TODO", __FUNCTION__);
+    SpiceSession *session;
+
+    SPICE_DEBUG("migrate_cancel");
+    session = spice_channel_get_session(channel);
+    spice_session_abort_migration(session);
 }
 
 static spice_msg_handler main_handlers[] = {

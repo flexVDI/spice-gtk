@@ -47,7 +47,7 @@ struct spice_session {
     gboolean          client_provided_sockets;
     guint64           mm_time_at_clock;
     SpiceSession      *migration;
-    guint             migration_left;
+    GList             *migration_left;
     gboolean          disconnecting;
 };
 
@@ -128,10 +128,22 @@ static void
 spice_session_dispose(GObject *gobject)
 {
     SpiceSession *session = SPICE_SESSION(gobject);
+    spice_session *s = session->priv;
 
     SPICE_DEBUG("session dispose");
 
     spice_session_disconnect(session);
+
+    if (s->migration) {
+        spice_session_disconnect(s->migration);
+        g_object_unref(s->migration);
+        s->migration = NULL;
+    }
+
+    if (s->migration_left) {
+        g_list_free(s->migration_left);
+        s->migration_left = NULL;
+    }
 
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_session_parent_class)->dispose)
@@ -586,8 +598,8 @@ void spice_session_migrate_disconnect(SpiceSession *session)
             spice_channel_destroy(item->channel); /* /!\ item and channel are destroy() after this call */
     }
 
-    g_return_if_fail(!ring_is_empty(&s->channels) &&
-                     ring_get_head(&s->channels) == ring_get_tail(&s->channels));
+    g_warn_if_fail(!ring_is_empty(&s->channels) &&
+                   ring_get_head(&s->channels) == ring_get_tail(&s->channels));
 }
 
 G_GNUC_INTERNAL
@@ -614,30 +626,26 @@ void spice_session_set_migration(SpiceSession *session, SpiceSession *migration)
     s->tls_port = m->tls_port;
     m->tls_port = tmp;
 
+    g_warn_if_fail(ring_get_length(&s->channels) == ring_get_length(&m->channels));
+
     SPICE_DEBUG("migration channels left:%d (in migration:%d)",
                 ring_get_length(&s->channels), ring_get_length(&m->channels));
-    s->migration_left = ring_get_length(&s->channels);
+    s->migration_left = spice_session_get_channels(session);
 }
 
 G_GNUC_INTERNAL
-void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel)
+SpiceChannel* get_channel_by_id_and_type(SpiceSession *session,
+                                         gint id, gint type)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
     RingItem *ring, *next;
+    spice_session *s = session->priv;
     struct channel *c;
-    gint id, type;
 
-    g_return_if_fail(s != NULL);
-    g_return_if_fail(s->migration != NULL);
-    g_return_if_fail(SPICE_IS_CHANNEL(channel));
+    g_return_val_if_fail(s != NULL, NULL);
 
-    id = spice_channel_get_channel_id(channel);
-    type = spice_channel_get_channel_type(channel);
-    SPICE_DEBUG("migrating channel id:%d type:%d", id, type);
-
-    for (ring = ring_get_head(&s->migration->priv->channels);
+    for (ring = ring_get_head(&s->channels);
          ring != NULL; ring = next) {
-        next = ring_next(&s->migration->priv->channels, ring);
+        next = ring_next(&s->channels, ring);
         c = SPICE_CONTAINEROF(ring, struct channel, link);
         if (c == NULL || c->channel == NULL) {
             g_warn_if_reached();
@@ -648,11 +656,64 @@ void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel)
             type == spice_channel_get_channel_type(c->channel))
             break;
     }
-    g_return_if_fail(ring != NULL);
+    g_return_val_if_fail(ring != NULL, NULL);
 
-    spice_channel_swap(channel, c->channel);
-    s->migration_left--;
-    if (s->migration_left == 0) {
+    return c->channel;
+}
+
+G_GNUC_INTERNAL
+void spice_session_abort_migration(SpiceSession *session)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    RingItem *ring, *next;
+    struct channel *c;
+
+    g_return_if_fail(s != NULL);
+    g_return_if_fail(s->migration != NULL);
+
+    for (ring = ring_get_head(&s->channels);
+         ring != NULL; ring = next) {
+        next = ring_next(&s->channels, ring);
+        c = SPICE_CONTAINEROF(ring, struct channel, link);
+
+        if (g_list_find(s->migration_left, c->channel))
+            continue;
+
+        spice_channel_swap(c->channel,
+            get_channel_by_id_and_type(s->migration,
+                                       spice_channel_get_channel_id(c->channel),
+                                       spice_channel_get_channel_type(c->channel)));
+    }
+
+    g_list_free(s->migration_left);
+    s->migration_left = NULL;
+    spice_session_disconnect(s->migration);
+    g_object_unref(s->migration);
+    s->migration = NULL;
+}
+
+G_GNUC_INTERNAL
+void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceChannel *c;
+    gint id, type;
+
+    g_return_if_fail(s != NULL);
+    g_return_if_fail(s->migration != NULL);
+    g_return_if_fail(SPICE_IS_CHANNEL(channel));
+
+    id = spice_channel_get_channel_id(channel);
+    type = spice_channel_get_channel_type(channel);
+    SPICE_DEBUG("migrating channel id:%d type:%d", id, type);
+
+    c = get_channel_by_id_and_type(s->migration, id, type);
+    g_return_if_fail(c != NULL);
+
+    spice_channel_swap(channel, c);
+    s->migration_left = g_list_remove(s->migration_left, channel);
+
+    if (g_list_length(s->migration_left) == 0) {
         SPICE_DEBUG("all channel migrated");
         spice_session_disconnect(s->migration);
         g_object_unref(s->migration);
@@ -819,6 +880,9 @@ void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel)
 
     g_return_if_fail(s != NULL);
     g_return_if_fail(channel != NULL);
+
+    if (s->migration_left)
+        s->migration_left = g_list_remove(s->migration_left, channel);
 
     for (ring = ring_get_head(&s->channels); ring != NULL;
          ring = next) {

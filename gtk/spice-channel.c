@@ -133,6 +133,8 @@ static void spice_channel_dispose(GObject *gobject)
     SpiceChannel *channel = SPICE_CHANNEL(gobject);
     spice_channel *c = channel->priv;
 
+    SPICE_DEBUG("%s: %s %p", c->name, __FUNCTION__, gobject);
+
     if (c->session)
         spice_session_channel_destroy(c->session, channel);
 
@@ -1421,7 +1423,7 @@ static gboolean spice_channel_delayed_unref(gpointer data)
     spice_channel *c = channel->priv;
 
     g_return_val_if_fail(channel != NULL, FALSE);
-    SPICE_DEBUG("Delayed unref channel=%p", channel);
+    SPICE_DEBUG("Delayed unref channel %s %p", c->name, channel);
 
     g_return_val_if_fail(c->coroutine.exited == TRUE, FALSE);
 
