@@ -1047,9 +1047,11 @@ def write_msg_parser(writer, message):
         writer.assign("end", "data + %s" % (msg_sizeof))
         writer.assign("in", "start").newline()
 
-        dest = RootDemarshallingDestination(None, msg_type, msg_sizeof, "data")
-        dest.reuse_scope = parent_scope
-        write_container_parser(writer, message, dest)
+        # avoid defined and assigned but not used warnings of gcc 4.6.0+
+        if message.is_extra_size() or not message.is_fixed_nw_size() or message.get_fixed_nw_size() > 0:
+            dest = RootDemarshallingDestination(None, msg_type, msg_sizeof, "data")
+            dest.reuse_scope = parent_scope
+            write_container_parser(writer, message, dest)
 
         writer.newline()
         writer.statement("assert(in <= message_end)")
