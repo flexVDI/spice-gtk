@@ -67,6 +67,7 @@ enum {
     PROP_SESSION,
     PROP_CHANNEL_TYPE,
     PROP_CHANNEL_ID,
+    PROP_VERIFY,
 };
 
 /* Signals */
@@ -192,6 +193,9 @@ static void spice_channel_get_property(GObject    *gobject,
     case PROP_CHANNEL_ID:
         g_value_set_int(value, c->channel_id);
         break;
+    case PROP_VERIFY:
+        g_value_set_flags(value, c->verify);
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
         break;
@@ -233,6 +237,9 @@ static void spice_channel_set_property(GObject      *gobject,
         break;
     case PROP_CHANNEL_ID:
         c->channel_id = g_value_get_int(value);
+        break;
+    case PROP_VERIFY:
+        c->verify = g_value_get_flags(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -289,6 +296,17 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
                           G_PARAM_STATIC_NAME |
                           G_PARAM_STATIC_NICK |
                           G_PARAM_STATIC_BLURB));
+
+    g_object_class_install_property
+        (gobject_class, PROP_VERIFY,
+         g_param_spec_flags("verify",
+                            "Verify",
+                            "Certificate verification parameters",
+                            SPICE_TYPE_CHANNEL_VERIFY,
+                            SPICE_CHANNEL_VERIFY_HOSTNAME,
+                            G_PARAM_READWRITE |
+                            G_PARAM_CONSTRUCT |
+                            G_PARAM_STATIC_STRINGS));
 
     /**
      * SpiceChannel::channel-event:
@@ -1335,9 +1353,11 @@ static int tls_verify(int preverify_ok, X509_STORE_CTX *ctx)
         return 0;
     }
 
-    g_object_get(c->session, "host", &hostname, NULL);
-    if (_x509_crt_check_hostname(cert, hostname))
-        return 1;
+    if (c->verify & SPICE_CHANNEL_VERIFY_HOSTNAME) {
+        g_object_get(c->session, "host", &hostname, NULL);
+        if (_x509_crt_check_hostname(cert, hostname))
+            return 1;
+    }
 
     return 0;
 }

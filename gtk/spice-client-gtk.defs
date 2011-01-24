@@ -100,6 +100,17 @@
   )
 )
 
+(define-flags ChannelVerify
+  (in-module "Spice")
+  (c-name "SpiceChannelVerify")
+  (gtype-id "SPICE_TYPE_CHANNEL_VERIFY")
+  (values
+    '("pubkey" "SPICE_CHANNEL_VERIFY_PUBKEY")
+    '("hostname" "SPICE_CHANNEL_VERIFY_HOSTNAME")
+    '("subject" "SPICE_CHANNEL_VERIFY_SUBJECT")
+  )
+)
+
 (define-flags InputsLock
   (in-module "Spice")
   (c-name "SpiceInputsLock")
@@ -377,6 +388,11 @@
 
 (define-function spice_channel_event_get_type
   (c-name "spice_channel_event_get_type")
+  (return-type "GType")
+)
+
+(define-function spice_channel_verify_get_type
+  (c-name "spice_channel_verify_get_type")
   (return-type "GType")
 )
 

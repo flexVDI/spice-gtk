@@ -63,6 +63,7 @@ SPICE_MAIN_CHANNEL_GET_CLASS
 <FILE>spice-channel</FILE>
 <TITLE>SpiceChannel</TITLE>
 SpiceChannelEvent
+SpiceChannelVerify
 SpiceChannel
 SpiceChannelClass
 spice_channel_new
@@ -75,6 +76,8 @@ spice_channel_set_capability
 <SUBSECTION Standard>
 SPICE_TYPE_CHANNEL_EVENT
 spice_channel_event_get_type
+SPICE_TYPE_CHANNEL_VERIFY
+spice_channel_verify_get_type
 SPICE_CHANNEL
 SPICE_IS_CHANNEL
 SPICE_TYPE_CHANNEL

@@ -87,6 +87,7 @@ struct spice_channel {
     guint                       channel_watch;
     int                         tls;
 
+    guint                       verify;
     int                         connection_id;
     int                         channel_id;
     int                         channel_type;
