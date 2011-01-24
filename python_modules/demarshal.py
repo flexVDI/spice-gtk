@@ -251,14 +251,18 @@ def write_validate_pointer_item(writer, container, item, scope, parent_scope, st
 
             array_item = ItemInfo(target_type, "%s__array" % item.prefix, start)
             scope.variable_def("uint32_t", array_item.nw_size())
-            scope.variable_def("uint32_t", array_item.mem_size())
+            # don't create a variable that isn't used, fixes -Werror=unused-but-set-variable
+            need_mem_size = want_mem_size or (
+                want_extra_size and not item.member.has_attr("chunk")
+                and not target_type.is_cstring_length())
+            if need_mem_size:
+                scope.variable_def("uint32_t", array_item.mem_size())
             if target_type.is_cstring_length():
                 writer.assign(array_item.nw_size(), "spice_strnlen((char *)message_start + %s, message_end - (message_start + %s))" % (v, v))
                 writer.error_check("*(message_start + %s + %s) != 0" % (v, array_item.nw_size()))
-                writer.assign(array_item.mem_size(), array_item.nw_size())
             else:
                 write_validate_array_item(writer, container, array_item, scope, parent_scope, start,
-                                          True, True, False)
+                                          True, want_mem_size=need_mem_size, want_extra_size=False)
                 writer.error_check("message_start + %s + %s > message_end" % (v, array_item.nw_size()))
 
             if want_extra_size:
@@ -524,7 +528,7 @@ def write_validate_member(writer, container, member, parent_scope, start,
 def write_validate_container(writer, prefix, container, start, parent_scope, want_nw_size, want_mem_size, want_extra_size):
     for m in container.members:
         sub_want_nw_size = want_nw_size and not m.is_fixed_nw_size()
-        sub_want_mem_size = m.is_extra_size()
+        sub_want_mem_size = m.is_extra_size() and want_mem_size
         sub_want_extra_size = not m.is_extra_size() and m.contains_extra_size()
 
         defs = ["size_t"]
@@ -1007,6 +1011,9 @@ def write_msg_parser(writer, message):
     msg_type = message.c_type()
     msg_sizeof = message.sizeof()
 
+    want_mem_size = (len(message.members) != 1 or message.members[0].is_fixed_nw_size()
+                         or not message.members[0].is_array())
+
     writer.newline()
     parent_scope = writer.function(function_name,
                                    "uint8_t *",
@@ -1014,7 +1021,9 @@ def write_msg_parser(writer, message):
     parent_scope.variable_def("SPICE_GNUC_UNUSED uint8_t *", "pos");
     parent_scope.variable_def("uint8_t *", "start = message_start");
     parent_scope.variable_def("uint8_t *", "data = NULL");
-    parent_scope.variable_def("size_t", "mem_size", "nw_size");
+    parent_scope.variable_def("size_t", "nw_size")
+    if want_mem_size:
+        parent_scope.variable_def("size_t", "mem_size")
     if not message.has_attr("nocopy"):
         parent_scope.variable_def("uint8_t *", "in", "end");
     num_pointers = message.get_num_pointers()
@@ -1026,7 +1035,8 @@ def write_msg_parser(writer, message):
 
     write_parser_helpers(writer)
 
-    write_validate_container(writer, None, message, "start", parent_scope, True, True, False)
+    write_validate_container(writer, None, message, "start", parent_scope, True,
+                             want_mem_size=want_mem_size, want_extra_size=False)
 
     writer.newline()
 

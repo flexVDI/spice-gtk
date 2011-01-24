@@ -356,10 +356,12 @@ def write_message_marshaller(writer, message, is_server, private):
     for n in names:
         writer.assign("*%s_out" % n, "NULL")
 
-    src = RootMarshallingSource(None, message.c_type(), message.sizeof(), "msg")
-    src.reuse_scope = scope
+    # fix warnings about unused variables by not creating body if no members to parse
+    if any(x.is_fixed_nw_size() for x in message.members):
+        src = RootMarshallingSource(None, message.c_type(), message.sizeof(), "msg")
+        src.reuse_scope = scope
 
-    write_container_marshaller(writer, message, src)
+        write_container_marshaller(writer, message, src)
 
     writer.end_block()
     writer.newline()
