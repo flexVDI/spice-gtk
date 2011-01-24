@@ -39,6 +39,9 @@ struct spice_session {
     char              *tls_port;
     char              *password;
     char              *ca_file;
+    GByteArray        *pubkey;
+    char              *cert_subject;
+
     int               connection_id;
     int               protocol;
     SpiceChannel      *cmain;
@@ -103,6 +106,8 @@ enum {
     PROP_PROTOCOL,
     PROP_URI,
     PROP_CLIENT_SOCKETS,
+    PROP_PUBKEY,
+    PROP_CERT_SUBJECT,
 };
 
 /* signals */
@@ -157,11 +162,15 @@ spice_session_finalize(GObject *gobject)
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
 
     /* release stuff */
-    free(s->host);
-    free(s->port);
-    free(s->tls_port);
-    free(s->password);
-    free(s->ca_file);
+    g_free(s->host);
+    g_free(s->port);
+    g_free(s->tls_port);
+    g_free(s->password);
+    g_free(s->ca_file);
+    g_free(s->cert_subject);
+
+    if (s->pubkey)
+        g_byte_array_unref(s->pubkey);
 
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_session_parent_class)->finalize)
@@ -285,6 +294,12 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_CLIENT_SOCKETS:
         g_value_set_boolean(value, s->client_provided_sockets);
 	break;
+    case PROP_PUBKEY:
+        g_value_set_boxed(value, s->pubkey);
+	break;
+    case PROP_CERT_SUBJECT:
+        g_value_set_string(value, s->cert_subject);
+	break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -302,29 +317,24 @@ static void spice_session_set_property(GObject      *gobject,
 
     switch (prop_id) {
     case PROP_HOST:
-        free(s->host);
-        str = g_value_get_string(value);
-        s->host = str ? strdup(str) : NULL;
+        g_free(s->host);
+        s->host = g_value_dup_string(value);
         break;
     case PROP_PORT:
-        free(s->port);
-        str = g_value_get_string(value);
-        s->port = str ? strdup(str) : NULL;
+        g_free(s->port);
+        s->port = g_value_dup_string(value);
         break;
     case PROP_TLS_PORT:
-        free(s->tls_port);
-        str = g_value_get_string(value);
-        s->tls_port = str ? strdup(str) : NULL;
+        g_free(s->tls_port);
+        s->tls_port = g_value_dup_string(value);
         break;
     case PROP_PASSWORD:
-        free(s->password);
-        str = g_value_get_string(value);
-        s->password = str ? strdup(str) : NULL;
+        g_free(s->password);
+        s->password = g_value_dup_string(value);
         break;
     case PROP_CA_FILE:
-        free(s->ca_file);
-        str = g_value_get_string(value);
-        s->ca_file = str ? strdup(str) : NULL;
+        g_free(s->ca_file);
+        s->ca_file = g_value_dup_string(value);
         break;
     case PROP_PROTOCOL:
         s->protocol = g_value_get_int(value);
@@ -336,6 +346,14 @@ static void spice_session_set_property(GObject      *gobject,
         break;
     case PROP_CLIENT_SOCKETS:
         s->client_provided_sockets = g_value_get_boolean(value);
+        break;
+    case PROP_PUBKEY:
+        g_byte_array_unref(s->pubkey);
+        s->pubkey = g_value_get_boxed(value);
+	break;
+    case PROP_CERT_SUBJECT:
+        g_free(s->cert_subject);
+        s->cert_subject = g_value_dup_string(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -360,9 +378,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              "localhost",
                              G_PARAM_READWRITE |
                              G_PARAM_CONSTRUCT |
-                             G_PARAM_STATIC_NAME |
-                             G_PARAM_STATIC_NICK |
-                             G_PARAM_STATIC_BLURB));
+                             G_PARAM_STATIC_STRINGS));
 
     g_object_class_install_property
         (gobject_class, PROP_PORT,
@@ -371,10 +387,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              "Remote port (plaintext)",
                              NULL,
                              G_PARAM_READWRITE |
-                             G_PARAM_CONSTRUCT |
-                             G_PARAM_STATIC_NAME |
-                             G_PARAM_STATIC_NICK |
-                             G_PARAM_STATIC_BLURB));
+                             G_PARAM_STATIC_STRINGS));
 
     g_object_class_install_property
         (gobject_class, PROP_TLS_PORT,
@@ -383,10 +396,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              "Remote port (encrypted)",
                              NULL,
                              G_PARAM_READWRITE |
-                             G_PARAM_CONSTRUCT |
-                             G_PARAM_STATIC_NAME |
-                             G_PARAM_STATIC_NICK |
-                             G_PARAM_STATIC_BLURB));
+                             G_PARAM_STATIC_STRINGS));
 
     g_object_class_install_property
         (gobject_class, PROP_PASSWORD,
@@ -395,10 +405,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              "",
                              NULL,
                              G_PARAM_READWRITE |
-                             G_PARAM_CONSTRUCT |
-                             G_PARAM_STATIC_NAME |
-                             G_PARAM_STATIC_NICK |
-                             G_PARAM_STATIC_BLURB));
+                             G_PARAM_STATIC_STRINGS));
 
     g_object_class_install_property
         (gobject_class, PROP_CA_FILE,
@@ -407,10 +414,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              "File holding the CA certificates",
                              NULL,
                              G_PARAM_READWRITE |
-                             G_PARAM_CONSTRUCT |
-                             G_PARAM_STATIC_NAME |
-                             G_PARAM_STATIC_NICK |
-                             G_PARAM_STATIC_BLURB));
+                             G_PARAM_STATIC_STRINGS));
 
     g_object_class_install_property
         (gobject_class, PROP_PROTOCOL,
@@ -420,9 +424,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                           1, 2, 2,
                           G_PARAM_READWRITE |
                           G_PARAM_CONSTRUCT |
-                          G_PARAM_STATIC_NAME |
-                          G_PARAM_STATIC_NICK |
-                          G_PARAM_STATIC_BLURB));
+                          G_PARAM_STATIC_STRINGS));
 
     g_object_class_install_property
         (gobject_class, PROP_URI,
@@ -431,10 +433,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              "Spice connection URI",
                              NULL,
                              G_PARAM_READWRITE |
-                             G_PARAM_CONSTRUCT |
-                             G_PARAM_STATIC_NAME |
-                             G_PARAM_STATIC_NICK |
-                             G_PARAM_STATIC_BLURB));
+                             G_PARAM_STATIC_STRINGS));
 
     g_object_class_install_property
         (gobject_class, PROP_CLIENT_SOCKETS,
@@ -443,9 +442,25 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                           "Sockets are provided by the client",
                           FALSE,
                           G_PARAM_READWRITE |
-                          G_PARAM_CONSTRUCT |
                           G_PARAM_STATIC_STRINGS));
 
+    g_object_class_install_property
+        (gobject_class, PROP_PUBKEY,
+         g_param_spec_boxed("pubkey",
+                            "Pub Key",
+                            "Public key to check",
+                            G_TYPE_BYTE_ARRAY,
+                            G_PARAM_READWRITE |
+                            G_PARAM_STATIC_STRINGS));
+
+    g_object_class_install_property
+        (gobject_class, PROP_CERT_SUBJECT,
+         g_param_spec_string("cert-subject",
+                             "Cert Subject",
+                             "Certificate subject to check",
+                             NULL,
+                             G_PARAM_READWRITE |
+                             G_PARAM_STATIC_STRINGS));
     /**
      * SpiceSession::channel-new:
      * @session: the session that emitted the signal
@@ -965,4 +980,17 @@ void spice_session_set_port(SpiceSession *session, int port, gboolean tls)
     tmp = port > 0 ? g_strdup_printf("%d", port) : NULL;
     g_object_set(session, prop, tmp, NULL);
     g_free(tmp);
+}
+
+G_GNUC_INTERNAL
+void spice_session_get_pubkey(SpiceSession *session, guint8 **pubkey, guint *size)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_if_fail(s != NULL);
+    g_return_if_fail(pubkey != NULL);
+    g_return_if_fail(size != NULL);
+
+    *pubkey = s->pubkey ? s->pubkey->data : NULL;
+    *size = s->pubkey ? s->pubkey->len : 0;
 }
