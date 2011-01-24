@@ -19,6 +19,8 @@
 #ifndef _H_RING2
 #define _H_RING2
 
+#include <stddef.h>
+
 typedef struct Ring RingItem;
 typedef struct Ring {
     RingItem *prev;
