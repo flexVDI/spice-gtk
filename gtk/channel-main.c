@@ -1166,6 +1166,9 @@ static gboolean migrate_connect(gpointer data)
     c = SPICE_CHANNEL(mig->channel)->priv;
     g_return_val_if_fail(c != NULL, FALSE);
 
+    session = spice_channel_get_session(mig->channel);
+    mig->session = spice_session_new_from_session(session);
+
     if ((c->peer_hdr.major_version == 1) &&
         (c->peer_hdr.minor_version < 2)) {
         OldRedMigrationBegin *info = (OldRedMigrationBegin *)mig->info;
@@ -1175,21 +1178,24 @@ static gboolean migrate_connect(gpointer data)
         sport = info->sport;
         host = info->host;
     } else {
+        GByteArray *pubkey = g_byte_array_new();
         SpiceMsgMainMigrationBegin *info = mig->info;
         SPICE_DEBUG("migrate_begin %d %s %d %d",
                     info->host_size, info->host_data, info->port, info->sport);
         port = info->port;
         sport = info->sport;
         host = (char*)info->host_data;
-        /* TODO: add info->pub_key_data check */
+        g_byte_array_append(pubkey, info->pub_key_data, info->pub_key_size);
+        g_object_set(mig->session,
+                     "pubkey", pubkey,
+                     "verify", SPICE_CHANNEL_VERIFY_PUBKEY,
+                     NULL);
+        g_byte_array_unref(pubkey);
     }
-
-    session = spice_channel_get_session(mig->channel);
 
     if (g_getenv("SPICE_MIG_HOST"))
         host = g_getenv("SPICE_MIG_HOST");
 
-    mig->session = spice_session_new_from_session(session);
     g_object_set(mig->session, "host", host, NULL);
     spice_session_set_port(mig->session, port, FALSE);
     spice_session_set_port(mig->session, sport, TRUE);

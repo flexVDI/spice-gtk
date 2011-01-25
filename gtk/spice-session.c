@@ -529,6 +529,8 @@ SpiceSession *spice_session_new_from_session(SpiceSession *session)
                  "tls-port", &c->tls_port,
                  "password", &c->password,
                  "ca-file", &c->ca_file,
+                 "cert-subject", &c->cert_subject,
+                 "pubkey", &c->pubkey,
                  NULL);
 
     c->client_provided_sockets = s->client_provided_sockets;
