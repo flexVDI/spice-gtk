@@ -27,6 +27,7 @@
 /* common/ */
 #include "marshallers.h"
 #include "demarshallers.h"
+#include "ssl_verify.h"
 
 G_BEGIN_DECLS
 
@@ -65,6 +66,7 @@ struct spice_channel {
     /* swapped on migration */
     SSL_CTX                     *ctx;
     SSL                         *ssl;
+    SpiceOpenSSLVerify          *sslverify;
     GSocket                     *sock;
 
     /* not swapped */

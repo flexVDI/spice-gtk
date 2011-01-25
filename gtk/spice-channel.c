@@ -1168,200 +1168,6 @@ void spice_channel_destroy(SpiceChannel *channel)
     g_object_unref(channel);
 }
 
-/* from gnutls
- * compare hostname against certificate, taking account of wildcards
- * return 1 on success or 0 on error
- *
- * note: certnamesize is required as X509 certs can contain embedded NULs in
- * the strings such as CN or subjectAltName
- */
-static int _gnutls_hostname_compare(const char *certname,
-                                    size_t certnamesize, const char *hostname)
-{
-    /* find the first different character */
-    for (; *certname && *hostname && toupper (*certname) == toupper (*hostname);
-         certname++, hostname++, certnamesize--)
-        ;
-
-    /* the strings are the same */
-    if (certnamesize == 0 && *hostname == '\0')
-        return 1;
-
-    if (*certname == '*')
-        {
-            /* a wildcard certificate */
-
-            certname++;
-            certnamesize--;
-
-            while (1)
-                {
-                    /* Use a recursive call to allow multiple wildcards */
-                    if (_gnutls_hostname_compare (certname, certnamesize, hostname))
-                        return 1;
-
-                    /* wildcards are only allowed to match a single domain
-                       component or component fragment */
-                    if (*hostname == '\0' || *hostname == '.')
-                        break;
-                    hostname++;
-                }
-
-            return 0;
-        }
-
-    return 0;
-}
-
-/**
- * From gnutls and spice red_peer.c
- * TODO: switch to gnutls and get rid of this
- *
- * This function will check if the given certificate's subject matches
- * the given hostname.  This is a basic implementation of the matching
- * described in RFC2818 (HTTPS), which takes into account wildcards,
- * and the DNSName/IPAddress subject alternative name PKIX extension.
- *
- * Returns: TRUE for a successful match, and FALSE on failure.
- **/
-static gboolean _x509_crt_check_hostname(X509* cert, const char *hostname)
-{
-    GENERAL_NAMES* subject_alt_names;
-    gboolean found_dns_name = FALSE;
-    struct in_addr addr;
-    int addr_len = 0;
-    gboolean cn_match = FALSE;
-
-    g_return_val_if_fail(cert != NULL, FALSE);
-    // only IpV4 supported
-    if (inet_aton(hostname, &addr)) {
-        addr_len = sizeof(struct in_addr);
-    }
-
-    /* try matching against:
-     *  1) a DNS name as an alternative name (subjectAltName) extension
-     *     in the certificate
-     *  2) the common name (CN) in the certificate
-     *
-     *  either of these may be of the form: *.domain.tld
-     *
-     *  only try (2) if there is no subjectAltName extension of
-     *  type dNSName
-     */
-
-    /* Check through all included subjectAltName extensions, comparing
-     * against all those of type dNSName.
-     */
-    subject_alt_names = (GENERAL_NAMES*)X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
-
-    if (subject_alt_names) {
-        int num_alts = sk_GENERAL_NAME_num(subject_alt_names);
-        for (int i = 0; i < num_alts; i++) {
-            const GENERAL_NAME* name = sk_GENERAL_NAME_value(subject_alt_names, i);
-            if (name->type == GEN_DNS) {
-                found_dns_name = TRUE;
-                if (_gnutls_hostname_compare((char *)ASN1_STRING_data(name->d.dNSName),
-                                             ASN1_STRING_length(name->d.dNSName),
-                                             hostname)) {
-                    SPICE_DEBUG("alt name match=%s", ASN1_STRING_data(name->d.dNSName));
-                    GENERAL_NAMES_free(subject_alt_names);
-                    return TRUE;
-                }
-            } else if (name->type == GEN_IPADD) {
-                int alt_ip_len = ASN1_STRING_length(name->d.iPAddress);
-                found_dns_name = TRUE;
-                if ((addr_len == alt_ip_len)&&
-                    !memcmp(ASN1_STRING_data(name->d.iPAddress), &addr, addr_len)) {
-                    SPICE_DEBUG("alt name IP match=%s",
-                                inet_ntoa(*((struct in_addr*)ASN1_STRING_data(name->d.dNSName))));
-                    GENERAL_NAMES_free(subject_alt_names);
-                    return TRUE;
-                }
-            }
-        }
-        GENERAL_NAMES_free(subject_alt_names);
-    }
-
-    if (found_dns_name) {
-        g_warning("SubjectAltName mismatch");
-        return FALSE;
-    }
-
-    /* extracting commonNames */
-    X509_NAME* subject = X509_get_subject_name(cert);
-    if (subject) {
-        int pos = -1;
-        X509_NAME_ENTRY* cn_entry;
-        ASN1_STRING* cn_asn1;
-
-        while ((pos = X509_NAME_get_index_by_NID(subject, NID_commonName, pos)) != -1) {
-            cn_entry = X509_NAME_get_entry(subject, pos);
-            if (!cn_entry) {
-                continue;
-            }
-            cn_asn1 = X509_NAME_ENTRY_get_data(cn_entry);
-            if (!cn_asn1) {
-                continue;
-            }
-
-            if (_gnutls_hostname_compare((char*)ASN1_STRING_data(cn_asn1),
-                                         ASN1_STRING_length(cn_asn1),
-                                         hostname)) {
-                SPICE_DEBUG("common name match=%s", (char*)ASN1_STRING_data(cn_asn1));
-                cn_match = TRUE;
-                break;
-            }
-        }
-    }
-
-    if (!cn_match)
-        g_warning("common name mismatch");
-
-    return cn_match;
-}
-
-/* coroutine context */
-static int tls_verify(int preverify_ok, X509_STORE_CTX *ctx)
-{
-    int depth;
-    spice_channel *c;
-    char *hostname;
-    SSL *ssl;
-    X509* cert;
-
-    ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
-    c = SSL_get_app_data(ssl);
-
-    depth = X509_STORE_CTX_get_error_depth(ctx);
-    if (depth > 0) {
-        if (!preverify_ok) {
-            SPICE_DEBUG("openssl verify failed at depth=%d", depth);
-            c->all_preverify_ok = FALSE;
-            return 0;
-        } else
-            return 1;
-    }
-
-    /* depth == 0 */
-    cert = X509_STORE_CTX_get_current_cert(ctx);
-    if (!cert) {
-        g_critical("failed to get server certificate");
-        return 0;
-    }
-
-    if (!c->all_preverify_ok || !preverify_ok) {
-        return 0;
-    }
-
-    if (c->verify & SPICE_CHANNEL_VERIFY_HOSTNAME) {
-        g_object_get(c->session, "host", &hostname, NULL);
-        if (_x509_crt_check_hostname(cert, hostname))
-            return 1;
-    }
-
-    return 0;
-}
-
 /* coroutine context */
 static void spice_channel_iterate_write(SpiceChannel *channel)
 {
@@ -1483,16 +1289,16 @@ reconnect:
             SPICE_DEBUG("connection failed, trying with TLS port");
             c->tls = true; /* FIXME: does that really work with provided fd */
             goto reconnect;
+        } else {
+            SPICE_DEBUG("Connect error");
+            emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_CONNECT);
+            goto cleanup;
         }
-        SPICE_DEBUG("Connect error");
-        emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_CONNECT);
-        goto cleanup;
     }
 
     c->has_error = FALSE;
 
     if (c->tls) {
-        gchar *ca_file;
         int rc;
 
         c->ctx = SSL_CTX_new(TLSv1_method());
@@ -1501,15 +1307,27 @@ reconnect:
             goto cleanup;
         }
 
-        g_object_get(c->session, "ca-file", &ca_file, NULL);
-        if (ca_file) {
-            rc = SSL_CTX_load_verify_locations(c->ctx, ca_file, NULL);
-            if (rc <= 0) {
-                g_warning("loading ca certs from %s failed", ca_file);
+        verify = spice_session_get_verify(c->session);
+        if (verify &
+            (SPICE_SESSION_VERIFY_PUBKEY | SPICE_SESSION_VERIFY_HOSTNAME)) {
+            gchar *ca_file;
+
+            g_object_get(c->session, "ca-file", &ca_file, NULL);
+            if (ca_file) {
+                rc = SSL_CTX_load_verify_locations(c->ctx, ca_file, NULL);
+                if (rc != 1)
+                    g_warning("loading ca certs from %s failed", ca_file);
+                g_free(ca_file);
+
+                if (rc != 1) {
+                    if (c->verify & SPICE_CHANNEL_VERIFY_PUBKEY) {
+                        g_warning("only pubkey active");
+                        c->verify = SPICE_CHANNEL_VERIFY_PUBKEY;
+                    } else
+                        goto cleanup;
+                }
             }
         }
-        c->all_preverify_ok = TRUE;
-        SSL_CTX_set_verify(c->ctx, SSL_VERIFY_PEER, tls_verify);
 
         c->ssl = SSL_new(c->ctx);
         if (c->ssl == NULL) {
@@ -1521,7 +1339,25 @@ reconnect:
             g_critical("SSL_set_fd failed");
             goto cleanup;
         }
-        SSL_set_app_data(c->ssl, c);
+
+
+        {
+            gchar *hostname, *subject;
+            guint8 *pubkey;
+            guint pubkey_len;
+
+            g_object_get(c->session,
+                         "host", &hostname,
+                         "cert-subject", &subject, NULL);
+            spice_session_get_pubkey(c->session, &pubkey, &pubkey_len);
+            c->sslverify = spice_openssl_verify_new(c->ssl, c->verify,
+                                                    hostname,
+                                                    (char*)pubkey, pubkey_len,
+                                                    subject);
+            g_free(hostname);
+            g_free(subject);
+        }
+
 ssl_reconnect:
         rc = SSL_connect(c->ssl);
         if (rc <= 0) {
@@ -1555,6 +1391,7 @@ connected:
 
 cleanup:
     SPICE_DEBUG("Coroutine exit");
+
     SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
 
     g_idle_add(spice_channel_delayed_unref, data);
@@ -1671,15 +1508,17 @@ static void channel_disconnect(SpiceChannel *channel)
         c->connect_delayed_id = 0;
     }
 
-    if (c->tls) {
-        if (c->ssl) {
-            SSL_free(c->ssl);
-            c->ssl = NULL;
-        }
-        if (c->ctx) {
-            SSL_CTX_free(c->ctx);
-            c->ctx = NULL;
-        }
+    spice_openssl_verify_free(c->sslverify);
+    c->sslverify = NULL;
+
+    if (c->ssl) {
+        SSL_free(c->ssl);
+        c->ssl = NULL;
+    }
+
+    if (c->ctx) {
+        SSL_CTX_free(c->ctx);
+        c->ctx = NULL;
     }
 
     if (c->sock) {
@@ -1830,13 +1669,16 @@ void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap)
         GSocket *sock = c->sock;
         SSL_CTX *ctx = c->ctx;
         SSL *ssl = c->ssl;
+        SpiceOpenSSLVerify *sslverify = c->sslverify;
 
         c->sock = s->sock;
         c->ctx = s->ctx;
         c->ssl = s->ssl;
+        c->sslverify = s->sslverify;
 
         s->sock = sock;
         s->ctx = ctx;
         s->ssl = ssl;
+        s->sslverify = sslverify;
     }
 }

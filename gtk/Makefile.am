@@ -205,6 +205,8 @@ libspice_client_glib_2_0_la_SOURCES =	\
 	$(COMMON_DIR)/lz.h		\
 	$(COMMON_DIR)/region.c		\
 	$(COMMON_DIR)/region.h		\
+	$(COMMON_DIR)/ssl_verify.c	\
+	$(COMMON_DIR)/ssl_verify.h	\
 	$(NULL)
 
 if WITH_PULSE
