@@ -30,48 +30,55 @@ static char *tls_port;
 static char *password;
 static char *uri;
 static char *ca_file;
+static char *host_subject;
 
 static GOptionEntry spice_entries[] = {
     {
         .long_name        = "uri",
         .arg              = G_OPTION_ARG_STRING,
         .arg_data         = &uri,
-        .description      = N_("spice server uri"),
+        .description      = N_("Spice server uri"),
         .arg_description  = N_("<uri>"),
     },{
         .long_name        = "host",
         .short_name       = 'h',
         .arg              = G_OPTION_ARG_STRING,
         .arg_data         = &host,
-        .description      = N_("spice server address"),
+        .description      = N_("Spice server address"),
         .arg_description  = N_("<host>"),
     },{
         .long_name        = "port",
         .short_name       = 'p',
         .arg              = G_OPTION_ARG_STRING,
         .arg_data         = &port,
-        .description      = N_("spice server port"),
+        .description      = N_("Spice server port"),
         .arg_description  = N_("<port>"),
     },{
         .long_name        = "secure-port",
         .short_name       = 's',
         .arg              = G_OPTION_ARG_STRING,
         .arg_data         = &tls_port,
-        .description      = N_("spice server secure port"),
+        .description      = N_("Spice server secure port"),
         .arg_description  = N_("<port>"),
     },{
         .long_name        = "ca-file",
         .arg              = G_OPTION_ARG_FILENAME,
         .arg_data         = &ca_file,
-        .description      = N_("truststore file for secure connections"),
+        .description      = N_("Truststore file for secure connections"),
         .arg_description  = N_("<file>"),
     },{
         .long_name        = "password",
         .short_name       = 'w',
         .arg              = G_OPTION_ARG_STRING,
         .arg_data         = &password,
-        .description      = N_("server password"),
+        .description      = N_("Server password"),
         .arg_description  = N_("<password>"),
+    },{
+        .long_name        = "host-subject",
+        .arg              = G_OPTION_ARG_STRING,
+        .arg_data         = &host_subject,
+        .description      = N_("Subject of the host certificate (field=value pairs separated by commas)"),
+        .arg_description  = N_("<host-subject>"),
     },{
         /* end of list */
     }
@@ -112,4 +119,6 @@ void spice_cmdline_session_setup(SpiceSession *session)
         g_object_set(session, "password", password, NULL);
     if (ca_file)
         g_object_set(session, "ca-file", ca_file, NULL);
+    if (host_subject)
+        g_object_set(session, "cert-subject", host_subject, NULL);
 }
