@@ -71,6 +71,10 @@ void *spice_memdup(const void *mem, size_t n_bytes)
 {
     void *copy;
 
+    if (mem == NULL) {
+        return NULL;
+    }
+
     copy = spice_malloc(n_bytes);
     memcpy(copy, mem, n_bytes);
     return copy;
