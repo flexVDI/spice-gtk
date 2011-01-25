@@ -21,7 +21,7 @@
 G_BEGIN_DECLS
 
 #include "spice-types.h"
-#include "spice-channel-enums.h"
+#include "spice-glib-enums.h"
 #include "spice-util.h"
 
 #define SPICE_TYPE_CHANNEL            (spice_channel_get_type ())

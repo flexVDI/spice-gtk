@@ -20,6 +20,7 @@
 
 #include <glib-object.h>
 #include "spice-types.h"
+#include "spice-glib-enums.h"
 #include "spice-util.h"
 
 G_BEGIN_DECLS

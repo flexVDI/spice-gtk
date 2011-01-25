@@ -151,8 +151,8 @@ libspice_client_glib_2_0_la_SOURCES =	\
 	spice-channel.c			\
 	spice-channel.h			\
 	spice-channel-cache.h		\
-	spice-channel-enums.h		\
-	spice-channel-enums.c		\
+	spice-glib-enums.h		\
+	spice-glib-enums.c		\
 	spice-channel-priv.h		\
 	spice-marshal.c			\
 	spice-marshal.h			\
@@ -240,6 +240,7 @@ libspice_client_glibinclude_HEADERS =	\
 	spice-session.h			\
 	spice-channel.h			\
 	spice-channel-enums.h		\
+	spice-glib-enums.h		\
 	spice-util.h			\
 	channel-main.h			\
 	channel-display.h		\
@@ -282,9 +283,10 @@ spice-marshal.c: spice-marshal.txt
 spice-marshal.h: spice-marshal.txt
 	$(AM_V_GEN)glib-genmarshal --header $< > $@ || (rm -f $@ && exit 1)
 
-spice-channel-enums.c: spice-channel.h channel-inputs.h
+spice-glib-enums.c: spice-channel.h channel-inputs.h spice-session.h
 	$(AM_V_GEN)glib-mkenums --fhead "#include <glib-object.h>\n" \
-			--fhead "#include \"spice-channel-enums.h\"\n\n" \
+			--fhead "#include \"spice-glib-enums.h\"\n\n" \
+			--fprod "\n#include \"spice-session.h\"\n" \
 			--fprod "\n#include \"spice-channel.h\"\n" \
 			--fprod "\n#include \"channel-inputs.h\"\n" \
 			--vhead "static const G@Type@Value _@enum_name@_values[] = {" \
@@ -297,9 +299,9 @@ spice-channel-enums.c: spice-channel.h channel-inputs.h
 			--vtail "  return type;\n}\n\n" \
 		$^ > $@
 
-spice-channel-enums.h: spice-channel.h channel-inputs.h
-	$(AM_V_GEN)glib-mkenums --fhead "#ifndef SPICE_CHANNEL_ENUMS_H\n" \
-			--fhead "#define SPICE_CHANNEL_ENUMS_H\n\n" \
+spice-glib-enums.h: spice-channel.h channel-inputs.h spice-session.h
+	$(AM_V_GEN)glib-mkenums --fhead "#ifndef SPICE_GLIB_ENUMS_H\n" \
+			--fhead "#define SPICE_GLIB_ENUMS_H\n\n" \
 			--fhead "G_BEGIN_DECLS\n\n" \
 			--ftail "G_END_DECLS\n\n" \
 			--ftail "#endif /* SPICE_CHANNEL_ENUMS_H */\n" \
@@ -369,7 +371,7 @@ vncdisplaykeymap_win322xtkbd.c:
 BUILT_SOURCES = spice-marshal.c spice-marshal.h \
 	generated_demarshallers.c generated_demarshallers1.c \
 	generated_marshallers.c generated_marshallers1.c \
-	spice-channel-enums.c spice-channel-enums.h \
+	spice-glib-enums.c spice-glib-enums.h \
 	spice-widget-enums.c spice-widget-enums.h \
 	$(KEYMAPS)
 

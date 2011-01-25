@@ -3,7 +3,7 @@
 #include "spice-types.h"
 #include "spice-session.h"
 #include "spice-channel.h"
-#include "spice-channel-enums.h"
+#include "spice-glib-enums.h"
 #include "spice-util.h"
 #include "channel-main.h"
 #include "channel-display.h"
