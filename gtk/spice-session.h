@@ -32,6 +32,21 @@ G_BEGIN_DECLS
 #define SPICE_IS_SESSION_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), SPICE_TYPE_SESSION))
 #define SPICE_SESSION_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), SPICE_TYPE_SESSION, SpiceSessionClass))
 
+/**
+ * SpiceSessionVerify:
+ *
+ * @SPICE_SESSION_VERIFY_PUBKEY:
+ * @SPICE_SESSION_VERIFY_HOSTNAME:
+ * @SPICE_SESSION_VERIFY_SUBJECT:
+ *
+ * Peer certificate verification parameters flags.
+ **/
+typedef enum {
+    SPICE_SESSION_VERIFY_PUBKEY   = (1 << 0),
+    SPICE_SESSION_VERIFY_HOSTNAME = (1 << 1),
+    SPICE_SESSION_VERIFY_SUBJECT  = (1 << 2),
+} SpiceSessionVerify;
+
 struct _SpiceSession
 {
     GObject parent;

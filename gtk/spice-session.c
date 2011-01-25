@@ -41,6 +41,7 @@ struct spice_session {
     char              *ca_file;
     GByteArray        *pubkey;
     char              *cert_subject;
+    guint             verify;
 
     int               connection_id;
     int               protocol;
@@ -108,6 +109,7 @@ enum {
     PROP_CLIENT_SOCKETS,
     PROP_PUBKEY,
     PROP_CERT_SUBJECT,
+    PROP_VERIFY,
 };
 
 /* signals */
@@ -300,6 +302,9 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_CERT_SUBJECT:
         g_value_set_string(value, s->cert_subject);
 	break;
+    case PROP_VERIFY:
+        g_value_set_flags(value, s->verify);
+        break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -350,10 +355,17 @@ static void spice_session_set_property(GObject      *gobject,
     case PROP_PUBKEY:
         g_byte_array_unref(s->pubkey);
         s->pubkey = g_value_get_boxed(value);
+        if (s->pubkey)
+            s->verify = SPICE_SESSION_VERIFY_PUBKEY;
 	break;
     case PROP_CERT_SUBJECT:
         g_free(s->cert_subject);
         s->cert_subject = g_value_dup_string(value);
+        if (s->cert_subject)
+            s->verify = SPICE_SESSION_VERIFY_SUBJECT;
+        break;
+    case PROP_VERIFY:
+        s->verify = g_value_get_flags(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -461,6 +473,18 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              NULL,
                              G_PARAM_READWRITE |
                              G_PARAM_STATIC_STRINGS));
+
+    g_object_class_install_property
+        (gobject_class, PROP_VERIFY,
+         g_param_spec_flags("verify",
+                            "Verify",
+                            "Certificate verification parameters",
+                            SPICE_TYPE_SESSION_VERIFY,
+                            SPICE_SESSION_VERIFY_HOSTNAME,
+                            G_PARAM_READWRITE |
+                            G_PARAM_CONSTRUCT |
+                            G_PARAM_STATIC_STRINGS));
+
     /**
      * SpiceSession::channel-new:
      * @session: the session that emitted the signal
@@ -531,6 +555,7 @@ SpiceSession *spice_session_new_from_session(SpiceSession *session)
                  "ca-file", &c->ca_file,
                  "cert-subject", &c->cert_subject,
                  "pubkey", &c->pubkey,
+                 "verify", &c->verify,
                  NULL);
 
     c->client_provided_sockets = s->client_provided_sockets;
@@ -559,6 +584,7 @@ gboolean spice_session_connect(SpiceSession *session)
 
     s->client_provided_sockets = FALSE;
     s->cmain = spice_channel_new(session, SPICE_CHANNEL_MAIN, 0);
+
     return spice_channel_connect(s->cmain);
 }
 
@@ -995,4 +1021,13 @@ void spice_session_get_pubkey(SpiceSession *session, guint8 **pubkey, guint *siz
 
     *pubkey = s->pubkey ? s->pubkey->data : NULL;
     *size = s->pubkey ? s->pubkey->len : 0;
+}
+
+G_GNUC_INTERNAL
+guint spice_session_get_verify(SpiceSession *session)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_val_if_fail(s != NULL, 0);
+    return s->verify;
 }

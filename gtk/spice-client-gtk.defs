@@ -83,6 +83,17 @@
   )
 )
 
+(define-flags SessionVerify
+  (in-module "Spice")
+  (c-name "SpiceSessionVerify")
+  (gtype-id "SPICE_TYPE_SESSION_VERIFY")
+  (values
+    '("pubkey" "SPICE_SESSION_VERIFY_PUBKEY")
+    '("hostname" "SPICE_SESSION_VERIFY_HOSTNAME")
+    '("subject" "SPICE_SESSION_VERIFY_SUBJECT")
+  )
+)
+
 (define-enum ChannelEvent
   (in-module "Spice")
   (c-name "SpiceChannelEvent")
@@ -97,17 +108,6 @@
     '("error-link" "SPICE_CHANNEL_ERROR_LINK")
     '("error-auth" "SPICE_CHANNEL_ERROR_AUTH")
     '("error-io" "SPICE_CHANNEL_ERROR_IO")
-  )
-)
-
-(define-flags ChannelVerify
-  (in-module "Spice")
-  (c-name "SpiceChannelVerify")
-  (gtype-id "SPICE_TYPE_CHANNEL_VERIFY")
-  (values
-    '("pubkey" "SPICE_CHANNEL_VERIFY_PUBKEY")
-    '("hostname" "SPICE_CHANNEL_VERIFY_HOSTNAME")
-    '("subject" "SPICE_CHANNEL_VERIFY_SUBJECT")
   )
 )
 
@@ -386,18 +386,22 @@
 
 ;; From spice-channel-enums.h
 
+
+
+;; From spice-glib-enums.h
+
 (define-function spice_channel_event_get_type
   (c-name "spice_channel_event_get_type")
   (return-type "GType")
 )
 
-(define-function spice_channel_verify_get_type
-  (c-name "spice_channel_verify_get_type")
+(define-function spice_inputs_lock_get_type
+  (c-name "spice_inputs_lock_get_type")
   (return-type "GType")
 )
 
-(define-function spice_inputs_lock_get_type
-  (c-name "spice_inputs_lock_get_type")
+(define-function spice_session_verify_get_type
+  (c-name "spice_session_verify_get_type")
   (return-type "GType")
 )
 

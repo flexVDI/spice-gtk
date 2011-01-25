@@ -36,6 +36,8 @@ spice_session_get_type
 SPICE_SESSION_CLASS
 SPICE_IS_SESSION_CLASS
 SPICE_SESSION_GET_CLASS
+SPICE_TYPE_SESSION_VERIFY
+spice_session_verify_get_type
 </SECTION>
 
 <SECTION>
@@ -76,8 +78,6 @@ spice_channel_set_capability
 <SUBSECTION Standard>
 SPICE_TYPE_CHANNEL_EVENT
 spice_channel_event_get_type
-SPICE_TYPE_CHANNEL_VERIFY
-spice_channel_verify_get_type
 SPICE_CHANNEL
 SPICE_IS_CHANNEL
 SPICE_TYPE_CHANNEL

@@ -1188,7 +1188,7 @@ static gboolean migrate_connect(gpointer data)
         g_byte_array_append(pubkey, info->pub_key_data, info->pub_key_size);
         g_object_set(mig->session,
                      "pubkey", pubkey,
-                     "verify", SPICE_CHANNEL_VERIFY_PUBKEY,
+                     "verify", SPICE_SESSION_VERIFY_PUBKEY,
                      NULL);
         g_byte_array_unref(pubkey);
     }

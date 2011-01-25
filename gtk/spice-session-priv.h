@@ -43,6 +43,7 @@ void spice_session_abort_migration(SpiceSession *session);
 
 void spice_session_set_port(SpiceSession *session, int port, gboolean tls);
 void spice_session_get_pubkey(SpiceSession *session, guint8 **pubkey, guint *size);
+guint spice_session_get_verify(SpiceSession *session);
 
 G_END_DECLS
 

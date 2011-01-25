@@ -89,7 +89,6 @@ struct spice_channel {
     guint                       channel_watch;
     int                         tls;
 
-    guint                       verify;
     int                         connection_id;
     int                         channel_id;
     int                         channel_type;
@@ -108,7 +107,6 @@ struct spice_channel {
     GArray                      *common_caps;
     GArray                      *remote_caps;
     GArray                      *remote_common_caps;
-    gboolean                    all_preverify_ok; // TODO: remove after gnutls switch
 };
 
 spice_msg_in *spice_msg_in_new(SpiceChannel *channel);

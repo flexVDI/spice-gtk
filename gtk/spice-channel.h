@@ -61,21 +61,6 @@ typedef enum
     SPICE_CHANNEL_ERROR_IO,
 } SpiceChannelEvent;
 
-/**
- * SpiceChannelVerify:
- *
- * @SPICE_CHANNEL_VERIFY_PUBKEY:
- * @SPICE_CHANNEL_VERIFY_HOSTNAME:
- * @SPICE_CHANNEL_VERIFY_SUBJECT:
- *
- * Peer certificate verification parameters flags.
- **/
-typedef enum {
-    SPICE_CHANNEL_VERIFY_PUBKEY   = (1 << 0),
-    SPICE_CHANNEL_VERIFY_HOSTNAME = (1 << 1),
-    SPICE_CHANNEL_VERIFY_SUBJECT  = (1 << 2),
-} SpiceChannelVerify;
-
 struct _SpiceChannel
 {
     GObject parent;
