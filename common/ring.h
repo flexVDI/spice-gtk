@@ -21,15 +21,16 @@
 
 #include <stddef.h>
 
+#ifndef ASSERT
+# include <assert.h>
+# define ASSERT(X) assert(X)
+#endif
+
 typedef struct Ring RingItem;
 typedef struct Ring {
     RingItem *prev;
     RingItem *next;
 } Ring;
-
-#ifndef ASSERT
-# define ASSERT(X)
-#endif
 
 static inline void ring_init(Ring *ring)
 {

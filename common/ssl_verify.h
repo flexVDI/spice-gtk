@@ -29,7 +29,8 @@
 #include <openssl/x509v3.h>
 
 typedef enum {
-  SPICE_SSL_VERIFY_OP_PUBKEY   = 1,
+  SPICE_SSL_VERIFY_OP_NONE     = 0,
+  SPICE_SSL_VERIFY_OP_PUBKEY   = (1 << 0),
   SPICE_SSL_VERIFY_OP_HOSTNAME = (1 << 1),
   SPICE_SSL_VERIFY_OP_SUBJECT  = (1 << 2),
 } SPICE_SSL_VERIFY_OP;

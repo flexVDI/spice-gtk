@@ -27,7 +27,7 @@
 #include "mem.h"
 
 #ifdef WIN32
-int gdi_handlers;
+static int gdi_handlers = 0;
 #endif
 
 #ifndef ASSERT

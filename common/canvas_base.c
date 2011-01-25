@@ -612,7 +612,7 @@ static pixman_image_t *canvas_get_jpeg_alpha(CanvasBase *canvas,
                     &lz_alpha_width, &lz_alpha_height, &n_comp_pixels,
                     &lz_alpha_top_down, NULL);
     ASSERT(lz_alpha_type == LZ_IMAGE_TYPE_XXXA);
-    ASSERT(lz_alpha_top_down == alpha_top_down);
+    ASSERT(!!lz_alpha_top_down == !!alpha_top_down);
     ASSERT(lz_alpha_width == width);
     ASSERT(lz_alpha_height == height);
     ASSERT(n_comp_pixels == width * height);

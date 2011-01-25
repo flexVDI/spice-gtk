@@ -251,8 +251,8 @@ X509_NAME* subject_to_x509_name(const char *subject, int *nentries)
         VALUE
     } state;
 
-    key = alloca(strlen(subject));
-    val = alloca(strlen(subject));
+    key = (char*)alloca(strlen(subject));
+    val = (char*)alloca(strlen(subject));
     in_subject = X509_NAME_new();
 
     if (!in_subject || !key || !val) {
@@ -374,8 +374,8 @@ static int openssl_verify(int preverify_ok, X509_STORE_CTX *ctx)
     SSL *ssl;
     X509* cert;
 
-    ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
-    v = SSL_get_app_data(ssl);
+    ssl = (SSL*)X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
+    v = (SpiceOpenSSLVerify*)SSL_get_app_data(ssl);
 
     depth = X509_STORE_CTX_get_error_depth(ctx);
     if (depth > 0) {
@@ -427,7 +427,7 @@ SpiceOpenSSLVerify* spice_openssl_verify_new(SSL *ssl, SPICE_SSL_VERIFY_OP verif
     v->ssl              = ssl;
     v->verifyop         = verifyop;
     v->hostname         = spice_strdup(hostname);
-    v->pubkey           = spice_memdup(pubkey, pubkey_size);
+    v->pubkey           = (char*)spice_memdup(pubkey, pubkey_size);
     v->pubkey_size      = pubkey_size;
     v->subject          = spice_strdup(subject);
 

@@ -49,8 +49,8 @@ COMMON_SRCS =				\
 	quic_family_tmpl.c		\
 	quic_rgb_tmpl.c			\
 	quic_tmpl.c			\
-	ssl_verfiy.h			\
-	ssl_verfiy.c			\
+	ssl_verify.h			\
+	ssl_verify.c			\
 	$(NULL)
 
 EXTRA_DIST = $(COMMON_SRCS)
