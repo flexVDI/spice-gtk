@@ -1,3 +1,13 @@
+v0.5
+====
+
+- Compatibility with gtk2 and gtk3
+- Migrations: seamless and switch host methods
+- SSL verification: public key, subject and host checks added
+- spice:// url parsing learned "password" argument
+- spicy: recent connexions UI added
+- various minor fixes
+
 v0.4
 ====
 
