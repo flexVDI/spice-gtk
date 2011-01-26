@@ -1683,7 +1683,6 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
     }
 
     if (SPICE_IS_INPUTS_CHANNEL(channel)) {
-        release_keys(display);
         d->inputs = NULL;
         return;
     }

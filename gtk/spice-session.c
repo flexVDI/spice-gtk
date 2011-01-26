@@ -641,8 +641,7 @@ void spice_session_migrate_disconnect(SpiceSession *session)
             spice_channel_destroy(item->channel); /* /!\ item and channel are destroy() after this call */
     }
 
-    g_warn_if_fail(!ring_is_empty(&s->channels) &&
-                   ring_get_head(&s->channels) == ring_get_tail(&s->channels));
+    g_warn_if_fail(!ring_is_empty(&s->channels)); /* ring_get_length() == 1 */
 }
 
 G_GNUC_INTERNAL
