@@ -52,6 +52,7 @@ struct spice_session {
     guint64           mm_time_at_clock;
     SpiceSession      *migration;
     GList             *migration_left;
+    SpiceSessionMigration migration_state;
     gboolean          disconnecting;
 };
 
@@ -110,6 +111,7 @@ enum {
     PROP_PUBKEY,
     PROP_CERT_SUBJECT,
     PROP_VERIFY,
+    PROP_MIGRATION_STATE,
 };
 
 /* signals */
@@ -305,6 +307,9 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_VERIFY:
         g_value_set_flags(value, s->verify);
         break;
+    case PROP_MIGRATION_STATE:
+        g_value_set_enum(value, s->migration_state);
+        break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -366,6 +371,9 @@ static void spice_session_set_property(GObject      *gobject,
         break;
     case PROP_VERIFY:
         s->verify = g_value_get_flags(value);
+        break;
+    case PROP_MIGRATION_STATE:
+        s->migration_state = g_value_get_enum(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -484,6 +492,16 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                             G_PARAM_READWRITE |
                             G_PARAM_CONSTRUCT |
                             G_PARAM_STATIC_STRINGS));
+
+    g_object_class_install_property
+        (gobject_class, PROP_MIGRATION_STATE,
+         g_param_spec_enum("migration-state",
+                           "Migration state",
+                           "Migration state",
+                           SPICE_TYPE_SESSION_MIGRATION,
+                           SPICE_SESSION_MIGRATION_NONE,
+                           G_PARAM_READABLE |
+                           G_PARAM_STATIC_STRINGS));
 
     /**
      * SpiceSession::channel-new:
@@ -623,7 +641,7 @@ gboolean spice_session_get_client_provided_socket(SpiceSession *session)
 }
 
 G_GNUC_INTERNAL
-void spice_session_migrate_disconnect(SpiceSession *session)
+void spice_session_switching_disconnect(SpiceSession *session)
 {
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
     struct channel *item;
@@ -652,6 +670,8 @@ void spice_session_set_migration(SpiceSession *session, SpiceSession *migration)
     gchar *tmp;
 
     g_return_if_fail(s != NULL);
+
+    spice_session_set_migration_state(session, SPICE_SESSION_MIGRATION_MIGRATING);
 
     g_warn_if_fail(s->migration == NULL);
     s->migration = g_object_ref(migration);
@@ -732,6 +752,8 @@ void spice_session_abort_migration(SpiceSession *session)
     spice_session_disconnect(s->migration);
     g_object_unref(s->migration);
     s->migration = NULL;
+
+    spice_session_set_migration_state(session, SPICE_SESSION_MIGRATION_NONE);
 }
 
 G_GNUC_INTERNAL
@@ -760,6 +782,7 @@ void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel)
         spice_session_disconnect(s->migration);
         g_object_unref(s->migration);
         s->migration = NULL;
+        spice_session_set_migration_state(session, SPICE_SESSION_MIGRATION_NONE);
     }
 }
 
@@ -1029,4 +1052,14 @@ guint spice_session_get_verify(SpiceSession *session)
 
     g_return_val_if_fail(s != NULL, 0);
     return s->verify;
+}
+
+G_GNUC_INTERNAL
+void spice_session_set_migration_state(SpiceSession *session, SpiceSessionMigration state)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_if_fail(s != NULL);
+    s->migration_state = state;
+    g_object_notify(G_OBJECT(session), "migration-state");
 }

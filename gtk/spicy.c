@@ -957,6 +957,16 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
     connection_destroy(conn);
 }
 
+static void migration_state(GObject *session,
+                            GParamSpec *pspec, gpointer data)
+{
+    SpiceSessionMigration mig;
+
+    g_object_get(session, "migration-state", &mig, NULL);
+    if (mig == SPICE_SESSION_MIGRATION_SWITCHING)
+        g_message("migrating session");
+}
+
 static spice_connection *connection_new(void)
 {
     spice_connection *conn;
@@ -967,6 +977,8 @@ static spice_connection *connection_new(void)
                      G_CALLBACK(channel_new), conn);
     g_signal_connect(conn->session, "channel-destroy",
                      G_CALLBACK(channel_destroy), conn);
+    g_signal_connect(conn->session, "notify::migration-state",
+                     G_CALLBACK(migration_state), conn);
     connections++;
     SPICE_DEBUG("%s (%d)", __FUNCTION__, connections);
     return conn;

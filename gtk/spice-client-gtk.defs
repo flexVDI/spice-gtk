@@ -94,6 +94,17 @@
   )
 )
 
+(define-enum SessionMigration
+  (in-module "Spice")
+  (c-name "SpiceSessionMigration")
+  (gtype-id "SPICE_TYPE_SESSION_MIGRATION")
+  (values
+    '("none" "SPICE_SESSION_MIGRATION_NONE")
+    '("switching" "SPICE_SESSION_MIGRATION_SWITCHING")
+    '("migrating" "SPICE_SESSION_MIGRATION_MIGRATING")
+  )
+)
+
 (define-enum ChannelEvent
   (in-module "Spice")
   (c-name "SpiceChannelEvent")
@@ -402,6 +413,11 @@
 
 (define-function spice_session_verify_get_type
   (c-name "spice_session_verify_get_type")
+  (return-type "GType")
+)
+
+(define-function spice_session_migration_get_type
+  (c-name "spice_session_migration_get_type")
   (return-type "GType")
 )
 

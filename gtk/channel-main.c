@@ -1250,13 +1250,19 @@ static void main_handle_migrate_begin(SpiceChannel *channel, spice_msg_in *in)
 static gboolean switch_host_delayed(gpointer data)
 {
     SpiceChannel *channel = data;
+    SpiceSession *session;
     spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
 
     g_warn_if_fail(c->switch_host_delayed_id != 0);
-
     c->switch_host_delayed_id = 0;
+
+    session = spice_channel_get_session(channel);
+
     spice_channel_disconnect(channel, SPICE_CHANNEL_SWITCHING);
+    spice_session_switching_disconnect(session);
+
     spice_channel_connect(channel);
+    spice_session_set_migration_state(session, SPICE_SESSION_MIGRATION_NONE);
 
     return FALSE;
 }
@@ -1287,8 +1293,7 @@ static void main_handle_migrate_switch_host(SpiceChannel *channel, spice_msg_in 
     }
 
     session = spice_channel_get_session(channel);
-    spice_session_migrate_disconnect(session);
-
+    spice_session_set_migration_state(session, SPICE_SESSION_MIGRATION_SWITCHING);
     g_object_set(session, "host", host, NULL);
     spice_session_set_port(session, mig->port, FALSE);
     spice_session_set_port(session, mig->sport, TRUE);

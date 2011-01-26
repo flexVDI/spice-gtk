@@ -55,6 +55,7 @@ spice_session_get_channels;
 spice_session_new;
 spice_session_open_fd;
 spice_session_verify_get_type;
+spice_session_migration_get_type;
 spice_util_get_debug;
 spice_util_get_version_string;
 spice_util_set_debug;

@@ -37,9 +37,10 @@ void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel)
 void spice_session_set_mm_time(SpiceSession *session, guint32 time);
 guint32 spice_session_get_mm_time(SpiceSession *session);
 
-void spice_session_migrate_disconnect(SpiceSession *session);
+void spice_session_switching_disconnect(SpiceSession *session);
 void spice_session_set_migration(SpiceSession *session, SpiceSession *migration);
 void spice_session_abort_migration(SpiceSession *session);
+void spice_session_set_migration_state(SpiceSession *session, SpiceSessionMigration state);
 
 void spice_session_set_port(SpiceSession *session, int port, gboolean tls);
 void spice_session_get_pubkey(SpiceSession *session, guint8 **pubkey, guint *size);

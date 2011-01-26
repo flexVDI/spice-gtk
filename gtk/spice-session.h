@@ -35,9 +35,9 @@ G_BEGIN_DECLS
 /**
  * SpiceSessionVerify:
  *
- * @SPICE_SESSION_VERIFY_PUBKEY:
- * @SPICE_SESSION_VERIFY_HOSTNAME:
- * @SPICE_SESSION_VERIFY_SUBJECT:
+ * @SPICE_SESSION_VERIFY_PUBKEY: verify certificate public key matching
+ * @SPICE_SESSION_VERIFY_HOSTNAME: verify certificate hostname matching
+ * @SPICE_SESSION_VERIFY_SUBJECT: verify certificate subject matching
  *
  * Peer certificate verification parameters flags.
  **/
@@ -46,6 +46,21 @@ typedef enum {
     SPICE_SESSION_VERIFY_HOSTNAME = (1 << 1),
     SPICE_SESSION_VERIFY_SUBJECT  = (1 << 2),
 } SpiceSessionVerify;
+
+/**
+ * SpiceSessionMigration:
+ *
+ * @SPICE_SESSION_MIGRATION_NONE: no migration going on
+ * @SPICE_SESSION_MIGRATION_SWITCHING: the session is switching host (destroy and reconnect)
+ * @SPICE_SESSION_MIGRATION_MIGRATING: the session is migrating seamlessly (reconnect)
+ *
+ * Session migration state.
+ **/
+typedef enum {
+    SPICE_SESSION_MIGRATION_NONE,
+    SPICE_SESSION_MIGRATION_SWITCHING,
+    SPICE_SESSION_MIGRATION_MIGRATING,
+} SpiceSessionMigration;
 
 struct _SpiceSession
 {
