@@ -3,4 +3,3 @@
 * use libspice-common instead of common/
 * clipboard images
 * TunnelChannel?
-* fix mouse on client hitting real screen borders in server mode

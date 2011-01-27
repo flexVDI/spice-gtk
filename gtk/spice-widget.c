@@ -95,8 +95,8 @@ enum {
 
 static guint signals[SPICE_DISPLAY_LAST_SIGNAL];
 
-static void try_keyboard_grab(GtkWidget *widget);
-static void try_keyboard_ungrab(GtkWidget *widget);
+static void try_keyboard_grab(SpiceDisplay *display);
+static void try_keyboard_ungrab(SpiceDisplay *display);
 static void try_mouse_grab(GtkWidget *widget);
 static void try_mouse_ungrab(GtkWidget *widget);
 static void recalc_geometry(GtkWidget *widget, gboolean set_display);
@@ -153,9 +153,9 @@ static void spice_display_set_property(GObject      *object,
     case PROP_KEYBOARD_GRAB:
         d->keyboard_grab_enable = g_value_get_boolean(value);
         if (d->keyboard_grab_enable) {
-            try_keyboard_grab(GTK_WIDGET(display));
+            try_keyboard_grab(display);
         } else {
-            try_keyboard_ungrab(GTK_WIDGET(display));
+            try_keyboard_ungrab(display);
         }
         break;
     case PROP_MOUSE_GRAB:
@@ -301,9 +301,9 @@ SpiceGrabSequence *spice_display_get_grab_keys(SpiceDisplay *display)
     return d->grabseq;
 }
 
-static void try_keyboard_grab(GtkWidget *widget)
+static void try_keyboard_grab(SpiceDisplay *display)
 {
-    SpiceDisplay *display = SPICE_DISPLAY(widget);
+    GtkWidget *widget = GTK_WIDGET(display);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
     time_t now;
     GdkGrabStatus status;
@@ -355,10 +355,10 @@ static void try_keyboard_grab(GtkWidget *widget)
 }
 
 
-static void try_keyboard_ungrab(GtkWidget *widget)
+static void try_keyboard_ungrab(SpiceDisplay *display)
 {
-    SpiceDisplay *display = SPICE_DISPLAY(widget);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    GtkWidget *widget = GTK_WIDGET(display);
 
     if (!d->keyboard_grab_active)
         return;
@@ -375,12 +375,24 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
     GdkWindow *window = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
     GdkGrabStatus status;
 
+    try_keyboard_grab(display);
+
+    /*
+     * from gtk-vnc:
+     * For relative mouse to work correctly when grabbed we need to
+     * allow the pointer to move anywhere on the local desktop, so
+     * use NULL for the 'confine_to' argument. Furthermore we need
+     * the coords to be reported to our VNC window, regardless of
+     * what window the pointer is actally over, so use 'FALSE' for
+     * 'owner_events' parameter
+     */
     status = gdk_pointer_grab(window, FALSE,
                      GDK_POINTER_MOTION_MASK |
                      GDK_BUTTON_PRESS_MASK |
                      GDK_BUTTON_RELEASE_MASK |
-                     GDK_BUTTON_MOTION_MASK,
-                     window, d->mouse_cursor,
+                     GDK_BUTTON_MOTION_MASK |
+                     GDK_SCROLL_MASK,
+                     NULL, d->mouse_cursor,
                      GDK_CURRENT_TIME);
     if (status != GDK_GRAB_SUCCESS) {
         d->mouse_grab_active = false;
@@ -446,20 +458,22 @@ static void mouse_check_edges(GtkWidget *widget, GdkEventMotion *motion)
     int x = (int)motion->x_root;
     int y = (int)motion->y_root;
 
-    if (d->mouse_guest_x != -1 && d->mouse_guest_y != -1)
+    if (d->mouse_guest_x != -1 && d->mouse_guest_y != -1) {
+        SPICE_DEBUG("skip mouse_check_edges");
         return;
+    }
 
-    /* In relative mode check to see if client pointer hit
-     * one of the window edges, and if so move it back by
-     * 200 pixels. This is important because the pointer
-     * in the server doesn't correspond 1-for-1, and so
-     * may still be only half way across the screen. Without
-     * this warp, the server pointer would thus appear to hit
-     * an invisible wall */
-    if (motion->x == 0) x += 100;
-    if (motion->y == 0) y += 100;
-    if (motion->x == (d->ww - 1)) x -= 100;
-    if (motion->y == (d->wh - 1)) y -= 100;
+    /* from gtk-vnc:
+     * In relative mode check to see if client pointer hit one of the
+     * screen edges, and if so move it back by 200 pixels. This is
+     * important because the pointer in the server doesn't correspond
+     * 1-for-1, and so may still be only half way across the
+     * screen. Without this warp, the server pointer would thus appear
+     * to hit an invisible wall */
+    if (motion->x <= 0) x += 200;
+    if (motion->y <= 0) y += 200;
+    if (motion->x >= (gdk_screen_get_width(screen) - 1)) x -= 200;
+    if (motion->y >= (gdk_screen_get_height(screen) - 1)) y -= 200;
 
     if (x != (int)motion->x_root || y != (int)motion->y_root) {
         gdk_display_warp_pointer(gtk_widget_get_display(widget),
@@ -762,7 +776,7 @@ static gboolean enter_event(GtkWidget *widget, GdkEventCrossing *crossing G_GNUC
 
     SPICE_DEBUG("%s", __FUNCTION__);
     d->mouse_have_pointer = true;
-    try_keyboard_grab(widget);
+    try_keyboard_grab(display);
     return true;
 }
 
@@ -773,7 +787,7 @@ static gboolean leave_event(GtkWidget *widget, GdkEventCrossing *crossing G_GNUC
 
     SPICE_DEBUG("%s", __FUNCTION__);
     d->mouse_have_pointer = false;
-    try_keyboard_ungrab(widget);
+    try_keyboard_ungrab(display);
     return true;
 }
 
@@ -786,7 +800,7 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
     release_keys(display);
     sync_keyboard_lock_modifiers(display);
     d->keyboard_have_focus = true;
-    try_keyboard_grab(widget);
+    try_keyboard_grab(display);
     return true;
 }
 
@@ -797,7 +811,7 @@ static gboolean focus_out_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_U
 
     SPICE_DEBUG("%s", __FUNCTION__);
     d->keyboard_have_focus = false;
-    try_keyboard_ungrab(widget);
+    try_keyboard_ungrab(display);
     return true;
 }
 
