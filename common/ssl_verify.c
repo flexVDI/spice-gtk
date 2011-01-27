@@ -19,13 +19,28 @@
 #include "mem.h"
 #include "ssl_verify.h"
 
-#include <alloca.h>
+#ifndef WIN32
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#endif
+#include <ctype.h>
 
 #ifndef SPICE_DEBUG
-# define SPICE_DEBUG(format, ...) printf("%s: " format "\n", __FUNCTION__, ## __VA_ARGS__)
+# define SPICE_DEBUG(format, ...)
+#endif
+
+#ifdef WIN32
+static int inet_aton(const char* ip, struct in_addr* in_addr)
+{
+    unsigned long addr = inet_addr(ip);
+
+    if (addr == INADDR_NONE) {
+        return 0;
+    }
+    in_addr->S_un.S_addr = addr;
+    return 1;
+}
 #endif
 
 static int verify_pubkey(X509* cert, const char *key, size_t key_size)

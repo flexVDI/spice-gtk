@@ -22,6 +22,29 @@
 #include <stdlib.h>
 #include <spice/macros.h>
 
+/* alloca definition from glib/galloca.h */
+#ifdef  __GNUC__
+/* GCC does the right thing */
+# undef alloca
+# define alloca(size)   __builtin_alloca (size)
+#elif defined (GLIB_HAVE_ALLOCA_H)
+/* a native and working alloca.h is there */
+# include <alloca.h>
+#else /* !__GNUC__ && !GLIB_HAVE_ALLOCA_H */
+# if defined(_MSC_VER) || defined(__DMC__)
+#  include <malloc.h>
+#  define alloca _alloca
+# else /* !_MSC_VER && !__DMC__ */
+#  ifdef _AIX
+#   pragma alloca
+#  else /* !_AIX */
+#   ifndef alloca /* predefined by HP cc +Olibcalls */
+char *alloca ();
+#   endif /* !alloca */
+#  endif /* !_AIX */
+# endif /* !_MSC_VER && !__DMC__ */
+#endif /* !__GNUC__ && !GLIB_HAVE_ALLOCA_H */
+
 typedef struct SpiceChunk {
     uint8_t *data;
     uint32_t len;
