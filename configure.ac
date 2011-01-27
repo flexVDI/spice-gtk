@@ -103,6 +103,7 @@ AM_CONDITIONAL(OS_UNIX, test "$os_win32" != "yes")
 AM_CONDITIONAL(OS_LINUX, test "$os_linux" = "yes")
 
 AC_CHECK_HEADERS([sys/ipc.h sys/shm.h])
+AC_CHECK_HEADERS([sys/socket.h netinet/in.h arpa/inet.h])
 
 dnl =========================================================================
 dnl Chek optional features

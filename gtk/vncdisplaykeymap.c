@@ -76,7 +76,7 @@ static unsigned int ref_count_for_untranslated_keys = 0;
 
 /* Gtk2 compat */
 #ifndef GDK_IS_X11_DISPLAY
-#define GDK_IS_X11_DISPLAY(dpy) 1
+#define GDK_IS_X11_DISPLAY(dpy) (dpy == dpy)
 #endif
 #endif
 
@@ -86,7 +86,7 @@ static unsigned int ref_count_for_untranslated_keys = 0;
 
 /* Gtk2 compat */
 #ifndef GDK_IS_WIN32_DISPLAY
-#define GDK_IS_WIN32_DISPLAY(dpy) 1
+#define GDK_IS_WIN32_DISPLAY(dpy) (dpy == dpy)
 #endif
 #endif
 
@@ -96,7 +96,7 @@ static unsigned int ref_count_for_untranslated_keys = 0;
 
 /* Gtk2 compat */
 #ifndef GDK_IS_QUARTZ_DISPLAY
-#define GDK_IS_QUARTZ_DISPLAY(dpy) 1
+#define GDK_IS_QUARTZ_DISPLAY(dpy) (dpy == dpy)
 #endif
 #endif
 
