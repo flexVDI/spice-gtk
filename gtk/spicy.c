@@ -29,6 +29,7 @@
 
 /* config */
 static gboolean fullscreen = false;
+static gboolean version = false;
 
 enum {
     STATE_SCROLL_LOCK,
@@ -340,8 +341,8 @@ static void menu_cb_about(GtkAction *action, void *data)
                           "copyright",       copyright,
                           "logo-icon-name",  GTK_STOCK_ABOUT,
 			  "website",         website,
-//                        "version",         VERSION,
-//			  "license",         "GPLv2+",
+                          "version",         PACKAGE_VERSION,
+			  "license",         "LGPLv2.1",
                           NULL);
 }
 
@@ -1020,8 +1021,15 @@ static GOptionEntry cmd_entries[] = {
         .short_name       = 'f',
         .arg              = G_OPTION_ARG_NONE,
         .arg_data         = &fullscreen,
-        .description      = N_("open in full screen mode"),
-    },{
+        .description      = N_("Open in full screen mode"),
+    },
+    {
+        .long_name        = "version",
+        .arg              = G_OPTION_ARG_NONE,
+        .arg_data         = &version,
+        .description      = N_("Display version and quit"),
+    },
+    {
         /* end of list */
     }
 };
@@ -1057,12 +1065,19 @@ int main(int argc, char *argv[])
     /* parse opts */
     gtk_init(&argc, &argv);
     context = g_option_context_new(_("- spice client application"));
-    g_option_context_add_main_entries (context, cmd_entries, NULL);
+    g_option_context_set_summary(context, _("A Gtk client to connect to Spice servers."));
+    g_option_context_set_description(context, _("Report bugs to " PACKAGE_BUGREPORT "."));
+    g_option_context_add_main_entries(context, cmd_entries, NULL);
     g_option_context_add_group(context, gtk_get_option_group(TRUE));
     g_option_context_add_group(context, spice_cmdline_get_option_group());
     if (!g_option_context_parse (context, &argc, &argv, &error)) {
-        g_print (_("option parsing failed: %s\n"), error->message);
-        exit (1);
+        g_print(_("option parsing failed: %s\n"), error->message);
+        exit(1);
+    }
+
+    if (version) {
+        g_print("spicy " PACKAGE_VERSION "\n");
+        exit(0);
     }
 
     g_type_init();

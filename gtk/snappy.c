@@ -26,6 +26,7 @@
 
 /* config */
 static char *outf      = "snappy.ppm";
+static gboolean version = FALSE;
 
 /* state */
 static SpiceSession  *session;
@@ -120,9 +121,16 @@ static GOptionEntry app_entries[] = {
         .short_name       = 'o',
         .arg              = G_OPTION_ARG_FILENAME,
         .arg_data         = &outf,
-        .description      = N_("output file name (*.ppm)"),
+        .description      = N_("Output file name (default snappy.ppm)"),
         .arg_description  = N_("<filename>"),
-    },{
+    },
+    {
+        .long_name        = "version",
+        .arg              = G_OPTION_ARG_NONE,
+        .arg_data         = &version,
+        .description      = N_("Display version and quit"),
+    },
+    {
         /* end of list */
     }
 };
@@ -137,12 +145,19 @@ int main(int argc, char *argv[])
     textdomain(GETTEXT_PACKAGE);
 
     /* parse opts */
-    context = g_option_context_new(_(" - write screen shots in ppm format"));
+    context = g_option_context_new(_(" - make screen shots"));
+    g_option_context_set_summary(context, _("A Spice server client to take screenshots in ppm format."));
+    g_option_context_set_description(context, _("Report bugs to " PACKAGE_BUGREPORT "."));
     g_option_context_add_main_entries(context, app_entries, NULL);
     g_option_context_add_group(context, spice_cmdline_get_option_group());
     if (!g_option_context_parse (context, &argc, &argv, &error)) {
-        g_print (_("option parsing failed: %s\n"), error->message);
-        exit (1);
+        g_print(_("option parsing failed: %s\n"), error->message);
+        exit(1);
+    }
+
+    if (version) {
+        g_print("snappy " PACKAGE_VERSION "\n");
+        exit(0);
     }
 
     g_type_init();
