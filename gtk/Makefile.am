@@ -58,6 +58,7 @@ SPICE_COMMON_CPPFLAGS = \
 	$(GIO_CFLAGS)			\
 	$(GOBJECT2_CFLAGS)		\
 	$(SSL_CFLAGS)			\
+	$(SASL_CFLAGS)			\
 	$(GST_CFLAGS)			\
 	$(NULL)
 
@@ -135,6 +136,7 @@ libspice_client_glib_2_0_la_LIBADD =	\
 	$(SSL_LIBS)			\
 	$(PULSE_LIBS)			\
 	$(GST_LIBS)			\
+	$(SASL_LIBS)			\
 	$(NULL)
 
 libspice_client_glib_2_0_la_SOURCES =	\

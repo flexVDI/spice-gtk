@@ -128,6 +128,58 @@ AC_SUBST(SSL_CFLAGS)
 AC_SUBST(SSL_LIBS)
 SPICE_REQUIRES+=" openssl"
 
+dnl Cyrus SASL
+AC_ARG_WITH([sasl],
+  [AS_HELP_STRING([--with-sasl],
+    [use cyrus SASL for authentication @<:@default=check@:>@])],
+  [],
+  [with_sasl=check])
+
+SASL_CFLAGS=
+SASL_LIBS=
+enable_sasl=no
+if test "x$with_sasl" != "xno"; then
+  if test "x$with_sasl" != "xyes" -a "x$with_sasl" != "xcheck"; then
+    SASL_CFLAGS="-I$with_sasl"
+    SASL_LIBS="-L$with_sasl"
+  fi
+  fail=0
+  old_cflags="$CFLAGS"
+  old_libs="$LIBS"
+  CFLAGS="$CFLAGS $SASL_CFLAGS"
+  LIBS="$LIBS $SASL_LIBS"
+  AC_CHECK_HEADER([sasl/sasl.h],[],[
+    if test "x$with_sasl" != "xcheck" ; then
+        with_sasl=no
+    else
+        fail=1
+    fi])
+  if test "x$with_sasl" != "xno" ; then
+    AC_CHECK_LIB([sasl2], [sasl_client_init],[with_sasl2=yes],[with_sasl2=no])
+  fi
+  if test "x$with_sasl2" = "xno" -a "x$with_sasl" != "xno" ; then
+    AC_CHECK_LIB([sasl], [sasl_client_init],[with_sasl=yes],[with_sasl=no])
+  fi
+  if test "x$with_sasl2" = "xyes"; then
+    SASL_LIBS="$SASL_LIBS -lsasl2"
+  elif test "x$with_sasl" = "xyes"; then
+    SASL_LIBS="$SASL_LIBS -lsasl"
+  else
+    AC_MSG_ERROR([You must install the Cyrus SASL development package in order to compile GTK-VNC])
+  fi
+  CFLAGS="$old_cflags"
+  LIBS="$old_libs"
+  if test "x$with_sasl2" = "xyes" -o "x$with_sasl" = "xyes" ; then
+    AC_DEFINE_UNQUOTED([HAVE_SASL], 1,
+      [whether Cyrus SASL is available for authentication])
+    enable_sasl=yes
+  fi
+fi
+AM_CONDITIONAL([HAVE_SASL], [test "x$with_sasl2" = "xyes" -o "x$with_sasl" = "xyes"])
+AC_SUBST([SASL_CFLAGS])
+AC_SUBST([SASL_LIBS])
+
+
 AC_MSG_CHECKING([which gtk+ version to compile against])
 AC_ARG_WITH([gtk],
   [AS_HELP_STRING([--with-gtk=2.0|3.0],[which gtk+ version to compile against (default: 2.0)])],
@@ -444,7 +496,7 @@ AC_MSG_RESULT([$warn_unused_result])
 
 AC_SUBST(SPICE_CFLAGS)
 
-SPICE_GLIB_CFLAGS="$PROTOCOL_CFLAGS $PIXMAN_CFLAGS $CELT051_CFLAGS $PULSE_CFLAGS $GST_CFLAGS $GLIB2_CFLAGS $GIO_CFLAGS $GOBJECT2_CFLAGS $SSL_CFLAGS"
+SPICE_GLIB_CFLAGS="$PROTOCOL_CFLAGS $PIXMAN_CFLAGS $CELT051_CFLAGS $PULSE_CFLAGS $GST_CFLAGS $GLIB2_CFLAGS $GIO_CFLAGS $GOBJECT2_CFLAGS $SSL_CFLAGS @SASL_CFLAGS"
 SPICE_GTK_CFLAGS="$SPICE_GLIB_CFLAGS $GTK_CFLAGS "
 
 AC_SUBST(SPICE_GLIB_CFLAGS)
@@ -507,6 +559,7 @@ AC_MSG_NOTICE([
         Coroutine:                ${with_coroutine}
         Audio:                    ${with_audio}
         Target:                   ${red_target}
+        SASL support:             ${enable_sasl}
         Gtk:                      $GTK_API_VERSION
 
         Now type 'make' to build $PACKAGE
