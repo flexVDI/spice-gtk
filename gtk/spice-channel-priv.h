@@ -18,8 +18,16 @@
 #ifndef __SPICE_CLIENT_CHANNEL_PRIV_H__
 #define __SPICE_CLIENT_CHANNEL_PRIV_H__
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <openssl/ssl.h>
 #include <gio/gio.h>
+
+#if HAVE_SASL
+#include <sasl/sasl.h>
+#endif
 
 #include "coroutine.h"
 #include "gio-coroutine.h"
@@ -68,6 +76,13 @@ struct spice_channel {
     SSL                         *ssl;
     SpiceOpenSSLVerify          *sslverify;
     GSocket                     *sock;
+
+#if HAVE_SASL
+    sasl_conn_t                 *sasl_conn;
+    const char                  *sasl_decoded;
+    unsigned int                sasl_decoded_length;
+    unsigned int                sasl_decoded_offset;
+#endif
 
     /* not swapped */
     SpiceSession                *session;

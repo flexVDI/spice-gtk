@@ -690,6 +690,56 @@ reread:
     return ret;
 }
 
+#if HAVE_SASL
+/*
+ * Read at least 1 more byte of data out of the SASL decrypted
+ * data buffer, into the internal read buffer
+ */
+static int spice_channel_read_sasl(SpiceChannel *channel, void *data, size_t len)
+{
+    spice_channel *c = channel->priv;
+
+    //SPICE_DEBUG("Read SASL %p size %d offset %d", c->sasl_decoded,
+    //	   c->sasl_decoded_length, c->sasl_decoded_offset);
+    if (c->sasl_decoded == NULL || c->sasl_decoded_length == 0) {
+        char encoded[8192];  // FIXME: should not to give sasl_decode more data than the negotiated maxbufsize (see sasl_getprop).
+        int encoded_len = sizeof(encoded);
+        int err, ret;
+
+        g_warn_if_fail(c->sasl_decoded_offset == 0);
+
+        ret = spice_channel_read_wire(channel, encoded, encoded_len);
+        if (ret < 0) {
+            return ret;
+        }
+
+        err = sasl_decode(c->sasl_conn, encoded, ret,
+                          &c->sasl_decoded, &c->sasl_decoded_length);
+        if (err != SASL_OK) {
+            g_warning("Failed to decode SASL data %s",
+                      sasl_errstring(err, NULL, NULL));
+            c->has_error = TRUE;
+            return -EINVAL;
+        }
+        c->sasl_decoded_offset = 0;
+    }
+
+    if (c->sasl_decoded_length == 0)
+        return 0;
+
+    len = MIN(c->sasl_decoded_length - c->sasl_decoded_offset, len);
+    memcpy(data, c->sasl_decoded + c->sasl_decoded_offset, len);
+    c->sasl_decoded_offset += len;
+
+    if (c->sasl_decoded_offset == c->sasl_decoded_length) {
+        c->sasl_decoded_length = c->sasl_decoded_offset = 0;
+        c->sasl_decoded = NULL;
+    }
+    //SPICE_DEBUG("Done read write %d - %d", len, c->has_error);
+    return len;
+}
+#endif
+
 /*
  * Fill the 'data' buffer up with exactly 'len' bytes worth of data
  */
@@ -703,7 +753,12 @@ static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
     if (c->has_error) return 0; /* has_error is set by disconnect(), return no error */
 
     while (len > 0) {
-        ret = spice_channel_read_wire(channel, data, len);
+#if HAVE_SASL
+        if (c->sasl_conn)
+            ret = spice_channel_read_sasl(channel, data, len);
+        else
+#endif
+            ret = spice_channel_read_wire(channel, data, len);
         if (ret <= 0)
             return ret;
         g_assert(ret <= len);
@@ -1496,6 +1551,14 @@ static void channel_disconnect(SpiceChannel *channel)
         g_source_remove(c->connect_delayed_id);
         c->connect_delayed_id = 0;
     }
+
+#if HAVE_SASL
+    if (c->sasl_conn) {
+        sasl_dispose(&c->sasl_conn);
+        c->sasl_conn = NULL;
+        c->sasl_decoded_offset = c->sasl_decoded_length = 0;
+    }
+#endif
 
     spice_openssl_verify_free(c->sslverify);
     c->sslverify = NULL;
