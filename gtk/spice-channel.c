@@ -619,10 +619,42 @@ static void spice_channel_flush_wire(SpiceChannel *channel,
     }
 }
 
+#if HAVE_SASL
+/*
+ * Encode all buffered data, write all encrypted data out
+ * to the wire
+ */
+static void spice_channel_flush_sasl(SpiceChannel *channel, const void *data, size_t len)
+{
+    spice_channel *c = channel->priv;
+    const char *output;
+    unsigned int outputlen;
+    int err;
+
+    err = sasl_encode(c->sasl_conn, data, len, &output, &outputlen);
+    if (err != SASL_OK) {
+        g_warning ("Failed to encode SASL data %s",
+                   sasl_errstring(err, NULL, NULL));
+        c->has_error = TRUE;
+        return;
+    }
+
+    //SPICE_DEBUG("Flush SASL %d: %p %d", len, output, outputlen);
+    spice_channel_flush_wire(channel, output, outputlen);
+}
+#endif
+
 /* coroutine context */
 static void spice_channel_write(SpiceChannel *channel, const void *data, size_t len)
 {
-    spice_channel_flush_wire(channel, data, len);
+    spice_channel *c = channel->priv;
+
+#if HAVE_SASL
+    if (c->sasl_conn)
+        spice_channel_flush_sasl(channel, data, len);
+    else
+#endif
+        spice_channel_flush_wire(channel, data, len);
 }
 
 /*
