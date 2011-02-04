@@ -384,6 +384,15 @@
   )
 )
 
+(define-method test_common_capability
+  (of-object "SpiceChannel")
+  (c-name "spice_channel_test_common_capability")
+  (return-type "gboolean")
+  (parameters
+    '("guint32" "cap")
+  )
+)
+
 (define-method set_capability
   (of-object "SpiceChannel")
   (c-name "spice_channel_set_capability")

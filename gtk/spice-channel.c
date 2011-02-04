@@ -1590,9 +1590,9 @@ static gboolean test_capability(GArray *caps, guint32 cap)
  * @self:
  * @cap:
  *
- * Test availability of specific channel-kind capability of the remote.
+ * Test availability of remote "channel kind capability".
  *
- * Returns: %TRUE if @cap, a specific channel capability, is available.
+ * Returns: %TRUE if @cap (channel kind capability) is available.
  **/
 gboolean spice_channel_test_capability(SpiceChannel *self, guint32 cap)
 {
@@ -1602,6 +1602,25 @@ gboolean spice_channel_test_capability(SpiceChannel *self, guint32 cap)
 
     c = self->priv;
     return test_capability(c->remote_caps, cap);
+}
+
+/**
+ * spice_channel_test_common_capability:
+ * @self:
+ * @cap:
+ *
+ * Test availability of remote "common channel capability".
+ *
+ * Returns: %TRUE if @cap (common channel capability) is available.
+ **/
+gboolean spice_channel_test_common_capability(SpiceChannel *self, guint32 cap)
+{
+    spice_channel *c;
+
+    g_return_val_if_fail(SPICE_IS_CHANNEL(self), FALSE);
+
+    c = self->priv;
+    return test_capability(c->remote_common_caps, cap);
 }
 
 static void set_capability(GArray *caps, guint32 cap)
