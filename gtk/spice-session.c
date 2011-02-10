@@ -1065,3 +1065,30 @@ void spice_session_set_migration_state(SpiceSession *session, SpiceSessionMigrat
     s->migration_state = state;
     g_object_notify(G_OBJECT(session), "migration-state");
 }
+
+G_GNUC_INTERNAL
+const gchar* spice_session_get_password(SpiceSession *session)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_val_if_fail(s != NULL, NULL);
+    return s->password;
+}
+
+G_GNUC_INTERNAL
+const gchar* spice_session_get_host(SpiceSession *session)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_val_if_fail(s != NULL, NULL);
+    return s->host;
+}
+
+G_GNUC_INTERNAL
+const gchar* spice_session_get_cert_subject(SpiceSession *session)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_val_if_fail(s != NULL, NULL);
+    return s->cert_subject;
+}

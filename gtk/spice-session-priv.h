@@ -45,6 +45,9 @@ void spice_session_set_migration_state(SpiceSession *session, SpiceSessionMigrat
 void spice_session_set_port(SpiceSession *session, int port, gboolean tls);
 void spice_session_get_pubkey(SpiceSession *session, guint8 **pubkey, guint *size);
 guint spice_session_get_verify(SpiceSession *session);
+const gchar* spice_session_get_password(SpiceSession *session);
+const gchar* spice_session_get_host(SpiceSession *session);
+const gchar* spice_session_get_cert_subject(SpiceSession *session);
 
 G_END_DECLS
 

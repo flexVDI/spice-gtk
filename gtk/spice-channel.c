@@ -1422,20 +1422,14 @@ reconnect:
 
 
         {
-            gchar *hostname, *subject;
             guint8 *pubkey;
             guint pubkey_len;
 
-            g_object_get(c->session,
-                         "host", &hostname,
-                         "cert-subject", &subject, NULL);
             spice_session_get_pubkey(c->session, &pubkey, &pubkey_len);
             c->sslverify = spice_openssl_verify_new(c->ssl, verify,
-                                                    hostname,
-                                                    (char*)pubkey, pubkey_len,
-                                                    subject);
-            g_free(hostname);
-            g_free(subject);
+                spice_session_get_host(c->session),
+                (char*)pubkey, pubkey_len,
+                spice_session_get_cert_subject(c->session));
         }
 
 ssl_reconnect:
