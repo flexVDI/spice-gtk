@@ -1009,9 +1009,7 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
     default:
         g_warning("%s: %s: unhandled error %d",
                 c->name, __FUNCTION__, c->peer_msg->error);
-        SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
-        emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_LINK);
-        return;
+        goto error;
     }
 
     num_caps = c->peer_msg->num_channel_caps + c->peer_msg->num_common_caps;
@@ -1036,6 +1034,12 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
 
     c->state = SPICE_CHANNEL_STATE_AUTH;
     spice_channel_send_auth(channel);
+
+    return;
+
+error:
+    SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
+    emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_LINK);
 }
 
 /* system context */
