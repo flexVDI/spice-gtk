@@ -984,13 +984,13 @@ int spice_session_get_connection_id(SpiceSession *session)
     return s->connection_id;
 }
 
-#if !GLIB_CHECK_VERSION(2,28,0)
-static guint64 g_get_monotonic_clock(void)
+#if !GLIB_CHECK_VERSION(2,27,2)
+static guint64 g_get_monotonic_time(void)
 {
     GTimeVal tv;
 
     /* TODO: support real monotonic clock? */
-    g_get_current_time (&tv);
+    g_get_current_time(&tv);
 
     return (((gint64) tv.tv_sec) * 1000000) + tv.tv_usec;
 }
@@ -1003,7 +1003,9 @@ guint32 spice_session_get_mm_time(SpiceSession *session)
 
     g_return_val_if_fail(s != NULL, 0);
 
-    return s->mm_time + (g_get_monotonic_clock() - s->mm_time_at_clock) / 1000;
+    /* FIXME: we may want to estimate the drift of clocks, and well,
+       do something better than this trivial approach */
+    return s->mm_time + (g_get_monotonic_time() - s->mm_time_at_clock) / 1000;
 }
 
 G_GNUC_INTERNAL
@@ -1015,7 +1017,7 @@ void spice_session_set_mm_time(SpiceSession *session, guint32 time)
     SPICE_DEBUG("set mm time: %u", time);
 
     s->mm_time = time;
-    s->mm_time_at_clock = g_get_monotonic_clock();
+    s->mm_time_at_clock = g_get_monotonic_time();
 }
 
 G_GNUC_INTERNAL
