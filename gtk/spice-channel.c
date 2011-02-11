@@ -938,13 +938,13 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
     g_array_set_size(c->remote_common_caps, c->peer_msg->num_common_caps);
     for (i = 0; i < c->peer_msg->num_common_caps; i++, caps++) {
         g_array_index(c->remote_common_caps, uint32_t, i) = *caps;
-        SPICE_DEBUG("got caps %u %u", i, *caps);
+        SPICE_DEBUG("got common caps %u:0x%X", i, *caps);
     }
 
     g_array_set_size(c->remote_caps, c->peer_msg->num_channel_caps);
     for (i = 0; i < c->peer_msg->num_channel_caps; i++, caps++) {
         g_array_index(c->remote_caps, uint32_t, i) = *caps;
-        SPICE_DEBUG("got caps %u %u", i, *caps);
+        SPICE_DEBUG("got channel caps %u:0x%X", i, *caps);
     }
 
     c->state = SPICE_CHANNEL_STATE_AUTH;
@@ -1574,7 +1574,8 @@ void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
 
 static gboolean test_capability(GArray *caps, guint32 cap)
 {
-    guint32 word_index = cap / 32;
+    guint32 c, word_index = cap / 32;
+    gboolean ret;
 
     if (caps == NULL)
         return FALSE;
@@ -1582,7 +1583,11 @@ static gboolean test_capability(GArray *caps, guint32 cap)
     if (caps->len < word_index + 1)
         return FALSE;
 
-    return (g_array_index(caps, guint32, word_index) & (1 << (cap % 32))) != 0;
+    c = g_array_index(caps, guint32, word_index);
+    ret = (c & (1 << (cap % 32))) != 0;
+
+    SPICE_DEBUG("test cap %d in 0x%X: %s", cap, c, ret ? "yes" : "no");
+    return ret;
 }
 
 /**
