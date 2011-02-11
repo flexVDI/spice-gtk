@@ -147,6 +147,7 @@ void spice_channel_handle_migrate(SpiceChannel *channel, spice_msg_in *in);
 gint spice_channel_get_channel_id(SpiceChannel *channel);
 gint spice_channel_get_channel_type(SpiceChannel *channel);
 void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap);
+void spice_channel_set_common_capability(SpiceChannel *channel, guint32 cap);
 
 /* coroutine context */
 #define emit_main_context(object, event, args...)                       \
