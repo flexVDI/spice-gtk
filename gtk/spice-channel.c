@@ -111,6 +111,7 @@ static void spice_channel_init(SpiceChannel *channel)
     c->common_caps = g_array_new(FALSE, TRUE, sizeof(guint32));
     c->remote_caps = g_array_new(FALSE, TRUE, sizeof(guint32));
     c->remote_common_caps = g_array_new(FALSE, TRUE, sizeof(guint32));
+    spice_channel_set_common_capability(channel, SPICE_COMMON_CAP_PROTOCOL_AUTH_SELECTION);
 }
 
 static void spice_channel_constructed(GObject *gobject)
@@ -731,19 +732,18 @@ static int spice_channel_read_sasl(SpiceChannel *channel, void *data, size_t len
 {
     spice_channel *c = channel->priv;
 
-    //SPICE_DEBUG("Read SASL %p size %d offset %d", c->sasl_decoded,
-    //	   c->sasl_decoded_length, c->sasl_decoded_offset);
+    /* SPICE_DEBUG("Read %lu SASL %p size %d offset %d", len, c->sasl_decoded, */
+    /*             c->sasl_decoded_length, c->sasl_decoded_offset); */
+
     if (c->sasl_decoded == NULL || c->sasl_decoded_length == 0) {
-        char encoded[8192];  // FIXME: should not to give sasl_decode more data than the negotiated maxbufsize (see sasl_getprop).
-        int encoded_len = sizeof(encoded);
+        char encoded[8192]; /* should stay lower than maxbufsize */
         int err, ret;
 
         g_warn_if_fail(c->sasl_decoded_offset == 0);
 
-        ret = spice_channel_read_wire(channel, encoded, encoded_len);
-        if (ret < 0) {
+        ret = spice_channel_read_wire(channel, encoded, sizeof(encoded));
+        if (ret < 0)
             return ret;
-        }
 
         err = sasl_decode(c->sasl_conn, encoded, ret,
                           &c->sasl_decoded, &c->sasl_decoded_length);
@@ -767,7 +767,7 @@ static int spice_channel_read_sasl(SpiceChannel *channel, void *data, size_t len
         c->sasl_decoded_length = c->sasl_decoded_offset = 0;
         c->sasl_decoded = NULL;
     }
-    //SPICE_DEBUG("Done read write %d - %d", len, c->has_error);
+
     return len;
 }
 #endif
@@ -782,16 +782,16 @@ static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
     gsize len = length;
     int ret;
 
-    if (c->has_error) return 0; /* has_error is set by disconnect(), return no error */
-
     while (len > 0) {
+        if (c->has_error) return 0; /* has_error is set by disconnect(), return no error */
+
 #if HAVE_SASL
         if (c->sasl_conn)
             ret = spice_channel_read_sasl(channel, data, len);
         else
 #endif
             ret = spice_channel_read_wire(channel, data, len);
-        if (ret <= 0)
+        if (ret < 0)
             return ret;
         g_assert(ret <= len);
         len -= ret;
@@ -806,7 +806,7 @@ static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
 }
 
 /* coroutine context */
-static void spice_channel_send_auth(SpiceChannel *channel)
+static void spice_channel_send_spice_ticket(SpiceChannel *channel)
 {
     spice_channel *c = channel->priv;
     EVP_PKEY *pubkey;
@@ -979,13 +979,441 @@ error:
     emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_LINK);
 }
 
+#if HAVE_SASL
+/*
+ * NB, keep in sync with similar method in spice/server/reds.c
+ */
+static gchar *addr_to_string(GSocketAddress *addr)
+{
+    GInetSocketAddress *iaddr = G_INET_SOCKET_ADDRESS(addr);
+    guint16 port;
+    GInetAddress *host;
+    gchar *hoststr;
+    gchar *ret;
+
+    host = g_inet_socket_address_get_address(iaddr);
+    port = g_inet_socket_address_get_port(iaddr);
+    hoststr = g_inet_address_to_string(host);
+
+    ret = g_strdup_printf("%s;%hu", hoststr, port);
+    g_free(hoststr);
+
+    return ret;
+}
+
+static gboolean
+spice_channel_gather_sasl_credentials(SpiceChannel *channel,
+				       sasl_interact_t *interact)
+{
+    spice_channel *c;
+    int ninteract;
+
+    g_return_val_if_fail(channel != NULL, FALSE);
+    g_return_val_if_fail(channel->priv != NULL, FALSE);
+
+    c = channel->priv;
+
+    /* FIXME: we could keep connection open and ask connection details if missing */
+
+    for (ninteract = 0 ; interact[ninteract].id != 0 ; ninteract++) {
+        switch (interact[ninteract].id) {
+        case SASL_CB_AUTHNAME:
+        case SASL_CB_USER:
+            g_warn_if_reached();
+            break;
+
+        case SASL_CB_PASS:
+            if (spice_session_get_password(c->session) == NULL)
+                return FALSE;
+
+            interact[ninteract].result =  spice_session_get_password(c->session);
+            interact[ninteract].len = strlen(interact[ninteract].result);
+            break;
+        }
+    }
+
+    SPICE_DEBUG("Filled SASL interact");
+
+    return TRUE;
+}
+
+/*
+ *
+ * Init msg from server
+ *
+ *  u32 mechlist-length
+ *  u8-array mechlist-string
+ *
+ * Start msg to server
+ *
+ *  u32 mechname-length
+ *  u8-array mechname-string
+ *  u32 clientout-length
+ *  u8-array clientout-string
+ *
+ * Start msg from server
+ *
+ *  u32 serverin-length
+ *  u8-array serverin-string
+ *  u8 continue
+ *
+ * Step msg to server
+ *
+ *  u32 clientout-length
+ *  u8-array clientout-string
+ *
+ * Step msg from server
+ *
+ *  u32 serverin-length
+ *  u8-array serverin-string
+ *  u8 continue
+ */
+
+#define SASL_MAX_MECHLIST_LEN 300
+#define SASL_MAX_MECHNAME_LEN 100
+#define SASL_MAX_DATA_LEN (1024 * 1024)
+
+/* Perform the SASL authentication process
+ */
+static gboolean spice_channel_perform_auth_sasl(SpiceChannel *channel)
+{
+    spice_channel *c;
+    sasl_conn_t *saslconn = NULL;
+    sasl_security_properties_t secprops;
+    const char *clientout;
+    char *serverin = NULL;
+    unsigned int clientoutlen;
+    int err;
+    char *localAddr = NULL, *remoteAddr = NULL;
+    const void *val;
+    sasl_ssf_t ssf;
+    sasl_callback_t saslcb[] = {
+        { .id = SASL_CB_PASS },
+        { .id = 0 },
+    };
+    sasl_interact_t *interact = NULL;
+    guint32 len;
+    char *mechlist;
+    const char *mechname;
+    gboolean ret = FALSE;
+    GSocketAddress *addr;
+    guint8 complete;
+
+    g_return_val_if_fail(channel != NULL, FALSE);
+    g_return_val_if_fail(channel->priv != NULL, FALSE);
+
+    c = channel->priv;
+
+    /* Sets up the SASL library as a whole */
+    err = sasl_client_init(NULL);
+    SPICE_DEBUG("Client initialize SASL authentication %d", err);
+    if (err != SASL_OK) {
+        g_critical("failed to initialize SASL library: %d (%s)",
+                   err, sasl_errstring(err, NULL, NULL));
+        goto error;
+    }
+
+    /* Get local address in form  IPADDR:PORT */
+    addr = g_socket_get_local_address(c->sock, NULL);
+    if (!addr) {
+        g_critical("failed to get local address");
+        goto error;
+    }
+    if ((g_socket_address_get_family(addr) == G_SOCKET_FAMILY_IPV4 ||
+         g_socket_address_get_family(addr) == G_SOCKET_FAMILY_IPV6) &&
+        (localAddr = addr_to_string(addr)) == NULL)
+        goto error;
+
+    /* Get remote address in form  IPADDR:PORT */
+    addr = g_socket_get_remote_address(c->sock, NULL);
+    if (!addr) {
+        g_critical("failed to get peer address");
+        goto error;
+    }
+    if ((g_socket_address_get_family(addr) == G_SOCKET_FAMILY_IPV4 ||
+         g_socket_address_get_family(addr) == G_SOCKET_FAMILY_IPV6) &&
+        (remoteAddr = addr_to_string(addr)) == NULL)
+        goto error;
+
+    SPICE_DEBUG("Client SASL new host:'%s' local:'%s' remote:'%s'",
+                spice_session_get_host(c->session), localAddr, remoteAddr);
+
+    /* Setup a handle for being a client */
+    err = sasl_client_new("spice",
+                          spice_session_get_host(c->session),
+                          localAddr,
+                          remoteAddr,
+                          saslcb,
+                          SASL_SUCCESS_DATA,
+                          &saslconn);
+    g_free(localAddr);
+    g_free(remoteAddr);
+
+    if (err != SASL_OK) {
+        g_critical("Failed to create SASL client context: %d (%s)",
+                   err, sasl_errstring(err, NULL, NULL));
+        goto error;
+    }
+
+    if (c->ssl) {
+        sasl_ssf_t ssf;
+
+        ssf = SSL_get_cipher_bits(c->ssl, NULL);
+        err = sasl_setprop(saslconn, SASL_SSF_EXTERNAL, &ssf);
+        if (err != SASL_OK) {
+            g_critical("cannot set SASL external SSF %d (%s)",
+                       err, sasl_errstring(err, NULL, NULL));
+            goto error;
+        }
+    }
+
+    memset(&secprops, 0, sizeof secprops);
+    /* If we've got TLS, we don't care about SSF */
+    secprops.min_ssf = c->ssl ? 0 : 56; /* Equiv to DES supported by all Kerberos */
+    secprops.max_ssf = c->ssl ? 0 : 100000; /* Very strong ! AES == 256 */
+    secprops.maxbufsize = 100000;
+    /* If we're not TLS, then forbid any anonymous or trivially crackable auth */
+    secprops.security_flags = c->ssl ? 0 :
+        SASL_SEC_NOANONYMOUS | SASL_SEC_NOPLAINTEXT;
+
+    err = sasl_setprop(saslconn, SASL_SEC_PROPS, &secprops);
+    if (err != SASL_OK) {
+        g_critical("cannot set security props %d (%s)",
+                   err, sasl_errstring(err, NULL, NULL));
+        goto error;
+    }
+
+    /* Get the supported mechanisms from the server */
+    spice_channel_read(channel, &len, sizeof(len));
+    if (c->has_error)
+        goto error;
+    if (len > SASL_MAX_MECHLIST_LEN) {
+        g_critical("mechlistlen %d too long", len);
+        goto error;
+    }
+
+    mechlist = g_malloc(len + 1);
+    spice_channel_read(channel, mechlist, len);
+    mechlist[len] = '\0';
+    if (c->has_error) {
+        g_free(mechlist);
+        mechlist = NULL;
+        goto error;
+    }
+
+restart:
+    /* Start the auth negotiation on the client end first */
+    SPICE_DEBUG("Client start negotiation mechlist '%s'", mechlist);
+    err = sasl_client_start(saslconn,
+                            mechlist,
+                            &interact,
+                            &clientout,
+                            &clientoutlen,
+                            &mechname);
+    if (err != SASL_OK && err != SASL_CONTINUE && err != SASL_INTERACT) {
+        g_critical("Failed to start SASL negotiation: %d (%s)",
+                   err, sasl_errdetail(saslconn));
+        g_free(mechlist);
+        mechlist = NULL;
+        goto error;
+    }
+
+    /* Need to gather some credentials from the client */
+    if (err == SASL_INTERACT) {
+        if (!spice_channel_gather_sasl_credentials(channel, interact)) {
+            g_critical("Failed to collect auth credentials");
+            goto error;
+        }
+        goto restart;
+    }
+
+    SPICE_DEBUG("Server start negotiation with mech %s. Data %d bytes %p '%s'",
+                mechname, clientoutlen, clientout, clientout);
+
+    if (clientoutlen > SASL_MAX_DATA_LEN) {
+        g_critical("SASL negotiation data too long: %d bytes",
+                   clientoutlen);
+        goto error;
+    }
+
+    /* Send back the chosen mechname */
+    len = strlen(mechname);
+    spice_channel_write(channel, &len, sizeof(guint32));
+    spice_channel_write(channel, mechname, len);
+
+    /* NB, distinction of NULL vs "" is *critical* in SASL */
+    if (clientout) {
+        len += clientoutlen + 1;
+        spice_channel_write(channel, &len, sizeof(guint32));
+        spice_channel_write(channel, clientout, len);
+    } else {
+        len = 0;
+        spice_channel_write(channel, &len, sizeof(guint32));
+    }
+
+    if (c->has_error)
+        goto error;
+
+    SPICE_DEBUG("Getting sever start negotiation reply");
+    /* Read the 'START' message reply from server */
+    spice_channel_read(channel, &len, sizeof(len));
+    if (c->has_error)
+        goto error;
+    if (len > SASL_MAX_DATA_LEN) {
+        g_critical("SASL negotiation data too long: %d bytes",
+                   len);
+        goto error;
+    }
+
+    /* NB, distinction of NULL vs "" is *critical* in SASL */
+    if (len > 0) {
+        serverin = g_malloc(len);
+        spice_channel_read(channel, serverin, len);
+        serverin[len - 1] = '\0';
+        len--;
+    } else {
+        serverin = NULL;
+    }
+    spice_channel_read(channel, &complete, sizeof(guint8));
+    if (c->has_error)
+        goto error;
+
+    SPICE_DEBUG("Client start result complete: %d. Data %d bytes %p '%s'",
+                complete, len, serverin, serverin);
+
+    /* Loop-the-loop...
+     * Even if the server has completed, the client must *always* do at least one step
+     * in this loop to verify the server isn't lying about something. Mutual auth */
+    for (;;) {
+    restep:
+        err = sasl_client_step(saslconn,
+                               serverin,
+                               len,
+                               &interact,
+                               &clientout,
+                               &clientoutlen);
+        if (err != SASL_OK && err != SASL_CONTINUE && err != SASL_INTERACT) {
+            g_critical("Failed SASL step: %d (%s)",
+                       err, sasl_errdetail(saslconn));
+            goto error;
+        }
+
+        /* Need to gather some credentials from the client */
+        if (err == SASL_INTERACT) {
+            if (!spice_channel_gather_sasl_credentials(channel,
+                                                       interact)) {
+                g_critical("%s", "Failed to collect auth credentials");
+                goto error;
+            }
+            goto restep;
+        }
+
+        if (serverin) {
+            g_free(serverin);
+            serverin = NULL;
+        }
+
+        SPICE_DEBUG("Client step result %d. Data %d bytes %p '%s'", err, clientoutlen, clientout, clientout);
+
+        /* Previous server call showed completion & we're now locally complete too */
+        if (complete && err == SASL_OK)
+            break;
+
+        /* Not done, prepare to talk with the server for another iteration */
+
+        /* NB, distinction of NULL vs "" is *critical* in SASL */
+        if (clientout) {
+            len = clientoutlen + 1;
+            spice_channel_write(channel, &len, sizeof(guint32));
+            spice_channel_write(channel, clientout, len);
+        } else {
+            len = 0;
+            spice_channel_write(channel, &len, sizeof(guint32));
+        }
+
+        if (c->has_error)
+            goto error;
+
+        SPICE_DEBUG("Server step with %d bytes %p", clientoutlen, clientout);
+
+        spice_channel_read(channel, &len, sizeof(guint32));
+        if (c->has_error)
+            goto error;
+        if (len > SASL_MAX_DATA_LEN) {
+            g_critical("SASL negotiation data too long: %d bytes", len);
+            goto error;
+        }
+
+        /* NB, distinction of NULL vs "" is *critical* in SASL */
+        if (len) {
+            serverin = g_malloc(len);
+            spice_channel_read(channel, serverin, len);
+            serverin[len - 1] = '\0';
+            len--;
+        } else {
+            serverin = NULL;
+        }
+
+        spice_channel_read(channel, &complete, sizeof(guint8));
+        if (c->has_error)
+            goto error;
+
+        SPICE_DEBUG("Client step result complete: %d. Data %d bytes %p '%s'",
+                    complete, len, serverin, serverin);
+
+        /* This server call shows complete, and earlier client step was OK */
+        if (complete && err == SASL_OK) {
+            g_free(serverin);
+            serverin = NULL;
+            break;
+        }
+    }
+
+    /* Check for suitable SSF if non-TLS */
+    if (!c->ssl) {
+        err = sasl_getprop(saslconn, SASL_SSF, &val);
+        if (err != SASL_OK) {
+            g_critical("cannot query SASL ssf on connection %d (%s)",
+                       err, sasl_errstring(err, NULL, NULL));
+            goto error;
+        }
+        ssf = *(const int *)val;
+        SPICE_DEBUG("SASL SSF value %d", ssf);
+        if (ssf < 56) { /* 56 == DES level, good for Kerberos */
+            g_critical("negotiation SSF %d was not strong enough", ssf);
+            goto error;
+        }
+    }
+
+    SPICE_DEBUG("%s", "SASL authentication complete");
+    spice_channel_read(channel, &len, sizeof(len));
+    ret = len == SPICE_LINK_ERR_OK;
+    /* This must come *after* check-auth-result, because the former
+     * is defined to be sent unencrypted, and setting saslconn turns
+     * on the SSF layer encryption processing */
+    c->sasl_conn = saslconn;
+    return ret;
+
+error:
+    if (saslconn)
+        sasl_dispose(&saslconn);
+    if (!c->has_error)
+        emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_AUTH);
+    c->has_error = TRUE;
+    return FALSE;
+}
+#endif /* HAVE_SASL */
+
 /* coroutine context */
 static void spice_channel_recv_link_msg(SpiceChannel *channel)
 {
-    spice_channel *c = channel->priv;
+    spice_channel *c;
     int rc, num_caps, i;
 
     g_return_if_fail(channel != NULL);
+    g_return_if_fail(channel->priv != NULL);
+
+    c = channel->priv;
 
     rc = spice_channel_read(channel, (uint8_t*)c->peer_msg + c->peer_pos,
                             c->peer_hdr.size - c->peer_pos);
@@ -1033,7 +1461,30 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
     }
 
     c->state = SPICE_CHANNEL_STATE_AUTH;
-    spice_channel_send_auth(channel);
+    if (!spice_channel_test_common_capability(channel,
+            SPICE_COMMON_CAP_PROTOCOL_AUTH_SELECTION)) {
+        SPICE_DEBUG("Server supports spice ticket auth only");
+        spice_channel_send_spice_ticket(channel);
+    } else {
+        SpiceLinkAuthMechanism auth = { 0, };
+
+#if HAVE_SASL
+        if (spice_channel_test_common_capability(channel, SPICE_COMMON_CAP_AUTH_SASL)) {
+            SPICE_DEBUG("Choosing SASL mechanism");
+            auth.auth_mechanism = SPICE_COMMON_CAP_AUTH_SASL;
+            spice_channel_write(channel, &auth, sizeof(auth));
+            spice_channel_perform_auth_sasl(channel);
+        } else
+#endif
+        if (spice_channel_test_common_capability(channel, SPICE_COMMON_CAP_AUTH_SPICE)) {
+            auth.auth_mechanism = SPICE_COMMON_CAP_AUTH_SPICE;
+            spice_channel_write(channel, &auth, sizeof(auth));
+            spice_channel_send_spice_ticket(channel);
+        } else {
+            g_warning("No compatible AUTH mechanism");
+            goto error;
+        }
+    }
 
     return;
 
@@ -1173,14 +1624,17 @@ void spice_channel_recv_msg(SpiceChannel *channel,
     if (in->parsed == NULL) {
         g_critical("failed to parse message: %s type %d",
                    c->name, in->header.type);
-        return;
+        goto end;
     }
 
     /* process message */
     c->msg_in = NULL; /* the function is reentrant, reset state */
+    /* spice_msg_in_hexdump(in); */
     msg_handler(channel, in, data);
 
+end:
     /* release message */
+    c->msg_in = NULL;
     spice_msg_in_unref(in);
 }
 
@@ -1311,11 +1765,20 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
 
     if (ret & (G_IO_ERR|G_IO_HUP)) {
         SPICE_DEBUG("got socket error before read(): %d", ret);
+        emit_main_context(channel, SPICE_CHANNEL_EVENT,
+                          c->state == SPICE_CHANNEL_STATE_READY ?
+                          SPICE_CHANNEL_ERROR_IO : SPICE_CHANNEL_ERROR_LINK);
         c->has_error = TRUE;
         return FALSE;
     }
 
-    SPICE_CHANNEL_GET_CLASS(channel)->iterate_read(channel);
+    do
+        SPICE_CHANNEL_GET_CLASS(channel)->iterate_read(channel);
+#if HAVE_SASL
+    while (c->sasl_decoded != NULL);
+#else
+    while (FALSE);
+#endif
 
     return TRUE;
 }
@@ -1799,4 +2262,23 @@ void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap)
         s->ssl = ssl;
         s->sslverify = sslverify;
     }
+
+#if HAVE_SASL
+    {
+        sasl_conn_t *sasl_conn = c->sasl_conn;
+        const char *sasl_decoded = c->sasl_decoded;
+        unsigned int sasl_decoded_length = c->sasl_decoded_length;
+        unsigned int sasl_decoded_offset = c->sasl_decoded_offset;
+
+        c->sasl_conn = s->sasl_conn;
+        c->sasl_decoded = s->sasl_decoded;
+        c->sasl_decoded_length = s->sasl_decoded_length;
+        c->sasl_decoded_offset = s->sasl_decoded_offset;
+
+        s->sasl_conn = sasl_conn;
+        s->sasl_decoded = sasl_decoded;
+        s->sasl_decoded_length = sasl_decoded_length;
+        s->sasl_decoded_offset = sasl_decoded_offset;
+    }
+#endif
 }
