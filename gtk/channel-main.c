@@ -582,22 +582,35 @@ static void agent_msg_queue(SpiceMainChannel *channel, int type, int size, void 
 {
     spice_main_channel *c = channel->priv;
     spice_msg_out *out;
-    VDAgentMessage *msg;
+    VDAgentMessage msg;
     void *payload;
+    guint32 paysize;
+    guint8 *d = data;
 
+    g_assert(VD_AGENT_MAX_DATA_SIZE > sizeof(VDAgentMessage)); // could be a static compilation check
+
+    msg.protocol = VD_AGENT_PROTOCOL;
+    msg.type = type;
+    msg.opaque = 0;
+    msg.size = size;
+
+    paysize = MIN(VD_AGENT_MAX_DATA_SIZE, size + sizeof(VDAgentMessage));
     out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_AGENT_DATA);
-    msg = (VDAgentMessage*)
-        spice_marshaller_reserve_space(out->marshaller, sizeof(VDAgentMessage));
-    payload = (VDAgentMonitorsConfig*)
-        spice_marshaller_reserve_space(out->marshaller, size);
-
-    msg->protocol = VD_AGENT_PROTOCOL;
-    msg->type = type;
-    msg->opaque = 0;
-    msg->size = size;
-    memcpy(payload, data, size);
-
+    payload = spice_marshaller_reserve_space(out->marshaller, paysize);
+    memcpy(payload, &msg, sizeof(VDAgentMessage));
+    memcpy(payload + sizeof(VDAgentMessage), d, paysize - sizeof(VDAgentMessage));
+    size -= (paysize - sizeof(VDAgentMessage));
+    d += (paysize - sizeof(VDAgentMessage));
     g_queue_push_tail(c->agent_msg_queue, out);
+
+    while ((paysize = MIN(VD_AGENT_MAX_DATA_SIZE, size)) > 0) {
+        out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_AGENT_DATA);
+        payload = spice_marshaller_reserve_space(out->marshaller, paysize);
+        memcpy(payload, d, paysize);
+        g_queue_push_tail(c->agent_msg_queue, out);
+        size -= paysize;
+        d += paysize;
+    }
 }
 
 /* any context: the message is not flushed immediately,
