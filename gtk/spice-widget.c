@@ -996,6 +996,27 @@ static const struct {
     },{
         .vdagent = VD_AGENT_CLIPBOARD_UTF8_TEXT,
         .xatom   = "text/plain"
+    },{
+        .vdagent = VD_AGENT_CLIPBOARD_IMAGE_PNG,
+        .xatom   = "image/png"
+    },{
+        .vdagent = VD_AGENT_CLIPBOARD_IMAGE_BMP,
+        .xatom   = "image/bmp"
+    },{
+        .vdagent = VD_AGENT_CLIPBOARD_IMAGE_BMP,
+        .xatom   = "image/x-bmp"
+    },{
+        .vdagent = VD_AGENT_CLIPBOARD_IMAGE_BMP,
+        .xatom   = "image/x-MS-bmp"
+    },{
+        .vdagent = VD_AGENT_CLIPBOARD_IMAGE_BMP,
+        .xatom   = "image/x-win-bitmap"
+    },{
+        .vdagent = VD_AGENT_CLIPBOARD_IMAGE_TIFF,
+        .xatom   = "image/tiff"
+    },{
+        .vdagent = VD_AGENT_CLIPBOARD_IMAGE_JPG,
+        .xatom   = "image/jpeg"
     }
 };
 

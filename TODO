@@ -1,5 +1,4 @@
 * sync audio with GStreamer backend
 * multihead
 * use libspice-common instead of common/
-* clipboard images
 * TunnelChannel?
