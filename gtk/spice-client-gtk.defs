@@ -481,6 +481,48 @@
   )
 )
 
+(define-function spice_main_clipboard_selection_grab
+  (c-name "spice_main_clipboard_selection_grab")
+  (return-type "none")
+  (parameters
+    '("SpiceMainChannel*" "channel")
+    '("guint" "selection")
+    '("guint32*" "types")
+    '("int" "ntypes")
+  )
+)
+
+(define-function spice_main_clipboard_selection_release
+  (c-name "spice_main_clipboard_selection_release")
+  (return-type "none")
+  (parameters
+    '("SpiceMainChannel*" "channel")
+    '("guint" "selection")
+  )
+)
+
+(define-function spice_main_clipboard_selection_notify
+  (c-name "spice_main_clipboard_selection_notify")
+  (return-type "none")
+  (parameters
+    '("SpiceMainChannel*" "channel")
+    '("guint" "selection")
+    '("guint32" "type")
+    '("const-guchar*" "data")
+    '("size_t" "size")
+  )
+)
+
+(define-function spice_main_clipboard_selection_request
+  (c-name "spice_main_clipboard_selection_request")
+  (return-type "none")
+  (parameters
+    '("SpiceMainChannel*" "channel")
+    '("guint" "selection")
+    '("guint32" "type")
+  )
+)
+
 
 
 ;; From channel-display.h

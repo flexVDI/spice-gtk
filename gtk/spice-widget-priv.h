@@ -73,6 +73,7 @@ struct spice_display {
 #endif
 
     GtkClipboard            *clipboard;
+    GtkClipboard            *clipboard_primary;
     GtkTargetEntry          *clip_targets;
     guint                   nclip_targets;
     bool                    clip_hasdata;

@@ -68,7 +68,7 @@ AM_CPPFLAGS = \
 
 # http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 SPICE_GTK_LDFLAGS_COMMON =		\
-	-version-number 1:0:0		\
+	-version-number 1:1:0		\
 	-no-undefined			\
 	$(VERSION_LDFLAGS)		\
 	$(NULL)
@@ -120,7 +120,7 @@ libspice_client_gtkinclude_HEADERS =	\
 	$(NULL)
 
 libspice_client_glib_2_0_la_LDFLAGS =	\
-	-version-number 2:0:1		\
+	-version-number 3:0:2		\
 	-no-undefined			\
 	$(VERSION_LDFLAGS)		\
 	$(NULL)

@@ -60,6 +60,11 @@ void spice_main_clipboard_release(SpiceMainChannel *channel);
 void spice_main_clipboard_notify(SpiceMainChannel *channel, guint32 type, const guchar *data, size_t size);
 void spice_main_clipboard_request(SpiceMainChannel *channel, guint32 type);
 
+void spice_main_clipboard_selection_grab(SpiceMainChannel *channel, guint selection, guint32 *types, int ntypes);
+void spice_main_clipboard_selection_release(SpiceMainChannel *channel, guint selection);
+void spice_main_clipboard_selection_notify(SpiceMainChannel *channel, guint selection, guint32 type, const guchar *data, size_t size);
+void spice_main_clipboard_selection_request(SpiceMainChannel *channel, guint selection, guint32 type);
+
 G_END_DECLS
 
 #endif /* __SPICE_CLIENT_MAIN_CHANNEL_H__ */

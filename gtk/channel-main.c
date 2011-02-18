@@ -106,6 +106,10 @@ enum {
     SPICE_MAIN_CLIPBOARD_GRAB,
     SPICE_MAIN_CLIPBOARD_REQUEST,
     SPICE_MAIN_CLIPBOARD_RELEASE,
+    SPICE_MAIN_CLIPBOARD_SELECTION,
+    SPICE_MAIN_CLIPBOARD_SELECTION_GRAB,
+    SPICE_MAIN_CLIPBOARD_SELECTION_REQUEST,
+    SPICE_MAIN_CLIPBOARD_SELECTION_RELEASE,
     SPICE_MIGRATION_STARTED,
     SPICE_MAIN_LAST_SIGNAL,
 };
@@ -379,7 +383,7 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
 
     /* TODO use notify instead */
     /**
-     * SpiceMainChannel::main-clipboard:
+     * SpiceMainChannel::main-agent-update:
      * @main: the #SpiceMainChannel that emitted the signal
      *
      * Notify when the %SpiceMainChannel:agent-connected or
@@ -402,6 +406,8 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
      * @size: size of @data in bytes
      *
      * Provides guest clipboard data requested by spice_main_clipboard_request().
+     *
+     * Deprecated: 0.6: use SpiceMainChannel::main-clipboard-selection instead.
      **/
     signals[SPICE_MAIN_CLIPBOARD] =
         g_signal_new("main-clipboard",
@@ -415,6 +421,23 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                      G_TYPE_UINT, G_TYPE_POINTER, G_TYPE_UINT);
 
     /**
+     * SpiceMainChannel::main-clipboard-selection:
+     * @main: the #SpiceMainChannel that emitted the signal
+     *
+     * Since: 0.6
+     **/
+    signals[SPICE_MAIN_CLIPBOARD_SELECTION] =
+        g_signal_new("main-clipboard-selection",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_LAST,
+                     0,
+                     NULL, NULL,
+                     g_cclosure_user_marshal_VOID__UINT_UINT_POINTER_UINT,
+                     G_TYPE_NONE,
+                     4,
+                     G_TYPE_UINT, G_TYPE_UINT, G_TYPE_POINTER, G_TYPE_UINT);
+
+    /**
      * SpiceMainChannel::main-clipboard-grab:
      * @main: the #SpiceMainChannel that emitted the signal
      * @types: the VD_AGENT_CLIPBOARD data types
@@ -422,6 +445,8 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
      *
      * Inform when clipboard data is available from the guest, and for
      * which @types.
+     *
+     * Deprecated: 0.6: use SpiceMainChannel::main-clipboard-selection-grab instead.
      **/
     signals[SPICE_MAIN_CLIPBOARD_GRAB] =
         g_signal_new("main-clipboard-grab",
@@ -435,6 +460,28 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                      G_TYPE_POINTER, G_TYPE_UINT);
 
     /**
+     * SpiceMainChannel::main-clipboard-selection-grab:
+     * @main: the #SpiceMainChannel that emitted the signal
+     * @types: the VD_AGENT_CLIPBOARD data types
+     * @ntypes: the number of @types
+     *
+     * Inform when clipboard data is available from the guest, and for
+     * which @types.
+     *
+     * Since: 0.6
+     **/
+    signals[SPICE_MAIN_CLIPBOARD_SELECTION_GRAB] =
+        g_signal_new("main-clipboard-selection-grab",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_LAST,
+                     0,
+                     NULL, NULL,
+                     g_cclosure_user_marshal_BOOLEAN__UINT_POINTER_UINT,
+                     G_TYPE_BOOLEAN,
+                     3,
+                     G_TYPE_UINT, G_TYPE_POINTER, G_TYPE_UINT);
+
+    /**
      * SpiceMainChannel::main-clipboard-request:
      * @main: the #SpiceMainChannel that emitted the signal
      * @types: the VD_AGENT_CLIPBOARD request type
@@ -442,6 +489,7 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
      *
      * Request clipbard data from the client.
      *
+     * Deprecated: 0.6: use SpiceMainChannel::main-clipboard-selection-request instead.
      **/
     signals[SPICE_MAIN_CLIPBOARD_REQUEST] =
         g_signal_new("main-clipboard-request",
@@ -455,12 +503,34 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                      G_TYPE_UINT);
 
     /**
+     * SpiceMainChannel::main-clipboard-selection-request:
+     * @main: the #SpiceMainChannel that emitted the signal
+     * @types: the VD_AGENT_CLIPBOARD request type
+     * Returns: %TRUE if the request is successful
+     *
+     * Request clipbard data from the client.
+     *
+     * Since: 0.6
+     **/
+    signals[SPICE_MAIN_CLIPBOARD_SELECTION_REQUEST] =
+        g_signal_new("main-clipboard-selection-request",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_LAST,
+                     0,
+                     NULL, NULL,
+                     g_cclosure_user_marshal_BOOLEAN__UINT_UINT,
+                     G_TYPE_BOOLEAN,
+                     2,
+                     G_TYPE_UINT, G_TYPE_UINT);
+
+    /**
      * SpiceMainChannel::main-clipboard-release:
      * @main: the #SpiceMainChannel that emitted the signal
      *
      * Inform when the clipboard is released from the guest, when no
      * clipboard data is available from the guest.
      *
+     * Deprecated: 0.6: use SpiceMainChannel::main-clipboard-selection-release instead.
      **/
     signals[SPICE_MAIN_CLIPBOARD_RELEASE] =
         g_signal_new("main-clipboard-release",
@@ -471,6 +541,26 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                      g_cclosure_marshal_VOID__VOID,
                      G_TYPE_NONE,
                      0);
+
+    /**
+     * SpiceMainChannel::main-clipboard-selection-release:
+     * @main: the #SpiceMainChannel that emitted the signal
+     *
+     * Inform when the clipboard is released from the guest, when no
+     * clipboard data is available from the guest.
+     *
+     * Since: 0.6
+     **/
+    signals[SPICE_MAIN_CLIPBOARD_SELECTION_RELEASE] =
+        g_signal_new("main-clipboard-selection-release",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_LAST,
+                     0,
+                     NULL, NULL,
+                     g_cclosure_marshal_VOID__UINT,
+                     G_TYPE_NONE,
+                     1,
+                     G_TYPE_UINT);
 
     /**
      * SpiceMainChannel::migration-started:
@@ -526,6 +616,30 @@ struct SPICE_MAIN_CLIPBOARD_REQUEST {
     gboolean *ret;
 };
 
+struct SPICE_MAIN_CLIPBOARD_SELECTION {
+    guint8 selection;
+    guint type;
+    gpointer data;
+    gsize size;
+};
+
+struct SPICE_MAIN_CLIPBOARD_SELECTION_GRAB {
+    guint8 selection;
+    gpointer types;
+    gsize ntypes;
+    gboolean *ret;
+};
+
+struct SPICE_MAIN_CLIPBOARD_SELECTION_REQUEST {
+    guint8 selection;
+    guint type;
+    gboolean *ret;
+};
+
+struct SPICE_MAIN_CLIPBOARD_SELECTION_RELEASE {
+    guint8 selection;
+};
+
 /* main context */
 static void do_emit_main_context(GObject *object, int signum, gpointer params)
 {
@@ -552,6 +666,30 @@ static void do_emit_main_context(GObject *object, int signum, gpointer params)
         struct SPICE_MAIN_CLIPBOARD_REQUEST *p = params;
         g_signal_emit(object, signals[signum], 0,
                       p->type, p->ret);
+        break;
+    }
+    case SPICE_MAIN_CLIPBOARD_SELECTION: {
+        struct SPICE_MAIN_CLIPBOARD_SELECTION *p = params;
+        g_signal_emit(object, signals[signum], 0,
+                      p->selection, p->type, p->data, p->size);
+        break;
+    }
+    case SPICE_MAIN_CLIPBOARD_SELECTION_GRAB: {
+        struct SPICE_MAIN_CLIPBOARD_SELECTION_GRAB *p = params;
+        g_signal_emit(object, signals[signum], 0,
+                      p->selection, p->types, p->ntypes, p->ret);
+        break;
+    }
+    case SPICE_MAIN_CLIPBOARD_SELECTION_REQUEST: {
+        struct SPICE_MAIN_CLIPBOARD_SELECTION_REQUEST *p = params;
+        g_signal_emit(object, signals[signum], 0,
+                      p->selection, p->type, p->ret);
+        break;
+    }
+    case SPICE_MAIN_CLIPBOARD_SELECTION_RELEASE: {
+        struct SPICE_MAIN_CLIPBOARD_SELECTION_RELEASE *p = params;
+        g_signal_emit(object, signals[signum], 0,
+                      p->selection);
         break;
     }
     default:
@@ -706,16 +844,22 @@ static void agent_announce_caps(SpiceMainChannel *channel)
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_REPLY);
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_DISPLAY_CONFIG);
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_CLIPBOARD_BY_DEMAND);
+    VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_CLIPBOARD_SELECTION);
 
     agent_msg_queue(channel, VD_AGENT_ANNOUNCE_CAPABILITIES, size, caps);
     free(caps);
 }
 
+#define HAS_CLIPBOARD_SELECTION(c) \
+    VD_AGENT_HAS_CAPABILITY((c)->agent_caps, sizeof((c)->agent_caps), VD_AGENT_CAP_CLIPBOARD_SELECTION)
+
 /* any context: the message is not flushed immediately,
    you can wakeup() the channel coroutine or send_msg_queue() */
-static void agent_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int ntypes)
+static void agent_clipboard_grab(SpiceMainChannel *channel, guint selection,
+                                 guint32 *types, int ntypes)
 {
     spice_main_channel *c = channel->priv;
+    guint8 *msg;
     VDAgentClipboardGrab *grab;
     size_t size;
     int i;
@@ -727,22 +871,38 @@ static void agent_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int 
         sizeof(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
 
     size = sizeof(VDAgentClipboardGrab) + sizeof(uint32_t) * ntypes;
-    grab = spice_malloc0(size);
+    if (HAS_CLIPBOARD_SELECTION(c))
+        size += 4;
+    else if (selection != VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD) {
+        SPICE_DEBUG("Ignoring clipboard grab");
+        return;
+    }
+
+    msg = g_alloca(size);
+    memset(msg, 0, size);
+
+    grab = (VDAgentClipboardGrab *)msg;
+
+    if (HAS_CLIPBOARD_SELECTION(c)) {
+        msg[0] = selection;
+        grab = (VDAgentClipboardGrab *)(msg + 4);
+    }
+
     for (i = 0; i < ntypes; i++) {
         grab->types[i] = types[i];
     }
 
-    agent_msg_queue(channel, VD_AGENT_CLIPBOARD_GRAB, size, grab);
-    free(grab);
+    agent_msg_queue(channel, VD_AGENT_CLIPBOARD_GRAB, size, msg);
 }
 
 /* any context: the message is not flushed immediately,
    you can wakeup() the channel coroutine or send_msg_queue() */
-static void agent_clipboard_notify(SpiceMainChannel *channel,
+static void agent_clipboard_notify(SpiceMainChannel *channel, guint selection,
                                    guint32 type, const guchar *data, size_t size)
 {
     spice_main_channel *c = channel->priv;
     VDAgentClipboard *cb;
+    guint8 *msg;
     size_t msgsize;
 
     g_return_if_fail(c->agent_connected);
@@ -751,43 +911,88 @@ static void agent_clipboard_notify(SpiceMainChannel *channel,
         sizeof(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
 
     msgsize = sizeof(VDAgentClipboard) + size;
-    cb = spice_malloc0(msgsize);
+    if (HAS_CLIPBOARD_SELECTION(c))
+        msgsize += 4;
+    else if (selection != VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD) {
+        SPICE_DEBUG("Ignoring clipboard notify");
+        return;
+    }
+
+    msg = g_alloca(msgsize);
+    memset(msg, 0, msgsize);
+
+    cb = (VDAgentClipboard *)msg;
+
+    if (HAS_CLIPBOARD_SELECTION(c)) {
+        msg[0] = selection;
+        cb = (VDAgentClipboard *)(msg + 4);
+    }
+
     cb->type = type;
     memcpy(cb->data, data, size);
 
-    agent_msg_queue(channel, VD_AGENT_CLIPBOARD, msgsize, cb);
-    free(cb);
+    agent_msg_queue(channel, VD_AGENT_CLIPBOARD, msgsize, msg);
 }
 
 /* any context: the message is not flushed immediately,
    you can wakeup() the channel coroutine or send_msg_queue() */
-static void agent_clipboard_request(SpiceMainChannel *channel, guint32 type)
+static void agent_clipboard_request(SpiceMainChannel *channel, guint selection, guint32 type)
 {
     spice_main_channel *c = channel->priv;
-    VDAgentClipboardRequest request = { 0, };
+    VDAgentClipboardRequest *request;
+    guint8 *msg;
+    size_t msgsize;
 
     g_return_if_fail(c->agent_connected);
 
     g_return_if_fail(VD_AGENT_HAS_CAPABILITY(c->agent_caps,
         sizeof(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
 
-    request.type = type;
+    msgsize = sizeof(VDAgentClipboardRequest);
+    if (HAS_CLIPBOARD_SELECTION(c))
+        msgsize += 4;
+    else if (selection != VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD) {
+        SPICE_DEBUG("Ignoring clipboard request");
+        return;
+    }
 
-    agent_msg_queue(channel, VD_AGENT_CLIPBOARD_REQUEST, sizeof(VDAgentClipboardRequest), &request);
+    msg = g_alloca(msgsize);
+    memset(msg, 0, msgsize);
+
+    request = (VDAgentClipboardRequest *)msg;
+
+    if (HAS_CLIPBOARD_SELECTION(c)) {
+        msg[0] = selection;
+        request = (VDAgentClipboardRequest *)(msg + 4);
+    }
+
+    request->type = type;
+
+    agent_msg_queue(channel, VD_AGENT_CLIPBOARD_REQUEST, msgsize, msg);
 }
 
 /* any context: the message is not flushed immediately,
    you can wakeup() the channel coroutine or send_msg_queue() */
-static void agent_clipboard_release(SpiceMainChannel *channel)
+static void agent_clipboard_release(SpiceMainChannel *channel, guint selection)
 {
     spice_main_channel *c = channel->priv;
+    guint8 msg[4] = { 0, };
+    guint8 msgsize = 0;
 
     g_return_if_fail(c->agent_connected);
 
     g_return_if_fail(VD_AGENT_HAS_CAPABILITY(c->agent_caps,
         sizeof(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
 
-    agent_msg_queue(channel, VD_AGENT_CLIPBOARD_REQUEST, 0, NULL);
+    if (HAS_CLIPBOARD_SELECTION(c)) {
+        msg[0] = selection;
+        msgsize += 4;
+    } else if (selection != VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD) {
+        SPICE_DEBUG("Ignoring clipboard release");
+        return;
+    }
+
+    agent_msg_queue(channel, VD_AGENT_CLIPBOARD_RELEASE, msgsize, msg);
 }
 
 /* coroutine context  */
@@ -952,6 +1157,22 @@ static void main_agent_handle_msg(SpiceChannel *channel,
                                   VDAgentMessage *msg, gpointer payload)
 {
     spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
+    guint8 selection = VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD;
+
+    switch (msg->type) {
+    case VD_AGENT_CLIPBOARD_RELEASE:
+    case VD_AGENT_CLIPBOARD_REQUEST:
+    case VD_AGENT_CLIPBOARD_GRAB:
+    case VD_AGENT_CLIPBOARD:
+        if (VD_AGENT_HAS_CAPABILITY(c->agent_caps, sizeof(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_SELECTION)) {
+            selection = *((guint8*)payload);
+            payload = ((guint8*)payload) + 4;
+            msg->size -= 4;
+        }
+        break;
+    default:
+        break;
+    }
 
     switch (msg->type) {
     case VD_AGENT_ANNOUNCE_CAPABILITIES:
@@ -987,28 +1208,42 @@ static void main_agent_handle_msg(SpiceChannel *channel,
     case VD_AGENT_CLIPBOARD:
     {
         VDAgentClipboard *cb = payload;
-        emit_main_context(channel, SPICE_MAIN_CLIPBOARD,
+        emit_main_context(channel, SPICE_MAIN_CLIPBOARD_SELECTION, selection,
                           cb->type, cb->data, msg->size - sizeof(VDAgentClipboard));
+
+       if (selection == VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD)
+            emit_main_context(channel, SPICE_MAIN_CLIPBOARD,
+                              cb->type, cb->data, msg->size - sizeof(VDAgentClipboard));
         break;
     }
     case VD_AGENT_CLIPBOARD_GRAB:
     {
         gboolean ret;
-        emit_main_context(channel, SPICE_MAIN_CLIPBOARD_GRAB,
-                          payload, msg->size / sizeof(uint32_t), &ret);
+        emit_main_context(channel, SPICE_MAIN_CLIPBOARD_SELECTION_GRAB, selection,
+                          (guint8*)payload, msg->size / sizeof(uint32_t), &ret);
+        if (selection == VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD)
+            emit_main_context(channel, SPICE_MAIN_CLIPBOARD_GRAB,
+                              payload, msg->size / sizeof(uint32_t), &ret);
         break;
     }
     case VD_AGENT_CLIPBOARD_REQUEST:
     {
         gboolean ret;
         VDAgentClipboardRequest *req = payload;
-        emit_main_context(channel, SPICE_MAIN_CLIPBOARD_REQUEST,
+        emit_main_context(channel, SPICE_MAIN_CLIPBOARD_SELECTION_REQUEST, selection,
                           req->type, &ret);
+
+        if (selection == VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD)
+            emit_main_context(channel, SPICE_MAIN_CLIPBOARD_REQUEST,
+                              req->type, &ret);
         break;
     }
     case VD_AGENT_CLIPBOARD_RELEASE:
     {
-        emit_main_context(channel, SPICE_MAIN_CLIPBOARD_RELEASE);
+        emit_main_context(channel, SPICE_MAIN_CLIPBOARD_SELECTION_RELEASE, selection);
+
+        if (selection == VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD)
+            emit_main_context(channel, SPICE_MAIN_CLIPBOARD_RELEASE);
         break;
     }
     case VD_AGENT_REPLY:
@@ -1414,13 +1649,32 @@ void spice_main_set_display(SpiceMainChannel *channel, int id,
  * @ntypes: the number of @types
  *
  * Grab the guest clipboard, with #VD_AGENT_CLIPBOARD @types.
+ *
+ * Deprecated: 0.6: use spice_main_clipboard_selection_grab() instead.
  **/
 void spice_main_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int ntypes)
+{
+    spice_main_clipboard_selection_grab(channel, VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD, types, ntypes);
+}
+
+/**
+ * spice_main_clipboard_selection_grab:
+ * @channel:
+ * @selection: one of the clipboard #VD_AGENT_CLIPBOARD_SELECTION_*
+ * @types: an array of #VD_AGENT_CLIPBOARD types available in the clipboard
+ * @ntypes: the number of @types
+ *
+ * Grab the guest clipboard, with #VD_AGENT_CLIPBOARD @types.
+ *
+ * Since: 0.6
+ **/
+void spice_main_clipboard_selection_grab(SpiceMainChannel *channel, guint selection,
+                                         guint32 *types, int ntypes)
 {
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
-    agent_clipboard_grab(channel, types, ntypes);
+    agent_clipboard_grab(channel, selection, types, ntypes);
     spice_channel_wakeup(SPICE_CHANNEL(channel));
 }
 
@@ -1430,8 +1684,25 @@ void spice_main_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int nt
  *
  * Release the clipboard (for example, when the client looses the
  * clipboard grab): Inform the guest no clipboard data is available.
+ *
+ * Deprecated: 0.6: use spice_main_clipboard_selection_release() instead.
  **/
 void spice_main_clipboard_release(SpiceMainChannel *channel)
+{
+    spice_main_clipboard_selection_release(channel, VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD);
+}
+
+/**
+ * spice_main_clipboard_selection_release:
+ * @channel:
+ * @selection: one of the clipboard #VD_AGENT_CLIPBOARD_SELECTION_*
+ *
+ * Release the clipboard (for example, when the client looses the
+ * clipboard grab): Inform the guest no clipboard data is available.
+ *
+ * Since: 0.6
+ **/
+void spice_main_clipboard_selection_release(SpiceMainChannel *channel, guint selection)
 {
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
@@ -1441,7 +1712,7 @@ void spice_main_clipboard_release(SpiceMainChannel *channel)
     if (!c->agent_connected)
         return;
 
-    agent_clipboard_release(channel);
+    agent_clipboard_release(channel, selection);
     spice_channel_wakeup(SPICE_CHANNEL(channel));
 }
 
@@ -1453,14 +1724,35 @@ void spice_main_clipboard_release(SpiceMainChannel *channel)
  * @size: data length in bytes
  *
  * Send the clipboard data to the guest.
+ *
+ * Deprecated: 0.6: use spice_main_clipboard_selection_notify() instead.
  **/
 void spice_main_clipboard_notify(SpiceMainChannel *channel,
                                  guint32 type, const guchar *data, size_t size)
 {
+    spice_main_clipboard_selection_notify(channel, VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD,
+                                          type, data, size);
+}
+
+/**
+ * spice_main_clipboard_selection_notify:
+ * @channel:
+ * @selection: one of the clipboard #VD_AGENT_CLIPBOARD_SELECTION_*
+ * @type: a #VD_AGENT_CLIPBOARD type
+ * @data: clipboard data
+ * @size: data length in bytes
+ *
+ * Send the clipboard data to the guest.
+ *
+ * Since: 0.6
+ **/
+void spice_main_clipboard_selection_notify(SpiceMainChannel *channel, guint selection,
+                                           guint32 type, const guchar *data, size_t size)
+{
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
-    agent_clipboard_notify(channel, type, data, size);
+    agent_clipboard_notify(channel, selection, type, data, size);
     spice_channel_wakeup(SPICE_CHANNEL(channel));
 }
 
@@ -1471,12 +1763,30 @@ void spice_main_clipboard_notify(SpiceMainChannel *channel,
  *
  * Request clipboard data of @type from the guest. The reply is sent
  * through the #SpiceMainChannel::main-clipboard signal.
+ *
+ * Deprecated: 0.6: use spice_main_clipboard_selection_request() instead.
  **/
 void spice_main_clipboard_request(SpiceMainChannel *channel, guint32 type)
+{
+    spice_main_clipboard_selection_request(channel, VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD, type);
+}
+
+/**
+ * spice_main_clipboard_selection_request:
+ * @channel:
+ * @selection: one of the clipboard #VD_AGENT_CLIPBOARD_SELECTION_*
+ * @type: a #VD_AGENT_CLIPBOARD type
+ *
+ * Request clipboard data of @type from the guest. The reply is sent
+ * through the #SpiceMainChannel::main-clipboard signal.
+ *
+ * Since: 0.6
+ **/
+void spice_main_clipboard_selection_request(SpiceMainChannel *channel, guint selection, guint32 type)
 {
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
-    agent_clipboard_request(channel, type);
+    agent_clipboard_request(channel, selection, type);
     spice_channel_wakeup(SPICE_CHANNEL(channel));
 }
