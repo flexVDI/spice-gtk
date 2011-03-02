@@ -1,4 +1,6 @@
-* sync audio with GStreamer backend
+* smartcard
+* adaptive client resolution
 * multihead
+* sync audio with GStreamer backend
 * use libspice-common instead of common/
 * TunnelChannel?
