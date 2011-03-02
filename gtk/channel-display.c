@@ -77,6 +77,13 @@ struct spice_display_channel {
 
 G_DEFINE_TYPE(SpiceDisplayChannel, spice_display_channel, SPICE_TYPE_CHANNEL)
 
+/* Properties */
+enum {
+    PROP_0,
+    PROP_WIDTH,
+    PROP_HEIGHT,
+};
+
 enum {
     SPICE_DISPLAY_PRIMARY_CREATE,
     SPICE_DISPLAY_PRIMARY_DESTROY,
@@ -115,14 +122,71 @@ static void spice_display_channel_finalize(GObject *obj)
         G_OBJECT_CLASS(spice_display_channel_parent_class)->finalize(obj);
 }
 
+static void spice_display_get_property(GObject    *object,
+                                       guint       prop_id,
+                                       GValue     *value,
+                                       GParamSpec *pspec)
+{
+    spice_display_channel *c = SPICE_DISPLAY_CHANNEL(object)->priv;
+
+    switch (prop_id) {
+    case PROP_WIDTH: {
+        display_surface *surface = find_surface(c, 0);
+        g_value_set_uint(value, surface ? surface->width : 0);
+        break;
+    }
+    case PROP_HEIGHT: {
+        display_surface *surface = find_surface(c, 0);
+        g_value_set_uint(value, surface ? surface->height : 0);
+        break;
+    }
+    default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+        break;
+    }
+}
+
+static void spice_display_set_property(GObject      *object,
+                                       guint         prop_id,
+                                       const GValue *value,
+                                       GParamSpec   *pspec)
+{
+    switch (prop_id) {
+    default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+        break;
+    }
+}
+
 static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
     SpiceChannelClass *channel_class = SPICE_CHANNEL_CLASS(klass);
 
     gobject_class->finalize     = spice_display_channel_finalize;
+    gobject_class->get_property = spice_display_get_property;
+    gobject_class->set_property = spice_display_set_property;
+
     channel_class->handle_msg   = spice_display_handle_msg;
     channel_class->channel_up   = spice_display_channel_up;
+
+    g_object_class_install_property
+        (gobject_class, PROP_HEIGHT,
+         g_param_spec_uint("height",
+                           "Display height",
+                           "The primary surface height",
+                           0, G_MAXUINT, 0,
+                           G_PARAM_READABLE |
+                           G_PARAM_STATIC_STRINGS));
+
+    g_object_class_install_property
+        (gobject_class, PROP_WIDTH,
+         g_param_spec_uint("width",
+                           "Display width",
+                           "The primary surface width",
+                           0, G_MAXUINT, 0,
+                           G_PARAM_READABLE |
+                           G_PARAM_STATIC_STRINGS));
 
     /**
      * SpiceDisplayChannel::display-primary-create:
