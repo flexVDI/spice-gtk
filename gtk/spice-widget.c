@@ -202,6 +202,8 @@ static void spice_display_destroy(GtkObject *obj)
                                          display);
     g_signal_handlers_disconnect_by_func(d->clipboard, G_CALLBACK(clipboard_owner_change),
                                          display);
+    g_signal_handlers_disconnect_by_func(d->clipboard_primary, G_CALLBACK(clipboard_owner_change),
+                                         display);
 
     disconnect_main(display);
     disconnect_display(display);
