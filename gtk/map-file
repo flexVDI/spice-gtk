@@ -12,6 +12,7 @@ spice_channel_new;
 spice_channel_open_fd;
 spice_channel_set_capability;
 spice_channel_test_capability;
+spice_channel_test_common_capability;
 spice_cursor_channel_get_type;
 spice_display_channel_get_type;
 spice_display_copy_to_guest;
