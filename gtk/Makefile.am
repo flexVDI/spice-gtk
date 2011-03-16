@@ -43,6 +43,7 @@ SPICE_COMMON_CPPFLAGS = \
 	-DG_LOG_DOMAIN=\"GSpice\"       \
 	-DSW_CANVAS_CACHE		\
 	-DSPICE_GTK_LOCALEDIR=\"${SPICE_GTK_LOCALEDIR}\" \
+	-DPNP_IDS=\""$(PNP_IDS)"\"\
 	\
 	-I$(COMMON_DIR)			\
 	-I$(CLIENT_DIR)			\
@@ -253,15 +254,31 @@ libspice_client_glibinclude_HEADERS =	\
 	$(NULL)
 
 
-spicy_SOURCES =				\
-	spicy.c				\
-	spice-cmdline.h			\
-	spice-cmdline.c			\
+spicy_SOURCES =					\
+	spicy.c					\
+	display/edid.h				\
+	display/edid-parse.c			\
+	display/display-name.c			\
+	display/gnome-rr-config.c		\
+	display/gnome-rr-config.h		\
+	display/gnome-rr-output-info.c		\
+	display/gnome-rr-output-info.h		\
+	display/gnome-rr-private.h		\
+	display/gnome-rr.c			\
+	display/gnome-rr.h			\
+	spice-cmdline.h				\
+	spice-cmdline.c				\
 	$(NULL)
 
 spicy_LDADD =				\
 	libspice-client-gtk-$(SPICE_GTK_API_VERSION).la		\
 	libspice-client-glib-2.0.la		\
+	$(XRANDR_LIBS)			\
+	$(NULL)
+
+spicy_CPPFLAGS =			\
+	$(AM_CPPFLAGS)			\
+	$(XRANDR_CFLAGS)		\
 	$(NULL)
 
 

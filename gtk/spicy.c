@@ -22,9 +22,16 @@
 #include <glib/gi18n.h>
 
 #include <sys/stat.h>
+
+#define GNOME_DESKTOP_USE_UNSTABLE_API 2
+#include "display/gnome-rr.h"
+#include "display/gnome-rr-config.h"
+
 #include "spice-widget.h"
 #include "spice-audio.h"
 #include "spice-common.h"
+#include "spice-cmdline.h"
+
 #include "spice-cmdline.h"
 
 /* config */
@@ -52,6 +59,7 @@ struct spice_window {
     GtkUIManager     *ui;
     bool             fullscreen;
     bool             mouse_grabbed;
+    SpiceChannel     *channel;
 };
 
 struct spice_connection {
@@ -67,6 +75,8 @@ struct spice_connection {
 static GMainLoop     *mainloop;
 static int           connections;
 static GKeyFile      *keyfile;
+static GnomeRRScreen *rrscreen;
+static GnomeRRConfig *rrsaved;
 
 static spice_connection *connection_new(void);
 static void connection_connect(spice_connection *conn);
@@ -369,7 +379,6 @@ static gboolean window_state_cb(GtkWidget *widget, GdkEventWindowState *event,
 				gpointer data)
 {
     struct spice_window *win = data;
-
     if (event->changed_mask & GDK_WINDOW_STATE_FULLSCREEN) {
         win->fullscreen = event->new_window_state & GDK_WINDOW_STATE_FULLSCREEN;
         if (win->fullscreen) {
@@ -618,7 +627,38 @@ static void recent_item_activated_cb(GtkRecentChooser *chooser, gpointer data)
     connection_connect(conn);
 }
 
-static spice_window *create_spice_window(spice_connection *conn, int id)
+static void resolution_change(struct spice_window *win)
+{
+}
+
+static void resolution_restore(struct spice_window *win)
+{
+}
+
+static gboolean configure_event_cb(GtkWidget         *widget,
+                                   GdkEventConfigure *event,
+                                   gpointer           data)
+{
+    gboolean resize_guest;
+    struct spice_window *win = data;
+    guint w, h;
+
+    g_object_get(win->spice, "resize-guest", &resize_guest, NULL);
+    if (resize_guest)
+        return FALSE;
+
+    g_object_get(win->channel, "width", &w, "height", &h, NULL);
+    g_message("test: %d %d win %d %d %d", w, h, event->width, event->height, win->fullscreen);
+    if (win->fullscreen) {
+        resolution_change(win);
+    } else {
+        resolution_restore(win);
+    }
+
+    return FALSE;
+}
+
+static spice_window *create_spice_window(spice_connection *conn, int id, SpiceChannel *channel)
 {
     char title[32];
     struct spice_window *win;
@@ -636,6 +676,7 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
     memset(win,0,sizeof(*win));
     win->id = id;
     win->conn = conn;
+    win->channel = channel;
     g_message("create window (#%d)", win->id);
 
     /* toplevel */
@@ -682,6 +723,7 @@ static spice_window *create_spice_window(spice_connection *conn, int id)
 
     /* spice display */
     win->spice = GTK_WIDGET(spice_display_new(conn->session, id));
+    g_signal_connect(win->spice, "configure-event", G_CALLBACK(configure_event_cb), win);
     seq = spice_grab_sequence_new_from_string("Shift+F12");
     spice_display_set_grab_keys(SPICE_DISPLAY(win->spice), seq);
     spice_grab_sequence_free(seq);
@@ -905,7 +947,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         if (conn->wins[id] != NULL)
             return;
         SPICE_DEBUG("new display channel (#%d)", id);
-        conn->wins[id] = create_spice_window(conn, id);
+        conn->wins[id] = create_spice_window(conn, id, channel);
     }
 
     if (SPICE_IS_INPUTS_CHANNEL(channel)) {
@@ -1013,6 +1055,28 @@ static void connection_destroy(spice_connection *conn)
     g_main_loop_quit(mainloop);
 }
 
+static void
+on_screen_changed(GnomeRRScreen *scr, gpointer data)
+{
+    GError *error = NULL;
+
+    rrsaved = gnome_rr_config_new_current(rrscreen, &error);
+    if (!rrsaved) {
+        g_warning("Can't get current display config: %s", error->message);
+        goto end;
+    }
+    g_clear_error(&error);
+
+    if (!gnome_rr_config_apply_with_time(rrsaved, rrscreen,
+                                         gtk_get_current_event_time (), &error)) {
+        g_warning("Can't restore display config: %s", error->message);
+    }
+    g_clear_error(&error);
+
+end:
+    g_clear_error(&error);
+}
+
 /* ------------------------------------------------------------------ */
 
 static GOptionEntry cmd_entries[] = {
@@ -1058,8 +1122,7 @@ int main(int argc, char *argv[])
     if (!g_key_file_load_from_file(keyfile, conf_file,
                                    G_KEY_FILE_KEEP_COMMENTS|G_KEY_FILE_KEEP_TRANSLATIONS, &error)) {
         SPICE_DEBUG("Couldn't load configuration: %s", error->message);
-        g_error_free(error);
-        error = NULL;
+        g_clear_error(&error);
     }
 
     /* parse opts */
@@ -1082,6 +1145,10 @@ int main(int argc, char *argv[])
 
     g_type_init();
     mainloop = g_main_loop_new(NULL, false);
+    rrscreen = gnome_rr_screen_new(gdk_screen_get_default (), &error);
+    g_warn_if_fail(rrscreen != NULL);
+    g_signal_connect(rrscreen, "changed", G_CALLBACK(on_screen_changed), NULL);
+    on_screen_changed(rrscreen, NULL);
 
     conn = connection_new();
     spice_cmdline_session_setup(conn->session);

@@ -166,7 +166,7 @@ if test "x$with_sasl" != "xno"; then
     SASL_LIBS="$SASL_LIBS -lsasl"
   else
     AC_MSG_ERROR([You must install the Cyrus SASL development package in order to compile GTK-VNC])
-  fi
+ fi
   CFLAGS="$old_cflags"
   LIBS="$old_libs"
   if test "x$with_sasl2" = "xyes" -o "x$with_sasl" = "xyes" ; then
@@ -210,6 +210,24 @@ AM_CONDITIONAL([HAVE_GTK_3],[test "$with_gtk" = "3.0"])
 PKG_CHECK_MODULES(GTK, gtk+-$GTK_API_VERSION >= $GTK_REQUIRED)
 AC_SUBST(GTK_CFLAGS)
 AC_SUBST(GTK_LIBS)
+
+PKG_CHECK_MODULES(XRANDR, x11 xrandr)
+AC_SUBST(XRANDR_CFLAGS)
+AC_SUBST(XRANDR_LIBS)
+AC_DEFINE(HAVE_RANDR, 1, [Define if the xrandr library is present])
+AC_ARG_WITH(pnp-ids-path,
+              [AC_HELP_STRING([--with-pnp-ids-path],
+                              [Specify the path to pnp.ids @<:@default=(internal)@:>@])],,
+                              [with_pnp_ids_path="\${pnpdatadir}/pnp.ids"])
+
+AM_CONDITIONAL(USE_INTERNAL_PNP_IDS, test "x$with_pnp_ids_path" = "x\${pnpdatadir}/pnp.ids")
+PNP_IDS=$with_pnp_ids_path
+AC_SUBST(PNP_IDS)
+if test "x$with_pnp_ids_path" = "x\${pnpdatadir}/pnp.ids"; then
+        EXTERNAL_PNP_IDS="no (internal)"
+else
+        EXTERNAL_PNP_IDS="$with_pnp_ids_path"
+fi
 
 PKG_CHECK_MODULES(GLIB2, glib-2.0 >= 2.22)
 AC_SUBST(GLIB2_CFLAGS)
