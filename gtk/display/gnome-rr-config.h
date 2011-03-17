@@ -143,6 +143,7 @@ gboolean            gnome_rr_config_applicable   (GnomeRRConfig  *configuration,
 gboolean            gnome_rr_config_get_clone    (GnomeRRConfig  *configuration);
 void                gnome_rr_config_set_clone    (GnomeRRConfig  *configuration, gboolean clone);
 GnomeRROutputInfo **gnome_rr_config_get_outputs  (GnomeRRConfig  *configuration);
+GString            *gnome_rr_config_dump        (GnomeRRConfig  *configuration);
 
 char *gnome_rr_config_get_backup_filename (void);
 char *gnome_rr_config_get_intended_filename (void);

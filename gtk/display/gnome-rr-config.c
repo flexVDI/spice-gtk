@@ -1236,6 +1236,16 @@ gnome_rr_config_ensure_primary (GnomeRRConfig *configuration)
         return !found;
 }
 
+GString *
+gnome_rr_config_dump (GnomeRRConfig *configuration)
+{
+  GString *output;
+
+  output = g_string_new ("");
+  emit_configuration (configuration, output);
+  return output;
+}
+
 gboolean
 gnome_rr_config_save (GnomeRRConfig *configuration, GError **error)
 {
