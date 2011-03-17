@@ -39,6 +39,7 @@ On Fedora: gtk2-devel or gtk3-devel and
 spice-protocol pygtk2-devel intltool celt051-devel
 openssl-devel pulseaudio-libs-devel pixman-devel python perl-Text-CSV
 gobject-introspection-devel libjpeg-turbo-devel zlib-devel
+cyrus-sasl-devel
 
 You can also build with the experimental GStreamer backend.
 
