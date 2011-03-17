@@ -59,7 +59,7 @@ struct spice_window {
     GtkUIManager     *ui;
     bool             fullscreen;
     bool             mouse_grabbed;
-    SpiceChannel     *channel;
+    SpiceChannel     *display_channel;
 };
 
 struct spice_connection {
@@ -68,15 +68,17 @@ struct spice_connection {
     SpiceAudio       *audio;
     char             *mouse_state;
     char             *agent_state;
+    gboolean         agent_connected;
     int              channels;
     int              disconnecting;
 };
 
-static GMainLoop     *mainloop;
-static int           connections;
-static GKeyFile      *keyfile;
-static GnomeRRScreen *rrscreen;
-static GnomeRRConfig *rrsaved;
+static GMainLoop     *mainloop = NULL;
+static int           connections = 0;
+static GKeyFile      *keyfile = NULL;
+static GnomeRRScreen *rrscreen = NULL;
+static GnomeRRConfig *rrsaved = NULL;
+static GnomeRRConfig *rrcurrent = NULL;
 
 static spice_connection *connection_new(void);
 static void connection_connect(spice_connection *conn);
@@ -627,12 +629,182 @@ static void recent_item_activated_cb(GtkRecentChooser *chooser, gpointer data)
     connection_connect(conn);
 }
 
-static void resolution_change(struct spice_window *win)
+static GnomeRROutputInfo *
+get_nearest_output (GnomeRRConfig *configuration, int x, int y)
 {
+  int i;
+  int nearest_index;
+  int nearest_dist;
+  GnomeRROutputInfo **outputs;
+
+  nearest_index = -1;
+  nearest_dist = G_MAXINT;
+
+  outputs = gnome_rr_config_get_outputs (configuration);
+  for (i = 0; outputs[i] != NULL; i++)
+    {
+      int dist_x, dist_y;
+      int output_x, output_y, output_width, output_height;
+
+      if (!(gnome_rr_output_info_is_connected (outputs[i]) && gnome_rr_output_info_is_active (outputs[i])))
+	continue;
+
+      gnome_rr_output_info_get_geometry (outputs[i], &output_x, &output_y, &output_width, &output_height);
+
+      if (x < output_x)
+	dist_x = output_x - x;
+      else if (x >= output_x + output_width)
+	dist_x = x - (output_x + output_width) + 1;
+      else
+	dist_x = 0;
+
+      if (y < output_y)
+	dist_y = output_y - y;
+      else if (y >= output_y + output_height)
+	dist_y = y - (output_y + output_height) + 1;
+      else
+	dist_y = 0;
+
+      if (MIN (dist_x, dist_y) < nearest_dist)
+	{
+	  nearest_dist = MIN (dist_x, dist_y);
+	  nearest_index = i;
+	}
+    }
+
+  if (nearest_index != -1)
+    return outputs[nearest_index];
+  else
+    return NULL;
 }
 
-static void resolution_restore(struct spice_window *win)
+#if !GTK_CHECK_VERSION (2, 91, 0)
+#define gdk_window_get_geometry(win,x,y,w,h) gdk_window_get_geometry(win,x,y,w,h,NULL)
+#endif
+
+static GnomeRROutputInfo *
+get_output_for_window(GnomeRRConfig *configuration, GdkWindow *window)
 {
+  GdkRectangle win_rect;
+  int i;
+  int largest_area;
+  int largest_index;
+  GnomeRROutputInfo **outputs;
+
+  gdk_window_get_geometry (window, &win_rect.x, &win_rect.y, &win_rect.width, &win_rect.height);
+  gdk_window_get_origin (window, &win_rect.x, &win_rect.y);
+
+  largest_area = 0;
+  largest_index = -1;
+
+  outputs = gnome_rr_config_get_outputs (configuration);
+  for (i = 0; outputs[i] != NULL; i++)
+    {
+      GdkRectangle output_rect, intersection;
+
+      gnome_rr_output_info_get_geometry (outputs[i], &output_rect.x, &output_rect.y, &output_rect.width, &output_rect.height);
+
+      if (gnome_rr_output_info_is_connected (outputs[i]) && gdk_rectangle_intersect (&win_rect, &output_rect, &intersection))
+	{
+	  int area;
+
+	  area = intersection.width * intersection.height;
+	  if (area > largest_area)
+	    {
+	      largest_area = area;
+	      largest_index = i;
+	    }
+	}
+    }
+
+  if (largest_index != -1)
+    return outputs[largest_index];
+  else
+    return get_nearest_output (configuration,
+			       win_rect.x + win_rect.width / 2,
+			       win_rect.y + win_rect.height / 2);
+}
+
+#if 0
+static GnomeRROutputInfo *get_primary_output() {
+    GnomeRROutputInfo **outputs;
+    GnomeRROutputInfo *output;
+    guint i;
+
+    outputs = gnome_rr_config_get_outputs (rrcurrent);
+    for (i = 0; outputs[i] != NULL; ++i) {
+        output = outputs[i];
+        if (!gnome_rr_output_info_is_connected (output))
+            continue;
+        if (gnome_rr_output_info_get_primary (output))
+            break;
+    }
+    output = outputs[i];
+    g_return_if_fail(output != NULL);
+    return output;
+}
+#endif
+
+static void
+on_screen_changed(GnomeRRScreen *scr, gpointer data)
+{
+    GError *error = NULL;
+    GnomeRRConfig *current;
+
+    current = gnome_rr_config_new_current(rrscreen, &error);
+    if (!current) {
+        g_warning("Can't get current display config: %s", error->message);
+        goto end;
+    }
+
+    if (rrcurrent)
+        g_object_unref(rrcurrent);
+    rrcurrent = current;
+
+end:
+    g_clear_error(&error);
+}
+
+static void resolution_fullscreen(struct spice_window *win)
+{
+    GnomeRROutputInfo *output;
+    int x, y, width, height;
+    GError *error = NULL;;
+
+    if (!rrsaved) {
+        rrsaved = gnome_rr_config_new_current(rrscreen, &error);
+        g_clear_error(&error);
+    }
+
+    output = get_output_for_window(rrcurrent, gtk_widget_get_window(win->spice));
+    g_return_if_fail(output != NULL);
+
+    gnome_rr_output_info_get_geometry (output, &x, &y, &width, &height);
+    g_object_get(win->display_channel, "width", &width, "height", &height, NULL);
+    gnome_rr_output_info_set_geometry (output, x, y, width, height);
+
+    if (!gnome_rr_config_apply_with_time(rrcurrent, rrscreen,
+                                         gtk_get_current_event_time (), &error)) {
+        g_warning("Can't set display config: %s", error->message);
+    }
+    g_clear_error(&error);
+}
+
+static void resolution_restore(void)
+{
+    GError *error = NULL;;
+
+    if (!rrsaved)
+        return;
+
+    if (!gnome_rr_config_apply_with_time(rrsaved, rrscreen,
+                                         gtk_get_current_event_time (), &error)) {
+        g_warning("Can't restore display config: %s", error->message);
+    }
+    g_clear_error(&error);
+
+    g_object_unref(rrsaved);
+    rrsaved = NULL;
 }
 
 static gboolean configure_event_cb(GtkWidget         *widget,
@@ -641,19 +813,18 @@ static gboolean configure_event_cb(GtkWidget         *widget,
 {
     gboolean resize_guest;
     struct spice_window *win = data;
-    guint w, h;
+
+    g_return_val_if_fail(win != NULL, FALSE);
+    g_return_val_if_fail(win->conn != NULL, FALSE);
 
     g_object_get(win->spice, "resize-guest", &resize_guest, NULL);
-    if (resize_guest)
+    if (resize_guest && win->conn->agent_connected)
         return FALSE;
 
-    g_object_get(win->channel, "width", &w, "height", &h, NULL);
-    g_message("test: %d %d win %d %d %d", w, h, event->width, event->height, win->fullscreen);
-    if (win->fullscreen) {
-        resolution_change(win);
-    } else {
-        resolution_restore(win);
-    }
+    if (win->fullscreen)
+        resolution_fullscreen(win);
+    else
+        resolution_restore();
 
     return FALSE;
 }
@@ -676,7 +847,7 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     memset(win,0,sizeof(*win));
     win->id = id;
     win->conn = conn;
-    win->channel = channel;
+    win->display_channel = channel;
     g_message("create window (#%d)", win->id);
 
     /* toplevel */
@@ -900,10 +1071,9 @@ static void main_mouse_update(SpiceChannel *channel, gpointer data)
 static void main_agent_update(SpiceChannel *channel, gpointer data)
 {
     spice_connection *conn = data;
-    gboolean agent_connected;
 
-    g_object_get(channel, "agent-connected", &agent_connected, NULL);
-    conn->agent_state = agent_connected ? _("yes") : _("no");
+    g_object_get(channel, "agent-connected", &conn->agent_connected, NULL);
+    conn->agent_state = conn->agent_connected ? _("yes") : _("no");
     update_status(conn->wins[0]);
 }
 
@@ -1055,28 +1225,6 @@ static void connection_destroy(spice_connection *conn)
     g_main_loop_quit(mainloop);
 }
 
-static void
-on_screen_changed(GnomeRRScreen *scr, gpointer data)
-{
-    GError *error = NULL;
-
-    rrsaved = gnome_rr_config_new_current(rrscreen, &error);
-    if (!rrsaved) {
-        g_warning("Can't get current display config: %s", error->message);
-        goto end;
-    }
-    g_clear_error(&error);
-
-    if (!gnome_rr_config_apply_with_time(rrsaved, rrscreen,
-                                         gtk_get_current_event_time (), &error)) {
-        g_warning("Can't restore display config: %s", error->message);
-    }
-    g_clear_error(&error);
-
-end:
-    g_clear_error(&error);
-}
-
 /* ------------------------------------------------------------------ */
 
 static GOptionEntry cmd_entries[] = {
@@ -1098,6 +1246,40 @@ static GOptionEntry cmd_entries[] = {
     }
 };
 
+static void (* segv_handler) (int) = SIG_DFL;
+static void (* abrt_handler) (int) = SIG_DFL;
+static void (* fpe_handler)  (int) = SIG_DFL;
+static void (* ill_handler)  (int) = SIG_DFL;
+#ifndef WIN32
+static void (* bus_handler)  (int) = SIG_DFL;
+#endif
+
+static void
+signal_handler(int signum)
+{
+    static gint recursion = FALSE;
+
+    /*
+     * reset all signal handlers: any further crashes should just be allowed
+     * to crash normally.
+     * */
+    signal(SIGSEGV, segv_handler);
+    signal(SIGABRT, abrt_handler);
+    signal(SIGFPE,  fpe_handler);
+    signal(SIGILL,  ill_handler);
+#ifndef WIN32
+    signal(SIGBUS,  bus_handler);
+#endif
+
+    /* Stop bizarre loops */
+    if (recursion)
+        abort ();
+
+    recursion = TRUE;
+
+    g_main_loop_quit(mainloop);
+}
+
 int main(int argc, char *argv[])
 {
     GError *error = NULL;
@@ -1109,6 +1291,17 @@ int main(int argc, char *argv[])
     bindtextdomain(GETTEXT_PACKAGE, SPICE_GTK_LOCALEDIR);
     bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
     textdomain(GETTEXT_PACKAGE);
+
+    signal(SIGINT, signal_handler);
+    signal(SIGTERM, signal_handler);
+    signal(SIGHUP, signal_handler);
+    segv_handler = signal(SIGSEGV, signal_handler);
+    abrt_handler = signal(SIGABRT, signal_handler);
+    fpe_handler  = signal(SIGFPE,  signal_handler);
+    ill_handler  = signal(SIGILL,  signal_handler);
+#ifndef WIN32
+    bus_handler  = signal(SIGBUS,  signal_handler);
+#endif
 
     keyfile = g_key_file_new();
 
@@ -1165,6 +1358,8 @@ int main(int argc, char *argv[])
     }
 
     g_free(conf_file);
+
+    resolution_restore();
 
     return 0;
 }
