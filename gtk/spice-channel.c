@@ -822,6 +822,8 @@ static void spice_channel_send_spice_ticket(SpiceChannel *channel)
 
     BIO_write(bioKey, c->peer_msg->pub_key, SPICE_TICKET_PUBKEY_BYTES);
     pubkey = d2i_PUBKEY_bio(bioKey, NULL);
+    g_return_if_fail(pubkey != NULL);
+
     rsa = pubkey->pkey.rsa;
     nRSASize = RSA_size(rsa);
 
