@@ -43,65 +43,6 @@ AC_C_BIGENDIAN
 AC_PATH_PROGS(PYTHON, python2 python)
 RRA_LD_VERSION_SCRIPT
 
-# Check for the CPU we are using
-#
-AC_MSG_CHECKING(for x86 or x86-64 platform)
-case $host_cpu in
-  i386|i486|i586|i686|i786|k6|k7|arm|armv7)
-	variant=32
-        ;;
-  x86_64)
-	variant=64
-	;;
-  *)
-	AC_MSG_RESULT(no)
-	echo Only x86 and x86-64 are supported
-	exit 1
-esac
-AC_MSG_RESULT($variant bit)
-AM_CONDITIONAL([X86_64], [test "$variant" = 64])
-
-AC_MSG_CHECKING([for native Win32])
-case "$host" in
-  *-*-mingw*)
-    os_win32=yes
-    ;;
-  *)
-    os_win32=no
-    ;;
-esac
-AC_MSG_RESULT([$os_win32])
-
-case $host in
-  *-*-linux*)
-    os_linux=yes
-    ;;
-esac
-
-dnl =========================================================================
-dnl Check OS target
-
-AC_MSG_CHECKING([for some Win32 platform])
-case "$host" in
-  *-*-mingw*|*-*-cygwin*)
-    platform_win32=yes
-    ;;
-  *)
-    platform_win32=no
-    ;;
-esac
-AC_MSG_RESULT([$platform_win32])
-if test "$platform_win32" = yes; then
-  red_target=windows
-else
-  red_target=x11
-fi
-AC_SUBST(red_target)
-
-AM_CONDITIONAL(OS_WIN32, test "$os_win32" = "yes")
-AM_CONDITIONAL(OS_UNIX, test "$os_win32" != "yes")
-AM_CONDITIONAL(OS_LINUX, test "$os_linux" = "yes")
-
 AC_CHECK_HEADERS([sys/ipc.h sys/shm.h])
 AC_CHECK_HEADERS([sys/socket.h netinet/in.h arpa/inet.h])
 
@@ -211,10 +152,16 @@ PKG_CHECK_MODULES(GTK, gtk+-$GTK_API_VERSION >= $GTK_REQUIRED)
 AC_SUBST(GTK_CFLAGS)
 AC_SUBST(GTK_LIBS)
 
-PKG_CHECK_MODULES(XRANDR, x11 xrandr)
+PKG_CHECK_MODULES(X11, x11, [have_x11=yes], [have_x11=no])
+AC_SUBST(X11_CFLAGS)
+AC_SUBST(X11_LIBS)
+AS_IF([test "x$have_x11" = "xyes"], [AC_DEFINE([HAVE_X11], 1, [Have x11?])])
+
+PKG_CHECK_MODULES(XRANDR, x11 xrandr, [have_xrandr=yes], [have_xrandr=no])
 AC_SUBST(XRANDR_CFLAGS)
 AC_SUBST(XRANDR_LIBS)
-AC_DEFINE(HAVE_RANDR, 1, [Define if the xrandr library is present])
+AS_IF([test "x$have_xrandr" = "xyes"], [AC_DEFINE([HAVE_RANDR], 1, [Have xrandr?])])
+
 AC_ARG_WITH(pnp-ids-path,
               [AC_HELP_STRING([--with-pnp-ids-path],
                               [Specify the path to pnp.ids @<:@default=(internal)@:>@])],,
