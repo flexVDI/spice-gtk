@@ -35,16 +35,18 @@ struct GnomeRRScreenPrivate
 {
     GdkScreen *			gdk_screen;
     GdkWindow *			gdk_root;
+    ScreenInfo *		info;
+
+#ifdef HAVE_X11
     Display *			xdisplay;
     Screen *			xscreen;
     Window			xroot;
-    ScreenInfo *		info;
 
     int				randr_event_base;
     int				rr_major_version;
     int				rr_minor_version;
-
     Atom                        connector_type_atom;
+#endif
 };
 
 struct GnomeRROutputInfoPrivate

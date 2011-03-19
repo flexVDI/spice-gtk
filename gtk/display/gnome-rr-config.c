@@ -33,8 +33,10 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 
+#ifdef HAVE_X11
 #include <X11/Xlib.h>
 #include <gdk/gdkx.h>
+#endif
 
 #include "gnome-rr-config.h"
 
@@ -1921,8 +1923,9 @@ crtc_assignment_apply (CrtcAssignment *assign, guint32 timestamp, GError **error
      * apps that listen for RANDR notifications will only receive the final
      * status.
      */
-
+#ifdef HAVE_X11
     gdk_x11_display_grab (gdk_screen_get_display (assign->screen->priv->gdk_screen));
+#endif
 
     /* Turn off all crtcs that are currently displaying outside the new screen,
      * or are not used in the new setup
@@ -1986,7 +1989,8 @@ crtc_assignment_apply (CrtcAssignment *assign, guint32 timestamp, GError **error
 
     gnome_rr_screen_set_primary_output (assign->screen, assign->primary);
 
+#ifdef HAVE_X11
     gdk_x11_display_ungrab (gdk_screen_get_display (assign->screen->priv->gdk_screen));
-
+#endif
     return success;
 }
