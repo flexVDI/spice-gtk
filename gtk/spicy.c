@@ -1294,12 +1294,12 @@ int main(int argc, char *argv[])
 
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
-    signal(SIGHUP, signal_handler);
     segv_handler = signal(SIGSEGV, signal_handler);
     abrt_handler = signal(SIGABRT, signal_handler);
     fpe_handler  = signal(SIGFPE,  signal_handler);
     ill_handler  = signal(SIGILL,  signal_handler);
 #ifndef WIN32
+    signal(SIGHUP, signal_handler);
     bus_handler  = signal(SIGBUS,  signal_handler);
 #endif
 
