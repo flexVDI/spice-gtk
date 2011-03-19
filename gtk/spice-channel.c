@@ -648,9 +648,9 @@ static void spice_channel_flush_sasl(SpiceChannel *channel, const void *data, si
 /* coroutine context */
 static void spice_channel_write(SpiceChannel *channel, const void *data, size_t len)
 {
+#if HAVE_SASL
     spice_channel *c = channel->priv;
 
-#if HAVE_SASL
     if (c->sasl_conn)
         spice_channel_flush_sasl(channel, data, len);
     else
