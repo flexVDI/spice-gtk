@@ -1,6 +1,7 @@
 * smartcard
-* adaptive client resolution
 * multihead
 * sync audio with GStreamer backend
 * use libspice-common instead of common/
 * TunnelChannel?
+* port/build cyrus-sasl for windows?
+* adapt client resolution for windows
