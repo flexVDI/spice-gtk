@@ -157,6 +157,8 @@ AC_SUBST(X11_CFLAGS)
 AC_SUBST(X11_LIBS)
 AS_IF([test "x$have_x11" = "xyes"], [AC_DEFINE([HAVE_X11], 1, [Have x11?])])
 
+AM_CONDITIONAL([WITH_DISPLAY_X11], [test "x$have_x11" = "xyes"])
+
 PKG_CHECK_MODULES(XRANDR, x11 xrandr, [have_xrandr=yes], [have_xrandr=no])
 AC_SUBST(XRANDR_CFLAGS)
 AC_SUBST(XRANDR_LIBS)

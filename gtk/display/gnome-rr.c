@@ -28,47 +28,13 @@
 #include <glib/gi18n-lib.h>
 #include <string.h>
 
-#ifdef HAVE_RANDR
-#include <X11/extensions/Xrandr.h>
-#endif
-
 #include <gtk/gtk.h>
-
-#ifdef HAVE_X11
-#include <X11/Xlib.h>
-#include <gdk/gdkx.h>
-#include <X11/Xatom.h>
-#endif
 
 #undef GNOME_DISABLE_DEPRECATED
 #include "gnome-rr.h"
 #include "gnome-rr-config.h"
 
 #include "gnome-rr-private.h"
-
-#define DISPLAY(o) ((o)->info->screen->priv->xdisplay)
-
-#ifndef HAVE_RANDR
-/* This is to avoid a ton of ifdefs wherever we use a type from libXrandr */
-typedef int RROutput;
-typedef int RRCrtc;
-typedef int RRMode;
-typedef int Rotation;
-#define RR_Rotate_0		1
-#define RR_Rotate_90		2
-#define RR_Rotate_180		4
-#define RR_Rotate_270		8
-#define RR_Reflect_X		16
-#define RR_Reflect_Y		32
-#endif
-
-#ifdef HAVE_RANDR
-#define RANDR_LIBRARY_IS_AT_LEAST_1_3 (RANDR_MAJOR > 1 || (RANDR_MAJOR == 1 && RANDR_MINOR >= 3))
-#else
-#define RANDR_LIBRARY_IS_AT_LEAST_1_3 0
-#endif
-
-#define SERVERS_RANDR_IS_AT_LEAST_1_3(priv) (priv->rr_major_version > 1 || (priv->rr_major_version == 1 && priv->rr_minor_version >= 3))
 
 enum {
     SCREEN_PROP_0,
@@ -82,56 +48,6 @@ enum {
 };
 
 gint screen_signals[SCREEN_SIGNAL_LAST];
-
-struct GnomeRROutput
-{
-    ScreenInfo *	info;
-    RROutput		id;
-
-    char *		name;
-    GnomeRRCrtc *	current_crtc;
-    gboolean		connected;
-    gulong		width_mm;
-    gulong		height_mm;
-    GnomeRRCrtc **	possible_crtcs;
-    GnomeRROutput **	clones;
-    GnomeRRMode **	modes;
-    int			n_preferred;
-    guint8 *		edid_data;
-    int         edid_size;
-    char *              connector_type;
-};
-
-struct GnomeRROutputWrap
-{
-    RROutput		id;
-};
-
-struct GnomeRRCrtc
-{
-    ScreenInfo *	info;
-    RRCrtc		id;
-
-    GnomeRRMode *	current_mode;
-    GnomeRROutput **	current_outputs;
-    GnomeRROutput **	possible_outputs;
-    int			x;
-    int			y;
-
-    GnomeRRRotation	current_rotation;
-    GnomeRRRotation	rotations;
-    int			gamma_size;
-};
-
-struct GnomeRRMode
-{
-    ScreenInfo *	info;
-    RRMode		id;
-    char *		name;
-    int			width;
-    int			height;
-    int			freq;		/* in mHz */
-};
 
 /* GnomeRRCrtc */
 #ifdef HAVE_RANDR

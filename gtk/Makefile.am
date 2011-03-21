@@ -253,9 +253,7 @@ libspice_client_glibinclude_HEADERS =	\
 	channel-record.h		\
 	$(NULL)
 
-
-spicy_SOURCES =					\
-	spicy.c					\
+displaysrc = \
 	display/edid.h				\
 	display/edid-parse.c			\
 	display/display-name.c			\
@@ -266,8 +264,19 @@ spicy_SOURCES =					\
 	display/gnome-rr-private.h		\
 	display/gnome-rr.c			\
 	display/gnome-rr.h			\
+	$(NULL)
+
+if WITH_DISPLAY_X11
+displaysrc += display/gnome-rr-x11.c
+else
+displaysrc += display/gnome-rr-windows.c
+endif
+
+spicy_SOURCES =					\
+	spicy.c					\
 	spice-cmdline.h				\
 	spice-cmdline.c				\
+	$(displaysrc)				\
 	$(NULL)
 
 spicy_LDADD =				\
