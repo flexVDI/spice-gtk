@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 /* gnome-rr-private.h
  *
  * Copyright 2007, 2008, Red Hat, Inc.
@@ -149,7 +150,6 @@ struct GnomeRRMode
 {
     ScreenInfo *	info;
     RRMode		id;
-    char *		name;
     int			width;
     int			height;
     int			freq;		/* in mHz */
