@@ -1340,9 +1340,9 @@ int main(int argc, char *argv[])
     mainloop = g_main_loop_new(NULL, false);
     rrscreen = gnome_rr_screen_new(gdk_screen_get_default (), &error);
     g_warn_if_fail(rrscreen != NULL);
-    g_signal_connect(rrscreen, "changed", G_CALLBACK(on_screen_changed), NULL);
+    if (rrscreen)
+        g_signal_connect(rrscreen, "changed", G_CALLBACK(on_screen_changed), NULL);
     on_screen_changed(rrscreen, NULL);
-
     conn = connection_new();
     spice_cmdline_session_setup(conn->session);
     connection_connect(conn);

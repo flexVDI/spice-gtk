@@ -26,9 +26,24 @@
 #define GNOME_RR_PRIVATE_H
 
 #include <config.h>
+#include <gtk/gtk.h>
 
 #ifdef HAVE_RANDR
 #include <X11/extensions/Xrandr.h>
+#endif
+
+#ifndef HAVE_RANDR
+/* This is to avoid a ton of ifdefs wherever we use a type from libXrandr */
+typedef int RROutput;
+typedef int RRCrtc;
+typedef int RRMode;
+typedef int Rotation;
+#define RR_Rotate_0		1
+#define RR_Rotate_90		2
+#define RR_Rotate_180		4
+#define RR_Rotate_270		8
+#define RR_Reflect_X		16
+#define RR_Reflect_Y		32
 #endif
 
 typedef struct ScreenInfo ScreenInfo;
@@ -40,10 +55,6 @@ struct ScreenInfo
     int			min_height;
     int			max_height;
 
-#ifdef HAVE_RANDR
-    XRRScreenResources *resources;
-#endif
-
     GnomeRROutput **	outputs;
     GnomeRRCrtc **	crtcs;
     GnomeRRMode **	modes;
@@ -53,6 +64,7 @@ struct ScreenInfo
     GnomeRRMode **	clone_modes;
 
 #ifdef HAVE_RANDR
+    XRRScreenResources *resources;
     RROutput            primary;
 #endif
 };
@@ -60,19 +72,7 @@ struct ScreenInfo
 struct GnomeRRScreenPrivate
 {
     GdkScreen *			gdk_screen;
-    GdkWindow *			gdk_root;
     ScreenInfo *		info;
-
-#ifdef HAVE_X11
-    Display *			xdisplay;
-    Screen *			xscreen;
-    Window			xroot;
-
-    int				randr_event_base;
-    int				rr_major_version;
-    int				rr_minor_version;
-    Atom                        connector_type_atom;
-#endif
 };
 
 struct GnomeRROutputInfoPrivate
@@ -100,24 +100,10 @@ struct GnomeRROutputInfoPrivate
 
 struct GnomeRRConfigPrivate
 {
-  gboolean clone;
-  GnomeRRScreen *screen;
-  GnomeRROutputInfo **outputs;
+  gboolean              clone;
+  GnomeRRScreen *       screen;
+  GnomeRROutputInfo **  outputs;
 };
-
-#ifndef HAVE_RANDR
-/* This is to avoid a ton of ifdefs wherever we use a type from libXrandr */
-typedef int RROutput;
-typedef int RRCrtc;
-typedef int RRMode;
-typedef int Rotation;
-#define RR_Rotate_0		1
-#define RR_Rotate_90		2
-#define RR_Rotate_180		4
-#define RR_Rotate_270		8
-#define RR_Reflect_X		16
-#define RR_Reflect_Y		32
-#endif
 
 struct GnomeRROutput
 {
@@ -134,7 +120,7 @@ struct GnomeRROutput
     GnomeRRMode **	modes;
     int			n_preferred;
     guint8 *		edid_data;
-    int         edid_size;
+    int                 edid_size;
     char *              connector_type;
 };
 
@@ -168,5 +154,43 @@ struct GnomeRRMode
     int			height;
     int			freq;		/* in mHz */
 };
+
+#if !GTK_CHECK_VERSION (2, 91, 0)
+#define gdk_x11_window_get_xid  gdk_x11_drawable_get_xid
+#define gdk_error_trap_pop_ignored gdk_error_trap_pop
+#endif
+
+G_GNUC_INTERNAL
+GdkScreen *     gnome_rr_screen_get_gdk_screen          (GnomeRRScreen *self);
+G_GNUC_INTERNAL
+GnomeRROutput * gnome_rr_output_by_id                   (ScreenInfo *info, RROutput id);
+G_GNUC_INTERNAL
+GnomeRRCrtc *   crtc_by_id                              (ScreenInfo *info, RRCrtc id);
+G_GNUC_INTERNAL
+GnomeRRMode *   mode_by_id                              (ScreenInfo *info, RRMode id);
+
+G_GNUC_INTERNAL
+ScreenInfo *    screen_info_new                         (GnomeRRScreen *screen, gboolean needs_reprobe,
+                                                         GError **error);
+G_GNUC_INTERNAL
+gboolean        screen_update                           (GnomeRRScreen *screen, gboolean force_callback,
+                                                         gboolean needs_reprobe, GError **error);
+G_GNUC_INTERNAL
+gboolean        fill_out_screen_info                    (GnomeRRScreen *screen, ScreenInfo *info,
+                                                         gboolean needs_reprobe, GError **error);
+G_GNUC_INTERNAL
+GnomeRRCrtc *   crtc_new                                (ScreenInfo *info, RRCrtc id);
+
+/* GnomeRROutput */
+G_GNUC_INTERNAL
+GnomeRROutput * output_new                              (ScreenInfo *info, RROutput id);
+G_GNUC_INTERNAL
+GnomeRRMode *   mode_new                                (ScreenInfo *info, RRMode id);
+G_GNUC_INTERNAL
+void            screen_info_free                        (ScreenInfo *info);
+G_GNUC_INTERNAL
+void            gather_clone_modes                      (ScreenInfo *info);
+
+
 
 #endif

@@ -726,7 +726,7 @@ gnome_rr_config_class_init (GnomeRRConfigClass *klass)
 
     g_object_class_install_property (gobject_class, PROP_SCREEN,
 				     g_param_spec_object ("screen", "Screen", "The GnomeRRScreen this config applies to", GNOME_TYPE_RR_SCREEN,
-							  G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB));
+							  G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 
 GnomeRRConfig *
