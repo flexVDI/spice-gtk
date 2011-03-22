@@ -174,7 +174,7 @@ handle_start_element (GMarkupParseContext *context,
     if (strcmp (name, "output") == 0)
     {
 	int i;
-	g_assert (parser->output == NULL);
+	g_return_if_fail (parser->output == NULL);
 
 	parser->output = g_object_new (GNOME_TYPE_RR_OUTPUT_INFO, NULL);
 	parser->output->priv->rotation = 0;
@@ -203,7 +203,7 @@ handle_start_element (GMarkupParseContext *context,
     }
     else if (strcmp (name, "configuration") == 0)
     {
-	g_assert (parser->configuration == NULL);
+	g_return_if_fail (parser->configuration == NULL);
 
 	parser->configuration = g_object_new (GNOME_TYPE_RR_CONFIG, NULL);
 	parser->configuration->priv->clone = FALSE;
@@ -374,7 +374,7 @@ parser_free (Parser *parser)
     int i;
     GList *list;
 
-    g_assert (parser != NULL);
+    g_return_if_fail (parser != NULL);
 
     if (parser->output)
 	g_object_unref (parser->output);
@@ -429,17 +429,17 @@ configurations_read_from_file (const gchar *filename, GError **error)
     {
 	result = NULL;
 
-	g_assert (parser->outputs);
+	g_return_val_if_fail (parser->outputs, NULL);
 	goto out;
     }
 
-    g_assert (parser->outputs);
+    g_return_val_if_fail (parser->outputs, NULL);
 
     g_ptr_array_add (parser->configurations, NULL);
     result = (GnomeRRConfig **)g_ptr_array_free (parser->configurations, FALSE);
     parser->configurations = g_ptr_array_new ();
 
-    g_assert (parser->outputs);
+    g_return_val_if_fail (parser->outputs, NULL);
 out:
     parser_free (parser);
 
@@ -658,7 +658,7 @@ gnome_rr_config_load_current (GnomeRRConfig *config, GError **error)
 	}
     }
 
-    g_assert (gnome_rr_config_match (config, config));
+    g_return_val_if_fail (gnome_rr_config_match (config, config), FALSE);
 
     return TRUE;
 }
@@ -809,8 +809,8 @@ out:
 static gboolean
 output_match (GnomeRROutputInfo *output1, GnomeRROutputInfo *output2)
 {
-    g_assert (GNOME_IS_RR_OUTPUT_INFO (output1));
-    g_assert (GNOME_IS_RR_OUTPUT_INFO (output2));
+    g_return_val_if_fail (GNOME_IS_RR_OUTPUT_INFO (output1), FALSE);
+    g_return_val_if_fail (GNOME_IS_RR_OUTPUT_INFO (output2), FALSE);
 
     if (strcmp (output1->priv->name, output2->priv->name) != 0)
 	return FALSE;
@@ -833,8 +833,8 @@ output_match (GnomeRROutputInfo *output1, GnomeRROutputInfo *output2)
 static gboolean
 output_equal (GnomeRROutputInfo *output1, GnomeRROutputInfo *output2)
 {
-    g_assert (GNOME_IS_RR_OUTPUT_INFO (output1));
-    g_assert (GNOME_IS_RR_OUTPUT_INFO (output2));
+    g_return_val_if_fail (GNOME_IS_RR_OUTPUT_INFO (output1), FALSE);
+    g_return_val_if_fail (GNOME_IS_RR_OUTPUT_INFO (output2), FALSE);
 
     if (!output_match (output1, output2))
 	return FALSE;
@@ -955,8 +955,10 @@ make_outputs (GnomeRRConfig *config)
 
 	if (config->priv->clone && new->priv->on)
 	{
-	    g_assert (first_on);
-
+            if (!first_on) {
+                g_warn_if_reached ();
+                goto end;
+            }
 	    new->priv->width = first_on->priv->width;
 	    new->priv->height = first_on->priv->height;
 	    new->priv->rotation = first_on->priv->rotation;
@@ -967,6 +969,7 @@ make_outputs (GnomeRRConfig *config)
 	g_ptr_array_add (outputs, new);
     }
 
+end:
     g_ptr_array_add (outputs, NULL);
 
     return (GnomeRROutputInfo **)g_ptr_array_free (outputs, FALSE);
