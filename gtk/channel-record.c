@@ -190,14 +190,10 @@ static void do_emit_main_context(GObject *object, int signum, gpointer params)
 static void spice_record_mode(SpiceRecordChannel *channel, uint32_t time,
                               uint32_t mode, uint8_t *data, uint32_t data_size)
 {
-    spice_record_channel *rc;
-    spice_channel *c;
     SpiceMsgcRecordMode m = {0, };
     spice_msg_out *msg;
 
     g_return_if_fail(channel != NULL);
-    rc = channel->priv;
-    c = SPICE_CHANNEL(channel)->priv;
 
     m.mode = mode;
     m.time = time;
@@ -226,14 +222,10 @@ static void channel_up(SpiceChannel *channel)
 /* main context */
 static void spice_record_start_mark(SpiceRecordChannel *channel, uint32_t time)
 {
-    spice_record_channel *rc;
-    spice_channel *c;
     SpiceMsgcRecordStartMark m = {0, };
     spice_msg_out *msg;
 
     g_return_if_fail(channel != NULL);
-    rc = channel->priv;
-    c = SPICE_CHANNEL(channel)->priv;
 
     m.time = time;
 
@@ -256,7 +248,6 @@ void spice_record_send_data(SpiceRecordChannel *channel, gpointer data,
                             gsize bytes, uint32_t time)
 {
     spice_record_channel *rc;
-    spice_channel *c;
     SpiceMsgcRecordPacket p = {0, };
     int celt_compressed_frame_bytes = FRAME_SIZE * CELT_BIT_RATE / 44100 / 8;
     uint8_t *celt_buf = NULL;
@@ -264,7 +255,6 @@ void spice_record_send_data(SpiceRecordChannel *channel, gpointer data,
     g_return_if_fail(channel != NULL);
 
     rc = channel->priv;
-    c = SPICE_CHANNEL(channel)->priv;
 
     if (!rc->started) {
         spice_record_mode(channel, time, rc->mode, NULL, 0);

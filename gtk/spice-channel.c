@@ -1807,7 +1807,6 @@ static void *spice_channel_coroutine(void *data)
 {
     SpiceChannel *channel = SPICE_CHANNEL(data);
     spice_channel *c = channel->priv;
-    int ret;
     guint verify;
 
     SPICE_DEBUG("Started background coroutine %p", &c->coroutine);
@@ -1917,7 +1916,7 @@ connected:
     c->state = SPICE_CHANNEL_STATE_LINK_HDR;
     spice_channel_send_link(channel);
 
-    while ((ret = spice_channel_iterate(channel)))
+    while (spice_channel_iterate(channel))
         ;
 
     /* TODO: improve it, this is a bit hairy, c->coroutine will be
