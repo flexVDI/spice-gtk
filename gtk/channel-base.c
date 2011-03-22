@@ -135,14 +135,16 @@ void spice_channel_handle_migrate(SpiceChannel *channel, spice_msg_in *in)
     }
     if (mig->flags & SPICE_MIGRATE_NEED_DATA_TRANSFER) {
         spice_channel_recv_msg(channel, get_msg_handler, &data);
-        if (!data || data->header.type != SPICE_MSG_MIGRATE_DATA) {
+        if (!data) {
+            g_warning("expected SPICE_MSG_MIGRATE_DATA, got empty message");
+        } else if (data->header.type != SPICE_MSG_MIGRATE_DATA) {
             g_warning("expected SPICE_MSG_MIGRATE_DATA, got %d", data->header.type);
         }
     }
 
     spice_session_channel_migrate(c->session, channel);
 
-    if (mig->flags & SPICE_MIGRATE_NEED_DATA_TRANSFER) {
+    if ((mig->flags & SPICE_MIGRATE_NEED_DATA_TRANSFER) && (data != NULL)) {
         out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MIGRATE_DATA);
         spice_marshaller_add(out->marshaller, data->data, data->header.size);
         spice_msg_out_send_internal(out);
