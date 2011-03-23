@@ -60,6 +60,10 @@ struct spice_window {
     bool             fullscreen;
     bool             mouse_grabbed;
     SpiceChannel     *display_channel;
+#ifdef WIN32
+    gint             win_x;
+    gint             win_y;
+#endif
 };
 
 struct spice_connection {
@@ -84,6 +88,8 @@ static spice_connection *connection_new(void);
 static void connection_connect(spice_connection *conn);
 static void connection_disconnect(spice_connection *conn);
 static void connection_destroy(spice_connection *conn);
+static void resolution_fullscreen(struct spice_window *win);
+static void resolution_restore(struct spice_window *win);
 
 /* ------------------------------------------------------------------ */
 
@@ -143,6 +149,7 @@ static struct {
     { .text = N_("TLS Port"),   .prop = "tls-port"  },
 };
 
+#ifndef WIN32
 static void recent_item_activated_dialog_cb(GtkRecentChooser *chooser, gpointer data)
 {
     GtkRecentInfo *info;
@@ -171,6 +178,7 @@ static void recent_item_activated_dialog_cb(GtkRecentChooser *chooser, gpointer 
 
     gtk_recent_info_unref(info);
 }
+#endif
 
 static int connect_dialog(GtkWidget *parent, SpiceSession *session)
 {
@@ -297,7 +305,13 @@ static void menu_cb_fullscreen(GtkAction *action, void *data)
 
     if (win->fullscreen) {
         gtk_window_unfullscreen(GTK_WINDOW(win->toplevel));
+#ifdef WIN32
+        gtk_window_move(GTK_WINDOW(win->toplevel), win->win_x, win->win_y);
+#endif
     } else {
+#ifdef WIN32
+        gtk_window_get_position(GTK_WINDOW(win->toplevel), &win->win_x, &win->win_y);
+#endif
         gtk_window_fullscreen(GTK_WINDOW(win->toplevel));
     }
 }
@@ -710,6 +724,7 @@ get_output_for_window(GnomeRRConfig *configuration, GdkWindow *window)
 
       gnome_rr_output_info_get_geometry (outputs[i], &output_rect.x, &output_rect.y, &output_rect.width, &output_rect.height);
 
+      g_debug("%d, %d, %d, %d, %d", output_rect.x, output_rect.y, output_rect.width, output_rect.height, gnome_rr_output_info_is_connected (outputs[i]));
       if (gnome_rr_output_info_is_connected (outputs[i]) && gdk_rectangle_intersect (&win_rect, &output_rect, &intersection))
 	{
 	  int area;
@@ -794,9 +809,42 @@ static void resolution_fullscreen(struct spice_window *win)
         g_warning("Can't set display config: %s", error->message);
     }
     g_clear_error(&error);
+
+#ifdef WIN32
+    /* recenter the window on Windows */
+    gtk_window_fullscreen(GTK_WINDOW(win->toplevel));
+#endif
 }
 
-static void resolution_restore(void)
+static void resolution_restore(struct spice_window *win)
+{
+    GnomeRROutputInfo *output, *saved;
+    int x, y, width, height;
+    GError *error = NULL;;
+
+    g_return_if_fail (rrsaved != NULL);
+
+    output = get_output_for_window(rrcurrent, gtk_widget_get_window(win->spice));
+    g_return_if_fail(output != NULL);
+    saved = get_output_for_window(rrsaved, gtk_widget_get_window(win->spice));
+    g_return_if_fail(saved != NULL);
+
+    gnome_rr_output_info_get_geometry (saved, &x, &y, &width, &height);
+    gnome_rr_output_info_set_geometry (output, x, y, width, height);
+
+    if (!gnome_rr_config_apply_with_time(rrcurrent, rrscreen,
+                                         gtk_get_current_event_time (), &error)) {
+        g_warning("Can't set display config: %s", error->message);
+    }
+    g_clear_error(&error);
+
+#ifdef WIN32
+    /* recenter the window on Windows */
+    gtk_window_unfullscreen(GTK_WINDOW(win->toplevel));
+#endif
+}
+
+static void resolution_restore_all(void)
 {
     GError *error = NULL;;
 
@@ -830,7 +878,7 @@ static gboolean configure_event_cb(GtkWidget         *widget,
     if (win->fullscreen)
         resolution_fullscreen(win);
     else
-        resolution_restore();
+        resolution_restore(win);
 
     return FALSE;
 }
@@ -1370,7 +1418,7 @@ int main(int argc, char *argv[])
 
     g_free(conf_file);
 
-    resolution_restore();
+    resolution_restore_all();
 
     return 0;
 }
