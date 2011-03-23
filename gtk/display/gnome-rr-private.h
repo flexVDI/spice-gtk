@@ -33,6 +33,11 @@
 #include <X11/extensions/Xrandr.h>
 #endif
 
+#ifdef WIN32
+#include <windows.h>
+#include <winuser.h>
+#endif
+
 #ifndef HAVE_RANDR
 /* This is to avoid a ton of ifdefs wherever we use a type from libXrandr */
 typedef int RROutput;
@@ -153,6 +158,9 @@ struct GnomeRRMode
     int			width;
     int			height;
     int			freq;		/* in mHz */
+#ifdef WIN32
+    DEVMODE             mode;
+#endif
 };
 
 #if !GTK_CHECK_VERSION (2, 91, 0)
