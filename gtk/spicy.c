@@ -174,11 +174,10 @@ static void recent_item_activated_dialog_cb(GtkRecentChooser *chooser, gpointer 
 
 static int connect_dialog(GtkWidget *parent, SpiceSession *session)
 {
-    GtkWidget *dialog, *area, *label, *recent;
+    GtkWidget *dialog, *area, *label;
     GtkTable *table;
     const gchar *txt;
     int i, retval;
-    GtkRecentFilter  *rfilter;
 
     /* Create the widgets */
     dialog = gtk_dialog_new_with_buttons(_("Connect to SPICE"),
@@ -213,7 +212,12 @@ static int connect_dialog(GtkWidget *parent, SpiceSession *session)
     label = gtk_label_new("Recent connexions:");
     gtk_box_pack_start(GTK_BOX(area), label, TRUE, TRUE, 0);
     gtk_misc_set_alignment(GTK_MISC(label), 0, 0.5);
+#ifndef WIN32
+    GtkRecentFilter *rfilter;
+    GtkWidget *recent;
+
     recent = GTK_WIDGET(gtk_recent_chooser_widget_new());
+    gtk_recent_chooser_set_show_icons(GTK_RECENT_CHOOSER(recent), FALSE);
     gtk_box_pack_start(GTK_BOX(area), recent, TRUE, TRUE, 0);
 
     rfilter = gtk_recent_filter_new();
@@ -222,7 +226,7 @@ static int connect_dialog(GtkWidget *parent, SpiceSession *session)
     gtk_recent_chooser_set_local_only(GTK_RECENT_CHOOSER(recent), FALSE);
     g_signal_connect(recent, "item-activated",
                      G_CALLBACK(recent_item_activated_dialog_cb), session);
-
+#endif
     /* show and wait for response */
     gtk_widget_show_all(dialog);
     switch (gtk_dialog_run(GTK_DIALOG(dialog))) {
@@ -612,6 +616,7 @@ static char ui_xml[] =
 "  </toolbar>\n"
 "</ui>\n";
 
+#ifndef WIN32
 static void recent_item_activated_cb(GtkRecentChooser *chooser, gpointer data)
 {
     GtkRecentInfo *info;
@@ -628,6 +633,7 @@ static void recent_item_activated_cb(GtkRecentChooser *chooser, gpointer data)
     gtk_recent_info_unref(info);
     connection_connect(conn);
 }
+#endif
 
 static GnomeRROutputInfo *
 get_nearest_output (GnomeRRConfig *configuration, int x, int y)
@@ -839,7 +845,6 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     GError *err = NULL;
     int i;
     SpiceGrabSequence *seq;
-    GtkRecentFilter  *rfilter;
 
     win = malloc(sizeof(*win));
     if (NULL == win)
@@ -883,7 +888,12 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     /* recent menu */
     win->ritem  = gtk_ui_manager_get_widget
         (win->ui, "/MainMenu/FileMenu/FileRecentMenu");
+
+#ifndef WIN32
+    GtkRecentFilter  *rfilter;
+
     win->rmenu = gtk_recent_chooser_menu_new();
+    gtk_recent_chooser_set_show_icons(GTK_RECENT_CHOOSER(win->rmenu), FALSE);
     rfilter = gtk_recent_filter_new();
     gtk_recent_filter_add_mime_type(rfilter, "application/x-spice");
     gtk_recent_chooser_add_filter(GTK_RECENT_CHOOSER(win->rmenu), rfilter);
@@ -891,6 +901,7 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(win->ritem), win->rmenu);
     g_signal_connect(win->rmenu, "item-activated",
                      G_CALLBACK(recent_item_activated_cb), win);
+#endif
 
     /* spice display */
     win->spice = GTK_WIDGET(spice_display_new(conn->session, id));
