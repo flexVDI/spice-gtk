@@ -1150,6 +1150,7 @@ mode_copy (const GnomeRRMode *from)
 
     to->id = from->id;
     to->info = from->info;
+    to->name = g_strdup (from->name);
     to->width = from->width;
     to->height = from->height;
     to->freq = from->freq;
@@ -1160,6 +1161,7 @@ mode_copy (const GnomeRRMode *from)
 static void
 mode_free (GnomeRRMode *mode)
 {
+    g_free (mode->name);
     g_slice_free (GnomeRRMode, mode);
 }
 
