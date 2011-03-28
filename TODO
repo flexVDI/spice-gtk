@@ -4,4 +4,4 @@
 * use libspice-common instead of common/
 * TunnelChannel?
 * port/build cyrus-sasl for windows?
-* adapt client resolution for windows
+* XPI controller API

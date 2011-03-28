@@ -724,7 +724,6 @@ get_output_for_window(GnomeRRConfig *configuration, GdkWindow *window)
 
       gnome_rr_output_info_get_geometry (outputs[i], &output_rect.x, &output_rect.y, &output_rect.width, &output_rect.height);
 
-      g_debug("%d, %d, %d, %d, %d", output_rect.x, output_rect.y, output_rect.width, output_rect.height, gnome_rr_output_info_is_connected (outputs[i]));
       if (gnome_rr_output_info_is_connected (outputs[i]) && gdk_rectangle_intersect (&win_rect, &output_rect, &intersection))
 	{
 	  int area;
@@ -822,7 +821,8 @@ static void resolution_restore(struct spice_window *win)
     int x, y, width, height;
     GError *error = NULL;;
 
-    g_return_if_fail (rrsaved != NULL);
+    if (rrsaved == NULL)
+        return;
 
     output = get_output_for_window(rrcurrent, gtk_widget_get_window(win->spice));
     g_return_if_fail(output != NULL);
