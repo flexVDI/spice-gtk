@@ -1,5 +1,7 @@
 NULL =
 
+SUBDIRS = controller
+
 COMMON_DIR=$(SPICE_COMMON_SRCDIR)
 CLIENT_DIR=$(top_srcdir)/client
 

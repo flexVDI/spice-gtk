@@ -47,9 +47,11 @@ AC_MSG_CHECKING([for native Win32])
 case "$host_os" in
      *mingw*|*cygwin*)
         os_win32=yes
+        gio_os=gio-windows-2.0
         ;;
      *)
         os_win32=no
+        gio_os=gio-unix-2.0
         ;;
 esac
 AC_MSG_RESULT([$os_win32])
@@ -198,7 +200,7 @@ PKG_CHECK_MODULES(GOBJECT2, gobject-2.0)
 AC_SUBST(GOBJECT2_CFLAGS)
 AC_SUBST(GOBJECT2_LIBS)
 
-PKG_CHECK_MODULES(GIO, gio-2.0 >= 2.10.0)
+PKG_CHECK_MODULES(GIO, gio-2.0 >= 2.10.0 $gio_os)
 AC_SUBST(GIO_CFLAGS)
 AC_SUBST(GIO_LIBS)
 
@@ -533,6 +535,7 @@ data/spicy.desktop.in
 po/Makefile.in
 python_modules/Makefile
 gtk/Makefile
+gtk/controller/Makefile
 doc/Makefile
 doc/reference/Makefile
 ])
