@@ -326,6 +326,23 @@ PKG_CHECK_MODULES([GOBJECT_INTROSPECTION],
         [has_symbol_prefix=yes], [:])
 AM_CONDITIONAL([G_IR_SCANNER_SYMBOL_PREFIX], [test "x$has_symbol_prefix" = "xyes"])
 
+AC_ARG_ENABLE(vala,
+  AS_HELP_STRING([--enable-vala], [Check for vala requirements]), enable_vala=$enableval, enable_vala=no)
+
+# Enable check for Vala even if not asked to do so if stamp files are absent.
+if test ! -e gtk/controller/controller.stamp -o; then
+    enable_vala=yes
+fi
+
+VALA_REQUIRED=0.11.7
+if test x$enable_vala = xyes ; then
+    # check for vala
+    AM_PROG_VALAC([$VALA_REQUIRED])
+fi
+
+VAPIDIR="${datadir}/vala/vapi"
+AC_SUBST(VAPIDIR)
+
 AC_ARG_WITH(python,
   AS_HELP_STRING([--with-python], [build python bindings]),
 [case "${withval}" in
