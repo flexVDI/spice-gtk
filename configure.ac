@@ -43,6 +43,18 @@ AC_C_BIGENDIAN
 AC_PATH_PROGS(PYTHON, python2 python)
 RRA_LD_VERSION_SCRIPT
 
+AC_MSG_CHECKING([for native Win32])
+case "$host_os" in
+     *mingw*|*cygwin*)
+        os_win32=yes
+        ;;
+     *)
+        os_win32=no
+        ;;
+esac
+AC_MSG_RESULT([$os_win32])
+AM_CONDITIONAL([OS_WIN32],[test "$os_win32" = "yes"])
+
 AC_CHECK_HEADERS([sys/ipc.h sys/shm.h])
 AC_CHECK_HEADERS([sys/socket.h netinet/in.h arpa/inet.h])
 
