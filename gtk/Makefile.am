@@ -262,16 +262,15 @@ displaysrc = \
 	display/gnome-rr-config.c		\
 	display/gnome-rr-config.h		\
 	display/gnome-rr-output-info.c		\
-	display/gnome-rr-output-info.h		\
 	display/gnome-rr-private.h		\
 	display/gnome-rr.c			\
 	display/gnome-rr.h			\
 	$(NULL)
 
 if WITH_DISPLAY_X11
-displaysrc += display/gnome-rr-x11.c
+displaysrc += display/gnome-rr-x11.c display/gnome-rr-x11.h
 else
-displaysrc += display/gnome-rr-windows.c
+displaysrc += display/gnome-rr-windows.c display/gnome-rr-windows.h
 endif
 
 spicy_SOURCES =					\

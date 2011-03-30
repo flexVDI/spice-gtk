@@ -14,6 +14,7 @@ NULL=
 EXTRA_DIST =					\
 	spicy-for-windows.nsis			\
 	spice-mime.xml.in spicy.desktop.in      \
+	spice-protocol.vapi			\
 	$(desktop_in_files)			\
 	$(NULL)
 

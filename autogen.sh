@@ -8,7 +8,7 @@ test -z "$srcdir" && srcdir=.
 gtkdocize
 autoreconf -v --force --install
 intltoolize -f
-if test ! -e gtk/controller/controller.stamp; then
+if test ! -e gtk/controller/controller.vala.stamp; then
   enable_vala="--enable-vala"
 fi
 
