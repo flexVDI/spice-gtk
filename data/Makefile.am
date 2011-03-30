@@ -25,4 +25,7 @@ DISTCLEANFILES =				\
 	$(desktop_DATA)				\
 	$(NULL)
 
+vapidir = $(VAPIDIR)
+vapi_DATA = spice-protocol.vapi
+
 -include $(top_srcdir)/git.mk
