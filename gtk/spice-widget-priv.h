@@ -37,7 +37,7 @@ G_BEGIN_DECLS
 #define SPICE_DISPLAY_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_DISPLAY, spice_display))
 
-#define CLIPBOARD_LAST VD_AGENT_CLIPBOARD_SELECTION_PRIMARY
+#define CLIPBOARD_LAST (VD_AGENT_CLIPBOARD_SELECTION_SECONDARY + 1)
 
 struct spice_display {
     gint                    channel_id;
