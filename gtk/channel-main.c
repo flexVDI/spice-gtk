@@ -58,7 +58,7 @@ struct spice_main_channel {
     int                         agent_tokens;
     VDAgentMessage              agent_msg; /* partial msg reconstruction */
     guint8                      *agent_msg_data;
-    uint8_t                     agent_msg_pos;
+    guint                       agent_msg_pos;
     uint8_t                     agent_msg_size;
     uint32_t                    agent_caps[VD_AGENT_CAPS_SIZE];
     struct {
@@ -1159,6 +1159,8 @@ static void main_agent_handle_msg(SpiceChannel *channel,
     spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
     guint8 selection = VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD;
 
+    g_return_if_fail(msg->protocol == VD_AGENT_PROTOCOL);
+
     switch (msg->type) {
     case VD_AGENT_CLIPBOARD_RELEASE:
     case VD_AGENT_CLIPBOARD_REQUEST:
@@ -1260,7 +1262,7 @@ static void main_agent_handle_msg(SpiceChannel *channel,
 }
 
 /* coroutine context */
-static void main_handle_agent_data_msg(SpiceChannel *channel, guint* msg_size, guchar** msg_pos)
+static void main_handle_agent_data_msg(SpiceChannel* channel, int* msg_size, guchar** msg_pos)
 {
     spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
     int n;
@@ -1274,7 +1276,6 @@ static void main_handle_agent_data_msg(SpiceChannel *channel, guint* msg_size, g
         if (c->agent_msg_pos == sizeof(VDAgentMessage)) {
             SPICE_DEBUG("agent msg start: msg_size=%d, protocol=%d, type=%d",
                         c->agent_msg.size, c->agent_msg.protocol, c->agent_msg.type);
-            g_return_if_fail(c->agent_msg.protocol == VD_AGENT_PROTOCOL);
             g_return_if_fail(c->agent_msg_data == NULL);
             c->agent_msg_data = g_malloc(c->agent_msg.size);
         }
@@ -1300,23 +1301,26 @@ static void main_handle_agent_data_msg(SpiceChannel *channel, guint* msg_size, g
 static void main_handle_agent_data(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
-    VDAgentMessage *msg;
-    guint msg_size;
-    guchar* msg_pos;
+    guint8 *data;
     int len;
 
-    msg = spice_msg_in_raw(in, &len);
-    msg_size = msg->size;
-    msg_pos = msg->data;
+    /* shortcut to avoid extra message allocation & copy if possible */
+    if (c->agent_msg_pos == 0) {
+        VDAgentMessage *msg;
+        guint msg_size;
 
-    if (c->agent_msg_pos == 0 &&
-        msg_size + sizeof(VDAgentMessage) == len) {
-        main_agent_handle_msg(channel, msg, msg + 1);
-        return;
+        msg = spice_msg_in_raw(in, &len);
+        msg_size = msg->size;
+
+        if (msg_size + sizeof(VDAgentMessage) == len) {
+            main_agent_handle_msg(channel, msg, msg->data);
+            return;
+        }
     }
 
-    while (msg_size > 0) {
-        main_handle_agent_data_msg(channel, &msg_size, &msg_pos);
+    data = spice_msg_in_raw(in, &len);
+    while (len > 0) {
+        main_handle_agent_data_msg(channel, &len, &data);
     }
 }
 
