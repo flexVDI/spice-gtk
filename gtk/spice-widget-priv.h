@@ -37,6 +37,8 @@ G_BEGIN_DECLS
 #define SPICE_DISPLAY_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_DISPLAY, spice_display))
 
+#define CLIPBOARD_LAST VD_AGENT_CLIPBOARD_SELECTION_PRIMARY
+
 struct spice_display {
     gint                    channel_id;
 
@@ -52,7 +54,6 @@ struct spice_display {
     gint                    shmid;
     gpointer                data_origin; /* the original display image data */
     gpointer                data; /* converted if necessary to 32 bits */
-    gboolean                clipboard_by_guest; /* hack? */
 
     gint                    ww, wh, mx, my;
 
@@ -74,10 +75,11 @@ struct spice_display {
 
     GtkClipboard            *clipboard;
     GtkClipboard            *clipboard_primary;
-    GtkTargetEntry          *clip_targets;
-    guint                   nclip_targets;
-    bool                    clip_hasdata;
-    bool                    clip_grabbed;
+    GtkTargetEntry          *clip_targets[CLIPBOARD_LAST];
+    guint                   nclip_targets[CLIPBOARD_LAST];
+    bool                    clip_hasdata[CLIPBOARD_LAST];
+    bool                    clip_grabbed[CLIPBOARD_LAST];
+    gboolean                clipboard_by_guest[CLIPBOARD_LAST]; /* hack? */
 
     SpiceSession            *session;
     SpiceMainChannel        *main;

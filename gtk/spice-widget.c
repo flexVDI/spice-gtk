@@ -215,6 +215,7 @@ static void spice_display_finalize(GObject *obj)
 {
     SpiceDisplay *display = SPICE_DISPLAY(obj);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    int i;
 
     SPICE_DEBUG("Finalize SpiceDisplay");
 
@@ -223,8 +224,10 @@ static void spice_display_finalize(GObject *obj)
         d->grabseq = NULL;
     }
 
-    g_free(d->clip_targets);
-    d->clip_targets = NULL;
+    for (i = 0; i < CLIPBOARD_LAST; ++i) {
+        g_free(d->clip_targets[i]);
+        d->clip_targets[i] = NULL;
+    }
 
     G_OBJECT_CLASS(spice_display_parent_class)->finalize(obj);
 }
@@ -1059,8 +1062,10 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
     guint32 types[SPICE_N_ELEMENTS(atom2agent)];
     char *name;
     int a, m, t;
+    int selection;
 
-    g_return_if_fail(get_selection_from_clipboard(d, clipboard) != -1);
+    selection = get_selection_from_clipboard(d, clipboard);
+    g_return_if_fail(selection != -1);
 
     SPICE_DEBUG("%s:", __FUNCTION__);
     if (spice_util_get_debug()) {
@@ -1099,8 +1104,8 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
             break;
         }
     }
-    if (!d->clip_grabbed && t > 0) {
-        d->clip_grabbed = true;
+    if (!d->clip_grabbed[selection] && t > 0) {
+        d->clip_grabbed[selection] = true;
         spice_main_clipboard_selection_grab(d->main,
             get_selection_from_clipboard(d, clipboard), types, t);
     }
@@ -1112,30 +1117,32 @@ static void clipboard_owner_change(GtkClipboard        *clipboard,
 {
     SpiceDisplay *display = data;
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    int selection;
 
-    g_return_if_fail(get_selection_from_clipboard(d, clipboard) != -1);
+    selection = get_selection_from_clipboard(d, clipboard);
+    g_return_if_fail(selection != -1);
 
     if (d->main == NULL)
         return;
 
-    if (d->clip_grabbed) {
-        d->clip_grabbed = false;
+    if (d->clip_grabbed[selection]) {
+        d->clip_grabbed[selection] = false;
         spice_main_clipboard_selection_release(d->main,
             get_selection_from_clipboard(d, clipboard));
     }
 
     switch (event->reason) {
     case GDK_OWNER_CHANGE_NEW_OWNER:
-        if (d->clipboard_by_guest) {
-            d->clipboard_by_guest = FALSE;
+        if (d->clipboard_by_guest[selection]) {
+            d->clipboard_by_guest[selection] = FALSE;
             break;
         }
-        d->clip_hasdata = 1;
+        d->clip_hasdata[selection] = 1;
         if (d->auto_clipboard_enable)
             gtk_clipboard_request_targets(clipboard, clipboard_get_targets, data);
         break;
     default:
-        d->clip_hasdata = 0;
+        d->clip_hasdata[selection] = 0;
         break;
     }
 }
@@ -1434,8 +1441,10 @@ static void disconnect_main(SpiceDisplay *display)
     g_signal_handlers_disconnect_by_func(d->main, G_CALLBACK(mouse_update),
                                          display);
     d->main = NULL;
-    d->clipboard_by_guest = FALSE;
-    d->clip_grabbed = FALSE;
+    for (int i = 0; i < CLIPBOARD_LAST; ++i) {
+        d->clipboard_by_guest[i] = FALSE;
+        d->clip_grabbed[i] = FALSE;
+    }
 }
 
 static void disconnect_display(SpiceDisplay *display)
@@ -1584,9 +1593,9 @@ static gboolean clipboard_grab(SpiceMainChannel *main, guint selection,
         }
     }
 
-    g_free(d->clip_targets);
-    d->nclip_targets = i;
-    d->clip_targets = g_memdup(targets, sizeof(GtkTargetEntry) * i);
+    g_free(d->clip_targets[selection]);
+    d->nclip_targets[selection] = i;
+    d->clip_targets[selection] = g_memdup(targets, sizeof(GtkTargetEntry) * i);
 
     if (!d->auto_clipboard_enable)
         goto skip_grab_clipboard;
@@ -1598,7 +1607,7 @@ static gboolean clipboard_grab(SpiceMainChannel *main, guint selection,
     }
 
 skip_grab_clipboard:
-    d->clipboard_by_guest = TRUE;
+    d->clipboard_by_guest[selection] = TRUE;
     return TRUE;
 }
 
@@ -1820,8 +1829,9 @@ void spice_display_mouse_ungrab(SpiceDisplay *display)
 void spice_display_copy_to_guest(SpiceDisplay *display)
 {
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    int selection = VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD;
 
-    if (d->clip_hasdata && !d->clip_grabbed) {
+    if (d->clip_hasdata[selection] && !d->clip_grabbed[selection]) {
         gtk_clipboard_request_targets(d->clipboard, clipboard_get_targets, display);
     }
 }
@@ -1829,13 +1839,15 @@ void spice_display_copy_to_guest(SpiceDisplay *display)
 void spice_display_paste_from_guest(SpiceDisplay *display)
 {
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    int selection = VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD;
 
-    if (!d->clipboard_by_guest) {
+    if (!d->clipboard_by_guest[selection]) {
         g_warning("Guest clipboard is not available.");
         return;
     }
 
-    if (!gtk_clipboard_set_with_data(d->clipboard, d->clip_targets, d->nclip_targets,
+    if (!gtk_clipboard_set_with_data(d->clipboard,
+                                     d->clip_targets[selection], d->nclip_targets[selection],
                                      clipboard_get, clipboard_clear, display)) {
         g_warning("Clipboard grab failed");
         return;
