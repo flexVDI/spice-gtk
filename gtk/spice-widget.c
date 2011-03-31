@@ -1385,8 +1385,10 @@ static void cursor_hide(SpiceCursorChannel *channel, gpointer data)
     SpiceDisplay *display = data;
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
-    if (d->mouse_cursor)
-        gdk_cursor_unref(d->mouse_cursor);
+    if (d->show_cursor != NULL) /* then we are already hidden */
+        return;
+
+    d->show_cursor = d->mouse_cursor;
     d->mouse_cursor = gdk_cursor_new(GDK_BLANK_CURSOR);
     update_mouse_pointer(display);
 }
@@ -1420,6 +1422,14 @@ static void cursor_move(SpiceCursorChannel *channel, gint x, gint y, gpointer da
     if (d->mouse_grab_active) {
         gdk_window_get_origin(GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display))), &wx, &wy);
         gdk_display_warp_pointer(gtk_widget_get_display(GTK_WIDGET(display)), screen, x + wx, y + wy);
+    }
+
+    /* FIXME: apparently we have to restore cursor when "cursor_move" ?? */
+    if (d->show_cursor != NULL) {
+        gdk_cursor_unref(d->mouse_cursor);
+        d->mouse_cursor = d->show_cursor;
+        d->show_cursor = NULL;
+        update_mouse_pointer(display);
     }
 }
 

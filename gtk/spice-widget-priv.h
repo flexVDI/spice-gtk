@@ -91,6 +91,7 @@ struct spice_display {
     int                     mouse_grab_active;
     bool                    mouse_have_pointer;
     GdkCursor               *mouse_cursor;
+    GdkCursor               *show_cursor;
     int                     mouse_last_x;
     int                     mouse_last_y;
     int                     mouse_guest_x;
