@@ -271,18 +271,9 @@ AM_CONDITIONAL([WITH_X11], [test "x$with_x11" = "xyes"])
 
 AC_CHECK_HEADERS([X11/XKBlib.h])
 
-# Add parameter for (partial) static linkage of spice client.
-# this is used to achive single binary package for all (?) distros.
-AC_ARG_ENABLE(static-linkage, 
-	AS_HELP_STRING([--enable-static-linkage], [will generate spice client binary with static linkage to external libraries]),
-	[SPICEC_STATIC_LINKAGE_BSTATIC=["-Wl,-Bstatic"];
-	SPICEC_STATIC_LINKAGE_BDYNAMIC=["-Wl,-Bdynamic"]])
-
-
 AS_IF([test "$_cflags_is_set" = "yes"], [], [
     CFLAGS="-g -O2"
 ])
-
 
 AS_IF([test "$_cxxflags_is_set" = "yes"], [], [
     CXXFLAGS="-g -O2"
@@ -495,30 +486,8 @@ SPICE_GTK_CFLAGS="$SPICE_GLIB_CFLAGS $GTK_CFLAGS "
 AC_SUBST(SPICE_GLIB_CFLAGS)
 AC_SUBST(SPICE_GTK_CFLAGS)
 
-dnl =========================================================================
-dnl -fvisibility stuff
-
-have_gcc4=no
-AC_MSG_CHECKING(for -fvisibility)
-AC_COMPILE_IFELSE([
-#if defined(__GNUC__) && (__GNUC__ >= 4)
-#else
-error Need GCC 4.0 for visibility
-#endif
-int main () { return 0; }
-], have_gcc4=yes)
-
-if test "x$have_gcc4" = "xyes"; then
-   VISIBILITY_HIDDEN_CFLAGS="-fvisibility=hidden"
-fi
-AC_MSG_RESULT($have_gcc4)
-AC_SUBST(VISIBILITY_HIDDEN_CFLAGS)
-
 AC_SUBST(SPICE_COMMON_SRCDIR)
 AC_SUBST(SPICE_REQUIRES)
-
-AC_SUBST([SPICEC_STATIC_LINKAGE_BSTATIC])
-AC_SUBST([SPICEC_STATIC_LINKAGE_BDYNAMIC])
 
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
