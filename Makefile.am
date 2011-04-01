@@ -26,6 +26,7 @@ EXTRA_DIST = spice.proto			\
 	     build-aux/git-version-gen		\
 	     gtk-doc.make			\
 	     .version				\
+	     THANKS				\
 	     $(INTLTOOL_FILES)			\
 	     $(NULL)
 
