@@ -54,6 +54,10 @@ struct spice_session {
     GList             *migration_left;
     SpiceSessionMigration migration_state;
     gboolean          disconnecting;
+
+    display_cache     images;
+    display_cache     palettes;
+    SpiceGlzDecoderWindow *glz_window;
 };
 
 /**
@@ -131,6 +135,9 @@ static void spice_session_init(SpiceSession *session)
     memset(s, 0, sizeof(*s));
 
     ring_init(&s->channels);
+    cache_init(&s->images, "image");
+    cache_init(&s->palettes, "palette");
+    s->glz_window = glz_decoder_window_new();
 }
 
 static void
@@ -159,6 +166,35 @@ spice_session_dispose(GObject *gobject)
         G_OBJECT_CLASS(spice_session_parent_class)->dispose(gobject);
 }
 
+G_GNUC_INTERNAL
+void spice_session_palettes_clear(SpiceSession *session)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    g_return_if_fail(s != NULL);
+
+    for (;;) {
+        display_cache_item *item = cache_get_lru(&s->palettes);
+        if (item == NULL)
+            break;
+        cache_del(&s->palettes, item);
+    }
+}
+
+G_GNUC_INTERNAL
+void spice_session_images_clear(SpiceSession *session)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    g_return_if_fail(s != NULL);
+
+    for (;;) {
+        display_cache_item *item = cache_get_lru(&s->images);
+        if (item == NULL)
+            break;
+        pixman_image_unref(item->ptr);
+        cache_del(&s->images, item);
+    }
+}
+
 static void
 spice_session_finalize(GObject *gobject)
 {
@@ -172,6 +208,10 @@ spice_session_finalize(GObject *gobject)
     g_free(s->password);
     g_free(s->ca_file);
     g_free(s->cert_subject);
+
+    spice_session_palettes_clear(session);
+    spice_session_images_clear(session);
+    glz_decoder_window_destroy(s->glz_window);
 
     if (s->pubkey)
         g_byte_array_unref(s->pubkey);
@@ -1091,4 +1131,22 @@ const gchar* spice_session_get_cert_subject(SpiceSession *session)
 
     g_return_val_if_fail(s != NULL, NULL);
     return s->cert_subject;
+}
+
+G_GNUC_INTERNAL
+void spice_session_get_caches(SpiceSession *session,
+                              display_cache **images,
+                              display_cache **palettes,
+                              SpiceGlzDecoderWindow **glz_window)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_if_fail(s != NULL);
+
+    if (images)
+        *images = &s->images;
+    if (palettes)
+        *palettes = &s->palettes;
+    if (glz_window)
+        *glz_window = s->glz_window;
 }

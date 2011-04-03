@@ -20,6 +20,8 @@
 
 #include <glib.h>
 #include <gio/gio.h>
+#include "spice-channel-cache.h"
+#include "decode.h"
 
 G_BEGIN_DECLS
 
@@ -48,6 +50,13 @@ guint spice_session_get_verify(SpiceSession *session);
 const gchar* spice_session_get_password(SpiceSession *session);
 const gchar* spice_session_get_host(SpiceSession *session);
 const gchar* spice_session_get_cert_subject(SpiceSession *session);
+
+void spice_session_get_caches(SpiceSession *session,
+                              display_cache **images,
+                              display_cache **palettes,
+                              SpiceGlzDecoderWindow **glz_window);
+void spice_session_palettes_clear(SpiceSession *session);
+void spice_session_images_clear(SpiceSession *session);
 
 G_END_DECLS
 
