@@ -88,7 +88,8 @@ static pixman_image_t *canvas_surf_to_trans_surf(GLCImage *image,
 
     ret = pixman_image_create_bits(PIXMAN_a8r8g8b8, width, height, NULL, 0);
     if (ret == NULL) {
-        CANVAS_ERROR("create surface failed");
+        spice_critical("create surface failed");
+        return NULL;
     }
 
     src_line = image->pixels;
@@ -127,7 +128,7 @@ static GLCPath get_path(GLCanvas *canvas, SpicePath *s)
         }
 
         if (seg->flags & SPICE_PATH_BEZIER) {
-            ASSERT((point - end_point) % 3 == 0);
+            spice_return_val_if_fail((point - end_point) % 3 == 0, path);
             for (; point + 2 < end_point; point += 3) {
                 glc_path_curve_to(path,
                                   fix_to_double(point[0].x), fix_to_double(point[0].y),
@@ -193,7 +194,8 @@ static void set_clip(GLCanvas *canvas, SpiceRect *bbox, SpiceClip *clip)
         break;
     }
     default:
-        CANVAS_ERROR("invalid clip type");
+        spice_warn_if_reached();
+        return;
     }
 }
 
@@ -219,7 +221,7 @@ static inline void surface_to_image(GLCanvas *canvas, pixman_image_t *surface, G
 {
     int depth = pixman_image_get_depth(surface);
 
-    ASSERT(depth == 32 || depth == 24);
+    spice_return_if_fail(depth == 32 || depth == 24);
     image->format = (depth == 24) ? GLC_IMAGE_RGB32 : GLC_IMAGE_ARGB32;
     image->width = pixman_image_get_width(surface);
     image->height = pixman_image_get_height(surface);
@@ -270,7 +272,8 @@ static void set_brush(GLCanvas *canvas, SpiceBrush *brush)
     case SPICE_BRUSH_TYPE_NONE:
         return;
     default:
-        CANVAS_ERROR("invalid brush type");
+        spice_warn_if_reached();
+        return;
     }
 }
 
@@ -328,7 +331,7 @@ static void set_op(GLCanvas *canvas, uint16_t rop_decriptor)
         op = GLC_OP_OR_INVERTED;
         break;
     default:
-        WARN("GLC_OP_NOOP");
+        spice_warning("GLC_OP_NOOP");
         op = GLC_OP_NOOP;
     }
     glc_set_op(canvas->glc, op);
@@ -524,7 +527,8 @@ static void gl_canvas_draw_rop3(SpiceCanvas *spice_canvas, SpiceRect *bbox, Spic
 
     d = pixman_image_create_bits(PIXMAN_x8r8g8b8, image.width, image.height, NULL, 0);
     if (d == NULL) {
-        CANVAS_ERROR("create surface failed");
+        spice_critical("create surface failed");
+        return;
     }
     image.pixels = (uint8_t *)pixman_image_get_data(d);
     image.stride = pixman_image_get_stride(d);
@@ -559,7 +563,8 @@ static void gl_canvas_draw_rop3(SpiceCanvas *spice_canvas, SpiceRect *bbox, Spic
 
     if (pixman_image_get_width(s) - src_pos.x < image.width ||
         pixman_image_get_height(s) - src_pos.y < image.height) {
-        CANVAS_ERROR("bad src bitmap size");
+        spice_critical("bad src bitmap size");
+        return;
     }
 
     if (rop3->brush.type == SPICE_BRUSH_TYPE_PATTERN) {
@@ -613,7 +618,7 @@ static void gl_canvas_draw_stroke(SpiceCanvas *spice_canvas, SpiceRect *bbox, Sp
     set_brush(canvas, &stroke->brush);
 
     if (stroke->attr.flags & SPICE_LINE_FLAGS_STYLED) {
-        WARN("SPICE_LINE_FLAGS_STYLED");
+        spice_warning("SPICE_LINE_FLAGS_STYLED");
     }
     glc_set_line_width(canvas->glc, 1.0);
 
@@ -661,7 +666,7 @@ static void gl_canvas_draw_text(SpiceCanvas *spice_canvas, SpiceRect *bbox, Spic
 
         pixman_image_unref(mask);
     } else if (str->flags & SPICE_STRING_FLAGS_RASTER_A8) {
-        WARN("untested path A8 glyphs, doing nothing");
+        spice_warning("untested path A8 glyphs, doing nothing");
         if (0) {
             SpicePoint pos;
             pixman_image_t *mask = canvas_get_str_mask(&canvas->base, str, 8, &pos);
@@ -673,7 +678,7 @@ static void gl_canvas_draw_text(SpiceCanvas *spice_canvas, SpiceRect *bbox, Spic
             pixman_image_unref(mask);
         }
     } else {
-        WARN("untested path vector glyphs, doing nothing");
+        spice_warning("untested path vector glyphs, doing nothing");
         if (0) {
             //draw_vector_str(canvas, str, &text->fore_brush, text->fore_mode);
         }
@@ -703,7 +708,8 @@ static void gl_canvas_read_bits(SpiceCanvas *spice_canvas, uint8_t *dest, int de
     GLCanvas *canvas = (GLCanvas *)spice_canvas;
     GLCImage image;
 
-    ASSERT(dest_stride > 0);
+    spice_return_if_fail(dest_stride > 0);
+
     image.format = GLC_IMAGE_RGB32;
     image.height = area->bottom - area->top;
     image.width = area->right - area->left;
@@ -746,7 +752,8 @@ static void gl_canvas_put_image(SpiceCanvas *spice_canvas, const SpiceRect *dest
     GLCImage image;
     uint32_t i;
 
-    ASSERT(src_stride <= 0)
+    spice_return_if_fail(src_stride <= 0)
+
     glc_clip_reset(canvas->glc);
 
     if (clip) {

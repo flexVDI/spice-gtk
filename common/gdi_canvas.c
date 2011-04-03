@@ -321,14 +321,14 @@ static void set_path(GdiCanvas *canvas, SpicePath *s)
             BeginPath(canvas->dc);
             if (!MoveToEx(canvas->dc, (int)fix_to_double(point->x), (int)fix_to_double(point->y),
                           NULL)) {
-                CANVAS_ERROR("MoveToEx failed");
+                spice_critical("MoveToEx failed");
                 return;
             }
             point++;
         }
 
         if (seg->flags & SPICE_PATH_BEZIER) {
-            ASSERT((point - end_point) % 3 == 0);
+            spice_return_if_fail((point - end_point) % 3 == 0);
             for (; point + 2 < end_point; point += 3) {
                 POINT points[3];
 
@@ -339,7 +339,7 @@ static void set_path(GdiCanvas *canvas, SpicePath *s)
                 points[2].x = (int)fix_to_double(point[2].x);
                 points[2].y = (int)fix_to_double(point[2].y);
                 if (!PolyBezierTo(canvas->dc, points, 3)) {
-                    CANVAS_ERROR("PolyBezierTo failed");
+                    spice_critical("PolyBezierTo failed");
                     return;
                 }
             }
@@ -347,7 +347,7 @@ static void set_path(GdiCanvas *canvas, SpicePath *s)
             for (; point < end_point; point++) {
                 if (!LineTo(canvas->dc, (int)fix_to_double(point->x),
                             (int)fix_to_double(point->y))) {
-                    CANVAS_ERROR("LineTo failed");
+                    spice_critical("LineTo failed");
                 }
             }
         }
@@ -356,12 +356,12 @@ static void set_path(GdiCanvas *canvas, SpicePath *s)
 
             if (seg->flags & SPICE_PATH_CLOSE) {
                 if (!CloseFigure(canvas->dc)) {
-                    CANVAS_ERROR("CloseFigure failed");
+                    spice_critical("CloseFigure failed");
                 }
             }
 
             if (!EndPath(canvas->dc)) {
-                CANVAS_ERROR("EndPath failed");
+                spice_critical("EndPath failed");
             }
         }
 
@@ -375,7 +375,7 @@ static void set_scale_mode(GdiCanvas *canvas, uint8_t scale_mode)
     } else if (scale_mode == SPICE_IMAGE_SCALE_MODE_NEAREST) {
         SetStretchBltMode(canvas->dc, COLORONCOLOR);
     } else {
-        CANVAS_ERROR("Unknown ScaleMode");
+        spice_critical("Unknown ScaleMode");
     }
 }
 
@@ -384,7 +384,7 @@ static void set_clip(GdiCanvas *canvas, SpiceClip *clip)
     switch (clip->type) {
     case SPICE_CLIP_TYPE_NONE:
         if (SelectClipRgn(canvas->dc, NULL) == ERROR) {
-            CANVAS_ERROR("SelectClipRgn failed");
+            spice_critical("SelectClipRgn failed");
         }
         break;
     case SPICE_CLIP_TYPE_RECTS: {
@@ -406,26 +406,27 @@ static void set_clip(GdiCanvas *canvas, SpiceClip *clip)
                 combaine_hrgn = CreateRectRgn(now->left, now->top, now->right,
                                               now->bottom);
                 if (!combaine_hrgn) {
-                    CANVAS_ERROR("Unable to CreateRectRgn");
+                    spice_critical("Unable to CreateRectRgn");
                     DeleteObject(main_hrgn);
                     return;
                 }
                 if (CombineRgn(main_hrgn, main_hrgn, combaine_hrgn, RGN_OR) == ERROR) {
-                    CANVAS_ERROR("Unable to CombineRgn");
+                    spice_critical("Unable to CombineRgn");
                     DeleteObject(combaine_hrgn);
                     return;
                 }
                 DeleteObject(combaine_hrgn);
             }
             if (SelectClipRgn(canvas->dc, main_hrgn) == ERROR) {
-                CANVAS_ERROR("Unable to SelectClipRgn");
+                spice_critical("Unable to SelectClipRgn");
             }
             DeleteObject(main_hrgn);
         }
         break;
     }
     default:
-        CANVAS_ERROR("invalid clip type");
+        spice_warn_if_reached();
+        return;
     }
 }
 
@@ -435,7 +436,8 @@ static void copy_bitmap(const uint8_t *src_image, int height, int src_stride,
     int copy_width = MIN(dest_stride, src_stride);
     int y = 0;
 
-    ASSERT(dest_stride >= 0 && src_stride >= 0);
+    spice_return_if_fail(dest_stride >= 0 && src_stride >= 0);
+
     while (y < height) {
         memcpy(dest_bitmap, src_image, copy_width);
         src_image += src_stride;
@@ -526,13 +528,13 @@ static uint8_t *create_bitmap(HBITMAP *bitmap, HBITMAP *prev_bitmap, HDC *dc,
 
     *dc = create_compatible_dc();
     if (!*dc) {
-        CANVAS_ERROR("create_compatible_dc() failed");
+        spice_critical("create_compatible_dc() failed");
         return NULL;
     }
 
     *bitmap = CreateDIBSection(*dc, &bitmap_info.inf, 0, (VOID **)&data, NULL, 0);
     if (!*bitmap) {
-        CANVAS_ERROR("Unable to CreateDIBSection");
+        spice_critical("Unable to CreateDIBSection");
         DeleteDC(*dc);
         return NULL;
     }
@@ -558,7 +560,8 @@ static uint8_t *create_bitmap(HBITMAP *bitmap, HBITMAP *prev_bitmap, HDC *dc,
         nstride = width * 4;
         break;
     default:
-        CANVAS_ERROR("invalid bitmap bits size");
+        spice_warn_if_reached();
+        return;
     }
 
     if (bitmap_data) {
@@ -631,7 +634,8 @@ static HBRUSH get_brush(GdiCanvas *canvas, SpiceBrush *brush, RecurciveMutex **b
     switch (brush->type) {
     case SPICE_BRUSH_TYPE_SOLID:
         if (!(hbrush = CreateSolidBrush(get_color_ref(canvas, brush->u.color)))) {
-            CANVAS_ERROR("CreateSolidBrush failed");
+            spice_critical("CreateSolidBrush failed");
+            return NULL;
         }
         return hbrush;
     case SPICE_BRUSH_TYPE_PATTERN: { 
@@ -646,19 +650,21 @@ static HBRUSH get_brush(GdiCanvas *canvas, SpiceBrush *brush, RecurciveMutex **b
         if (gdi_surface) {
             bitmap = (HBITMAP)GetCurrentObject(gdi_surface->dc, OBJ_BITMAP);
             if (!bitmap) {
-                CANVAS_ERROR("GetCurrentObject failed");
+                spice_critical("GetCurrentObject failed");
+                return NULL;
             }
             *brush_lock = gdi_surface->lock;
         } else {
             surface = canvas_get_image(&canvas->base, brush->u.pattern.pat, FALSE);
             if (!create_bitmap_from_pixman(&bitmap, &prev_bitmap, &dc, surface, 0)) {
-                CANVAS_ERROR("create_bitmap failed");
+                spice_critical("create_bitmap failed");
                 return NULL;
             }
         }
 
         if (!(hbrush = CreatePatternBrush(bitmap))) {
-            CANVAS_ERROR("CreatePatternBrush failed");
+            spice_critical("CreatePatternBrush failed");
+            return NULL;
         }
 
         if (!gdi_surface) {
@@ -670,7 +676,7 @@ static HBRUSH get_brush(GdiCanvas *canvas, SpiceBrush *brush, RecurciveMutex **b
     case SPICE_BRUSH_TYPE_NONE:
         return NULL;
     default:
-        CANVAS_ERROR("invalid brush type");
+        spice_warn_if_reached();
         return NULL;
     }
 }
@@ -685,12 +691,13 @@ static HBRUSH set_brush(HDC dc, HBRUSH hbrush, SpiceBrush *brush)
         HBRUSH prev_hbrush;
         prev_hbrush = (HBRUSH)SelectObject(dc, hbrush);
         if (!SetBrushOrgEx(dc, brush->u.pattern.pos.x, brush->u.pattern.pos.y, NULL)) {
-            CANVAS_ERROR("SetBrushOrgEx failed");
+            spice_critical("SetBrushOrgEx failed");
+            return NULL;
         }
         return prev_hbrush;
     }
     default:
-        CANVAS_ERROR("invalid brush type");
+        spice_warn_if_reached();
         return NULL;
     }
 }
@@ -746,7 +753,8 @@ uint8_t calc_rop3(uint16_t rop3_bits, int brush)
 
     if (rop3_bits & SPICE_ROPD_OP_BLACKNESS || rop3_bits & SPICE_ROPD_OP_WHITENESS ||
         rop3_bits & SPICE_ROPD_OP_INVERS) {
-        CANVAS_ERROR("invalid rop3 type");
+        spice_warn_if_reached("invalid rop3 type");
+        return 0;
     }
     return rop3;
 }
@@ -795,7 +803,8 @@ static struct BitmapData get_mask_bitmap(struct GdiCanvas *canvas, struct SpiceQ
 
             _bitmap = (HBITMAP)GetCurrentObject(gdi_surface->dc, OBJ_BITMAP);
             if (!_bitmap) {
-                CANVAS_ERROR ("GetCurrentObject failed");
+                spice_critical("GetCurrentObject failed");
+                return bitmap;
             }
             bitmap.dc = gdi_surface->dc;
             bitmap.hbitmap = _bitmap;
@@ -843,13 +852,15 @@ static void gdi_draw_bitmap(HDC dest_dc, const SpiceRect *src, const SpiceRect *
                                            (dest->bottom - dest->top) == (src->bottom - src->top)) {
             if (!BitBlt(dest_dc, dest->left, dest->top, dest->right - dest->left,
                         dest->bottom - dest->top, src_dc, src->left, src->top, rast_oper)) {
-                CANVAS_ERROR("BitBlt failed");
+                spice_critical("BitBlt failed");
+                return;
             }
         } else {
             if (!StretchBlt(dest_dc, dest->left, dest->top, dest->right - dest->left,
                             dest->bottom - dest->top, src_dc, src->left, src->top,
                             src->right - src->left, src->bottom - src->top, rast_oper)) {
-                CANVAS_ERROR("StretchBlt failed");
+                spice_critical("StretchBlt failed");
+                return;
             }
         }
     } else {
@@ -859,7 +870,8 @@ static void gdi_draw_bitmap(HDC dest_dc, const SpiceRect *src, const SpiceRect *
                      dest->bottom - dest->top, src_dc, src->left, src->top,
                      bitmapmask->hbitmap, bitmapmask->pos.x, bitmapmask->pos.y,
                      rast_oper)) {
-            CANVAS_ERROR("MaskBlt failed");
+            spice_critical("MaskBlt failed");
+            return;
         }
     }
 }
@@ -898,7 +910,7 @@ static void draw_str_mask_bitmap(struct GdiCanvas *canvas,
 
     bitmap.hbitmap = (HBITMAP)1;
     if (!(surface = canvas_get_str_mask(&canvas->base, str, n, &pos))) {
-        CANVAS_ERROR("unable to canvas_get_str_mask");
+        spice_critical("unable to canvas_get_str_mask");
         return;
     }
 
@@ -939,7 +951,8 @@ static void draw_str_mask_bitmap(struct GdiCanvas *canvas,
         dest_stride = dest_stride * 4;
         break;
     default:
-        CANVAS_ERROR("unsupported bitmap bits size");
+        spice_warn_if_reached();
+        return;
     }
     dest_stride = dest_stride + 3;
     dest_stride = dest_stride & ~3;
@@ -1011,10 +1024,8 @@ static void gdi_canvas_draw_fill(SpiceCanvas *spice_canvas, SpiceRect *bbox, Spi
 
     RecurciveLock lock(*canvas->lock);
 
-    if (!(brush = get_brush(canvas, &fill->brush, &brush_lock))) {
-        CANVAS_ERROR("no braash");
-        return;
-    }
+    brush = get_brush(canvas, &fill->brush, &brush_lock);
+    spice_return_if_fail(brush != NULL);
 
     bitmapmask = get_mask_bitmap(canvas, &fill->mask);
 
@@ -1117,18 +1128,18 @@ static void gdi_canvas_put_image(SpiceCanvas *spice_canvas, HDC dc, const SpiceR
                                               rects[i].x2,
                                               rects[i].y2);
                 if (!combaine_hrgn) {
-                    CANVAS_ERROR("CreateRectRgn failed");
+                    spice_critical("CreateRectRgn failed");
                     DeleteObject(main_hrgn);
                     return;
                 }
                 if (!CombineRgn(main_hrgn, main_hrgn, combaine_hrgn, RGN_OR)) {
-                    CANVAS_ERROR("CombineRgn failed in put_image");
+                    spice_critical("CombineRgn failed in put_image");
                     return;
                 }
                 DeleteObject(combaine_hrgn);
             }
             if (SelectClipRgn(canvas->dc, main_hrgn) == ERROR) {
-                CANVAS_ERROR("SelectClipRgn failed in put_image");
+                spice_critical("SelectClipRgn failed in put_image");
                 DeleteObject(main_hrgn);
                 return;
             }
@@ -1232,7 +1243,8 @@ static void gdi_draw_bitmap_alpha(HDC dest_dc, const SpiceRect *src, const Spice
     if (!AlphaBlend(dest_dc, dest->left, dest->top, dest->right - dest->left,
                     dest->bottom - dest->top, src_dc, src->left, src->top,
                     src->right - src->left, src->bottom - src->top, bf)) {
-        CANVAS_ERROR("AlphaBlend failed");
+        spice_critical("AlphaBlend failed");
+        return;
     }
 }
 
@@ -1576,7 +1588,7 @@ static void gdi_canvas_draw_text(SpiceCanvas *spice_canvas, SpiceRect *bbox, Spi
 
         draw_str_mask_bitmap(canvas, str, 4, &dest, &src, &text->fore_brush);
     } else if (str->flags & SPICE_STRING_FLAGS_RASTER_A8) {
-        WARN("untested path A8 glyphs, doing nothing");
+        spice_warning("untested path A8 glyphs, doing nothing");
         if (0) {
             SpiceRect dest;
             SpiceRect src;
@@ -1584,7 +1596,7 @@ static void gdi_canvas_draw_text(SpiceCanvas *spice_canvas, SpiceRect *bbox, Spi
             draw_str_mask_bitmap(canvas, str, 8, &dest, &src, &text->fore_brush);
         }
     } else {
-        WARN("untested path vector glyphs, doing nothing");
+        spice_warning("untested path vector glyphs, doing nothing");
         if (0) {
         }
     }
@@ -1596,9 +1608,8 @@ static uint32_t *gdi_get_userstyle(GdiCanvas *canvas, uint8_t nseg, SPICE_FIXED2
     uint32_t *local_style;
     int i;
 
-    if (nseg == 0) {
-        CANVAS_ERROR("bad nseg");
-    }
+    spice_return_val_if_fail(nseg != 0, NULL);
+
     local_style = spice_new(uint32_t , nseg);
 
     if (start_is_gap) {
@@ -1697,9 +1708,8 @@ static void gdi_canvas_draw_stroke(SpiceCanvas *spice_canvas, SpiceRect *bbox, S
         } bitmap_info;
         GdiImage image;
 #endif
-        //CANVAS_ERROR("untested path stroke brush with pattern");
 #if 0
-        ASSERT(surface)
+        spice_return_if_fail(surface != NULL)
         surface_to_image(surface, &image);
 
         memset(&bitmap_info, 0, sizeof(bitmap_info));
@@ -1718,7 +1728,8 @@ static void gdi_canvas_draw_stroke(SpiceCanvas *spice_canvas, SpiceRect *bbox, S
             logbrush.lbHatch = (LONG)GlobalAlloc(GMEM_MOVEABLE,
                                                  image.height * -image.stride + sizeof(BITMAPINFO));
             if (!logbrush.lbHatch) {
-                CANVAS_ERROR("GlobalAlloc failed");
+                spice_critical("GlobalAlloc failed");
+                return;
             }
             copy_bitmap(image.pixels - (image.height - 1) * -image.stride,
                         image.height, -image.stride,
@@ -1727,7 +1738,8 @@ static void gdi_canvas_draw_stroke(SpiceCanvas *spice_canvas, SpiceRect *bbox, S
             logbrush.lbHatch = (LONG)GlobalAlloc(GMEM_MOVEABLE,
                                                  image.height * image.stride + sizeof(BITMAPINFO));
             if (!logbrush.lbHatch) {
-                CANVAS_ERROR("GlobalAlloc failed");
+                spice_critical("GlobalAlloc failed");
+                return;
             }
             copy_bitmap(image.pixels, image.height, image.stride,
                         (uint8_t *)logbrush.lbHatch, image.width);
