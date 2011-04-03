@@ -1073,9 +1073,6 @@ static pixman_image_t *canvas_get_image_internal(CanvasBase *canvas, SpiceImage 
     pixman_image_t *surface, *converted;
     pixman_format_code_t wanted_format, surface_format;
     int saved_want_original;
-#ifdef DEBUG_LZ
-    LOG_DEBUG("canvas_get_image image type: " << (int)descriptor->type);
-#endif
 
     /* When touching, only really allocate if we need to cache, or
      * if we're loading a GLZ stream (since those need inter-thread communication
