@@ -93,6 +93,11 @@ static void glz_decoder_window_resize(SpiceGlzDecoderWindow *w)
                 w->nimages, w->nimages * 2);
     new_images = spice_new0(struct glz_image*, w->nimages * 2);
     for (i = 0; i < w->nimages; i++) {
+        if (w->images[i] == NULL) {
+            /* FIXME: is this really an anormal condition? */
+            g_warn_if_reached();
+            continue;
+        }
         new_slot = w->images[i]->hdr.id % (w->nimages * 2);
         new_images[new_slot] = w->images[i];
     }

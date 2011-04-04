@@ -260,6 +260,7 @@ static size_t FNAME(decode)(SpiceGlzDecoderWindow *window,
                                               image_dist, pixel_ofs);
             }
 
+            g_return_val_if_fail(ref != NULL, 0);
             g_return_val_if_fail(op + len <= op_limit, 0);
 
             /* copying the match*/
