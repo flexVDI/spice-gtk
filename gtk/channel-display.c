@@ -61,8 +61,8 @@
 
 struct spice_display_channel {
     Ring                        surfaces;
-    display_cache               images;
-    display_cache               palettes;
+    display_cache               *images;
+    display_cache               *palettes;
     SpiceImageCache             image_cache;
     SpicePaletteCache           palette_cache;
     SpiceImageSurfaces          image_surfaces;
@@ -99,8 +99,6 @@ static void spice_display_handle_msg(SpiceChannel *channel, spice_msg_in *msg);
 static void spice_display_channel_init(SpiceDisplayChannel *channel);
 static void spice_display_channel_up(SpiceChannel *channel);
 
-static void palette_clear(SpicePaletteCache *cache);
-static void image_clear(SpiceImageCache *cache);
 static void clear_surfaces(SpiceChannel *channel);
 static void clear_streams(SpiceChannel *channel);
 static display_surface *find_surface(spice_display_channel *c, int surface_id);
@@ -110,17 +108,29 @@ static gboolean display_stream_render(display_stream *st);
 
 static void spice_display_channel_finalize(GObject *obj)
 {
-    spice_display_channel *c = SPICE_DISPLAY_CHANNEL(obj)->priv;
-
-    palette_clear(&c->palette_cache);
-    image_clear(&c->image_cache);
     clear_surfaces(SPICE_CHANNEL(obj));
     clear_streams(SPICE_CHANNEL(obj));
-    glz_decoder_window_destroy(c->glz_window);
 
     if (G_OBJECT_CLASS(spice_display_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_display_channel_parent_class)->finalize(obj);
 }
+
+static void spice_display_channel_constructed(GObject *object)
+{
+    spice_display_channel *c = SPICE_DISPLAY_CHANNEL(object)->priv;
+    SpiceSession *s = spice_channel_get_session(SPICE_CHANNEL(object));
+
+    g_return_if_fail(s != NULL);
+    spice_session_get_caches(s, &c->images, &c->palettes, &c->glz_window);
+
+    g_return_if_fail(c->glz_window != NULL);
+    g_return_if_fail(c->images != NULL);
+    g_return_if_fail(c->palettes != NULL);
+
+    if (G_OBJECT_CLASS(spice_display_channel_parent_class)->constructed)
+        G_OBJECT_CLASS(spice_display_channel_parent_class)->constructed(object);
+}
+
 
 static void spice_display_get_property(GObject    *object,
                                        guint       prop_id,
@@ -166,6 +176,7 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
     gobject_class->finalize     = spice_display_channel_finalize;
     gobject_class->get_property = spice_display_get_property;
     gobject_class->set_property = spice_display_set_property;
+    gobject_class->constructed = spice_display_channel_constructed;
 
     channel_class->handle_msg   = spice_display_handle_msg;
     channel_class->channel_up   = spice_display_channel_up;
@@ -347,13 +358,13 @@ static void image_put(SpiceImageCache *cache, uint64_t id, pixman_image_t *image
         SPICE_CONTAINEROF(cache, spice_display_channel, image_cache);
     display_cache_item *item;
 
-    item = cache_find(&c->images, id);
+    item = cache_find(c->images, id);
     if (item) {
         cache_ref(item);
         return;
     }
 
-    item = cache_add(&c->images, id);
+    item = cache_add(c->images, id);
     item->ptr = pixman_image_ref(image);
 }
 
@@ -363,9 +374,9 @@ static pixman_image_t *image_get(SpiceImageCache *cache, uint64_t id)
         SPICE_CONTAINEROF(cache, spice_display_channel, image_cache);
     display_cache_item *item;
 
-    item = cache_find(&c->images, id);
+    item = cache_find(c->images, id);
     if (item) {
-        cache_used(&c->images, item);
+        cache_used(c->images, item);
         return pixman_image_ref(item->ptr);
     }
     return NULL;
@@ -377,27 +388,11 @@ static void image_remove(SpiceImageCache *cache, uint64_t id)
         SPICE_CONTAINEROF(cache, spice_display_channel, image_cache);
     display_cache_item *item;
 
-    item = cache_find(&c->images, id);
+    item = cache_find(c->images, id);
     g_return_if_fail(item != NULL);
     if (cache_unref(item)) {
         pixman_image_unref(item->ptr);
-        cache_del(&c->images, item);
-    }
-}
-
-static void image_clear(SpiceImageCache *cache)
-{
-    spice_display_channel *c =
-        SPICE_CONTAINEROF(cache, spice_display_channel, image_cache);
-    display_cache_item *item;
-
-    for (;;) {
-        item = cache_get_lru(&c->images);
-        if (item == NULL) {
-            break;
-        }
-        pixman_image_unref(item->ptr);
-        cache_del(&c->images, item);
+        cache_del(c->images, item);
     }
 }
 
@@ -407,7 +402,7 @@ static void palette_put(SpicePaletteCache *cache, SpicePalette *palette)
         SPICE_CONTAINEROF(cache, spice_display_channel, palette_cache);
     display_cache_item *item;
 
-    item = cache_add(&c->palettes, palette->unique);
+    item = cache_add(c->palettes, palette->unique);
     item->ptr = g_memdup(palette, sizeof(SpicePalette) +
                          palette->num_ents * sizeof(palette->ents[0]));
 }
@@ -418,7 +413,7 @@ static SpicePalette *palette_get(SpicePaletteCache *cache, uint64_t id)
         SPICE_CONTAINEROF(cache, spice_display_channel, palette_cache);
     display_cache_item *item;
 
-    item = cache_find(&c->palettes, id);
+    item = cache_find(c->palettes, id);
     if (item) {
         cache_ref(item);
         return item->ptr;
@@ -432,27 +427,12 @@ static void palette_remove(SpicePaletteCache *cache, uint32_t id)
         SPICE_CONTAINEROF(cache, spice_display_channel, palette_cache);
     display_cache_item *item;
 
-    item = cache_find(&c->palettes, id);
+    item = cache_find(c->palettes, id);
     if (item) {
         if (cache_unref(item)) {
             g_free(item->ptr);
-            cache_del(&c->palettes, item);
+            cache_del(c->palettes, item);
         }
-    }
-}
-
-static void palette_clear(SpicePaletteCache *cache)
-{
-    spice_display_channel *c =
-        SPICE_CONTAINEROF(cache, spice_display_channel, palette_cache);
-    display_cache_item *item;
-
-    for (;;) {
-        item = cache_get_lru(&c->palettes);
-        if (item == NULL) {
-            break;
-        }
-        cache_del(&c->palettes, item);
     }
 }
 
@@ -470,10 +450,10 @@ static void image_put_lossy(SpiceImageCache *cache, uint64_t id,
     display_cache_item *item;
 
 #if 1 /* TODO: temporary sanity check */
-    g_warn_if_fail(cache_find(&c->images, id) == NULL);
+    g_warn_if_fail(cache_find(c->images, id) == NULL);
 #endif
 
-    item = cache_add(&c->images, id);
+    item = cache_add(c->images, id);
     item->ptr = pixman_image_ref(surface);
     item->lossy = TRUE;
 }
@@ -485,7 +465,7 @@ static void image_replace_lossy(SpiceImageCache *cache, uint64_t id,
         SPICE_CONTAINEROF(cache, spice_display_channel, image_cache);
     display_cache_item *item;
 
-    item = cache_find(&c->images, id);
+    item = cache_find(c->images, id);
     g_return_if_fail(item != NULL);
 
     pixman_image_unref(item->ptr);
@@ -499,7 +479,7 @@ static pixman_image_t* image_get_lossless(SpiceImageCache *cache, uint64_t id)
         SPICE_CONTAINEROF(cache, spice_display_channel, image_cache);
     display_cache_item *item;
 
-    item = cache_find(&c->images, id);
+    item = cache_find(c->images, id);
     if (!item)
         return NULL;
 
@@ -507,7 +487,7 @@ static pixman_image_t* image_get_lossless(SpiceImageCache *cache, uint64_t id)
        that necessary? */
     g_warn_if_fail(item->lossy == FALSE);
 
-    cache_used(&c->images, item);
+    cache_used(c->images, item);
     return pixman_image_ref(item->ptr);
 }
 #endif
@@ -564,8 +544,6 @@ static void spice_display_channel_init(SpiceDisplayChannel *channel)
     memset(c, 0, sizeof(*c));
 
     ring_init(&c->surfaces);
-    cache_init(&c->images, "image");
-    cache_init(&c->palettes, "palette");
     c->image_cache.ops = &image_cache_ops;
     c->palette_cache.ops = &palette_cache_ops;
     c->image_surfaces.ops = &image_surfaces_ops;
@@ -602,9 +580,7 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
         surface->data = spice_malloc(surface->size);
     }
 
-    if (!c->glz_window) {
-        c->glz_window = glz_decoder_window_new();
-    }
+    g_return_val_if_fail(c->glz_window, 0);
 
     g_warn_if_fail(surface->canvas == NULL);
     g_warn_if_fail(surface->glz_decoder == NULL);
@@ -799,7 +775,7 @@ static void display_handle_reset(SpiceChannel *channel, spice_msg_in *in)
     if (surface != NULL)
         surface->canvas->ops->clear(surface->canvas);
 
-    palette_clear(&c->palette_cache);
+    spice_session_palettes_clear(spice_channel_get_session(channel));
 
     c->mark = FALSE;
     emit_main_context(channel, SPICE_DISPLAY_MARK, FALSE);
@@ -842,9 +818,7 @@ static void display_handle_inv_list(SpiceChannel *channel, spice_msg_in *in)
 /* coroutine context */
 static void display_handle_inv_pixmap_all(SpiceChannel *channel, spice_msg_in *in)
 {
-    spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
-
-    image_clear(&c->image_cache);
+    spice_session_images_clear(spice_channel_get_session(channel));
 }
 
 /* coroutine context */
@@ -859,9 +833,7 @@ static void display_handle_inv_palette(SpiceChannel *channel, spice_msg_in *in)
 /* coroutine context */
 static void display_handle_inv_palette_all(SpiceChannel *channel, spice_msg_in *in)
 {
-    spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
-
-    palette_clear(&c->palette_cache);
+    spice_session_palettes_clear(spice_channel_get_session(channel));
 }
 
 /* ------------------------------------------------------------------ */

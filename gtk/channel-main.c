@@ -43,6 +43,8 @@
 #define SPICE_MAIN_CHANNEL_GET_PRIVATE(obj)                             \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_MAIN_CHANNEL, spice_main_channel))
 
+#define MAX_DISPLAY 16
+
 struct spice_main_channel {
     enum SpiceMouseMode         mouse_mode;
     bool                        agent_connected;
@@ -66,7 +68,7 @@ struct spice_main_channel {
         int                     y;
         int                     width;
         int                     height;
-    } display[1];
+    } display[MAX_DISPLAY];
     gint                        timer_id;
     GQueue                      *agent_msg_queue;
 
