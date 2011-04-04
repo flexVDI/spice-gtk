@@ -31,7 +31,6 @@
 #include "spice-common.h"
 
 #include "spice-marshal.h"
-#include "spice-channel-cache.h"
 #include "spice-channel-priv.h"
 #include "spice-session-priv.h"
 #include "channel-display-priv.h"

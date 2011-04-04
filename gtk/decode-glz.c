@@ -21,6 +21,7 @@
 
 #include <glib.h>
 
+#include "gio-coroutine.h"
 #include "spice-util.h"
 #include "decode.h"
 
@@ -116,7 +117,27 @@ static void glz_decoder_window_add(SpiceGlzDecoderWindow *w,
         glz_decoder_window_resize(w);
         slot = img->hdr.id % w->nimages;
     }
+
+    SPICE_DEBUG("%s: %d %" PRId64, __FUNCTION__, slot, img->hdr.id);
+
     w->images[slot] = img;
+}
+
+struct wait_for_image_data {
+    SpiceGlzDecoderWindow     *window;
+    uint64_t                   id;
+    uint32_t                   dist;
+};
+
+static gboolean wait_for_image(gpointer data)
+{
+    struct wait_for_image_data *wait = data;
+    int slot = (wait->id - wait->dist) % wait->window->nimages;
+    gboolean ready = wait->window->images[slot] != NULL;
+
+    SPICE_DEBUG("image with slot %d: %s", slot, ready ? "yes" : "no");
+
+    return ready;
 }
 
 static void *glz_decoder_window_bits(SpiceGlzDecoderWindow *w, uint64_t id,
@@ -124,7 +145,17 @@ static void *glz_decoder_window_bits(SpiceGlzDecoderWindow *w, uint64_t id,
 {
     int slot = (id - dist) % w->nimages;
     
-    g_return_val_if_fail(w->images[slot], NULL);
+    if (!w->images[slot]) {
+        struct wait_for_image_data data = {
+            .window = w,
+            .id = id,
+            .dist = dist,
+        };
+
+        g_condition_wait(wait_for_image, &data);
+        slot = (id - dist) % w->nimages;
+    }
+
     g_return_val_if_fail(w->images[slot]->hdr.id == id - dist, NULL);
     g_return_val_if_fail(w->images[slot]->hdr.gross_pixels >= offset, NULL);
 
