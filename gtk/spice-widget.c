@@ -1686,8 +1686,11 @@ static gboolean clipboard_request(SpiceMainChannel *main, guint selection,
 static void clipboard_release(SpiceMainChannel *main, guint selection, gpointer data)
 {
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(data);
+    GtkClipboard* clipboard = get_clipboard_from_selection(d, selection);
+    if (!clipboard)
+        return;
 
-    gtk_clipboard_clear(d->clipboard);
+    gtk_clipboard_clear(clipboard);
 }
 
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
