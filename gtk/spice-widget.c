@@ -1127,8 +1127,9 @@ static void clipboard_owner_change(GtkClipboard        *clipboard,
 
     if (d->clip_grabbed[selection]) {
         d->clip_grabbed[selection] = false;
-        spice_main_clipboard_selection_release(d->main,
-            get_selection_from_clipboard(d, clipboard));
+        if (!d->clipboard_by_guest[selection])
+            spice_main_clipboard_selection_release(d->main,
+                get_selection_from_clipboard(d, clipboard));
     }
 
     switch (event->reason) {
