@@ -994,8 +994,6 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     if (fullscreen)
         gtk_window_fullscreen(GTK_WINDOW(win->toplevel));
 
-    gtk_widget_show_all(win->toplevel);
-
     restore_configuration(win);
 
     /* init toggle actions */
@@ -1150,6 +1148,16 @@ static void inputs_modifiers(SpiceChannel *channel, gpointer data)
                        m & SPICE_KEYBOARD_MODIFIER_FLAGS_NUM_LOCK ? _("NUM") : "");
 }
 
+static void display_mark(SpiceChannel *channel, gint mark, spice_window *win)
+{
+    g_return_if_fail(win != NULL);
+    g_return_if_fail(win->toplevel != NULL);
+
+    if (mark == TRUE) {
+        gtk_widget_show_all(win->toplevel);
+    }
+}
+
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
     spice_connection *conn = data;
@@ -1157,6 +1165,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 
     g_object_get(channel, "channel-id", &id, NULL);
     conn->channels++;
+    SPICE_DEBUG("new channel (#%d)", id);
 
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
         SPICE_DEBUG("new main channel");
@@ -1177,6 +1186,8 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
             return;
         SPICE_DEBUG("new display channel (#%d)", id);
         conn->wins[id] = create_spice_window(conn, id, channel);
+        g_signal_connect(channel, "display-mark",
+                         G_CALLBACK(display_mark), conn->wins[id]);
     }
 
     if (SPICE_IS_INPUTS_CHANNEL(channel)) {
