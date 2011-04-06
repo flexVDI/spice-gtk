@@ -79,7 +79,8 @@ struct spice_display {
     guint                   nclip_targets[CLIPBOARD_LAST];
     bool                    clip_hasdata[CLIPBOARD_LAST];
     bool                    clip_grabbed[CLIPBOARD_LAST];
-    gboolean                clipboard_by_guest[CLIPBOARD_LAST]; /* hack? */
+    gboolean                clipboard_by_guest[CLIPBOARD_LAST];
+    gboolean                clipboard_selfgrab_pending[CLIPBOARD_LAST];
 
     SpiceSession            *session;
     SpiceMainChannel        *main;

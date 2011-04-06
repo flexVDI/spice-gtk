@@ -1134,16 +1134,17 @@ static void clipboard_owner_change(GtkClipboard        *clipboard,
 
     switch (event->reason) {
     case GDK_OWNER_CHANGE_NEW_OWNER:
-        if (d->clipboard_by_guest[selection]) {
-            d->clipboard_by_guest[selection] = FALSE;
+        if (d->clipboard_selfgrab_pending[selection]) {
+            d->clipboard_selfgrab_pending[selection] = FALSE;
             break;
         }
-        d->clip_hasdata[selection] = 1;
+        d->clipboard_by_guest[selection] = FALSE;
+        d->clip_hasdata[selection] = TRUE;
         if (d->auto_clipboard_enable)
             gtk_clipboard_request_targets(clipboard, clipboard_get_targets, data);
         break;
     default:
-        d->clip_hasdata[selection] = 0;
+        d->clip_hasdata[selection] = FALSE;
         break;
     }
 }
@@ -1616,6 +1617,7 @@ static gboolean clipboard_grab(SpiceMainChannel *main, guint selection,
         g_warning("clipboard grab failed");
         return FALSE;
     }
+    d->clipboard_selfgrab_pending[selection] = TRUE;
 
 skip_grab_clipboard:
     d->clipboard_by_guest[selection] = TRUE;
@@ -1866,6 +1868,7 @@ void spice_display_paste_from_guest(SpiceDisplay *display)
         g_warning("Clipboard grab failed");
         return;
     }
+    d->clipboard_selfgrab_pending[selection] = TRUE;
 }
 
 /**
