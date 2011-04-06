@@ -1619,6 +1619,7 @@ static gboolean clipboard_grab(SpiceMainChannel *main, guint selection,
         return FALSE;
     }
     d->clipboard_selfgrab_pending[selection] = TRUE;
+    d->clip_hasdata[selection] = FALSE;
 
 skip_grab_clipboard:
     d->clipboard_by_guest[selection] = TRUE;
@@ -1870,6 +1871,7 @@ void spice_display_paste_from_guest(SpiceDisplay *display)
         return;
     }
     d->clipboard_selfgrab_pending[selection] = TRUE;
+    d->clip_hasdata[selection] = FALSE;
 }
 
 /**
