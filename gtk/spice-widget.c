@@ -1126,10 +1126,9 @@ static void clipboard_owner_change(GtkClipboard        *clipboard,
         return;
 
     if (d->clip_grabbed[selection]) {
-        d->clip_grabbed[selection] = false;
-        if (!d->clipboard_by_guest[selection])
-            spice_main_clipboard_selection_release(d->main,
-                get_selection_from_clipboard(d, clipboard));
+        d->clip_grabbed[selection] = FALSE;
+        spice_main_clipboard_selection_release(d->main,
+            get_selection_from_clipboard(d, clipboard));
     }
 
     switch (event->reason) {
@@ -1608,6 +1607,8 @@ static gboolean clipboard_grab(SpiceMainChannel *main, guint selection,
     g_free(d->clip_targets[selection]);
     d->nclip_targets[selection] = i;
     d->clip_targets[selection] = g_memdup(targets, sizeof(GtkTargetEntry) * i);
+    /* Receiving a grab implies we've released our own grab */
+    d->clip_grabbed[selection] = FALSE;
 
     if (!d->auto_clipboard_enable)
         goto skip_grab_clipboard;
