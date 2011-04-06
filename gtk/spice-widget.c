@@ -1105,9 +1105,11 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
         }
     }
     if (!d->clip_grabbed[selection] && t > 0) {
-        d->clip_grabbed[selection] = true;
+        d->clip_grabbed[selection] = TRUE;
         spice_main_clipboard_selection_grab(d->main,
             get_selection_from_clipboard(d, clipboard), types, t);
+        /* Sending a grab causes the agent to do an impicit release */
+        d->nclip_targets[selection] = 0;
     }
 }
 
@@ -1455,6 +1457,7 @@ static void disconnect_main(SpiceDisplay *display)
     for (int i = 0; i < CLIPBOARD_LAST; ++i) {
         d->clipboard_by_guest[i] = FALSE;
         d->clip_grabbed[i] = FALSE;
+        d->nclip_targets[i] = 0;
     }
 }
 
@@ -1569,7 +1572,8 @@ static void clipboard_get(GtkClipboard *clipboard, GtkSelectionData *selection_d
 static void clipboard_clear(GtkClipboard *clipboard, gpointer display)
 {
     SPICE_DEBUG("clipboard_clear");
-    // clipboard release ?
+    /* We watch for clipboard ownership changes and act on those, so we
+       don't need to do anything here */
 }
 
 static gboolean clipboard_grab(SpiceMainChannel *main, guint selection,
@@ -1610,7 +1614,7 @@ static gboolean clipboard_grab(SpiceMainChannel *main, guint selection,
     /* Receiving a grab implies we've released our own grab */
     d->clip_grabbed[selection] = FALSE;
 
-    if (!d->auto_clipboard_enable)
+    if (!d->auto_clipboard_enable || d->nclip_targets[selection] == 0)
         goto skip_grab_clipboard;
 
     if (!gtk_clipboard_set_with_data(cb, targets, i,
@@ -1619,10 +1623,10 @@ static gboolean clipboard_grab(SpiceMainChannel *main, guint selection,
         return FALSE;
     }
     d->clipboard_selfgrab_pending[selection] = TRUE;
+    d->clipboard_by_guest[selection] = TRUE;
     d->clip_hasdata[selection] = FALSE;
 
 skip_grab_clipboard:
-    d->clipboard_by_guest[selection] = TRUE;
     return TRUE;
 }
 
@@ -1694,7 +1698,12 @@ static void clipboard_release(SpiceMainChannel *main, guint selection, gpointer 
     if (!clipboard)
         return;
 
+    d->nclip_targets[selection] = 0;
+
+    if (!d->clipboard_by_guest[selection])
+        return;
     gtk_clipboard_clear(clipboard);
+    d->clipboard_by_guest[selection] = FALSE;
 }
 
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
@@ -1859,7 +1868,7 @@ void spice_display_paste_from_guest(SpiceDisplay *display)
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
     int selection = VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD;
 
-    if (!d->clipboard_by_guest[selection]) {
+    if (d->nclip_targets[selection] == 0) {
         g_warning("Guest clipboard is not available.");
         return;
     }
@@ -1871,6 +1880,7 @@ void spice_display_paste_from_guest(SpiceDisplay *display)
         return;
     }
     d->clipboard_selfgrab_pending[selection] = TRUE;
+    d->clipboard_by_guest[selection] = TRUE;
     d->clip_hasdata[selection] = FALSE;
 }
 
