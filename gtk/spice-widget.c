@@ -176,7 +176,8 @@ static void spice_display_set_property(GObject      *object,
         break;
     case PROP_SCALING:
         d->allow_scaling = g_value_get_boolean(value);
-        if (d->ximage) {
+        if (d->ximage &&
+            gtk_widget_get_window(GTK_WIDGET(display))) { /* if not yet shown */
             int ww, wh;
             gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
             gtk_widget_queue_draw_area(GTK_WIDGET(display), 0, 0, ww, wh);
@@ -1331,6 +1332,9 @@ static void invalidate(SpiceChannel *channel,
 {
     SpiceDisplay *display = data;
 
+    if (!gtk_widget_get_window(GTK_WIDGET(display)))
+        return;
+
     if (!do_color_convert(display, x, y, w, h))
         return;
 
@@ -1344,6 +1348,7 @@ static void mark(SpiceChannel *channel, gint mark, gpointer data)
     SpiceDisplay *display = data;
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
+    SPICE_DEBUG("widget mark, channel %d", d->channel_id);
     d->mark = mark;
     if (mark != 0 && gtk_widget_get_window(GTK_WIDGET(display)))
         gdk_window_invalidate_rect(gtk_widget_get_window(GTK_WIDGET(display)),
@@ -1440,8 +1445,13 @@ static void cursor_reset(SpiceCursorChannel *channel, gpointer data)
 {
     SpiceDisplay *display = data;
     GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(display));
-    SPICE_DEBUG("%s",  __FUNCTION__);
 
+    if (!window) {
+        SPICE_DEBUG("%s: no window, returning",  __FUNCTION__);
+        return;
+    }
+
+    SPICE_DEBUG("%s",  __FUNCTION__);
     gdk_window_set_cursor(window, NULL);
 }
 
@@ -2012,7 +2022,8 @@ static void sync_keyboard_lock_modifiers(SpiceDisplay *display)
     GdkWindow *w;
 
     w = gtk_widget_get_parent_window(GTK_WIDGET(display));
-    g_return_if_fail(w != NULL);
+    if (w == NULL) /* it can happen if the display is not yet shown */
+        return;
 
     x_display = GDK_WINDOW_XDISPLAY(w);
     modifiers = get_keyboard_lock_modifiers(x_display);
