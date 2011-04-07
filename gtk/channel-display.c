@@ -69,6 +69,7 @@ struct spice_display_channel {
     display_stream              **streams;
     int                         nstreams;
     gboolean                    mark;
+    guint                       mark_false_event_id;
 #ifdef WIN32
     HDC dc;
 #endif
@@ -104,6 +105,19 @@ static display_surface *find_surface(spice_display_channel *c, int surface_id);
 static gboolean display_stream_render(display_stream *st);
 
 /* ------------------------------------------------------------------ */
+
+static void spice_display_channel_dispose(GObject *object)
+{
+    spice_display_channel *c = SPICE_DISPLAY_CHANNEL(object)->priv;
+
+    if (c->mark_false_event_id != 0) {
+        g_source_remove(c->mark_false_event_id);
+        c->mark_false_event_id = 0;
+    }
+
+    if (G_OBJECT_CLASS(spice_display_channel_parent_class)->dispose)
+        G_OBJECT_CLASS(spice_display_channel_parent_class)->dispose(object);
+}
 
 static void spice_display_channel_finalize(GObject *obj)
 {
@@ -173,6 +187,7 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
     SpiceChannelClass *channel_class = SPICE_CHANNEL_CLASS(klass);
 
     gobject_class->finalize     = spice_display_channel_finalize;
+    gobject_class->dispose      = spice_display_channel_dispose;
     gobject_class->get_property = spice_display_get_property;
     gobject_class->set_property = spice_display_set_property;
     gobject_class->constructed = spice_display_channel_constructed;
@@ -1192,12 +1207,28 @@ static void display_handle_surface_create(SpiceChannel *channel, spice_msg_in *i
         emit_main_context(channel, SPICE_DISPLAY_PRIMARY_CREATE,
                           surface->format, surface->width, surface->height,
                           surface->stride, surface->shmid, surface->data);
+        if (c->mark_false_event_id != 0) {
+            g_source_remove(c->mark_false_event_id);
+            c->mark_false_event_id = FALSE;
+        }
     } else {
         surface->primary = false;
         create_canvas(channel, surface);
     }
 
     ring_add(&c->surfaces, &surface->link);
+}
+
+static gboolean display_mark_false(gpointer data)
+{
+    SpiceChannel *channel = data;
+    spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
+
+    c->mark = FALSE;
+    g_signal_emit(channel, signals[SPICE_DISPLAY_MARK], FALSE);
+
+    c->mark_false_event_id = 0;
+    return FALSE;
 }
 
 /* coroutine context */
@@ -1216,6 +1247,12 @@ static void display_handle_surface_destroy(SpiceChannel *channel, spice_msg_in *
         return;
     }
     if (surface->primary) {
+        int id = spice_channel_get_channel_id(channel);
+        SPICE_DEBUG("%d: FIXME primary destroy, but is display really disabled?", id);
+        /* this is done with a timeout in spicec as well, it's *ugly* */
+        if (id != 0 && c->mark_false_event_id == 0) {
+            c->mark_false_event_id = g_timeout_add_seconds(1, display_mark_false, channel);
+        }
         emit_main_context(channel, SPICE_DISPLAY_PRIMARY_DESTROY);
     }
 
