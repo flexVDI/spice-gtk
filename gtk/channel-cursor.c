@@ -437,9 +437,9 @@ static void cursor_handle_init(SpiceChannel *channel, spice_msg_in *in)
     delete_cursor_all(channel);
     cursor = set_cursor(channel, &init->cursor);
     c->init_done = TRUE;
-    if (init->visible && cursor)
+    if (cursor)
         emit_cursor_set(channel, cursor);
-    else
+    if (!init->visible)
         emit_main_context(channel, SPICE_CURSOR_HIDE);
 }
 
