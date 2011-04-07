@@ -1171,6 +1171,8 @@ static void display_mark(SpiceChannel *channel, gint mark, spice_window *win)
 
     if (mark == TRUE) {
         gtk_widget_show_all(win->toplevel);
+    } else {
+        gtk_widget_hide_all(win->toplevel);
     }
 }
 
