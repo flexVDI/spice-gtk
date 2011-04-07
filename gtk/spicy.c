@@ -255,7 +255,7 @@ static int connect_dialog(GtkWidget *parent, SpiceSession *session)
 
 /* ------------------------------------------------------------------ */
 
-static void update_status(struct spice_window *win)
+static void update_status_window(struct spice_window *win)
 {
     char status[256];
 
@@ -268,6 +268,17 @@ static void update_status(struct spice_window *win)
                  win->conn->mouse_state, win->conn->agent_state);
     }
     gtk_label_set_text(GTK_LABEL(win->status), status);
+}
+
+static void update_status(struct spice_connection *conn)
+{
+    int i;
+
+    for (i = 0; i < SPICE_N_ELEMENTS(conn->wins); i++) {
+        if (conn->wins[i] == NULL)
+            continue;
+        update_status_window(conn->wins[i]);
+    }
 }
 
 static void menu_cb_connect(GtkAction *action, void *data)
@@ -427,7 +438,7 @@ static void mouse_grab_cb(GtkWidget *widget, gint grabbed, gpointer data)
     struct spice_window *win = data;
 
     win->mouse_grabbed = grabbed;
-    update_status(win);
+    update_status(win->conn);
 }
 
 static void restore_configuration(struct spice_window *win)
@@ -967,7 +978,7 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     win->status = gtk_label_new("status line");
     gtk_misc_set_alignment(GTK_MISC(win->status), 0, 0.5);
     gtk_misc_set_padding(GTK_MISC(win->status), 3, 1);
-    update_status(win);
+    update_status_window(win);
 
     frame = gtk_frame_new(NULL);
     gtk_box_pack_start(GTK_BOX(win->statusbar), frame, TRUE, TRUE, 0);
@@ -1122,7 +1133,7 @@ static void main_mouse_update(SpiceChannel *channel, gpointer data)
         conn->mouse_state = "?";
         break;
     }
-    update_status(conn->wins[0]);
+    update_status(conn);
 }
 
 static void main_agent_update(SpiceChannel *channel, gpointer data)
@@ -1131,21 +1142,26 @@ static void main_agent_update(SpiceChannel *channel, gpointer data)
 
     g_object_get(channel, "agent-connected", &conn->agent_connected, NULL);
     conn->agent_state = conn->agent_connected ? _("yes") : _("no");
-    update_status(conn->wins[0]);
+    update_status(conn);
 }
 
 static void inputs_modifiers(SpiceChannel *channel, gpointer data)
 {
     spice_connection *conn = data;
-    int m;
+    int m, i;
 
     g_object_get(channel, "key-modifiers", &m, NULL);
-    gtk_label_set_text(GTK_LABEL(conn->wins[0]->st[STATE_SCROLL_LOCK]),
-                       m & SPICE_KEYBOARD_MODIFIER_FLAGS_SCROLL_LOCK ? _("SCROLL") : "");
-    gtk_label_set_text(GTK_LABEL(conn->wins[0]->st[STATE_CAPS_LOCK]),
-                       m & SPICE_KEYBOARD_MODIFIER_FLAGS_CAPS_LOCK ? _("CAPS") : "");
-    gtk_label_set_text(GTK_LABEL(conn->wins[0]->st[STATE_NUM_LOCK]),
-                       m & SPICE_KEYBOARD_MODIFIER_FLAGS_NUM_LOCK ? _("NUM") : "");
+    for (i = 0; i < SPICE_N_ELEMENTS(conn->wins); i++) {
+        if (conn->wins[i] == NULL)
+            continue;
+
+        gtk_label_set_text(GTK_LABEL(conn->wins[i]->st[STATE_SCROLL_LOCK]),
+                           m & SPICE_KEYBOARD_MODIFIER_FLAGS_SCROLL_LOCK ? _("SCROLL") : "");
+        gtk_label_set_text(GTK_LABEL(conn->wins[i]->st[STATE_CAPS_LOCK]),
+                           m & SPICE_KEYBOARD_MODIFIER_FLAGS_CAPS_LOCK ? _("CAPS") : "");
+        gtk_label_set_text(GTK_LABEL(conn->wins[i]->st[STATE_NUM_LOCK]),
+                           m & SPICE_KEYBOARD_MODIFIER_FLAGS_NUM_LOCK ? _("NUM") : "");
+    }
 }
 
 static void display_mark(SpiceChannel *channel, gint mark, spice_window *win)
