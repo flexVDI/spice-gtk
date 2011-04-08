@@ -56,6 +56,7 @@ struct spice_main_channel {
     gboolean                    display_disable_font_smooth:1;
     gboolean                    display_disable_animation:1;
     gboolean                    display_set_color_depth:1;
+    gboolean                    disable_display_position:1;
 
     int                         agent_tokens;
     VDAgentMessage              agent_msg; /* partial msg reconstruction */
@@ -98,6 +99,7 @@ enum {
     PROP_DISPLAY_DISABLE_ANIMATION,
     PROP_DISPLAY_SET_COLOR_DEPTH,
     PROP_DISPLAY_COLOR_DEPTH,
+    PROP_DISABLE_DISPLAY_POSITION,
 };
 
 /* Signals */
@@ -190,6 +192,9 @@ static void spice_main_get_property(GObject    *object,
     case PROP_DISPLAY_COLOR_DEPTH:
         g_value_set_uint(value, c->display_color_depth);
         break;
+    case PROP_DISABLE_DISPLAY_POSITION:
+        g_value_set_boolean(value, c->disable_display_position);
+        break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
 	break;
@@ -216,6 +221,9 @@ static void spice_main_set_property(GObject *gobject, guint prop_id,
         break;
     case PROP_DISPLAY_COLOR_DEPTH:
         c->display_color_depth = g_value_get_uint(value);
+        break;
+    case PROP_DISABLE_DISPLAY_POSITION:
+        c->disable_display_position = g_value_get_boolean(value);
         break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -344,6 +352,16 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                               "Disable guest animations",
                               "Disable guest animations",
                               FALSE,
+                              G_PARAM_READWRITE |
+                              G_PARAM_CONSTRUCT |
+                              G_PARAM_STATIC_STRINGS));
+
+    g_object_class_install_property
+        (gobject_class, PROP_DISABLE_DISPLAY_POSITION,
+         g_param_spec_boolean("disable-display-position",
+                              "Disable display position",
+                              "Disable using display position when setting monitor config",
+                              TRUE,
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
                               G_PARAM_STATIC_STRINGS));

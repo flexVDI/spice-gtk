@@ -520,8 +520,9 @@ static void recalc_geometry(GtkWidget *widget, gboolean set_display)
             d->my = (d->wh - d->height) / 2;
     }
 
-    SPICE_DEBUG("%s: guest %dx%d, window %dx%d, offset +%d+%d", __FUNCTION__,
-                d->width, d->height, d->ww, d->wh, d->mx, d->my);
+    SPICE_DEBUG("monitors: id %d, guest %dx%d, window %dx%d, offset +%d+%d",
+                d->channel_id, d->width, d->height, d->ww, d->wh, d->mx, d->my);
+
     if (d->resize_guest_enable && set_display) {
         spice_main_set_display(d->main, d->channel_id,
                                0, 0, d->ww, d->wh);
@@ -613,11 +614,13 @@ static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
+#if 0
     SPICE_DEBUG("%s: area %dx%d at %d,%d", __FUNCTION__,
             expose->area.width,
             expose->area.height,
             expose->area.x,
             expose->area.y);
+#endif
 
     if (d->mark == 0 || d->data == NULL)
         return false;
@@ -1348,7 +1351,7 @@ static void mark(SpiceChannel *channel, gint mark, gpointer data)
     SpiceDisplay *display = data;
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
-    SPICE_DEBUG("widget mark, channel %d", d->channel_id);
+    SPICE_DEBUG("widget mark: %d, channel %d", mark, d->channel_id);
     d->mark = mark;
     if (mark != 0 && gtk_widget_get_window(GTK_WIDGET(display)))
         gdk_window_invalidate_rect(gtk_widget_get_window(GTK_WIDGET(display)),

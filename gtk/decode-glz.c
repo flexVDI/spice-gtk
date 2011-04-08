@@ -118,7 +118,9 @@ static void glz_decoder_window_add(SpiceGlzDecoderWindow *w,
         slot = img->hdr.id % w->nimages;
     }
 
+#if 0
     SPICE_DEBUG("%s: %d %" PRId64, __FUNCTION__, slot, img->hdr.id);
+#endif
 
     w->images[slot] = img;
 }
