@@ -1353,6 +1353,7 @@ static void mark(SpiceChannel *channel, gint mark, gpointer data)
 
     SPICE_DEBUG("widget mark: %d, channel %d", mark, d->channel_id);
     d->mark = mark;
+    spice_main_set_display_enabled(d->main, d->channel_id, d->mark != 0);
     if (mark != 0 && gtk_widget_get_window(GTK_WIDGET(display)))
         gdk_window_invalidate_rect(gtk_widget_get_window(GTK_WIDGET(display)),
                                    NULL, FALSE);

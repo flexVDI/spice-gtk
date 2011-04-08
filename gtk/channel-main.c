@@ -1045,9 +1045,10 @@ static void agent_start(SpiceMainChannel *channel)
     spice_msg_out_send_internal(out);
     spice_msg_out_unref(out);
 
-    agent_announce_caps(channel);
-    agent_monitors_config(channel);
-    agent_send_msg_queue(channel);
+    if (c->agent_connected) {
+        agent_announce_caps(channel);
+        agent_send_msg_queue(channel);
+    }
 }
 
 /* coroutine context  */
