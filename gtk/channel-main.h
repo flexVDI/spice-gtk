@@ -54,6 +54,8 @@ GType spice_main_channel_get_type(void);
 
 void spice_main_set_display(SpiceMainChannel *channel, int id,
                             int x, int y, int width, int height);
+void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled);
+gboolean spice_main_send_monitor_config(SpiceMainChannel *channel);
 
 void spice_main_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int ntypes);
 void spice_main_clipboard_release(SpiceMainChannel *channel);

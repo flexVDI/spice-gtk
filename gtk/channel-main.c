@@ -69,6 +69,7 @@ struct spice_main_channel {
         int                     y;
         int                     width;
         int                     height;
+        gboolean                enabled;
     } display[MAX_DISPLAY];
     gint                        timer_id;
     GQueue                      *agent_msg_queue;
@@ -773,40 +774,51 @@ static void agent_msg_queue(SpiceMainChannel *channel, int type, int size, void 
 
 /* any context: the message is not flushed immediately,
    you can wakeup() the channel coroutine or send_msg_queue() */
-void agent_monitors_config(SpiceMainChannel *channel)
+gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
 {
-    spice_main_channel *c = channel->priv;
+    spice_main_channel *c;
     VDAgentMonitorsConfig *mon;
-    int i, monitors = 1;
+    int i, j, monitors;
     size_t size;
 
-    if (!c->agent_connected)
-        return;
-    for (i = 0; i < monitors; i++) {
-        if (!c->display[i].width ||
-            !c->display[i].height)
-            return;
+    g_return_val_if_fail(SPICE_IS_MAIN_CHANNEL(channel), FALSE);
+    c = channel->priv;
+    g_return_val_if_fail(c->agent_connected, FALSE);
+
+    monitors = 0;
+    /* FIXME: fix MonitorConfig to be per display */
+    for (i = 0; i < SPICE_N_ELEMENTS(c->display); i++) {
+        if (c->display[i].enabled)
+            monitors += 1;
     }
 
-    size = sizeof(VDAgentMonitorsConfig) + sizeof(VDAgentMonConfig) * monitors * 2;
+    size = sizeof(VDAgentMonitorsConfig) + sizeof(VDAgentMonConfig) * monitors;
     mon = spice_malloc0(size);
 
     mon->num_of_monitors = monitors;
-    mon->flags = 0;
-    for (i = 0; i < monitors; i++) {
-        mon->monitors[i].depth  = 32;
-        mon->monitors[i].width  = c->display[i].width;
-        mon->monitors[i].height = c->display[i].height;
-        mon->monitors[i].x = c->display[i].x;
-        mon->monitors[i].y = c->display[i].y;
-        SPICE_DEBUG("%s: #%d %dx%d+%d+%d @ %d bpp", __FUNCTION__, i,
-                    mon->monitors[i].width, mon->monitors[i].height,
-                    mon->monitors[i].x, mon->monitors[i].y,
-                    mon->monitors[i].depth);
+    if (c->disable_display_position == FALSE)
+        mon->flags |= VD_AGENT_CONFIG_MONITORS_FLAG_USE_POS;
+
+    j = 0;
+    for (i = 0; i < SPICE_N_ELEMENTS(c->display); i++) {
+        if (!c->display[i].enabled)
+            continue;
+        mon->monitors[j].depth  = 32;
+        mon->monitors[j].width  = c->display[j].width;
+        mon->monitors[j].height = c->display[j].height;
+        mon->monitors[j].x = c->display[j].x;
+        mon->monitors[j].y = c->display[j].y;
+        SPICE_DEBUG("monitor config: #%d %dx%d+%d+%d @ %d bpp", j,
+                    mon->monitors[j].width, mon->monitors[j].height,
+                    mon->monitors[j].x, mon->monitors[j].y,
+                    mon->monitors[j].depth);
+        j++;
     }
 
     agent_msg_queue(channel, VD_AGENT_MONITORS_CONFIG, size, mon);
     free(mon);
+
+    return TRUE;
 }
 
 /* any context: the message is not flushed immediately,
@@ -1625,7 +1637,8 @@ static gboolean timer_set_display(gpointer data)
     spice_main_channel *c = SPICE_MAIN_CHANNEL(channel)->priv;
 
     c->timer_id = 0;
-    agent_monitors_config(SPICE_MAIN_CHANNEL(channel));
+    if (c->agent_connected)
+        spice_main_send_monitor_config(SPICE_MAIN_CHANNEL(channel));
     spice_channel_wakeup(channel);
 
     return false;
@@ -1813,4 +1826,26 @@ void spice_main_clipboard_selection_request(SpiceMainChannel *channel, guint sel
 
     agent_clipboard_request(channel, selection, type);
     spice_channel_wakeup(SPICE_CHANNEL(channel));
+}
+
+/**
+ * spice_main_set_display_enabled:
+ * @channel:
+ * @id: display channel ID
+ * @enabled: wether display @id is enabled
+ *
+ * When sending monitor configuration to agent guest, don't set
+ * display @id, which the agent translates to disabling the display of
+ * @id. Note: this will take effect next time the monitor
+ * configuration is sent.
+ *
+ * Since: 0.6
+ **/
+void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled)
+{
+    g_return_if_fail(channel != NULL);
+    g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
+
+    spice_main_channel *c = channel->priv;
+    c->display[id].enabled = enabled;
 }
