@@ -1,7 +1,6 @@
+* multi-head and resolution improvements/fixes
 * smartcard
-* multihead
+* controller for Windows (based on NamedPipes)
 * sync audio with GStreamer backend
-* use libspice-common instead of common/
-* TunnelChannel?
-* port/build cyrus-sasl for windows?
-* XPI controller API
+* merge back to spice/ project
+* TunnelChannel
