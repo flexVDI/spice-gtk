@@ -464,20 +464,6 @@ AC_CACHE_CHECK([for supported warning flags], spice_cv_warn_cflags, [
 WARN_CFLAGS="$spice_cv_warn_cflags"
 SPICE_CFLAGS="$SPICE_CFLAGS $WARN_CFLAGS"
 
-# We only wish to enable attribute(warn_unused_result) if we can prevent
-# gcc from generating thousands of warnings about the misapplication of the
-# attribute to void functions and variables.
-AC_MSG_CHECKING([how to enable unused result warnings])
-warn_unused_result=""
-if echo $WARN_CFLAGS | grep -e '-Wno-attributes' >/dev/null; then
-    AC_TRY_COMPILE([__attribute__((__warn_unused_result__))
-	int f (int i) { return i; }], [],
-	[warn_unused_result="__attribute__((__warn_unused_result__))"])
-fi
-AC_DEFINE_UNQUOTED([WARN_UNUSED_RESULT], [$warn_unused_result],
-	  [Define to the value your compiler uses to support the warn-unused-result attribute])
-AC_MSG_RESULT([$warn_unused_result])
-
 AC_SUBST(SPICE_CFLAGS)
 
 SPICE_GLIB_CFLAGS="$PROTOCOL_CFLAGS $PIXMAN_CFLAGS $CELT051_CFLAGS $PULSE_CFLAGS $GST_CFLAGS $GLIB2_CFLAGS $GIO_CFLAGS $GOBJECT2_CFLAGS $SSL_CFLAGS $SASL_CFLAGS"
