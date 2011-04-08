@@ -34,7 +34,7 @@ test_controller_SOURCES = test.c
 test_controller_LDADD = libcontroller.la
 
 controller.vala.stamp: $(libcontroller_la_VALASOURCES) custom.vapi
-	$(VALA_V)$(VALAC) $(VALAFLAGS) $(AM_VALAFLAGS) $^
+	$(VALA_V)$(VALAC) $(VALAFLAGS) $(AM_VALAFLAGS) $(libcontroller_la_VALASOURCES)
 	@touch $@
 
 EXTRA_DIST =					\
