@@ -100,5 +100,6 @@
 /spice-client-glib-2.0.pc
 /spice-client-gtk-2.0.pc
 /spice-client-gtk-3.0.pc
+/spice-controller.pc
 /stamp-h1
 /tags

@@ -21,7 +21,7 @@
 #include <stdint.h>
 #include <spice/controller_prot.h>
 
-#include "controller.h"
+#include "spice-controller.h"
 
 #ifdef WIN32
 #include <windows.h>

@@ -6,7 +6,7 @@ AM_VALAFLAGS =							\
 	--pkg gio-2.0						\
 	--pkg spice-protocol --vapidir=$(top_srcdir)/data	\
 	--pkg custom --vapidir=$(srcdir)			\
-	-C -H controller.h -g					\
+	-C -g							\
 	$(NULL)
 
 if OS_WIN32
@@ -16,30 +16,33 @@ AM_VALAFLAGS += --pkg gio-unix-2.0
 endif
 
 if !OS_WIN32
-noinst_LTLIBRARIES = libcontroller.la
+lib_LTLIBRARIES = libspice-controller.la
 noinst_PROGRAMS = test-controller
 endif
 
 BUILT_SOURCES = controller.vala.stamp
 
-libcontroller_la_VALASOURCES =			\
+libspice_controller_la_VALASOURCES =		\
 	menu.vala				\
 	controller.vala				\
 	$(NULL)
-libcontroller_la_SOURCES = \
+libspice_controller_la_SOURCES =		\
 	custom.h				\
-	$(libcontroller_la_VALASOURCES:.vala=.c)
+	$(libspice_controller_la_VALASOURCES:.vala=.c)
+libspice_controllerincludedir = $(includedir)/spice-controller
+libspice_controllerinclude_HEADERS =		\
+	spice-controller.h
 
 test_controller_SOURCES = test.c
-test_controller_LDADD = libcontroller.la
+test_controller_LDADD = libspice-controller.la
 
-controller.vala.stamp: $(libcontroller_la_VALASOURCES) custom.vapi
-	$(VALA_V)$(VALAC) $(VALAFLAGS) $(AM_VALAFLAGS) $(libcontroller_la_VALASOURCES)
+controller.vala.stamp: $(libspice_controller_la_VALASOURCES) custom.vapi
+	$(VALA_V)$(VALAC) $(VALAFLAGS) $(AM_VALAFLAGS) $(libspice_controller_la_VALASOURCES) -H spice-controller.h
 	@touch $@
 
 EXTRA_DIST =					\
-	$(libcontroller_la_VALASOURCES)		\
-	controller.h				\
+	$(libspice_controller_la_VALASOURCES)	\
+	spice-controller.h			\
 	controller.vala.stamp			\
 	custom.vapi				\
 	$(NULL)
