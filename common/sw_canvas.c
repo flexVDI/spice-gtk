@@ -1034,7 +1034,7 @@ static void canvas_draw_text(SpiceCanvas *spice_canvas, SpiceRect *bbox,
     pixman_region32_t dest_region;
     pixman_image_t *str_mask, *brush;
     SpiceString *str;
-    SpicePoint pos;
+    SpicePoint pos = { 0, };
     int depth;
 
     pixman_region32_init_rect(&dest_region,
