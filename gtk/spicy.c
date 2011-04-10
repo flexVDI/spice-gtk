@@ -1023,6 +1023,8 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(toggle), state);
 
     gtk_widget_grab_focus(win->spice);
+
+    gtk_widget_show_all(vbox);
     return win;
 }
 
@@ -1170,9 +1172,9 @@ static void display_mark(SpiceChannel *channel, gint mark, spice_window *win)
     g_return_if_fail(win->toplevel != NULL);
 
     if (mark == TRUE) {
-        gtk_widget_show_all(win->toplevel);
+        gtk_widget_show(win->toplevel);
     } else {
-        gtk_widget_hide_all(win->toplevel);
+        gtk_widget_hide(win->toplevel);
     }
 }
 
