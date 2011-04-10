@@ -951,7 +951,10 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
             button->button, button->state);
 
     gtk_widget_grab_focus(widget);
-    try_mouse_grab(widget);
+    if (d->mouse_mode == SPICE_MOUSE_MODE_SERVER)
+        try_mouse_grab(widget);
+    else /* allow to drag and drop between windows/displays */
+        gdk_pointer_ungrab(GDK_CURRENT_TIME);
 
     if (!d->inputs)
         return true;
