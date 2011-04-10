@@ -2004,6 +2004,12 @@ static gboolean channel_connect(SpiceChannel *channel)
  **/
 gboolean spice_channel_connect(SpiceChannel *channel)
 {
+    g_return_val_if_fail(SPICE_IS_CHANNEL(channel), FALSE);
+    spice_channel *c = channel->priv;
+
+    if (c->state == SPICE_CHANNEL_STATE_CONNECTING)
+        return TRUE;
+
     return channel_connect(channel);
 }
 
