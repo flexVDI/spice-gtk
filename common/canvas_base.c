@@ -656,14 +656,12 @@ static pixman_image_t *canvas_bitmap_to_surface(CanvasBase *canvas, SpiceBitmap*
                                                 SpicePalette *palette, int want_original)
 {
     uint8_t* src;
-    int src_stride;
     pixman_image_t *image;
     pixman_format_code_t format;
 
     spice_chunks_linearize(bitmap->data);
 
     src = bitmap->data->chunk[0].data;
-    src_stride = bitmap->stride;
 
     if (want_original) {
         format = spice_bitmap_format_to_pixman(bitmap->format, canvas->format);
@@ -2548,11 +2546,6 @@ static void canvas_draw_blend(SpiceCanvas *spice_canvas, SpiceRect *bbox, SpiceC
                                                                bbox->top - blend->src_area.top,
                                                                rop);
         } else {
-            double sx, sy;
-    
-            sx = (double)(blend->src_area.right - blend->src_area.left) / (bbox->right - bbox->left);
-            sy = (double)(blend->src_area.bottom - blend->src_area.top) / (bbox->bottom - bbox->top);
-    
             if (rop == SPICE_ROP_COPY) {
                 spice_canvas->ops->scale_image_from_surface(spice_canvas, &dest_region,
                                                             surface_canvas,
@@ -2596,11 +2589,6 @@ static void canvas_draw_blend(SpiceCanvas *spice_canvas, SpiceRect *bbox, SpiceC
                                                   bbox->top - blend->src_area.top,
                                                   rop);
         } else {
-            double sx, sy;
-    
-            sx = (double)(blend->src_area.right - blend->src_area.left) / (bbox->right - bbox->left);
-            sy = (double)(blend->src_area.bottom - blend->src_area.top) / (bbox->bottom - bbox->top);
-    
             if (rop == SPICE_ROP_COPY) {
                 spice_canvas->ops->scale_image(spice_canvas, &dest_region,
                                                src_image,

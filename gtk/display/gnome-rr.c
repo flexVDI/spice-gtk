@@ -266,11 +266,8 @@ ScreenInfo *
 screen_info_new (GnomeRRScreen *screen, gboolean needs_reprobe, GError **error)
 {
     ScreenInfo *info = g_new0 (ScreenInfo, 1);
-    GnomeRRScreenPrivate *priv;
 
     g_return_val_if_fail (screen != NULL, NULL);
-
-    priv = screen->priv;
 
     info->outputs = NULL;
     info->crtcs = NULL;
@@ -945,14 +942,13 @@ void
 gnome_rr_screen_set_primary_output (GnomeRRScreen *screen,
                                     GnomeRROutput *output)
 {
-    GnomeRRScreenPrivate *priv;
-
     g_return_if_fail (GNOME_IS_RR_SCREEN (screen));
 
-    priv = screen->priv;
-
 #if RANDR_LIBRARY_IS_AT_LEAST_1_3
+    GnomeRRScreenPrivate *priv;
     RROutput id;
+
+    priv = screen->priv;
 
     if (output)
         id = output->id;
