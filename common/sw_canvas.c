@@ -1182,7 +1182,6 @@ static SpiceCanvas *canvas_create_common(pixman_image_t *image,
                            )
 {
     SwCanvas *canvas;
-    int init_ok;
 
     if (need_init) {
         return NULL;
@@ -1191,21 +1190,21 @@ static SpiceCanvas *canvas_create_common(pixman_image_t *image,
                                   spice_surface_format_to_pixman (format));
 
     canvas = spice_new0(SwCanvas, 1);
-    init_ok = canvas_base_init(&canvas->base, &sw_canvas_ops,
-                               pixman_image_get_width (image),
-                               pixman_image_get_height (image),
-                               format
+    canvas_base_init(&canvas->base, &sw_canvas_ops,
+		     pixman_image_get_width (image),
+		     pixman_image_get_height (image),
+		     format
 #ifdef SW_CANVAS_CACHE
-                               , bits_cache
-                               , palette_cache
+		     , bits_cache
+		     , palette_cache
 #elif defined(SW_CANVAS_IMAGE_CACHE)
-                               , bits_cache
+		     , bits_cache
 #endif
-                               , surfaces
-                               , glz_decoder
-                               , jpeg_decoder
-                               , zlib_decoder
-                               );
+		     , surfaces
+		     , glz_decoder
+		     , jpeg_decoder
+		     , zlib_decoder
+		    );
     canvas->private_data = NULL;
     canvas->private_data_size = 0;
 
