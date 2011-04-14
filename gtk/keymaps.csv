@@ -1,5 +1,5 @@
 "Linux Name","Linux Keycode","OS-X Name","OS-X Keycode","AT set1 keycode","AT set2 keycode","AT set3 keycode",XT,"XT KBD","USB Keycodes","Win32 Name","Win32 Keycode","Xwin XT","Xfree86 KBD XT"
-KEY_RESERVED,0,,0x0,,,,,,,,,,
+KEY_RESERVED,0,,,,,,,,,,,,
 KEY_ESC,1,Escape,0x35,1,118,8,1,1,41,VK_ESCAPE,0x1b,1,1
 KEY_1,2,ANSI_1,0x12,2,22,22,2,2,30,VK_1,0x31,2,2
 KEY_2,3,ANSI_2,0x13,3,30,30,3,3,31,VK_2,0x32,3,3
