@@ -187,6 +187,8 @@ G_GNUC_INTERNAL
 gboolean        fill_out_screen_info                    (GnomeRRScreen *screen, ScreenInfo *info,
                                                          gboolean needs_reprobe, GError **error);
 G_GNUC_INTERNAL
+void            screen_set_primary_output               (GnomeRRScreen *screen, GnomeRROutput *output);
+G_GNUC_INTERNAL
 GnomeRRCrtc *   crtc_new                                (ScreenInfo *info, RRCrtc id);
 
 /* GnomeRROutput */

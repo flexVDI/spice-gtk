@@ -996,3 +996,20 @@ out:
     return FALSE;
 #endif
 }
+
+void
+screen_set_primary_output (GnomeRRScreen *screen, GnomeRROutput *output)
+{
+#if RANDR_LIBRARY_IS_AT_LEAST_1_3
+    GnomeRRX11ScreenPrivate *priv = GNOME_RR_X11_SCREEN (screen)->priv;
+    RROutput id;
+
+    if (output)
+        id = output->id;
+    else
+        id = None;
+
+    if (SERVERS_RANDR_IS_AT_LEAST_1_3 (priv))
+        XRRSetOutputPrimary (priv->xdisplay, priv->xroot, id);
+#endif
+}

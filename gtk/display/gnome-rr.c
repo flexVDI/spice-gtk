@@ -944,20 +944,7 @@ gnome_rr_screen_set_primary_output (GnomeRRScreen *screen,
 {
     g_return_if_fail (GNOME_IS_RR_SCREEN (screen));
 
-#if RANDR_LIBRARY_IS_AT_LEAST_1_3
-    GnomeRRScreenPrivate *priv;
-    RROutput id;
-
-    priv = screen->priv;
-
-    if (output)
-        id = output->id;
-    else
-        id = None;
-
-    if (SERVERS_RANDR_IS_AT_LEAST_1_3 (priv))
-        XRRSetOutputPrimary (priv->xdisplay, priv->xroot, id);
-#endif
+    screen_set_primary_output (screen, output);
 }
 
 #ifndef GNOME_DISABLE_DEPRECATED_SOURCE

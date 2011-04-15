@@ -190,8 +190,6 @@ gboolean
 fill_out_screen_info (GnomeRRScreen *screen, ScreenInfo *info,
                       gboolean needs_reprobe, GError **error)
 {
-    GnomeRRWindowsScreen *self = GNOME_RR_WINDOWS_SCREEN (screen);
-    GnomeRRWindowsScreenPrivate *priv = self->priv;
     DWORD device_id;
     DISPLAY_DEVICE device;
     GPtrArray *crtcs, *outputs, *modes, *omodes;;
@@ -449,4 +447,9 @@ gnome_rr_crtc_get_gamma (GnomeRRCrtc *crtc, int *size,
 
     g_warning ("Unimplemented on Windows");
     return FALSE;
+}
+
+void
+screen_set_primary_output (GnomeRRScreen *screen, GnomeRROutput *output)
+{
 }
