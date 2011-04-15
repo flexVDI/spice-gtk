@@ -1,3 +1,14 @@
+v0.6
+====
+
+- multi-head is working now!
+- change client resolution if guest can't
+- support sharing large clipboard, and images
+- multiple clibpoard selection
+- support SASL authentication
+- add experimental/unstable controller API
+- and a bunch of various smaller fixes
+
 v0.5
 ====
 
