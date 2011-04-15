@@ -3,3 +3,7 @@ gtk/snappy.c
 gtk/spice-cmdline.c
 data/spicy.desktop.in.in
 data/spice-mime.xml.in
+gtk/display/display-name.c
+gtk/display/gnome-rr-config.c
+gtk/display/gnome-rr-windows.c
+gtk/display/gnome-rr-x11.c
