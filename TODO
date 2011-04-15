@@ -1,5 +1,6 @@
-* multi-head and resolution improvements/fixes
-* smartcard
+* multi-head and resolution improvements/fixes:
+  - send compatible resolutions
+* smartcard channel
 * controller for Windows (based on NamedPipes)
 * sync audio with GStreamer backend
 * merge back to spice/ project
