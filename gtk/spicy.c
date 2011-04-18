@@ -518,7 +518,7 @@ static const GtkActionEntry entries[] = {
 	.stock_id    = GTK_STOCK_CLOSE,
 	.label       = N_("_Close"),
 	.callback    = G_CALLBACK(menu_cb_close),
-//        .accelerator = "", /* none (disable default "<control>Q") */
+//        .accelerator = "", /* none (disable default "<control>W") */
     },{
 
 	/* Edit menu */
@@ -526,13 +526,13 @@ static const GtkActionEntry entries[] = {
 	.stock_id    = GTK_STOCK_COPY,
 	.label       = N_("_Copy to guest"),
 	.callback    = G_CALLBACK(menu_cb_copy),
-        .accelerator = "", /* none (disable default "<control>Q") */
+        .accelerator = "", /* none (disable default "<control>C") */
     },{
 	.name        = "PasteFromGuest",
 	.stock_id    = GTK_STOCK_PASTE,
 	.label       = N_("_Paste from guest"),
 	.callback    = G_CALLBACK(menu_cb_paste),
-        .accelerator = "", /* none (disable default "<control>Q") */
+        .accelerator = "", /* none (disable default "<control>V") */
     },{
 
 	/* View menu */
