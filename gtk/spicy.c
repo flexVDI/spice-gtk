@@ -513,7 +513,6 @@ static const GtkActionEntry entries[] = {
 	.stock_id    = GTK_STOCK_CONNECT,
 	.label       = N_("_Connect ..."),
 	.callback    = G_CALLBACK(menu_cb_connect),
-        .accelerator = "", /* none (disable default "<control>Q") */
     },{
 	.name        = "Close",
 	.stock_id    = GTK_STOCK_CLOSE,
