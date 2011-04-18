@@ -518,7 +518,7 @@ static const GtkActionEntry entries[] = {
 	.stock_id    = GTK_STOCK_CLOSE,
 	.label       = N_("_Close"),
 	.callback    = G_CALLBACK(menu_cb_close),
-//        .accelerator = "", /* none (disable default "<control>W") */
+        .accelerator = "", /* none (disable default "<control>W") */
     },{
 
 	/* Edit menu */
