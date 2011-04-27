@@ -397,7 +397,7 @@ AC_DEFUN([SPICE_CC_TRY_FLAG], [
   spice_save_CFLAGS="$CFLAGS"
   CFLAGS="$CFLAGS $1"
 
-  AC_COMPILE_IFELSE([ ], [spice_cc_flag=yes], [spice_cc_flag=no])
+  AC_COMPILE_IFELSE([AC_LANG_SOURCE([ ])], [spice_cc_flag=yes], [spice_cc_flag=no])
   CFLAGS="$spice_save_CFLAGS"
 
   if test "x$spice_cc_flag" = "xyes"; then
