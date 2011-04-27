@@ -26,14 +26,12 @@ GTK_DOC_CHECK([1.14],[--flavour no-tmpl])
 # Define default SPICE_COMMON_SRCDIR
 SPICE_COMMON_SRCDIR='$(top_srcdir)'/common
 
-AS_IF([test "$CFLAGS" = ""], [], [_cflags_is_set=yes])
 AC_PROG_CC
 AC_PROG_CC_C99
 if test x"$ac_cv_prog_cc_c99" = xno; then
     AC_MSG_ERROR([C99 compiler is required.])
 fi
 
-AS_IF([test "$CXXFLAGS" = ""], [], [_cxxflags_is_set=yes])
 AC_PROG_CXX
 AC_PROG_INSTALL
 AC_CANONICAL_HOST
@@ -270,14 +268,6 @@ AS_IF([test "x$with_x11" = "xyes"],
 AM_CONDITIONAL([WITH_X11], [test "x$with_x11" = "xyes"])
 
 AC_CHECK_HEADERS([X11/XKBlib.h])
-
-AS_IF([test "$_cflags_is_set" = "yes"], [], [
-    CFLAGS="-g -O2"
-])
-
-AS_IF([test "$_cxxflags_is_set" = "yes"], [], [
-    CXXFLAGS="-g -O2"
-])
 
 AC_CHECK_LIB(jpeg, jpeg_destroy_decompress,
     AC_MSG_CHECKING([for jpeglib.h])
