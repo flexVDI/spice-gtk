@@ -325,10 +325,11 @@ fi
 AC_DEFINE_UNQUOTED(WITH_UCONTEXT,[$WITH_UCONTEXT], [Whether to use ucontext coroutine impl])
 AM_CONDITIONAL(WITH_UCONTEXT, [test "$WITH_UCONTEXT" != "0"])
 
-GOBJECT_INTROSPECTION_CHECK([0.6.7])
+AM_CONDITIONAL([HAVE_INTROSPECTION], [test "0" != "1"])
 PKG_CHECK_MODULES([GOBJECT_INTROSPECTION],
         [gobject-introspection-1.0 >= 0.9.4],
         [has_symbol_prefix=yes], [:])
+GOBJECT_INTROSPECTION_CHECK([0.6.7])
 AM_CONDITIONAL([G_IR_SCANNER_SYMBOL_PREFIX], [test "x$has_symbol_prefix" = "xyes"])
 
 AC_ARG_ENABLE(vala,
