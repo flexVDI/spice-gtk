@@ -21,6 +21,7 @@
 #ifndef _CONTINUATION_H_
 #define _CONTINUATION_H_
 
+#include <stddef.h>
 #include <ucontext.h>
 
 struct continuation
