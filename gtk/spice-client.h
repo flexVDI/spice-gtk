@@ -37,5 +37,6 @@
 #include "channel-inputs.h"
 #include "channel-playback.h"
 #include "channel-record.h"
+#include "channel-smartcard.h"
 
 #endif /* __SPICE_CLIENT_CLIENT_H__ */

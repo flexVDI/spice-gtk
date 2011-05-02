@@ -63,6 +63,13 @@
   (gtype-id "SPICE_TYPE_RECORD_CHANNEL")
 )
 
+(define-object SmartCardChannel
+  (in-module "Spice")
+  (parent "SpiceChannel")
+  (c-name "SpiceSmartCardChannel")
+  (gtype-id "SPICE_TYPE_SMARTCARD_CHANNEL")
+)
+
 (define-object Session
   (in-module "Spice")
   (parent "GObject")

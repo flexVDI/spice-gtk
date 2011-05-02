@@ -30,7 +30,6 @@
 /libspice-client-gtk-3.0.la
 /snappy
 /so_locations
-/spice-client-gtk-module.defs.c
 /spice-glib-enums.c
 /spice-glib-enums.h
 /spice-marshal.c

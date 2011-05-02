@@ -146,6 +146,8 @@ libspice_client_glib_2_0_la_LIBADD =	\
 	$(NULL)
 
 libspice_client_glib_2_0_la_SOURCES =	\
+	smartcard-manager.h		\
+	smartcard-manager.c		\
 	spice-audio.c			\
 	spice-common.h			\
 	spice-util.c			\
@@ -175,6 +177,7 @@ libspice_client_glib_2_0_la_SOURCES =	\
 	channel-main.c			\
 	channel-playback.c		\
 	channel-record.c		\
+	channel-smartcard.c		\
 	\
 	decode.h			\
 	decode-glz.c			\
@@ -244,6 +247,7 @@ libspice_client_glibinclude_HEADERS =	\
 	channel-main.h			\
 	channel-playback.h		\
 	channel-record.h		\
+	channel-smartcard.h		\
 	$(NULL)
 
 # file for API compatibility, but we don't want warning during our compilation
