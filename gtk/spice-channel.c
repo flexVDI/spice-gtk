@@ -1364,9 +1364,11 @@ restart:
                     complete, len, serverin, serverin);
 
         /* This server call shows complete, and earlier client step was OK */
-        if (complete && err == SASL_OK) {
+        if (complete) {
             g_free(serverin);
             serverin = NULL;
+            if (err == SASL_CONTINUE) /* something went wrong */
+                goto complete;
             break;
         }
     }
@@ -1387,8 +1389,11 @@ restart:
         }
     }
 
+complete:
     SPICE_DEBUG("%s", "SASL authentication complete");
     spice_channel_read(channel, &len, sizeof(len));
+    if (len != SPICE_LINK_ERR_OK)
+        emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_AUTH);
     ret = len == SPICE_LINK_ERR_OK;
     /* This must come *after* check-auth-result, because the former
      * is defined to be sent unencrypted, and setting saslconn turns
@@ -1401,7 +1406,7 @@ error:
         sasl_dispose(&saslconn);
     if (!c->has_error)
         emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_AUTH);
-    c->has_error = TRUE;
+    c->has_error = TRUE; /* force disconnect */
     return FALSE;
 }
 #endif /* HAVE_SASL */
