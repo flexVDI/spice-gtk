@@ -1440,9 +1440,9 @@ int main(int argc, char *argv[])
     context = g_option_context_new(_("- spice client application"));
     g_option_context_set_summary(context, _("A Gtk client to connect to Spice servers."));
     g_option_context_set_description(context, _("Report bugs to " PACKAGE_BUGREPORT "."));
+    g_option_context_set_main_group(context, spice_cmdline_get_option_group());
     g_option_context_add_main_entries(context, cmd_entries, NULL);
     g_option_context_add_group(context, gtk_get_option_group(TRUE));
-    g_option_context_add_group(context, spice_cmdline_get_option_group());
     if (!g_option_context_parse (context, &argc, &argv, &error)) {
         g_print(_("option parsing failed: %s\n"), error->message);
         exit(1);
