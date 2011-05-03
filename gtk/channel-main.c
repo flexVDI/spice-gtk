@@ -1588,14 +1588,7 @@ static void main_handle_migrate_cancel(SpiceChannel *channel,
     spice_session_abort_migration(session);
 }
 
-static spice_msg_handler main_handlers[] = {
-    [ SPICE_MSG_SET_ACK ]                  = spice_channel_handle_set_ack,
-    [ SPICE_MSG_PING ]                     = spice_channel_handle_ping,
-    [ SPICE_MSG_NOTIFY ]                   = spice_channel_handle_notify,
-    [ SPICE_MSG_DISCONNECTING ]            = spice_channel_handle_disconnect,
-    [ SPICE_MSG_WAIT_FOR_CHANNELS ]        = spice_channel_handle_wait_for_channels,
-    [ SPICE_MSG_MIGRATE ]                  = spice_channel_handle_migrate,
-
+static const spice_msg_handler main_handlers[] = {
     [ SPICE_MSG_MAIN_INIT ]                = main_handle_init,
     [ SPICE_MSG_MAIN_CHANNELS_LIST ]       = main_handle_channels_list,
     [ SPICE_MSG_MAIN_MOUSE_MODE ]          = main_handle_mouse_mode,
@@ -1615,11 +1608,18 @@ static spice_msg_handler main_handlers[] = {
 static void spice_main_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
 {
     int type = spice_msg_in_type(msg);
+    SpiceChannelClass *parent_class;
 
     g_return_if_fail(type < SPICE_N_ELEMENTS(main_handlers));
-    g_return_if_fail(main_handlers[type] != NULL);
 
-    main_handlers[type](channel, msg);
+    parent_class = SPICE_CHANNEL_CLASS(spice_main_channel_parent_class);
+
+    if (main_handlers[type] != NULL)
+        main_handlers[type](channel, msg);
+    else if (parent_class->handle_msg)
+        parent_class->handle_msg(channel, msg);
+    else
+        g_return_if_reached();
 }
 
 /* system context*/

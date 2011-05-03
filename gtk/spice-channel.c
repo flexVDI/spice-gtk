@@ -41,6 +41,7 @@
 
 #include "gio-coroutine.h"
 
+static void spice_channel_handle_msg(SpiceChannel *channel, spice_msg_in *msg);
 static void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out, gboolean buffered);
 static void spice_channel_send_link(SpiceChannel *channel);
 static void channel_disconnect(SpiceChannel *channel);
@@ -250,6 +251,7 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
     gobject_class->finalize     = spice_channel_finalize;
     gobject_class->get_property = spice_channel_get_property;
     gobject_class->set_property = spice_channel_set_property;
+    klass->handle_msg           = spice_channel_handle_msg;
 
     g_object_class_install_property
         (gobject_class, PROP_SESSION,
@@ -2317,4 +2319,24 @@ void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap)
         s->sasl_decoded_offset = sasl_decoded_offset;
     }
 #endif
+}
+
+static const spice_msg_handler base_handlers[] = {
+    [ SPICE_MSG_SET_ACK ]                  = spice_channel_handle_set_ack,
+    [ SPICE_MSG_PING ]                     = spice_channel_handle_ping,
+    [ SPICE_MSG_NOTIFY ]                   = spice_channel_handle_notify,
+    [ SPICE_MSG_DISCONNECTING ]            = spice_channel_handle_disconnect,
+    [ SPICE_MSG_WAIT_FOR_CHANNELS ]        = spice_channel_handle_wait_for_channels,
+    [ SPICE_MSG_MIGRATE ]                  = spice_channel_handle_migrate,
+};
+
+/* coroutine context */
+static void spice_channel_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
+{
+    int type = spice_msg_in_type(msg);
+
+    g_return_if_fail(type < SPICE_N_ELEMENTS(base_handlers));
+    g_return_if_fail(base_handlers[type] != NULL);
+
+    base_handlers[type](channel, msg);
 }

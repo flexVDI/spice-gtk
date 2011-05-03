@@ -280,14 +280,7 @@ static void inputs_handle_ack(SpiceChannel *channel, spice_msg_in *in)
     }
 }
 
-static spice_msg_handler inputs_handlers[] = {
-    [ SPICE_MSG_SET_ACK ]                  = spice_channel_handle_set_ack,
-    [ SPICE_MSG_PING ]                     = spice_channel_handle_ping,
-    [ SPICE_MSG_NOTIFY ]                   = spice_channel_handle_notify,
-    [ SPICE_MSG_DISCONNECTING ]            = spice_channel_handle_disconnect,
-    [ SPICE_MSG_WAIT_FOR_CHANNELS ]        = spice_channel_handle_wait_for_channels,
-    [ SPICE_MSG_MIGRATE ]                  = spice_channel_handle_migrate,
-
+static const spice_msg_handler inputs_handlers[] = {
     [ SPICE_MSG_INPUTS_INIT ]              = inputs_handle_init,
     [ SPICE_MSG_INPUTS_KEY_MODIFIERS ]     = inputs_handle_modifiers,
     [ SPICE_MSG_INPUTS_MOUSE_MOTION_ACK ]  = inputs_handle_ack,
@@ -297,9 +290,18 @@ static spice_msg_handler inputs_handlers[] = {
 static void spice_inputs_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
 {
     int type = spice_msg_in_type(msg);
+    SpiceChannelClass *parent_class;
+
     g_return_if_fail(type < SPICE_N_ELEMENTS(inputs_handlers));
-    g_return_if_fail(inputs_handlers[type] != NULL);
-    inputs_handlers[type](channel, msg);
+
+    parent_class = SPICE_CHANNEL_CLASS(spice_inputs_channel_parent_class);
+
+    if (inputs_handlers[type] != NULL)
+        inputs_handlers[type](channel, msg);
+    else if (parent_class->handle_msg)
+        parent_class->handle_msg(channel, msg);
+    else
+        g_return_if_reached();
 }
 
 /**

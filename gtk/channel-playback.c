@@ -452,14 +452,7 @@ static void playback_handle_set_mute(SpiceChannel *channel, spice_msg_in *in)
     g_object_notify_main_context(G_OBJECT(channel), "mute");
 }
 
-static spice_msg_handler playback_handlers[] = {
-    [ SPICE_MSG_SET_ACK ]                  = spice_channel_handle_set_ack,
-    [ SPICE_MSG_PING ]                     = spice_channel_handle_ping,
-    [ SPICE_MSG_NOTIFY ]                   = spice_channel_handle_notify,
-    [ SPICE_MSG_DISCONNECTING ]            = spice_channel_handle_disconnect,
-    [ SPICE_MSG_WAIT_FOR_CHANNELS ]        = spice_channel_handle_wait_for_channels,
-    [ SPICE_MSG_MIGRATE ]                  = spice_channel_handle_migrate,
-
+static const spice_msg_handler playback_handlers[] = {
     [ SPICE_MSG_PLAYBACK_DATA ]            = playback_handle_data,
     [ SPICE_MSG_PLAYBACK_MODE ]            = playback_handle_mode,
     [ SPICE_MSG_PLAYBACK_START ]           = playback_handle_start,
@@ -472,9 +465,18 @@ static spice_msg_handler playback_handlers[] = {
 static void spice_playback_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
 {
     int type = spice_msg_in_type(msg);
+    SpiceChannelClass *parent_class;
+
     g_return_if_fail(type < SPICE_N_ELEMENTS(playback_handlers));
-    g_return_if_fail(playback_handlers[type] != NULL);
-    playback_handlers[type](channel, msg);
+
+    parent_class = SPICE_CHANNEL_CLASS(spice_playback_channel_parent_class);
+
+    if (playback_handlers[type] != NULL)
+        playback_handlers[type](channel, msg);
+    else if (parent_class->handle_msg)
+        parent_class->handle_msg(channel, msg);
+    else
+        g_return_if_reached();
 }
 
 void spice_playback_channel_set_delay(SpicePlaybackChannel *channel, guint32 delay_ms)

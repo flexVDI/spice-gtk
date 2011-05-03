@@ -1260,14 +1260,7 @@ static void display_handle_surface_destroy(SpiceChannel *channel, spice_msg_in *
     free(surface);
 }
 
-static spice_msg_handler display_handlers[] = {
-    [ SPICE_MSG_SET_ACK ]                    = spice_channel_handle_set_ack,
-    [ SPICE_MSG_PING ]                       = spice_channel_handle_ping,
-    [ SPICE_MSG_NOTIFY ]                     = spice_channel_handle_notify,
-    [ SPICE_MSG_DISCONNECTING ]              = spice_channel_handle_disconnect,
-    [ SPICE_MSG_WAIT_FOR_CHANNELS ]          = spice_channel_handle_wait_for_channels,
-    [ SPICE_MSG_MIGRATE ]                    = spice_channel_handle_migrate,
-
+static const spice_msg_handler display_handlers[] = {
     [ SPICE_MSG_DISPLAY_MODE ]               = display_handle_mode,
     [ SPICE_MSG_DISPLAY_MARK ]               = display_handle_mark,
     [ SPICE_MSG_DISPLAY_RESET ]              = display_handle_reset,
@@ -1304,7 +1297,16 @@ static spice_msg_handler display_handlers[] = {
 static void spice_display_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
 {
     int type = spice_msg_in_type(msg);
+    SpiceChannelClass *parent_class;
+
     g_return_if_fail(type < SPICE_N_ELEMENTS(display_handlers));
-    g_return_if_fail(display_handlers[type] != NULL);
-    display_handlers[type](channel, msg);
+
+    parent_class = SPICE_CHANNEL_CLASS(spice_display_channel_parent_class);
+
+    if (display_handlers[type] != NULL)
+        display_handlers[type](channel, msg);
+    else if (parent_class->handle_msg)
+        parent_class->handle_msg(channel, msg);
+    else
+        g_return_if_reached();
 }
