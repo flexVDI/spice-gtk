@@ -18,8 +18,10 @@
 
 #include <glib-object.h>
 #include <vevent.h>
+#include <vreader.h>
 
 #include "smartcard-manager.h"
+#include "spice-marshal.h"
 
 /**
  * SECTION:spice-smartcard-manager
@@ -55,11 +57,15 @@ enum {
 
 /* Signals */
 enum {
+    SPICE_SMARTCARD_MANAGER_READER_ADDED,
+    SPICE_SMARTCARD_MANAGER_READER_REMOVED,
+    SPICE_SMARTCARD_MANAGER_CARD_INSERTED,
+    SPICE_SMARTCARD_MANAGER_CARD_REMOVED,
 
     SPICE_SMARTCARD_MANAGER_LAST_SIGNAL,
 };
 
-G_GNUC_UNUSED static guint signals[SPICE_SMARTCARD_MANAGER_LAST_SIGNAL];
+static guint signals[SPICE_SMARTCARD_MANAGER_LAST_SIGNAL];
 
 typedef gboolean (*SmartCardSourceFunc)(VEvent *event, gpointer user_data);
 static guint smartcard_monitor_add(SmartCardSourceFunc callback,
@@ -104,6 +110,83 @@ static void spice_smartcard_manager_class_init(SpiceSmartCardManagerClass *klass
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
+    /**
+     * SpiceSmartCardManager::reader-added:
+     * @manager: the #SpiceSmartCardManager that emitted the signal
+     * @vreader: #VReader boxed object corresponding to the added reader
+     *
+     * The #SpiceSmartCardManager::reader-added signal is emitted whenever
+     * a new smartcard reader (software or hardware) has been plugged in.
+     **/
+    signals[SPICE_SMARTCARD_MANAGER_READER_ADDED] =
+        g_signal_new("reader-added",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_FIRST,
+                     G_STRUCT_OFFSET(SpiceSmartCardManagerClass, reader_added),
+                     NULL, NULL,
+                     g_cclosure_user_marshal_VOID__BOXED,
+                     G_TYPE_NONE,
+                     1,
+                     SPICE_TYPE_SMARTCARD_READER);
+
+    /**
+     * SpiceSmartCardManager::reader-removed:
+     * @manager: the #SpiceSmartCardManager that emitted the signal
+     * @vreader: #VReader boxed object corresponding to the removed reader
+     *
+     * The #SpiceSmartCardManager::reader-removed signal is emitted whenever
+     * a smartcard reader (software or hardware) has been removed.
+     **/
+    signals[SPICE_SMARTCARD_MANAGER_READER_REMOVED] =
+        g_signal_new("reader-removed",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_FIRST,
+                     G_STRUCT_OFFSET(SpiceSmartCardManagerClass, reader_removed),
+                     NULL, NULL,
+                     g_cclosure_user_marshal_VOID__BOXED,
+                     G_TYPE_NONE,
+                     1,
+                     SPICE_TYPE_SMARTCARD_READER);
+
+    /**
+     * SpiceSmartCardManager::card-inserted:
+     * @manager: the #SpiceSmartCardManager that emitted the signal
+     * @vreader: #VReader boxed object corresponding to the reader a new
+     * card was inserted in
+     *
+     * The #SpiceSmartCardManager::card-inserted signal is emitted whenever
+     * a smartcard is inserted in a reader
+     **/
+    signals[SPICE_SMARTCARD_MANAGER_CARD_INSERTED] =
+        g_signal_new("card-inserted",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_FIRST,
+                     G_STRUCT_OFFSET(SpiceSmartCardManagerClass, card_inserted),
+                     NULL, NULL,
+                     g_cclosure_user_marshal_VOID__BOXED,
+                     G_TYPE_NONE,
+                     1,
+                     SPICE_TYPE_SMARTCARD_READER);
+
+    /**
+     * SpiceSmartCardManager::card-removed:
+     * @manager: the #SpiceSmartCardManager that emitted the signal
+     * @vreader: #VReader boxed object corresponding to the reader a card
+     * was removed from
+     *
+     * The #SpiceSmartCardManager::card-removed signal is emitted whenever
+     * a smartcard was removed from a reader.
+     **/
+    signals[SPICE_SMARTCARD_MANAGER_CARD_REMOVED] =
+        g_signal_new("card-removed",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_FIRST,
+                     G_STRUCT_OFFSET(SpiceSmartCardManagerClass, card_removed),
+                     NULL, NULL,
+                     g_cclosure_user_marshal_VOID__BOXED,
+                     G_TYPE_NONE,
+                     1,
+                     SPICE_TYPE_SMARTCARD_READER);
     gobject_class->dispose      = spice_smartcard_manager_dispose;
     gobject_class->finalize     = spice_smartcard_manager_finalize;
 

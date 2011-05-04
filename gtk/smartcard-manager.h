@@ -47,6 +47,12 @@ struct _SpiceSmartCardManager
 struct _SpiceSmartCardManagerClass
 {
     GObjectClass parent_class;
+    /*< public >*/
+    /* signals */
+    void (*reader_added)(SpiceSmartCardManager *manager, VReader *reader);
+    void (*reader_removed)(SpiceSmartCardManager *manager, VReader *reader);
+    void (*card_inserted)(SpiceSmartCardManager *manager, VReader *reader);
+    void (*card_removed)(SpiceSmartCardManager *manager, VReader *reader );
     /*
      * If adding fields to this struct, remove corresponding
      * amount of padding to avoid changing overall struct size
