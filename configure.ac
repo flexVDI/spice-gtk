@@ -293,6 +293,16 @@ AC_SUBST(JPEG_LIBS)
 AC_CHECK_LIB(z, deflate, Z_LIBS='-lz', AC_MSG_ERROR([zlib not found]))
 AC_SUBST(Z_LIBS)
 
+AC_ARG_ENABLE(smartcard,
+[  --enable-smartcard         Enable network redirection],,
+[enable_smartcard="no"])
+AS_IF([test x"$enable_smartcard" != "xno"], [enable_smartcard="yes"])
+AM_CONDITIONAL(WITH_SMARTCARD, test "x$enable_smartcard" != "xno")
+if test "x$enable_smartcard" = "xyes"; then
+   PKG_CHECK_MODULES(SMARTCARD, libcacard >= 0.1.2)
+   AC_DEFINE(USE_SMARTCARD, [1], [Define if supporting smartcard proxying])
+fi
+
 WITH_UCONTEXT=1
 
 AC_ARG_WITH(coroutine,

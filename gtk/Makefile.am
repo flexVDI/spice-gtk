@@ -66,6 +66,7 @@ SPICE_COMMON_CPPFLAGS = \
 	$(SSL_CFLAGS)			\
 	$(SASL_CFLAGS)			\
 	$(GST_CFLAGS)			\
+	$(SMARTCARD_CFLAGS)		\
 	$(NULL)
 
 AM_CPPFLAGS = \
@@ -143,11 +144,10 @@ libspice_client_glib_2_0_la_LIBADD =	\
 	$(PULSE_LIBS)			\
 	$(GST_LIBS)			\
 	$(SASL_LIBS)			\
+	$(SMARTCARD_LIBS)		\
 	$(NULL)
 
 libspice_client_glib_2_0_la_SOURCES =	\
-	smartcard-manager.h		\
-	smartcard-manager.c		\
 	spice-audio.c			\
 	spice-common.h			\
 	spice-util.c			\
@@ -177,7 +177,6 @@ libspice_client_glib_2_0_la_SOURCES =	\
 	channel-main.c			\
 	channel-playback.c		\
 	channel-record.c		\
-	channel-smartcard.c		\
 	\
 	decode.h			\
 	decode-glz.c			\
@@ -208,30 +207,6 @@ libspice_client_glib_2_0_la_SOURCES =	\
 	$(COMMON_DIR)/ssl_verify.h	\
 	$(NULL)
 
-if WITH_PULSE
-libspice_client_glib_2_0_la_SOURCES +=	\
-	spice-pulse.c			\
-	spice-pulse.h			\
-	$(NULL)
-endif
-
-if WITH_GSTAUDIO
-libspice_client_glib_2_0_la_SOURCES +=	\
-	spice-gstaudio.c		\
-	spice-gstaudio.h		\
-	$(NULL)
-endif
-
-if WITH_UCONTEXT
-libspice_client_glib_2_0_la_SOURCES += continuation.h continuation.c coroutine_ucontext.c
-EXTRA_DIST += coroutine_gthread.c
-else
-libspice_client_glib_2_0_la_SOURCES += coroutine_gthread.c
-libspice_client_glib_2_0_la_LIBADD += $(GTHREAD_LIBS)
-EXTRA_DIST += continuation.h continuation.c coroutine_ucontext.c
-endif
-
-
 libspice_client_glibincludedir = $(includedir)/spice-client-glib-2.0
 libspice_client_glibinclude_HEADERS =	\
 	spice-audio.h			\
@@ -247,13 +222,47 @@ libspice_client_glibinclude_HEADERS =	\
 	channel-main.h			\
 	channel-playback.h		\
 	channel-record.h		\
-	channel-smartcard.h		\
 	$(NULL)
 
 # file for API compatibility, but we don't want warning during our compilation
 dist_libspice_client_glibinclude_DATA =	\
 	spice-channel-enums.h		\
 	$(NULL)
+
+if WITH_PULSE
+libspice_client_glib_2_0_la_SOURCES +=	\
+	spice-pulse.c			\
+	spice-pulse.h			\
+	$(NULL)
+endif
+
+if WITH_GSTAUDIO
+libspice_client_glib_2_0_la_SOURCES +=	\
+	spice-gstaudio.c		\
+	spice-gstaudio.h		\
+	$(NULL)
+endif
+
+if WITH_SMARTCARD
+libspice_client_glib_2_0_la_SOURCES +=	\
+	channel-smartcard.c		\
+	smartcard-manager.h		\
+	smartcard-manager.c		\
+	$(NULL)
+
+libspice_client_glibinclude_HEADERS +=	\
+	channel-smartcard.h		\
+	$(NULL)
+endif
+
+if WITH_UCONTEXT
+libspice_client_glib_2_0_la_SOURCES += continuation.h continuation.c coroutine_ucontext.c
+EXTRA_DIST += coroutine_gthread.c
+else
+libspice_client_glib_2_0_la_SOURCES += coroutine_gthread.c
+libspice_client_glib_2_0_la_LIBADD += $(GTHREAD_LIBS)
+EXTRA_DIST += continuation.h continuation.c coroutine_ucontext.c
+endif
 
 displaysrc = \
 	display/edid.h				\
