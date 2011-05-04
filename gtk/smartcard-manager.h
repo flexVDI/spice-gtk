@@ -53,7 +53,7 @@ struct _SpiceSmartCardManagerClass
     gchar _spice_reserved[SPICE_RESERVED_PADDING];
 };
 
-GType spice_smartcard_manager_get_type(void) G_GNUC_CONST;
+GType spice_smartcard_manager_get_type(void);
 
 SpiceSmartCardManager *spice_smartcard_manager_get(void);
 
