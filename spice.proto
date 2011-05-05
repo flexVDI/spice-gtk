@@ -639,7 +639,7 @@ channel DisplayChannel : BaseChannel {
 	DisplayBase base;
 	struct Fill {
 	    Brush brush @outvar(brush);
-	    uint16 rop_descriptor;
+	    ropd rop_descriptor;
 	    QMask mask @outvar(mask);
 	} data;
     } draw_fill = 302;
@@ -1084,6 +1084,13 @@ channel TunnelChannel : BaseChannel {
     } @ctype(SpiceMsgcTunnelSocketTokens) socket_token;
 };
 
+channel SmartcardChannel : BaseChannel {
+server:
+    Data data = 101;
+client:
+    Data data = 101;
+};
+
 protocol Spice {
     MainChannel main = 1;
     DisplayChannel display;
@@ -1092,4 +1099,5 @@ protocol Spice {
     PlaybackChannel playback;
     RecordChannel record;
     TunnelChannel tunnel;
+    SmartcardChannel smartcard;
 };
