@@ -215,7 +215,36 @@ SpiceSmartCardManager *spice_smartcard_manager_get(void)
 
 static gboolean smartcard_monitor_dispatch(VEvent *event, gpointer user_data)
 {
-    return FALSE;
+    g_return_val_if_fail(event != NULL, TRUE);
+
+    switch (event->type) {
+        case VEVENT_READER_INSERT:
+            g_signal_emit(G_OBJECT(user_data),
+                          signals[SPICE_SMARTCARD_MANAGER_READER_ADDED],
+                          0, event->reader);
+            break;
+
+        case VEVENT_READER_REMOVE:
+            g_signal_emit(G_OBJECT(user_data),
+                          signals[SPICE_SMARTCARD_MANAGER_READER_REMOVED],
+                          0, event->reader);
+            break;
+
+        case VEVENT_CARD_INSERT:
+            g_signal_emit(G_OBJECT(user_data),
+                          signals[SPICE_SMARTCARD_MANAGER_CARD_INSERTED],
+                          0, event->reader);
+            break;
+        case VEVENT_CARD_REMOVE:
+            g_signal_emit(G_OBJECT(user_data),
+                          signals[SPICE_SMARTCARD_MANAGER_CARD_REMOVED],
+                          0, event->reader);
+            break;
+        case VEVENT_LAST:
+            break;
+    }
+
+    return TRUE;
 }
 
 /* ------------------------------------------------------------------ */
