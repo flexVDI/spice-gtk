@@ -46,6 +46,7 @@ struct spice_smartcard_manager {
 };
 
 G_DEFINE_TYPE(SpiceSmartCardManager, spice_smartcard_manager, G_TYPE_OBJECT);
+G_DEFINE_BOXED_TYPE(VReader, spice_smartcard_reader, vreader_reference, vreader_free);
 
 /* Properties */
 enum {

@@ -31,6 +31,7 @@ G_BEGIN_DECLS
 #define SPICE_IS_SMARTCARD_MANAGER_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), SPICE_TYPE_SMARTCARD_MANAGER))
 #define SPICE_SMARTCARD_MANAGER_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), SPICE_TYPE_SMARTCARD_MANAGER, SpiceSmartCardManagerClass))
 
+#define SPICE_TYPE_SMARTCARD_READER (spice_smartcard_reader_get_type())
 
 typedef struct _SpiceSmartCardManager SpiceSmartCardManager;
 typedef struct _SpiceSmartCardManagerClass SpiceSmartCardManagerClass;
@@ -54,6 +55,7 @@ struct _SpiceSmartCardManagerClass
 };
 
 GType spice_smartcard_manager_get_type(void);
+GType spice_smartcard_reader_get_type(void);
 
 SpiceSmartCardManager *spice_smartcard_manager_get(void);
 
