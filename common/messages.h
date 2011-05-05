@@ -32,6 +32,7 @@
 #define _H_MESSAGES
 
 #include <spice/protocol.h>
+#include <vscard_common.h>
 #include "draw.h"
 
 #ifdef __cplusplus
@@ -506,6 +507,22 @@ typedef struct SpiceMsgcTunnelSocketTokens {
     uint16_t connection_id;
     uint32_t num_tokens;
 } SpiceMsgcTunnelSocketTokens;
+
+typedef struct SpiceMsgSmartcard {
+    VSCMsgType type;
+    uint32_t length;
+    uint32_t reader_id;
+    uint8_t data[0];
+} SpiceMsgSmartcard;
+
+typedef struct SpiceMsgcSmartcard {
+    VSCMsgHeader header;
+    union {
+        VSCMsgError error;
+        VSCMsgATR atr_data;
+        VSCMsgReaderAdd add;
+    };
+} SpiceMsgcSmartcard;
 
 #ifdef __cplusplus
 }

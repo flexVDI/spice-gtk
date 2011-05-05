@@ -1097,11 +1097,80 @@ channel TunnelChannel : BaseChannel {
     } @ctype(SpiceMsgcTunnelSocketTokens) socket_token;
 };
 
+enum32 vsc_message_type {
+    Init = 1,
+    Error,
+    ReaderAdd,
+    ReaderRemove,
+    ATR,
+    CardRemove,
+    APDU,
+    Flush,
+    FlushComplete
+} @prefix(VSC_);
+
+struct VscMessageHeader {
+    vsc_message_type type;
+    uint32 reader_id;
+    uint32 length;
+} @ctype(VSCMsgHeader);
+
+struct VscMessageError {
+    uint32 code;
+} @ctype(VSCMsgError);
+
+struct VscMessageAPDU {
+    uint8 data[];
+} @ctype(VSCMsgAPDU);
+
+struct VscMessageATR {
+    uint8 data[];
+} @ctype(VSCMsgATR);
+
+struct VscMessageReaderAdd {
+    int8 *reader_name[] @zero_terminated @nonnull @end @nomarshal;
+} @ctype(VSCMsgReaderAdd);
+
 channel SmartcardChannel : BaseChannel {
-server:
-    Data data = 101;
-client:
-    Data data = 101;
+ server:
+    message {
+	vsc_message_type type;
+	uint32 reader_id;
+	uint32 length;
+	uint8 data[] @end;
+    } @ctype(SpiceMsgSmartcard) msg = 101;
+
+ client:
+    message {
+	VscMessageHeader header;
+	switch (header.type) {
+	case ReaderAdd:
+	    VscMessageReaderAdd add;
+	case ATR:
+	case APDU:
+	    VscMessageATR atr_data;
+	case Error:
+	    VscMessageError error;
+	} u @anon;
+    } @ctype(SpiceMsgcSmartcard) msg = 101;
+
+    message {
+	vsc_message_type type;
+	uint32 reader_id;
+	uint32 length;
+    } @ctype(VSCMsgHeader) header = 101;
+
+    message {
+	uint32 code;
+    } @ctype(VSCMsgError) error = 101;
+
+    message {
+	uint8 data[];
+    } @ctype(VSCMsgATR) atr = 101;
+
+    message {
+	int8 reader_name[] @zero_terminated @nonnull;
+    } @ctype(VSCMsgReaderAdd) reader_add = 101;
 };
 
 protocol Spice {
