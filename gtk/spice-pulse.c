@@ -307,10 +307,10 @@ static void create_playback(SpicePulse *pulse)
 
     /* FIXME: we might want customizable latency */
     buffer_attr.maxlength = -1;
-    buffer_attr.prebuf = pa_usec_to_bytes(10 * PA_USEC_PER_MSEC, &p->playback.spec);
-    buffer_attr.tlength = pa_usec_to_bytes(20 * PA_USEC_PER_MSEC, &p->playback.spec);
-    buffer_attr.minreq = pa_usec_to_bytes(10 * PA_USEC_PER_MSEC, &p->playback.spec);
-    flags = PA_STREAM_INTERPOLATE_TIMING | PA_STREAM_NOT_MONOTONIC | PA_STREAM_AUTO_TIMING_UPDATE;
+    buffer_attr.tlength = pa_usec_to_bytes(100 * PA_USEC_PER_MSEC, &p->playback.spec);
+    buffer_attr.prebuf = -1;
+    buffer_attr.minreq = -1;
+    flags = PA_STREAM_ADJUST_LATENCY;
 
     if (pa_stream_connect_playback(p->playback.stream,
                                    NULL, &buffer_attr, flags, NULL, NULL) < 0) {
