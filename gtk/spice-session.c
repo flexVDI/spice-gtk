@@ -1054,10 +1054,10 @@ void spice_session_set_mm_time(SpiceSession *session, guint32 time)
     spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
 
     g_return_if_fail(s != NULL);
-    SPICE_DEBUG("set mm time: %u", time);
 
     s->mm_time = time;
     s->mm_time_at_clock = g_get_monotonic_time();
+    SPICE_DEBUG("set mm time: %u", spice_session_get_mm_time(session));
 }
 
 G_GNUC_INTERNAL

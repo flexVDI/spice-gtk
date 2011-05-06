@@ -1001,11 +1001,12 @@ static void display_handle_stream_data(SpiceChannel *channel, spice_msg_in *in)
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     SpiceMsgDisplayStreamData *op = spice_msg_in_parsed(in);
     display_stream *st = c->streams[op->id];
-    guint32 time;
+    guint32 mmtime;
 
-    time = spice_session_get_mm_time(spice_channel_get_session(channel));
-    if (op->multi_media_time < time) {
-        SPICE_DEBUG("stream data too late by %u ms, dropin", time - op->multi_media_time);
+    mmtime = spice_session_get_mm_time(spice_channel_get_session(channel));
+    if (op->multi_media_time < mmtime) {
+        SPICE_DEBUG("stream data too late by %u ms (ts: %u, mmtime: %u), dropin",
+                    mmtime - op->multi_media_time, op->multi_media_time, mmtime);
         return;
     }
 

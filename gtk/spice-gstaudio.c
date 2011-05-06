@@ -47,6 +47,7 @@ struct spice_gstaudio {
     SpiceChannel            *rchannel;
     struct stream           playback;
     struct stream           record;
+    guint                   mmtime_id;
 };
 
 static void channel_event(SpiceChannel *channel, SpiceChannelEvent event,
@@ -259,6 +260,28 @@ static void playback_stop(SpicePlaybackChannel *channel, gpointer data)
 
     if (p->playback.pipe)
         gst_element_set_state(p->playback.pipe, GST_STATE_READY);
+    if (p->mmtime_id != 0) {
+        g_source_remove(p->mmtime_id);
+        p->mmtime_id = 0;
+    }
+}
+
+static gboolean update_mmtime_timeout_cb(gpointer data)
+{
+    SpiceGstAudio *gstaudio = data;
+    spice_gstaudio *p = SPICE_GSTAUDIO_GET_PRIVATE(gstaudio);
+    GstQuery *q;
+
+    q = gst_query_new_latency();
+    if (gst_element_query(p->playback.pipe, q)) {
+        gboolean live;
+        GstClockTime minlat, maxlat;
+        gst_query_parse_latency(q, &live, &minlat, &maxlat);
+        spice_playback_channel_set_delay(SPICE_PLAYBACK_CHANNEL(p->pchannel), GST_TIME_AS_MSECONDS(maxlat));
+    }
+    gst_query_unref (q);
+
+    return TRUE;
 }
 
 static void playback_start(SpicePlaybackChannel *channel, gint format, gint channels,
@@ -304,6 +327,11 @@ lerr:
 
     if (p->playback.pipe)
         gst_element_set_state(p->playback.pipe, GST_STATE_PLAYING);
+
+    if (p->mmtime_id == 0) {
+        update_mmtime_timeout_cb(gstaudio);
+        p->mmtime_id = g_timeout_add_seconds(1, update_mmtime_timeout_cb, gstaudio);
+    }
 }
 
 static void playback_data(SpicePlaybackChannel *channel,
@@ -320,7 +348,6 @@ static void playback_data(SpicePlaybackChannel *channel,
     buf = gst_app_buffer_new(audio, size, g_free, audio);
     gst_app_src_push_buffer(GST_APP_SRC(p->playback.src), buf);
 }
-
 
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
