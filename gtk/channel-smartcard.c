@@ -186,14 +186,60 @@ spice_channel_drop_pending_reader_removal(SpiceSmartCardChannel *channel,
     g_hash_table_remove(channel->priv->pending_reader_removals, reader);
 }
 
+static void
+send_msg_generic_with_data(SpiceSmartCardChannel *channel, VReader *reader,
+                           VSCMsgType msg_type,
+                           const uint8_t *data, gsize data_len)
+{
+    spice_msg_out *msg_out;
+    VSCMsgHeader header = {
+        .type = msg_type,
+        .length = data_len
+    };
+
+    if(vreader_get_id(reader) == -1)
+        header.reader_id = VSCARD_UNDEFINED_READER_ID;
+    else
+        header.reader_id = vreader_get_id(reader);
+
+    msg_out = spice_msg_out_new(SPICE_CHANNEL(channel),
+                                SPICE_MSGC_SMARTCARD_DATA);
+    msg_out->marshallers->msgc_smartcard_header(msg_out->marshaller, &header);
+    if ((data != NULL) && (data_len != 0)) {
+        spice_marshaller_add(msg_out->marshaller, data, data_len);
+    }
+    spice_msg_out_send(msg_out);
+    spice_msg_out_unref(msg_out);
+}
+
+static void send_msg_generic(SpiceSmartCardChannel *channel, VReader *reader,
+                             VSCMsgType msg_type)
+{
+    send_msg_generic_with_data(channel, reader, msg_type, NULL, 0);
+}
+
+static void send_msg_atr(SpiceSmartCardChannel *channel, VReader *reader)
+{
+#define MAX_ATR_LEN 40 //this should be defined in libcacard
+    uint8_t atr[MAX_ATR_LEN];
+    int atr_len = MAX_ATR_LEN;
+
+    g_assert(vreader_get_id(reader) != VSCARD_UNDEFINED_READER_ID);
+    vreader_power_on(reader, atr, &atr_len);
+    send_msg_generic_with_data(channel, reader, VSC_ATR, atr, atr_len);
+}
 
 static void reader_added_cb(SpiceSmartCardManager *manager, VReader *reader,
                             gpointer user_data)
 {
     SpiceSmartCardChannel *channel = SPICE_SMARTCARD_CHANNEL(user_data);
+    const char *reader_name = vreader_get_name(reader);
 
     channel->priv->pending_reader_additions =
         g_list_append(channel->priv->pending_reader_additions, reader);
+
+    send_msg_generic_with_data(channel, reader, VSC_ReaderAdd,
+                               (uint8_t*)reader_name, strlen(reader_name));
 }
 
 static void reader_removed_cb(SpiceSmartCardManager *manager, VReader *reader,
@@ -202,6 +248,7 @@ static void reader_removed_cb(SpiceSmartCardManager *manager, VReader *reader,
     SpiceSmartCardChannel *channel = SPICE_SMARTCARD_CHANNEL(user_data);
 
     if (is_attached_to_server(reader)) {
+        send_msg_generic(channel, reader, VSC_ReaderRemove);
     } else {
         spice_channel_queue_reader_removal(channel, reader);
     }
@@ -215,6 +262,7 @@ static void card_inserted_cb(SpiceSmartCardManager *manager, VReader *reader,
     SpiceSmartCardChannel *channel = SPICE_SMARTCARD_CHANNEL(user_data);
 
     if (is_attached_to_server(reader)) {
+        send_msg_atr(channel, reader);
     } else {
         spice_channel_queue_card_insertion(channel, reader);
     }
@@ -226,6 +274,7 @@ static void card_removed_cb(SpiceSmartCardManager *manager, VReader *reader,
     SpiceSmartCardChannel *channel = SPICE_SMARTCARD_CHANNEL(user_data);
 
     if (is_attached_to_server(reader)) {
+        send_msg_generic(channel, reader, VSC_CardRemove);
     } else {
         /* this does nothing when reader has no card insertion pending */
         spice_channel_drop_pending_card_insertion(channel, reader);
