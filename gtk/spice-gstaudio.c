@@ -54,9 +54,6 @@ static void channel_event(SpiceChannel *channel, SpiceChannelEvent event,
 
 static void spice_gstaudio_finalize(GObject *obj)
 {
-    spice_gstaudio *p;
-
-    p = SPICE_GSTAUDIO_GET_PRIVATE(obj);
     G_OBJECT_CLASS(spice_gstaudio_parent_class)->finalize(obj);
 }
 

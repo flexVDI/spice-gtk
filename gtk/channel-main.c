@@ -1136,8 +1136,9 @@ static gboolean _channel_new(channel_new_t *c)
     g_return_val_if_fail(c != NULL, FALSE);
 
     channel = spice_channel_new(c->session, c->type, c->id);
+    if (channel == NULL)
+        return FALSE;
 
-    g_warn_if_fail(channel != NULL);
     g_object_unref(c->session);
     g_free(c);
 

@@ -1645,6 +1645,28 @@ end:
     spice_msg_in_unref(in);
 }
 
+static const char* spice_channel_type_to_string(int type)
+{
+    static const char *to_string[] = {
+        NULL,
+        [ SPICE_CHANNEL_MAIN ] = "main",
+        [ SPICE_CHANNEL_DISPLAY ] = "display",
+        [ SPICE_CHANNEL_INPUTS ] = "inputs",
+        [ SPICE_CHANNEL_CURSOR ] = "cursor",
+        [ SPICE_CHANNEL_PLAYBACK ] = "playback",
+        [ SPICE_CHANNEL_RECORD ] = "record",
+        [ SPICE_CHANNEL_TUNNEL ] = "tunnel",
+        [ SPICE_CHANNEL_SMARTCARD ] = "smartcard"
+    };
+    const char *str = NULL;
+
+    if (type >= 0 && type < sizeof(to_string)) {
+        str = to_string[type];
+    }
+
+    return str ? str : "*invalid channel type*";
+}
+
 /**
  * spice_channel_new:
  * @s: the @SpiceSession the channel is linked to
@@ -1682,6 +1704,8 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
         gtype = SPICE_TYPE_RECORD_CHANNEL;
         break;
     default:
+        g_warning("unsupported channel kind: %s",
+                  spice_channel_type_to_string(type));
         return NULL;
     }
     channel = SPICE_CHANNEL(g_object_new(gtype,
