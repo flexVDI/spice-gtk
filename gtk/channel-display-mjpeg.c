@@ -61,42 +61,16 @@ void stream_mjpeg_init(display_stream *st)
     st->mjpeg_cinfo.src               = &st->mjpeg_src;
 }
 
-static void mjpeg_convert_scanline(uint8_t *dest, uint8_t *src, int width, int compat)
-{
-    uint32_t *row = (void*)dest;
-    uint32_t c;
-    int x;
-
-    if (compat) {
-        /*
-         * We need to check for the old major and for backwards compat
-         *  a) swap r and b (done)
-         *  b) to-yuv with right values and then from-yuv with old wrong values (TODO)
-         */
-        for (x = 0; x < width; x++) {
-            c = src[2] << 16 | src[1] << 8 | src[0];
-            src += 3;
-            *row++ = c;
-        }
-    } else {
-        for (x = 0; x < width; x++) {
-            c = src[0] << 16 | src[1] << 8 | src[2];
-            src += 3;
-            *row++ = c;
-        }
-    }
-}
-
 G_GNUC_INTERNAL
 void stream_mjpeg_data(display_stream *st)
 {
     SpiceMsgDisplayStreamCreate *info = spice_msg_in_parsed(st->msg_create);
     int width = info->stream_width;
     int height = info->stream_height;
-    uint8_t *line, *dest;
-    int i;
+    uint8_t *dest;
+    uint8_t *lines[4];
+    int i, j;
 
-    line = malloc(width * 3);
     dest = malloc(width * height * 4);
 
     if (st->out_frame) {
@@ -105,16 +79,25 @@ void stream_mjpeg_data(display_stream *st)
     st->out_frame = dest;
 
     jpeg_read_header(&st->mjpeg_cinfo, 1);
-    st->mjpeg_cinfo.out_color_space = JCS_RGB;
+    st->mjpeg_cinfo.out_color_space = JCS_EXT_BGRX;
+    st->mjpeg_cinfo.do_fancy_upsampling = FALSE;
+    st->mjpeg_cinfo.do_block_smoothing = FALSE;
+    // TODO: in theory should check cinfo.output_height match with our height
     jpeg_start_decompress(&st->mjpeg_cinfo);
-    for (i = 0; i < height; i++) {
-        jpeg_read_scanlines(&st->mjpeg_cinfo, &line, 1);
-        mjpeg_convert_scanline(dest, line, width, 0 /* FIXME: compat */);
-        dest += 4 * width;
+    for (i = 0; i < height; ) {
+        // according to header
+        g_return_if_fail(st->mjpeg_cinfo.rec_outbuf_height <= 4);
+        for (j = 0; j < st->mjpeg_cinfo.rec_outbuf_height; j++) {
+            lines[j] = dest;
+            dest += 4 * width;
+        }
+        j = jpeg_read_scanlines(&st->mjpeg_cinfo, lines,
+                                st->mjpeg_cinfo.rec_outbuf_height);
+        // this shouldn't happen either..
+        g_return_if_fail(j == st->mjpeg_cinfo.rec_outbuf_height);
+        i += st->mjpeg_cinfo.rec_outbuf_height;
     }
     jpeg_finish_decompress(&st->mjpeg_cinfo);
-
-    free(line);
 }
 
 G_GNUC_INTERNAL
