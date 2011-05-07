@@ -1004,6 +1004,12 @@ static void display_handle_stream_data(SpiceChannel *channel, spice_msg_in *in)
     guint32 mmtime;
 
     mmtime = spice_session_get_mm_time(spice_channel_get_session(channel));
+
+    if (op->multi_media_time == 0) {
+        g_critical("Received frame with invalid 0 timestamp! perhaps wrong graphic driver?");
+        op->multi_media_time = mmtime + 100; /* workaround... */
+    }
+
     if (op->multi_media_time < mmtime) {
         SPICE_DEBUG("stream data too late by %u ms (ts: %u, mmtime: %u), dropin",
                     mmtime - op->multi_media_time, op->multi_media_time, mmtime);
