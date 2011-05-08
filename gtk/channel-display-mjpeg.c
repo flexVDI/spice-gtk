@@ -79,9 +79,13 @@ void stream_mjpeg_data(display_stream *st)
     st->out_frame = dest;
 
     jpeg_read_header(&st->mjpeg_cinfo, 1);
-    st->mjpeg_cinfo.out_color_space = JCS_EXT_BGRX;
+    st->mjpeg_cinfo.out_color_space = JCS_EXT_BGRX; // requires jpeg-turbo
+#ifndef SPICE_QUALITY
+    st->mjpeg_cinfo.dct_method = JDCT_IFAST;
     st->mjpeg_cinfo.do_fancy_upsampling = FALSE;
     st->mjpeg_cinfo.do_block_smoothing = FALSE;
+    st->mjpeg_cinfo.dither_mode = JDITHER_ORDERED;
+#endif
     // TODO: in theory should check cinfo.output_height match with our height
     jpeg_start_decompress(&st->mjpeg_cinfo);
     for (i = 0; i < height; ) {
