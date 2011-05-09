@@ -244,7 +244,6 @@ libspice_client_glibinclude_HEADERS =	\
 	spice-types.h			\
 	spice-session.h			\
 	spice-channel.h			\
-	spice-channel-enums.h		\
 	spice-glib-enums.h		\
 	spice-util.h			\
 	channel-main.h			\
@@ -253,6 +252,11 @@ libspice_client_glibinclude_HEADERS =	\
 	channel-inputs.h		\
 	channel-playback.h		\
 	channel-record.h		\
+	$(NULL)
+
+# file for API compatibility, but we don't want warning during our compilation
+libspice_client_glibinclude_DATA =	\
+	spice-channel-enums.h		\
 	$(NULL)
 
 displaysrc = \
