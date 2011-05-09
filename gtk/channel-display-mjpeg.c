@@ -79,7 +79,14 @@ void stream_mjpeg_data(display_stream *st)
     st->out_frame = dest;
 
     jpeg_read_header(&st->mjpeg_cinfo, 1);
-    st->mjpeg_cinfo.out_color_space = JCS_EXT_BGRX; // requires jpeg-turbo
+#ifdef JCS_EXTENSIONS
+    // requires jpeg-turbo
+    st->mjpeg_cinfo.out_color_space = JCS_EXT_BGRX;
+#else
+#warning "You should consider building with libjpeg-turbo"
+    st->mjpeg_cinfo.out_color_space = JCS_RGB;
+#endif
+
 #ifndef SPICE_QUALITY
     st->mjpeg_cinfo.dct_method = JDCT_IFAST;
     st->mjpeg_cinfo.do_fancy_upsampling = FALSE;
@@ -93,13 +100,31 @@ void stream_mjpeg_data(display_stream *st)
         g_return_if_fail(st->mjpeg_cinfo.rec_outbuf_height <= 4);
         for (j = 0; j < st->mjpeg_cinfo.rec_outbuf_height; j++) {
             lines[j] = dest;
+#ifdef JCS_EXTENSIONS
             dest += 4 * width;
+#else
+            dest += 3 * width;
+#endif
         }
         j = jpeg_read_scanlines(&st->mjpeg_cinfo, lines,
                                 st->mjpeg_cinfo.rec_outbuf_height);
         // this shouldn't happen either..
         g_return_if_fail(j == st->mjpeg_cinfo.rec_outbuf_height);
+#ifndef JCS_EXTENSIONS
+        {
+            uint8_t *s = lines[0];
+            uint32_t *d = (uint32_t *)&st->out_frame[i * width * 4];
+
+            for (j = j * width; j > 0; ) {
+                j -= 1; // reverse order, bad for cache?
+                d[j] = s[j * 3 + 0] << 16 |
+                    s[j * 3 + 1] << 8 |
+                    s[j * 3 + 2];
+            }
+        }
+#endif
         i += st->mjpeg_cinfo.rec_outbuf_height;
+        dest = &st->out_frame[i * width * 4];
     }
     jpeg_finish_decompress(&st->mjpeg_cinfo);
 }
