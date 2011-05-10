@@ -819,7 +819,6 @@ static gboolean focus_out_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_U
 
     SPICE_DEBUG("%s", __FUNCTION__);
     d->keyboard_have_focus = false;
-    try_keyboard_ungrab(display);
     return true;
 }
 
