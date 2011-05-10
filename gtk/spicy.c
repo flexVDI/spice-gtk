@@ -988,7 +988,7 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     /* spice display */
     win->spice = GTK_WIDGET(spice_display_new(conn->session, id));
     g_signal_connect(win->spice, "configure-event", G_CALLBACK(configure_event_cb), win);
-    seq = spice_grab_sequence_new_from_string("Shift+F12");
+    seq = spice_grab_sequence_new_from_string("Shift_L+F12");
     spice_display_set_grab_keys(SPICE_DISPLAY(win->spice), seq);
     spice_grab_sequence_free(seq);
 
