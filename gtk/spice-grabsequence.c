@@ -81,9 +81,13 @@ SpiceGrabSequence *spice_grab_sequence_new_from_string(const gchar *str)
 		sequence->nkeysyms++;
 
 	sequence->keysyms = g_new0(guint, sequence->nkeysyms);
-	for (i = 0 ; i < sequence->nkeysyms ; i++)
+	for (i = 0 ; i < sequence->nkeysyms ; i++) {
 		sequence->keysyms[i] =
 			(guint)gdk_keyval_from_name(keysymstr[i]);
+                if (sequence->keysyms[i] == 0) {
+                        g_critical("Invalid key: %s", keysymstr[i]);
+                }
+        }
 
 	return sequence;
 
