@@ -90,6 +90,7 @@ enum {
 enum {
     SPICE_DISPLAY_MOUSE_GRAB,
     SPICE_DISPLAY_KEYBOARD_GRAB,
+    SPICE_DISPLAY_GRAB_KEY_PRESSED,
     SPICE_DISPLAY_LAST_SIGNAL,
 };
 
@@ -727,6 +728,7 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
     }
 
     if (check_for_grab_key(display, key->type, key->keyval)) {
+        g_signal_emit(widget, signals[SPICE_DISPLAY_GRAB_KEY_PRESSED], 0);
         if (d->mouse_grab_active)
             try_mouse_ungrab(widget);
         else
@@ -1268,6 +1270,22 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                      G_TYPE_NONE,
                      1,
                      G_TYPE_INT);
+
+    /**
+     * SpiceDisplay::grab-keys-pressed:
+     * @display: the #SpiceDisplay that emitted the signal
+     *
+     * Notify when the grab keys have been pressed
+     **/
+    signals[SPICE_DISPLAY_GRAB_KEY_PRESSED] =
+        g_signal_new("grab-keys-pressed",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_FIRST,
+                     G_STRUCT_OFFSET(SpiceDisplayClass, keyboard_grab),
+                     NULL, NULL,
+                     g_cclosure_marshal_VOID__VOID,
+                     G_TYPE_NONE,
+                     0);
 
     g_type_class_add_private(klass, sizeof(spice_display));
 }
