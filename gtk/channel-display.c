@@ -463,7 +463,7 @@ static void image_put_lossy(SpiceImageCache *cache, uint64_t id,
         SPICE_CONTAINEROF(cache, spice_display_channel, image_cache);
     display_cache_item *item;
 
-#if 1 /* TODO: temporary sanity check */
+#ifndef NDEBUG
     g_warn_if_fail(cache_find(c->images, id) == NULL);
 #endif
 
