@@ -312,21 +312,26 @@ static void menu_cb_paste(GtkAction *action, void *data)
     spice_display_paste_from_guest(SPICE_DISPLAY(win->spice));
 }
 
-static void menu_cb_fullscreen(GtkAction *action, void *data)
+static void window_set_fullscreen(struct spice_window *win, gboolean fs)
 {
-    struct spice_window *win = data;
-
-    if (win->fullscreen) {
-        gtk_window_unfullscreen(GTK_WINDOW(win->toplevel));
-#ifdef WIN32
-        gtk_window_move(GTK_WINDOW(win->toplevel), win->win_x, win->win_y);
-#endif
-    } else {
+    if (fs) {
 #ifdef WIN32
         gtk_window_get_position(GTK_WINDOW(win->toplevel), &win->win_x, &win->win_y);
 #endif
         gtk_window_fullscreen(GTK_WINDOW(win->toplevel));
+    } else {
+        gtk_window_unfullscreen(GTK_WINDOW(win->toplevel));
+#ifdef WIN32
+        gtk_window_move(GTK_WINDOW(win->toplevel), win->win_x, win->win_y);
+#endif
     }
+}
+
+static void menu_cb_fullscreen(GtkAction *action, void *data)
+{
+    struct spice_window *win = data;
+
+    window_set_fullscreen(win, !win->fullscreen);
 }
 
 static void menu_cb_ungrab(GtkAction *action, void *data)
@@ -433,6 +438,16 @@ static gboolean window_state_cb(GtkWidget *widget, GdkEventWindowState *event,
         }
     }
     return TRUE;
+}
+
+static void grab_keys_pressed_cb(GtkWidget *widget, gpointer data)
+{
+    struct spice_window *win = data;
+
+    /* since mnemonics are disabled, we leave fullscreen when
+       ungrabbing mouse. Perhaps we should have a different handling
+       of fullscreen key, or simply use a UI, like vinagre */
+    window_set_fullscreen(win, FALSE);
 }
 
 static void mouse_grab_cb(GtkWidget *widget, gint grabbed, gpointer data)
@@ -996,6 +1011,8 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
 		     G_CALLBACK(mouse_grab_cb), win);
     g_signal_connect(G_OBJECT(win->spice), "keyboard-grab",
 		     G_CALLBACK(keyboard_grab_cb), win);
+    g_signal_connect(G_OBJECT(win->spice), "grab-keys-pressed",
+		     G_CALLBACK(grab_keys_pressed_cb), win);
 
     /* status line */
     win->statusbar = gtk_hbox_new(FALSE, 1);
