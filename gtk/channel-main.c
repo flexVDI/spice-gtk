@@ -845,12 +845,6 @@ static void agent_display_config(SpiceMainChannel *channel)
         config.depth = c->display_color_depth;
     }
 
-#if 0 // TODO
-    if (!_display_setting.is_empty()) {
-        _agent_reply_wait_type = VD_AGENT_DISPLAY_CONFIG;
-    }
-#endif
-
     SPICE_DEBUG("display_config: flags: %u, depth: %u", config.flags, config.depth);
 
     agent_msg_queue(channel, VD_AGENT_DISPLAY_CONFIG, sizeof(VDAgentDisplayConfig), &config);

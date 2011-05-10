@@ -402,17 +402,6 @@ static gboolean delete_cb(GtkWidget *widget, GdkEvent *event, gpointer data)
     return true;
 }
 
-static void destroy_cb(GtkWidget *widget, gpointer data)
-{
-#if 0
-    struct spice_window *win = data;
-
-    if (win->id == 0) {
-        g_main_loop_quit(mainloop);
-    }
-#endif
-}
-
 static gboolean window_state_cb(GtkWidget *widget, GdkEventWindowState *event,
 				gpointer data)
 {
@@ -795,26 +784,6 @@ get_output_for_window(GnomeRRConfig *configuration, GdkWindow *window)
 			       win_rect.y + win_rect.height / 2);
 }
 
-#if 0
-static GnomeRROutputInfo *get_primary_output() {
-    GnomeRROutputInfo **outputs;
-    GnomeRROutputInfo *output;
-    guint i;
-
-    outputs = gnome_rr_config_get_outputs (rrcurrent);
-    for (i = 0; outputs[i] != NULL; ++i) {
-        output = outputs[i];
-        if (!gnome_rr_output_info_is_connected (output))
-            continue;
-        if (gnome_rr_output_info_get_primary (output))
-            break;
-    }
-    output = outputs[i];
-    g_return_if_fail(output != NULL);
-    return output;
-}
-#endif
-
 static void
 on_screen_changed(GnomeRRScreen *scr, gpointer data)
 {
@@ -960,8 +929,6 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
 		     G_CALLBACK(window_state_cb), win);
     g_signal_connect(G_OBJECT(win->toplevel), "delete-event",
 		     G_CALLBACK(delete_cb), win);
-    g_signal_connect(G_OBJECT(win->toplevel), "destroy",
-                     G_CALLBACK(destroy_cb), win);
 
     /* menu + toolbar */
     win->ui = gtk_ui_manager_new();

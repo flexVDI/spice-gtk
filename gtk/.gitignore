@@ -18,9 +18,8 @@
 /Makefile.in
 /SpiceClientGLib-2.0.gir
 /SpiceClientGLib-2.0.typelib
-/SpiceClientGtk-2.0.gir
-/SpiceClientGtk-2.0.typelib
-/SpiceClientGtk.la
+/SpiceClientGtk-3.0.gir
+/SpiceClientGtk-3.0.typelib
 /TAGS
 /_libs
 /generated_demarshallers.c
@@ -28,7 +27,7 @@
 /generated_marshallers.c
 /generated_marshallers1.c
 /libspice-client-glib-2.0.la
-/libspice-client-gtk-2.0.la
+/libspice-client-gtk-3.0.la
 /snappy
 /so_locations
 /spice-client-gtk-module.defs.c

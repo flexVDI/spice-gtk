@@ -611,14 +611,6 @@ static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
-#if 0
-    SPICE_DEBUG("%s: area %dx%d at %d,%d", __FUNCTION__,
-            expose->area.width,
-            expose->area.height,
-            expose->area.x,
-            expose->area.y);
-#endif
-
     if (d->mark == 0 || d->data == NULL)
         return false;
 
@@ -1971,13 +1963,29 @@ static guint32 get_keyboard_lock_modifiers(Display *x_display)
     return modifiers;
 }
 
+static void sync_keyboard_lock_modifiers(SpiceDisplay *display)
+{
+    Display *x_display;
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    guint32 modifiers;
+    GdkWindow *w;
+
+    w = gtk_widget_get_parent_window(GTK_WIDGET(display));
+    if (w == NULL) /* it can happen if the display is not yet shown */
+        return;
+
+    x_display = GDK_WINDOW_XDISPLAY(w);
+    modifiers = get_keyboard_lock_modifiers(x_display);
+    if (d->inputs)
+        spice_inputs_set_key_locks(d->inputs, modifiers);
+}
+
 typedef enum SpiceLed {
     CAPS_LOCK_LED = 1,
     NUM_LOCK_LED,
     SCROLL_LOCK_LED,
 } SpiceLed;
 
-#if 0
 static guint get_modifier_mask(Display *x_display, KeySym modifier)
 {
     int mask = 0;
@@ -2022,6 +2030,7 @@ static void set_keyboard_led(Display *x_display, SpiceLed led, int set)
     }
 }
 
+G_GNUC_UNUSED
 static void spice_set_keyboard_lock_modifiers(SpiceDisplay *display, uint32_t modifiers)
 {
     Display *x_display;
@@ -2031,24 +2040,6 @@ static void spice_set_keyboard_lock_modifiers(SpiceDisplay *display, uint32_t mo
     set_keyboard_led(x_display, CAPS_LOCK_LED, !!(modifiers & SPICE_INPUTS_CAPS_LOCK));
     set_keyboard_led(x_display, NUM_LOCK_LED, !!(modifiers & SPICE_INPUTS_NUM_LOCK));
     set_keyboard_led(x_display, SCROLL_LOCK_LED, !!(modifiers & SPICE_INPUTS_SCROLL_LOCK));
-}
-#endif
-
-static void sync_keyboard_lock_modifiers(SpiceDisplay *display)
-{
-    Display *x_display;
-    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    guint32 modifiers;
-    GdkWindow *w;
-
-    w = gtk_widget_get_parent_window(GTK_WIDGET(display));
-    if (w == NULL) /* it can happen if the display is not yet shown */
-        return;
-
-    x_display = GDK_WINDOW_XDISPLAY(w);
-    modifiers = get_keyboard_lock_modifiers(x_display);
-    if (d->inputs)
-        spice_inputs_set_key_locks(d->inputs, modifiers);
 }
 #else
 static void sync_keyboard_lock_modifiers(SpiceDisplay *display)
