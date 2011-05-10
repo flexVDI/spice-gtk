@@ -869,7 +869,7 @@ static void display_handle_stream_create(SpiceChannel *channel, spice_msg_in *in
     SpiceMsgDisplayStreamCreate *op = spice_msg_in_parsed(in);
     display_stream *st;
 
-    g_message("%s: id %d", __FUNCTION__, op->id);
+    SPICE_DEBUG("%s: id %d", __FUNCTION__, op->id);
 
     if (op->id >= c->nstreams) {
         int n = c->nstreams;
@@ -1090,7 +1090,7 @@ static void display_handle_stream_destroy(SpiceChannel *channel, spice_msg_in *i
     SpiceMsgDisplayStreamDestroy *op = spice_msg_in_parsed(in);
 
     g_return_if_fail(op != NULL);
-    g_message("%s: id %d", __FUNCTION__, op->id);
+    SPICE_DEBUG("%s: id %d", __FUNCTION__, op->id);
     destroy_stream(channel, op->id);
 }
 

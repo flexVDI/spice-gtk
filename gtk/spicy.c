@@ -64,6 +64,8 @@ struct spice_window {
     gint             win_x;
     gint             win_y;
 #endif
+    bool             enable_accels_save;
+    bool             enable_mnemonics_save;
 };
 
 struct spice_connection {
@@ -439,6 +441,29 @@ static void mouse_grab_cb(GtkWidget *widget, gint grabbed, gpointer data)
 
     win->mouse_grabbed = grabbed;
     update_status(win->conn);
+}
+
+static void keyboard_grab_cb(GtkWidget *widget, gint grabbed, gpointer data)
+{
+    struct spice_window *win = data;
+    GtkSettings *settings = gtk_widget_get_settings (widget);
+
+    if (grabbed) {
+        /* disable mnemonics & accels */
+        g_object_get(settings,
+                     "gtk-enable-accels", &win->enable_accels_save,
+                     "gtk-enable-mnemonics", &win->enable_mnemonics_save,
+                     NULL);
+        g_object_set(settings,
+                     "gtk-enable-accels", FALSE,
+                     "gtk-enable-mnemonics", FALSE,
+                     NULL);
+    } else {
+        g_object_set(settings,
+                     "gtk-enable-accels", win->enable_accels_save,
+                     "gtk-enable-mnemonics", win->enable_mnemonics_save,
+                     NULL);
+    }
 }
 
 static void restore_configuration(struct spice_window *win)
@@ -911,7 +936,6 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     win->id = id;
     win->conn = conn;
     win->display_channel = channel;
-    g_message("create window (#%d)", win->id);
 
     /* toplevel */
     win->toplevel = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -970,6 +994,8 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
 
     g_signal_connect(G_OBJECT(win->spice), "mouse-grab",
 		     G_CALLBACK(mouse_grab_cb), win);
+    g_signal_connect(G_OBJECT(win->spice), "keyboard-grab",
+		     G_CALLBACK(keyboard_grab_cb), win);
 
     /* status line */
     win->statusbar = gtk_hbox_new(FALSE, 1);
