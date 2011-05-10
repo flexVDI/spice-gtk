@@ -1529,8 +1529,8 @@ void spice_channel_wakeup(SpiceChannel *channel)
     g_io_wakeup(&c->wait);
 }
 
-/* coroutine context if @buffered is TRUE,
-   system context if @buffered is FALSE */
+/* coroutine context if @buffered is FALSE,
+   system context if @buffered is TRUE */
 static void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out, gboolean buffered)
 {
     uint8_t *data;
