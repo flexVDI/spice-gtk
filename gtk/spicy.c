@@ -1014,6 +1014,7 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     if (fullscreen)
         gtk_window_fullscreen(GTK_WINDOW(win->toplevel));
 
+    gtk_widget_show_all(vbox);
     restore_configuration(win);
 
     /* init toggle actions */
@@ -1033,7 +1034,6 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
 
     gtk_widget_grab_focus(win->spice);
 
-    gtk_widget_show_all(vbox);
     return win;
 }
 
