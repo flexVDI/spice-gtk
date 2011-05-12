@@ -15,6 +15,7 @@
 
 using GLib;
 using Custom;
+using Spice;
 using SpiceProtocol;
 
 public errordomain ControllerError {
@@ -221,10 +222,15 @@ public class SpiceController: Object {
 			throw new ControllerError.VALUE ("Missing SPICE_XPI_SOCKET");
 		FileUtils.unlink (addr);
 
+#if WIN32
+		var listener = new NamedPipeListener ();
+		var np = new NamedPipe("\\\\.\\pipe\\" + addr);
+		listener.add_named_pipe (np);
+#else
 		var listener = new SocketListener ();
 		listener.add_address (new UnixSocketAddress.with_type (addr, addr.length, UnixSocketAddressType.PATH),
 							  SocketType.STREAM, SocketProtocol.DEFAULT, null, null);
-
+#endif
 		for (;;) {
 			var c = yield listener.accept_async ();
 			nclients += 1;

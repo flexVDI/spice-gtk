@@ -206,8 +206,8 @@ int main (int argc, char *argv[])
     spice_controller_listen (ctrl, PIPE_NAME, NULL, NULL);
 
 #ifdef WIN32
-    _snwprintf_s (pipe_name, PIPE_NAME_MAX_LEN, PIPE_NAME_MAX_LEN, PIPE_NAME, spicec_pid);
-    printf ("Creating Spice controller connection %S\n", pipe_name);
+    snprintf (pipe_name, PIPE_NAME_MAX_LEN, PIPE_NAME, spicec_pid);
+    printf ("Creating Spice controller connection %s\n", pipe_name);
     pipe = CreateFile (pipe_name, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
     if (pipe == INVALID_HANDLE_VALUE) {
         printf ("Could not open pipe %u\n", GetLastError());

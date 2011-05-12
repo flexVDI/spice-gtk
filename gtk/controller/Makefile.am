@@ -1,7 +1,12 @@
 NULL =
 
 AM_CPPFLAGS = $(GIO_CFLAGS) $(PROTOCOL_CFLAGS)
-AM_LDFLAGS = $(GIO_LIBS)
+# http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
+AM_LDFLAGS =					\
+	-no-undefined				\
+	$(GIO_LIBS)				\
+	$(NULL)
+
 AM_VALAFLAGS =							\
 	--pkg gio-2.0						\
 	--pkg spice-protocol --vapidir=$(top_srcdir)/data	\
@@ -10,15 +15,13 @@ AM_VALAFLAGS =							\
 	$(NULL)
 
 if OS_WIN32
-AM_VALAFLAGS += --pkg gio-windows-2.0
+AM_VALAFLAGS += --pkg gio-windows-2.0 -D WIN32
 else
 AM_VALAFLAGS += --pkg gio-unix-2.0
 endif
 
-if !OS_WIN32
 lib_LTLIBRARIES = libspice-controller.la
 noinst_PROGRAMS = test-controller
-endif
 
 BUILT_SOURCES = controller.vala.stamp
 
@@ -28,7 +31,20 @@ libspice_controller_la_VALASOURCES =		\
 	$(NULL)
 libspice_controller_la_SOURCES =		\
 	custom.h				\
-	$(libspice_controller_la_VALASOURCES:.vala=.c)
+	$(libspice_controller_la_VALASOURCES:.vala=.c) \
+	$(NULL)
+
+if OS_WIN32
+libspice_controller_la_SOURCES +=		\
+	namedpipe.h				\
+	namedpipe.c				\
+	$(NULL)
+endif
+libspice_controller_la_LDFLAGS =		\
+	$(AM_LDFLAGS)				\
+	-version-number 0:0:0			\
+	$(NULL)
+
 libspice_controllerincludedir = $(includedir)/spice-controller
 libspice_controllerinclude_HEADERS =		\
 	spice-controller.h
@@ -42,9 +58,10 @@ controller.vala.stamp: $(libspice_controller_la_VALASOURCES) custom.vapi
 
 EXTRA_DIST =					\
 	$(libspice_controller_la_VALASOURCES)	\
-	spice-controller.h			\
 	controller.vala.stamp			\
 	custom.vapi				\
+	gio-windows-2.0.vapi			\
+	spice-controller.h			\
 	$(NULL)
 
 vala-clean:
