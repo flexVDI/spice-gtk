@@ -27,6 +27,10 @@
 #include "display/gnome-rr.h"
 #include "display/gnome-rr-config.h"
 
+#ifdef USE_SMARTCARD
+#include "smartcard-manager.h"
+#endif
+
 #include "spice-widget.h"
 #include "spice-audio.h"
 #include "spice-common.h"
@@ -346,6 +350,18 @@ static void menu_cb_ungrab(GtkAction *action, void *data)
     spice_display_mouse_ungrab(SPICE_DISPLAY(win->spice));
 }
 
+#ifdef USE_SMARTCARD
+static void menu_cb_insert_smartcard(GtkAction *action, void *data)
+{
+    spice_smartcard_manager_insert_card(spice_smartcard_manager_get());
+}
+
+static void menu_cb_remove_smartcard(GtkAction *action, void *data)
+{
+    spice_smartcard_manager_remove_card(spice_smartcard_manager_get());
+}
+#endif
+
 static void menu_cb_bool_prop(GtkToggleAction *action, gpointer data)
 {
     struct spice_window *win = data;
@@ -596,6 +612,16 @@ static const GtkActionEntry entries[] = {
         .callback    = G_CALLBACK(menu_cb_ungrab),
         .accelerator = "<shift>F12",
     },{
+	.name        = "InsertSmartCard",
+	.label       = N_("_Insert Smartcard"),
+	.callback    = G_CALLBACK(menu_cb_insert_smartcard),
+        .accelerator = "<shift>F8",
+    },{
+	.name        = "RemoveSmartCard",
+	.label       = N_("_Remove Smartcard"),
+	.callback    = G_CALLBACK(menu_cb_remove_smartcard),
+        .accelerator = "<shift>F9",
+    },{
 
         /* Help menu */
         .name        = "About",
@@ -665,6 +691,10 @@ static char ui_xml[] =
 "    </menu>\n"
 "    <menu action='InputMenu'>\n"
 "      <menuitem action='UngrabMouse'/>\n"
+#ifdef USE_SMARTCARD
+"      <menuitem action='InsertSmartCard'/>\n"
+"      <menuitem action='RemoveSmartCard'/>\n"
+#endif
 "    </menu>\n"
 "    <menu action='OptionMenu'>\n"
 "      <menuitem action='grab-keyboard'/>\n"
