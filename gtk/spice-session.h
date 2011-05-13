@@ -85,7 +85,7 @@ struct _SpiceSessionClass
     gchar _spice_reserved[SPICE_RESERVED_PADDING];
 };
 
-GType spice_session_get_type(void) G_GNUC_CONST;
+GType spice_session_get_type(void);
 
 SpiceSession *spice_session_new(void);
 gboolean spice_session_connect(SpiceSession *session);
