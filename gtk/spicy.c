@@ -658,6 +658,7 @@ static const GtkActionEntry entries[] = {
         .callback    = G_CALLBACK(menu_cb_ungrab),
         .accelerator = "<shift>F12",
     },{
+#ifdef USE_SMARTCARD
 	.name        = "InsertSmartCard",
 	.label       = N_("_Insert Smartcard"),
 	.callback    = G_CALLBACK(menu_cb_insert_smartcard),
@@ -668,6 +669,7 @@ static const GtkActionEntry entries[] = {
 	.callback    = G_CALLBACK(menu_cb_remove_smartcard),
         .accelerator = "<shift>F9",
     },{
+#endif
 
         /* Help menu */
         .name        = "About",
