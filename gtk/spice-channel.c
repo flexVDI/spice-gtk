@@ -1697,6 +1697,11 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
     case SPICE_CHANNEL_RECORD:
         gtype = SPICE_TYPE_RECORD_CHANNEL;
         break;
+#ifdef USE_SMARTCARD
+    case SPICE_CHANNEL_SMARTCARD:
+        gtype = SPICE_TYPE_SMARTCARD_CHANNEL;
+        break;
+#endif
     default:
         g_debug("unsupported channel kind: %s: %d",
                 spice_channel_type_to_string(type), type);
