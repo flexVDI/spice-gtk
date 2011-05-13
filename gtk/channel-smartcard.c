@@ -427,11 +427,33 @@ static void handle_smartcard_msg(SpiceChannel *channel, spice_msg_in *in)
             break;
 
         case VSC_APDU:
-        case VSC_Init:
+        case VSC_Init: {
+            const unsigned int APDU_BUFFER_SIZE = 270;
+            VReaderStatus reader_status;
+            uint8_t data_out[APDU_BUFFER_SIZE + sizeof(uint32_t)];
+            int data_out_len = sizeof(data_out);
+
             g_return_if_fail(msg->reader_id != VSCARD_UNDEFINED_READER_ID);
             reader = vreader_get_reader_by_id(msg->reader_id);
             g_return_if_fail(reader != NULL); //FIXME: add log message
-            /* Not implemented for now, fall through default case */
+
+            reader_status = vreader_xfr_bytes(reader,
+                                              msg->data, msg->length,
+                                              data_out, &data_out_len);
+            if (reader_status == VREADER_OK) {
+                send_msg_generic_with_data(SPICE_SMARTCARD_CHANNEL(channel),
+                                           reader, VSC_APDU,
+                                           data_out, data_out_len);
+            } else {
+                uint32_t error_code;
+                error_code = GUINT32_TO_LE(reader_status);
+                send_msg_generic_with_data(SPICE_SMARTCARD_CHANNEL(channel),
+                                           reader, VSC_Error,
+                                           (uint8_t*)&error_code,
+                                           sizeof (error_code));
+            }
+            break;
+        }
         default:
             g_return_if_reached();
     }
