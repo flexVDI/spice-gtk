@@ -203,10 +203,10 @@ int main (int argc, char *argv[])
     g_signal_connect (ctrl, "hide", G_CALLBACK (signaled), "hide");
     g_signal_connect (ctrl, "do_connect", G_CALLBACK (signaled), "do_connect");
 
-    spice_controller_listen (ctrl, PIPE_NAME, NULL, NULL);
-
 #ifdef WIN32
     snprintf (pipe_name, PIPE_NAME_MAX_LEN, PIPE_NAME, spicec_pid);
+    spice_controller_listen (ctrl, pipe_name, NULL, NULL);
+
     printf ("Creating Spice controller connection %s\n", pipe_name);
     pipe = CreateFile (pipe_name, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
     if (pipe == INVALID_HANDLE_VALUE) {
@@ -214,6 +214,8 @@ int main (int argc, char *argv[])
         return -1;
     }
 #else
+    spice_controller_listen (ctrl, PIPE_NAME, NULL, NULL);
+
     snprintf (pipe_name, PIPE_NAME_MAX_LEN, PIPE_NAME);
     printf ("Creating a controller connection %s\n", pipe_name);
     struct sockaddr_un remote;

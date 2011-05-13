@@ -50,77 +50,8 @@ struct _SpiceNamedPipe
 
 GType            spice_named_pipe_get_type  (void) G_GNUC_CONST;
 
-SpiceNamedPipe * spice_named_pipe_new       (const gchar *name);
-
-#define SPICE_TYPE_NAMED_PIPE_CONNECTION                     (spice_named_pipe_connection_get_type ())
-#define SPICE_NAMED_PIPE_CONNECTION(inst)                    (G_TYPE_CHECK_INSTANCE_CAST ((inst), \
-                                                              SPICE_TYPE_NAMED_PIPE_CONNECTION, SpiceNamedPipeConnection))
-#define SPICE_NAMED_PIPE_CONNECTION_CLASS(class)             (G_TYPE_CHECK_CLASS_CAST ((class),                       \
-                                                              SPICE_TYPE_NAMED_PIPE_CONNECTION, SpiceNamedPipeConnectionClass))
-#define SPICE_IS_NAMED_PIPE_CONNECTION(inst)                 (G_TYPE_CHECK_INSTANCE_TYPE ((inst),                     \
-                                                              SPICE_TYPE_NAMED_PIPE_CONNECTION))
-#define SPICE_IS_NAMED_PIPE_CONNECTION_CLASS(class)          (G_TYPE_CHECK_CLASS_TYPE ((class),                       \
-                                                              SPICE_TYPE_NAMED_PIPE_CONNECTION))
-#define SPICE_NAMED_PIPE_CONNECTION_GET_CLASS(inst)          (G_TYPE_INSTANCE_GET_CLASS ((inst),                      \
-                                                              SPICE_TYPE_NAMED_PIPE_CONNECTION, SpiceNamedPipeConnectionClass))
-
-typedef struct _SpiceNamedPipeConnection                     SpiceNamedPipeConnection;
-typedef struct _SpiceNamedPipeConnectionPrivate              SpiceNamedPipeConnectionPrivate;
-typedef struct _SpiceNamedPipeConnectionClass                SpiceNamedPipeConnectionClass;
-
-struct _SpiceNamedPipeConnectionClass
-{
-  GSocketConnectionClass parent_class;
-};
-
-struct _SpiceNamedPipeConnection
-{
-  GSocketConnection parent_instance;
-  SpiceNamedPipeConnectionPrivate *priv;
-};
-
-GType    spice_named_pipe_connection_get_type                (void) G_GNUC_CONST;
-
-#define SPICE_TYPE_NAMED_PIPE_LISTENER                       (spice_named_pipe_listener_get_type ())
-#define SPICE_NAMED_PIPE_LISTENER(inst)                      (G_TYPE_CHECK_INSTANCE_CAST ((inst),                     \
-                                                              SPICE_TYPE_NAMED_PIPE_LISTENER, SpiceNamedPipeListener))
-#define SPICE_NAMED_PIPE_LISTENER_CLASS(class)               (G_TYPE_CHECK_CLASS_CAST ((class),                       \
-                                                              SPICE_TYPE_NAMED_PIPE_LISTENER, SpiceNamedPipeListenerClass))
-#define SPICE_IS_NAMED_PIPE_LISTENER(inst)                   (G_TYPE_CHECK_INSTANCE_TYPE ((inst),                     \
-                                                              SPICE_TYPE_NAMED_PIPE_LISTENER))
-#define SPICE_IS_NAMED_PIPE_LISTENER_CLASS(class)            (G_TYPE_CHECK_CLASS_TYPE ((class),                       \
-                                                              SPICE_TYPE_NAMED_PIPE_LISTENER))
-#define SPICE_NAMED_PIPE_LISTENER_GET_CLASS(inst)            (G_TYPE_INSTANCE_GET_CLASS ((inst),                      \
-                                                              SPICE_TYPE_NAMED_PIPE_LISTENER, SpiceNamedPipeListenerClass))
-
-typedef struct _SpiceNamedPipeListener                       SpiceNamedPipeListener;
-typedef struct _SpiceNamedPipeListenerPrivate                SpiceNamedPipeListenerPrivate;
-typedef struct _SpiceNamedPipeListenerClass                  SpiceNamedPipeListenerClass;
-
-struct _SpiceNamedPipeListenerClass
-{
-  GSocketListenerClass parent_class;
-};
-
-struct _SpiceNamedPipeListener
-{
-  GSocketListener parent_instance;
-  SpiceNamedPipeListenerPrivate *priv;
-};
-
-GType                       spice_named_pipe_listener_get_type       (void) G_GNUC_CONST;
-
-SpiceNamedPipeListener *    spice_named_pipe_listener_new            (void);
-void                        spice_named_pipe_listener_add_named_pipe (SpiceNamedPipeListener  *listener,
-                                                                      SpiceNamedPipe          *namedpipe);
-void                        spice_named_pipe_listener_accept_async   (SpiceNamedPipeListener *listener,
-                                                                      GCancellable           *cancellable,
-                                                                      GAsyncReadyCallback     callback,
-                                                                      gpointer                user_data);
-GSocketConnection *         spice_named_pipe_listener_accept_finish  (SpiceNamedPipeListener *listener,
-                                                                      GAsyncResult           *result,
-                                                                      GObject               **source_object,
-                                                                      GError                **error);
+SpiceNamedPipe * spice_named_pipe_new       (const gchar *name, GError **error);
+void *           spice_named_pipe_get_handle (SpiceNamedPipe *namedpipe);
 
 G_END_DECLS
 

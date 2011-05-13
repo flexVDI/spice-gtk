@@ -69,9 +69,9 @@ public class SpiceController: Object {
 		return true;
 	}
 
-	private SocketConnection? excl_connection;
+	private GLib.IOStream? excl_connection;
 	private int nclients;
-	List<SocketConnection> clients;
+	List<IOStream> clients;
 
 	private bool handle_message (Controller.Msg msg) {
 		var v = (Controller.MsgValue*)(&msg);
@@ -145,7 +145,7 @@ public class SpiceController: Object {
 		return true;
 	}
 
-	private async void handle_client (SocketConnection c) throws GLib.Error {
+	private async void handle_client (IOStream c) throws GLib.Error {
 		var init = Controller.Init ();
 		var excl = false;
 		unowned uint8[] p = null;
@@ -224,7 +224,7 @@ public class SpiceController: Object {
 
 #if WIN32
 		var listener = new NamedPipeListener ();
-		var np = new NamedPipe("\\\\.\\pipe\\" + addr);
+		var np = new NamedPipe (addr);
 		listener.add_named_pipe (np);
 #else
 		var listener = new SocketListener ();

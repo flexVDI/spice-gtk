@@ -8,21 +8,19 @@ namespace Custom {
 
 namespace Spice {
 	[CCode (cheader_filename = "namedpipe.h")]
-	public class NamedPipeListener: SocketListener {
+	public class NamedPipe: Object {
+		public NamedPipe (string name) throws GLib.Error;
+	}
+
+	[CCode (cheader_filename = "namedpipeconnection.h")]
+	public class NamedPipeConnection: GLib.IOStream {
+	}
+
+	[CCode (cheader_filename = "namedpipelistener.h")]
+	public class NamedPipeListener: Object {
 		[CCode (has_construct_function = false)]
 		public NamedPipeListener ();
-		public async unowned GLib.SocketConnection accept_async (GLib.Cancellable? cancellable = null, out GLib.Object? source_object = null) throws GLib.Error;
-		public void add_named_pipe(NamedPipe namedpipe);
-	}
-
-	[CCode (cheader_filename = "namedpipe.h")]
-	public class NamedPipeConnection: SocketConnection {
-		[CCode (type = "GSocketConnection*", has_construct_function = false)]
-		public NamedPipeConnection (GLib.IOStream base_io_stream, GLib.Socket socket);
-	}
-
-	[CCode (cheader_filename = "namedpipe.h")]
-	public class NamedPipe: Object {
-		public NamedPipe (string name);
+		public async unowned Spice.NamedPipeConnection accept_async (GLib.Cancellable? cancellable = null, out GLib.Object? source_object = null) throws GLib.Error;
+		public void add_named_pipe (NamedPipe namedpipe);
 	}
 }

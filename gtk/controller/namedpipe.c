@@ -22,189 +22,90 @@
 #include <conio.h>
 #include <tchar.h>
 
-#include <gio/gwin32inputstream.h>
-#include <gio/gwin32outputstream.h>
+static void     spice_named_pipe_initable_iface_init (GInitableIface  *iface);
+static gboolean spice_named_pipe_initable_init       (GInitable       *initable,
+                                                      GCancellable    *cancellable,
+                                                      GError         **error);
 
-G_DEFINE_TYPE (SpiceNamedPipeConnection, spice_named_pipe_connection,
-               SPICE_TYPE_NAMED_PIPE_CONNECTION)
-
-struct _SpiceNamedPipeConnectionPrivate
-{
-  GInputStream  *input_stream;
-  GOutputStream *output_stream;
-  HANDLE handle;
-};
-
-static void
-spice_named_pipe_connection_init (SpiceNamedPipeConnection *connection)
-{
-  connection->priv = G_TYPE_INSTANCE_GET_PRIVATE (connection,
-                                                  SPICE_TYPE_NAMED_PIPE_CONNECTION,
-                                                  SpiceNamedPipeConnectionPrivate);
-}
-
-static void
-spice_named_pipe_connection_get_property (GObject    *object,
-                                          guint       prop_id,
-                                          GValue     *value,
-                                          GParamSpec *pspec)
-{
-  SpiceNamedPipeConnection *connection G_GNUC_UNUSED = SPICE_NAMED_PIPE_CONNECTION (object);
-
-  switch (prop_id)
-    {
-      default:
-        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-    }
-}
-
-static void
-spice_named_pipe_connection_set_property (GObject      *object,
-                                          guint         prop_id,
-                                          const GValue *value,
-                                          GParamSpec   *pspec)
-{
-  SpiceNamedPipeConnection *connection G_GNUC_UNUSED = SPICE_NAMED_PIPE_CONNECTION (object);
-
-  switch (prop_id)
-    {
-      default:
-        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-    }
-}
-
-static GInputStream *
-spice_named_pipe_connection_get_input_stream (GIOStream *io_stream)
-{
-  SpiceNamedPipeConnection *connection = SPICE_NAMED_PIPE_CONNECTION (io_stream);
-
-  if (connection->priv->input_stream == NULL)
-    connection->priv->input_stream = (GInputStream *)
-      g_win32_input_stream_new (connection->priv->handle, FALSE);
-
-  return connection->priv->input_stream;
-}
-
-static GOutputStream *
-spice_named_pipe_connection_get_output_stream (GIOStream *io_stream)
-{
-  SpiceNamedPipeConnection *connection = SPICE_NAMED_PIPE_CONNECTION (io_stream);
-
-  if (connection->priv->output_stream == NULL)
-    connection->priv->output_stream = (GOutputStream *)
-      g_win32_output_stream_new (connection->priv->handle, FALSE);
-
-  return connection->priv->output_stream;
-}
-
-static void
-spice_named_pipe_connection_class_init (SpiceNamedPipeConnectionClass *klass)
-{
-  GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
-  GIOStreamClass *stream_class = G_IO_STREAM_CLASS (klass);
-
-  g_type_class_add_private (klass, sizeof (SpiceNamedPipeConnectionPrivate));
-
-  gobject_class->set_property = spice_named_pipe_connection_set_property;
-  gobject_class->get_property = spice_named_pipe_connection_get_property;
-
-  stream_class->get_input_stream = spice_named_pipe_connection_get_input_stream;
-  stream_class->get_output_stream = spice_named_pipe_connection_get_output_stream;
-}
-
-G_DEFINE_TYPE (SpiceNamedPipeListener, spice_named_pipe_listener, G_TYPE_SOCKET_LISTENER);
-
-struct _SpiceNamedPipeListenerPrivate
-{
-  guint               foo;
-};
-
-static void
-spice_named_pipe_listener_finalize (GObject *object)
-{
-  SpiceNamedPipeListener *listener G_GNUC_UNUSED = SPICE_NAMED_PIPE_LISTENER (object);
-
-  G_OBJECT_CLASS (spice_named_pipe_listener_parent_class)
-    ->finalize (object);
-}
-
-static void
-spice_named_pipe_listener_class_init (SpiceNamedPipeListenerClass *klass)
-{
-  GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
-
-  g_type_class_add_private (klass, sizeof (SpiceNamedPipeListenerPrivate));
-}
-
-static void
-spice_named_pipe_listener_init (SpiceNamedPipeListener *listener)
-{
-  listener->priv = G_TYPE_INSTANCE_GET_PRIVATE (listener,
-                                                SPICE_TYPE_NAMED_PIPE_LISTENER,
-                                                SpiceNamedPipeListenerPrivate);
-}
-
-void
-spice_named_pipe_listener_add_named_pipe (SpiceNamedPipeListener *listener,
-                                          SpiceNamedPipe         *namedpipe)
-{
-  g_return_if_fail (SPICE_IS_NAMED_PIPE_LISTENER (listener));
-  g_return_if_fail (SPICE_IS_NAMED_PIPE (namedpipe));
-
-}
-
-
-void
-spice_named_pipe_listener_accept_async (SpiceNamedPipeListener  *listener,
-                                        GCancellable            *cancellable,
-                                        GAsyncReadyCallback      callback,
-                                        gpointer                user_data)
-{
-  g_return_if_fail (SPICE_IS_NAMED_PIPE_LISTENER (listener));
-
-}
-
-GSocketConnection *
-spice_named_pipe_listener_accept_finish (SpiceNamedPipeListener *listener,
-                                         GAsyncResult           *result,
-                                         GObject               **source_object,
-                                         GError                **error)
-{
-  g_return_val_if_fail (SPICE_IS_NAMED_PIPE_LISTENER (listener), NULL);
-  g_return_val_if_fail (G_IS_ASYNC_RESULT (result), NULL);
-
-  return NULL;
-}
-
-SpiceNamedPipeListener *
-spice_named_pipe_listener_new (void)
-{
-  return g_object_new (SPICE_TYPE_NAMED_PIPE_LISTENER, NULL);
-}
-
-G_DEFINE_TYPE (SpiceNamedPipe, spice_named_pipe, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_CODE (SpiceNamedPipe, spice_named_pipe, G_TYPE_OBJECT,
+			 G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE,
+						spice_named_pipe_initable_iface_init));
 
 enum
 {
   PROP_0,
   PROP_NAME,
+  PROP_HANDLE,
 };
 
 struct _SpiceNamedPipePrivate
 {
   gchar *               name;
+  GError *              construct_error;
+  guint                 inited : 1;
+  HANDLE                handle;
 };
 
 static void
 spice_named_pipe_finalize (GObject *object)
 {
-  SpiceNamedPipe *np G_GNUC_UNUSED = SPICE_NAMED_PIPE (object);
+  SpiceNamedPipe *np = SPICE_NAMED_PIPE (object);
+
+  g_clear_error (&np->priv->construct_error);
 
   g_free (np->priv->name);
   np->priv->name = NULL;
 
-  G_OBJECT_CLASS (spice_named_pipe_parent_class)
-    ->finalize (object);
+  if (np->priv->handle)
+    {
+      CloseHandle (np->priv->handle);
+      np->priv->handle = NULL;
+    }
+
+  if (G_OBJECT_CLASS (spice_named_pipe_parent_class)->finalize)
+    G_OBJECT_CLASS (spice_named_pipe_parent_class)->finalize (object);
+}
+
+#define DEFAULT_PIPE_BUF_SIZE 4096
+
+static void
+spice_named_pipe_constructed (GObject *object)
+{
+  SpiceNamedPipe *np = SPICE_NAMED_PIPE (object);
+
+  if (np->priv->handle)
+    /* TODO: find a way to ensure user provided handle is a named
+       pipe, in overlapped mode */
+    goto end;
+
+  np->priv->handle = CreateNamedPipe (np->priv->name,
+      PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
+      PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
+      PIPE_UNLIMITED_INSTANCES,
+      DEFAULT_PIPE_BUF_SIZE, DEFAULT_PIPE_BUF_SIZE,
+      0, NULL);
+
+  if (np->priv->handle == INVALID_HANDLE_VALUE)
+    {
+      int errsv = GetLastError ();
+      gchar *emsg = g_win32_error_message (errsv);
+
+      g_set_error (&np->priv->construct_error,
+                   G_IO_ERROR,
+                   g_io_error_from_win32_error (errsv),
+                   "Error CreateNamedPipe(): %s",
+                   emsg);
+
+      g_free (emsg);
+      return;
+    }
+
+  /* TODO: we could have a client backlog by creating many pipes, the
+     maximum number of outstanding connections.. or we could just let
+     the named_pipe_listener take multiple NamedPipe instances */
+end:
+  g_assert (np->priv->handle != INVALID_HANDLE_VALUE);
+  return;
 }
 
 static void
@@ -219,6 +120,9 @@ spice_named_pipe_get_property (GObject    *object,
     {
       case PROP_NAME:
         g_value_set_string (value, np->priv->name);
+        break;
+      case PROP_HANDLE:
+        g_value_set_pointer (value, np->priv->handle);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -239,6 +143,9 @@ spice_named_pipe_set_property (GObject      *object,
         g_free (np->priv->name);
         np->priv->name = g_value_dup_string (value);
         break;
+      case PROP_HANDLE:
+        np->priv->handle = g_value_get_pointer (value);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -253,6 +160,8 @@ spice_named_pipe_class_init (SpiceNamedPipeClass *klass)
 
   gobject_class->set_property = spice_named_pipe_set_property;
   gobject_class->get_property = spice_named_pipe_get_property;
+  gobject_class->finalize = spice_named_pipe_finalize;
+  gobject_class->constructed = spice_named_pipe_constructed;
 
   g_object_class_install_property (gobject_class, PROP_NAME,
 				   g_param_spec_string ("name",
@@ -262,6 +171,14 @@ spice_named_pipe_class_init (SpiceNamedPipeClass *klass)
                                                         G_PARAM_CONSTRUCT_ONLY |
                                                         G_PARAM_READWRITE |
                                                         G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_HANDLE,
+                                   g_param_spec_pointer ("handle",
+                                                         "Pipe handle",
+                                                         "The pipe handle",
+                                                         G_PARAM_CONSTRUCT_ONLY |
+                                                         G_PARAM_READWRITE |
+                                                         G_PARAM_STATIC_STRINGS));
 }
 
 static void
@@ -272,74 +189,56 @@ spice_named_pipe_init (SpiceNamedPipe *np)
                                           SpiceNamedPipePrivate);
 }
 
-SpiceNamedPipe *
-spice_named_pipe_new (const gchar *name)
-{
-  return g_object_new (SPICE_TYPE_NAMED_PIPE,
-                       "name", name,
-                       NULL);
-}
-
-/* Windows HANDLE GSource - from gio/gwin32resolver.c */
-
-typedef struct {
-  GSource source;
-  GPollFD pollfd;
-} GWin32HandleSource;
-
 static gboolean
-g_win32_handle_source_prepare (GSource *source,
-                               gint    *timeout)
+spice_named_pipe_initable_init (GInitable *initable,
+                                GCancellable *cancellable,
+                                GError  **error)
 {
-  *timeout = -1;
-  return FALSE;
-}
+  SpiceNamedPipe  *np;
 
-static gboolean
-g_win32_handle_source_check (GSource *source)
-{
-  GWin32HandleSource *hsource = (GWin32HandleSource *)source;
+  g_return_val_if_fail (SPICE_IS_NAMED_PIPE (initable), FALSE);
 
-  return hsource->pollfd.revents;
-}
+  np = SPICE_NAMED_PIPE (initable);
 
-static gboolean
-g_win32_handle_source_dispatch (GSource     *source,
-                                GSourceFunc  callback,
-                                gpointer     user_data)
-{
-  return (*callback) (user_data);
+  if (cancellable != NULL)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                           "Cancellable initialization not supported");
+      return FALSE;
+    }
+
+  np->priv->inited = TRUE;
+
+  if (np->priv->construct_error)
+    {
+      if (error)
+	*error = g_error_copy (np->priv->construct_error);
+      return FALSE;
+    }
+
+
+  return TRUE;
 }
 
 static void
-g_win32_handle_source_finalize (GSource *source)
+spice_named_pipe_initable_iface_init (GInitableIface *iface)
 {
-  ;
+  iface->init = spice_named_pipe_initable_init;
 }
 
-GSourceFuncs g_win32_handle_source_funcs = {
-  g_win32_handle_source_prepare,
-  g_win32_handle_source_check,
-  g_win32_handle_source_dispatch,
-  g_win32_handle_source_finalize
-};
-
-static GSource *
-g_win32_handle_source_add (HANDLE      handle,
-                           GSourceFunc callback,
-                           gpointer    user_data)
+SpiceNamedPipe *
+spice_named_pipe_new (const gchar *name, GError **error)
 {
-  GWin32HandleSource *hsource;
-  GSource *source;
+  return SPICE_NAMED_PIPE (g_initable_new (SPICE_TYPE_NAMED_PIPE,
+                                           NULL, error,
+                                           "name", name,
+                                           NULL));
+}
 
-  source = g_source_new (&g_win32_handle_source_funcs, sizeof (GWin32HandleSource));
-  hsource = (GWin32HandleSource *)source;
-  hsource->pollfd.fd = (gint)handle;
-  hsource->pollfd.events = G_IO_IN;
-  hsource->pollfd.revents = 0;
-  g_source_add_poll (source, &hsource->pollfd);
+void *
+spice_named_pipe_get_handle (SpiceNamedPipe *namedpipe)
+{
+  g_return_val_if_fail (SPICE_IS_NAMED_PIPE (namedpipe), NULL);
 
-  g_source_set_callback (source, callback, user_data, NULL);
-  g_source_attach (source, g_main_context_get_thread_default ());
-  return source;
+  return namedpipe->priv->handle;
 }

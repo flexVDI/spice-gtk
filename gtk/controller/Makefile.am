@@ -36,8 +36,12 @@ libspice_controller_la_SOURCES =		\
 
 if OS_WIN32
 libspice_controller_la_SOURCES +=		\
-	namedpipe.h				\
 	namedpipe.c				\
+	namedpipe.h				\
+	namedpipeconnection.c			\
+	namedpipeconnection.h			\
+	namedpipelistener.c			\
+	namedpipelistener.h			\
 	$(NULL)
 endif
 libspice_controller_la_LDFLAGS =		\
