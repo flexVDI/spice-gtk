@@ -246,8 +246,8 @@ endif
 if WITH_SMARTCARD
 libspice_client_glib_2_0_la_SOURCES +=	\
 	channel-smartcard.c		\
-	smartcard-manager.h		\
 	smartcard-manager.c		\
+	smartcard-manager.h		\
 	$(NULL)
 
 libspice_client_glibinclude_HEADERS +=	\

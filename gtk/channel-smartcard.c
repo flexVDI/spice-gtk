@@ -80,6 +80,7 @@ enum {
 };
 
 static void spice_smartcard_handle_msg(SpiceChannel *channel, spice_msg_in *msg);
+static void spice_smartcard_channel_up(SpiceChannel *channel);
 static void handle_smartcard_msg(SpiceChannel *channel, spice_msg_in *in);
 static void smartcard_message_free(SpiceSmartCardChannelMessage *message);
 
@@ -155,6 +156,7 @@ static void spice_smartcard_channel_class_init(SpiceSmartCardChannelClass *klass
 
     gobject_class->finalize     = spice_smartcard_channel_finalize;
     channel_class->handle_msg   = spice_smartcard_handle_msg;
+    channel_class->channel_up   = spice_smartcard_channel_up;
 
     g_type_class_add_private(klass, sizeof(spice_smartcard_channel));
 }
@@ -387,6 +389,15 @@ static void spice_smartcard_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
         g_return_if_reached();
 }
 
+static void spice_smartcard_channel_up(SpiceChannel *channel)
+{
+    SpiceSession *session;
+
+    g_object_get(channel, "spice-session", &session, NULL);
+    spice_smartcard_manager_init_libcacard(session);
+    g_object_unref(session);
+}
+
 static void handle_smartcard_msg(SpiceChannel *channel, spice_msg_in *in)
 {
     spice_smartcard_channel *priv = SPICE_SMARTCARD_CHANNEL_GET_PRIVATE(channel);
@@ -465,3 +476,4 @@ static void handle_smartcard_msg(SpiceChannel *channel, spice_msg_in *in)
             g_return_if_reached();
     }
 }
+

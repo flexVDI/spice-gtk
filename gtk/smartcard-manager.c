@@ -17,8 +17,10 @@
 */
 
 #include <glib-object.h>
+#include <vcard_emul.h>
 #include <vevent.h>
 #include <vreader.h>
+
 
 #include "smartcard-manager.h"
 #include "spice-marshal.h"
@@ -334,4 +336,9 @@ static guint smartcard_monitor_add(SmartCardSourceFunc callback,
     g_source_unref(source);
 
     return id;
+}
+
+gboolean spice_smartcard_manager_init_libcacard(SpiceSession *session)
+{
+    return (vcard_emul_init(NULL) == VCARD_EMUL_OK);
 }

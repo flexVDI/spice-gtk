@@ -64,6 +64,7 @@ GType spice_smartcard_manager_get_type(void);
 GType spice_smartcard_reader_get_type(void);
 
 SpiceSmartCardManager *spice_smartcard_manager_get(void);
+gboolean spice_smartcard_manager_init_libcacard(SpiceSession *session);
 
 G_END_DECLS
 
