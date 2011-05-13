@@ -23,6 +23,7 @@ G_BEGIN_DECLS
 #include "spice-types.h"
 #include "spice-glib-enums.h"
 #include "spice-util.h"
+#include <vreader.h>
 
 #define SPICE_TYPE_SMARTCARD_MANAGER            (spice_smartcard_manager_get_type ())
 #define SPICE_SMARTCARD_MANAGER(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), SPICE_TYPE_SMARTCARD_MANAGER, SpiceSmartCardManager))
@@ -64,7 +65,10 @@ GType spice_smartcard_manager_get_type(void);
 GType spice_smartcard_reader_get_type(void);
 
 SpiceSmartCardManager *spice_smartcard_manager_get(void);
+gboolean spice_smartcard_manager_insert_card(SpiceSmartCardManager *manager);
+gboolean spice_smartcard_manager_remove_card(SpiceSmartCardManager *manager);
 gboolean spice_smartcard_manager_init_libcacard(SpiceSession *session);
+gboolean spice_smartcard_reader_is_software(VReader *reader);
 
 G_END_DECLS
 
