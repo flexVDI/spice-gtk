@@ -44,6 +44,18 @@ struct spice_session {
     char              *cert_subject;
     guint             verify;
 
+    /* list of certificates to use for the software smartcard reader if
+     * enabled. For now, it has to contain exactly 3 certificates for
+     * the software reader to be functional
+     */
+    GStrv certificates;
+
+    /* path to the local certificate database to use to lookup the
+     * certificates stored in 'certificates'. If NULL, libcacard will
+     * fallback to using a default database.
+     */
+    char *certificate_db;
+
     int               connection_id;
     int               protocol;
     SpiceChannel      *cmain;
@@ -118,6 +130,8 @@ enum {
     PROP_CERT_SUBJECT,
     PROP_VERIFY,
     PROP_MIGRATION_STATE,
+    PROP_CERTIFICATES,
+    PROP_CERTIFICATE_DB,
 };
 
 /* signals */
@@ -211,6 +225,8 @@ spice_session_finalize(GObject *gobject)
     g_free(s->ca_file);
     g_free(s->ciphers);
     g_free(s->cert_subject);
+    g_strfreev(s->certificates);
+    g_free(s->certificate_db);
 
     spice_session_palettes_clear(session);
     spice_session_images_clear(session);
@@ -356,6 +372,12 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_MIGRATION_STATE:
         g_value_set_enum(value, s->migration_state);
         break;
+    case PROP_CERTIFICATES:
+        g_value_set_boxed(value, s->certificates);
+        break;
+    case PROP_CERTIFICATE_DB:
+        g_value_set_string(value, s->certificate_db);
+        break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -424,6 +446,14 @@ static void spice_session_set_property(GObject      *gobject,
         break;
     case PROP_MIGRATION_STATE:
         s->migration_state = g_value_get_enum(value);
+        break;
+    case PROP_CERTIFICATES:
+        g_strfreev(s->certificates);
+        s->certificates = g_value_dup_boxed(value);
+        break;
+    case PROP_CERTIFICATE_DB:
+        g_free(s->certificate_db);
+        s->certificate_db = g_value_dup_string(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -562,6 +592,26 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                            G_PARAM_READABLE |
                            G_PARAM_STATIC_STRINGS));
 
+    g_object_class_install_property
+        (gobject_class, PROP_CERTIFICATES,
+         g_param_spec_boxed("certificates",
+                            "Certificates",
+                            "Certificates for software-based smartcards",
+                            G_TYPE_STRV,
+                            G_PARAM_READABLE |
+                            G_PARAM_WRITABLE |
+                            G_PARAM_STATIC_STRINGS));
+
+    g_object_class_install_property
+        (gobject_class, PROP_CERTIFICATE_DB,
+         g_param_spec_string("certificate-db",
+                              "Certificate database",
+                              "Path to certificate database",
+                              NULL,
+                              G_PARAM_READABLE |
+                              G_PARAM_WRITABLE |
+                              G_PARAM_STATIC_STRINGS));
+
     /**
      * SpiceSession::channel-new:
      * @session: the session that emitted the signal
@@ -643,6 +693,8 @@ SpiceSession *spice_session_new_from_session(SpiceSession *session)
                  "cert-subject", &c->cert_subject,
                  "pubkey", &c->pubkey,
                  "verify", &c->verify,
+                 "certificates", &c->certificates,
+                 "certificate-db", &c->certificate_db,
                  NULL);
 
     c->client_provided_sockets = s->client_provided_sockets;

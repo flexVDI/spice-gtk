@@ -129,7 +129,6 @@ static void spice_smartcard_channel_finalize(GObject *obj)
         g_hash_table_destroy(channel->priv->pending_card_insertions);
         channel->priv->pending_card_insertions = NULL;
     }
-
     if (channel->priv->pending_reader_removals != NULL) {
         g_hash_table_destroy(channel->priv->pending_reader_removals);
         channel->priv->pending_reader_removals = NULL;
