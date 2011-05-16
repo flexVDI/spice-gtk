@@ -38,6 +38,13 @@
 #define SPICE_SMARTCARD_CHANNEL_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_SMARTCARD_CHANNEL, spice_smartcard_channel))
 
+struct _SpiceSmartCardChannelMessage {
+    VSCMsgType message_type;
+    spice_msg_out *message;
+};
+typedef struct _SpiceSmartCardChannelMessage SpiceSmartCardChannelMessage;
+
+
 struct spice_smartcard_channel {
     /* track readers that have been added but for which we didn't receive
      * an ack from the spice server yet. We rely on the fact that the
@@ -53,6 +60,16 @@ struct spice_smartcard_channel {
     /* used to track card insertions on readers that were not ack'ed yet
      * by the spice server */
     GHashTable *pending_card_insertions;
+
+    /* next commands to be sent to the spice server. This is needed since
+     * we have to wait for a command answer before sending the next one
+     */
+    GQueue *message_queue;
+
+    /* message that is currently being processed by the spice server (ie last
+     * message that was sent to the server)
+     */
+    SpiceSmartCardChannelMessage *in_flight_message;
 };
 
 G_DEFINE_TYPE(SpiceSmartCardChannel, spice_smartcard_channel, SPICE_TYPE_CHANNEL)
@@ -63,6 +80,7 @@ enum {
 };
 
 static void spice_smartcard_handle_msg(SpiceChannel *channel, spice_msg_in *msg);
+static void smartcard_message_free(SpiceSmartCardChannelMessage *message);
 
 /* ------------------------------------------------------------------ */
 
@@ -88,6 +106,7 @@ static void spice_smartcard_channel_init(SpiceSmartCardChannel *channel)
     priv->pending_reader_removals =
          g_hash_table_new_full(g_direct_hash, g_direct_equal,
                                (GDestroyNotify)vreader_free, NULL);
+    priv->message_queue = g_queue_new();
 
     manager = spice_smartcard_manager_get();
     g_signal_connect(G_OBJECT(manager), "reader-added",
@@ -112,6 +131,16 @@ static void spice_smartcard_channel_finalize(GObject *obj)
     if (channel->priv->pending_reader_removals != NULL) {
         g_hash_table_destroy(channel->priv->pending_reader_removals);
         channel->priv->pending_reader_removals = NULL;
+    }
+    if (channel->priv->message_queue != NULL) {
+        g_queue_foreach(channel->priv->message_queue,
+                        (GFunc)smartcard_message_free, NULL);
+        g_queue_free(channel->priv->message_queue);
+        channel->priv->message_queue = NULL;
+    }
+    if (channel->priv->in_flight_message != NULL) {
+        smartcard_message_free(channel->priv->in_flight_message);
+        channel->priv->in_flight_message = NULL;
     }
 
     if (G_OBJECT_CLASS(spice_smartcard_channel_parent_class)->finalize)
@@ -186,6 +215,57 @@ spice_channel_drop_pending_reader_removal(SpiceSmartCardChannel *channel,
     g_hash_table_remove(channel->priv->pending_reader_removals, reader);
 }
 
+static SpiceSmartCardChannelMessage *
+smartcard_message_new(VSCMsgType msg_type, spice_msg_out *msg_out)
+{
+    SpiceSmartCardChannelMessage *message;
+
+    message = g_slice_new0(SpiceSmartCardChannelMessage);
+    message->message = msg_out;
+    message->message_type = msg_type;
+
+    return message;
+}
+
+static void
+smartcard_message_free(SpiceSmartCardChannelMessage *message)
+{
+    spice_msg_out_unref(message->message);
+    g_slice_free(SpiceSmartCardChannelMessage, message);
+}
+
+/* Indicates that handling of the message that is currently in flight has
+ * been completed. If needed, sends the next queued command to the server. */
+G_GNUC_UNUSED static void
+smartcard_message_complete_in_flight(SpiceSmartCardChannel *channel)
+{
+    if (channel->priv->in_flight_message == NULL) {
+        g_assert(g_queue_is_empty(channel->priv->message_queue));
+        return;
+    }
+
+    smartcard_message_free(channel->priv->in_flight_message);
+    channel->priv->in_flight_message = g_queue_pop_head(channel->priv->message_queue);
+    if (channel->priv->in_flight_message != NULL)
+        spice_msg_out_send(channel->priv->in_flight_message->message);
+}
+
+static void smartcard_message_send(SpiceSmartCardChannel *channel,
+                                   VSCMsgType msg_type,
+                                   spice_msg_out *msg_out)
+{
+    SpiceSmartCardChannelMessage *message;
+
+    message = smartcard_message_new(msg_type, msg_out);
+    if (channel->priv->in_flight_message == NULL) {
+        g_assert(g_queue_is_empty(channel->priv->message_queue));
+        channel->priv->in_flight_message = message;
+        spice_msg_out_send(msg_out);
+    } else {
+        g_queue_push_tail(channel->priv->message_queue, message);
+    }
+}
+
 static void
 send_msg_generic_with_data(SpiceSmartCardChannel *channel, VReader *reader,
                            VSCMsgType msg_type,
@@ -208,8 +288,8 @@ send_msg_generic_with_data(SpiceSmartCardChannel *channel, VReader *reader,
     if ((data != NULL) && (data_len != 0)) {
         spice_marshaller_add(msg_out->marshaller, data, data_len);
     }
-    spice_msg_out_send(msg_out);
-    spice_msg_out_unref(msg_out);
+
+    smartcard_message_send(channel, msg_type, msg_out);
 }
 
 static void send_msg_generic(SpiceSmartCardChannel *channel, VReader *reader,
