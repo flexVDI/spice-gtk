@@ -238,7 +238,7 @@ fill_out_screen_info (GnomeRRScreen *screen, ScreenInfo *info,
 
         /* Populate modes for this display/crtc */
         for (iModeNum = 0; ; iModeNum++) {
-#if (_WIN32_WINNT >= 0x0500 || _WIN32_WINDOWS >= 0x0410)
+#if (_WIN32_WINNT >= 0x0500 || _WIN32_WINDOWS >= 0x0410) && defined(EDS_ROTATEDMODE)
             if (!EnumDisplaySettingsEx (device.DeviceName, iModeNum, &mode, EDS_ROTATEDMODE))
 #else
             if (!EnumDisplaySettings (device.DeviceName, iModeNum, &mode))
@@ -264,7 +264,7 @@ fill_out_screen_info (GnomeRRScreen *screen, ScreenInfo *info,
 
         {
             /* Current mode settings for this display/crtc */
-#if (_WIN32_WINNT >= 0x0500 || _WIN32_WINDOWS >= 0x0410)
+#if (_WIN32_WINNT >= 0x0500 || _WIN32_WINDOWS >= 0x0410) && defined(EDS_ROTATEDMODE)
             if (!EnumDisplaySettingsEx (device.DeviceName, ENUM_CURRENT_SETTINGS, &mode, EDS_ROTATEDMODE))
 #else
             if (!EnumDisplaySettings (device.DeviceName, ENUM_CURRENT_SETTINGS, &mode))

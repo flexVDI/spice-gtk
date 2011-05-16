@@ -46,10 +46,12 @@ case "$host_os" in
      *mingw*|*cygwin*)
         os_win32=yes
         gio_os=gio-windows-2.0
+        red_target=Windows
         ;;
      *)
         os_win32=no
         gio_os=gio-unix-2.0
+        red_target=Unix
         ;;
 esac
 AC_MSG_RESULT([$os_win32])

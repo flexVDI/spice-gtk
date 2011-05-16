@@ -19,6 +19,7 @@
 
 #ifdef WIN32
 /* We need some hacks to avoid warnings from the jpeg headers */
+#define HAVE_BOOLEAN
 #define XMD_H
 #undef FAR
 #endif
@@ -38,10 +39,6 @@ typedef struct GlibJpegDecoder
     int      _width;
     int      _height;
 } GlibJpegDecoder;
-
-#if !defined(jpeg_boolean) && !defined(__MINGW32__)
-#define jpeg_boolean boolean
-#endif
 
 static void begin_decode(SpiceJpegDecoder *decoder,
                          uint8_t* data, int data_size,
@@ -141,7 +138,7 @@ static void jpeg_decoder_init_source(j_decompress_ptr cinfo)
 {
 }
 
-static jpeg_boolean jpeg_decoder_fill_input_buffer(j_decompress_ptr cinfo)
+static boolean jpeg_decoder_fill_input_buffer(j_decompress_ptr cinfo)
 {
     g_warning("no more data for jpeg");
     return FALSE;

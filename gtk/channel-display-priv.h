@@ -19,6 +19,10 @@
 # define CHANNEL_DISPLAY_PRIV_H_
 
 #include <pixman.h>
+#ifdef WIN32
+/* We need some hacks to avoid warnings from the jpeg headers */
+#define HAVE_BOOLEAN
+#endif
 #include <jpeglib.h>
 
 /* spice/common */
