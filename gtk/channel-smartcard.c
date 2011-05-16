@@ -80,6 +80,7 @@ enum {
 };
 
 static void spice_smartcard_handle_msg(SpiceChannel *channel, spice_msg_in *msg);
+static void handle_smartcard_msg(SpiceChannel *channel, spice_msg_in *in);
 static void smartcard_message_free(SpiceSmartCardChannelMessage *message);
 
 /* ------------------------------------------------------------------ */
@@ -159,7 +160,7 @@ static void spice_smartcard_channel_class_init(SpiceSmartCardChannelClass *klass
 }
 
 static const spice_msg_handler smartcard_handlers[] = {
-    [ SPICE_MSG_SMARTCARD_DATA ]           = NULL,
+    [ SPICE_MSG_SMARTCARD_DATA ]           = handle_smartcard_msg,
 };
 
 /* ------------------------------------------------------------------ */
@@ -169,7 +170,7 @@ static gboolean is_attached_to_server(VReader *reader)
     return (vreader_get_id(reader) != (vreader_id_t)-1);
 }
 
-G_GNUC_UNUSED static gboolean
+static gboolean
 spice_channel_has_pending_card_insertion(SpiceSmartCardChannel *channel,
                                          VReader *reader)
 {
@@ -192,7 +193,7 @@ spice_channel_drop_pending_card_insertion(SpiceSmartCardChannel *channel,
     g_hash_table_remove(channel->priv->pending_card_insertions, reader);
 }
 
-G_GNUC_UNUSED static gboolean
+static gboolean
 spice_channel_has_pending_reader_removal(SpiceSmartCardChannel *channel,
                                          VReader *reader)
 {
@@ -208,7 +209,7 @@ spice_channel_queue_reader_removal(SpiceSmartCardChannel *channel,
                         reader, reader);
 }
 
-G_GNUC_UNUSED static void
+static void
 spice_channel_drop_pending_reader_removal(SpiceSmartCardChannel *channel,
                                           VReader *reader)
 {
@@ -236,7 +237,7 @@ smartcard_message_free(SpiceSmartCardChannelMessage *message)
 
 /* Indicates that handling of the message that is currently in flight has
  * been completed. If needed, sends the next queued command to the server. */
-G_GNUC_UNUSED static void
+static void
 smartcard_message_complete_in_flight(SpiceSmartCardChannel *channel)
 {
     if (channel->priv->in_flight_message == NULL) {
@@ -377,4 +378,61 @@ static void spice_smartcard_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
         parent_class->handle_msg(channel, msg);
     else
         g_return_if_reached();
+}
+
+static void handle_smartcard_msg(SpiceChannel *channel, spice_msg_in *in)
+{
+    spice_smartcard_channel *priv = SPICE_SMARTCARD_CHANNEL_GET_PRIVATE(channel);
+    SpiceMsgSmartcard *msg = spice_msg_in_parsed(in);
+    VReader *reader;
+
+    priv = SPICE_SMARTCARD_CHANNEL_GET_PRIVATE(channel);
+    switch (msg->type) {
+        case VSC_Error:
+            g_return_if_fail(priv->in_flight_message != NULL);
+            switch (priv->in_flight_message->message_type) {
+                case VSC_ReaderAdd:
+                    g_return_if_fail(priv->pending_reader_additions != NULL);
+                    reader = priv->pending_reader_additions->data;
+                    g_assert(reader != NULL);
+                    g_assert(vreader_get_id(reader) == -1);
+                    priv->pending_reader_additions =
+                        g_list_delete_link(priv->pending_reader_additions,
+                                           priv->pending_reader_additions);
+                    vreader_set_id(reader, msg->reader_id);
+
+                    if (spice_channel_has_pending_card_insertion(SPICE_SMARTCARD_CHANNEL(channel), reader)) {
+                        send_msg_atr(SPICE_SMARTCARD_CHANNEL(channel), reader);
+                        spice_channel_drop_pending_card_insertion(SPICE_SMARTCARD_CHANNEL(channel), reader);
+                    }
+
+                    if (spice_channel_has_pending_reader_removal(SPICE_SMARTCARD_CHANNEL(channel), reader)) {
+                        send_msg_generic(SPICE_SMARTCARD_CHANNEL(channel),
+                                         reader, VSC_CardRemove);
+                        spice_channel_drop_pending_reader_removal(SPICE_SMARTCARD_CHANNEL(channel), reader);
+                    }
+                    break;
+                case VSC_APDU:
+                case VSC_ATR:
+                case VSC_CardRemove:
+                case VSC_Error:
+                case VSC_ReaderRemove:
+                    break;
+                default:
+                    g_warning("Unexpected message: %d", priv->in_flight_message->message_type);
+                    break;
+            }
+            smartcard_message_complete_in_flight(SPICE_SMARTCARD_CHANNEL(channel));
+
+            break;
+
+        case VSC_APDU:
+        case VSC_Init:
+            g_return_if_fail(msg->reader_id != VSCARD_UNDEFINED_READER_ID);
+            reader = vreader_get_reader_by_id(msg->reader_id);
+            g_return_if_fail(reader != NULL); //FIXME: add log message
+            /* Not implemented for now, fall through default case */
+        default:
+            g_return_if_reached();
+    }
 }
