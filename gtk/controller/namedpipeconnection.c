@@ -47,7 +47,6 @@ spice_named_pipe_connection_init (SpiceNamedPipeConnection *connection)
   connection->priv = G_TYPE_INSTANCE_GET_PRIVATE (connection,
                                                   SPICE_TYPE_NAMED_PIPE_CONNECTION,
                                                   SpiceNamedPipeConnectionPrivate);
-  g_message (__FUNCTION__);
 }
 
 static void
@@ -61,6 +60,7 @@ spice_named_pipe_connection_get_property (GObject    *object,
   switch (prop_id)
     {
       case PROP_NAMED_PIPE:
+        g_return_if_fail (c->priv->namedpipe == NULL);
         g_value_set_object (value, c->priv->namedpipe);
         break;
       default:
@@ -79,7 +79,6 @@ spice_named_pipe_connection_set_property (GObject      *object,
   switch (prop_id)
     {
       case PROP_NAMED_PIPE:
-        g_message (__FUNCTION__);
         c->priv->namedpipe = g_value_get_object (value);
         break;
       default:
@@ -98,7 +97,6 @@ spice_named_pipe_connection_get_input_stream (GIOStream *io_stream)
   if (c->priv->input_stream == NULL)
     c->priv->input_stream = g_win32_input_stream_new (h, FALSE);
 
-  g_message ("got input stream %p", c->priv->input_stream);
   return c->priv->input_stream;
 }
 
@@ -121,6 +119,18 @@ spice_named_pipe_connection_dispose (GObject *object)
 {
   SpiceNamedPipeConnection *c = SPICE_NAMED_PIPE_CONNECTION (object);
 
+  if (c->priv->output_stream)
+    {
+      g_object_unref (c->priv->output_stream);
+      c->priv->output_stream = NULL;
+    }
+
+  if (c->priv->input_stream)
+    {
+      g_object_unref (c->priv->input_stream);
+      c->priv->input_stream = NULL;
+    }
+
   if (c->priv->namedpipe)
     {
       g_object_unref (c->priv->namedpipe);
@@ -138,7 +148,6 @@ spice_named_pipe_connection_class_init (SpiceNamedPipeConnectionClass *klass)
   GIOStreamClass *stream_class = G_IO_STREAM_CLASS (klass);
 
   g_type_class_add_private (klass, sizeof (SpiceNamedPipeConnectionPrivate));
-  g_message (__FUNCTION__);
 
   gobject_class->set_property = spice_named_pipe_connection_set_property;
   gobject_class->get_property = spice_named_pipe_connection_get_property;
