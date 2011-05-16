@@ -338,7 +338,45 @@ static guint smartcard_monitor_add(SmartCardSourceFunc callback,
     return id;
 }
 
+#define SPICE_SOFTWARE_READER_NAME "Spice Software Smartcard"
+
 gboolean spice_smartcard_manager_init_libcacard(SpiceSession *session)
 {
-    return (vcard_emul_init(NULL) == VCARD_EMUL_OK);
+    char *emul_args;
+    VCardEmulOptions *options = NULL;
+    char *dbname;
+    GStrv certificates;
+
+    g_return_val_if_fail(session != NULL, VCARD_EMUL_FAIL);
+    g_object_get(G_OBJECT(session), "certificate-db", &dbname,
+                 "certificates", &certificates,
+                 NULL);
+
+    if ((certificates == NULL) || (g_strv_length(certificates) != 3))
+        goto no_certs;
+
+    if (dbname) {
+        emul_args = g_strdup_printf("db=\"%s\" use_hw=no "
+                                    "soft=(,%s,CAC,,%s,%s,%s)",
+                                    dbname, SPICE_SOFTWARE_READER_NAME,
+                                    certificates[0], certificates[1],
+                                    certificates[2]);
+    } else {
+        emul_args = g_strdup_printf("use_hw=no soft=(,%s,CAC,,%s,%s,%s)",
+                                    SPICE_SOFTWARE_READER_NAME,
+                                    certificates[0], certificates[1],
+                                    certificates[2]);
+    }
+    options = vcard_emul_options(emul_args);
+    g_free(emul_args);
+    if (options == NULL) {
+        g_free(dbname);
+        g_strfreev(certificates);
+        return FALSE;
+    }
+
+no_certs:
+    g_free(dbname);
+    g_strfreev(certificates);
+    return (vcard_emul_init(options) == VCARD_EMUL_OK);
 }
