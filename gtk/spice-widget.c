@@ -1867,6 +1867,12 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         return;
     }
 
+    if (SPICE_IS_SMARTCARD_CHANNEL(channel)) {
+        d->smartcard = SPICE_SMARTCARD_CHANNEL(channel);
+        spice_channel_connect(channel);
+        return;
+    }
+
     return;
 }
 
@@ -1900,6 +1906,11 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
 
     if (SPICE_IS_INPUTS_CHANNEL(channel)) {
         d->inputs = NULL;
+        return;
+    }
+
+    if (SPICE_IS_SMARTCARD_CHANNEL(channel)) {
+        d->smartcard = NULL;
         return;
     }
 

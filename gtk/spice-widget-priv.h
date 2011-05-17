@@ -91,6 +91,7 @@ struct spice_display {
     SpiceChannel            *display;
     SpiceCursorChannel      *cursor;
     SpiceInputsChannel      *inputs;
+    SpiceSmartCardChannel   *smartcard;
 
     enum SpiceMouseMode     mouse_mode;
     int                     mouse_grab_active;
