@@ -351,6 +351,52 @@ static void menu_cb_ungrab(GtkAction *action, void *data)
 }
 
 #ifdef USE_SMARTCARD
+static void enable_smartcard_actions(spice_window *win, VReader *reader,
+                                     gboolean can_insert, gboolean can_remove)
+{
+    GtkAction *action;
+
+    if ((reader != NULL) && (!spice_smartcard_reader_is_software(reader)))
+    {
+        /* Having menu actions to insert/remove smartcards only makes sense
+         * for software smartcard readers, don't do anything when the event
+         * we received was for a "real" smartcard reader.
+         */
+        return;
+    }
+    action = gtk_action_group_get_action(win->ag, "InsertSmartCard");
+    g_return_if_fail(action != NULL);
+    gtk_action_set_sensitive(action, can_insert);
+    action = gtk_action_group_get_action(win->ag, "RemoveSmartCard");
+    g_return_if_fail(action != NULL);
+    gtk_action_set_sensitive(action, can_remove);
+}
+
+
+static void reader_added_cb(SpiceSmartCardManager *manager, VReader *reader,
+                            gpointer user_data)
+{
+    enable_smartcard_actions(user_data, reader, TRUE, FALSE);
+}
+
+static void reader_removed_cb(SpiceSmartCardManager *manager, VReader *reader,
+                              gpointer user_data)
+{
+    enable_smartcard_actions(user_data, reader, FALSE, FALSE);
+}
+
+static void card_inserted_cb(SpiceSmartCardManager *manager, VReader *reader,
+                             gpointer user_data)
+{
+    enable_smartcard_actions(user_data, reader, FALSE, TRUE);
+}
+
+static void card_removed_cb(SpiceSmartCardManager *manager, VReader *reader,
+                            gpointer user_data)
+{
+    enable_smartcard_actions(user_data, reader, TRUE, FALSE);
+}
+
 static void menu_cb_insert_smartcard(GtkAction *action, void *data)
 {
     spice_smartcard_manager_insert_card(spice_smartcard_manager_get());
@@ -1079,6 +1125,18 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     toggle = gtk_action_group_get_action(win->ag, "Statusbar");
     state = gtk_widget_get_visible(win->statusbar);
     gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(toggle), state);
+
+#ifdef USE_SMARTCARD
+    enable_smartcard_actions(win, NULL, FALSE, FALSE);
+    g_signal_connect(G_OBJECT(spice_smartcard_manager_get()), "reader-added",
+                     (GCallback)reader_added_cb, win);
+    g_signal_connect(G_OBJECT(spice_smartcard_manager_get()), "reader-removed",
+                     (GCallback)reader_removed_cb, win);
+    g_signal_connect(G_OBJECT(spice_smartcard_manager_get()), "card-inserted",
+                     (GCallback)card_inserted_cb, win);
+    g_signal_connect(G_OBJECT(spice_smartcard_manager_get()), "card-removed",
+                     (GCallback)card_removed_cb, win);
+#endif
 
     gtk_widget_grab_focus(win->spice);
 
