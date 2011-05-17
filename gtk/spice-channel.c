@@ -1832,7 +1832,7 @@ static void *spice_channel_coroutine(void *data)
     spice_channel *c = channel->priv;
     guint verify;
 
-    SPICE_DEBUG("Started background coroutine %p", &c->coroutine);
+    SPICE_DEBUG("Started background coroutine %p for %s", &c->coroutine, c->name);
 
     if (spice_session_get_client_provided_socket(c->session)) {
         if (c->fd < 0) {
