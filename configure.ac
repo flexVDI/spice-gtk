@@ -67,6 +67,17 @@ AC_SUBST(PROTOCOL_CFLAGS)
 AC_CHECK_LIBM
 AC_SUBST(LIBM)
 
+srcdir="$(dirname $0)"
+if test ! -e "$srcdir/gtk/generated_marshallers.c"; then
+  AC_MSG_CHECKING([for pyparsing python module])
+  echo "import pyparsing" | ${PYTHON} - >/dev/null 2>&1
+  if test $? -ne 0 ; then
+    AC_MSG_RESULT([not found])
+    AC_MSG_ERROR([pyparsing python module is required to compile this package])
+  fi
+  AC_MSG_RESULT([found])
+fi
+
 SPICE_GLIB_REQUIRES=""
 SPICE_GTK_REQUIRES=""
 

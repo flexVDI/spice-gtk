@@ -1,6 +1,10 @@
-from pyparsing import Literal, CaselessLiteral, Word, OneOrMore, ZeroOrMore, \
-        Forward, delimitedList, Group, Optional, Combine, alphas, nums, restOfLine, cStyleComment, \
-        alphanums, ParseException, ParseResults, Keyword, StringEnd, replaceWith
+try:
+    from pyparsing import Literal, CaselessLiteral, Word, OneOrMore, ZeroOrMore, \
+            Forward, delimitedList, Group, Optional, Combine, alphas, nums, restOfLine, cStyleComment, \
+            alphanums, ParseException, ParseResults, Keyword, StringEnd, replaceWith
+except ImportError:
+    print "Module pyparsing not found."
+    exit(1)
 
 import ptypes
 import sys
