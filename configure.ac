@@ -78,6 +78,16 @@ if test ! -e "$srcdir/gtk/generated_marshallers.c"; then
   AC_MSG_RESULT([found])
 fi
 
+if test ! -e "$srcdir/gtk/vncdisplaykeymap_osx2xtkbd.c"; then
+  AC_MSG_CHECKING([for Text::CSV Perl module])
+  perl -MText::CSV -e "" >/dev/null 2>&1
+  if test $? -ne 0 ; then
+    AC_MSG_RESULT([not found])
+    AC_MSG_ERROR([Text::CSV Perl module is required to compile this package])
+  fi
+  AC_MSG_RESULT([found])
+fi
+
 SPICE_GLIB_REQUIRES=""
 SPICE_GTK_REQUIRES=""
 
