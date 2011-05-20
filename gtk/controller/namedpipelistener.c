@@ -30,8 +30,7 @@ G_DEFINE_TYPE (SpiceNamedPipeListener, spice_named_pipe_listener, G_TYPE_OBJECT)
 
 struct _SpiceNamedPipeListenerPrivate
 {
-  GList              *namedpipes;
-  GQueue             avail_namedpipes;
+  GQueue             namedpipes;
 };
 
 static void
@@ -40,14 +39,11 @@ spice_named_pipe_listener_dispose (GObject *object)
   SpiceNamedPipeListener *listener = SPICE_NAMED_PIPE_LISTENER (object);
   SpiceNamedPipe *p;
 
-  while (p = g_queue_pop_head (&listener->priv->avail_namedpipes))
+  while (p = g_queue_pop_head (&listener->priv->namedpipes))
     g_object_unref (p);
 
-  g_return_if_fail (g_queue_get_length (&listener->priv->avail_namedpipes) == 0);
-  g_queue_clear (&listener->priv->avail_namedpipes);
-
-  g_list_free_full (listener->priv->namedpipes, g_object_unref);
-  listener->priv->namedpipes = NULL;
+  g_return_if_fail (g_queue_get_length (&listener->priv->namedpipes) == 0);
+  g_queue_clear (&listener->priv->namedpipes);
 
   if (G_OBJECT_CLASS (spice_named_pipe_listener_parent_class)->dispose)
     G_OBJECT_CLASS (spice_named_pipe_listener_parent_class)->dispose (object);
@@ -70,7 +66,7 @@ spice_named_pipe_listener_init (SpiceNamedPipeListener *listener)
                                                 SPICE_TYPE_NAMED_PIPE_LISTENER,
                                                 SpiceNamedPipeListenerPrivate);
 
-  g_queue_init (&listener->priv->avail_namedpipes);
+  g_queue_init (&listener->priv->namedpipes);
 }
 
 void
@@ -80,15 +76,12 @@ spice_named_pipe_listener_add_named_pipe (SpiceNamedPipeListener *listener,
   g_return_if_fail (SPICE_IS_NAMED_PIPE_LISTENER (listener));
   g_return_if_fail (SPICE_IS_NAMED_PIPE (namedpipe));
 
-  listener->priv->namedpipes = g_list_prepend (listener->priv->namedpipes,
-                                               g_object_ref (namedpipe));
-
-  g_queue_push_head (&listener->priv->avail_namedpipes, g_object_ref (namedpipe));
+  g_queue_push_head (&listener->priv->namedpipes, g_object_ref (namedpipe));
 }
 
 typedef struct {
   GCancellable *cancellable;
-  GSource *cancelled_idle;
+  GSource *source;
   GSimpleAsyncResult *async_result;
   SpiceNamedPipe *np;
   OVERLAPPED overlapped;
@@ -99,31 +92,41 @@ connect_cancelled (GCancellable *cancellable,
                    gpointer      user_data)
 {
   ConnectData *c = user_data;
+  GError *error = NULL;
 
-  g_message("TODO: connect_cancelled");
+  g_source_destroy (c->source);
+  c->source = NULL;
+
+  g_cancellable_set_error_if_cancelled (cancellable, &error);
+  g_simple_async_result_set_from_error (c->async_result, error);
+  g_error_free (error);
+
+  g_simple_async_result_complete (c->async_result);
+  g_object_unref (c->async_result);
 }
 
 static gboolean
 connect_ready (gpointer user_data)
 {
   ConnectData *c = user_data;
-
-  /* Clean up cancellation-related stuff first */
-  if (c->cancelled_idle)
-    {
-      g_source_destroy (c->cancelled_idle);
-      g_source_unref (c->cancelled_idle);
-      c->cancelled_idle = NULL;
-    }
-  if (c->cancellable)
-    {
-      g_signal_handlers_disconnect_by_func (c->cancellable, connect_cancelled, c);
-      g_object_unref (c->cancellable);
-      c->cancellable = NULL;
-    }
+  gulong cbret;
+  gboolean success;
 
   /* Now complete the result (assuming it wasn't already completed) */
   g_return_val_if_fail (c->async_result != NULL, FALSE);
+
+  success = GetOverlappedResult (c->np, &c->overlapped, &cbret, FALSE);
+  if (!success)
+    {
+      int errsv = GetLastError ();
+      gchar *emsg = g_win32_error_message (errsv);
+
+      g_simple_async_result_set_error (c->async_result,
+                                       G_IO_ERROR,
+                                       G_IO_ERROR_INVALID_ARGUMENT,
+                                       "GetOverlappedResult(): %s %d",
+                                       emsg, errsv);
+    }
 
   g_simple_async_result_complete (c->async_result);
   g_object_unref (c->async_result); /* TODO: that sould free c? */
@@ -136,7 +139,34 @@ connect_data_free (gpointer data)
 {
   ConnectData *c = data;
 
-  /* TODO: complete me */
+  if (c->source)
+    {
+      g_source_destroy (c->source);
+      g_source_unref (c->source);
+      c->source = NULL;
+    }
+  if (c->cancellable)
+    {
+      g_signal_handlers_disconnect_by_func (c->cancellable, connect_cancelled, c);
+      g_object_unref (c->cancellable);
+      c->cancellable = NULL;
+    }
+
+  if (c->async_result) /* this is only a weak reference */
+      c->async_result = NULL;
+
+  if (c->overlapped.hEvent != NULL)
+    {
+      CloseHandle (c->overlapped.hEvent);
+      c->overlapped.hEvent = NULL;
+    }
+
+  if (c->np != NULL)
+    {
+      g_object_unref (c->np);
+      c->np = NULL;
+    }
+
   g_free (c);
 }
 
@@ -151,16 +181,18 @@ spice_named_pipe_listener_accept_async (SpiceNamedPipeListener  *listener,
 
   g_return_if_fail (SPICE_IS_NAMED_PIPE_LISTENER (listener));
 
-  namedpipe = SPICE_NAMED_PIPE (g_queue_pop_head (&listener->priv->avail_namedpipes));
+  namedpipe = SPICE_NAMED_PIPE (g_queue_pop_head (&listener->priv->namedpipes));
   /* do not unref, we keep that ref */
   g_return_if_fail (namedpipe != NULL);
+
   c = g_new0 (ConnectData, 1);
   c->np = namedpipe; /* transfer what used to be the avail_namedpipes ref */
-  c->async_result = g_simple_async_result_new (G_OBJECT (listener), callback, user_data, NULL);
-  c->overlapped.hEvent = CreateEvent(NULL, /* default security attribute */
-                                     TRUE, /* manual-reset event */
-                                     TRUE, /* initial state = signaled */
-                                     NULL); /* unnamed event object */
+  c->async_result = g_simple_async_result_new (G_OBJECT (listener), callback, user_data,
+                                               spice_named_pipe_listener_accept_async);
+  c->overlapped.hEvent = CreateEvent (NULL, /* default security attribute */
+                                      TRUE, /* manual-reset event */
+                                      TRUE, /* initial state = signaled */
+                                      NULL); /* unnamed event object */
   g_simple_async_result_set_op_res_gpointer (c->async_result, c, connect_data_free);
 
   if (ConnectNamedPipe (spice_named_pipe_get_handle (namedpipe), &c->overlapped) != 0)
@@ -175,13 +207,20 @@ spice_named_pipe_listener_accept_async (SpiceNamedPipeListener  *listener,
       case ERROR_IO_PENDING:
         break;
       case ERROR_PIPE_CONNECTED:
-        g_debug ("TODO: pipe already connected");
-        break;
+        g_simple_async_result_complete_in_idle (c->async_result);
+        g_object_unref (c->async_result);
+        return;
       default:
-        g_critical ("TODO: ConnectNamedPipe() failed %ld", GetLastError());
+        g_simple_async_report_error_in_idle (G_OBJECT (listener),
+            callback, user_data,
+            G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+            "ConnectNamedPipe() failed %ld", GetLastError ());
+        g_object_unref (c->async_result);
+        return;
     }
 
-  g_win32_handle_source_add (spice_named_pipe_get_handle (namedpipe), connect_ready, c);
+  c->source = g_win32_handle_source_add (spice_named_pipe_get_handle (namedpipe),
+                                         connect_ready, c);
 
   if (cancellable)
     {
@@ -199,33 +238,24 @@ spice_named_pipe_listener_accept_finish (SpiceNamedPipeListener *listener,
 {
   GSimpleAsyncResult *simple;
   ConnectData *c;
-  gulong cbret;
   SpiceNamedPipeConnection *connection;
   gboolean success;
 
   g_return_val_if_fail (SPICE_IS_NAMED_PIPE_LISTENER (listener), NULL);
   g_return_val_if_fail (G_IS_SIMPLE_ASYNC_RESULT (result), NULL);
+  g_return_val_if_fail (g_simple_async_result_is_valid (result, G_OBJECT (listener),
+                                                        spice_named_pipe_listener_accept_async),
+                        NULL);
 
   simple = G_SIMPLE_ASYNC_RESULT (result);
+  if (g_simple_async_result_propagate_error (simple, error))
+      return NULL;
+
   c = g_simple_async_result_get_op_res_gpointer (simple);
 
-  success = GetOverlappedResult (c->np, &c->overlapped, &cbret, FALSE);
-  if (!success)
-    {
-      int errsv = GetLastError ();
-      gchar *emsg = g_win32_error_message (errsv);
-
-      g_critical ("TODO connect_finish: %s %d", emsg, errsv);
-
-      g_free (emsg);
-      return NULL;
-    }
-
-  g_message (__FUNCTION__);
   connection = g_object_new (SPICE_TYPE_NAMED_PIPE_CONNECTION,
                              "namedpipe", c->np,
                              NULL);
-  g_message (__FUNCTION__);
   return connection;
 }
 
