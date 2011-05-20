@@ -228,7 +228,7 @@ public class SpiceController: Object {
 		listener.add_named_pipe (np);
 #else
 		var listener = new SocketListener ();
-		listener.add_address (new UnixSocketAddress.with_type (addr, addr.length, UnixSocketAddressType.PATH),
+		listener.add_address (new UnixSocketAddress (addr),
 							  SocketType.STREAM, SocketProtocol.DEFAULT, null, null);
 #endif
 		for (;;) {
