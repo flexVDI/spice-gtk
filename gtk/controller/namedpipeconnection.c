@@ -39,6 +39,7 @@ struct _SpiceNamedPipeConnectionPrivate
   GInputStream   *input_stream;
   GOutputStream  *output_stream;
   SpiceNamedPipe *namedpipe;
+  gboolean       in_dispose;
 };
 
 static void
@@ -119,6 +120,19 @@ spice_named_pipe_connection_dispose (GObject *object)
 {
   SpiceNamedPipeConnection *c = SPICE_NAMED_PIPE_CONNECTION (object);
 
+  c->priv->in_dispose = TRUE;
+
+  if (G_OBJECT_CLASS (spice_named_pipe_connection_parent_class)->dispose)
+    G_OBJECT_CLASS (spice_named_pipe_connection_parent_class)->dispose (object);
+
+  c->priv->in_dispose = FALSE;
+}
+
+static void
+spice_named_pipe_connection_finalize (GObject *object)
+{
+  SpiceNamedPipeConnection *c = SPICE_NAMED_PIPE_CONNECTION (object);
+
   if (c->priv->output_stream)
     {
       g_object_unref (c->priv->output_stream);
@@ -131,14 +145,74 @@ spice_named_pipe_connection_dispose (GObject *object)
       c->priv->input_stream = NULL;
     }
 
-  if (c->priv->namedpipe)
+  g_object_unref (c->priv->namedpipe);
+
+  if (G_OBJECT_CLASS (spice_named_pipe_connection_parent_class)->finalize)
+    G_OBJECT_CLASS (spice_named_pipe_connection_parent_class)->finalize (object);
+}
+
+static gboolean
+spice_named_pipe_connection_close (GIOStream     *stream,
+                                   GCancellable  *cancellable,
+                                   GError       **error)
+{
+  SpiceNamedPipeConnection *c = SPICE_NAMED_PIPE_CONNECTION (stream);
+
+  if (c->priv->output_stream)
+    g_output_stream_close (c->priv->output_stream, cancellable, NULL);
+  if (c->priv->input_stream)
+    g_input_stream_close (c->priv->input_stream, cancellable, NULL);
+
+  /* Don't close the underlying socket if this is being called
+   * as part of dispose(); when destroying the GSocketConnection,
+   * we only want to close the socket if we're holding the last
+   * reference on it, and in that case it will close itself when
+   * we unref namedpipe in finalize().
+   */
+  if (c->priv->in_dispose)
+    return TRUE;
+
+  return spice_named_pipe_close (c->priv->namedpipe, error);
+}
+
+static void
+spice_named_pipe_connection_close_async (GIOStream           *stream,
+                                         int                  io_priority,
+                                         GCancellable        *cancellable,
+                                         GAsyncReadyCallback  callback,
+                                         gpointer             user_data)
+{
+  GSimpleAsyncResult *res;
+  GIOStreamClass *class;
+  GError *error;
+
+  class = G_IO_STREAM_GET_CLASS (stream);
+
+  /* namedpipe close is not blocking, just do it! */
+  error = NULL;
+  if (class->close_fn &&
+      !class->close_fn (stream, cancellable, &error))
     {
-      g_object_unref (c->priv->namedpipe);
-      c->priv->namedpipe = NULL;
+      g_simple_async_report_take_gerror_in_idle (G_OBJECT (stream),
+                                                 callback, user_data,
+                                                 error);
+      return;
     }
 
-  if (G_OBJECT_CLASS (spice_named_pipe_connection_parent_class)->dispose)
-    G_OBJECT_CLASS (spice_named_pipe_connection_parent_class)->dispose (object);
+  res = g_simple_async_result_new (G_OBJECT (stream),
+				   callback,
+				   user_data,
+				   spice_named_pipe_connection_close_async);
+  g_simple_async_result_complete_in_idle (res);
+  g_object_unref (res);
+}
+
+static gboolean
+spice_named_pipe_connection_close_finish (GIOStream     *stream,
+                                          GAsyncResult  *result,
+                                          GError       **error)
+{
+  return TRUE;
 }
 
 static void
@@ -152,9 +226,13 @@ spice_named_pipe_connection_class_init (SpiceNamedPipeConnectionClass *klass)
   gobject_class->set_property = spice_named_pipe_connection_set_property;
   gobject_class->get_property = spice_named_pipe_connection_get_property;
   gobject_class->dispose = spice_named_pipe_connection_dispose;
+  gobject_class->finalize = spice_named_pipe_connection_finalize;
 
   stream_class->get_input_stream = spice_named_pipe_connection_get_input_stream;
   stream_class->get_output_stream = spice_named_pipe_connection_get_output_stream;
+  stream_class->close_fn = spice_named_pipe_connection_close;
+  stream_class->close_async = spice_named_pipe_connection_close_async;
+  stream_class->close_finish = spice_named_pipe_connection_close_finish;
 
   g_object_class_install_property (gobject_class, PROP_NAMED_PIPE,
                                    g_param_spec_object ("namedpipe",

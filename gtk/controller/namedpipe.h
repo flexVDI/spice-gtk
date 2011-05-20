@@ -51,8 +51,9 @@ struct _SpiceNamedPipe
 GType            spice_named_pipe_get_type  (void) G_GNUC_CONST;
 
 SpiceNamedPipe * spice_named_pipe_new       (const gchar *name, GError **error);
-void *           spice_named_pipe_get_handle (SpiceNamedPipe *namedpipe);
-
+void *           spice_named_pipe_get_handle(SpiceNamedPipe *namedpipe);
+gboolean         spice_named_pipe_close     (SpiceNamedPipe *namedpipe,
+                                             GError **error);
 G_END_DECLS
 
 #endif /* __NAMED_PIPE_H__ */

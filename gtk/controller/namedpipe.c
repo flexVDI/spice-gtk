@@ -242,3 +242,29 @@ spice_named_pipe_get_handle (SpiceNamedPipe *namedpipe)
 
   return namedpipe->priv->handle;
 }
+
+gboolean
+spice_named_pipe_close (SpiceNamedPipe *np,
+                        GError **error)
+{
+  BOOL res;
+
+  g_return_val_if_fail (SPICE_IS_NAMED_PIPE (np), FALSE);
+
+  res = CloseHandle (np->priv->handle);
+  np->priv->handle = NULL;
+  if (!res)
+    {
+      int errsv = GetLastError ();
+      gchar *emsg = g_win32_error_message (errsv);
+
+      g_set_error (error, G_IO_ERROR,
+		   g_io_error_from_win32_error (errsv),
+		   "Error closing handle: %s",
+		   emsg);
+      g_free (emsg);
+      return FALSE;
+    }
+
+  return TRUE;
+}
