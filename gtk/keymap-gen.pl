@@ -116,7 +116,7 @@ while ($row = $csv->getline(\*CSV)) {
 	my $col = $mapcolumns{$name};
 	my $val = $row->[$col];
 
-	$val = 0 unless $val;
+	next unless defined $val && $val ne "";
 	$val = hex($val) if $val =~ /0x/;
 
 	$to = $maps{$name}->[0];
@@ -131,8 +131,10 @@ while ($row = $csv->getline(\*CSV)) {
     # for values <= 83, and completely made up for extended
     # scancodes :-(
     ($to, $from) = @{$maps{xorgkbd}};
-    $to->[$linux] = $maps{xkbdxt}->[0]->[$linux] + 8;
-    $from->[$to->[$linux]] = $linux;
+    if (defined $maps{xkbdxt}->[0]->[$linux]) {
+	$to->[$linux] = $maps{xkbdxt}->[0]->[$linux] + 8;
+	$from->[$to->[$linux]] = $linux;
+    }
 
     # Xorg evdev is simply Linux keycodes offset by +8
     ($to, $from) = @{$maps{xorgevdev}};
@@ -141,8 +143,10 @@ while ($row = $csv->getline(\*CSV)) {
 
     # Xorg XQuartz is simply OS-X keycodes offset by +8
     ($to, $from) = @{$maps{xorgxquartz}};
-    $to->[$linux] = $maps{osx}->[0]->[$linux] + 8;
-    $from->[$to->[$linux]] = $linux;
+    if (defined $maps{osx}->[0]->[$linux]) {
+	$to->[$linux] = $maps{osx}->[0]->[$linux] + 8;
+	$from->[$to->[$linux]] = $linux;
+    }
 
     # RFB keycodes are XT kbd keycodes with a slightly
     # different encoding of 0xe0 scan codes. RFB uses
@@ -150,16 +154,20 @@ while ($row = $csv->getline(\*CSV)) {
     # bit of the second byte.
     ($to, $from) = @{$maps{rfb}};
     my $xtkbd = $maps{xtkbd}->[0]->[$linux];
-    $to->[$linux] = $xtkbd ? (($xtkbd & 0x100)>>1) | ($xtkbd & 0x7f) : 0;
-    $from->[$to->[$linux]] = $linux;
+    if (defined $xtkbd) {
+	$to->[$linux] = $xtkbd ? (($xtkbd & 0x100)>>1) | ($xtkbd & 0x7f) : 0;
+	$from->[$to->[$linux]] = $linux;
+    }
 
     # Xorg Cygwin is the Xorg Cygwin XT codes offset by +8
     # The Cygwin XT codes are the same as normal XT codes
     # for values <= 83, and completely made up for extended
     # scancodes :-(
     ($to, $from) = @{$maps{xorgxwin}};
-    $to->[$linux] = $maps{xwinxt}->[0]->[$linux] + 8;
-    $from->[$to->[$linux]] = $linux;
+    if (defined $maps{xwinxt}->[0]->[$linux]) {
+	$to->[$linux] = $maps{xwinxt}->[0]->[$linux] + 8;
+	$from->[$to->[$linux]] = $linux;
+    }
 
 #    print $linux, "\n";
 }

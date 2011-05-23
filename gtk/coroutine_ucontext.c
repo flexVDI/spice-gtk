@@ -26,6 +26,10 @@
 #include <stdlib.h>
 #include "coroutine.h"
 
+#ifndef MAP_ANONYMOUS
+# define MAP_ANONYMOUS MAP_ANON
+#endif
+
 int coroutine_release(struct coroutine *co)
 {
 	return cc_release(&co->cc);
