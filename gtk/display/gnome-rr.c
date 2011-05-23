@@ -384,7 +384,7 @@ gnome_rr_screen_set_property (GObject *gobject, guint property_id, const GValue 
     {
     case SCREEN_PROP_GDK_SCREEN:
         priv->gdk_screen = g_value_get_object (value);
-        g_object_notify_by_pspec (gobject, screen_properties[SCREEN_PROP_GDK_SCREEN]);
+        g_object_notify (gobject, "gdk-screen");
         return;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (gobject, property_id, property);
