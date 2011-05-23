@@ -233,6 +233,7 @@ libspice_client_glib_2_0_la_SOURCES += continuation.h continuation.c coroutine_u
 EXTRA_DIST += coroutine_gthread.c
 else
 libspice_client_glib_2_0_la_SOURCES += coroutine_gthread.c
+libspice_client_glib_2_0_la_LIBADD += $(GTHREAD_LIBS)
 EXTRA_DIST += continuation.h continuation.c coroutine_ucontext.c
 endif
 
@@ -288,11 +289,13 @@ spicy_LDADD =				\
 	libspice-client-gtk-$(SPICE_GTK_API_VERSION).la		\
 	libspice-client-glib-2.0.la		\
 	$(XRANDR_LIBS)			\
+	$(GTHREAD_LIBS)			\
 	$(NULL)
 
 spicy_CPPFLAGS =			\
 	$(AM_CPPFLAGS)			\
 	$(XRANDR_CFLAGS)		\
+	$(GTHREAD_CFLAGS)		\
 	$(NULL)
 
 
