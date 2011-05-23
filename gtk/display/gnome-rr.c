@@ -75,6 +75,50 @@ static void gnome_rr_screen_initable_iface_init (GInitableIface *iface);
 G_DEFINE_TYPE_WITH_CODE (GnomeRRScreen, gnome_rr_screen, G_TYPE_OBJECT,
         G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE, gnome_rr_screen_initable_iface_init))
 
+#if !GLIB_CHECK_VERSION(2,26,0)
+#define G_DEFINE_BOXED_TYPE(TypeName, type_name, copy_func, free_func) G_DEFINE_BOXED_TYPE_WITH_CODE (TypeName, type_name, copy_func, free_func, {})
+#define G_DEFINE_BOXED_TYPE_WITH_CODE(TypeName, type_name, copy_func, free_func, _C_) _G_DEFINE_BOXED_TYPE_BEGIN (TypeName, type_name, copy_func, free_func) {_C_;} _G_DEFINE_TYPE_EXTENDED_END()
+#if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 7)
+#define _G_DEFINE_BOXED_TYPE_BEGIN(TypeName, type_name, copy_func, free_func) \
+GType \
+type_name##_get_type (void) \
+{ \
+  static volatile gsize g_define_type_id__volatile = 0; \
+  if (g_once_init_enter (&g_define_type_id__volatile))  \
+    { \
+      GType (* _g_register_boxed) \
+        (const gchar *, \
+         union \
+           { \
+             TypeName * (*do_copy_type) (TypeName *); \
+             TypeName * (*do_const_copy_type) (const TypeName *); \
+             GBoxedCopyFunc do_copy_boxed; \
+           } __attribute__((__transparent_union__)), \
+         union \
+           { \
+             void (* do_free_type) (TypeName *); \
+             GBoxedFreeFunc do_free_boxed; \
+           } __attribute__((__transparent_union__)) \
+        ) = g_boxed_type_register_static; \
+      GType g_define_type_id = \
+        _g_register_boxed (g_intern_static_string (#TypeName), copy_func, free_func); \
+      { /* custom code follows */
+#else
+#define _G_DEFINE_BOXED_TYPE_BEGIN(TypeName, type_name, copy_func, free_func) \
+GType \
+type_name##_get_type (void) \
+{ \
+  static volatile gsize g_define_type_id__volatile = 0; \
+  if (g_once_init_enter (&g_define_type_id__volatile))  \
+    { \
+      GType g_define_type_id = \
+        g_boxed_type_register_static (g_intern_static_string (#TypeName), \
+                                      (GBoxedCopyFunc) copy_func, \
+                                      (GBoxedFreeFunc) free_func); \
+      { /* custom code follows */
+#endif /* __GNUC__ */
+#endif /* glib 2.26 */
+
 G_DEFINE_BOXED_TYPE (GnomeRRCrtc, gnome_rr_crtc, crtc_copy, crtc_free)
 G_DEFINE_BOXED_TYPE (GnomeRROutput, gnome_rr_output, output_copy, output_free)
 G_DEFINE_BOXED_TYPE (GnomeRRMode, gnome_rr_mode, mode_copy, mode_free)
@@ -497,7 +541,7 @@ gnome_rr_screen_get_timestamps (GnomeRRScreen *screen,
 				guint32       *change_timestamp_ret,
 				guint32       *config_timestamp_ret)
 {
-    GnomeRRScreenPrivate *priv;
+    GnomeRRScreenPrivate *priv G_GNUC_UNUSED;
 
     g_return_if_fail (GNOME_IS_RR_SCREEN (screen));
 
