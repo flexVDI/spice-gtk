@@ -102,12 +102,12 @@ static int ask_user(GtkWidget *parent, char *title, char *message,
 
     /* Create the widgets */
     dialog = gtk_dialog_new_with_buttons(title,
-					 parent ? GTK_WINDOW(parent) : NULL,
+                                         parent ? GTK_WINDOW(parent) : NULL,
                                          GTK_DIALOG_DESTROY_WITH_PARENT,
-					 GTK_STOCK_OK,
-					 GTK_RESPONSE_ACCEPT,
-					 GTK_STOCK_CANCEL,
-					 GTK_RESPONSE_REJECT,
+                                         GTK_STOCK_OK,
+                                         GTK_RESPONSE_ACCEPT,
+                                         GTK_STOCK_CANCEL,
+                                         GTK_RESPONSE_REJECT,
                                          NULL);
     gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_ACCEPT);
     area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
@@ -120,20 +120,20 @@ static int ask_user(GtkWidget *parent, char *title, char *message,
     gtk_entry_set_text(GTK_ENTRY(entry), dest);
     gtk_entry_set_activates_default(GTK_ENTRY(entry), TRUE);
     if (hide)
-	gtk_entry_set_visibility(GTK_ENTRY(entry), FALSE);
+        gtk_entry_set_visibility(GTK_ENTRY(entry), FALSE);
     gtk_box_pack_start(GTK_BOX(area), entry, FALSE, FALSE, 5);
 
     /* show and wait for response */
     gtk_widget_show_all(dialog);
     switch (gtk_dialog_run(GTK_DIALOG(dialog))) {
     case GTK_RESPONSE_ACCEPT:
-	txt = gtk_entry_get_text(GTK_ENTRY(entry));
-	snprintf(dest, dlen, "%s", txt);
-	retval = 0;
-	break;
+        txt = gtk_entry_get_text(GTK_ENTRY(entry));
+        snprintf(dest, dlen, "%s", txt);
+        retval = 0;
+        break;
     default:
-	retval = -1;
-	break;
+        retval = -1;
+        break;
     }
     gtk_widget_destroy(dialog);
     return retval;
@@ -189,12 +189,12 @@ static int connect_dialog(SpiceSession *session)
 
     /* Create the widgets */
     dialog = gtk_dialog_new_with_buttons(_("Connect to SPICE"),
-					 NULL,
+                                         NULL,
                                          GTK_DIALOG_DESTROY_WITH_PARENT,
-					 GTK_STOCK_OK,
-					 GTK_RESPONSE_ACCEPT,
-					 GTK_STOCK_CANCEL,
-					 GTK_RESPONSE_REJECT,
+                                         GTK_STOCK_OK,
+                                         GTK_RESPONSE_ACCEPT,
+                                         GTK_STOCK_CANCEL,
+                                         GTK_RESPONSE_REJECT,
                                          NULL);
     gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_ACCEPT);
     area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
@@ -242,9 +242,9 @@ static int connect_dialog(SpiceSession *session)
             txt = gtk_entry_get_text(GTK_ENTRY(connect_entries[i].entry));
             g_object_set(session, connect_entries[i].prop, txt, NULL);
         }
-	retval = 0;
+        retval = 0;
     } else
-	retval = -1;
+        retval = -1;
     gtk_widget_destroy(dialog);
     return retval;
 }
@@ -382,9 +382,9 @@ static void menu_cb_about(GtkAction *action, void *data)
                           "comments",        comments,
                           "copyright",       copyright,
                           "logo-icon-name",  GTK_STOCK_ABOUT,
-			  "website",         website,
+                          "website",         website,
                           "version",         PACKAGE_VERSION,
-			  "license",         "LGPLv2.1",
+                          "license",         "LGPLv2.1",
                           NULL);
 }
 
@@ -397,7 +397,7 @@ static gboolean delete_cb(GtkWidget *widget, GdkEvent *event, gpointer data)
 }
 
 static gboolean window_state_cb(GtkWidget *widget, GdkEventWindowState *event,
-				gpointer data)
+                                gpointer data)
 {
     struct spice_window *win = data;
     if (event->changed_mask & GDK_WINDOW_STATE_FULLSCREEN) {
@@ -509,75 +509,75 @@ static void restore_configuration(struct spice_window *win)
 
 static const GtkActionEntry entries[] = {
     {
-	.name        = "FileMenu",
-	.label       = "_File",
+        .name        = "FileMenu",
+        .label       = "_File",
     },{
-	.name        = "FileRecentMenu",
-	.label       = "_Recent",
+        .name        = "FileRecentMenu",
+        .label       = "_Recent",
     },{
-	.name        = "EditMenu",
-	.label       = "_Edit",
+        .name        = "EditMenu",
+        .label       = "_Edit",
     },{
-	.name        = "ViewMenu",
-	.label       = "_View",
+        .name        = "ViewMenu",
+        .label       = "_View",
     },{
-	.name        = "InputMenu",
-	.label       = "_Input",
+        .name        = "InputMenu",
+        .label       = "_Input",
     },{
-	.name        = "OptionMenu",
-	.label       = "_Options",
+        .name        = "OptionMenu",
+        .label       = "_Options",
     },{
-	.name        = "HelpMenu",
-	.label       = "_Help",
+        .name        = "HelpMenu",
+        .label       = "_Help",
     },{
 
-	/* File menu */
-	.name        = "Connect",
-	.stock_id    = GTK_STOCK_CONNECT,
-	.label       = N_("_Connect ..."),
-	.callback    = G_CALLBACK(menu_cb_connect),
+        /* File menu */
+        .name        = "Connect",
+        .stock_id    = GTK_STOCK_CONNECT,
+        .label       = N_("_Connect ..."),
+        .callback    = G_CALLBACK(menu_cb_connect),
     },{
-	.name        = "Close",
-	.stock_id    = GTK_STOCK_CLOSE,
-	.label       = N_("_Close"),
-	.callback    = G_CALLBACK(menu_cb_close),
+        .name        = "Close",
+        .stock_id    = GTK_STOCK_CLOSE,
+        .label       = N_("_Close"),
+        .callback    = G_CALLBACK(menu_cb_close),
         .accelerator = "", /* none (disable default "<control>W") */
     },{
 
-	/* Edit menu */
-	.name        = "CopyToGuest",
-	.stock_id    = GTK_STOCK_COPY,
-	.label       = N_("_Copy to guest"),
-	.callback    = G_CALLBACK(menu_cb_copy),
+        /* Edit menu */
+        .name        = "CopyToGuest",
+        .stock_id    = GTK_STOCK_COPY,
+        .label       = N_("_Copy to guest"),
+        .callback    = G_CALLBACK(menu_cb_copy),
         .accelerator = "", /* none (disable default "<control>C") */
     },{
-	.name        = "PasteFromGuest",
-	.stock_id    = GTK_STOCK_PASTE,
-	.label       = N_("_Paste from guest"),
-	.callback    = G_CALLBACK(menu_cb_paste),
+        .name        = "PasteFromGuest",
+        .stock_id    = GTK_STOCK_PASTE,
+        .label       = N_("_Paste from guest"),
+        .callback    = G_CALLBACK(menu_cb_paste),
         .accelerator = "", /* none (disable default "<control>V") */
     },{
 
-	/* View menu */
-	.name        = "Fullscreen",
-	.stock_id    = GTK_STOCK_FULLSCREEN,
-	.label       = N_("_Fullscreen"),
-	.callback    = G_CALLBACK(menu_cb_fullscreen),
+        /* View menu */
+        .name        = "Fullscreen",
+        .stock_id    = GTK_STOCK_FULLSCREEN,
+        .label       = N_("_Fullscreen"),
+        .callback    = G_CALLBACK(menu_cb_fullscreen),
         .accelerator = "<shift>F11",
     },{
 
-	/* Input menu */
-	.name        = "UngrabMouse",
-	.label       = N_("_Ungrab mouse"),
-	.callback    = G_CALLBACK(menu_cb_ungrab),
+        /* Input menu */
+        .name        = "UngrabMouse",
+        .label       = N_("_Ungrab mouse"),
+        .callback    = G_CALLBACK(menu_cb_ungrab),
         .accelerator = "<shift>F12",
     },{
 
-	/* Help menu */
-	.name        = "About",
-	.stock_id    = GTK_STOCK_ABOUT,
-	.label       = N_("_About ..."),
-	.callback    = G_CALLBACK(menu_cb_about),
+        /* Help menu */
+        .name        = "About",
+        .stock_id    = GTK_STOCK_ABOUT,
+        .label       = N_("_About ..."),
+        .callback    = G_CALLBACK(menu_cb_about),
     }
 };
 
@@ -591,33 +591,33 @@ static const char *spice_properties[] = {
 
 static const GtkToggleActionEntry tentries[] = {
     {
-	.name        = "grab-keyboard",
-	.label       = N_("Grab keyboard when active and focused"),
-	.callback    = G_CALLBACK(menu_cb_bool_prop),
+        .name        = "grab-keyboard",
+        .label       = N_("Grab keyboard when active and focused"),
+        .callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
-	.name        = "grab-mouse",
-	.label       = N_("Grab mouse in server mode (no tabled/vdagent)"),
-	.callback    = G_CALLBACK(menu_cb_bool_prop),
+        .name        = "grab-mouse",
+        .label       = N_("Grab mouse in server mode (no tabled/vdagent)"),
+        .callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
-	.name        = "resize-guest",
-	.label       = N_("Resize guest to match window size"),
-	.callback    = G_CALLBACK(menu_cb_bool_prop),
+        .name        = "resize-guest",
+        .label       = N_("Resize guest to match window size"),
+        .callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
-	.name        = "scaling",
-	.label       = N_("Scale display"),
-	.callback    = G_CALLBACK(menu_cb_bool_prop),
+        .name        = "scaling",
+        .label       = N_("Scale display"),
+        .callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
-	.name        = "auto-clipboard",
-	.label       = N_("Automagic clipboard sharing between host and guest"),
-	.callback    = G_CALLBACK(menu_cb_bool_prop),
+        .name        = "auto-clipboard",
+        .label       = N_("Automagic clipboard sharing between host and guest"),
+        .callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
-	.name        = "Statusbar",
-	.label       = N_("Statusbar"),
-	.callback    = G_CALLBACK(menu_cb_statusbar),
+        .name        = "Statusbar",
+        .label       = N_("Statusbar"),
+        .callback    = G_CALLBACK(menu_cb_statusbar),
     },{
-	.name        = "Toolbar",
-	.label       = N_("Toolbar"),
-	.callback    = G_CALLBACK(menu_cb_toolbar),
+        .name        = "Toolbar",
+        .label       = N_("Toolbar"),
+        .callback    = G_CALLBACK(menu_cb_toolbar),
     }
 };
 
@@ -700,29 +700,29 @@ get_nearest_output (GnomeRRConfig *configuration, int x, int y)
       int output_x, output_y, output_width, output_height;
 
       if (!(gnome_rr_output_info_is_connected (outputs[i]) && gnome_rr_output_info_is_active (outputs[i])))
-	continue;
+        continue;
 
       gnome_rr_output_info_get_geometry (outputs[i], &output_x, &output_y, &output_width, &output_height);
 
       if (x < output_x)
-	dist_x = output_x - x;
+        dist_x = output_x - x;
       else if (x >= output_x + output_width)
-	dist_x = x - (output_x + output_width) + 1;
+        dist_x = x - (output_x + output_width) + 1;
       else
-	dist_x = 0;
+        dist_x = 0;
 
       if (y < output_y)
-	dist_y = output_y - y;
+        dist_y = output_y - y;
       else if (y >= output_y + output_height)
-	dist_y = y - (output_y + output_height) + 1;
+        dist_y = y - (output_y + output_height) + 1;
       else
-	dist_y = 0;
+        dist_y = 0;
 
       if (MIN (dist_x, dist_y) < nearest_dist)
-	{
-	  nearest_dist = MIN (dist_x, dist_y);
-	  nearest_index = i;
-	}
+        {
+          nearest_dist = MIN (dist_x, dist_y);
+          nearest_index = i;
+        }
     }
 
   if (nearest_index != -1)
@@ -758,24 +758,24 @@ get_output_for_window(GnomeRRConfig *configuration, GdkWindow *window)
       gnome_rr_output_info_get_geometry (outputs[i], &output_rect.x, &output_rect.y, &output_rect.width, &output_rect.height);
 
       if (gnome_rr_output_info_is_connected (outputs[i]) && gdk_rectangle_intersect (&win_rect, &output_rect, &intersection))
-	{
-	  int area;
+        {
+          int area;
 
-	  area = intersection.width * intersection.height;
-	  if (area > largest_area)
-	    {
-	      largest_area = area;
-	      largest_index = i;
-	    }
-	}
+          area = intersection.width * intersection.height;
+          if (area > largest_area)
+            {
+              largest_area = area;
+              largest_index = i;
+            }
+        }
     }
 
   if (largest_index != -1)
     return outputs[largest_index];
   else
     return get_nearest_output (configuration,
-			       win_rect.x + win_rect.width / 2,
-			       win_rect.y + win_rect.height / 2);
+                               win_rect.x + win_rect.width / 2,
+                               win_rect.y + win_rect.height / 2);
 }
 
 static void
@@ -920,25 +920,25 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     snprintf(title, sizeof(title), _("spice display %d"), id);
     gtk_window_set_title(GTK_WINDOW(win->toplevel), title);
     g_signal_connect(G_OBJECT(win->toplevel), "window-state-event",
-		     G_CALLBACK(window_state_cb), win);
+                     G_CALLBACK(window_state_cb), win);
     g_signal_connect(G_OBJECT(win->toplevel), "delete-event",
-		     G_CALLBACK(delete_cb), win);
+                     G_CALLBACK(delete_cb), win);
 
     /* menu + toolbar */
     win->ui = gtk_ui_manager_new();
     win->ag = gtk_action_group_new("MenuActions");
     gtk_action_group_add_actions(win->ag, entries, G_N_ELEMENTS(entries), win);
     gtk_action_group_add_toggle_actions(win->ag, tentries,
-					G_N_ELEMENTS(tentries), win);
+                                        G_N_ELEMENTS(tentries), win);
     gtk_ui_manager_insert_action_group(win->ui, win->ag, 0);
     gtk_window_add_accel_group(GTK_WINDOW(win->toplevel),
                                gtk_ui_manager_get_accel_group(win->ui));
 
     err = NULL;
     if (!gtk_ui_manager_add_ui_from_string(win->ui, ui_xml, -1, &err)) {
-	g_warning("building menus failed: %s", err->message);
-	g_error_free(err);
-	exit(1);
+        g_warning("building menus failed: %s", err->message);
+        g_error_free(err);
+        exit(1);
     }
     win->menubar = gtk_ui_manager_get_widget(win->ui, "/MainMenu");
     win->toolbar = gtk_ui_manager_get_widget(win->ui, "/ToolBar");
@@ -969,11 +969,11 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     spice_grab_sequence_free(seq);
 
     g_signal_connect(G_OBJECT(win->spice), "mouse-grab",
-		     G_CALLBACK(mouse_grab_cb), win);
+                     G_CALLBACK(mouse_grab_cb), win);
     g_signal_connect(G_OBJECT(win->spice), "keyboard-grab",
-		     G_CALLBACK(keyboard_grab_cb), win);
+                     G_CALLBACK(keyboard_grab_cb), win);
     g_signal_connect(G_OBJECT(win->spice), "grab-keys-pressed",
-		     G_CALLBACK(grab_keys_pressed_cb), win);
+                     G_CALLBACK(grab_keys_pressed_cb), win);
 
     /* status line */
     win->statusbar = gtk_hbox_new(FALSE, 1);
