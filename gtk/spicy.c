@@ -180,6 +180,11 @@ static void recent_selection_changed_dialog_cb(GtkRecentChooser *chooser, gpoint
 
     gtk_recent_info_unref(info);
 }
+
+static void recent_item_activated_dialog_cb(GtkRecentChooser *chooser, gpointer data)
+{
+   gtk_dialog_response (GTK_DIALOG (data), GTK_RESPONSE_ACCEPT);
+}
 #endif
 
 static int connect_dialog(SpiceSession *session)
@@ -236,6 +241,8 @@ static int connect_dialog(SpiceSession *session)
     gtk_recent_chooser_set_local_only(GTK_RECENT_CHOOSER(recent), FALSE);
     g_signal_connect(recent, "selection-changed",
                      G_CALLBACK(recent_selection_changed_dialog_cb), session);
+    g_signal_connect(recent, "item-activated",
+                     G_CALLBACK(recent_item_activated_dialog_cb), dialog);
 #endif
     /* show and wait for response */
     gtk_widget_show_all(dialog);
