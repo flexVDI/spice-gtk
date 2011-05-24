@@ -237,18 +237,14 @@ static int connect_dialog(GtkWidget *parent, SpiceSession *session)
 #endif
     /* show and wait for response */
     gtk_widget_show_all(dialog);
-    switch (gtk_dialog_run(GTK_DIALOG(dialog))) {
-    case GTK_RESPONSE_ACCEPT:
+    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
         for (i = 0; i < SPICE_N_ELEMENTS(connect_entries); i++) {
             txt = gtk_entry_get_text(GTK_ENTRY(connect_entries[i].entry));
             g_object_set(session, connect_entries[i].prop, txt, NULL);
         }
 	retval = 0;
-	break;
-    default:
+    } else
 	retval = -1;
-	break;
-    }
     gtk_widget_destroy(dialog);
     return retval;
 }
