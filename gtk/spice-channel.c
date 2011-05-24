@@ -1883,14 +1883,12 @@ reconnect:
         verify = spice_session_get_verify(c->session);
         if (verify &
             (SPICE_SESSION_VERIFY_PUBKEY | SPICE_SESSION_VERIFY_HOSTNAME)) {
-            gchar *ca_file;
+            const gchar *ca_file = spice_session_get_ca_file (c->session);
 
-            g_object_get(c->session, "ca-file", &ca_file, NULL);
             if (ca_file) {
                 rc = SSL_CTX_load_verify_locations(c->ctx, ca_file, NULL);
                 if (rc != 1)
                     g_warning("loading ca certs from %s failed", ca_file);
-                g_free(ca_file);
 
                 if (rc != 1) {
                     if (verify & SPICE_SESSION_VERIFY_PUBKEY) {
@@ -1899,6 +1897,15 @@ reconnect:
                     } else
                         goto cleanup;
                 }
+            }
+        }
+
+        {
+            const gchar *ciphers = spice_session_get_ciphers(c->session);
+            if (ciphers != NULL) {
+                rc = SSL_CTX_set_cipher_list(c->ctx, ciphers);
+                if (rc != 1)
+                    g_warning("loading cipher list %s failed", ciphers);
             }
         }
 

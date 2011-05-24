@@ -50,6 +50,8 @@ guint spice_session_get_verify(SpiceSession *session);
 const gchar* spice_session_get_password(SpiceSession *session);
 const gchar* spice_session_get_host(SpiceSession *session);
 const gchar* spice_session_get_cert_subject(SpiceSession *session);
+const gchar* spice_session_get_ciphers(SpiceSession *session);
+const gchar* spice_session_get_ca_file(SpiceSession *session);
 
 void spice_session_get_caches(SpiceSession *session,
                               display_cache **images,

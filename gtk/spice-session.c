@@ -39,6 +39,7 @@ struct spice_session {
     char              *tls_port;
     char              *password;
     char              *ca_file;
+    char              *ciphers;
     GByteArray        *pubkey;
     char              *cert_subject;
     guint             verify;
@@ -107,6 +108,7 @@ enum {
     PROP_TLS_PORT,
     PROP_PASSWORD,
     PROP_CA_FILE,
+    PROP_CIPHERS,
     PROP_IPV4,
     PROP_IPV6,
     PROP_PROTOCOL,
@@ -207,6 +209,7 @@ spice_session_finalize(GObject *gobject)
     g_free(s->tls_port);
     g_free(s->password);
     g_free(s->ca_file);
+    g_free(s->ciphers);
     g_free(s->cert_subject);
 
     spice_session_palettes_clear(session);
@@ -328,6 +331,9 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_CA_FILE:
         g_value_set_string(value, s->ca_file);
 	break;
+    case PROP_CIPHERS:
+        g_value_set_string(value, s->ciphers);
+	break;
     case PROP_PROTOCOL:
         g_value_set_int(value, s->protocol);
 	break;
@@ -385,6 +391,10 @@ static void spice_session_set_property(GObject      *gobject,
     case PROP_CA_FILE:
         g_free(s->ca_file);
         s->ca_file = g_value_dup_string(value);
+        break;
+    case PROP_CIPHERS:
+        g_free(s->ciphers);
+        s->ciphers = g_value_dup_string(value);
         break;
     case PROP_PROTOCOL:
         s->protocol = g_value_get_int(value);
@@ -472,6 +482,15 @@ static void spice_session_class_init(SpiceSessionClass *klass)
          g_param_spec_string("ca-file",
                              "CA file",
                              "File holding the CA certificates",
+                             NULL,
+                             G_PARAM_READWRITE |
+                             G_PARAM_STATIC_STRINGS));
+
+    g_object_class_install_property
+        (gobject_class, PROP_CIPHERS,
+         g_param_spec_string("ciphers",
+                             "Ciphers",
+                             "SSL cipher list",
                              NULL,
                              G_PARAM_READWRITE |
                              G_PARAM_STATIC_STRINGS));
@@ -606,11 +625,20 @@ SpiceSession *spice_session_new_from_session(SpiceSession *session)
                                                     NULL));
     spice_session *c = copy->priv, *s = session->priv;
 
+    g_warn_if_fail (c->host == NULL);
+    g_warn_if_fail (c->tls_port == NULL);
+    g_warn_if_fail (c->password == NULL);
+    g_warn_if_fail (c->ca_file == NULL);
+    g_warn_if_fail (c->ciphers == NULL);
+    g_warn_if_fail (c->cert_subject == NULL);
+    g_warn_if_fail (c->pubkey == NULL);
+
     g_object_get(session,
                  "host", &c->host,
                  "tls-port", &c->tls_port,
                  "password", &c->password,
                  "ca-file", &c->ca_file,
+                 "ciphers", &c->ciphers,
                  "cert-subject", &c->cert_subject,
                  "pubkey", &c->pubkey,
                  "verify", &c->verify,
@@ -1131,6 +1159,24 @@ const gchar* spice_session_get_cert_subject(SpiceSession *session)
 
     g_return_val_if_fail(s != NULL, NULL);
     return s->cert_subject;
+}
+
+G_GNUC_INTERNAL
+const gchar* spice_session_get_ciphers(SpiceSession *session)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_val_if_fail(s != NULL, NULL);
+    return s->ciphers;
+}
+
+G_GNUC_INTERNAL
+const gchar* spice_session_get_ca_file(SpiceSession *session)
+{
+    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_val_if_fail(s != NULL, NULL);
+    return s->ca_file;
 }
 
 G_GNUC_INTERNAL
