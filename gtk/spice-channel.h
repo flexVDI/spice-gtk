@@ -94,7 +94,7 @@ struct _SpiceChannelClass
     gchar _spice_reserved[SPICE_RESERVED_PADDING - 4 * sizeof(void*)];
 };
 
-GType spice_channel_get_type(void) G_GNUC_CONST;
+GType spice_channel_get_type(void);
 
 typedef void (*spice_msg_handler)(SpiceChannel *channel, spice_msg_in *in);
 

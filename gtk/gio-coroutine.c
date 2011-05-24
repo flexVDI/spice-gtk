@@ -45,7 +45,7 @@ GIOCondition g_io_wait(GSocket *sock, GIOCondition cond)
 }
 
 
-GIOCondition g_io_wait_interruptable(struct wait_queue *wait,
+GIOCondition g_io_wait_interruptible(struct wait_queue *wait,
                                      GSocket *sock,
                                      GIOCondition cond)
 {

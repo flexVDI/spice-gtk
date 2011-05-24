@@ -234,13 +234,11 @@ class EnumBaseType(Type):
         return codegen.prefix_camel(self.name)
 
     def c_enumname(self, value):
-        if self.has_attr("prefix"):
-            return self.attributes["prefix"][0] + self.names[value]
-        return codegen.prefix_underscore_upper(self.name.upper(), self.names[value])
+        self.c_enumname_by_name(self.names[value])
 
     def c_enumname_by_name(self, name):
         if self.has_attr("prefix"):
-            return self.attributes["prefix"][0] + self.names[value]
+            return self.attributes["prefix"][0] + name
         return codegen.prefix_underscore_upper(self.name.upper(), name)
 
     def is_primitive(self):

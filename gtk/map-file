@@ -1,13 +1,12 @@
 SPICEGTK_1 {
 global:
-spice_channel_get_type;
-spice_session_get_type;
 spice_audio_get_type;
 spice_audio_new;
 spice_channel_connect;
 spice_channel_destroy;
 spice_channel_disconnect;
 spice_channel_event_get_type;
+spice_channel_get_type;
 spice_channel_new;
 spice_channel_open_fd;
 spice_channel_set_capability;
@@ -59,10 +58,11 @@ spice_record_send_data;
 spice_session_connect;
 spice_session_disconnect;
 spice_session_get_channels;
+spice_session_get_type;
+spice_session_migration_get_type;
 spice_session_new;
 spice_session_open_fd;
 spice_session_verify_get_type;
-spice_session_migration_get_type;
 spice_util_get_debug;
 spice_util_get_version_string;
 spice_util_set_debug;

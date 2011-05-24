@@ -144,19 +144,13 @@ libspice_client_glib_2_0_la_LIBADD =	\
 
 libspice_client_glib_2_0_la_SOURCES =	\
 	spice-audio.c			\
-	spice-audio.h			\
-	spice-client.h			\
 	spice-common.h			\
-	spice-util.h			\
 	spice-util.c			\
 	\
 	spice-session.c			\
-	spice-session.h			\
 	spice-session-priv.h		\
 	spice-channel.c			\
-	spice-channel.h			\
 	spice-channel-cache.h		\
-	spice-glib-enums.h		\
 	spice-glib-enums.c		\
 	spice-channel-priv.h		\
 	spice-marshal.c			\
@@ -170,19 +164,13 @@ libspice_client_glib_2_0_la_SOURCES =	\
 	gio-coroutine.h			\
 	\
 	channel-base.c			\
-	channel-main.h			\
-	channel-main.c			\
-	channel-display.h		\
+	channel-cursor.c		\
 	channel-display.c		\
 	channel-display-priv.h		\
 	channel-display-mjpeg.c		\
-	channel-cursor.h		\
-	channel-cursor.c		\
-	channel-inputs.h		\
 	channel-inputs.c		\
-	channel-playback.h		\
+	channel-main.c			\
 	channel-playback.c		\
-	channel-record.h		\
 	channel-record.c		\
 	\
 	decode.h			\
@@ -247,10 +235,10 @@ libspice_client_glibinclude_HEADERS =	\
 	spice-channel.h			\
 	spice-glib-enums.h		\
 	spice-util.h			\
-	channel-main.h			\
-	channel-display.h		\
 	channel-cursor.h		\
+	channel-display.h		\
 	channel-inputs.h		\
+	channel-main.h			\
 	channel-playback.h		\
 	channel-record.h		\
 	$(NULL)

@@ -700,8 +700,8 @@ reread:
 
     if (ret == -1) {
         if (cond != 0) {
-            if (c->wait_interruptable) {
-                if (!g_io_wait_interruptable(&c->wait, c->sock, cond)) {
+            if (c->wait_interruptible) {
+                if (!g_io_wait_interruptible(&c->wait, c->sock, cond)) {
                     // SPICE_DEBUG("Read blocking interrupted %d", priv->has_error);
                     return -EAGAIN;
                 }
@@ -1529,8 +1529,8 @@ void spice_channel_wakeup(SpiceChannel *channel)
     g_io_wakeup(&c->wait);
 }
 
-/* coroutine context if @buffered is TRUE,
-   system context if @buffered is FALSE */
+/* coroutine context if @buffered is FALSE,
+   system context if @buffered is TRUE */
 static void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out, gboolean buffered)
 {
     uint8_t *data;
@@ -1787,7 +1787,7 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
         }
 
         SPICE_CHANNEL_GET_CLASS(channel)->iterate_write(channel);
-        ret = g_io_wait_interruptable(&c->wait, c->sock, G_IO_IN);
+        ret = g_io_wait_interruptible(&c->wait, c->sock, G_IO_IN);
 #ifdef WIN32
         /* FIXME: windows gsocket is buggy, it doesn't return correct condition... */
         ret = g_socket_condition_check(c->sock, G_IO_IN);

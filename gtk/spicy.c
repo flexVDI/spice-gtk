@@ -32,8 +32,6 @@
 #include "spice-common.h"
 #include "spice-cmdline.h"
 
-#include "spice-cmdline.h"
-
 /* config */
 static gboolean fullscreen = false;
 static gboolean version = false;
