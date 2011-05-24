@@ -180,7 +180,7 @@ static void recent_item_activated_dialog_cb(GtkRecentChooser *chooser, gpointer 
 }
 #endif
 
-static int connect_dialog(GtkWidget *parent, SpiceSession *session)
+static int connect_dialog(SpiceSession *session)
 {
     GtkWidget *dialog, *area, *label;
     GtkTable *table;
@@ -189,7 +189,7 @@ static int connect_dialog(GtkWidget *parent, SpiceSession *session)
 
     /* Create the widgets */
     dialog = gtk_dialog_new_with_buttons(_("Connect to SPICE"),
-					 parent ? GTK_WINDOW(parent) : NULL,
+					 NULL,
                                          GTK_DIALOG_DESTROY_WITH_PARENT,
 					 GTK_STOCK_OK,
 					 GTK_RESPONSE_ACCEPT,
@@ -1092,7 +1092,7 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
     case SPICE_CHANNEL_ERROR_LINK:
     case SPICE_CHANNEL_ERROR_CONNECT:
         g_message("main channel: failed to connect");
-        rc = connect_dialog(NULL, conn->session);
+        rc = connect_dialog(conn->session);
         if (rc == 0) {
             connection_connect(conn);
         } else {
