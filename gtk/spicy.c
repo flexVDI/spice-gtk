@@ -150,7 +150,7 @@ static struct {
 };
 
 #ifndef WIN32
-static void recent_item_activated_dialog_cb(GtkRecentChooser *chooser, gpointer data)
+static void recent_selection_changed_dialog_cb(GtkRecentChooser *chooser, gpointer data)
 {
     GtkRecentInfo *info;
     gchar *txt = NULL;
@@ -158,6 +158,8 @@ static void recent_item_activated_dialog_cb(GtkRecentChooser *chooser, gpointer 
     SpiceSession *session = data;
 
     info = gtk_recent_chooser_get_current_item(chooser);
+    if (info == NULL)
+        return;
 
     uri = gtk_recent_info_get_uri(info);
     g_return_if_fail(uri != NULL);
@@ -232,8 +234,8 @@ static int connect_dialog(SpiceSession *session)
     gtk_recent_filter_add_mime_type(rfilter, "application/x-spice");
     gtk_recent_chooser_set_filter(GTK_RECENT_CHOOSER(recent), rfilter);
     gtk_recent_chooser_set_local_only(GTK_RECENT_CHOOSER(recent), FALSE);
-    g_signal_connect(recent, "item-activated",
-                     G_CALLBACK(recent_item_activated_dialog_cb), session);
+    g_signal_connect(recent, "selection-changed",
+                     G_CALLBACK(recent_selection_changed_dialog_cb), session);
 #endif
     /* show and wait for response */
     gtk_widget_show_all(dialog);
