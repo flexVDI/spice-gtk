@@ -1882,21 +1882,21 @@ reconnect:
 
         verify = spice_session_get_verify(c->session);
         if (verify &
-            (SPICE_SESSION_VERIFY_PUBKEY | SPICE_SESSION_VERIFY_HOSTNAME)) {
+            (SPICE_SESSION_VERIFY_SUBJECT | SPICE_SESSION_VERIFY_HOSTNAME)) {
             const gchar *ca_file = spice_session_get_ca_file (c->session);
 
-            if (ca_file) {
-                rc = SSL_CTX_load_verify_locations(c->ctx, ca_file, NULL);
-                if (rc != 1)
-                    g_warning("loading ca certs from %s failed", ca_file);
+            g_warn_if_fail(ca_file != NULL);
+            SPICE_DEBUG("CA file: %s", ca_file);
+            rc = SSL_CTX_load_verify_locations(c->ctx, ca_file, NULL);
+            if (rc != 1)
+                g_warning("loading ca certs from %s failed", ca_file);
 
-                if (rc != 1) {
-                    if (verify & SPICE_SESSION_VERIFY_PUBKEY) {
-                        g_warning("only pubkey active");
-                        verify = SPICE_SESSION_VERIFY_PUBKEY;
-                    } else
-                        goto cleanup;
-                }
+            if (rc != 1) {
+                if (verify & SPICE_SESSION_VERIFY_PUBKEY) {
+                    g_warning("only pubkey active");
+                    verify = SPICE_SESSION_VERIFY_PUBKEY;
+                } else
+                    goto cleanup;
             }
         }
 
