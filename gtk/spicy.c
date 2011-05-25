@@ -1432,6 +1432,7 @@ int main(int argc, char *argv[])
         g_print(_("option parsing failed: %s\n"), error->message);
         exit(1);
     }
+    g_option_context_free(context);
 
     if (version) {
         g_print("spicy " PACKAGE_VERSION "\n");
@@ -1451,6 +1452,7 @@ int main(int argc, char *argv[])
 
     if (connections > 0)
         g_main_loop_run(mainloop);
+    g_main_loop_unref(mainloop);
 
     if ((conf = g_key_file_to_data(keyfile, NULL, &error)) == NULL ||
         !g_file_set_contents(conf_file, conf, -1, &error)) {
@@ -1459,9 +1461,11 @@ int main(int argc, char *argv[])
         error = NULL;
     }
 
-    g_free(conf_file);
-
     resolution_restore_all();
+
+    g_object_unref(rrscreen);
+    g_free(conf_file);
+    g_key_file_free(keyfile);
 
     return 0;
 }
