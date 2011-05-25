@@ -613,6 +613,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
  **/
 SpiceSession *spice_session_new(void)
 {
+    SPICE_DEBUG("New session from " PACKAGE_STRING);
     return SPICE_SESSION(g_object_new(SPICE_TYPE_SESSION, NULL));
 }
 
