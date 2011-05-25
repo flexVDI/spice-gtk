@@ -404,10 +404,6 @@
 
 
 
-;; From spice-channel-enums.h
-
-
-
 ;; From spice-glib-enums.h
 
 (define-function spice_channel_event_get_type
@@ -450,6 +446,33 @@
 (define-function spice_util_get_version_string
   (c-name "spice_util_get_version_string")
   (return-type "const-gchar*")
+)
+
+
+
+;; From channel-cursor.h
+
+(define-function spice_cursor_channel_get_type
+  (c-name "spice_cursor_channel_get_type")
+  (return-type "GType")
+)
+
+
+
+;; From channel-display.h
+
+(define-function spice_display_channel_get_type
+  (c-name "spice_display_channel_get_type")
+  (return-type "GType")
+)
+
+
+
+;; From channel-inputs.h
+
+(define-function spice_inputs_channel_get_type
+  (c-name "spice_inputs_channel_get_type")
+  (return-type "GType")
 )
 
 
@@ -539,33 +562,6 @@
     '("guint" "selection")
     '("guint32" "type")
   )
-)
-
-
-
-;; From channel-display.h
-
-(define-function spice_display_channel_get_type
-  (c-name "spice_display_channel_get_type")
-  (return-type "GType")
-)
-
-
-
-;; From channel-cursor.h
-
-(define-function spice_cursor_channel_get_type
-  (c-name "spice_cursor_channel_get_type")
-  (return-type "GType")
-)
-
-
-
-;; From channel-inputs.h
-
-(define-function spice_inputs_channel_get_type
-  (c-name "spice_inputs_channel_get_type")
-  (return-type "GType")
 )
 
 
