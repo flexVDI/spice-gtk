@@ -247,7 +247,7 @@ libspice_client_glibinclude_HEADERS =	\
 	$(NULL)
 
 # file for API compatibility, but we don't want warning during our compilation
-libspice_client_glibinclude_DATA =	\
+dist_libspice_client_glibinclude_DATA =	\
 	spice-channel-enums.h		\
 	$(NULL)
 
