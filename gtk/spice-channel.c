@@ -841,6 +841,7 @@ static void spice_channel_send_spice_ticket(SpiceChannel *channel)
 
     spice_channel_write(channel, encrypted, nRSASize);
     memset(encrypted, 0, nRSASize);
+    EVP_PKEY_free(pubkey);
     BIO_free(bioKey);
     g_free(password);
 }
@@ -940,6 +941,7 @@ static void spice_channel_send_link(SpiceChannel *channel)
     }
 
     spice_channel_write(channel, buffer, p - buffer);
+    free(buffer);
 }
 
 /* coroutine context */

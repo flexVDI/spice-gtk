@@ -191,7 +191,6 @@ static int connect_dialog(SpiceSession *session)
 {
     GtkWidget *dialog, *area, *label;
     GtkTable *table;
-    const gchar *txt;
     int i, retval;
 
     /* Create the widgets */
@@ -211,6 +210,7 @@ static int connect_dialog(SpiceSession *session)
     gtk_table_set_col_spacings(table, 5);
 
     for (i = 0; i < SPICE_N_ELEMENTS(connect_entries); i++) {
+        gchar *txt;
         label = gtk_label_new(connect_entries[i].text);
         gtk_misc_set_alignment(GTK_MISC(label), 0, 0.5);
         gtk_table_attach_defaults(table, label, 0, 1, i, i+1);
@@ -221,6 +221,7 @@ static int connect_dialog(SpiceSession *session)
                 __FUNCTION__, i, connect_entries[i].prop, txt);
         if (txt) {
             gtk_entry_set_text(GTK_ENTRY(connect_entries[i].entry), txt);
+            g_free(txt);
         }
     }
 
@@ -248,6 +249,7 @@ static int connect_dialog(SpiceSession *session)
     gtk_widget_show_all(dialog);
     if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
         for (i = 0; i < SPICE_N_ELEMENTS(connect_entries); i++) {
+            const gchar *txt;
             txt = gtk_entry_get_text(GTK_ENTRY(connect_entries[i].entry));
             g_object_set(session, connect_entries[i].prop, txt, NULL);
         }
@@ -1465,6 +1467,7 @@ int main(int argc, char *argv[])
 
     g_object_unref(rrscreen);
     g_free(conf_file);
+    g_free(conf);
     g_key_file_free(keyfile);
 
     return 0;

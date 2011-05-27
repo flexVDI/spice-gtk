@@ -88,6 +88,7 @@ SpiceGrabSequence *spice_grab_sequence_new_from_string(const gchar *str)
                         g_critical("Invalid key: %s", keysymstr[i]);
                 }
         }
+	g_strfreev(keysymstr);
 
 	return sequence;
 
@@ -121,6 +122,7 @@ SpiceGrabSequence *spice_grab_sequence_copy(SpiceGrabSequence *srcSequence)
  **/
 void spice_grab_sequence_free(SpiceGrabSequence *sequence)
 {
+	g_free(sequence->keysyms);
 	g_slice_free(SpiceGrabSequence, sequence);
 }
 

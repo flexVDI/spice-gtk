@@ -225,6 +225,8 @@ static void spice_display_finalize(GObject *obj)
         spice_grab_sequence_free(d->grabseq);
         d->grabseq = NULL;
     }
+    g_free(d->activeseq);
+    d->activeseq = NULL;
 
     for (i = 0; i < CLIPBOARD_LAST; ++i) {
         g_free(d->clip_targets[i]);
@@ -288,12 +290,12 @@ void spice_display_set_grab_keys(SpiceDisplay *display, SpiceGrabSequence *seq)
 
     if (d->grabseq) {
         spice_grab_sequence_free(d->grabseq);
-        g_free(d->activeseq);
     }
     if (seq)
         d->grabseq = spice_grab_sequence_copy(seq);
     else
         d->grabseq = spice_grab_sequence_new_from_string("Control_L+Alt_L");
+    g_free(d->activeseq);
     d->activeseq = g_new0(gboolean, d->grabseq->nkeysyms);
 }
 
@@ -1839,6 +1841,7 @@ SpiceDisplay *spice_display_new(SpiceSession *session, int id)
     SpiceDisplay *display;
     spice_display *d;
     GList *list;
+    GList *it;
 
     display = g_object_new(SPICE_TYPE_DISPLAY, NULL);
     d = SPICE_DISPLAY_GET_PRIVATE(display);
@@ -1850,8 +1853,8 @@ SpiceDisplay *spice_display_new(SpiceSession *session, int id)
     g_signal_connect(session, "channel-destroy",
                      G_CALLBACK(channel_destroy), display);
     list = spice_session_get_channels(session);
-    for (list = g_list_first(list); list != NULL; list = g_list_next(list)) {
-        channel_new(session, list->data, (gpointer*)display);
+    for (it = g_list_first(list); it != NULL; it = g_list_next(it)) {
+        channel_new(session, it->data, (gpointer*)display);
     }
     g_list_free(list);
 
