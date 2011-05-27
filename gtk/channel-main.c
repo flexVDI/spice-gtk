@@ -1125,13 +1125,9 @@ typedef struct channel_new {
 /* main context */
 static gboolean _channel_new(channel_new_t *c)
 {
-    SpiceChannel *channel;
-
     g_return_val_if_fail(c != NULL, FALSE);
 
-    channel = spice_channel_new(c->session, c->type, c->id);
-    if (channel == NULL)
-        return FALSE;
+    spice_channel_new(c->session, c->type, c->id);
 
     g_object_unref(c->session);
     g_free(c);
