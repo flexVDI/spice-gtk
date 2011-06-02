@@ -478,6 +478,7 @@ static void keyboard_grab_cb(GtkWidget *widget, gint grabbed, gpointer data)
 static void restore_configuration(struct spice_window *win)
 {
     gboolean state;
+    gchar *str;
     gchar **keys = NULL;
     gsize nkeys, i;
     GError *error = NULL;
@@ -495,6 +496,8 @@ static void restore_configuration(struct spice_window *win)
         g_return_if_fail(keys != NULL);
 
     for (i = 0; i < nkeys; ++i) {
+        if (g_str_equal(keys[i], "grab-sequence"))
+            continue;
         state = g_key_file_get_boolean(keyfile, "general", keys[i], &error);
         if (error != NULL) {
             g_clear_error(&error);
@@ -504,6 +507,16 @@ static void restore_configuration(struct spice_window *win)
     }
 
     g_strfreev(keys);
+
+    str = g_key_file_get_string(keyfile, "general", "grab-sequence", &error);
+    if (error == NULL) {
+        SpiceGrabSequence *seq = spice_grab_sequence_new_from_string(str);
+        spice_display_set_grab_keys(SPICE_DISPLAY(win->spice), seq);
+        spice_grab_sequence_free(seq);
+        g_free(str);
+    }
+    g_clear_error(&error);
+
 
     state = g_key_file_get_boolean(keyfile, "ui", "toolbar", &error);
     if (error == NULL)
