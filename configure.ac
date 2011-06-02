@@ -32,7 +32,6 @@ if test x"$ac_cv_prog_cc_c99" = xno; then
     AC_MSG_ERROR([C99 compiler is required.])
 fi
 
-AC_PROG_CXX
 AC_PROG_INSTALL
 AC_CANONICAL_HOST
 AC_PROG_LIBTOOL
@@ -497,7 +496,6 @@ AC_MSG_NOTICE([
 
         prefix:                   ${prefix}
         c compiler:               ${CC}
-        c++ compiler:             ${CXX}
 
         Coroutine:                ${with_coroutine}
         Audio:                    ${with_audio}
