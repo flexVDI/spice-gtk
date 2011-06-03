@@ -30,7 +30,7 @@ static void mjpeg_src_init(struct jpeg_decompress_struct *cinfo)
     cinfo->src->bytes_in_buffer = data->data_size;
 }
 
-static int mjpeg_src_fill(struct jpeg_decompress_struct *cinfo)
+static boolean mjpeg_src_fill(struct jpeg_decompress_struct *cinfo)
 {
     g_critical("need more input data");
     return 0;
