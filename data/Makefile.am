@@ -12,9 +12,10 @@ NULL=
 #@INTLTOOL_XML_RULE@
 
 EXTRA_DIST =					\
-	spicy-for-windows.nsis			\
+	spicy.nsis				\
 	spice-mime.xml.in spicy.desktop.in      \
 	spice-protocol.vapi			\
+	gtkrc					\
 	$(desktop_in_files)			\
 	$(NULL)
 

@@ -480,6 +480,7 @@ common/win/Makefile
 common/win/my_getopt-1.5/Makefile
 data/Makefile
 data/spicy.desktop.in
+data/spicy.nsis
 po/Makefile.in
 python_modules/Makefile
 gtk/Makefile
