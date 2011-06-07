@@ -170,10 +170,15 @@ AS_IF([test "x$have_x11" = "xyes"], [AC_DEFINE([HAVE_X11], 1, [Have x11?])])
 
 AM_CONDITIONAL([WITH_DISPLAY_X11], [test "x$have_x11" = "xyes"])
 
-PKG_CHECK_MODULES(XRANDR, x11 xrandr, [have_xrandr=yes], [have_xrandr=no])
-AC_SUBST(XRANDR_CFLAGS)
-AC_SUBST(XRANDR_LIBS)
-AS_IF([test "x$have_xrandr" = "xyes"], [AC_DEFINE([HAVE_RANDR], 1, [Have xrandr?])])
+if [test "x$have_x11" = "xyes" ]
+then
+  PKG_CHECK_MODULES(XRANDR, x11 xrandr, [have_xrandr=yes], [have_xrandr=no])
+  AC_SUBST(XRANDR_CFLAGS)
+  AC_SUBST(XRANDR_LIBS)
+  AS_IF([test "x$have_xrandr" = "xyes"], [AC_DEFINE([HAVE_RANDR], 1, [Have xrandr?])])
+
+  AC_CHECK_HEADERS([X11/XKBlib.h])
+fi
 
 AC_ARG_WITH([x11],
     AS_HELP_STRING([--with-x11], [Use x11/shm display backend instead of cairo.]))
@@ -191,8 +196,6 @@ else
   AC_MSG_RESULT([cairo])
 fi
 AM_CONDITIONAL([WITH_X11], [test "x$with_x11" = "xyes"])
-
-AC_CHECK_HEADERS([X11/XKBlib.h])
 
 AC_ARG_WITH(pnp-ids-path,
               [AC_HELP_STRING([--with-pnp-ids-path],
