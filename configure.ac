@@ -165,9 +165,7 @@ PKG_CHECK_MODULES(GTK, gtk+-$GTK_API_VERSION >= $GTK_REQUIRED)
 AC_SUBST(GTK_CFLAGS)
 AC_SUBST(GTK_LIBS)
 
-PKG_CHECK_MODULES(X11, x11, [have_x11=yes], [have_x11=no])
-AC_SUBST(X11_CFLAGS)
-AC_SUBST(X11_LIBS)
+PKG_CHECK_EXISTS([gtk+-x11-$with_gtk], [have_x11=yes], [have_x11=no])
 AS_IF([test "x$have_x11" = "xyes"], [AC_DEFINE([HAVE_X11], 1, [Have x11?])])
 
 AM_CONDITIONAL([WITH_DISPLAY_X11], [test "x$have_x11" = "xyes"])
