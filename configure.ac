@@ -186,12 +186,10 @@ then
     AC_MSG_ERROR([X11 SHM backend is not compatible with GTK3])
   fi
   AC_MSG_RESULT([x11])
+  AC_DEFINE([WITH_X11], 1, [Use X11 backend?])
 else
   AC_MSG_RESULT([cairo])
 fi
-
-AS_IF([test "x$with_x11" = "xyes"],
-      [AC_DEFINE([WITH_X11], 1, [Use X11 backend?])])
 AM_CONDITIONAL([WITH_X11], [test "x$with_x11" = "xyes"])
 
 AC_CHECK_HEADERS([X11/XKBlib.h])
