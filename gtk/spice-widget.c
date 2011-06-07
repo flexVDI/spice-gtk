@@ -25,6 +25,10 @@
 #include <X11/XKBlib.h>
 #include <gdk/gdkx.h>
 #endif
+#ifdef WIN32
+#include <windows.h>
+#include <gdk/gdkwin32.h>
+#endif
 
 #include "spice-widget.h"
 #include "spice-widget-priv.h"
@@ -95,6 +99,10 @@ enum {
 };
 
 static guint signals[SPICE_DISPLAY_LAST_SIGNAL];
+
+#ifdef WIN32
+static HWND focus_window = NULL;
+#endif
 
 static void try_keyboard_grab(SpiceDisplay *display);
 static void try_keyboard_ungrab(SpiceDisplay *display);
@@ -299,6 +307,37 @@ void spice_display_set_grab_keys(SpiceDisplay *display, SpiceGrabSequence *seq)
     d->activeseq = g_new0(gboolean, d->grabseq->nkeysyms);
 }
 
+#ifdef WIN32
+static LRESULT CALLBACK keyboard_hook_cb(int code, WPARAM wparam, LPARAM lparam)
+{
+    if  (focus_window && code == HC_ACTION) {
+        KBDLLHOOKSTRUCT *hooked = (KBDLLHOOKSTRUCT*)lparam;
+        DWORD dwmsg = (hooked->flags << 24) | (hooked->scanCode << 16) | 1;
+
+        if (hooked->vkCode == VK_NUMLOCK || hooked->vkCode == VK_RSHIFT) {
+            dwmsg &= ~(1 << 24);
+            SendMessage(focus_window, wparam, hooked->vkCode, dwmsg);
+        }
+        switch (hooked->vkCode) {
+        case VK_CAPITAL:
+        case VK_SCROLL:
+        case VK_NUMLOCK:
+        case VK_LSHIFT:
+        case VK_RSHIFT:
+        case VK_LCONTROL:
+        case VK_RCONTROL:
+        case VK_LMENU:
+        case VK_RMENU:
+            break;
+        default:
+            SendMessage(focus_window, wparam, hooked->vkCode, dwmsg);
+            return 1;
+        }
+    }
+    return CallNextHookEx(NULL, code, wparam, lparam);
+}
+#endif
+
 /**
  * spice_display_get_grab_keys:
  * @display:
@@ -351,6 +390,10 @@ static void try_keyboard_grab(SpiceDisplay *display)
 
     SPICE_DEBUG("grab keyboard");
 
+#ifdef WIN32
+    d->keyboard_hook = SetWindowsHookEx(WH_KEYBOARD_LL, keyboard_hook_cb,
+                                        GetModuleHandle(NULL), 0);
+#endif
     status = gdk_keyboard_grab(gtk_widget_get_window(widget), FALSE,
                                GDK_CURRENT_TIME);
     if (status != GDK_GRAB_SUCCESS) {
@@ -373,6 +416,10 @@ static void try_keyboard_ungrab(SpiceDisplay *display)
 
     SPICE_DEBUG("ungrab keyboard");
     gdk_keyboard_ungrab(GDK_CURRENT_TIME);
+#ifdef WIN32
+    UnhookWindowsHookEx(d->keyboard_hook);
+    d->keyboard_hook = 0;
+#endif
     d->keyboard_grab_active = false;
     g_signal_emit(widget, signals[SPICE_DISPLAY_KEYBOARD_GRAB], 0, false);
 }
@@ -805,6 +852,10 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
     sync_keyboard_lock_modifiers(display);
     d->keyboard_have_focus = true;
     try_keyboard_grab(display);
+#ifdef WIN32
+    focus_window = (HWND)gdk_win32_drawable_get_handle(GDK_DRAWABLE(widget->window));
+    g_return_val_if_fail(focus_window != NULL, true);
+#endif
     return true;
 }
 

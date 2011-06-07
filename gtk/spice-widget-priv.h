@@ -30,6 +30,10 @@ G_BEGIN_DECLS
 #include <gdk/gdkx.h>
 #endif
 
+#ifdef WIN32
+#include <windows.h>
+#endif
+
 #include "spice-widget.h"
 #include "spice-common.h"
 #include <spice/vd_agent.h>
@@ -109,6 +113,9 @@ struct spice_display {
     SpiceGrabSequence         *grabseq; /* the configured key sequence */
     gboolean                *activeseq; /* the currently pressed keys */
     gint                    mark;
+#ifdef WIN32
+    HHOOK                   keyboard_hook;
+#endif
 };
 
 int      spicex_image_create                 (SpiceDisplay *display);
