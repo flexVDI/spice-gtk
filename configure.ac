@@ -177,6 +177,27 @@ AC_SUBST(XRANDR_CFLAGS)
 AC_SUBST(XRANDR_LIBS)
 AS_IF([test "x$have_xrandr" = "xyes"], [AC_DEFINE([HAVE_RANDR], 1, [Have xrandr?])])
 
+AC_ARG_WITH([x11],
+    AS_HELP_STRING([--with-x11], [Use x11/shm display backend instead of cairo.]))
+
+AC_MSG_CHECKING([What rendering backend to use..])
+if [test "x$with_x11" = "xyes" ]
+then
+  if [test "$GTK_API_VERSION" = "3.0" ]
+  then
+    AC_MSG_ERROR([X11 SHM backend is not compatible with GTK3])
+  fi
+  AC_MSG_RESULT([x11])
+else
+  AC_MSG_RESULT([cairo])
+fi
+
+AS_IF([test "x$with_x11" = "xyes"],
+      [AC_DEFINE([WITH_X11], 1, [Use X11 backend?])])
+AM_CONDITIONAL([WITH_X11], [test "x$with_x11" = "xyes"])
+
+AC_CHECK_HEADERS([X11/XKBlib.h])
+
 AC_ARG_WITH(pnp-ids-path,
               [AC_HELP_STRING([--with-pnp-ids-path],
                               [Specify the path to pnp.ids @<:@default=(internal)@:>@])],,
@@ -248,27 +269,6 @@ AS_IF([test "x$have_gst" = "xyes"],
 AM_CONDITIONAL([WITH_GSTAUDIO], [test "x$have_gst" = "xyes"])
 AC_SUBST(GST_CFLAGS)
 AC_SUBST(GST_LIBS)
-
-AC_ARG_WITH([x11],
-    AS_HELP_STRING([--with-x11], [Use x11/shm display backend instead of cairo.]))
-
-AC_MSG_CHECKING([What rendering backend to use..])
-if [test "x$with_x11" = "xyes" ]
-then
-  if [test "$GTK_API_VERSION" = "3.0" ]
-  then
-    AC_MSG_ERROR([X11 SHM backend is not compatible with GTK3])
-  fi
-  AC_MSG_RESULT([x11])
-else
-  AC_MSG_RESULT([cairo])
-fi
-
-AS_IF([test "x$with_x11" = "xyes"],
-      [AC_DEFINE([WITH_X11], 1, [Use X11 backend?])])
-AM_CONDITIONAL([WITH_X11], [test "x$with_x11" = "xyes"])
-
-AC_CHECK_HEADERS([X11/XKBlib.h])
 
 AC_CHECK_LIB(jpeg, jpeg_destroy_decompress,
     AC_MSG_CHECKING([for jpeglib.h])
