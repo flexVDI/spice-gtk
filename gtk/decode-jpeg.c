@@ -20,12 +20,12 @@
 #ifdef WIN32
 /* We need some hacks to avoid warnings from the jpeg headers, ex: */
 /* #define HAVE_BOOLEAN */
-/* #define XMD_H */
+#define XMD_H
 /* #undef FAR */
 /* but they are not compatible: uchar vs int........!@@(#$$??!@! */
 /* fix this with UGLY HACK! */
-#define boolean spice_jpeg_boolean
-#define INT32 spice_jpeg_int32
+/* #define boolean spice_jpeg_boolean */
+/* #define INT32 spice_jpeg_int32 */
 #endif
 
 #include <stdio.h>
