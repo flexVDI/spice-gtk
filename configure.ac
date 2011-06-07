@@ -165,17 +165,44 @@ PKG_CHECK_MODULES(GTK, gtk+-$GTK_API_VERSION >= $GTK_REQUIRED)
 AC_SUBST(GTK_CFLAGS)
 AC_SUBST(GTK_LIBS)
 
-PKG_CHECK_MODULES(X11, x11, [have_x11=yes], [have_x11=no])
-AC_SUBST(X11_CFLAGS)
-AC_SUBST(X11_LIBS)
+PKG_CHECK_EXISTS([gtk+-x11-$with_gtk], [have_x11=yes], [have_x11=no])
 AS_IF([test "x$have_x11" = "xyes"], [AC_DEFINE([HAVE_X11], 1, [Have x11?])])
-
 AM_CONDITIONAL([WITH_DISPLAY_X11], [test "x$have_x11" = "xyes"])
 
-PKG_CHECK_MODULES(XRANDR, x11 xrandr, [have_xrandr=yes], [have_xrandr=no])
-AC_SUBST(XRANDR_CFLAGS)
-AC_SUBST(XRANDR_LIBS)
-AS_IF([test "x$have_xrandr" = "xyes"], [AC_DEFINE([HAVE_RANDR], 1, [Have xrandr?])])
+PKG_CHECK_EXISTS([gtk+-quartz-$with_gtk], [have_quartz=yes], [have_quartz=no])
+AS_IF([test "x$have_quartz" = "xyes"], [AC_DEFINE([HAVE_QUARTZ], 1, [Have Quartz?])])
+AM_CONDITIONAL([WITH_DISPLAY_QUARTZ], [test "x$have_quartz" = "xyes"])
+
+PKG_CHECK_EXISTS([gtk+-win32-$with_gtk], [have_win32=yes], [have_win32=no])
+AS_IF([test "x$have_win32" = "xyes"], [AC_DEFINE([HAVE_WINDOWS], 1, [Have Win32?])])
+AM_CONDITIONAL([WITH_DISPLAY_WINDOWS], [test "x$have_win32" = "xyes"])
+
+if [test "x$have_x11" = "xyes" ]
+then
+  PKG_CHECK_MODULES(XRANDR, x11 xrandr, [have_xrandr=yes], [have_xrandr=no])
+  AC_SUBST(XRANDR_CFLAGS)
+  AC_SUBST(XRANDR_LIBS)
+  AS_IF([test "x$have_xrandr" = "xyes"], [AC_DEFINE([HAVE_RANDR], 1, [Have xrandr?])])
+
+  AC_CHECK_HEADERS([X11/XKBlib.h])
+fi
+
+AC_ARG_WITH([x11],
+    AS_HELP_STRING([--with-x11], [Use x11/shm display backend instead of cairo.]))
+
+AC_MSG_CHECKING([What rendering backend to use..])
+if [test "x$with_x11" = "xyes" ]
+then
+  if [test "$GTK_API_VERSION" = "3.0" ]
+  then
+    AC_MSG_ERROR([X11 SHM backend is not compatible with GTK3])
+  fi
+  AC_MSG_RESULT([x11])
+  AC_DEFINE([WITH_X11], 1, [Use X11 backend?])
+else
+  AC_MSG_RESULT([cairo])
+fi
+AM_CONDITIONAL([WITH_X11], [test "x$with_x11" = "xyes"])
 
 AC_ARG_WITH(pnp-ids-path,
               [AC_HELP_STRING([--with-pnp-ids-path],
@@ -248,27 +275,6 @@ AS_IF([test "x$have_gst" = "xyes"],
 AM_CONDITIONAL([WITH_GSTAUDIO], [test "x$have_gst" = "xyes"])
 AC_SUBST(GST_CFLAGS)
 AC_SUBST(GST_LIBS)
-
-AC_ARG_WITH([x11],
-    AS_HELP_STRING([--with-x11], [Use x11/shm display backend instead of cairo.]))
-
-AC_MSG_CHECKING([What rendering backend to use..])
-if [test "x$with_x11" = "xyes" ]
-then
-  if [test "$GTK_API_VERSION" = "3.0" ]
-  then
-    AC_MSG_ERROR([X11 SHM backend is not compatible with GTK3])
-  fi
-  AC_MSG_RESULT([x11])
-else
-  AC_MSG_RESULT([cairo])
-fi
-
-AS_IF([test "x$with_x11" = "xyes"],
-      [AC_DEFINE([WITH_X11], 1, [Use X11 backend?])])
-AM_CONDITIONAL([WITH_X11], [test "x$with_x11" = "xyes"])
-
-AC_CHECK_HEADERS([X11/XKBlib.h])
 
 AC_CHECK_LIB(jpeg, jpeg_destroy_decompress,
     AC_MSG_CHECKING([for jpeglib.h])

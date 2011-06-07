@@ -30,13 +30,15 @@
 
 #include <gtk/gtk.h>
 
-#ifdef HAVE_X11
+#if defined(HAVE_X11)
 #include <X11/Xlib.h>
 #include <gdk/gdkx.h>
 #include <X11/Xatom.h>
 #include "gnome-rr-x11.h"
-#else
+#elif defined(HAVE_WINDOWS)
 #include "gnome-rr-windows.h"
+#else
+#include "gnome-rr-generic.h"
 #endif
 
 #undef GNOME_DISABLE_DEPRECATED
@@ -480,10 +482,12 @@ gnome_rr_screen_new (GdkScreen *screen,
 {
     /* FIXME: _gnome_desktop_init_i18n (); */
     return g_initable_new (
-#ifdef HAVE_X11
+#if defined(HAVE_X11)
                            GNOME_TYPE_RR_X11_SCREEN,
-#else
+#elif defined(HAVE_WINDOWS)
                            GNOME_TYPE_RR_WINDOWS_SCREEN,
+#else
+                           GNOME_TYPE_RR_GENERIC_SCREEN,
 #endif
                            NULL, error, "gdk-screen", screen, NULL);
 }

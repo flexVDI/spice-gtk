@@ -7,3 +7,4 @@ gtk/display/display-name.c
 gtk/display/gnome-rr-config.c
 gtk/display/gnome-rr-windows.c
 gtk/display/gnome-rr-x11.c
+gtk/display/gnome-rr-generic.c
