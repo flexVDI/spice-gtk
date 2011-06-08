@@ -221,13 +221,24 @@ static void spice_display_destroy(GtkObject *obj)
     GTK_OBJECT_CLASS(spice_display_parent_class)->destroy(obj);
 }
 
+static void spice_display_dispose(GObject *obj)
+{
+    SpiceDisplay *display = SPICE_DISPLAY(obj);
+    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    if (d->session) {
+        g_object_unref(d->session);
+        d->session = NULL;
+    }
+}
+
 static void spice_display_finalize(GObject *obj)
 {
     SpiceDisplay *display = SPICE_DISPLAY(obj);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
     int i;
 
-    SPICE_DEBUG("Finalize SpiceDisplay");
+    SPICE_DEBUG("Finalize spice display");
 
     if (d->grabseq) {
         spice_grab_sequence_free(d->grabseq);
@@ -1226,6 +1237,7 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
 
     gtkobject_class->destroy = spice_display_destroy;
 
+    gobject_class->dispose = spice_display_dispose;
     gobject_class->finalize = spice_display_finalize;
     gobject_class->get_property = spice_display_get_property;
     gobject_class->set_property = spice_display_set_property;
@@ -1792,13 +1804,15 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         d->main = SPICE_MAIN_CHANNEL(channel);
         g_signal_connect(channel, "main-mouse-update",
                          G_CALLBACK(mouse_update), display);
+        mouse_update(channel, display);
+        if (id != d->channel_id)
+            return;
         g_signal_connect(channel, "main-clipboard-selection-grab",
                          G_CALLBACK(clipboard_grab), display);
         g_signal_connect(channel, "main-clipboard-selection-request",
                          G_CALLBACK(clipboard_request), display);
         g_signal_connect(channel, "main-clipboard-selection-release",
                          G_CALLBACK(clipboard_release), display);
-        mouse_update(channel, display);
         return;
     }
 
@@ -1896,7 +1910,7 @@ SpiceDisplay *spice_display_new(SpiceSession *session, int id)
 
     display = g_object_new(SPICE_TYPE_DISPLAY, NULL);
     d = SPICE_DISPLAY_GET_PRIVATE(display);
-    d->session = session;
+    d->session = g_object_ref(session);
     d->channel_id = id;
 
     g_signal_connect(session, "channel-new",
