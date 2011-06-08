@@ -1223,7 +1223,7 @@ static gboolean display_mark_false(gpointer data)
     spice_display_channel *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
 
     c->mark = FALSE;
-    g_signal_emit(channel, signals[SPICE_DISPLAY_MARK], FALSE);
+    g_signal_emit(channel, signals[SPICE_DISPLAY_MARK], 0, FALSE);
 
     c->mark_false_event_id = 0;
     return FALSE;
