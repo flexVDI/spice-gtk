@@ -668,6 +668,7 @@ gboolean spice_session_connect(SpiceSession *session)
     g_return_val_if_fail(s != NULL, FALSE);
 
     spice_session_disconnect(session);
+    s->disconnecting = FALSE;
 
     s->client_provided_sockets = FALSE;
     s->cmain = spice_channel_new(session, SPICE_CHANNEL_MAIN, 0);
@@ -883,7 +884,9 @@ void spice_session_disconnect(SpiceSession *session)
     }
 
     s->connection_id = 0;
-    s->disconnecting = FALSE;
+    /* we leave disconnecting = TRUE, so that spice_channel_destroy()
+       is not called multiple times on channels that are in pending
+       destroy state. */
 }
 
 /**
