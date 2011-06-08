@@ -164,6 +164,8 @@ static void spice_channel_finalize(GObject *gobject)
 
     SPICE_DEBUG("%s: %s %p", c->name, __FUNCTION__, gobject);
 
+    g_idle_remove_by_data (gobject);
+
     if (c->caps)
         g_array_free(c->caps, TRUE);
 
@@ -1706,8 +1708,8 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
         gtype = SPICE_TYPE_RECORD_CHANNEL;
         break;
     default:
-        g_warning("unsupported channel kind: %s",
-                  spice_channel_type_to_string(type));
+        g_debug("unsupported channel kind: %s",
+                spice_channel_type_to_string(type));
         return NULL;
     }
     channel = SPICE_CHANNEL(g_object_new(gtype,
@@ -1966,7 +1968,7 @@ connected:
     }
 
 cleanup:
-    SPICE_DEBUG("Coroutine exit");
+    SPICE_DEBUG("Coroutine exit %s", c->name);
 
     SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
 
@@ -2136,6 +2138,7 @@ static void channel_disconnect(SpiceChannel *channel)
 
     if (c->state == SPICE_CHANNEL_STATE_READY)
         emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_CLOSED);
+    g_return_if_fail(SPICE_IS_CHANNEL(channel));
     c->state = SPICE_CHANNEL_STATE_UNCONNECTED;
 }
 
