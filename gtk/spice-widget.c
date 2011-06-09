@@ -1003,10 +1003,22 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
             button->type == GDK_BUTTON_PRESS ? "press" : "release",
             button->button, button->state);
 
+    if (!spicex_is_scaled(display)) {
+        gint x, y;
+
+        /* rule out clicks in outside region */
+        gtk_widget_get_pointer (widget, &x, &y);
+        x -= d->mx;
+        y -= d->my;
+        if (!(x >= 0 && x < d->width && y >= 0 && y < d->height))
+            return true;
+    }
+
     gtk_widget_grab_focus(widget);
     if (d->mouse_mode == SPICE_MOUSE_MODE_SERVER)
         try_mouse_grab(widget);
-    else /* allow to drag and drop between windows/displays */
+    else /* allow to drag and drop between windows/displays:
+            FIXME: should be multiple widget grab, but how? */
         gdk_pointer_ungrab(GDK_CURRENT_TIME);
 
     if (!d->inputs)
