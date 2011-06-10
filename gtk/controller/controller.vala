@@ -15,6 +15,7 @@
 
 using GLib;
 using Custom;
+using Win32;
 using Spice;
 using SpiceProtocol;
 
@@ -217,7 +218,11 @@ public class SpiceController: Object {
 	public async void listen (string? addr = null) throws GLib.Error, ControllerError
 	{
 		if (addr == null)
+#if WIN32
+			addr = (string*)"\\\\.\\pipe\\SpiceController-%lu".printf (GetCurrentProcessId ());
+#else
 			addr = (string*)"%s".printf (Environment.get_variable ("SPICE_XPI_SOCKET")); // FIXME vala...
+#endif
 		if (addr == null)
 			throw new ControllerError.VALUE ("Missing SPICE_XPI_SOCKET");
 		FileUtils.unlink (addr);

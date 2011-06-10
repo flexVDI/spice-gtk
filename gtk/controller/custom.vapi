@@ -24,3 +24,8 @@ namespace Spice {
 		public void add_named_pipe (NamedPipe namedpipe);
 	}
 }
+
+namespace Win32 {
+	[CCode (cheader_filename = "windows.h", cname = "GetCurrentProcessId")]
+	public uint32 GetCurrentProcessId ();
+}
