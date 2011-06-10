@@ -1048,6 +1048,7 @@ static void destroy_stream(SpiceChannel *channel, int id)
     display_stream *st;
 
     g_return_if_fail(c != NULL);
+    g_return_if_fail(c->streams != NULL);
 
     st = c->streams[id];
     if (!st)
