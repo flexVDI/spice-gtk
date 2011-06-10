@@ -197,10 +197,10 @@ static int connect_dialog(SpiceSession *session)
     dialog = gtk_dialog_new_with_buttons(_("Connect to SPICE"),
                                          NULL,
                                          GTK_DIALOG_DESTROY_WITH_PARENT,
-                                         GTK_STOCK_OK,
-                                         GTK_RESPONSE_ACCEPT,
                                          GTK_STOCK_CANCEL,
                                          GTK_RESPONSE_REJECT,
+                                         GTK_STOCK_CONNECT,
+                                         GTK_RESPONSE_ACCEPT,
                                          NULL);
     gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_ACCEPT);
     area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
