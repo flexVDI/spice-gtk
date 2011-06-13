@@ -219,7 +219,7 @@ spice_named_pipe_listener_accept_async (SpiceNamedPipeListener  *listener,
         return;
     }
 
-  c->source = g_win32_handle_source_add (spice_named_pipe_get_handle (namedpipe),
+  c->source = g_win32_handle_source_add (c->overlapped.hEvent,
                                          connect_ready, c);
 
   if (cancellable)
