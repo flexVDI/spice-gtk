@@ -25,6 +25,7 @@ public class MenuItem: Object {
 	public int parent_id;
 	public int id;
 	public string text;
+	public string accel;
 	public SpiceProtocol.Controller.MenuFlags flags;
 
 	public MenuItem.from_string (string str) throws SpiceCtrl.Error {
@@ -33,7 +34,10 @@ public class MenuItem: Object {
 			throw new SpiceCtrl.Error.VALUE(""); /* Vala: why is it mandatory to give a string? */
 		parent_id = int.parse (params[0]);
 		id = int.parse (params[1]);
-		text = params[2];
+		var textaccel = params[2].split ("\t");
+		text = textaccel[0];
+		if (textaccel.length > 1)
+			accel = textaccel[1];
 		flags = (SpiceProtocol.Controller.MenuFlags)int.parse (params[3]);
 
 		submenu = new Menu ();

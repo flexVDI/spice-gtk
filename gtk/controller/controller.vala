@@ -190,8 +190,10 @@ public class Controller: Object {
 			if (read == 0)
 				break;
 
-			if (warn_if (read != sizeof (SpiceProtocol.Controller.Msg)))
+			if (warn_if (read != sizeof (SpiceProtocol.Controller.Msg))) {
+				warning ("read only: " + read.to_string ());
 				break;
+			}
 
 			var msg = (SpiceProtocol.Controller.Msg*)t;
 			if (warn_if (msg.size < sizeof (SpiceProtocol.Controller.Msg)))
