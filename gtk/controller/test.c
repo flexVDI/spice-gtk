@@ -144,14 +144,14 @@ ssize_t read_from_pipe (void* data, size_t size)
 #define CA_FILE "C@_FILE"
 #define HOST_SUBJECT "Host_SUBJ3CT"
 
-SpiceController *ctrl;
+SpiceCtrlController *ctrl;
 GMainLoop *loop;
 
 void signaled (GObject    *gobject, const gchar *signal_name)
 {
     g_message ("signaled: %s", signal_name);
     if (g_str_equal (signal_name, "hide")) {
-      spice_controller_menu_item_click_msg (ctrl, 42);
+      spice_ctrl_controller_menu_item_click_msg (ctrl, 42);
       g_timeout_add (1000, (GSourceFunc)g_main_loop_quit, loop);
     }
 }
@@ -196,7 +196,7 @@ int main (int argc, char *argv[])
     ssize_t read;
 
     g_type_init ();
-    ctrl = spice_controller_new ();
+    ctrl = spice_ctrl_controller_new ();
     loop = g_main_loop_new (NULL, FALSE);
     g_signal_connect (ctrl, "notify", G_CALLBACK (notified), NULL);
     g_signal_connect (ctrl, "show", G_CALLBACK (signaled), "show");
@@ -205,7 +205,7 @@ int main (int argc, char *argv[])
 
 #ifdef WIN32
     snprintf (pipe_name, PIPE_NAME_MAX_LEN, PIPE_NAME, spicec_pid);
-    spice_controller_listen (ctrl, pipe_name, NULL, NULL);
+    spice_ctrl_controller_listen (ctrl, pipe_name, NULL, NULL);
 
     printf ("Creating Spice controller connection %s\n", pipe_name);
     pipe = CreateFile (pipe_name, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
@@ -214,7 +214,7 @@ int main (int argc, char *argv[])
         return -1;
     }
 #else
-    spice_controller_listen (ctrl, PIPE_NAME, NULL, NULL);
+    spice_ctrl_controller_listen (ctrl, PIPE_NAME, NULL, NULL);
 
     snprintf (pipe_name, PIPE_NAME_MAX_LEN, PIPE_NAME);
     printf ("Creating a controller connection %s\n", pipe_name);

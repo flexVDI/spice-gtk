@@ -19,16 +19,18 @@ using Win32;
 using Spice;
 using SpiceProtocol;
 
-public errordomain ControllerError {
+namespace SpiceCtrl {
+
+public errordomain Error {
 	VALUE,
 }
 
-public class SpiceController: Object {
+public class Controller: Object {
 	public string host { private set; get; }
 	public uint32 port { private set; get; }
 	public uint32 sport { private set; get; }
 	public string password { private set; get; }
-	public Controller.Display display_flags { private set; get; }
+	public SpiceProtocol.Controller.Display display_flags { private set; get; }
 	public string tls_ciphers { private set; get; }
 	public string host_subject { private set; get; }
 	public string ca_file { private set; get; }
@@ -36,16 +38,16 @@ public class SpiceController: Object {
 	public string hotkeys { private set; get; }
 	public string[] secure_channels { private set; get; }
 	public string[] disable_channels { private set; get; }
-	public SpiceMenu? menu  { private set; get; }
+	public SpiceCtrl.Menu? menu  { private set; get; }
 
 	public signal void do_connect ();
 	public signal void show ();
 	public signal void hide ();
 
 	public void menu_item_click_msg (int32 item_id) {
-		var msg = Controller.MsgValue ();
-		msg.base.size = (uint32)sizeof (Controller.MsgValue);
-		msg.base.id = Controller.MsgId.MENU_ITEM_CLICK;
+		var msg = SpiceProtocol.Controller.MsgValue ();
+		msg.base.size = (uint32)sizeof (SpiceProtocol.Controller.MsgValue);
+		msg.base.id = SpiceProtocol.Controller.MsgId.MENU_ITEM_CLICK;
 		msg.value = item_id;
 		unowned uint8[] p = ((uint8[])(&msg))[0:msg.base.size];
 		send_msg (p);
@@ -74,69 +76,69 @@ public class SpiceController: Object {
 	private int nclients;
 	List<IOStream> clients;
 
-	private bool handle_message (Controller.Msg msg) {
-		var v = (Controller.MsgValue*)(&msg);
-		var d = (Controller.MsgData*)(&msg);
+	private bool handle_message (SpiceProtocol.Controller.Msg msg) {
+		var v = (SpiceProtocol.Controller.MsgValue*)(&msg);
+		var d = (SpiceProtocol.Controller.MsgData*)(&msg);
 		unowned string str = (string)(&d.data);
 
 		switch (msg.id) {
-		case Controller.MsgId.HOST:
+		case SpiceProtocol.Controller.MsgId.HOST:
 			host = str;
 			break;
-		case Controller.MsgId.PORT:
+		case SpiceProtocol.Controller.MsgId.PORT:
 			port = v.value;
 			break;
-		case Controller.MsgId.SPORT:
+		case SpiceProtocol.Controller.MsgId.SPORT:
 			sport = v.value;
 			break;
-		case Controller.MsgId.PASSWORD:
+		case SpiceProtocol.Controller.MsgId.PASSWORD:
 			password = str;
 			break;
 
-		case Controller.MsgId.SECURE_CHANNELS:
+		case SpiceProtocol.Controller.MsgId.SECURE_CHANNELS:
 			secure_channels = str.split(",");
 			break;
 
-		case Controller.MsgId.DISABLE_CHANNELS:
+		case SpiceProtocol.Controller.MsgId.DISABLE_CHANNELS:
 			disable_channels = str.split(",");
 			break;
 
-		case Controller.MsgId.TLS_CIPHERS:
+		case SpiceProtocol.Controller.MsgId.TLS_CIPHERS:
 			tls_ciphers = str;
 			break;
-		case Controller.MsgId.CA_FILE:
+		case SpiceProtocol.Controller.MsgId.CA_FILE:
 			ca_file = str;
 			break;
-		case Controller.MsgId.HOST_SUBJECT:
+		case SpiceProtocol.Controller.MsgId.HOST_SUBJECT:
 			host_subject = str;
 			break;
 
-		case Controller.MsgId.FULL_SCREEN:
-			display_flags = (Controller.Display)v.value;
+		case SpiceProtocol.Controller.MsgId.FULL_SCREEN:
+			display_flags = (SpiceProtocol.Controller.Display)v.value;
 			break;
-		case Controller.MsgId.SET_TITLE:
+		case SpiceProtocol.Controller.MsgId.SET_TITLE:
 			title = str;
 			break;
 
-		case Controller.MsgId.CREATE_MENU:
-			menu = new SpiceMenu.from_string (str);
+		case SpiceProtocol.Controller.MsgId.CREATE_MENU:
+			menu = new SpiceCtrl.Menu.from_string (str);
 			break;
-		case Controller.MsgId.DELETE_MENU:
+		case SpiceProtocol.Controller.MsgId.DELETE_MENU:
 			menu = null;
 			break;
 
 		// ignore SEND_CAD
-		case Controller.MsgId.HOTKEYS:
+		case SpiceProtocol.Controller.MsgId.HOTKEYS:
 			hotkeys = str;
 			break;
 
-		case Controller.MsgId.CONNECT:
+		case SpiceProtocol.Controller.MsgId.CONNECT:
 			do_connect ();
 			break;
-		case Controller.MsgId.SHOW:
+		case SpiceProtocol.Controller.MsgId.SHOW:
 			show ();
 			break;
-		case Controller.MsgId.HIDE:
+		case SpiceProtocol.Controller.MsgId.HIDE:
 			hide ();
 			break;
 		default:
@@ -147,33 +149,33 @@ public class SpiceController: Object {
 	}
 
 	private async void handle_client (IOStream c) throws GLib.Error {
-		var init = Controller.Init ();
+		var init = SpiceProtocol.Controller.Init ();
 		var excl = false;
 		unowned uint8[] p = null;
 
 		debug ("new socket client, reading init header");
 
-		p = ((uint8[])(&init))[0:sizeof(Controller.InitHeader)]; // FIXME vala
+		p = ((uint8[])(&init))[0:sizeof(SpiceProtocol.Controller.InitHeader)]; // FIXME vala
 		var read = yield c.input_stream.read_async (p);
-		if (warn_if (read != sizeof (Controller.InitHeader)))
+		if (warn_if (read != sizeof (SpiceProtocol.Controller.InitHeader)))
 			return;
-		if (warn_if (init.base.magic != Controller.MAGIC))
+		if (warn_if (init.base.magic != SpiceProtocol.Controller.MAGIC))
 			return;
-		if (warn_if (init.base.version != Controller.VERSION))
+		if (warn_if (init.base.version != SpiceProtocol.Controller.VERSION))
 			return;
-		if (warn_if (init.base.size < sizeof (Controller.Init)))
+		if (warn_if (init.base.size < sizeof (SpiceProtocol.Controller.Init)))
 			return;
 
-		p = ((uint8[])(&init.credentials))[0:init.base.size - sizeof(Controller.InitHeader)];
+		p = ((uint8[])(&init.credentials))[0:init.base.size - sizeof(SpiceProtocol.Controller.InitHeader)];
 		read = yield c.input_stream.read_async (p);
-		if (warn_if (read != (init.base.size - sizeof (Controller.InitHeader))))
+		if (warn_if (read != (init.base.size - sizeof (SpiceProtocol.Controller.InitHeader))))
 			return;
 		if (warn_if (init.credentials != 0))
 			return;
 		if (warn_if (excl_connection != null))
 			return;
 
-		excl = (bool)(init.flags & Controller.Flag.EXCLUSIVE);
+		excl = (bool)(init.flags & SpiceProtocol.Controller.Flag.EXCLUSIVE);
 		if (excl) {
 			if (nclients > 1) {
 				warning (@"Can't make the client exclusive, there is already $nclients connected clients");
@@ -182,26 +184,26 @@ public class SpiceController: Object {
 			excl_connection = c;
 		}
 
-		var t = new uint8[sizeof(Controller.Msg)];
+		var t = new uint8[sizeof(SpiceProtocol.Controller.Msg)];
 		for (;;) {
-			read = yield c.input_stream.read_async (t[0:sizeof(Controller.Msg)]);
+			read = yield c.input_stream.read_async (t[0:sizeof(SpiceProtocol.Controller.Msg)]);
 			if (read == 0)
 				break;
 
-			if (warn_if (read != sizeof (Controller.Msg)))
+			if (warn_if (read != sizeof (SpiceProtocol.Controller.Msg)))
 				break;
 
-			var msg = (Controller.Msg*)t;
-			if (warn_if (msg.size < sizeof (Controller.Msg)))
+			var msg = (SpiceProtocol.Controller.Msg*)t;
+			if (warn_if (msg.size < sizeof (SpiceProtocol.Controller.Msg)))
 				break;
 
-			if (msg.size > sizeof (Controller.Msg)) {
+			if (msg.size > sizeof (SpiceProtocol.Controller.Msg)) {
 				t.resize ((int)msg.size);
-				msg = (Controller.Msg*)t;
-				read = yield c.input_stream.read_async (t[sizeof(Controller.Msg):msg.size]);
+				msg = (SpiceProtocol.Controller.Msg*)t;
+				read = yield c.input_stream.read_async (t[sizeof(SpiceProtocol.Controller.Msg):msg.size]);
 				if (read == 0)
 					break;
-				if (warn_if (read != msg.size - sizeof(Controller.Msg)))
+				if (warn_if (read != msg.size - sizeof(SpiceProtocol.Controller.Msg)))
 					break;
 			}
 
@@ -212,10 +214,10 @@ public class SpiceController: Object {
 			excl_connection = null;
 	}
 
-	public SpiceController() {
+	public Controller() {
 	}
 
-	public async void listen (string? addr = null) throws GLib.Error, ControllerError
+	public async void listen (string? addr = null) throws GLib.Error, SpiceCtrl.Error
 	{
 		if (addr == null)
 #if WIN32
@@ -224,7 +226,7 @@ public class SpiceController: Object {
 			addr = (string*)"%s".printf (Environment.get_variable ("SPICE_XPI_SOCKET")); // FIXME vala...
 #endif
 		if (addr == null)
-			throw new ControllerError.VALUE ("Missing SPICE_XPI_SOCKET");
+			throw new SpiceCtrl.Error.VALUE ("Missing SPICE_XPI_SOCKET");
 		FileUtils.unlink (addr);
 
 #if WIN32
@@ -251,3 +253,5 @@ public class SpiceController: Object {
 		}
 	}
 }
+
+} // SpiceCtrl

@@ -15,26 +15,28 @@
 
 using GLib;
 using Custom;
-using SpiceProtocol;
+using SpiceProtocol.Controller;
 
-public class SpiceMenuItem: Object {
+namespace SpiceCtrl {
 
-	public SpiceMenu submenu;
+public class MenuItem: Object {
+
+	public Menu submenu;
 	public int parent_id;
 	public int id;
 	public string text;
-	public Controller.MenuFlags flags;
+	public SpiceProtocol.Controller.MenuFlags flags;
 
-	public SpiceMenuItem.from_string (string str) throws ControllerError {
-		var params = str.split (Controller.MENU_PARAM_DELIMITER);
+	public MenuItem.from_string (string str) throws SpiceCtrl.Error {
+		var params = str.split (SpiceProtocol.Controller.MENU_PARAM_DELIMITER);
 		if (warn_if (params.length != 5))
-			throw new ControllerError.VALUE(""); /* Vala: why is it mandatory to give a string? */
+			throw new SpiceCtrl.Error.VALUE(""); /* Vala: why is it mandatory to give a string? */
 		parent_id = int.parse (params[0]);
 		id = int.parse (params[1]);
 		text = params[2];
-		flags = (Controller.MenuFlags)int.parse (params[3]);
+		flags = (SpiceProtocol.Controller.MenuFlags)int.parse (params[3]);
 
-		submenu = new SpiceMenu ();
+		submenu = new Menu ();
 	}
 
 	public string to_string () {
@@ -49,11 +51,11 @@ public class SpiceMenuItem: Object {
 	}
 }
 
-public class SpiceMenu: Object {
+public class Menu: Object {
 
-	public List<SpiceMenuItem> items;
+	public List<MenuItem> items;
 
-	public SpiceMenu? find_id (int id) {
+	public Menu? find_id (int id) {
 		if (id == 0)
 			return this;
 
@@ -69,17 +71,17 @@ public class SpiceMenu: Object {
 		return null;
 	}
 
-	public SpiceMenu.from_string (string str) {
-		foreach (var itemstr  in str.split (Controller.MENU_ITEM_DELIMITER)) {
+	public Menu.from_string (string str) {
+		foreach (var itemstr  in str.split (SpiceProtocol.Controller.MENU_ITEM_DELIMITER)) {
 			try {
 				if (itemstr.length == 0)
 					continue;
-				var item = new SpiceMenuItem.from_string (itemstr);
+				var item = new MenuItem.from_string (itemstr);
 				var parent = find_id (item.parent_id);
 				if (parent == null)
-					throw new ControllerError.VALUE("Invalid parent menu id");
+					throw new SpiceCtrl.Error.VALUE("Invalid parent menu id");
 				parent.items.append (item);
-			} catch (ControllerError e) {
+			} catch (SpiceCtrl.Error e) {
 				warning (e.message);
 			}
 		}
@@ -92,3 +94,5 @@ public class SpiceMenu: Object {
 		return str;
 	}
 }
+
+} // SpiceCtrl
