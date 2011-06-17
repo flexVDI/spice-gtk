@@ -253,9 +253,15 @@ smartcard_message_complete_in_flight(SpiceSmartCardChannel *channel)
 
 static void smartcard_message_send(SpiceSmartCardChannel *channel,
                                    VSCMsgType msg_type,
-                                   spice_msg_out *msg_out)
+                                   spice_msg_out *msg_out, gboolean queue)
 {
     SpiceSmartCardChannelMessage *message;
+
+    if (!queue) {
+        spice_msg_out_send(msg_out);
+        spice_msg_out_unref(msg_out);
+        return;
+    }
 
     message = smartcard_message_new(msg_type, msg_out);
     if (channel->priv->in_flight_message == NULL) {
@@ -270,7 +276,8 @@ static void smartcard_message_send(SpiceSmartCardChannel *channel,
 static void
 send_msg_generic_with_data(SpiceSmartCardChannel *channel, VReader *reader,
                            VSCMsgType msg_type,
-                           const uint8_t *data, gsize data_len)
+                           const uint8_t *data, gsize data_len,
+                           gboolean serialize_msg)
 {
     spice_msg_out *msg_out;
     VSCMsgHeader header = {
@@ -290,13 +297,13 @@ send_msg_generic_with_data(SpiceSmartCardChannel *channel, VReader *reader,
         spice_marshaller_add(msg_out->marshaller, data, data_len);
     }
 
-    smartcard_message_send(channel, msg_type, msg_out);
+    smartcard_message_send(channel, msg_type, msg_out, serialize_msg);
 }
 
 static void send_msg_generic(SpiceSmartCardChannel *channel, VReader *reader,
                              VSCMsgType msg_type)
 {
-    send_msg_generic_with_data(channel, reader, msg_type, NULL, 0);
+    send_msg_generic_with_data(channel, reader, msg_type, NULL, 0, TRUE);
 }
 
 static void send_msg_atr(SpiceSmartCardChannel *channel, VReader *reader)
@@ -307,7 +314,7 @@ static void send_msg_atr(SpiceSmartCardChannel *channel, VReader *reader)
 
     g_assert(vreader_get_id(reader) != VSCARD_UNDEFINED_READER_ID);
     vreader_power_on(reader, atr, &atr_len);
-    send_msg_generic_with_data(channel, reader, VSC_ATR, atr, atr_len);
+    send_msg_generic_with_data(channel, reader, VSC_ATR, atr, atr_len, TRUE);
 }
 
 static void reader_added_cb(SpiceSmartCardManager *manager, VReader *reader,
@@ -320,7 +327,7 @@ static void reader_added_cb(SpiceSmartCardManager *manager, VReader *reader,
         g_list_append(channel->priv->pending_reader_additions, reader);
 
     send_msg_generic_with_data(channel, reader, VSC_ReaderAdd,
-                               (uint8_t*)reader_name, strlen(reader_name));
+                               (uint8_t*)reader_name, strlen(reader_name), TRUE);
 }
 
 static void reader_removed_cb(SpiceSmartCardManager *manager, VReader *reader,
@@ -443,14 +450,14 @@ static void handle_smartcard_msg(SpiceChannel *channel, spice_msg_in *in)
             if (reader_status == VREADER_OK) {
                 send_msg_generic_with_data(SPICE_SMARTCARD_CHANNEL(channel),
                                            reader, VSC_APDU,
-                                           data_out, data_out_len);
+                                           data_out, data_out_len, FALSE);
             } else {
                 uint32_t error_code;
                 error_code = GUINT32_TO_LE(reader_status);
                 send_msg_generic_with_data(SPICE_SMARTCARD_CHANNEL(channel),
                                            reader, VSC_Error,
                                            (uint8_t*)&error_code,
-                                           sizeof (error_code));
+                                           sizeof (error_code), FALSE);
             }
             break;
         }
