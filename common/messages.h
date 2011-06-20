@@ -34,6 +34,10 @@
 #include <spice/protocol.h>
 #include "draw.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct SpiceMsgData {
     uint32_t data_size;
     uint8_t data[0];
@@ -365,6 +369,15 @@ typedef struct SpiceMsgcMouseRelease {
     int32_t buttons_state;
 } SpiceMsgcMouseRelease;
 
+typedef struct SpiceMsgAudioVolume {
+    uint8_t nchannels;
+    uint16_t volume[0];
+} SpiceMsgAudioVolume;
+
+typedef struct SpiceMsgAudioMute {
+    uint8_t mute;
+} SpiceMsgAudioMute;
+
 typedef struct SpiceMsgPlaybackMode {
     uint32_t time;
     uint32_t mode; //SPICE_AUDIO_DATA_MODE_?
@@ -494,6 +507,8 @@ typedef struct SpiceMsgcTunnelSocketTokens {
     uint32_t num_tokens;
 } SpiceMsgcTunnelSocketTokens;
 
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* _H_SPICE_PROTOCOL */
-
-
