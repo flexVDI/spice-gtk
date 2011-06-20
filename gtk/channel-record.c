@@ -56,10 +56,22 @@ struct spice_record_channel {
     gsize                       frame_bytes;
     guint8                      *last_frame;
     gsize                       last_frame_current;
+    guint8                      nchannels;
+    guint16                     *volume;
+    guint8                      mute;
 };
 
 G_DEFINE_TYPE(SpiceRecordChannel, spice_record_channel, SPICE_TYPE_CHANNEL)
 
+/* Properties */
+enum {
+    PROP_0,
+    PROP_NCHANNELS,
+    PROP_VOLUME,
+    PROP_MUTE,
+};
+
+/* Signals */
 enum {
     SPICE_RECORD_START,
     SPICE_RECORD_STOP,
@@ -103,8 +115,53 @@ static void spice_record_channel_finalize(GObject *obj)
         c->celt_mode = NULL;
     }
 
+    g_free(c->volume);
+    c->volume = NULL;
+
     if (G_OBJECT_CLASS(spice_record_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_record_channel_parent_class)->finalize(obj);
+}
+
+static void spice_record_channel_get_property(GObject    *gobject,
+                                              guint       prop_id,
+                                              GValue     *value,
+                                              GParamSpec *pspec)
+{
+    SpiceRecordChannel *channel = SPICE_RECORD_CHANNEL(gobject);
+    spice_record_channel *c = channel->priv;
+
+    switch (prop_id) {
+    case PROP_VOLUME:
+        g_value_set_pointer(value, c->volume);
+        break;
+    case PROP_NCHANNELS:
+        g_value_set_uint(value, c->nchannels);
+        break;
+    case PROP_MUTE:
+        g_value_set_boolean(value, c->mute);
+        break;
+    default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
+        break;
+    }
+}
+
+static void spice_record_channel_set_property(GObject      *gobject,
+                                              guint         prop_id,
+                                              const GValue *value,
+                                              GParamSpec   *pspec)
+{
+    switch (prop_id) {
+    case PROP_VOLUME:
+        /* TODO: request guest volume change */
+        break;
+    case PROP_MUTE:
+        /* TODO: request guest mute change */
+        break;
+    default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
+        break;
+    }
 }
 
 static void spice_record_channel_class_init(SpiceRecordChannelClass *klass)
@@ -113,9 +170,36 @@ static void spice_record_channel_class_init(SpiceRecordChannelClass *klass)
     SpiceChannelClass *channel_class = SPICE_CHANNEL_CLASS(klass);
 
     gobject_class->finalize     = spice_record_channel_finalize;
+    gobject_class->get_property = spice_record_channel_get_property;
+    gobject_class->set_property = spice_record_channel_set_property;
     channel_class->handle_msg   = spice_record_handle_msg;
     channel_class->channel_up   = channel_up;
 
+    g_object_class_install_property
+        (gobject_class, PROP_NCHANNELS,
+         g_param_spec_uint("nchannels",
+                           "Number of Channels",
+                           "Number of Channels",
+                           0, G_MAXUINT8, 2,
+                           G_PARAM_READWRITE |
+                           G_PARAM_STATIC_STRINGS));
+
+    g_object_class_install_property
+        (gobject_class, PROP_VOLUME,
+         g_param_spec_pointer("volume",
+                              "Playback volume",
+                              "",
+                              G_PARAM_READWRITE |
+                              G_PARAM_STATIC_STRINGS));
+
+    g_object_class_install_property
+        (gobject_class, PROP_MUTE,
+         g_param_spec_boolean("mute",
+                              "Mute",
+                              "Mute",
+                              FALSE,
+                              G_PARAM_READWRITE |
+                              G_PARAM_STATIC_STRINGS));
     /**
      * SpiceRecordChannel::record-start:
      * @channel: the #SpiceRecordChannel that emitted the signal
@@ -378,6 +462,29 @@ static void record_handle_stop(SpiceChannel *channel, spice_msg_in *in)
     rc->started = FALSE;
 }
 
+/* coroutine context */
+static void record_handle_set_volume(SpiceChannel *channel, spice_msg_in *in)
+{
+    spice_record_channel *c = SPICE_RECORD_CHANNEL(channel)->priv;
+    SpiceMsgAudioVolume *vol = spice_msg_in_parsed(in);
+
+    g_free(c->volume);
+    c->nchannels = vol->nchannels;
+    c->volume = g_new(guint16, c->nchannels);
+    memcpy(c->volume, vol->volume, sizeof(guint16) * c->nchannels);
+    g_object_notify_main_context(G_OBJECT(channel), "volume");
+}
+
+/* coroutine context */
+static void record_handle_set_mute(SpiceChannel *channel, spice_msg_in *in)
+{
+    spice_record_channel *c = SPICE_RECORD_CHANNEL(channel)->priv;
+    SpiceMsgAudioMute *m = spice_msg_in_parsed(in);
+
+    c->mute = m->mute;
+    g_object_notify_main_context(G_OBJECT(channel), "mute");
+}
+
 static spice_msg_handler record_handlers[] = {
     [ SPICE_MSG_SET_ACK ]                  = spice_channel_handle_set_ack,
     [ SPICE_MSG_PING ]                     = spice_channel_handle_ping,
@@ -388,6 +495,8 @@ static spice_msg_handler record_handlers[] = {
 
     [ SPICE_MSG_RECORD_START ]             = record_handle_start,
     [ SPICE_MSG_RECORD_STOP ]              = record_handle_stop,
+    [ SPICE_MSG_RECORD_VOLUME ]            = record_handle_set_volume,
+    [ SPICE_MSG_RECORD_MUTE ]              = record_handle_set_mute,
 };
 
 /* coroutine context */
