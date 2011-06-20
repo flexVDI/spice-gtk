@@ -21,12 +21,7 @@
 #include "spice-channel-priv.h"
 
 #include <pulse/glib-mainloop.h>
-#include <pulse/context.h>
-#include <pulse/stream.h>
-#include <pulse/sample.h>
-#include <pulse/error.h>
-#include <pulse/rtclock.h>
-#include <pulse/timeval.h>
+#include <pulse/pulseaudio.h>
 
 #define SPICE_PULSE_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_PULSE, spice_pulse))
@@ -596,6 +591,127 @@ static void channel_event(SpiceChannel *channel, SpiceChannelEvent event,
     }
 }
 
+static void playback_volume_changed(GObject *object, GParamSpec *pspec, gpointer data)
+{
+    SpicePulse *pulse = data;
+    spice_pulse *p = pulse->priv;
+    guint16 *volume;
+    guint nchannels;
+    pa_operation *op;
+    pa_cvolume v;
+    guint i;
+
+    g_object_get(object,
+                 "volume", &volume,
+                 "nchannels", &nchannels,
+                 NULL);
+
+    pa_cvolume_init(&v);
+    v.channels = p->playback.spec.channels;
+    for (i = 0; i < nchannels; ++i) {
+        v.values[i] = (PA_VOLUME_NORM - PA_VOLUME_MUTED) * volume[i] / G_MAXUINT16;
+        SPICE_DEBUG("playback volume changed %u", v.values[i]);
+    }
+
+    if (!p->playback.stream ||
+        pa_stream_get_index(p->playback.stream) == PA_INVALID_INDEX)
+        return;
+
+    op = pa_context_set_sink_input_volume(p->context,
+        pa_stream_get_index(p->playback.stream),
+        &v, NULL, NULL);
+    if (!op)
+        g_warning("set_sink_input_volume() failed: %s",
+                  pa_strerror(pa_context_errno(p->context)));
+    else
+        pa_operation_unref(op);
+}
+
+static void playback_mute_changed(GObject *object, GParamSpec *pspec, gpointer data)
+{
+    SpicePulse *pulse = data;
+    spice_pulse *p = pulse->priv;
+    gboolean mute;
+    pa_operation *op;
+
+    g_object_get(object, "mute", &mute, NULL);
+    SPICE_DEBUG("playback mute changed %u", mute);
+
+    if (!p->playback.stream ||
+        pa_stream_get_index(p->playback.stream) == PA_INVALID_INDEX)
+        return;
+
+    op = pa_context_set_sink_input_mute(p->context,
+        pa_stream_get_index(p->playback.stream),
+        mute, NULL, NULL);
+    if (!op)
+        g_warning("set_sink_input_mute() failed: %s",
+                  pa_strerror(pa_context_errno(p->context)));
+    else
+        pa_operation_unref(op);
+}
+
+static void record_mute_changed(GObject *object, GParamSpec *pspec, gpointer data)
+{
+    SpicePulse *pulse = data;
+    spice_pulse *p = pulse->priv;
+    gboolean mute;
+    pa_operation *op;
+
+    g_object_get(object, "mute", &mute, NULL);
+    SPICE_DEBUG("record mute changed %u", mute);
+
+    if (!p->record.stream ||
+        pa_stream_get_device_index(p->record.stream) == PA_INVALID_INDEX)
+        return;
+
+    op = pa_context_set_source_mute_by_index(p->context,
+        pa_stream_get_device_index(p->record.stream),
+        mute, NULL, NULL);
+    if (!op)
+        g_warning("set_source_mute() failed: %s",
+                  pa_strerror(pa_context_errno(p->context)));
+    else
+        pa_operation_unref(op);
+}
+
+static void record_volume_changed(GObject *object, GParamSpec *pspec, gpointer data)
+{
+    SpicePulse *pulse = data;
+    spice_pulse *p = pulse->priv;
+    guint16 *volume;
+    guint nchannels;
+    pa_operation *op;
+    pa_cvolume v;
+    guint i;
+
+    g_object_get(object,
+                 "volume", &volume,
+                 "nchannels", &nchannels,
+                 NULL);
+
+    pa_cvolume_init(&v);
+    v.channels = p->record.spec.channels;
+    for (i = 0; i < nchannels; ++i) {
+        v.values[i] = (PA_VOLUME_NORM - PA_VOLUME_MUTED) * volume[i] / G_MAXUINT16;
+        SPICE_DEBUG("record volume changed %u", v.values[i]);
+    }
+
+    if (!p->record.stream ||
+        pa_stream_get_device_index(p->record.stream) == PA_INVALID_INDEX)
+        return;
+
+    /* FIXME: use the upcoming "set_source_output_volume" */
+    op = pa_context_set_source_volume_by_index(p->context,
+        pa_stream_get_device_index(p->record.stream),
+        &v, NULL, NULL);
+    if (!op)
+        g_warning("set_source_volume() failed: %s",
+                  pa_strerror(pa_context_errno(p->context)));
+    else
+        pa_operation_unref(op);
+}
+
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
     SpicePulse *pulse = data;
@@ -614,6 +730,10 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
                          G_CALLBACK(playback_stop), pulse);
         g_signal_connect(channel, "channel-event",
                          G_CALLBACK(channel_event), pulse);
+        g_signal_connect(channel, "notify::volume",
+                         G_CALLBACK(playback_volume_changed), pulse);
+        g_signal_connect(channel, "notify::mute",
+                         G_CALLBACK(playback_mute_changed), pulse);
         spice_channel_connect(channel);
     }
 
@@ -626,6 +746,10 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
                          G_CALLBACK(record_stop), pulse);
         g_signal_connect(channel, "channel-event",
                          G_CALLBACK(channel_event), pulse);
+        g_signal_connect(channel, "notify::volume",
+                         G_CALLBACK(record_volume_changed), pulse);
+        g_signal_connect(channel, "notify::mute",
+                         G_CALLBACK(record_mute_changed), pulse);
         spice_channel_connect(channel);
     }
 }
