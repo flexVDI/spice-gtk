@@ -926,6 +926,15 @@ enum16 audio_fmt {
     S16,
 };
 
+message AudioVolume {
+    uint8 nchannels;
+    uint16 volume[nchannels] @end;
+};
+
+message AudioMute {
+    uint8 mute;
+};
+
 channel PlaybackChannel : BaseChannel {
  server:
     message {
@@ -947,6 +956,8 @@ channel PlaybackChannel : BaseChannel {
     } start;
 
     Empty stop;
+    AudioVolume volume;
+    AudioMute mute;
 };
 
 channel RecordChannel : BaseChannel {
@@ -958,6 +969,8 @@ channel RecordChannel : BaseChannel {
     } start = 101;
 
     Empty stop;
+    AudioVolume volume;
+    AudioMute mute;
  client:
     message {
 	uint32 time;
