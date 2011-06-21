@@ -23,6 +23,7 @@
 #include <gst/app/gstappsrc.h>
 #include <gst/app/gstappbuffer.h>
 #include <gst/app/gstappsink.h>
+#include <gst/interfaces/streamvolume.h>
 
 #include "spice-gstaudio.h"
 #include "spice-common.h"
@@ -351,6 +352,128 @@ static void playback_data(SpicePlaybackChannel *channel,
     gst_app_src_push_buffer(GST_APP_SRC(p->playback.src), buf);
 }
 
+#define VOLUME_NORMAL 65535
+
+static void playback_volume_changed(GObject *object, GParamSpec *pspec, gpointer data)
+{
+    SpiceGstAudio *gstaudio = data;
+    GstElement *e;
+    guint16 *volume;
+    guint nchannels;
+    spice_gstaudio *p = gstaudio->priv;
+    gdouble vol;
+
+    if (!p->playback.sink)
+        return;
+
+    g_object_get(object,
+                 "volume", &volume,
+                 "nchannels", &nchannels,
+                 NULL);
+
+    g_return_if_fail(nchannels > 0);
+
+    vol = 1.0 * volume[0] / VOLUME_NORMAL;
+
+    if (GST_IS_BIN(p->playback.sink))
+        e = gst_bin_get_by_interface(GST_BIN(p->playback.sink), GST_TYPE_STREAM_VOLUME);
+    else
+        e = g_object_ref(p->playback.sink);
+
+    if (GST_IS_STREAM_VOLUME(e))
+        gst_stream_volume_set_volume(GST_STREAM_VOLUME(e), GST_STREAM_VOLUME_FORMAT_CUBIC, vol);
+    else
+        g_object_set(e, "volume", vol, NULL);
+
+    g_object_unref(e);
+}
+
+static void playback_mute_changed(GObject *object, GParamSpec *pspec, gpointer data)
+{
+    SpiceGstAudio *gstaudio = data;
+    spice_gstaudio *p = gstaudio->priv;
+    GstElement *e;
+    gboolean mute;
+
+    if (!p->playback.sink)
+        return;
+
+    g_object_get(object, "mute", &mute, NULL);
+    SPICE_DEBUG("playback mute changed %u", mute);
+
+    if (GST_IS_BIN(p->playback.sink))
+        e = gst_bin_get_by_interface(GST_BIN(p->playback.sink), GST_TYPE_STREAM_VOLUME);
+    else
+        e = g_object_ref(p->playback.sink);
+
+    if (GST_IS_STREAM_VOLUME(e))
+        gst_stream_volume_set_mute(GST_STREAM_VOLUME(e), mute);
+
+    g_object_unref(e);
+}
+
+static void record_volume_changed(GObject *object, GParamSpec *pspec, gpointer data)
+{
+    SpiceGstAudio *gstaudio = data;
+    spice_gstaudio *p = gstaudio->priv;
+    GstElement *e;
+    guint16 *volume;
+    guint nchannels;
+    gdouble vol;
+
+    if (!p->record.src)
+        return;
+
+    g_object_get(object,
+                 "volume", &volume,
+                 "nchannels", &nchannels,
+                 NULL);
+
+    g_return_if_fail(nchannels > 0);
+
+    vol = 1.0 * volume[0] / VOLUME_NORMAL;
+
+    /* TODO directsoundsrc doesn't support IDirectSoundBuffer_SetVolume */
+    /* TODO pulsesrc doesn't support volume property, it's all coming! */
+
+    if (GST_IS_BIN(p->record.src))
+        e = gst_bin_get_by_interface(GST_BIN(p->record.src), GST_TYPE_STREAM_VOLUME);
+    else
+        e = g_object_ref(p->record.src);
+
+    if (GST_IS_STREAM_VOLUME(e))
+        gst_stream_volume_set_volume(GST_STREAM_VOLUME(e), GST_STREAM_VOLUME_FORMAT_CUBIC, vol);
+    else
+        g_warning("gst lacks volume capabilities on src (TODO)");
+
+    g_object_unref(e);
+}
+
+static void record_mute_changed(GObject *object, GParamSpec *pspec, gpointer data)
+{
+    SpiceGstAudio *gstaudio = data;
+    spice_gstaudio *p = gstaudio->priv;
+    GstElement *e;
+    gboolean mute;
+
+    if (!p->record.src)
+        return;
+
+    g_object_get(object, "mute", &mute, NULL);
+
+    if (GST_IS_BIN(p->record.src))
+        e = gst_bin_get_by_interface(GST_BIN(p->record.src), GST_TYPE_STREAM_VOLUME);
+    else
+        e = g_object_ref(p->record.src);
+
+    if (GST_IS_STREAM_VOLUME (e))
+        gst_stream_volume_set_mute(GST_STREAM_VOLUME(e), mute);
+    else
+        g_warning("gst lacks mute capabilities on src: %d (TODO)", mute);
+
+    g_object_unref(e);
+}
+
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
     SpiceGstAudio *gstaudio = data;
@@ -367,6 +490,10 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
                          G_CALLBACK(playback_stop), gstaudio);
         g_signal_connect(channel, "channel-event",
                          G_CALLBACK(channel_event), gstaudio);
+        g_signal_connect(channel, "notify::volume",
+                         G_CALLBACK(playback_volume_changed), gstaudio);
+        g_signal_connect(channel, "notify::mute",
+                         G_CALLBACK(playback_mute_changed), gstaudio);
         spice_channel_connect(channel);
     }
 
@@ -379,6 +506,10 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
                          G_CALLBACK(record_stop), gstaudio);
         g_signal_connect(channel, "channel-event",
                          G_CALLBACK(channel_event), gstaudio);
+        g_signal_connect(channel, "notify::volume",
+                         G_CALLBACK(record_volume_changed), gstaudio);
+        g_signal_connect(channel, "notify::mute",
+                         G_CALLBACK(record_mute_changed), gstaudio);
         spice_channel_connect(channel);
     }
 }
