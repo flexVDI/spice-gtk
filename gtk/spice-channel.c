@@ -85,16 +85,7 @@ enum {
 
 static guint signals[SPICE_CHANNEL_LAST_SIGNAL];
 
-static const char *channel_desc[] = {
-    [ SPICE_CHANNEL_MAIN ]     = "main",
-    [ SPICE_CHANNEL_DISPLAY ]  = "display",
-    [ SPICE_CHANNEL_CURSOR ]   = "cursor",
-    [ SPICE_CHANNEL_INPUTS ]   = "inputs",
-    [ SPICE_CHANNEL_RECORD ]   = "record",
-    [ SPICE_CHANNEL_PLAYBACK ] = "playback",
-    [ SPICE_CHANNEL_TUNNEL ]   = "tunnel",
-};
-
+static const char* spice_channel_type_to_string(int type);
 static void spice_channel_iterate_write(SpiceChannel *channel);
 static void spice_channel_iterate_read(SpiceChannel *channel);
 
@@ -118,10 +109,7 @@ static void spice_channel_constructed(GObject *gobject)
 {
     SpiceChannel *channel = SPICE_CHANNEL(gobject);
     spice_channel *c = channel->priv;
-    const char *desc = NULL;
-
-    if (c->channel_type < SPICE_N_ELEMENTS(channel_desc))
-        desc = channel_desc[c->channel_type];
+    const char *desc = spice_channel_type_to_string(c->channel_type);
 
     snprintf(c->name, sizeof(c->name), "%s-%d:%d",
              desc ? desc : "unknown", c->channel_type, c->channel_id);
@@ -1668,7 +1656,7 @@ static const char* spice_channel_type_to_string(int type)
         str = to_string[type];
     }
 
-    return str ? str : "*invalid channel type*";
+    return str ? str : "unknown channel type";
 }
 
 /**
@@ -1708,8 +1696,8 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
         gtype = SPICE_TYPE_RECORD_CHANNEL;
         break;
     default:
-        g_debug("unsupported channel kind: %s",
-                spice_channel_type_to_string(type));
+        g_debug("unsupported channel kind: %s: %d",
+                spice_channel_type_to_string(type), type);
         return NULL;
     }
     channel = SPICE_CHANNEL(g_object_new(gtype,
