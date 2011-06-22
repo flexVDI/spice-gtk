@@ -119,7 +119,7 @@ def SPICE_BNF():
         enumDef = Group(enum_ + identifier + enumBody + attributes - semi).setParseAction(lambda toks: ptypes.EnumType(toks[0][0], toks[0][1], toks[0][2], toks[0][3]))
         flagsDef = Group(flags_ + identifier + flagsBody + attributes  - semi).setParseAction(lambda toks: ptypes.FlagsType(toks[0][0], toks[0][1], toks[0][2], toks[0][3]))
         messageDef = Group(message_ + identifier + messageBody + attributes - semi).setParseAction(lambda toks: ptypes.MessageType(toks[0][1], toks[0][2], toks[0][3]))
-        channelDef = Group(channel_ + identifier + channelBody - semi).setParseAction(lambda toks: ptypes.ChannelType(toks[0][1], toks[0][2], toks[0][3]))
+        channelDef = Group(channel_ + identifier + channelBody + attributes - semi).setParseAction(lambda toks: ptypes.ChannelType(toks[0][1], toks[0][2], toks[0][3], toks[0][4]))
         structDef = Group(struct_ + identifier + structBody + attributes - semi).setParseAction(lambda toks: ptypes.StructType(toks[0][1], toks[0][2], toks[0][3]))
         typedefDef = Group(typedef_ + identifier  + typeSpec + attributes - semi).setParseAction(lambda toks: ptypes.TypeAlias(toks[0][1], toks[0][2], toks[0][3]))
 

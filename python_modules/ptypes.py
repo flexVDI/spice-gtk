@@ -907,12 +907,14 @@ class ChannelMember(Containee):
         return "%s (%s)" % (str(self.name), str(self.message_type))
 
 class ChannelType(Type):
-    def __init__(self, name, base, members):
+    def __init__(self, name, base, members, attribute_list):
         Type.__init__(self)
         self.name = name
         self.base = base
         self.member_name = None
         self.members = members
+        for attr in attribute_list:
+            self.attributes[attr[0][1:]] = attr[1:]
 
     def __str__(self):
         if self.name == None:
