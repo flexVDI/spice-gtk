@@ -84,16 +84,15 @@ SPICE_REQUIRES+=" openssl"
 
 dnl Cyrus SASL
 AC_ARG_WITH([sasl],
-  [AS_HELP_STRING([--with-sasl],
-    [use cyrus SASL for authentication @<:@default=check@:>@])],
+  [AS_HELP_STRING([--with-sasl=@<:@yes/no/auto@:>@], [use cyrus SASL for authentication @<:@default=auto@:>@])],
   [],
-  [with_sasl=check])
+  [with_sasl="auto"])
 
 SASL_CFLAGS=
 SASL_LIBS=
 enable_sasl=no
 if test "x$with_sasl" != "xno"; then
-  if test "x$with_sasl" != "xyes" -a "x$with_sasl" != "xcheck"; then
+  if test "x$with_sasl" != "xyes" -a "x$with_sasl" != "xauto"; then
     SASL_CFLAGS="-I$with_sasl"
     SASL_LIBS="-L$with_sasl"
   fi
@@ -103,7 +102,7 @@ if test "x$with_sasl" != "xno"; then
   CFLAGS="$CFLAGS $SASL_CFLAGS"
   LIBS="$LIBS $SASL_LIBS"
   AC_CHECK_HEADER([sasl/sasl.h],[],[
-    if test "x$with_sasl" != "xcheck" ; then
+    if test "x$with_sasl" != "xauto" ; then
         with_sasl=no
     else
         fail=1
@@ -136,7 +135,7 @@ AC_SUBST([SASL_LIBS])
 
 AC_MSG_CHECKING([which gtk+ version to compile against])
 AC_ARG_WITH([gtk],
-  [AS_HELP_STRING([--with-gtk=2.0|3.0],[which gtk+ version to compile against (default: 3.0)])],
+  [AS_HELP_STRING([--with-gtk=@<:@2.0/3.0@:>@],[which gtk+ version to compile against @<:@default=3.0@:>@])],
   [case "$with_gtk" in
      2.0|3.0) ;;
      *) AC_MSG_ERROR([invalid gtk version specified]) ;;
@@ -188,7 +187,7 @@ then
 fi
 
 AC_ARG_WITH([x11],
-    AS_HELP_STRING([--with-x11], [Use x11/shm display backend instead of cairo.]))
+  AS_HELP_STRING([--with-x11], [Use x11/shm display backend instead of cairo @<:@default=no@:>@]))
 
 AC_MSG_CHECKING([What rendering backend to use..])
 if [test "x$with_x11" = "xyes" ]
@@ -204,10 +203,11 @@ else
 fi
 AM_CONDITIONAL([WITH_X11], [test "x$with_x11" = "xyes"])
 
-AC_ARG_WITH(pnp-ids-path,
-              [AC_HELP_STRING([--with-pnp-ids-path],
-                              [Specify the path to pnp.ids @<:@default=(internal)@:>@])],,
-                              [with_pnp_ids_path="\${pnpdatadir}/pnp.ids"])
+AC_ARG_WITH([pnp-ids-path],
+  AC_HELP_STRING([--with-pnp-ids-path],
+                 [Specify the path to pnp.ids @<:@default=(internal)@:>@]),
+  [],
+  [with_pnp_ids_path="\${pnpdatadir}/pnp.ids"])
 
 AM_CONDITIONAL(USE_INTERNAL_PNP_IDS, test "x$with_pnp_ids_path" = "x\${pnpdatadir}/pnp.ids")
 PNP_IDS=$with_pnp_ids_path
@@ -239,13 +239,14 @@ AC_SUBST(GTHREAD_CFLAGS)
 AC_SUBST(GTHREAD_LIBS)
 
 AC_ARG_WITH([audio],
-    AS_HELP_STRING([--with-audio], [Select audio backend @<:@default=pulse@:>@]), [], [with_audio=pulse])
+  AS_HELP_STRING([--with-audio=@<:@gstreamer/pulse/no@:>@], [Select audio backend @<:@default=pulse@:>@]),
+  [],
+  [with_audio="pulse"])
 
-case $with_audio in
+case "$with_audio" in
   gstreamer|pulse|no*)
     ;;
-  *)
-    AC_MSG_ERROR(Unsupported audio backend)
+  *) AC_MSG_ERROR(Unsupported audio backend)
 esac
 
 AS_IF([test "x$with_audio" = "xpulse"],
@@ -293,29 +294,28 @@ AC_SUBST(JPEG_LIBS)
 AC_CHECK_LIB(z, deflate, Z_LIBS='-lz', AC_MSG_ERROR([zlib not found]))
 AC_SUBST(Z_LIBS)
 
-AC_ARG_ENABLE(smartcard,
-[  --enable-smartcard         Enable network redirection],,
-[enable_smartcard="no"])
-AS_IF([test x"$enable_smartcard" != "xno"], [enable_smartcard="yes"])
-AM_CONDITIONAL(WITH_SMARTCARD, test "x$enable_smartcard" != "xno")
-if test "x$enable_smartcard" = "xyes"; then
-   PKG_CHECK_MODULES(SMARTCARD, libcacard >= 0.1.2)
-   AC_DEFINE(USE_SMARTCARD, [1], [Define if supporting smartcard proxying])
+AC_ARG_ENABLE([smartcard],
+  AS_HELP_STRING([--enable-smartcard=@<:@yes/no@:>@],
+                 [Enable smartcard support @<:@default=yes@:>@]),
+  [],
+  [enable_smartcard="yes"])
+if test "$enable_smartcard" = "xno"; then
+  AM_CONDITIONAL(WITH_SMARTCARD, false)
+else
+  PKG_CHECK_MODULES(SMARTCARD, libcacard >= 0.1.2)
+  AC_DEFINE(USE_SMARTCARD, [1], [Define if supporting smartcard proxying])
+  AM_CONDITIONAL(WITH_SMARTCARD, true)
 fi
 
-WITH_UCONTEXT=1
-
-AC_ARG_WITH(coroutine,
- AS_HELP_STRING([--with-coroutine=ucontext/gthread], [use ucontext or GThread for coroutines]),
-  [],[with_coroutine=ucontext])
+AC_ARG_WITH([coroutine],
+  AS_HELP_STRING([--with-coroutine=@<:@ucontext/gthread@:>@],
+                 [use ucontext or GThread for coroutines @<:@default=ucontext@:>@]),
+  [],
+  [with_coroutine=ucontext])
 
 case $with_coroutine in
-  ucontext)
-    ;;
-  gthread)
-    ;;
-  *)
-    AC_MSG_ERROR(Unsupported coroutine type)
+  ucontext|gthread) ;;
+  *) AC_MSG_ERROR(Unsupported coroutine type)
 esac
 
 if test "$with_coroutine" = "ucontext"; then
@@ -327,6 +327,8 @@ fi
 if test "$with_coroutine" = "gthread"; then
   # gthread is required anyway
   WITH_UCONTEXT=0
+else
+  WITH_UCONTEXT=1
 fi
 
 AC_DEFINE_UNQUOTED(WITH_UCONTEXT,[$WITH_UCONTEXT], [Whether to use ucontext coroutine impl])
@@ -339,8 +341,10 @@ PKG_CHECK_MODULES([GOBJECT_INTROSPECTION],
 GOBJECT_INTROSPECTION_CHECK([0.6.7])
 AM_CONDITIONAL([G_IR_SCANNER_SYMBOL_PREFIX], [test "x$has_symbol_prefix" = "xyes"])
 
-AC_ARG_ENABLE(vala,
-  AS_HELP_STRING([--enable-vala], [Check for vala requirements]), enable_vala=$enableval, enable_vala=no)
+AC_ARG_ENABLE([vala],
+  AS_HELP_STRING([--enable-vala], [Check for vala requirements @<:@default=no@:>@]),
+  [],
+  enable_vala="no")
 
 VALA_REQUIRED=0.11.7
 if test x$enable_vala = xyes ; then
@@ -351,12 +355,13 @@ fi
 VAPIDIR="${datadir}/vala/vapi"
 AC_SUBST(VAPIDIR)
 
-AC_ARG_WITH(python,
-  AS_HELP_STRING([--with-python], [build python bindings]),
-[case "${withval}" in
-   yes|no) ;;
-   *)      AC_MSG_ERROR([bad value ${withval} for python option]) ;;
- esac],[withval=yes])
+AC_ARG_WITH([python],
+  AS_HELP_STRING([--with-python], [build python bindings @<:@default=yes@:>@]),
+  [case "${withval}" in
+     yes|no) ;;
+     *) AC_MSG_ERROR([bad value ${withval} for python option]) ;;
+   esac],
+  [withval=yes])
 
 if test "$with_gtk" = "3.0"
 then
@@ -427,17 +432,15 @@ dnl MAYBE_WARN="-Wall -Wno-sign-compare -Werror -Wno-deprecated-declarations"
 
 MAYBE_WARN="-Wall -Wno-sign-compare -Wno-deprecated-declarations"
 
-AC_ARG_ENABLE(werror,
-AS_HELP_STRING([--enable-werror], [Use -Werror (if supported)]),
-set_werror="$enableval",[
-if test -d $srcdir/.git; then
-	is_git_version=true
-	set_werror=yes
-else
-	set_werror=no
-fi
-])
-
+AC_ARG_ENABLE([werror],
+  AS_HELP_STRING([--enable-werror], [Use -Werror (if supported)]),
+  [set_werror="$enableval"],
+  [if test -d $srcdir/.git; then
+     is_git_version=true
+     set_werror=yes
+   else
+     set_werror=no
+   fi])
 
 # invalidate cached value if MAYBE_WARN has changed
 if test "x$spice_cv_warn_maybe" != "x$MAYBE_WARN"; then
@@ -518,6 +521,7 @@ AC_MSG_NOTICE([
         Audio:                    ${with_audio}
         Target:                   ${red_target}
         SASL support:             ${enable_sasl}
+        Smartcard support:        ${enable_smartcard}
         Gtk:                      $GTK_API_VERSION
 
         Now type 'make' to build $PACKAGE
