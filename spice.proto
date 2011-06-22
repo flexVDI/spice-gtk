@@ -1171,7 +1171,7 @@ channel SmartcardChannel : BaseChannel {
     message {
 	int8 reader_name[] @zero_terminated @nonnull;
     } @ctype(VSCMsgReaderAdd) reader_add = 101;
-};
+} @ifdef(USE_SMARTCARD);
 
 protocol Spice {
     MainChannel main = 1;
