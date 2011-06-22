@@ -1015,6 +1015,8 @@ def write_msg_parser(writer, message):
                          or not message.members[0].is_array())
 
     writer.newline()
+    if message.has_attr("ifdef"):
+        writer.ifdef(message.attributes["ifdef"][0])
     parent_scope = writer.function(function_name,
                                    "uint8_t *",
                                    "uint8_t *message_start, uint8_t *message_end, int minor, size_t *size, message_destructor_t *free_message", True)
@@ -1084,6 +1086,9 @@ def write_msg_parser(writer, message):
         writer.statement("return NULL")
     writer.end_block()
 
+    if message.has_attr("ifdef"):
+        writer.endif(message.attributes["ifdef"][0])
+
     return function_name
 
 def write_channel_parser(writer, channel, server):
@@ -1112,6 +1117,8 @@ def write_channel_parser(writer, channel, server):
     else:
         function_name = "parse_%s_msgc" % channel.name
     writer.newline()
+    if channel.has_attr("ifdef"):
+        writer.ifdef(channel.attributes["ifdef"][0])
     scope = writer.function(function_name,
                             "static uint8_t *",
                             "uint8_t *message_start, uint8_t *message_end, uint16_t message_type, int minor, size_t *size_out, message_destructor_t *free_message")
@@ -1141,6 +1148,8 @@ def write_channel_parser(writer, channel, server):
 
     writer.statement("return NULL")
     writer.end_block()
+    if channel.has_attr("ifdef"):
+        writer.endif(channel.attributes["ifdef"][0])
 
     return function_name
 
@@ -1157,13 +1166,16 @@ def write_get_channel_parser(writer, channel_parsers, max_channel, is_server):
 
     writer.write("static struct {spice_parse_channel_func_t func; unsigned int max_messages; } channels[%d] = " % (max_channel+1))
     writer.begin_block()
+    channel = None
     for i in range(0, max_channel + 1):
-        writer.write("{ ")
         if channel_parsers.has_key(i):
+            channel = channel_parsers[i][0]
+            if channel.has_attr("ifdef"):
+                writer.ifdef(channel.attributes["ifdef"][0])
+            writer.write("{ ")
             writer.write(channel_parsers[i][1])
             writer.write(", ")
 
-            channel = channel_parsers[i][0]
             max_msg = 0
             if is_server:
                 messages = channel.server_messages
@@ -1172,13 +1184,15 @@ def write_get_channel_parser(writer, channel_parsers, max_channel, is_server):
             for m in messages:
                 max_msg = max(max_msg, m.value)
             writer.write(max_msg)
+            writer.write("}")
         else:
-            writer.write("NULL, 0")
-        writer.write("}")
+            writer.write("{ NULL, 0 }")
 
         if i != max_channel:
             writer.write(",")
         writer.newline()
+        if channel and channel.has_attr("ifdef"):
+            writer.endif(channel.attributes["ifdef"][0])
     writer.end_block(semicolon = True)
 
     with writer.if_block("channel < %d" % (max_channel + 1)):

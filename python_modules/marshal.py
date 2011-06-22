@@ -333,6 +333,8 @@ def write_container_marshaller(writer, container, src):
             write_member_marshaller(writer, container, m, src, scope)
 
 def write_message_marshaller(writer, message, is_server, private):
+    if message.has_attr("ifdef"):
+        writer.ifdef(message.attributes["ifdef"][0])
     writer.out_prefix = ""
     function_name = "spice_marshall_" + message.c_name()
     if writer.is_generated("marshaller", function_name):
@@ -364,6 +366,8 @@ def write_message_marshaller(writer, message, is_server, private):
         write_container_marshaller(writer, message, src)
 
     writer.end_block()
+    if message.has_attr("ifdef"):
+        writer.endif(message.attributes["ifdef"][0])
     writer.newline()
     return function_name
 
@@ -371,16 +375,30 @@ def write_protocol_marshaller(writer, proto, is_server, private_marshallers):
     functions = {}
     for c in proto.channels:
         channel = c.channel_type
+        if channel.has_attr("ifdef"):
+            writer.ifdef(channel.attributes["ifdef"][0])
         if is_server:
             for m in channel.client_messages:
                 message = m.message_type
                 f = write_message_marshaller(writer, message, is_server, private_marshallers)
-                functions[f] = True
+                if channel.has_attr("ifdef") and not functions.has_key(f):
+                    functions[f] = channel.attributes["ifdef"][0]
+                elif message.has_attr("ifdef") and not functions.has_key(f):
+                    functions[f] = message.attributes["ifdef"][0]
+                else:
+                    functions[f] = True
         else:
             for m in channel.server_messages:
                 message = m.message_type
-                f= write_message_marshaller(writer, message, is_server, private_marshallers)
-                functions[f] = True
+                f = write_message_marshaller(writer, message, is_server, private_marshallers)
+                if channel.has_attr("ifdef") and not functions.has_key(f):
+                    functions[f] = channel.attributes["ifdef"][0]
+                elif message.has_attr("ifdef") and not functions.has_key(f):
+                    functions[f] = message.attributes["ifdef"][0]
+                else:
+                    functions[f] = True
+        if channel.has_attr("ifdef"):
+            writer.endif(channel.attributes["ifdef"][0])
 
     if private_marshallers:
         scope = writer.function("spice_message_marshallers_get" +  writer.public_prefix,
@@ -391,7 +409,11 @@ def write_protocol_marshaller(writer, proto, is_server, private_marshallers):
             member = f[len("spice_marshall_"):]
             if not member.startswith("msg"):
                 member = "msg_" + member
+            if functions[f] != True:
+                writer.ifdef(functions[f])
             writer.assign("marshallers.%s" % member, f)
+            if functions[f] != True:
+                writer.endif(functions[f])
 
         writer.newline()
         writer.statement("return &marshallers")
