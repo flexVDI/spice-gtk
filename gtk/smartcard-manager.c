@@ -238,6 +238,7 @@ static gboolean smartcard_monitor_dispatch(VEvent *event, gpointer user_data)
                 g_warn_if_fail(manager->priv->software_reader == NULL);
                 manager->priv->software_reader = vreader_reference(event->reader);
             }
+            SPICE_DEBUG("smartcard: reader-added");
             g_signal_emit(G_OBJECT(user_data),
                           signals[SPICE_SMARTCARD_MANAGER_READER_ADDED],
                           0, event->reader);
@@ -249,17 +250,20 @@ static gboolean smartcard_monitor_dispatch(VEvent *event, gpointer user_data)
                 vreader_free(manager->priv->software_reader);
                 manager->priv->software_reader = NULL;
             }
+            SPICE_DEBUG("smartcard: reader-removed");
             g_signal_emit(G_OBJECT(user_data),
                           signals[SPICE_SMARTCARD_MANAGER_READER_REMOVED],
                           0, event->reader);
             break;
 
         case VEVENT_CARD_INSERT:
+            SPICE_DEBUG("smartcard: card-inserted");
             g_signal_emit(G_OBJECT(user_data),
                           signals[SPICE_SMARTCARD_MANAGER_CARD_INSERTED],
                           0, event->reader);
             break;
         case VEVENT_CARD_REMOVE:
+            SPICE_DEBUG("smartcard: card-removed");
             g_signal_emit(G_OBJECT(user_data),
                           signals[SPICE_SMARTCARD_MANAGER_CARD_REMOVED],
                           0, event->reader);
@@ -404,6 +408,7 @@ gboolean spice_smartcard_manager_init_libcacard(SpiceSession *session)
     }
 
 init:
+    /* FIXME: sometime this hangs a long time..., cant we make it async? */
     retval = vcard_emul_init(options) == VCARD_EMUL_OK;
 
 end:
