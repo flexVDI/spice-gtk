@@ -322,6 +322,18 @@ class CodeWriter:
     def macro(self, name, args, define):
         self.write("#define %s(%s) %s" % (name, args, define)).newline()
 
+    def ifdef(self, name):
+        indentation = self.indentation
+        self.indentation = 0;
+        self.write("#ifdef %s" % (name)).newline()
+        self.indentation = indentation
+
+    def endif(self, name):
+        indentation = self.indentation
+        self.indentation = 0;
+        self.write("#endif /* %s */" % (name)).newline()
+        self.indentation = indentation
+
     def add_function_variable(self, ctype, name):
         if self.function_variables.has_key(name):
             assert(self.function_variables[name] == ctype)
