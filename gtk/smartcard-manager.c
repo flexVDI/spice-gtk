@@ -369,18 +369,20 @@ gboolean spice_smartcard_reader_is_software(VReader *reader)
 
 gboolean spice_smartcard_manager_init_libcacard(SpiceSession *session)
 {
-    char *emul_args;
+    gchar *emul_args = NULL;
     VCardEmulOptions *options = NULL;
-    char *dbname;
+    gchar *dbname = NULL;
     GStrv certificates;
+    gboolean retval = FALSE;
 
     g_return_val_if_fail(session != NULL, VCARD_EMUL_FAIL);
-    g_object_get(G_OBJECT(session), "certificate-db", &dbname,
+    g_object_get(G_OBJECT(session),
+                 "certificate-db", &dbname,
                  "certificates", &certificates,
                  NULL);
 
     if ((certificates == NULL) || (g_strv_length(certificates) != 3))
-        goto no_certs;
+        goto init;
 
     if (dbname) {
         emul_args = g_strdup_printf("db=\"%s\" use_hw=no "
@@ -394,18 +396,21 @@ gboolean spice_smartcard_manager_init_libcacard(SpiceSession *session)
                                     certificates[0], certificates[1],
                                     certificates[2]);
     }
+
     options = vcard_emul_options(emul_args);
-    g_free(emul_args);
     if (options == NULL) {
-        g_free(dbname);
-        g_strfreev(certificates);
-        return FALSE;
+        g_critical("vcard_emul_options() failed!");
+        goto end;
     }
 
-no_certs:
+init:
+    retval = vcard_emul_init(options) == VCARD_EMUL_OK;
+
+end:
+    g_free(emul_args);
     g_free(dbname);
     g_strfreev(certificates);
-    return (vcard_emul_init(options) == VCARD_EMUL_OK);
+    return retval;
 }
 
 gboolean spice_smartcard_manager_insert_card(SpiceSmartCardManager *manager)
