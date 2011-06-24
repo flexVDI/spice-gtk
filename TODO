@@ -1,8 +1,3 @@
-* multi-head and resolution improvements/fixes:
-  - send compatible resolutions
-* smartcard channel
-* controller for Windows (based on NamedPipes)
-* merge back to spice/ project
 * TunnelChannel
 * ungrab pointer when clicking for drag&drop in multi-display is broken if releasing outside
 * create a ChannelBaseAudio
