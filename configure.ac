@@ -299,7 +299,8 @@ AC_ARG_ENABLE([smartcard],
                  [Enable smartcard support @<:@default=yes@:>@]),
   [],
   [enable_smartcard="yes"])
-if test "$enable_smartcard" = "xno"; then
+
+if test "x$enable_smartcard" = "xno"; then
   AM_CONDITIONAL(WITH_SMARTCARD, false)
 else
   PKG_CHECK_MODULES(SMARTCARD, libcacard >= 0.1.2)
