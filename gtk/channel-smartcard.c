@@ -242,7 +242,7 @@ static void
 smartcard_message_complete_in_flight(SpiceSmartCardChannel *channel)
 {
     if (channel->priv->in_flight_message == NULL) {
-        g_assert(g_queue_is_empty(channel->priv->message_queue));
+        g_return_if_fail(g_queue_is_empty(channel->priv->message_queue));
         return;
     }
 
@@ -268,7 +268,7 @@ static void smartcard_message_send(SpiceSmartCardChannel *channel,
 
     message = smartcard_message_new(msg_type, msg_out);
     if (channel->priv->in_flight_message == NULL) {
-        g_assert(g_queue_is_empty(channel->priv->message_queue));
+        g_return_if_fail(g_queue_is_empty(channel->priv->message_queue));
         channel->priv->in_flight_message = message;
         spice_msg_out_send(msg_out);
     } else {
@@ -315,7 +315,7 @@ static void send_msg_atr(SpiceSmartCardChannel *channel, VReader *reader)
     uint8_t atr[MAX_ATR_LEN];
     int atr_len = MAX_ATR_LEN;
 
-    g_assert(vreader_get_id(reader) != VSCARD_UNDEFINED_READER_ID);
+    g_return_if_fail(vreader_get_id(reader) != VSCARD_UNDEFINED_READER_ID);
     vreader_power_on(reader, atr, &atr_len);
     send_msg_generic_with_data(channel, reader, VSC_ATR, atr, atr_len, TRUE);
 }
@@ -415,8 +415,8 @@ static void handle_smartcard_msg(SpiceChannel *channel, spice_msg_in *in)
                 case VSC_ReaderAdd:
                     g_return_if_fail(priv->pending_reader_additions != NULL);
                     reader = priv->pending_reader_additions->data;
-                    g_assert(reader != NULL);
-                    g_assert(vreader_get_id(reader) == -1);
+                    g_return_if_fail(reader != NULL);
+                    g_return_if_fail(vreader_get_id(reader) == -1);
                     priv->pending_reader_additions =
                         g_list_delete_link(priv->pending_reader_additions,
                                            priv->pending_reader_additions);

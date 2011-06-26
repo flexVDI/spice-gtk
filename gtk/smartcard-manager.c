@@ -310,7 +310,7 @@ static gboolean smartcard_source_dispatch(GSource *source,
     SmartCardSource *smartcard_source = (SmartCardSource *)source;
     SmartCardSourceFunc smartcard_callback = (SmartCardSourceFunc)callback;
 
-    g_assert(smartcard_source->pending_event != NULL);
+    g_return_val_if_fail(smartcard_source->pending_event != NULL, FALSE);
 
     if (callback) {
         gboolean event_consumed;
