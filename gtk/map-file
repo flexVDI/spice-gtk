@@ -66,7 +66,6 @@ spice_session_verify_get_type;
 spice_smartcard_channel_get_type;
 spice_smartcard_manager_get;
 spice_smartcard_manager_get_type;
-spice_smartcard_manager_init_libcacard;
 spice_smartcard_manager_insert_card;
 spice_smartcard_manager_remove_card;
 spice_smartcard_reader_is_software;

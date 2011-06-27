@@ -23,7 +23,6 @@ G_BEGIN_DECLS
 #include "spice-types.h"
 #include "spice-glib-enums.h"
 #include "spice-util.h"
-#include <vreader.h>
 
 #define SPICE_TYPE_SMARTCARD_MANAGER            (spice_smartcard_manager_get_type ())
 #define SPICE_SMARTCARD_MANAGER(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), SPICE_TYPE_SMARTCARD_MANAGER, SpiceSmartCardManager))
@@ -37,6 +36,7 @@ G_BEGIN_DECLS
 typedef struct _SpiceSmartCardManager SpiceSmartCardManager;
 typedef struct _SpiceSmartCardManagerClass SpiceSmartCardManagerClass;
 typedef struct spice_smartcard_manager spice_smartcard_manager;
+typedef struct _SpiceSmartCardReader SpiceSmartCardReader;
 
 struct _SpiceSmartCardManager
 {
@@ -50,10 +50,10 @@ struct _SpiceSmartCardManagerClass
     GObjectClass parent_class;
     /*< public >*/
     /* signals */
-    void (*reader_added)(SpiceSmartCardManager *manager, VReader *reader);
-    void (*reader_removed)(SpiceSmartCardManager *manager, VReader *reader);
-    void (*card_inserted)(SpiceSmartCardManager *manager, VReader *reader);
-    void (*card_removed)(SpiceSmartCardManager *manager, VReader *reader );
+    void (*reader_added)(SpiceSmartCardManager *manager, SpiceSmartCardReader *reader);
+    void (*reader_removed)(SpiceSmartCardManager *manager, SpiceSmartCardReader *reader);
+    void (*card_inserted)(SpiceSmartCardManager *manager, SpiceSmartCardReader *reader);
+    void (*card_removed)(SpiceSmartCardManager *manager, SpiceSmartCardReader *reader );
     /*
      * If adding fields to this struct, remove corresponding
      * amount of padding to avoid changing overall struct size
@@ -67,8 +67,7 @@ GType spice_smartcard_reader_get_type(void);
 SpiceSmartCardManager *spice_smartcard_manager_get(void);
 gboolean spice_smartcard_manager_insert_card(SpiceSmartCardManager *manager);
 gboolean spice_smartcard_manager_remove_card(SpiceSmartCardManager *manager);
-gboolean spice_smartcard_manager_init_libcacard(SpiceSession *session);
-gboolean spice_smartcard_reader_is_software(VReader *reader);
+gboolean spice_smartcard_reader_is_software(SpiceSmartCardReader *reader);
 
 G_END_DECLS
 

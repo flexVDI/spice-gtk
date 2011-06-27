@@ -15,12 +15,16 @@
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
+#include "config.h"
+
 #include <glib-object.h>
 #include <string.h>
+
+#ifdef USE_SMARTCARD
 #include <vcard_emul.h>
 #include <vevent.h>
 #include <vreader.h>
-
+#endif
 
 #include "smartcard-manager.h"
 #include "spice-marshal.h"
@@ -53,11 +57,17 @@ struct spice_smartcard_manager {
      * existence, it's all controlled by explicit software
      * insertion/removal of cards
      */
+#ifdef USE_SMARTCARD
     VReader *software_reader;
+#endif
 };
 
 G_DEFINE_TYPE(SpiceSmartCardManager, spice_smartcard_manager, G_TYPE_OBJECT);
+#ifdef USE_SMARTCARD
 G_DEFINE_BOXED_TYPE(VReader, spice_smartcard_reader, vreader_reference, vreader_free);
+#else
+G_DEFINE_BOXED_TYPE(GObject, spice_smartcard_reader, NULL, NULL);
+#endif
 
 /* Properties */
 enum {
@@ -76,10 +86,12 @@ enum {
 
 static guint signals[SPICE_SMARTCARD_MANAGER_LAST_SIGNAL];
 
+#ifdef USE_SMARTCARD
 typedef gboolean (*SmartCardSourceFunc)(VEvent *event, gpointer user_data);
 static guint smartcard_monitor_add(SmartCardSourceFunc callback,
                                    gpointer user_data);
 static gboolean smartcard_monitor_dispatch(VEvent *event, gpointer user_data);
+#endif
 
 /* ------------------------------------------------------------------ */
 
@@ -89,8 +101,10 @@ static void spice_smartcard_manager_init(SpiceSmartCardManager *smartcard_manage
 
     priv = SPICE_SMARTCARD_MANAGER_GET_PRIVATE(smartcard_manager);
     smartcard_manager->priv = priv;
+#ifdef USE_SMARTCARD
     priv->monitor_id = smartcard_monitor_add(smartcard_monitor_dispatch,
                                              smartcard_manager);
+#endif
 }
 
 static void spice_smartcard_manager_dispose(GObject *gobject)
@@ -110,10 +124,12 @@ static void spice_smartcard_manager_finalize(GObject *gobject)
         priv->monitor_id = 0;
     }
 
+#ifdef USE_SMARTCARD
     if (priv->software_reader != NULL) {
         vreader_free(priv->software_reader);
         priv->software_reader = NULL;
     }
+#endif
 
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_smartcard_manager_parent_class)->finalize)
@@ -227,6 +243,7 @@ SpiceSmartCardManager *spice_smartcard_manager_get(void)
                   NULL);
 }
 
+#ifdef USE_SMARTCARD
 static gboolean smartcard_monitor_dispatch(VEvent *event, gpointer user_data)
 {
     g_return_val_if_fail(event != NULL, TRUE);
@@ -234,7 +251,7 @@ static gboolean smartcard_monitor_dispatch(VEvent *event, gpointer user_data)
 
     switch (event->type) {
         case VEVENT_READER_INSERT:
-            if (spice_smartcard_reader_is_software(event->reader)) {
+            if (spice_smartcard_reader_is_software((SpiceSmartCardReader*)event->reader)) {
                 g_warn_if_fail(manager->priv->software_reader == NULL);
                 manager->priv->software_reader = vreader_reference(event->reader);
             }
@@ -245,7 +262,7 @@ static gboolean smartcard_monitor_dispatch(VEvent *event, gpointer user_data)
             break;
 
         case VEVENT_READER_REMOVE:
-            if (spice_smartcard_reader_is_software(event->reader)) {
+            if (spice_smartcard_reader_is_software((SpiceSmartCardReader*)event->reader)) {
                 g_warn_if_fail(manager->priv->software_reader != NULL);
                 vreader_free(manager->priv->software_reader);
                 manager->priv->software_reader = NULL;
@@ -366,11 +383,13 @@ static guint smartcard_monitor_add(SmartCardSourceFunc callback,
 
 #define SPICE_SOFTWARE_READER_NAME "Spice Software Smartcard"
 
-gboolean spice_smartcard_reader_is_software(VReader *reader)
+gboolean spice_smartcard_reader_is_software(SpiceSmartCardReader *reader)
 {
-    return (strcmp(vreader_get_name(reader), SPICE_SOFTWARE_READER_NAME) == 0);
+    g_return_val_if_fail(reader != NULL, FALSE);
+    return (strcmp(vreader_get_name((VReader*)reader), SPICE_SOFTWARE_READER_NAME) == 0);
 }
 
+G_GNUC_INTERNAL
 gboolean spice_smartcard_manager_init_libcacard(SpiceSession *session)
 {
     gchar *emul_args = NULL;
@@ -439,3 +458,26 @@ gboolean spice_smartcard_manager_remove_card(SpiceSmartCardManager *manager)
 
     return (status == VCARD_EMUL_OK);
 }
+#else
+gboolean spice_smartcard_reader_is_software(SpiceSmartCardReader *reader)
+{
+    return TRUE;
+}
+
+G_GNUC_INTERNAL
+gboolean spice_smartcard_manager_init_libcacard(SpiceSession *session)
+{
+    SPICE_DEBUG("using fake smartcard backend");
+    return TRUE;
+}
+
+gboolean spice_smartcard_manager_insert_card(SpiceSmartCardManager *manager)
+{
+    return FALSE;
+}
+
+gboolean spice_smartcard_manager_remove_card(SpiceSmartCardManager *manager)
+{
+    return FALSE;
+}
+#endif /* USE_SMARTCARD */

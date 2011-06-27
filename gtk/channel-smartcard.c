@@ -15,13 +15,18 @@
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
+#include "config.h"
+
+#ifdef USE_SMARTCARD
 #include <vreader.h>
+#endif
 
 #include "spice-client.h"
 #include "spice-common.h"
 
 #include "spice-channel-priv.h"
 #include "smartcard-manager.h"
+#include "smartcard-manager-priv.h"
 
 /**
  * SECTION:channel-smartcard
@@ -39,7 +44,9 @@
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_SMARTCARD_CHANNEL, spice_smartcard_channel))
 
 struct _SpiceSmartCardChannelMessage {
+#ifdef USE_SMARTCARD
     VSCMsgType message_type;
+#endif
     spice_msg_out *message;
 };
 typedef struct _SpiceSmartCardChannelMessage SpiceSmartCardChannelMessage;
@@ -85,7 +92,7 @@ static void handle_smartcard_msg(SpiceChannel *channel, spice_msg_in *in);
 static void smartcard_message_free(SpiceSmartCardChannelMessage *message);
 
 /* ------------------------------------------------------------------ */
-
+#ifdef USE_SMARTCARD
 static void reader_added_cb(SpiceSmartCardManager *manager, VReader *reader,
                             gpointer user_data);
 static void reader_removed_cb(SpiceSmartCardManager *manager, VReader *reader,
@@ -94,23 +101,28 @@ static void card_inserted_cb(SpiceSmartCardManager *manager, VReader *reader,
                              gpointer user_data);
 static void card_removed_cb(SpiceSmartCardManager *manager, VReader *reader,
                             gpointer user_data);
+#endif
 
 static void spice_smartcard_channel_init(SpiceSmartCardChannel *channel)
 {
-    SpiceSmartCardManager *manager;
     spice_smartcard_channel *priv;
 
     channel->priv = SPICE_SMARTCARD_CHANNEL_GET_PRIVATE(channel);
     priv = channel->priv;
+    priv->message_queue = g_queue_new();
+
+#ifdef USE_SMARTCARD
+    SpiceSmartCardManager *manager;
+
+    manager = spice_smartcard_manager_get();
+
     priv->pending_card_insertions =
         g_hash_table_new_full(g_direct_hash, g_direct_equal,
                               (GDestroyNotify)vreader_free, NULL);
     priv->pending_reader_removals =
          g_hash_table_new_full(g_direct_hash, g_direct_equal,
                                (GDestroyNotify)vreader_free, NULL);
-    priv->message_queue = g_queue_new();
 
-    manager = spice_smartcard_manager_get();
     g_signal_connect(G_OBJECT(manager), "reader-added",
                      (GCallback)reader_added_cb, channel);
     g_signal_connect(G_OBJECT(manager), "reader-removed",
@@ -119,6 +131,7 @@ static void spice_smartcard_channel_init(SpiceSmartCardChannel *channel)
                      (GCallback)card_inserted_cb, channel);
     g_signal_connect(G_OBJECT(manager), "card-removed",
                      (GCallback)card_removed_cb, channel);
+#endif
 }
 
 static void spice_smartcard_channel_finalize(GObject *obj)
@@ -166,6 +179,15 @@ static const spice_msg_handler smartcard_handlers[] = {
 
 /* ------------------------------------------------------------------ */
 /* private api                                                        */
+
+static void
+smartcard_message_free(SpiceSmartCardChannelMessage *message)
+{
+    spice_msg_out_unref(message->message);
+    g_slice_free(SpiceSmartCardChannelMessage, message);
+}
+
+#if USE_SMARTCARD
 static gboolean is_attached_to_server(VReader *reader)
 {
     return (vreader_get_id(reader) != (vreader_id_t)-1);
@@ -227,13 +249,6 @@ smartcard_message_new(VSCMsgType msg_type, spice_msg_out *msg_out)
     message->message_type = msg_type;
 
     return message;
-}
-
-static void
-smartcard_message_free(SpiceSmartCardChannelMessage *message)
-{
-    spice_msg_out_unref(message->message);
-    g_slice_free(SpiceSmartCardChannelMessage, message);
 }
 
 /* Indicates that handling of the message that is currently in flight has
@@ -371,6 +386,7 @@ static void card_removed_cb(SpiceSmartCardManager *manager, VReader *reader,
         spice_channel_drop_pending_card_insertion(channel, reader);
     }
 }
+#endif /* USE_SMARTCARD */
 
 /* coroutine context */
 static void spice_smartcard_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
@@ -401,6 +417,7 @@ static void spice_smartcard_channel_up(SpiceChannel *channel)
 
 static void handle_smartcard_msg(SpiceChannel *channel, spice_msg_in *in)
 {
+#ifdef USE_SMARTCARD
     spice_smartcard_channel *priv = SPICE_SMARTCARD_CHANNEL_GET_PRIVATE(channel);
     SpiceMsgSmartcard *msg = spice_msg_in_parsed(in);
     VReader *reader;
@@ -478,5 +495,6 @@ static void handle_smartcard_msg(SpiceChannel *channel, spice_msg_in *in)
         default:
             g_return_if_reached();
     }
+#endif
 }
 

@@ -177,6 +177,10 @@ libspice_client_glib_2_0_la_SOURCES =	\
 	channel-main.c			\
 	channel-playback.c		\
 	channel-record.c		\
+	channel-smartcard.c		\
+	smartcard-manager.c		\
+	smartcard-manager.h		\
+	smartcard-manager-priv.h	\
 	\
 	decode.h			\
 	decode-glz.c			\
@@ -222,6 +226,7 @@ libspice_client_glibinclude_HEADERS =	\
 	channel-main.h			\
 	channel-playback.h		\
 	channel-record.h		\
+	channel-smartcard.h		\
 	$(NULL)
 
 # file for API compatibility, but we don't want warning during our compilation
@@ -240,18 +245,6 @@ if WITH_GSTAUDIO
 libspice_client_glib_2_0_la_SOURCES +=	\
 	spice-gstaudio.c		\
 	spice-gstaudio.h		\
-	$(NULL)
-endif
-
-if WITH_SMARTCARD
-libspice_client_glib_2_0_la_SOURCES +=	\
-	channel-smartcard.c		\
-	smartcard-manager.c		\
-	smartcard-manager.h		\
-	$(NULL)
-
-libspice_client_glibinclude_HEADERS +=	\
-	channel-smartcard.h		\
 	$(NULL)
 endif
 

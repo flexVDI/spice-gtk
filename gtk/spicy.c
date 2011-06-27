@@ -28,6 +28,7 @@
 #include "display/gnome-rr-config.h"
 
 #ifdef USE_SMARTCARD
+#include <vreader.h>
 #include "smartcard-manager.h"
 #endif
 
@@ -356,7 +357,7 @@ static void enable_smartcard_actions(spice_window *win, VReader *reader,
 {
     GtkAction *action;
 
-    if ((reader != NULL) && (!spice_smartcard_reader_is_software(reader)))
+    if ((reader != NULL) && (!spice_smartcard_reader_is_software((SpiceSmartCardReader*)reader)))
     {
         /* Having menu actions to insert/remove smartcards only makes sense
          * for software smartcard readers, don't do anything when the event
