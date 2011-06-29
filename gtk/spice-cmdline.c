@@ -31,8 +31,8 @@ static char *password;
 static char *uri;
 static char *ca_file;
 static char *host_subject;
-static char *certificate_db;
-static char *certificates;
+static char *smartcard_db;
+static char *smartcard_certificates;
 static gboolean smartcard = FALSE;
 
 static GOptionEntry spice_entries[] = {
@@ -90,15 +90,15 @@ static GOptionEntry spice_entries[] = {
         .description      = N_("Enable smartcard support"),
         .arg_description  = NULL,
     },{
-        .long_name        = "certificates",
+        .long_name        = "smartcard-certificates",
         .arg              = G_OPTION_ARG_STRING,
-        .arg_data         = &certificates,
+        .arg_data         = &smartcard_certificates,
         .description      = N_("Certificates to use for software smartcards (field=values separated by commas)"),
         .arg_description  = N_("<certificates>"),
     },{
-        .long_name        = "certificate-db",
+        .long_name        = "smartcard-db",
         .arg              = G_OPTION_ARG_STRING,
-        .arg_data         = &certificate_db,
+        .arg_data         = &smartcard_db,
         .description      = N_("Path to the local certificate database to use for software smartcard certificates"),
         .arg_description  = N_("<certificate-db>"),
     },{
@@ -146,14 +146,14 @@ void spice_cmdline_session_setup(SpiceSession *session)
         g_object_set(session, "cert-subject", host_subject, NULL);
     if (smartcard) {
         g_object_set(session, "enable-smartcard", smartcard, NULL);
-        if (certificates) {
+        if (smartcard_certificates) {
             GStrv certs_strv;
-            certs_strv = g_strsplit(certificates, ",", -1);
+            certs_strv = g_strsplit(smartcard_certificates, ",", -1);
             if (certs_strv)
-                g_object_set(session, "certificates", certs_strv, NULL);
+                g_object_set(session, "smartcard-certificates", certs_strv, NULL);
             g_strfreev(certs_strv);
         }
-        if (certificate_db)
-            g_object_set(session, "certificate-db", certificate_db, NULL);
+        if (smartcard_db)
+            g_object_set(session, "smartcard-db", smartcard_db, NULL);
     }
 }
