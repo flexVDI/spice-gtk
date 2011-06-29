@@ -44,17 +44,20 @@ struct spice_session {
     char              *cert_subject;
     guint             verify;
 
+    /* whether to enable smartcard event forwarding to the server */
+    gboolean          smartcard;
+
     /* list of certificates to use for the software smartcard reader if
      * enabled. For now, it has to contain exactly 3 certificates for
      * the software reader to be functional
      */
-    GStrv certificates;
+    GStrv             certificates;
 
     /* path to the local certificate database to use to lookup the
      * certificates stored in 'certificates'. If NULL, libcacard will
      * fallback to using a default database.
      */
-    char *certificate_db;
+    char *            certificate_db;
 
     int               connection_id;
     int               protocol;
@@ -130,6 +133,7 @@ enum {
     PROP_CERT_SUBJECT,
     PROP_VERIFY,
     PROP_MIGRATION_STATE,
+    PROP_SMARTCARD,
     PROP_CERTIFICATES,
     PROP_CERTIFICATE_DB,
 };
@@ -372,6 +376,9 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_MIGRATION_STATE:
         g_value_set_enum(value, s->migration_state);
         break;
+    case PROP_SMARTCARD:
+        g_value_set_boolean(value, s->smartcard);
+        break;
     case PROP_CERTIFICATES:
         g_value_set_boxed(value, s->certificates);
         break;
@@ -446,6 +453,9 @@ static void spice_session_set_property(GObject      *gobject,
         break;
     case PROP_MIGRATION_STATE:
         s->migration_state = g_value_get_enum(value);
+        break;
+    case PROP_SMARTCARD:
+        s->smartcard = g_value_get_boolean(value);
         break;
     case PROP_CERTIFICATES:
         g_strfreev(s->certificates);
@@ -591,6 +601,15 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                            SPICE_SESSION_MIGRATION_NONE,
                            G_PARAM_READABLE |
                            G_PARAM_STATIC_STRINGS));
+
+    g_object_class_install_property
+        (gobject_class, PROP_SMARTCARD,
+         g_param_spec_boolean("enable-smartcard",
+                          "Enable smartcard event forwarding",
+                          "Forward smartcard events to the SPICE server",
+                          FALSE,
+                          G_PARAM_READWRITE |
+                          G_PARAM_STATIC_STRINGS));
 
     g_object_class_install_property
         (gobject_class, PROP_CERTIFICATES,

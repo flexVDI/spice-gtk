@@ -33,6 +33,7 @@ static char *ca_file;
 static char *host_subject;
 static char *certificate_db;
 static char *certificates;
+static gboolean smartcard = FALSE;
 
 static GOptionEntry spice_entries[] = {
     {
@@ -83,6 +84,12 @@ static GOptionEntry spice_entries[] = {
         .arg_description  = N_("<host-subject>"),
     },{
 #ifdef USE_SMARTCARD
+        .long_name        = "smartcard",
+        .arg              = G_OPTION_ARG_NONE,
+        .arg_data         = &smartcard,
+        .description      = N_("Enable smartcard support"),
+        .arg_description  = NULL,
+    },{
         .long_name        = "certificates",
         .arg              = G_OPTION_ARG_STRING,
         .arg_data         = &certificates,
@@ -137,13 +144,16 @@ void spice_cmdline_session_setup(SpiceSession *session)
         g_object_set(session, "ca-file", ca_file, NULL);
     if (host_subject)
         g_object_set(session, "cert-subject", host_subject, NULL);
-    if (certificates) {
-        GStrv certs_strv;
-        certs_strv = g_strsplit(certificates, ",", -1);
-        if (certs_strv)
-            g_object_set(session, "certificates", certs_strv, NULL);
-        g_strfreev(certs_strv);
+    if (smartcard) {
+        g_object_set(session, "enable-smartcard", smartcard, NULL);
+        if (certificates) {
+            GStrv certs_strv;
+            certs_strv = g_strsplit(certificates, ",", -1);
+            if (certs_strv)
+                g_object_set(session, "certificates", certs_strv, NULL);
+            g_strfreev(certs_strv);
+        }
+        if (certificate_db)
+            g_object_set(session, "certificate-db", certificate_db, NULL);
     }
-    if (certificate_db)
-        g_object_set(session, "certificate-db", certificate_db, NULL);
 }

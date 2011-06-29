@@ -1698,9 +1698,16 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
         gtype = SPICE_TYPE_RECORD_CHANNEL;
         break;
 #ifdef USE_SMARTCARD
-    case SPICE_CHANNEL_SMARTCARD:
+    case SPICE_CHANNEL_SMARTCARD: {
+        gboolean enabled;
+        g_object_get(G_OBJECT(s), "enable-smartcard", &enabled, NULL);
+        if (!enabled) {
+            g_debug("smartcard channel is disabled, not creating it");
+            return NULL;
+        }
         gtype = SPICE_TYPE_SMARTCARD_CHANNEL;
         break;
+    }
 #endif
     default:
         g_debug("unsupported channel kind: %s: %d",

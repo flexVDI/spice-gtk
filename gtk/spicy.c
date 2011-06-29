@@ -1009,6 +1009,7 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     GError *err = NULL;
     int i;
     SpiceGrabSequence *seq;
+    gboolean smartcard;
 
     win = malloc(sizeof(*win));
     if (NULL == win)
@@ -1131,14 +1132,19 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
 
 #ifdef USE_SMARTCARD
     enable_smartcard_actions(win, NULL, FALSE, FALSE);
-    g_signal_connect(G_OBJECT(spice_smartcard_manager_get()), "reader-added",
-                     (GCallback)reader_added_cb, win);
-    g_signal_connect(G_OBJECT(spice_smartcard_manager_get()), "reader-removed",
-                     (GCallback)reader_removed_cb, win);
-    g_signal_connect(G_OBJECT(spice_smartcard_manager_get()), "card-inserted",
-                     (GCallback)card_inserted_cb, win);
-    g_signal_connect(G_OBJECT(spice_smartcard_manager_get()), "card-removed",
-                     (GCallback)card_removed_cb, win);
+    g_object_get(G_OBJECT(conn->session),
+                 "enable-smartcard", &smartcard,
+                 NULL);
+    if (smartcard) {
+        g_signal_connect(G_OBJECT(spice_smartcard_manager_get()), "reader-added",
+                         (GCallback)reader_added_cb, win);
+        g_signal_connect(G_OBJECT(spice_smartcard_manager_get()), "reader-removed",
+                         (GCallback)reader_removed_cb, win);
+        g_signal_connect(G_OBJECT(spice_smartcard_manager_get()), "card-inserted",
+                         (GCallback)card_inserted_cb, win);
+        g_signal_connect(G_OBJECT(spice_smartcard_manager_get()), "card-removed",
+                         (GCallback)card_removed_cb, win);
+    }
 #endif
 
     gtk_widget_grab_focus(win->spice);
