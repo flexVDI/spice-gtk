@@ -86,7 +86,6 @@ enum {
 
 static guint signals[SPICE_CHANNEL_LAST_SIGNAL];
 
-static const char* spice_channel_type_to_string(int type);
 static void spice_channel_iterate_write(SpiceChannel *channel);
 static void spice_channel_iterate_read(SpiceChannel *channel);
 
@@ -1639,7 +1638,7 @@ end:
     spice_msg_in_unref(in);
 }
 
-static const char* spice_channel_type_to_string(int type)
+const gchar* spice_channel_type_to_string(gint type)
 {
     static const char *to_string[] = {
         NULL,

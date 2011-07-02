@@ -107,6 +107,8 @@ gboolean spice_channel_test_capability(SpiceChannel *channel, guint32 cap);
 gboolean spice_channel_test_common_capability(SpiceChannel *channel, guint32 cap);
 void spice_channel_set_capability(SpiceChannel *channel, guint32 cap);
 
+const gchar* spice_channel_type_to_string(gint type);
+
 G_END_DECLS
 
 #endif /* __SPICE_CLIENT_CHANNEL_H__ */
