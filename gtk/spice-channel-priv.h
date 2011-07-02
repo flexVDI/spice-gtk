@@ -123,6 +123,8 @@ struct spice_channel {
     GArray                      *common_caps;
     GArray                      *remote_caps;
     GArray                      *remote_common_caps;
+
+    gsize                       total_read_bytes;
 };
 
 spice_msg_in *spice_msg_in_new(SpiceChannel *channel);

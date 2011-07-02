@@ -74,6 +74,7 @@ enum {
     PROP_SESSION,
     PROP_CHANNEL_TYPE,
     PROP_CHANNEL_ID,
+    PROP_TOTAL_READ_BYTES,
 };
 
 /* Signals */
@@ -189,6 +190,9 @@ static void spice_channel_get_property(GObject    *gobject,
     case PROP_CHANNEL_ID:
         g_value_set_int(value, c->channel_id);
         break;
+    case PROP_TOTAL_READ_BYTES:
+        g_value_set_uint(value, c->total_read_bytes);
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
         break;
@@ -287,6 +291,15 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
                           G_PARAM_STATIC_NAME |
                           G_PARAM_STATIC_NICK |
                           G_PARAM_STATIC_BLURB));
+
+    g_object_class_install_property
+        (gobject_class, PROP_TOTAL_READ_BYTES,
+         g_param_spec_uint("total-read-bytes",
+                           "Total read bytes",
+                           "",
+                           0, UINT_MAX, 0,
+                           G_PARAM_READABLE |
+                           G_PARAM_STATIC_STRINGS));
 
     /**
      * SpiceChannel::channel-event:
@@ -792,6 +805,7 @@ static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
             SPICE_DEBUG("still needs %" G_GSIZE_FORMAT, len);
 #endif
     }
+    c->total_read_bytes += length;
 
     return length;
 }
