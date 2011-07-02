@@ -13,7 +13,7 @@ EXTRA_DIST =					\
 	map-file				\
 	$(NULL)
 
-bin_PROGRAMS = spicy snappy
+bin_PROGRAMS = spicy snappy spicy-stats
 lib_LTLIBRARIES = \
 	libspice-client-glib-2.0.la
 
@@ -309,6 +309,17 @@ snappy_SOURCES =			\
 snappy_LDADD =				\
 	libspice-client-glib-2.0.la		\
 	$(NULL)
+
+spicy_stats_SOURCES =			\
+	spicy-stats.c			\
+	spice-cmdline.h			\
+	spice-cmdline.c			\
+	$(NULL)
+
+spicy_stats_LDADD =				\
+	libspice-client-glib-2.0.la		\
+	$(NULL)
+
 
 
 spice-channel.c: spice-marshal.h

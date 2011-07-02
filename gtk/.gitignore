@@ -37,6 +37,7 @@
 /spice-widget-enums.c
 /spice-widget-enums.h
 /spicy
+/spicy-stats
 /tags
 /vncdisplaykeymap_osx2xtkbd.c
 /vncdisplaykeymap_win322xtkbd.c
