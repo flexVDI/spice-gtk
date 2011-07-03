@@ -400,8 +400,8 @@ gboolean spice_smartcard_manager_init_libcacard(SpiceSession *session)
 
     g_return_val_if_fail(session != NULL, VCARD_EMUL_FAIL);
     g_object_get(G_OBJECT(session),
-                 "certificate-db", &dbname,
-                 "certificates", &certificates,
+                 "smartcard-db", &dbname,
+                 "smartcard-certificates", &certificates,
                  NULL);
 
     if ((certificates == NULL) || (g_strv_length(certificates) != 3))
