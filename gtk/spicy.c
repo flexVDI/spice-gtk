@@ -1009,7 +1009,6 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     GError *err = NULL;
     int i;
     SpiceGrabSequence *seq;
-    gboolean smartcard;
 
     win = malloc(sizeof(*win));
     if (NULL == win)
@@ -1131,6 +1130,8 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(toggle), state);
 
 #ifdef USE_SMARTCARD
+    gboolean smartcard;
+
     enable_smartcard_actions(win, NULL, FALSE, FALSE);
     g_object_get(G_OBJECT(conn->session),
                  "enable-smartcard", &smartcard,
