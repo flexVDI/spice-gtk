@@ -46,6 +46,7 @@ typedef struct display_cursor display_cursor;
 struct display_cursor {
     SpiceCursorHeader           hdr;
     gboolean                    default_cursor;
+    gboolean                    cached;
     guint32                     data[];
 };
 
@@ -323,6 +324,7 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
     cursor = spice_malloc(sizeof(*cursor) + size);
     cursor->hdr = *hdr;
     cursor->default_cursor = FALSE;
+    cursor->cached = FALSE;
     data = scursor->data;
 
     switch (hdr->type) {
@@ -388,6 +390,7 @@ cache_add:
     if (cursor && (scursor->flags & SPICE_CURSOR_FLAGS_CACHE_ME)) {
         item = cache_add(&c->cursors, hdr->unique);
         item->ptr = cursor;
+        cursor->cached = TRUE;
     }
 
     return cursor;
@@ -423,6 +426,9 @@ static void emit_cursor_set(SpiceChannel *channel, display_cursor *cursor)
                       cursor->hdr.width, cursor->hdr.height,
                       cursor->hdr.hot_spot_x, cursor->hdr.hot_spot_y,
                       cursor->default_cursor ? NULL : cursor->data);
+    if (!cursor->cached) {
+        g_free(cursor);
+    }
 }
 
 /* coroutine context */
