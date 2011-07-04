@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
     g_main_loop_run(mainloop);
     {
         GList *iter, *list = spice_session_get_channels(session);
-        guint total_read_bytes;
+        gulong total_read_bytes;
         gint  channel_type;
         printf("total bytes read:\n");
         for (iter = list ; iter ; iter = iter->next) {
@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
                 "total-read-bytes", &total_read_bytes,
                 "channel-type", &channel_type,
                 NULL);
-            printf("%s: %d\n",
+            printf("%s: %lu\n",
                    spice_channel_type_to_string(channel_type),
                    total_read_bytes);
         }

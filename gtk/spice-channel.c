@@ -191,7 +191,7 @@ static void spice_channel_get_property(GObject    *gobject,
         g_value_set_int(value, c->channel_id);
         break;
     case PROP_TOTAL_READ_BYTES:
-        g_value_set_uint(value, c->total_read_bytes);
+        g_value_set_ulong(value, c->total_read_bytes);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -264,9 +264,7 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
                              SPICE_TYPE_SESSION,
                              G_PARAM_READWRITE |
                              G_PARAM_CONSTRUCT_ONLY |
-                             G_PARAM_STATIC_NAME |
-                             G_PARAM_STATIC_NICK |
-                             G_PARAM_STATIC_BLURB));
+                             G_PARAM_STATIC_STRINGS));
 
     g_object_class_install_property
         (gobject_class, PROP_CHANNEL_TYPE,
@@ -276,9 +274,7 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
                           -1, INT_MAX, -1,
                           G_PARAM_READWRITE |
                           G_PARAM_CONSTRUCT_ONLY |
-                          G_PARAM_STATIC_NAME |
-                          G_PARAM_STATIC_NICK |
-                          G_PARAM_STATIC_BLURB));
+                          G_PARAM_STATIC_STRINGS));
 
     g_object_class_install_property
         (gobject_class, PROP_CHANNEL_ID,
@@ -288,18 +284,16 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
                           -1, INT_MAX, -1,
                           G_PARAM_READWRITE |
                           G_PARAM_CONSTRUCT_ONLY |
-                          G_PARAM_STATIC_NAME |
-                          G_PARAM_STATIC_NICK |
-                          G_PARAM_STATIC_BLURB));
+                          G_PARAM_STATIC_STRINGS));
 
     g_object_class_install_property
         (gobject_class, PROP_TOTAL_READ_BYTES,
-         g_param_spec_uint("total-read-bytes",
-                           "Total read bytes",
-                           "",
-                           0, UINT_MAX, 0,
-                           G_PARAM_READABLE |
-                           G_PARAM_STATIC_STRINGS));
+         g_param_spec_ulong("total-read-bytes",
+                            "Total read bytes",
+                            "",
+                            0, G_MAXULONG, 0,
+                            G_PARAM_READABLE |
+                            G_PARAM_STATIC_STRINGS));
 
     /**
      * SpiceChannel::channel-event:
