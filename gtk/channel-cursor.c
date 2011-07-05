@@ -46,7 +46,7 @@ typedef struct display_cursor display_cursor;
 struct display_cursor {
     SpiceCursorHeader           hdr;
     gboolean                    default_cursor;
-    gboolean                    cached;
+    int                         refcount;
     guint32                     data[];
 };
 
@@ -54,8 +54,6 @@ struct spice_cursor_channel {
     display_cache               cursors;
     gboolean                    init_done;
 };
-
-G_DEFINE_TYPE(SpiceCursorChannel, spice_cursor_channel, SPICE_TYPE_CHANNEL)
 
 enum {
     SPICE_CURSOR_SET,
@@ -70,6 +68,10 @@ static guint signals[SPICE_CURSOR_LAST_SIGNAL];
 
 static void spice_cursor_handle_msg(SpiceChannel *channel, spice_msg_in *msg);
 static void delete_cursor_all(SpiceChannel *channel);
+static display_cursor * display_cursor_ref(display_cursor *cursor);
+static void display_cursor_unref(display_cursor *cursor);
+
+G_DEFINE_TYPE(SpiceCursorChannel, spice_cursor_channel, SPICE_TYPE_CHANNEL)
 
 /* ------------------------------------------------------------------ */
 
@@ -106,7 +108,9 @@ static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
      * @height: height of the shape
      * @hot_x: horizontal offset of the 'hotspot' of the cursor
      * @hot_y: vertical offset of the 'hotspot' of the cursor
-     * @rgba: 32bits shape data, or %NULL if default cursor
+     * @rgba: 32bits shape data, or %NULL if default cursor. It might
+     * be freed after the signal is emitted, so make sure to copy it
+     * if you need it later!
      *
      * The #SpiceCursorChannel::cursor-set signal is emitted to modify
      * cursor aspect and position on the display area.
@@ -291,6 +295,25 @@ static guint32 get_pix_hack(gint pix_index, gint width)
     return (((pix_index % width) ^ (pix_index / width)) & 1) ? 0xc0303030 : 0x30505050;
 }
 
+static display_cursor * display_cursor_ref(display_cursor *cursor)
+{
+    g_return_val_if_fail(cursor != NULL, NULL);
+    g_return_val_if_fail(cursor->refcount > 0, NULL);
+
+    cursor->refcount++;
+    return cursor;
+}
+
+static void display_cursor_unref(display_cursor *cursor)
+{
+    g_return_if_fail(cursor != NULL);
+    g_return_if_fail(cursor->refcount > 0);
+
+    cursor->refcount--;
+    if (cursor->refcount == 0)
+        g_free(cursor);
+}
+
 static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
 {
     spice_cursor_channel *c = SPICE_CURSOR_CHANNEL(channel)->priv;
@@ -312,10 +335,8 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
 
     if (scursor->flags & SPICE_CURSOR_FLAGS_FROM_CACHE) {
         item = cache_find(&c->cursors, hdr->unique);
-        if (!item) {
-            return NULL;
-        }
-        return item->ptr;
+        g_return_val_if_fail(item != NULL, NULL);
+        return display_cursor_ref(item->ptr);
     }
 
     g_return_val_if_fail(scursor->data_size != 0, NULL);
@@ -324,7 +345,7 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
     cursor = spice_malloc(sizeof(*cursor) + size);
     cursor->hdr = *hdr;
     cursor->default_cursor = FALSE;
-    cursor->cached = FALSE;
+    cursor->refcount = 1;
     data = scursor->data;
 
     switch (hdr->type) {
@@ -388,9 +409,9 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
 
 cache_add:
     if (cursor && (scursor->flags & SPICE_CURSOR_FLAGS_CACHE_ME)) {
+        display_cursor_ref(cursor);
         item = cache_add(&c->cursors, hdr->unique);
         item->ptr = cursor;
-        cursor->cached = TRUE;
     }
 
     return cursor;
@@ -400,7 +421,7 @@ static void delete_cursor_one(SpiceChannel *channel, display_cache_item *item)
 {
     spice_cursor_channel *c = SPICE_CURSOR_CHANNEL(channel)->priv;
 
-    free(item->ptr);
+    display_cursor_unref((display_cursor*)item->ptr);
     cache_del(&c->cursors, item);
 }
 
@@ -426,9 +447,6 @@ static void emit_cursor_set(SpiceChannel *channel, display_cursor *cursor)
                       cursor->hdr.width, cursor->hdr.height,
                       cursor->hdr.hot_spot_x, cursor->hdr.hot_spot_y,
                       cursor->default_cursor ? NULL : cursor->data);
-    if (!cursor->cached) {
-        g_free(cursor);
-    }
 }
 
 /* coroutine context */
@@ -447,6 +465,8 @@ static void cursor_handle_init(SpiceChannel *channel, spice_msg_in *in)
         emit_cursor_set(channel, cursor);
     if (!init->visible)
         emit_main_context(channel, SPICE_CURSOR_HIDE);
+
+    display_cursor_unref(cursor);
 }
 
 /* coroutine context */
@@ -472,6 +492,8 @@ static void cursor_handle_set(SpiceChannel *channel, spice_msg_in *in)
 
     cursor = set_cursor(channel, &set->cursor);
     emit_cursor_set(channel, cursor);
+
+    display_cursor_unref(cursor);
 }
 
 /* coroutine context */

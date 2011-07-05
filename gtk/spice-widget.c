@@ -1469,6 +1469,10 @@ static void cursor_set(SpiceCursorChannel *channel,
                                           height,
                                           width * 4,
                                           NULL, NULL);
+
+        /* gdk_cursor_new_from_pixbuf() will copy pixbuf data on
+           x11/win32/macos. No worries if rgba pointer is freed
+           after. */
         d->mouse_cursor = gdk_cursor_new_from_pixbuf(gtkdpy, pixbuf,
                                                      hot_x, hot_y);
         g_object_unref(pixbuf);
