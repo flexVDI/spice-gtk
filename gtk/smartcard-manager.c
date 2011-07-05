@@ -62,11 +62,11 @@ struct spice_smartcard_manager {
 #endif
 };
 
-G_DEFINE_TYPE(SpiceSmartcardManager, spice_smartcard_manager, G_TYPE_OBJECT);
+G_DEFINE_TYPE(SpiceSmartcardManager, spice_smartcard_manager, G_TYPE_OBJECT)
 #ifdef USE_SMARTCARD
-G_DEFINE_BOXED_TYPE(VReader, spice_smartcard_reader, vreader_reference, vreader_free);
+G_DEFINE_BOXED_TYPE(VReader, spice_smartcard_reader, vreader_reference, vreader_free)
 #else
-G_DEFINE_BOXED_TYPE(GObject, spice_smartcard_reader, NULL, NULL);
+G_DEFINE_BOXED_TYPE(GObject, spice_smartcard_reader, NULL, NULL)
 #endif
 
 /* Properties */
