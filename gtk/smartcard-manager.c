@@ -32,15 +32,15 @@
 /**
  * SECTION:spice-smartcard-manager
  * @short_description: the base smartcard-manager class
- * @title: Spice SmartCardManager
+ * @title: Spice SmartcardManager
  * @section_id:
  * @see_also:
  * @stability: Stable
  * @include: spice-smartcard-manager.h
  *
- * #SpiceSmartCardManager is the base class for the different kind of Spice
- * smartcard_manager connections, such as #SpiceMainSmartCardManager, or
- * #SpiceInputsSmartCardManager.
+ * #SpiceSmartcardManager is the base class for the different kind of Spice
+ * smartcard_manager connections, such as #SpiceMainSmartcardManager, or
+ * #SpiceInputsSmartcardManager.
  */
 
 /* ------------------------------------------------------------------ */
@@ -62,7 +62,7 @@ struct spice_smartcard_manager {
 #endif
 };
 
-G_DEFINE_TYPE(SpiceSmartCardManager, spice_smartcard_manager, G_TYPE_OBJECT);
+G_DEFINE_TYPE(SpiceSmartcardManager, spice_smartcard_manager, G_TYPE_OBJECT);
 #ifdef USE_SMARTCARD
 G_DEFINE_BOXED_TYPE(VReader, spice_smartcard_reader, vreader_reference, vreader_free);
 #else
@@ -87,15 +87,15 @@ enum {
 static guint signals[SPICE_SMARTCARD_MANAGER_LAST_SIGNAL];
 
 #ifdef USE_SMARTCARD
-typedef gboolean (*SmartCardSourceFunc)(VEvent *event, gpointer user_data);
-static guint smartcard_monitor_add(SmartCardSourceFunc callback,
+typedef gboolean (*SmartcardSourceFunc)(VEvent *event, gpointer user_data);
+static guint smartcard_monitor_add(SmartcardSourceFunc callback,
                                    gpointer user_data);
 static gboolean smartcard_monitor_dispatch(VEvent *event, gpointer user_data);
 #endif
 
 /* ------------------------------------------------------------------ */
 
-static void spice_smartcard_manager_init(SpiceSmartCardManager *smartcard_manager)
+static void spice_smartcard_manager_init(SpiceSmartcardManager *smartcard_manager)
 {
     spice_smartcard_manager *priv;
 
@@ -136,23 +136,23 @@ static void spice_smartcard_manager_finalize(GObject *gobject)
         G_OBJECT_CLASS(spice_smartcard_manager_parent_class)->finalize(gobject);
 }
 
-static void spice_smartcard_manager_class_init(SpiceSmartCardManagerClass *klass)
+static void spice_smartcard_manager_class_init(SpiceSmartcardManagerClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
     /**
-     * SpiceSmartCardManager::reader-added:
-     * @manager: the #SpiceSmartCardManager that emitted the signal
+     * SpiceSmartcardManager::reader-added:
+     * @manager: the #SpiceSmartcardManager that emitted the signal
      * @vreader: #VReader boxed object corresponding to the added reader
      *
-     * The #SpiceSmartCardManager::reader-added signal is emitted whenever
+     * The #SpiceSmartcardManager::reader-added signal is emitted whenever
      * a new smartcard reader (software or hardware) has been plugged in.
      **/
     signals[SPICE_SMARTCARD_MANAGER_READER_ADDED] =
         g_signal_new("reader-added",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
-                     G_STRUCT_OFFSET(SpiceSmartCardManagerClass, reader_added),
+                     G_STRUCT_OFFSET(SpiceSmartcardManagerClass, reader_added),
                      NULL, NULL,
                      g_cclosure_user_marshal_VOID__BOXED,
                      G_TYPE_NONE,
@@ -160,18 +160,18 @@ static void spice_smartcard_manager_class_init(SpiceSmartCardManagerClass *klass
                      SPICE_TYPE_SMARTCARD_READER);
 
     /**
-     * SpiceSmartCardManager::reader-removed:
-     * @manager: the #SpiceSmartCardManager that emitted the signal
+     * SpiceSmartcardManager::reader-removed:
+     * @manager: the #SpiceSmartcardManager that emitted the signal
      * @vreader: #VReader boxed object corresponding to the removed reader
      *
-     * The #SpiceSmartCardManager::reader-removed signal is emitted whenever
+     * The #SpiceSmartcardManager::reader-removed signal is emitted whenever
      * a smartcard reader (software or hardware) has been removed.
      **/
     signals[SPICE_SMARTCARD_MANAGER_READER_REMOVED] =
         g_signal_new("reader-removed",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
-                     G_STRUCT_OFFSET(SpiceSmartCardManagerClass, reader_removed),
+                     G_STRUCT_OFFSET(SpiceSmartcardManagerClass, reader_removed),
                      NULL, NULL,
                      g_cclosure_user_marshal_VOID__BOXED,
                      G_TYPE_NONE,
@@ -179,19 +179,19 @@ static void spice_smartcard_manager_class_init(SpiceSmartCardManagerClass *klass
                      SPICE_TYPE_SMARTCARD_READER);
 
     /**
-     * SpiceSmartCardManager::card-inserted:
-     * @manager: the #SpiceSmartCardManager that emitted the signal
+     * SpiceSmartcardManager::card-inserted:
+     * @manager: the #SpiceSmartcardManager that emitted the signal
      * @vreader: #VReader boxed object corresponding to the reader a new
      * card was inserted in
      *
-     * The #SpiceSmartCardManager::card-inserted signal is emitted whenever
+     * The #SpiceSmartcardManager::card-inserted signal is emitted whenever
      * a smartcard is inserted in a reader
      **/
     signals[SPICE_SMARTCARD_MANAGER_CARD_INSERTED] =
         g_signal_new("card-inserted",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
-                     G_STRUCT_OFFSET(SpiceSmartCardManagerClass, card_inserted),
+                     G_STRUCT_OFFSET(SpiceSmartcardManagerClass, card_inserted),
                      NULL, NULL,
                      g_cclosure_user_marshal_VOID__BOXED,
                      G_TYPE_NONE,
@@ -199,19 +199,19 @@ static void spice_smartcard_manager_class_init(SpiceSmartCardManagerClass *klass
                      SPICE_TYPE_SMARTCARD_READER);
 
     /**
-     * SpiceSmartCardManager::card-removed:
-     * @manager: the #SpiceSmartCardManager that emitted the signal
+     * SpiceSmartcardManager::card-removed:
+     * @manager: the #SpiceSmartcardManager that emitted the signal
      * @vreader: #VReader boxed object corresponding to the reader a card
      * was removed from
      *
-     * The #SpiceSmartCardManager::card-removed signal is emitted whenever
+     * The #SpiceSmartcardManager::card-removed signal is emitted whenever
      * a smartcard was removed from a reader.
      **/
     signals[SPICE_SMARTCARD_MANAGER_CARD_REMOVED] =
         g_signal_new("card-removed",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_FIRST,
-                     G_STRUCT_OFFSET(SpiceSmartCardManagerClass, card_removed),
+                     G_STRUCT_OFFSET(SpiceSmartcardManagerClass, card_removed),
                      NULL, NULL,
                      g_cclosure_user_marshal_VOID__BOXED,
                      G_TYPE_NONE,
@@ -226,7 +226,7 @@ static void spice_smartcard_manager_class_init(SpiceSmartCardManagerClass *klass
 /* ------------------------------------------------------------------ */
 /* private api                                                        */
 
-static SpiceSmartCardManager *spice_smartcard_manager_new(void)
+static SpiceSmartcardManager *spice_smartcard_manager_new(void)
 {
     return g_object_new(SPICE_TYPE_SMARTCARD_MANAGER, NULL);
 }
@@ -234,7 +234,7 @@ static SpiceSmartCardManager *spice_smartcard_manager_new(void)
 /* ------------------------------------------------------------------ */
 /* public api                                                         */
 
-SpiceSmartCardManager *spice_smartcard_manager_get(void)
+SpiceSmartcardManager *spice_smartcard_manager_get(void)
 {
     static GOnce manager_singleton_once = G_ONCE_INIT;
 
@@ -247,11 +247,11 @@ SpiceSmartCardManager *spice_smartcard_manager_get(void)
 static gboolean smartcard_monitor_dispatch(VEvent *event, gpointer user_data)
 {
     g_return_val_if_fail(event != NULL, TRUE);
-    SpiceSmartCardManager *manager = SPICE_SMARTCARD_MANAGER(user_data);
+    SpiceSmartcardManager *manager = SPICE_SMARTCARD_MANAGER(user_data);
 
     switch (event->type) {
         case VEVENT_READER_INSERT:
-            if (spice_smartcard_reader_is_software((SpiceSmartCardReader*)event->reader)) {
+            if (spice_smartcard_reader_is_software((SpiceSmartcardReader*)event->reader)) {
                 g_warn_if_fail(manager->priv->software_reader == NULL);
                 manager->priv->software_reader = vreader_reference(event->reader);
             }
@@ -262,7 +262,7 @@ static gboolean smartcard_monitor_dispatch(VEvent *event, gpointer user_data)
             break;
 
         case VEVENT_READER_REMOVE:
-            if (spice_smartcard_reader_is_software((SpiceSmartCardReader*)event->reader)) {
+            if (spice_smartcard_reader_is_software((SpiceSmartcardReader*)event->reader)) {
                 g_warn_if_fail(manager->priv->software_reader != NULL);
                 vreader_free(manager->priv->software_reader);
                 manager->priv->software_reader = NULL;
@@ -294,17 +294,17 @@ static gboolean smartcard_monitor_dispatch(VEvent *event, gpointer user_data)
 
 /* ------------------------------------------------------------------ */
 /* smartcard monitoring GSource                                       */
-struct _SmartCardSource {
+struct _SmartcardSource {
     GSource parent_source;
     VEvent *pending_event;
 };
-typedef struct _SmartCardSource SmartCardSource;
+typedef struct _SmartcardSource SmartcardSource;
 
-typedef gboolean (*SmartCardSourceFunc)(VEvent *event, gpointer user_data);
+typedef gboolean (*SmartcardSourceFunc)(VEvent *event, gpointer user_data);
 
 static gboolean smartcard_source_prepare(GSource *source, gint *timeout)
 {
-    SmartCardSource *smartcard_source = (SmartCardSource *)source;
+    SmartcardSource *smartcard_source = (SmartcardSource *)source;
 
     if (smartcard_source->pending_event == NULL)
         smartcard_source->pending_event = vevent_get_next_vevent();
@@ -324,8 +324,8 @@ static gboolean smartcard_source_dispatch(GSource *source,
                                           GSourceFunc callback,
                                           gpointer user_data)
 {
-    SmartCardSource *smartcard_source = (SmartCardSource *)source;
-    SmartCardSourceFunc smartcard_callback = (SmartCardSourceFunc)callback;
+    SmartcardSource *smartcard_source = (SmartcardSource *)source;
+    SmartcardSourceFunc smartcard_callback = (SmartcardSourceFunc)callback;
 
     g_return_val_if_fail(smartcard_source->pending_event != NULL, FALSE);
 
@@ -344,7 +344,7 @@ static gboolean smartcard_source_dispatch(GSource *source,
 
 static void smartcard_source_finalize(GSource *source)
 {
-    SmartCardSource *smartcard_source = (SmartCardSource *)source;
+    SmartcardSource *smartcard_source = (SmartcardSource *)source;
 
     if (smartcard_source->pending_event) {
         vevent_delete(smartcard_source->pending_event);
@@ -362,12 +362,12 @@ static GSource *smartcard_monitor_source_new(void)
     };
     GSource *source;
 
-    source = g_source_new(&source_funcs, sizeof(SmartCardSource));
+    source = g_source_new(&source_funcs, sizeof(SmartcardSource));
     g_source_set_name(source, "Smartcard event source");
     return source;
 }
 
-static guint smartcard_monitor_add(SmartCardSourceFunc callback,
+static guint smartcard_monitor_add(SmartcardSourceFunc callback,
                                    gpointer user_data)
 {
     GSource *source;
@@ -383,7 +383,7 @@ static guint smartcard_monitor_add(SmartCardSourceFunc callback,
 
 #define SPICE_SOFTWARE_READER_NAME "Spice Software Smartcard"
 
-gboolean spice_smartcard_reader_is_software(SpiceSmartCardReader *reader)
+gboolean spice_smartcard_reader_is_software(SpiceSmartcardReader *reader)
 {
     g_return_val_if_fail(reader != NULL, FALSE);
     return (strcmp(vreader_get_name((VReader*)reader), SPICE_SOFTWARE_READER_NAME) == 0);
@@ -437,7 +437,7 @@ end:
     return retval;
 }
 
-gboolean spice_smartcard_manager_insert_card(SpiceSmartCardManager *manager)
+gboolean spice_smartcard_manager_insert_card(SpiceSmartcardManager *manager)
 {
     VCardEmulError status;
 
@@ -448,7 +448,7 @@ gboolean spice_smartcard_manager_insert_card(SpiceSmartCardManager *manager)
     return (status == VCARD_EMUL_OK);
 }
 
-gboolean spice_smartcard_manager_remove_card(SpiceSmartCardManager *manager)
+gboolean spice_smartcard_manager_remove_card(SpiceSmartcardManager *manager)
 {
     VCardEmulError status;
 
@@ -459,7 +459,7 @@ gboolean spice_smartcard_manager_remove_card(SpiceSmartCardManager *manager)
     return (status == VCARD_EMUL_OK);
 }
 #else
-gboolean spice_smartcard_reader_is_software(SpiceSmartCardReader *reader)
+gboolean spice_smartcard_reader_is_software(SpiceSmartcardReader *reader)
 {
     return TRUE;
 }
@@ -471,12 +471,12 @@ gboolean spice_smartcard_manager_init_libcacard(SpiceSession *session)
     return TRUE;
 }
 
-gboolean spice_smartcard_manager_insert_card(SpiceSmartCardManager *manager)
+gboolean spice_smartcard_manager_insert_card(SpiceSmartcardManager *manager)
 {
     return FALSE;
 }
 
-gboolean spice_smartcard_manager_remove_card(SpiceSmartCardManager *manager)
+gboolean spice_smartcard_manager_remove_card(SpiceSmartcardManager *manager)
 {
     return FALSE;
 }

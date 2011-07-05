@@ -25,35 +25,35 @@ G_BEGIN_DECLS
 #include "spice-util.h"
 
 #define SPICE_TYPE_SMARTCARD_MANAGER            (spice_smartcard_manager_get_type ())
-#define SPICE_SMARTCARD_MANAGER(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), SPICE_TYPE_SMARTCARD_MANAGER, SpiceSmartCardManager))
-#define SPICE_SMARTCARD_MANAGER_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), SPICE_TYPE_SMARTCARD_MANAGER, SpiceSmartCardManagerClass))
+#define SPICE_SMARTCARD_MANAGER(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), SPICE_TYPE_SMARTCARD_MANAGER, SpiceSmartcardManager))
+#define SPICE_SMARTCARD_MANAGER_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), SPICE_TYPE_SMARTCARD_MANAGER, SpiceSmartcardManagerClass))
 #define SPICE_IS_SMARTCARD_MANAGER(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), SPICE_TYPE_SMARTCARD_MANAGER))
 #define SPICE_IS_SMARTCARD_MANAGER_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), SPICE_TYPE_SMARTCARD_MANAGER))
-#define SPICE_SMARTCARD_MANAGER_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), SPICE_TYPE_SMARTCARD_MANAGER, SpiceSmartCardManagerClass))
+#define SPICE_SMARTCARD_MANAGER_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), SPICE_TYPE_SMARTCARD_MANAGER, SpiceSmartcardManagerClass))
 
 #define SPICE_TYPE_SMARTCARD_READER (spice_smartcard_reader_get_type())
 
-typedef struct _SpiceSmartCardManager SpiceSmartCardManager;
-typedef struct _SpiceSmartCardManagerClass SpiceSmartCardManagerClass;
+typedef struct _SpiceSmartcardManager SpiceSmartcardManager;
+typedef struct _SpiceSmartcardManagerClass SpiceSmartcardManagerClass;
 typedef struct spice_smartcard_manager spice_smartcard_manager;
-typedef struct _SpiceSmartCardReader SpiceSmartCardReader;
+typedef struct _SpiceSmartcardReader SpiceSmartcardReader;
 
-struct _SpiceSmartCardManager
+struct _SpiceSmartcardManager
 {
     GObject parent;
     spice_smartcard_manager *priv;
     /* Do not add fields to this struct */
 };
 
-struct _SpiceSmartCardManagerClass
+struct _SpiceSmartcardManagerClass
 {
     GObjectClass parent_class;
     /*< public >*/
     /* signals */
-    void (*reader_added)(SpiceSmartCardManager *manager, SpiceSmartCardReader *reader);
-    void (*reader_removed)(SpiceSmartCardManager *manager, SpiceSmartCardReader *reader);
-    void (*card_inserted)(SpiceSmartCardManager *manager, SpiceSmartCardReader *reader);
-    void (*card_removed)(SpiceSmartCardManager *manager, SpiceSmartCardReader *reader );
+    void (*reader_added)(SpiceSmartcardManager *manager, SpiceSmartcardReader *reader);
+    void (*reader_removed)(SpiceSmartcardManager *manager, SpiceSmartcardReader *reader);
+    void (*card_inserted)(SpiceSmartcardManager *manager, SpiceSmartcardReader *reader);
+    void (*card_removed)(SpiceSmartcardManager *manager, SpiceSmartcardReader *reader );
     /*
      * If adding fields to this struct, remove corresponding
      * amount of padding to avoid changing overall struct size
@@ -64,10 +64,10 @@ struct _SpiceSmartCardManagerClass
 GType spice_smartcard_manager_get_type(void);
 GType spice_smartcard_reader_get_type(void);
 
-SpiceSmartCardManager *spice_smartcard_manager_get(void);
-gboolean spice_smartcard_manager_insert_card(SpiceSmartCardManager *manager);
-gboolean spice_smartcard_manager_remove_card(SpiceSmartCardManager *manager);
-gboolean spice_smartcard_reader_is_software(SpiceSmartCardReader *reader);
+SpiceSmartcardManager *spice_smartcard_manager_get(void);
+gboolean spice_smartcard_manager_insert_card(SpiceSmartcardManager *manager);
+gboolean spice_smartcard_manager_remove_card(SpiceSmartcardManager *manager);
+gboolean spice_smartcard_reader_is_software(SpiceSmartcardReader *reader);
 
 G_END_DECLS
 

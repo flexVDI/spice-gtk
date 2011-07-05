@@ -23,23 +23,23 @@
 G_BEGIN_DECLS
 
 #define SPICE_TYPE_SMARTCARD_CHANNEL            (spice_smartcard_channel_get_type())
-#define SPICE_SMARTCARD_CHANNEL(obj)            (G_TYPE_CHECK_INSTANCE_CAST((obj), SPICE_TYPE_SMARTCARD_CHANNEL, SpiceSmartCardChannel))
-#define SPICE_SMARTCARD_CHANNEL_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST((klass), SPICE_TYPE_SMARTCARD_CHANNEL, SpiceSmartCardChannelClass))
+#define SPICE_SMARTCARD_CHANNEL(obj)            (G_TYPE_CHECK_INSTANCE_CAST((obj), SPICE_TYPE_SMARTCARD_CHANNEL, SpiceSmartcardChannel))
+#define SPICE_SMARTCARD_CHANNEL_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST((klass), SPICE_TYPE_SMARTCARD_CHANNEL, SpiceSmartcardChannelClass))
 #define SPICE_IS_SMARTCARD_CHANNEL(obj)         (G_TYPE_CHECK_INSTANCE_TYPE((obj), SPICE_TYPE_SMARTCARD_CHANNEL))
 #define SPICE_IS_SMARTCARD_CHANNEL_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE((klass), SPICE_TYPE_SMARTCARD_CHANNEL))
-#define SPICE_SMARTCARD_CHANNEL_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS((obj), SPICE_TYPE_SMARTCARD_CHANNEL, SpiceSmartCardChannelClass))
+#define SPICE_SMARTCARD_CHANNEL_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS((obj), SPICE_TYPE_SMARTCARD_CHANNEL, SpiceSmartcardChannelClass))
 
-typedef struct _SpiceSmartCardChannel SpiceSmartCardChannel;
-typedef struct _SpiceSmartCardChannelClass SpiceSmartCardChannelClass;
+typedef struct _SpiceSmartcardChannel SpiceSmartcardChannel;
+typedef struct _SpiceSmartcardChannelClass SpiceSmartcardChannelClass;
 typedef struct spice_smartcard_channel spice_smartcard_channel;
 
-struct _SpiceSmartCardChannel {
+struct _SpiceSmartcardChannel {
     SpiceChannel parent;
     spice_smartcard_channel *priv;
     /* Do not add fields to this struct */
 };
 
-struct _SpiceSmartCardChannelClass {
+struct _SpiceSmartcardChannelClass {
     SpiceChannelClass parent_class;
 
     /* signals */

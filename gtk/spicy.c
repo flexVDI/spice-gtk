@@ -357,7 +357,7 @@ static void enable_smartcard_actions(spice_window *win, VReader *reader,
 {
     GtkAction *action;
 
-    if ((reader != NULL) && (!spice_smartcard_reader_is_software((SpiceSmartCardReader*)reader)))
+    if ((reader != NULL) && (!spice_smartcard_reader_is_software((SpiceSmartcardReader*)reader)))
     {
         /* Having menu actions to insert/remove smartcards only makes sense
          * for software smartcard readers, don't do anything when the event
@@ -365,34 +365,34 @@ static void enable_smartcard_actions(spice_window *win, VReader *reader,
          */
         return;
     }
-    action = gtk_action_group_get_action(win->ag, "InsertSmartCard");
+    action = gtk_action_group_get_action(win->ag, "InsertSmartcard");
     g_return_if_fail(action != NULL);
     gtk_action_set_sensitive(action, can_insert);
-    action = gtk_action_group_get_action(win->ag, "RemoveSmartCard");
+    action = gtk_action_group_get_action(win->ag, "RemoveSmartcard");
     g_return_if_fail(action != NULL);
     gtk_action_set_sensitive(action, can_remove);
 }
 
 
-static void reader_added_cb(SpiceSmartCardManager *manager, VReader *reader,
+static void reader_added_cb(SpiceSmartcardManager *manager, VReader *reader,
                             gpointer user_data)
 {
     enable_smartcard_actions(user_data, reader, TRUE, FALSE);
 }
 
-static void reader_removed_cb(SpiceSmartCardManager *manager, VReader *reader,
+static void reader_removed_cb(SpiceSmartcardManager *manager, VReader *reader,
                               gpointer user_data)
 {
     enable_smartcard_actions(user_data, reader, FALSE, FALSE);
 }
 
-static void card_inserted_cb(SpiceSmartCardManager *manager, VReader *reader,
+static void card_inserted_cb(SpiceSmartcardManager *manager, VReader *reader,
                              gpointer user_data)
 {
     enable_smartcard_actions(user_data, reader, FALSE, TRUE);
 }
 
-static void card_removed_cb(SpiceSmartCardManager *manager, VReader *reader,
+static void card_removed_cb(SpiceSmartcardManager *manager, VReader *reader,
                             gpointer user_data)
 {
     enable_smartcard_actions(user_data, reader, TRUE, FALSE);
@@ -660,12 +660,12 @@ static const GtkActionEntry entries[] = {
         .accelerator = "<shift>F12",
     },{
 #ifdef USE_SMARTCARD
-	.name        = "InsertSmartCard",
+	.name        = "InsertSmartcard",
 	.label       = N_("_Insert Smartcard"),
 	.callback    = G_CALLBACK(menu_cb_insert_smartcard),
         .accelerator = "<shift>F8",
     },{
-	.name        = "RemoveSmartCard",
+	.name        = "RemoveSmartcard",
 	.label       = N_("_Remove Smartcard"),
 	.callback    = G_CALLBACK(menu_cb_remove_smartcard),
         .accelerator = "<shift>F9",
@@ -741,8 +741,8 @@ static char ui_xml[] =
 "    <menu action='InputMenu'>\n"
 "      <menuitem action='UngrabMouse'/>\n"
 #ifdef USE_SMARTCARD
-"      <menuitem action='InsertSmartCard'/>\n"
-"      <menuitem action='RemoveSmartCard'/>\n"
+"      <menuitem action='InsertSmartcard'/>\n"
+"      <menuitem action='RemoveSmartcard'/>\n"
 #endif
 "    </menu>\n"
 "    <menu action='OptionMenu'>\n"

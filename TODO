@@ -1,4 +1,4 @@
 * TunnelChannel
 * ungrab pointer when clicking for drag&drop in multi-display is broken if releasing outside
 * create a ChannelBaseAudio
-* document SmartCardChannel
+* document SmartcardChannel

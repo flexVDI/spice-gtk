@@ -63,18 +63,18 @@
   (gtype-id "SPICE_TYPE_RECORD_CHANNEL")
 )
 
-(define-object SmartCardChannel
-  (in-module "Spice")
-  (parent "SpiceChannel")
-  (c-name "SpiceSmartCardChannel")
-  (gtype-id "SPICE_TYPE_SMARTCARD_CHANNEL")
-)
-
 (define-object Session
   (in-module "Spice")
   (parent "GObject")
   (c-name "SpiceSession")
   (gtype-id "SPICE_TYPE_SESSION")
+)
+
+(define-object SmartcardChannel
+  (in-module "Spice")
+  (parent "SpiceChannel")
+  (c-name "SpiceSmartcardChannel")
+  (gtype-id "SPICE_TYPE_SMARTCARD_CHANNEL")
 )
 
 ;; Enumerations and flags ...
@@ -409,6 +409,14 @@
   )
 )
 
+(define-function spice_channel_type_to_string
+  (c-name "spice_channel_type_to_string")
+  (return-type "const-gchar*")
+  (parameters
+    '("gint" "type")
+  )
+)
+
 
 
 ;; From spice-glib-enums.h
@@ -607,6 +615,15 @@
     '("gsize" "bytes")
     '("uint32_t" "time")
   )
+)
+
+
+
+;; From channel-smartcard.h
+
+(define-function spice_smartcard_channel_get_type
+  (c-name "spice_smartcard_channel_get_type")
+  (return-type "GType")
 )
 
 
