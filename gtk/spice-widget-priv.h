@@ -74,7 +74,6 @@ struct spice_display {
     GC                      gc;
 #else
     cairo_surface_t         *ximage;
-    cairo_surface_t         *ximage_cache;
 #endif
 
     GtkClipboard            *clipboard;

@@ -56,11 +56,6 @@ void spicex_image_destroy(SpiceDisplay *display)
 {
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
-    if (d->ximage_cache) {
-        cairo_surface_finish(d->ximage_cache);
-        d->ximage_cache = NULL;
-    }
-
     if (d->ximage) {
         cairo_surface_finish(d->ximage);
         d->ximage = NULL;
@@ -71,29 +66,6 @@ void spicex_image_destroy(SpiceDisplay *display)
     }
 }
 
-static void setup_surface_cache(spice_display *d, cairo_t *crWin)
-{
-    cairo_surface_t *win = cairo_get_target(crWin);
-    cairo_t *crCache;
-
-    if (d->ximage_cache)
-        return;
-
-    g_return_if_fail(d->ximage);
-
-    /* Creates a Pixmap on the X11 server matching the Window */
-    d->ximage_cache = cairo_surface_create_similar(win,
-                                                   CAIRO_CONTENT_COLOR,
-                                                   d->width, d->height);
-    crCache = cairo_create(d->ximage_cache);
-
-    /* Copy our local framebuffer contents to the Pixmap */
-    cairo_set_source_surface(crCache, d->ximage, 0, 0);
-    cairo_paint(crCache);
-
-    cairo_destroy(crCache);
-}
-
 G_GNUC_INTERNAL
 void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
 {
@@ -101,10 +73,6 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
     int fbw = d->width, fbh = d->height;
     int mx = 0, my = 0;
     int ww, wh;
-
-    if (!d->ximage_cache) {
-        setup_surface_cache(d, cr);
-    }
 
     gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
 
@@ -137,9 +105,9 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
             sx = (double)ww / (double)fbw;
             sy = (double)wh / (double)fbh;
             cairo_scale(cr, sx, sy);
-            cairo_set_source_surface(cr, d->ximage_cache, 0, 0);
+            cairo_set_source_surface(cr, d->ximage, 0, 0);
         } else {
-            cairo_set_source_surface(cr, d->ximage_cache, mx, my);
+            cairo_set_source_surface(cr, d->ximage, mx, my);
         }
         cairo_paint(cr);
     }
@@ -173,21 +141,6 @@ void spicex_image_invalidate(SpiceDisplay *display,
     int ww, wh;
 
     gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
-
-    /* If we have a pixmap, update the region which changed.
-     * If we don't have a pixmap, the entire thing will be
-     * created & rendered during the drawing handler
-     */
-    if (d->ximage_cache) {
-        cairo_t *cr = cairo_create(d->ximage_cache);
-
-        cairo_rectangle(cr, *x, *y, *w, *h);
-        cairo_clip(cr);
-        cairo_set_source_surface(cr, d->ximage, 0, 0);
-        cairo_paint(cr);
-
-        cairo_destroy(cr);
-    }
 
     if (d->allow_scaling) {
         double sx, sy;
