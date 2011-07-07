@@ -26,7 +26,9 @@
 #include <vreader.h>
 #endif
 
+#include "spice-client.h"
 #include "smartcard-manager.h"
+#include "smartcard-manager-priv.h"
 #include "spice-marshal.h"
 
 /**
@@ -389,16 +391,18 @@ gboolean spice_smartcard_reader_is_software(SpiceSmartcardReader *reader)
     return (strcmp(vreader_get_name((VReader*)reader), SPICE_SOFTWARE_READER_NAME) == 0);
 }
 
-G_GNUC_INTERNAL
-gboolean spice_smartcard_manager_init_libcacard(SpiceSession *session)
+static gboolean smartcard_manager_init(SpiceSession *session,
+                                       GCancellable *cancellable,
+                                       GError **err)
 {
     gchar *emul_args = NULL;
     VCardEmulOptions *options = NULL;
     gchar *dbname = NULL;
-    GStrv certificates;
+    GStrv certificates = NULL;
     gboolean retval = FALSE;
 
-    g_return_val_if_fail(session != NULL, VCARD_EMUL_FAIL);
+    SPICE_DEBUG("smartcard_manager_init");
+    g_return_val_if_fail(SPICE_IS_SESSION(session), FALSE);
     g_object_get(G_OBJECT(session),
                  "smartcard-db", &dbname,
                  "smartcard-certificates", &certificates,
@@ -422,19 +426,85 @@ gboolean spice_smartcard_manager_init_libcacard(SpiceSession *session)
 
     options = vcard_emul_options(emul_args);
     if (options == NULL) {
-        g_critical("vcard_emul_options() failed!");
+        *err = g_error_new(SPICE_CLIENT_ERROR,
+                           SPICE_CLIENT_ERROR_FAILED,
+                           "vcard_emul_options() failed!");
         goto end;
     }
 
+    if (g_cancellable_set_error_if_cancelled(cancellable, err))
+        goto end;
+
 init:
-    /* FIXME: sometime this hangs a long time..., cant we make it async? */
-    retval = vcard_emul_init(options) == VCARD_EMUL_OK;
+    SPICE_DEBUG("vcard_emul_init");
+    if (vcard_emul_init(options) != VCARD_EMUL_OK) {
+        *err = g_error_new(SPICE_CLIENT_ERROR,
+                           SPICE_CLIENT_ERROR_FAILED,
+                           "Failed to initialize smartcard");
+        goto end;
+    }
+
+    retval = TRUE;
 
 end:
+    SPICE_DEBUG("smartcard_manager_init end: %d", retval);
     g_free(emul_args);
     g_free(dbname);
     g_strfreev(certificates);
     return retval;
+}
+
+static void smartcard_manager_init_helper(GSimpleAsyncResult *res,
+                                          GObject *object,
+                                          GCancellable *cancellable)
+{
+    SpiceSession *session = SPICE_SESSION(object);
+    GError *err = NULL;
+
+    if (!smartcard_manager_init(session, cancellable, &err)) {
+        g_simple_async_result_set_from_error(res, err);
+        g_error_free(err);
+    }
+}
+
+
+G_GNUC_INTERNAL
+void spice_smartcard_manager_init_async(SpiceSession *session,
+                                        GCancellable *cancellable,
+                                        GAsyncReadyCallback callback,
+                                        gpointer opaque)
+{
+    GSimpleAsyncResult *res;
+
+    res = g_simple_async_result_new(G_OBJECT(session),
+                                    callback,
+                                    opaque,
+                                    spice_smartcard_manager_init);
+    g_simple_async_result_run_in_thread(res,
+                                        smartcard_manager_init_helper,
+                                        G_PRIORITY_DEFAULT,
+                                        cancellable);
+    g_object_unref(res);
+}
+
+G_GNUC_INTERNAL
+gboolean spice_smartcard_manager_init_finish(SpiceSession *session,
+                                             GAsyncResult *result,
+                                             GError **err)
+{
+    g_return_val_if_fail(SPICE_IS_SESSION(session), FALSE);
+    g_return_val_if_fail(G_IS_ASYNC_RESULT(result), FALSE);
+
+    SPICE_DEBUG("smartcard_manager_finish");
+
+    if (G_IS_SIMPLE_ASYNC_RESULT(result)) {
+        GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT(result);
+        g_warn_if_fail(g_simple_async_result_get_source_tag(simple) == spice_smartcard_manager_init);
+        if (g_simple_async_result_propagate_error(simple, err))
+            return FALSE;
+    }
+
+    return TRUE;
 }
 
 gboolean spice_smartcard_manager_insert_card(SpiceSmartcardManager *manager)
@@ -465,9 +535,21 @@ gboolean spice_smartcard_reader_is_software(SpiceSmartcardReader *reader)
 }
 
 G_GNUC_INTERNAL
-gboolean spice_smartcard_manager_init_libcacard(SpiceSession *session)
+void spice_smartcard_manager_init_async(SpiceSession *session,
+                                        GCancellable *cancellable,
+                                        GAsyncReadyCallback callback,
+                                        gpointer opaque)
 {
     SPICE_DEBUG("using fake smartcard backend");
+}
+
+G_GNUC_INTERNAL
+gboolean spice_smartcard_manager_init_finish(SpiceSession *session,
+                                             GAsyncResult *result,
+                                             GError **err)
+{
+    g_return_val_if_fail(SPICE_IS_SESSION(session), FALSE);
+
     return TRUE;
 }
 

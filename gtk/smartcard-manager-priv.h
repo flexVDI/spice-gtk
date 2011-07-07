@@ -21,10 +21,18 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+#include <gio/gio.h>
+#include "spice-session.h"
 
 G_BEGIN_DECLS
 
-gboolean spice_smartcard_manager_init_libcacard(SpiceSession *session);
+void spice_smartcard_manager_init_async(SpiceSession *session,
+                                        GCancellable *cancellable,
+                                        GAsyncReadyCallback callback,
+                                        gpointer opaque);
+gboolean spice_smartcard_manager_init_finish(SpiceSession *session,
+                                             GAsyncResult *result,
+                                             GError **err);
 
 G_END_DECLS
 

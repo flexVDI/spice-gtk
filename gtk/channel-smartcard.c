@@ -406,12 +406,33 @@ static void spice_smartcard_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
         g_return_if_reached();
 }
 
+static void spice_smartcard_channel_up_cb(GObject *source_object,
+                                          GAsyncResult *res,
+                                          gpointer user_data)
+{
+    SpiceChannel *channel = SPICE_CHANNEL(user_data);
+    GError *error = NULL;
+
+    g_return_if_fail(channel != NULL);
+    g_return_if_fail(SPICE_IS_SESSION(source_object));
+
+    spice_smartcard_manager_init_finish(SPICE_SESSION(source_object),
+                                        res, &error);
+    if (error)
+        g_warning(error->message);
+    g_clear_error(&error);
+}
+
 static void spice_smartcard_channel_up(SpiceChannel *channel)
 {
     SpiceSession *session;
+    GCancellable *cancellable = g_cancellable_new();
 
     g_object_get(channel, "spice-session", &session, NULL);
-    spice_smartcard_manager_init_libcacard(session);
+    spice_smartcard_manager_init_async(session,
+                                       cancellable,
+                                       spice_smartcard_channel_up_cb,
+                                       channel);
     g_object_unref(session);
 }
 
