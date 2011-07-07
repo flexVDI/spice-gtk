@@ -151,6 +151,7 @@ static void spice_session_init(SpiceSession *session)
 {
     spice_session *s;
 
+    SPICE_DEBUG("New session (compiled from package " PACKAGE_STRING ")");
     s = session->priv = SPICE_SESSION_GET_PRIVATE(session);
     memset(s, 0, sizeof(*s));
 
@@ -682,7 +683,6 @@ static void spice_session_class_init(SpiceSessionClass *klass)
  **/
 SpiceSession *spice_session_new(void)
 {
-    SPICE_DEBUG("New session from " PACKAGE_STRING);
     return SPICE_SESSION(g_object_new(SPICE_TYPE_SESSION, NULL));
 }
 
