@@ -39,4 +39,19 @@
 #include "channel-record.h"
 #include "channel-smartcard.h"
 
+#define SPICE_CLIENT_ERROR spice_client_error_quark()
+
+/**
+ * SpiceClientError:
+ * @SPICE_CLIENT_ERROR_FAILED: generic error code
+ *
+ * Error codes returned by spice-client API.
+ */
+typedef enum
+{
+    SPICE_CLIENT_ERROR_FAILED,
+} SpiceClientError;
+
+GQuark spice_client_error_quark(void);
+
 #endif /* __SPICE_CLIENT_CLIENT_H__ */

@@ -152,6 +152,7 @@ libspice_client_glib_2_0_la_SOURCES =	\
 	spice-common.h			\
 	spice-util.c			\
 	\
+	spice-client.c			\
 	spice-session.c			\
 	spice-session-priv.h		\
 	spice-channel.c			\

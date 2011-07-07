@@ -286,6 +286,11 @@
 
 ;; From spice-client.h
 
+(define-function spice_client_error_quark
+  (c-name "spice_client_error_quark")
+  (return-type "GQuark")
+)
+
 
 
 ;; From spice-types.h

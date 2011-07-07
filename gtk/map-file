@@ -13,6 +13,7 @@ spice_channel_set_capability;
 spice_channel_test_capability;
 spice_channel_test_common_capability;
 spice_channel_type_to_string;
+spice_client_error_quark;
 spice_cursor_channel_get_type;
 spice_display_channel_get_type;
 spice_display_copy_to_guest;

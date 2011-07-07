@@ -96,3 +96,11 @@
     '("guint" "locks")
   )
 )
+
+(define-enum ClientError
+  (in-module "Spice")
+  (c-name "SpiceClientError")
+  (values
+    '("failed" "SPICE_CLIENT_ERROR_FAILED")
+  )
+)
