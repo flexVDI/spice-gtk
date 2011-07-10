@@ -88,6 +88,7 @@ static GKeyFile      *keyfile = NULL;
 static GnomeRRScreen *rrscreen = NULL;
 static GnomeRRConfig *rrsaved = NULL;
 static GnomeRRConfig *rrcurrent = NULL;
+static GStrv         disable_effects = NULL;
 
 static spice_connection *connection_new(void);
 static void connection_connect(spice_connection *conn);
@@ -1303,6 +1304,19 @@ static void display_mark(SpiceChannel *channel, gint mark, spice_window *win)
     }
 }
 
+static gboolean strv_contains(const GStrv strv, gchar *str)
+{
+    int i = 0;
+    g_return_val_if_fail(strv != NULL, FALSE);
+
+    while (strv[i] != NULL) {
+        if (g_str_equal(strv[i], str))
+            return TRUE;
+        i++;
+    }
+    return FALSE;
+}
+
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
     spice_connection *conn = data;
@@ -1322,6 +1336,15 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
                          G_CALLBACK(main_agent_update), conn);
         main_mouse_update(channel, conn);
         main_agent_update(channel, conn);
+        {
+            gboolean all = strv_contains(disable_effects, "all");
+
+            g_object_set(channel,
+                         "disable-wallpaper", all || strv_contains(disable_effects, "wallpaper"),
+                         "disable-font-smooth", all || strv_contains(disable_effects, "font-smooth"),
+                         "disable-animation", all || strv_contains(disable_effects, "animation"),
+                         NULL);
+        }
     }
 
     if (SPICE_IS_DISPLAY_CHANNEL(channel)) {
@@ -1455,6 +1478,13 @@ static GOptionEntry cmd_entries[] = {
         .arg              = G_OPTION_ARG_NONE,
         .arg_data         = &version,
         .description      = N_("Display version and quit"),
+    },
+    {
+        .long_name        = "disable-effects",
+        .arg              = G_OPTION_ARG_STRING_ARRAY,
+        .arg_data         = &disable_effects,
+        .description      = N_("Disable guest display effects"),
+        .arg_description  = N_("<wallpaper,font-smooth,animation,all>"),
     },
     {
         /* end of list */
