@@ -89,6 +89,7 @@ static GnomeRRScreen *rrscreen = NULL;
 static GnomeRRConfig *rrsaved = NULL;
 static GnomeRRConfig *rrcurrent = NULL;
 static GStrv         disable_effects = NULL;
+static gint          color_depth = 0;
 
 static spice_connection *connection_new(void);
 static void connection_connect(spice_connection *conn);
@@ -1344,6 +1345,11 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
                          "disable-font-smooth", all || strv_contains(disable_effects, "font-smooth"),
                          "disable-animation", all || strv_contains(disable_effects, "animation"),
                          NULL);
+            if (color_depth != 0)
+                g_object_set(channel,
+                             "color-depth", color_depth,
+                             NULL);
+
         }
     }
 
@@ -1485,6 +1491,13 @@ static GOptionEntry cmd_entries[] = {
         .arg_data         = &disable_effects,
         .description      = N_("Disable guest display effects"),
         .arg_description  = N_("<wallpaper,font-smooth,animation,all>"),
+    },
+    {
+        .long_name        = "color-depth",
+        .arg              = G_OPTION_ARG_INT,
+        .arg_data         = &color_depth,
+        .description      = N_("Guest display color depth"),
+        .arg_description  = N_("<16,32>"),
     },
     {
         /* end of list */

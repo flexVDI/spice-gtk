@@ -55,7 +55,6 @@ struct spice_main_channel {
     gboolean                    display_disable_wallpaper:1;
     gboolean                    display_disable_font_smooth:1;
     gboolean                    display_disable_animation:1;
-    gboolean                    display_set_color_depth:1;
     gboolean                    disable_display_position:1;
 
     int                         agent_tokens;
@@ -98,7 +97,6 @@ enum {
     PROP_DISPLAY_DISABLE_WALLPAPER,
     PROP_DISPLAY_DISABLE_FONT_SMOOTH,
     PROP_DISPLAY_DISABLE_ANIMATION,
-    PROP_DISPLAY_SET_COLOR_DEPTH,
     PROP_DISPLAY_COLOR_DEPTH,
     PROP_DISABLE_DISPLAY_POSITION,
 };
@@ -187,9 +185,6 @@ static void spice_main_get_property(GObject    *object,
     case PROP_DISPLAY_DISABLE_ANIMATION:
         g_value_set_boolean(value, c->display_disable_animation);
         break;
-    case PROP_DISPLAY_SET_COLOR_DEPTH:
-        g_value_set_boolean(value, c->display_set_color_depth);
-        break;
     case PROP_DISPLAY_COLOR_DEPTH:
         g_value_set_uint(value, c->display_color_depth);
         break;
@@ -217,12 +212,12 @@ static void spice_main_set_property(GObject *gobject, guint prop_id,
     case PROP_DISPLAY_DISABLE_ANIMATION:
         c->display_disable_animation = g_value_get_boolean(value);
         break;
-    case PROP_DISPLAY_SET_COLOR_DEPTH:
-        c->display_set_color_depth = g_value_get_boolean(value);
+    case PROP_DISPLAY_COLOR_DEPTH: {
+        guint color_depth = g_value_get_uint(value);
+        g_return_if_fail(color_depth % 8 == 0);
+        c->display_color_depth = color_depth;
         break;
-    case PROP_DISPLAY_COLOR_DEPTH:
-        c->display_color_depth = g_value_get_uint(value);
-        break;
+    }
     case PROP_DISABLE_DISPLAY_POSITION:
         c->disable_display_position = g_value_get_boolean(value);
         break;
@@ -368,19 +363,10 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                               G_PARAM_STATIC_STRINGS));
 
     g_object_class_install_property
-        (gobject_class, PROP_DISPLAY_SET_COLOR_DEPTH,
-         g_param_spec_boolean("set-color-depth",
-                              "set color depth",
-                              "Set display color depth", FALSE,
-                              G_PARAM_READWRITE |
-                              G_PARAM_CONSTRUCT |
-                              G_PARAM_STATIC_STRINGS));
-
-    g_object_class_install_property
         (gobject_class, PROP_DISPLAY_COLOR_DEPTH,
          g_param_spec_uint("color-depth",
                            "Color depth",
-                           "Color depth", 8, 32, 32,
+                           "Color depth", 0, 32, 0,
                            G_PARAM_READWRITE |
                            G_PARAM_CONSTRUCT |
                            G_PARAM_STATIC_STRINGS));
@@ -840,7 +826,7 @@ static void agent_display_config(SpiceMainChannel *channel)
         config.flags |= VD_AGENT_DISPLAY_CONFIG_FLAG_DISABLE_ANIMATION;
     }
 
-    if (c->display_set_color_depth) {
+    if (c->display_color_depth != 0) {
         config.flags |= VD_AGENT_DISPLAY_CONFIG_FLAG_SET_COLOR_DEPTH;
         config.depth = c->display_color_depth;
     }
