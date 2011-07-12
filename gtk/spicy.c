@@ -1308,7 +1308,9 @@ static void display_mark(SpiceChannel *channel, gint mark, spice_window *win)
 static gboolean strv_contains(const GStrv strv, gchar *str)
 {
     int i = 0;
-    g_return_val_if_fail(strv != NULL, FALSE);
+
+    if (strv == NULL)
+        return FALSE;
 
     while (strv[i] != NULL) {
         if (g_str_equal(strv[i], str))
