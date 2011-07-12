@@ -147,10 +147,6 @@ enum {
 
 static guint signals[SPICE_SESSION_LAST_SIGNAL];
 
-GQuark spice_client_error_quark(void)
-{
-    return g_quark_from_static_string("spice-client-error-quark");
-}
 
 static void spice_session_init(SpiceSession *session)
 {
