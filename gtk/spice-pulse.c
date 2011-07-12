@@ -794,7 +794,7 @@ SpicePulse *spice_pulse_new(SpiceSession *session, GMainContext *context,
 {
     SpicePulse *pulse;
     spice_pulse *p;
-    GList *list;
+    GList *list, *tmp;
 
     pulse = g_object_new(SPICE_TYPE_PULSE, NULL);
     p = SPICE_PULSE_GET_PRIVATE(pulse);
@@ -803,8 +803,8 @@ SpicePulse *spice_pulse_new(SpiceSession *session, GMainContext *context,
     g_signal_connect(session, "channel-new",
                      G_CALLBACK(channel_new), pulse);
     list = spice_session_get_channels(session);
-    for (list = g_list_first(list); list != NULL; list = g_list_next(list)) {
-        channel_new(session, list->data, (gpointer)pulse);
+    for (tmp = g_list_first(list); tmp != NULL; tmp = g_list_next(tmp)) {
+        channel_new(session, tmp->data, (gpointer)pulse);
     }
     g_list_free(list);
 
