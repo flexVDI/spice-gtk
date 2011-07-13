@@ -35,6 +35,8 @@ typedef struct spice_smartcard_channel spice_smartcard_channel;
 
 struct _SpiceSmartcardChannel {
     SpiceChannel parent;
+
+    /*< private >*/
     spice_smartcard_channel *priv;
     /* Do not add fields to this struct */
 };

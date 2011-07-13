@@ -45,6 +45,7 @@ spice_session_verify_get_type
 <TITLE>SpiceMainChannel</TITLE>
 SpiceMainChannel
 SpiceMainChannelClass
+<SUBSECTION>
 spice_main_channel
 spice_main_set_display
 spice_main_clipboard_grab
@@ -68,6 +69,7 @@ SpiceChannelEvent
 SpiceChannelVerify
 SpiceChannel
 SpiceChannelClass
+<SUBSECTION>
 spice_channel_new
 spice_channel_destroy
 spice_channel_connect
@@ -96,6 +98,7 @@ spice_msg_out
 <TITLE>SpiceAudio</TITLE>
 SpiceAudio
 SpiceAudioClass
+<SUBSECTION>
 spice_audio_new
 <SUBSECTION Standard>
 SPICE_AUDIO
@@ -146,6 +149,7 @@ spice_cursor_channel
 <TITLE>SpiceRecordChannel</TITLE>
 SpiceRecordChannel
 SpiceRecordChannelClass
+<SUBSECTION>
 spice_record_send_data
 <SUBSECTION Standard>
 SPICE_RECORD_CHANNEL
@@ -165,6 +169,7 @@ spice_record_channel
 SpiceInputsChannel
 SpiceInputsChannelClass
 SpiceInputsLock
+<SUBSECTION>
 spice_inputs_motion
 spice_inputs_position
 spice_inputs_button_press
@@ -189,7 +194,6 @@ spice_inputs_channel
 <SECTION>
 <FILE>channel-smartcard</FILE>
 <TITLE>SpiceSmartcardChannel</TITLE>
-spice_smartcard_channel
 SpiceSmartcardChannel
 SpiceSmartcardChannelClass
 <SUBSECTION Standard>
@@ -200,21 +204,22 @@ spice_smartcard_channel_get_type
 SPICE_SMARTCARD_CHANNEL_CLASS
 SPICE_IS_SMARTCARD_CHANNEL_CLASS
 SPICE_SMARTCARD_CHANNEL_GET_CLASS
+<SUBSECTION Private>
+spice_smartcard_channel
 </SECTION>
 
 <SECTION>
 <FILE>smartcard-manager</FILE>
 <TITLE>SpiceSmartcardManager</TITLE>
-SPICE_TYPE_SMARTCARD_READER
-spice_smartcard_manager
 SpiceSmartcardManager
 SpiceSmartcardManagerClass
-spice_smartcard_reader_get_type
+SpiceSmartcardReader
+<SUBSECTION>
 spice_smartcard_manager_get
 spice_smartcard_manager_insert_card
 spice_smartcard_manager_remove_card
+<SUBSECTION>
 spice_smartcard_reader_is_software
-SpiceSmartcardReader
 <SUBSECTION Standard>
 SPICE_SMARTCARD_MANAGER
 SPICE_IS_SMARTCARD_MANAGER
@@ -223,6 +228,10 @@ spice_smartcard_manager_get_type
 SPICE_SMARTCARD_MANAGER_CLASS
 SPICE_IS_SMARTCARD_MANAGER_CLASS
 SPICE_SMARTCARD_MANAGER_GET_CLASS
+SPICE_TYPE_SMARTCARD_READER
+spice_smartcard_reader_get_type
+<SUBSECTION Private>
+spice_smartcard_manager
 </SECTION>
 
 <SECTION>

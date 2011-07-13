@@ -41,6 +41,8 @@ typedef struct _SpiceSmartcardReader SpiceSmartcardReader;
 struct _SpiceSmartcardManager
 {
     GObject parent;
+
+    /*< private >*/
     spice_smartcard_manager *priv;
     /* Do not add fields to this struct */
 };
@@ -54,6 +56,8 @@ struct _SpiceSmartcardManagerClass
     void (*reader_removed)(SpiceSmartcardManager *manager, SpiceSmartcardReader *reader);
     void (*card_inserted)(SpiceSmartcardManager *manager, SpiceSmartcardReader *reader);
     void (*card_removed)(SpiceSmartcardManager *manager, SpiceSmartcardReader *reader );
+
+    /*< private >*/
     /*
      * If adding fields to this struct, remove corresponding
      * amount of padding to avoid changing overall struct size

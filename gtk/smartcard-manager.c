@@ -34,7 +34,7 @@
 /**
  * SECTION:smartcard-manager
  * @short_description: smartcard management
- * @title: Spice SmartcardManager
+ * @title: Spice Smartcard Manager
  * @section_id:
  * @see_also:
  * @stability: Stable

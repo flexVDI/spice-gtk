@@ -34,7 +34,7 @@
  * @title: Smartcard Channel
  * @section_id:
  * @see_also: #SpiceSmartcardManager, #SpiceSession
- * @stability: In Development
+ * @stability: API Stable (channel in development)
  * @include: channel-smartcard.h
  *
  * The Spice protocol defines a set of messages to forward smartcard

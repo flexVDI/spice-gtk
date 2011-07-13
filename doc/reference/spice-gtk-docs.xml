@@ -35,7 +35,6 @@
       <xi:include href="xml/channel-playback.xml"/>
       <xi:include href="xml/channel-record.xml"/>
       <xi:include href="xml/channel-smartcard.xml"/>
-      <xi:include href="xml/smartcard-manager.xml"/>
     </chapter>
 
     <chapter>
@@ -46,6 +45,7 @@
     <chapter id="application-support">
       <title>Application Support, from spice-client-glib</title>
       <xi:include href="xml/spice-audio.xml"/>
+      <xi:include href="xml/smartcard-manager.xml"/>
       <xi:include href="xml/spice-util.xml"/>
     </chapter>
 
