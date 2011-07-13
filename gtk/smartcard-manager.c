@@ -32,17 +32,18 @@
 #include "spice-marshal.h"
 
 /**
- * SECTION:spice-smartcard-manager
- * @short_description: the base smartcard-manager class
+ * SECTION:smartcard-manager
+ * @short_description: smartcard management
  * @title: Spice SmartcardManager
  * @section_id:
  * @see_also:
  * @stability: Stable
  * @include: spice-smartcard-manager.h
  *
- * #SpiceSmartcardManager is the base class for the different kind of Spice
- * smartcard_manager connections, such as #SpiceMainSmartcardManager, or
- * #SpiceInputsSmartcardManager.
+ * #SpiceSmartcardManager monitors smartcard reader plugging/unplugging,
+ * and smartcard insertions/removals. It also provides methods to handle
+ * software smartcards (to emulate a smartcard reader/smartcard on the
+ * guest using 3 certificates available to the client).
  */
 
 /* ------------------------------------------------------------------ */
@@ -236,6 +237,15 @@ static SpiceSmartcardManager *spice_smartcard_manager_new(void)
 /* ------------------------------------------------------------------ */
 /* public api                                                         */
 
+/**
+ * spice_smartcard_manager_get
+ *
+ * #SpiceSmartcardManager is a singleton, use this function to get a pointer
+ * to it. A new SpiceSmartcardManager instance will be created the first
+ * time this function is called
+ *
+ * Returns: a pointer to the #SpiceSmartcardManager singleton
+ */
 SpiceSmartcardManager *spice_smartcard_manager_get(void)
 {
     static GOnce manager_singleton_once = G_ONCE_INIT;
@@ -385,6 +395,15 @@ static guint smartcard_monitor_add(SmartcardSourceFunc callback,
 
 #define SPICE_SOFTWARE_READER_NAME "Spice Software Smartcard"
 
+/**
+ * spice_smartcard_reader_is_software
+ * @reader: a #SpiceSmartcardReader
+ *
+ * Tests if @reader is a software (emulated) smartcard reader.
+ *
+ * Returns: TRUE if @reader is a software (emulated) smartcard reader,
+ * FALSE otherwise
+ */
 gboolean spice_smartcard_reader_is_software(SpiceSmartcardReader *reader)
 {
     g_return_val_if_fail(reader != NULL, FALSE);
@@ -507,6 +526,19 @@ gboolean spice_smartcard_manager_init_finish(SpiceSession *session,
     return TRUE;
 }
 
+/**
+ * spice_smartcard_manager_insert_card
+ * @manager: a #SpiceSmartcardManager
+ *
+ * Simulates the insertion of a smartcard in the guest. Valid certificates
+ * must have been set in #SpiceSession::smartcard-certificates for software
+ * smartcard support to work. At the moment, only one software smartcard
+ * reader is supported, that's why there is no parameter to indicate which
+ * reader to insert the card in.
+ *
+ * Returns: TRUE if smartcard insertion was successfully simulated, FALSE
+ * if this failed, or if software smartcard support isn't enabled.
+ */
 gboolean spice_smartcard_manager_insert_card(SpiceSmartcardManager *manager)
 {
     VCardEmulError status;
@@ -518,6 +550,17 @@ gboolean spice_smartcard_manager_insert_card(SpiceSmartcardManager *manager)
     return (status == VCARD_EMUL_OK);
 }
 
+/**
+ * spice_smartcard_manager_remove_card
+ * @manager: a #SpiceSmartcardManager
+ *
+ * Simulates the removal of a smartcard in the guest. At the moment, only
+ * one software smartcard reader is supported, that's why there is no
+ * parameter to indicate which reader to insert the card in.
+ *
+ * Returns: TRUE if smartcard removal was successfully simulated, FALSE
+ * if this failed, or if software smartcard support isn't enabled.
+ */
 gboolean spice_smartcard_manager_remove_card(SpiceSmartcardManager *manager)
 {
     VCardEmulError status;

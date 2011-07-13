@@ -33,11 +33,19 @@
  * @short_description: smartcard authentication
  * @title: Smartcard Channel
  * @section_id:
- * @see_also: #SpiceChannel
+ * @see_also: #SpiceSmartcardManager, #SpiceSession
  * @stability: In Development
  * @include: channel-smartcard.h
  *
- * TODO
+ * The Spice protocol defines a set of messages to forward smartcard
+ * information from the Spice client to the VM. This channel handles
+ * these messages. While it's mainly focus on smartcard readers and
+ * smartcards, it's also possible to use it with a software smartcard
+ * (ie a set of 3 certificates from the client machine).
+ * This class doesn't provide useful methods, see #SpiceSession properties
+ * for a way to enable/disable this channel, and #SpiceSmartcardManager
+ * if you want to detect smartcard reader hotplug/unplug, and smartcard
+ * insertion/removal.
  */
 
 #define SPICE_SMARTCARD_CHANNEL_GET_PRIVATE(obj)                                  \

@@ -482,6 +482,12 @@ static void spice_session_class_init(SpiceSessionClass *klass)
     gobject_class->get_property = spice_session_get_property;
     gobject_class->set_property = spice_session_set_property;
 
+    /**
+     * SpiceSession:host:
+     *
+     * URL of the SPICE host to connect to
+     *
+     **/
     g_object_class_install_property
         (gobject_class, PROP_HOST,
          g_param_spec_string("host",
@@ -492,6 +498,12 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              G_PARAM_CONSTRUCT |
                              G_PARAM_STATIC_STRINGS));
 
+    /**
+     * SpiceSession:port:
+     *
+     * Port to connect to for unencrypted sessions
+     *
+     **/
     g_object_class_install_property
         (gobject_class, PROP_PORT,
          g_param_spec_string("port",
@@ -501,6 +513,12 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              G_PARAM_READWRITE |
                              G_PARAM_STATIC_STRINGS));
 
+    /**
+     * SpiceSession:tls-port:
+     *
+     * Port to connect to for TLS sessions
+     *
+     **/
     g_object_class_install_property
         (gobject_class, PROP_TLS_PORT,
          g_param_spec_string("tls-port",
@@ -510,6 +528,12 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              G_PARAM_READWRITE |
                              G_PARAM_STATIC_STRINGS));
 
+    /**
+     * SpiceSession:password:
+     *
+     * TLS password to use
+     *
+     **/
     g_object_class_install_property
         (gobject_class, PROP_PASSWORD,
          g_param_spec_string("password",
@@ -519,6 +543,13 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              G_PARAM_READWRITE |
                              G_PARAM_STATIC_STRINGS));
 
+    /**
+     * SpiceSession:ca-file:
+     *
+     * File holding the CA certificates for the host the client is
+     * connecting to
+     *
+     **/
     g_object_class_install_property
         (gobject_class, PROP_CA_FILE,
          g_param_spec_string("ca-file",
@@ -528,6 +559,10 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              G_PARAM_READWRITE |
                              G_PARAM_STATIC_STRINGS));
 
+    /**
+     * SpiceSession:ciphers:
+     *
+     **/
     g_object_class_install_property
         (gobject_class, PROP_CIPHERS,
          g_param_spec_string("ciphers",
@@ -537,6 +572,12 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              G_PARAM_READWRITE |
                              G_PARAM_STATIC_STRINGS));
 
+    /**
+     * SpiceSession:protocol:
+     *
+     * Version of the SPICE protocol to use
+     *
+     **/
     g_object_class_install_property
         (gobject_class, PROP_PROTOCOL,
          g_param_spec_int("protocol",
@@ -547,6 +588,13 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                           G_PARAM_CONSTRUCT |
                           G_PARAM_STATIC_STRINGS));
 
+    /**
+     * SpiceSession:uri:
+     *
+     * URI of the SPICE host to connect to. The URI is of the form
+     * spice://hostname?port=XXX or spice://hostname?tls_port=XXX
+     *
+     **/
     g_object_class_install_property
         (gobject_class, PROP_URI,
          g_param_spec_string("uri",
@@ -556,6 +604,10 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              G_PARAM_READWRITE |
                              G_PARAM_STATIC_STRINGS));
 
+    /**
+     * SpiceSession:client-sockets:
+     *
+     **/
     g_object_class_install_property
         (gobject_class, PROP_CLIENT_SOCKETS,
          g_param_spec_boolean("client-sockets",
@@ -565,6 +617,10 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                           G_PARAM_READWRITE |
                           G_PARAM_STATIC_STRINGS));
 
+    /**
+     * SpiceSession:pubkey:
+     *
+     **/
     g_object_class_install_property
         (gobject_class, PROP_PUBKEY,
          g_param_spec_boxed("pubkey",
@@ -574,6 +630,10 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                             G_PARAM_READWRITE |
                             G_PARAM_STATIC_STRINGS));
 
+    /**
+     * SpiceSession:cert-subject:
+     *
+     **/
     g_object_class_install_property
         (gobject_class, PROP_CERT_SUBJECT,
          g_param_spec_string("cert-subject",
@@ -583,6 +643,12 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              G_PARAM_READWRITE |
                              G_PARAM_STATIC_STRINGS));
 
+    /**
+     * SpiceSession:verify:
+     *
+     * #SpiceSessionVerify bit field indicating which parts of the peer
+     * certificate should be checked
+     **/
     g_object_class_install_property
         (gobject_class, PROP_VERIFY,
          g_param_spec_flags("verify",
@@ -594,6 +660,13 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                             G_PARAM_CONSTRUCT |
                             G_PARAM_STATIC_STRINGS));
 
+    /**
+     * SpiceSession:migration-state:
+     *
+     * #SpiceSessionMigration bit field indicating if a migration is in
+     * progress
+     *
+     **/
     g_object_class_install_property
         (gobject_class, PROP_MIGRATION_STATE,
          g_param_spec_enum("migration-state",
@@ -604,6 +677,12 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                            G_PARAM_READABLE |
                            G_PARAM_STATIC_STRINGS));
 
+    /**
+     * SpiceSession:enable-smartcard:
+     *
+     * If set to TRUE, the smartcard channel will be enabled and smartcard
+     * events will be forwarded to the guest
+     **/
     g_object_class_install_property
         (gobject_class, PROP_SMARTCARD,
          g_param_spec_boolean("enable-smartcard",
@@ -613,6 +692,15 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                           G_PARAM_READWRITE |
                           G_PARAM_STATIC_STRINGS));
 
+    /**
+     * SpiceSession:smartcard-certificates:
+     *
+     * This property is used when one wants to simulate a smartcard with no
+     * hardware smartcard reader. If it's set to a NULL-terminated string
+     * array containing the names of 3 valid certificates, these will be
+     * used to simulate a smartcard in the guest
+     * @see_also: spice_smartcard_manager_insert_card()
+     **/
     g_object_class_install_property
         (gobject_class, PROP_SMARTCARD_CERTIFICATES,
          g_param_spec_boxed("smartcard-certificates",
@@ -623,6 +711,12 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                             G_PARAM_WRITABLE |
                             G_PARAM_STATIC_STRINGS));
 
+    /**
+     * SpiceSession:smartcard-db:
+     *
+     * Path to the NSS certificate database containing the certificates to
+     * use to simulate a software smartcard
+     **/
     g_object_class_install_property
         (gobject_class, PROP_SMARTCARD_DB,
          g_param_spec_string("smartcard-db",

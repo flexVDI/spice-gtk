@@ -34,6 +34,8 @@
       <xi:include href="xml/channel-main.xml"/>
       <xi:include href="xml/channel-playback.xml"/>
       <xi:include href="xml/channel-record.xml"/>
+      <xi:include href="xml/channel-smartcard.xml"/>
+      <xi:include href="xml/smartcard-manager.xml"/>
     </chapter>
 
     <chapter>

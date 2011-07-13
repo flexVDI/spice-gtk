@@ -187,6 +187,45 @@ spice_inputs_channel
 </SECTION>
 
 <SECTION>
+<FILE>channel-smartcard</FILE>
+<TITLE>SpiceSmartcardChannel</TITLE>
+spice_smartcard_channel
+SpiceSmartcardChannel
+SpiceSmartcardChannelClass
+<SUBSECTION Standard>
+SPICE_SMARTCARD_CHANNEL
+SPICE_IS_SMARTCARD_CHANNEL
+SPICE_TYPE_SMARTCARD_CHANNEL
+spice_smartcard_channel_get_type
+SPICE_SMARTCARD_CHANNEL_CLASS
+SPICE_IS_SMARTCARD_CHANNEL_CLASS
+SPICE_SMARTCARD_CHANNEL_GET_CLASS
+</SECTION>
+
+<SECTION>
+<FILE>smartcard-manager</FILE>
+<TITLE>SpiceSmartcardManager</TITLE>
+SPICE_TYPE_SMARTCARD_READER
+spice_smartcard_manager
+SpiceSmartcardManager
+SpiceSmartcardManagerClass
+spice_smartcard_reader_get_type
+spice_smartcard_manager_get
+spice_smartcard_manager_insert_card
+spice_smartcard_manager_remove_card
+spice_smartcard_reader_is_software
+SpiceSmartcardReader
+<SUBSECTION Standard>
+SPICE_SMARTCARD_MANAGER
+SPICE_IS_SMARTCARD_MANAGER
+SPICE_TYPE_SMARTCARD_MANAGER
+spice_smartcard_manager_get_type
+SPICE_SMARTCARD_MANAGER_CLASS
+SPICE_IS_SMARTCARD_MANAGER_CLASS
+SPICE_SMARTCARD_MANAGER_GET_CLASS
+</SECTION>
+
+<SECTION>
 <FILE>spice-widget</FILE>
 <TITLE>SpiceDisplay</TITLE>
 SpiceDisplay
