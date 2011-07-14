@@ -201,32 +201,33 @@ static void spice_display_set_property(GObject      *object,
     }
 }
 
-static void spice_display_destroy(GtkObject *obj)
-{
-    SpiceDisplay *display = SPICE_DISPLAY(obj);
-    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
-
-    g_signal_handlers_disconnect_by_func(d->session, G_CALLBACK(channel_new),
-                                         display);
-    g_signal_handlers_disconnect_by_func(d->session, G_CALLBACK(channel_destroy),
-                                         display);
-    g_signal_handlers_disconnect_by_func(d->clipboard, G_CALLBACK(clipboard_owner_change),
-                                         display);
-    g_signal_handlers_disconnect_by_func(d->clipboard_primary, G_CALLBACK(clipboard_owner_change),
-                                         display);
-
-    disconnect_main(display);
-    disconnect_display(display);
-    disconnect_cursor(display);
-    GTK_OBJECT_CLASS(spice_display_parent_class)->destroy(obj);
-}
-
 static void spice_display_dispose(GObject *obj)
 {
     SpiceDisplay *display = SPICE_DISPLAY(obj);
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
+    SPICE_DEBUG("spice display dispose");
+
+    disconnect_main(display);
+    disconnect_display(display);
+    disconnect_cursor(display);
+
+    if (d->clipboard) {
+        g_signal_handlers_disconnect_by_func(d->clipboard, G_CALLBACK(clipboard_owner_change),
+                                             display);
+        d->clipboard = NULL;
+    }
+
+    if (d->clipboard_primary) {
+        g_signal_handlers_disconnect_by_func(d->clipboard_primary, G_CALLBACK(clipboard_owner_change),
+                                             display);
+        d->clipboard_primary = NULL;
+    }
     if (d->session) {
+        g_signal_handlers_disconnect_by_func(d->session, G_CALLBACK(channel_new),
+                                             display);
+        g_signal_handlers_disconnect_by_func(d->session, G_CALLBACK(channel_destroy),
+                                             display);
         g_object_unref(d->session);
         d->session = NULL;
     }
@@ -1018,7 +1019,9 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
     if (d->mouse_mode == SPICE_MOUSE_MODE_SERVER)
         try_mouse_grab(widget);
     else /* allow to drag and drop between windows/displays:
-            FIXME: should be multiple widget grab, but how? */
+            FIXME: should be multiple widget grab, but how?
+            or should now the position of the other widgets?..
+         */
         gdk_pointer_ungrab(GDK_CURRENT_TIME);
 
     if (!d->inputs)
@@ -1227,7 +1230,6 @@ static void clipboard_owner_change(GtkClipboard        *clipboard,
 static void spice_display_class_init(SpiceDisplayClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
-    GtkObjectClass *gtkobject_class = GTK_OBJECT_CLASS(klass);
     GtkWidgetClass *gtkwidget_class = GTK_WIDGET_CLASS(klass);
 
 #if GTK_CHECK_VERSION (2, 91, 0)
@@ -1246,8 +1248,6 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
     gtkwidget_class->button_release_event = button_event;
     gtkwidget_class->configure_event = configure_event;
     gtkwidget_class->scroll_event = scroll_event;
-
-    gtkobject_class->destroy = spice_display_destroy;
 
     gobject_class->dispose = spice_display_dispose;
     gobject_class->finalize = spice_display_finalize;
@@ -1367,6 +1367,8 @@ static void mouse_update(SpiceChannel *channel, gpointer data)
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     g_object_get(channel, "mouse-mode", &d->mouse_mode, NULL);
+    SPICE_DEBUG("mouse mode %d", d->mouse_mode);
+
     d->mouse_guest_x = -1;
     d->mouse_guest_y = -1;
     if (d->mouse_mode == SPICE_MOUSE_MODE_CLIENT) {
