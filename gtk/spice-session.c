@@ -839,6 +839,7 @@ gboolean spice_session_connect(SpiceSession *session)
     s->client_provided_sockets = FALSE;
     s->cmain = spice_channel_new(session, SPICE_CHANNEL_MAIN, 0);
 
+    glz_decoder_window_clear(s->glz_window);
     return spice_channel_connect(s->cmain);
 }
 

@@ -411,27 +411,36 @@ static SpiceGlzDecoderOps glz_decoder_ops = {
     .decode = decode,
 };
 
-SpiceGlzDecoderWindow *glz_decoder_window_new(void)
-{
-    SpiceGlzDecoderWindow *w = spice_new0(SpiceGlzDecoderWindow, 1);
-
-    w->nimages = 16;
-    w->images = spice_new0(struct glz_image*, w->nimages);
-    return w;
-}
-
-void glz_decoder_window_destroy(SpiceGlzDecoderWindow *w)
+void glz_decoder_window_clear(SpiceGlzDecoderWindow *w)
 {
     int i;
 
-    if (w == NULL)
-        return;
+    g_return_if_fail(w->nimages == 0 || w->images != NULL);
 
     for (i = 0; i < w->nimages; i++) {
         if (w->images[i]) {
             glz_image_destroy(w->images[i]);
         }
     }
+
+    w->nimages = 16;
+    g_free(w->images);
+    w->images = spice_new0(struct glz_image*, w->nimages);
+}
+
+SpiceGlzDecoderWindow *glz_decoder_window_new(void)
+{
+    SpiceGlzDecoderWindow *w = spice_new0(SpiceGlzDecoderWindow, 1);
+    glz_decoder_window_clear(w);
+    return w;
+}
+
+void glz_decoder_window_destroy(SpiceGlzDecoderWindow *w)
+{
+    if (w == NULL)
+        return;
+
+    glz_decoder_window_clear(w);
     free(w->images);
     free(w);
 }
