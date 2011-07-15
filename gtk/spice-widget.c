@@ -442,6 +442,8 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
     GdkWindow *window = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
     GdkGrabStatus status;
 
+    if (!gtk_widget_get_realized(GTK_WIDGET(display)))
+        return GDK_GRAB_BROKEN;
     try_keyboard_grab(display);
 
     /*
@@ -489,7 +491,7 @@ static void update_mouse_pointer(SpiceDisplay *display)
             gdk_window_set_cursor(window, NULL);
         } else {
             gdk_window_set_cursor(window, d->mouse_cursor);
-            do_pointer_grab(display);
+            try_mouse_grab(GTK_WIDGET(display));
         }
         break;
     default:
@@ -1510,7 +1512,7 @@ static void cursor_move(SpiceCursorChannel *channel, gint x, gint y, gpointer da
     d->mouse_guest_x = x;
     d->mouse_guest_y = y;
 
-    if (spicex_is_scaled(display)) {
+    if (spicex_is_scaled(display) && gtk_widget_get_realized(GTK_WIDGET(display))) {
         gint ww, wh;
 
         gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
@@ -1522,7 +1524,7 @@ static void cursor_move(SpiceCursorChannel *channel, gint x, gint y, gpointer da
         y += d->my;
     }
 
-    if (d->mouse_grab_active) {
+    if (d->mouse_grab_active && gtk_widget_get_realized(GTK_WIDGET(display))) {
         gdk_window_get_origin(GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display))), &wx, &wy);
         gdk_display_warp_pointer(gtk_widget_get_display(GTK_WIDGET(display)), screen, x + wx, y + wy);
     }
@@ -1553,13 +1555,14 @@ static void cursor_reset(SpiceCursorChannel *channel, gpointer data)
 static void disconnect_main(SpiceDisplay *display)
 {
     spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    gint i;
 
     if (d->main == NULL)
         return;
     g_signal_handlers_disconnect_by_func(d->main, G_CALLBACK(mouse_update),
                                          display);
     d->main = NULL;
-    for (int i = 0; i < CLIPBOARD_LAST; ++i) {
+    for (i = 0; i < CLIPBOARD_LAST; ++i) {
         d->clipboard_by_guest[i] = FALSE;
         d->clip_grabbed[i] = FALSE;
         d->nclip_targets[i] = 0;
