@@ -463,10 +463,10 @@ static void cursor_handle_init(SpiceChannel *channel, spice_msg_in *in)
     c->init_done = TRUE;
     if (cursor)
         emit_cursor_set(channel, cursor);
-    if (!init->visible)
+    if (!init->visible || !cursor)
         emit_main_context(channel, SPICE_CURSOR_HIDE);
-
-    display_cursor_unref(cursor);
+    if (cursor)
+        display_cursor_unref(cursor);
 }
 
 /* coroutine context */
@@ -491,9 +491,14 @@ static void cursor_handle_set(SpiceChannel *channel, spice_msg_in *in)
     g_return_if_fail(c->init_done == TRUE);
 
     cursor = set_cursor(channel, &set->cursor);
-    emit_cursor_set(channel, cursor);
+    if (cursor)
+        emit_cursor_set(channel, cursor);
+    else
+        emit_main_context(channel, SPICE_CURSOR_HIDE);
 
-    display_cursor_unref(cursor);
+
+    if (cursor)
+        display_cursor_unref(cursor);
 }
 
 /* coroutine context */
