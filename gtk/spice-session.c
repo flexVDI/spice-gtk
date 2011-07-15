@@ -61,7 +61,7 @@ struct spice_session {
 
     int               connection_id;
     int               protocol;
-    SpiceChannel      *cmain;
+    SpiceChannel      *cmain; /* weak reference */
     Ring              channels;
     guint32           mm_time;
     gboolean          client_provided_sockets;
@@ -837,6 +837,8 @@ gboolean spice_session_connect(SpiceSession *session)
     s->disconnecting = FALSE;
 
     s->client_provided_sockets = FALSE;
+
+    g_warn_if_fail(s->cmain == NULL);
     s->cmain = spice_channel_new(session, SPICE_CHANNEL_MAIN, 0);
 
     glz_decoder_window_clear(s->glz_window);
@@ -864,6 +866,8 @@ gboolean spice_session_open_fd(SpiceSession *session, int fd)
     spice_session_disconnect(session);
 
     s->client_provided_sockets = TRUE;
+
+    g_warn_if_fail(s->cmain == NULL);
     s->cmain = spice_channel_new(session, SPICE_CHANNEL_MAIN, 0);
     return spice_channel_open_fd(s->cmain, fd);
 }
@@ -1192,6 +1196,10 @@ void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel)
          ring = next) {
         next = ring_next(&s->channels, ring);
         item = SPICE_CONTAINEROF(ring, struct channel, link);
+        if (item->channel == s->cmain) {
+            SPICE_DEBUG("the session lost the main channel");
+            s->cmain = NULL;
+        }
         if (item->channel == channel) {
             ring_remove(&item->link);
             free(item);

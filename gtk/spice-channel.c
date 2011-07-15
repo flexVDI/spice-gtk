@@ -1676,7 +1676,7 @@ const gchar* spice_channel_type_to_string(gint type)
  *
  * Create a new #SpiceChannel of type @type, and channel ID @id.
  *
- * Returns: a #SpiceChannel
+ * Returns: a weak reference to #SpiceChannel, the session owns the reference
  **/
 SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
 {
