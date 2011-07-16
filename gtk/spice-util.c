@@ -18,7 +18,7 @@
 #ifdef HAVE_CONFIG_H
 # include "config.h"
 #endif
-
+#include <glib-object.h>
 #include "spice-util.h"
 
 /**
@@ -58,4 +58,19 @@ gboolean spice_util_get_debug(void)
 const gchar *spice_util_get_version_string(void)
 {
     return VERSION;
+}
+
+G_GNUC_INTERNAL
+gboolean spice_strv_contains(const GStrv strv, const gchar *str)
+{
+    int i;
+
+    if (strv == NULL)
+        return FALSE;
+
+    for (i = 0; strv[i] != NULL; i++)
+        if (g_str_equal(strv[i], str))
+            return TRUE;
+
+    return FALSE;
 }
