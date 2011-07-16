@@ -20,6 +20,7 @@
 #include "spice-client.h"
 #include "spice-common.h"
 #include "spice-channel-priv.h"
+#include "spice-util-priv.h"
 
 #include "spice-session-priv.h"
 
@@ -58,6 +59,8 @@ struct spice_session {
      * fallback to using a default database.
      */
     char *            smartcard_db;
+    GStrv             disable_effects;
+    gint              color_depth;
 
     int               connection_id;
     int               protocol;
@@ -136,6 +139,8 @@ enum {
     PROP_SMARTCARD,
     PROP_SMARTCARD_CERTIFICATES,
     PROP_SMARTCARD_DB,
+    PROP_DISABLE_EFFECTS,
+    PROP_COLOR_DEPTH,
 };
 
 /* signals */
@@ -233,6 +238,7 @@ spice_session_finalize(GObject *gobject)
     g_free(s->cert_subject);
     g_strfreev(s->smartcard_certificates);
     g_free(s->smartcard_db);
+    g_strfreev(s->disable_effects);
 
     spice_session_palettes_clear(session);
     spice_session_images_clear(session);
@@ -387,6 +393,12 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_SMARTCARD_DB:
         g_value_set_string(value, s->smartcard_db);
         break;
+    case PROP_DISABLE_EFFECTS:
+        g_value_set_boxed(value, s->disable_effects);
+        break;
+    case PROP_COLOR_DEPTH:
+        g_value_set_int(value, s->color_depth);
+        break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -466,6 +478,13 @@ static void spice_session_set_property(GObject      *gobject,
     case PROP_SMARTCARD_DB:
         g_free(s->smartcard_db);
         s->smartcard_db = g_value_dup_string(value);
+        break;
+    case PROP_DISABLE_EFFECTS:
+        g_strfreev(s->disable_effects);
+        s->disable_effects = g_value_dup_boxed(value);
+        break;
+    case PROP_COLOR_DEPTH:
+        s->color_depth = g_value_get_int(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -678,10 +697,47 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                            G_PARAM_STATIC_STRINGS));
 
     /**
+     * SpiceSession:disable-effects:
+     *
+     * A comma-separated list of effects to disable. The settings will
+     * be applied on new display channels. The following effets can be
+     * disabled "wallpaper", "font-smooth", "animation", and "all",
+     * which will disable all the effects. If NULL, don't apply changes.
+     *
+     * Since: 0.7
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_DISABLE_EFFECTS,
+         g_param_spec_boxed ("disable-effects",
+                             "Disable effects",
+                             "Comma-separated effects to disable",
+                             G_TYPE_STRV,
+                             G_PARAM_READWRITE |
+                             G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceSession:color-depth:
+     *
+     * Display color depth to set on new display channels. If 0, don't set.
+     *
+     * Since: 0.7
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_COLOR_DEPTH,
+         g_param_spec_int("color-depth",
+                          "Color depth",
+                          "Display channel color depth",
+                          0, 32, 0,
+                          G_PARAM_READWRITE |
+                          G_PARAM_STATIC_STRINGS));
+
+    /**
      * SpiceSession:enable-smartcard:
      *
      * If set to TRUE, the smartcard channel will be enabled and smartcard
      * events will be forwarded to the guest
+     *
+     * Since: 0.7
      **/
     g_object_class_install_property
         (gobject_class, PROP_SMARTCARD,
@@ -700,6 +756,8 @@ static void spice_session_class_init(SpiceSessionClass *klass)
      * array containing the names of 3 valid certificates, these will be
      * used to simulate a smartcard in the guest
      * @see_also: spice_smartcard_manager_insert_card()
+     *
+     * Since: 0.7
      **/
     g_object_class_install_property
         (gobject_class, PROP_SMARTCARD_CERTIFICATES,
@@ -716,6 +774,8 @@ static void spice_session_class_init(SpiceSessionClass *klass)
      *
      * Path to the NSS certificate database containing the certificates to
      * use to simulate a software smartcard
+     *
+     * Since: 0.7
      **/
     g_object_class_install_property
         (gobject_class, PROP_SMARTCARD_DB,
@@ -1176,6 +1236,19 @@ void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel)
     item = spice_new0(struct channel, 1);
     item->channel = channel;
     ring_add(&s->channels, &item->link);
+
+    if (SPICE_IS_MAIN_CHANNEL(channel)) {
+        gboolean all = spice_strv_contains(s->disable_effects, "all");
+
+        g_object_set(channel,
+                     "disable-wallpaper", all || spice_strv_contains(s->disable_effects, "wallpaper"),
+                     "disable-font-smooth", all || spice_strv_contains(s->disable_effects, "font-smooth"),
+                     "disable-animation", all || spice_strv_contains(s->disable_effects, "animation"),
+                     NULL);
+        if (s->color_depth != 0)
+            g_object_set(channel, "color-depth", s->color_depth, NULL);
+    }
+
     g_signal_emit(session, signals[SPICE_SESSION_CHANNEL_NEW], 0, channel);
 }
 
