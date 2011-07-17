@@ -29,11 +29,6 @@ static char *port;
 static char *tls_port;
 static char *password;
 static char *uri;
-static char *ca_file;
-static char *host_subject;
-static char *smartcard_db;
-static char *smartcard_certificates;
-static gboolean smartcard = FALSE;
 
 static GOptionEntry spice_entries[] = {
     {
@@ -64,12 +59,6 @@ static GOptionEntry spice_entries[] = {
         .description      = N_("Spice server secure port"),
         .arg_description  = N_("<port>"),
     },{
-        .long_name        = "ca-file",
-        .arg              = G_OPTION_ARG_FILENAME,
-        .arg_data         = &ca_file,
-        .description      = N_("Truststore file for secure connections"),
-        .arg_description  = N_("<file>"),
-    },{
         .long_name        = "password",
         .short_name       = 'w',
         .arg              = G_OPTION_ARG_STRING,
@@ -77,58 +66,26 @@ static GOptionEntry spice_entries[] = {
         .description      = N_("Server password"),
         .arg_description  = N_("<password>"),
     },{
-        .long_name        = "host-subject",
-        .arg              = G_OPTION_ARG_STRING,
-        .arg_data         = &host_subject,
-        .description      = N_("Subject of the host certificate (field=value pairs separated by commas)"),
-        .arg_description  = N_("<host-subject>"),
-    },{
-#ifdef USE_SMARTCARD
-        .long_name        = "smartcard",
-        .arg              = G_OPTION_ARG_NONE,
-        .arg_data         = &smartcard,
-        .description      = N_("Enable smartcard support"),
-        .arg_description  = NULL,
-    },{
-        .long_name        = "smartcard-certificates",
-        .arg              = G_OPTION_ARG_STRING,
-        .arg_data         = &smartcard_certificates,
-        .description      = N_("Certificates to use for software smartcards (field=values separated by commas)"),
-        .arg_description  = N_("<certificates>"),
-    },{
-        .long_name        = "smartcard-db",
-        .arg              = G_OPTION_ARG_STRING,
-        .arg_data         = &smartcard_db,
-        .description      = N_("Path to the local certificate database to use for software smartcard certificates"),
-        .arg_description  = N_("<certificate-db>"),
-    },{
-#endif
         /* end of list */
     }
 };
 
-static GOptionGroup *spice_group;
-
 GOptionGroup *spice_cmdline_get_option_group(void)
 {
-    if (spice_group == NULL) {
-        spice_group = g_option_group_new("spice",
-                                         _("Spice Options:"),
-                                         _("Show spice Options"),
-                                         NULL, NULL);
-        g_option_group_add_entries(spice_group, spice_entries);
-    }
-    return spice_group;
+    GOptionGroup *grp;
+
+    grp = g_option_group_new("spice",
+                             _("Spice connection options:"),
+                             _("Show Spice options"),
+                             NULL, NULL);
+    g_option_group_add_entries(grp, spice_entries);
+
+    return grp;
 }
 
 void spice_cmdline_session_setup(SpiceSession *session)
 {
-    if (ca_file == NULL) {
-        const char *homedir = g_getenv("HOME");
-        if (!homedir)
-            homedir = g_get_home_dir();
-        ca_file = g_strdup_printf("%s/.spicec/spice_truststore.pem", homedir);
-    }
+    g_return_if_fail(SPICE_IS_SESSION(session));
 
     if (uri)
         g_object_set(session, "uri", uri, NULL);
@@ -140,20 +97,4 @@ void spice_cmdline_session_setup(SpiceSession *session)
         g_object_set(session, "tls-port", tls_port, NULL);
     if (password)
         g_object_set(session, "password", password, NULL);
-    if (ca_file)
-        g_object_set(session, "ca-file", ca_file, NULL);
-    if (host_subject)
-        g_object_set(session, "cert-subject", host_subject, NULL);
-    if (smartcard) {
-        g_object_set(session, "enable-smartcard", smartcard, NULL);
-        if (smartcard_certificates) {
-            GStrv certs_strv;
-            certs_strv = g_strsplit(smartcard_certificates, ",", -1);
-            if (certs_strv)
-                g_object_set(session, "smartcard-certificates", certs_strv, NULL);
-            g_strfreev(certs_strv);
-        }
-        if (smartcard_db)
-            g_object_set(session, "smartcard-db", smartcard_db, NULL);
-    }
 }

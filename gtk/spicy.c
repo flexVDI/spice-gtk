@@ -36,6 +36,7 @@
 #include "spice-audio.h"
 #include "spice-common.h"
 #include "spice-cmdline.h"
+#include "spice-option.h"
 
 /* config */
 static gboolean fullscreen = false;
@@ -88,8 +89,6 @@ static GKeyFile      *keyfile = NULL;
 static GnomeRRScreen *rrscreen = NULL;
 static GnomeRRConfig *rrsaved = NULL;
 static GnomeRRConfig *rrcurrent = NULL;
-static GStrv         disable_effects = NULL;
-static gint          color_depth = 0;
 
 static spice_connection *connection_new(void);
 static void connection_connect(spice_connection *conn);
@@ -444,7 +443,7 @@ static void menu_cb_statusbar(GtkToggleAction *action, gpointer data)
 
 static void menu_cb_about(GtkAction *action, void *data)
 {
-    char *comments = _("gtk client app for the\n"
+    char *comments = _("gtk test client app for the\n"
         "spice remote desktop protocol");
     static char *copyright = "(c) 2010 Red Hat";
     static char *website = "http://www.spice-space.org";
@@ -1305,21 +1304,6 @@ static void display_mark(SpiceChannel *channel, gint mark, spice_window *win)
     }
 }
 
-static gboolean strv_contains(const GStrv strv, gchar *str)
-{
-    int i = 0;
-
-    if (strv == NULL)
-        return FALSE;
-
-    while (strv[i] != NULL) {
-        if (g_str_equal(strv[i], str))
-            return TRUE;
-        i++;
-    }
-    return FALSE;
-}
-
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
     spice_connection *conn = data;
@@ -1339,20 +1323,6 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
                          G_CALLBACK(main_agent_update), conn);
         main_mouse_update(channel, conn);
         main_agent_update(channel, conn);
-        {
-            gboolean all = strv_contains(disable_effects, "all");
-
-            g_object_set(channel,
-                         "disable-wallpaper", all || strv_contains(disable_effects, "wallpaper"),
-                         "disable-font-smooth", all || strv_contains(disable_effects, "font-smooth"),
-                         "disable-animation", all || strv_contains(disable_effects, "animation"),
-                         NULL);
-            if (color_depth != 0)
-                g_object_set(channel,
-                             "color-depth", color_depth,
-                             NULL);
-
-        }
     }
 
     if (SPICE_IS_DISPLAY_CHANNEL(channel)) {
@@ -1480,28 +1450,12 @@ static GOptionEntry cmd_entries[] = {
         .arg              = G_OPTION_ARG_NONE,
         .arg_data         = &fullscreen,
         .description      = N_("Open in full screen mode"),
-    },
-    {
+    },{
         .long_name        = "version",
         .arg              = G_OPTION_ARG_NONE,
         .arg_data         = &version,
         .description      = N_("Display version and quit"),
-    },
-    {
-        .long_name        = "disable-effects",
-        .arg              = G_OPTION_ARG_STRING_ARRAY,
-        .arg_data         = &disable_effects,
-        .description      = N_("Disable guest display effects"),
-        .arg_description  = N_("<wallpaper,font-smooth,animation,all>"),
-    },
-    {
-        .long_name        = "color-depth",
-        .arg              = G_OPTION_ARG_INT,
-        .arg_data         = &color_depth,
-        .description      = N_("Guest display color depth"),
-        .arg_description  = N_("<16,32>"),
-    },
-    {
+    },{
         /* end of list */
     }
 };
@@ -1580,9 +1534,10 @@ int main(int argc, char *argv[])
 
     /* parse opts */
     gtk_init(&argc, &argv);
-    context = g_option_context_new(_("- spice client application"));
-    g_option_context_set_summary(context, _("A Gtk client to connect to Spice servers."));
+    context = g_option_context_new(_("- spice client test application"));
+    g_option_context_set_summary(context, _("Gtk+ test client to connect to Spice servers."));
     g_option_context_set_description(context, _("Report bugs to " PACKAGE_BUGREPORT "."));
+    g_option_context_add_group(context, spice_get_option_group());
     g_option_context_set_main_group(context, spice_cmdline_get_option_group());
     g_option_context_add_main_entries(context, cmd_entries, NULL);
     g_option_context_add_group(context, gtk_get_option_group(TRUE));
@@ -1604,7 +1559,9 @@ int main(int argc, char *argv[])
     if (rrscreen)
         g_signal_connect(rrscreen, "changed", G_CALLBACK(on_screen_changed), NULL);
     on_screen_changed(rrscreen, NULL);
+
     conn = connection_new();
+    spice_set_session_option(conn->session);
     spice_cmdline_session_setup(conn->session);
     connection_connect(conn);
 
