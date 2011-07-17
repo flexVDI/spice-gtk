@@ -148,8 +148,8 @@ int main(int argc, char *argv[])
     context = g_option_context_new(_(" - make screen shots"));
     g_option_context_set_summary(context, _("A Spice server client to take screenshots in ppm format."));
     g_option_context_set_description(context, _("Report bugs to " PACKAGE_BUGREPORT "."));
+    g_option_context_set_main_group(context, spice_cmdline_get_option_group());
     g_option_context_add_main_entries(context, app_entries, NULL);
-    g_option_context_add_group(context, spice_cmdline_get_option_group());
     if (!g_option_context_parse (context, &argc, &argv, &error)) {
         g_print(_("option parsing failed: %s\n"), error->message);
         exit(1);
