@@ -225,7 +225,8 @@ public class Controller: Object {
 #if WIN32
 			addr = (string*)"\\\\.\\pipe\\SpiceController-%lu".printf (GetCurrentProcessId ());
 #else
-			addr = (string*)"%s".printf (Environment.get_variable ("SPICE_XPI_SOCKET")); // FIXME vala...
+			if (Environment.get_variable ("SPICE_XPI_SOCKET") != null)
+				addr = (string*)"%s".printf (Environment.get_variable ("SPICE_XPI_SOCKET")); // FIXME vala...
 #endif
 		if (addr == null)
 			throw new SpiceCtrl.Error.VALUE ("Missing SPICE_XPI_SOCKET");
