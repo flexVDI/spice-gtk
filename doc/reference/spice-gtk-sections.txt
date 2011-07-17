@@ -26,8 +26,8 @@ spice_session_open_fd
 spice_session_disconnect
 spice_session_get_channels
 <SUBSECTION>
-spice_cmdline_get_option_group
-spice_cmdline_session_setup
+spice_get_option_group
+spice_set_session_option
 <SUBSECTION Standard>
 SPICE_SESSION
 SPICE_IS_SESSION

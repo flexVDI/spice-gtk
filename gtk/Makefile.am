@@ -152,6 +152,8 @@ libspice_client_glib_2_0_la_SOURCES =	\
 	spice-common.h			\
 	spice-util.c			\
 	spice-util-priv.h		\
+	spice-option.h			\
+	spice-option.c			\
 	\
 	spice-client.c			\
 	spice-session.c			\
@@ -222,6 +224,7 @@ libspice_client_glibinclude_HEADERS =	\
 	spice-channel.h			\
 	spice-glib-enums.h		\
 	spice-util.h			\
+	spice-option.h			\
 	channel-cursor.h		\
 	channel-display.h		\
 	channel-inputs.h		\

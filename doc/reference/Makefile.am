@@ -71,6 +71,7 @@ IGNORE_HFILES= \
 	spice-pulse.h				\
 	spice-session-priv.h			\
 	spice-types.h				\
+	spice-cmdline.h				\
 	tcp.h					\
 	vncdisplaykeymap.h
 
