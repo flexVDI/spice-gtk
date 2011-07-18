@@ -468,12 +468,32 @@ PREFIX_ARGS = --strip-prefix=Spice
 endif
 
 INTROSPECTION_GIRS =
-INTROSPECTION_SCANNER_ARGS = --add-include-path=$(builddir) $(PREFIX_ARGS)
+INTROSPECTION_SCANNER_ARGS = --warn-all --add-include-path=$(builddir) $(PREFIX_ARGS)
 INTROSPECTION_COMPILER_ARGS = --includedir=$(builddir)
 
 if HAVE_INTROSPECTION
-glib_introspection_files = $(libspice_client_glibinclude_HEADERS)
-gtk_introspection_files = $(libspice_client_gtkinclude_HEADERS)
+glib_introspection_files =			\
+	$(libspice_client_glibinclude_HEADERS)	\
+	spice-audio.c				\
+	spice-client.c				\
+	spice-session.c				\
+	spice-channel.c				\
+	spice-glib-enums.c			\
+	spice-option.c				\
+	channel-cursor.c			\
+	channel-display.c			\
+	channel-inputs.c			\
+	channel-main.c				\
+	channel-playback.c			\
+	channel-record.c			\
+	channel-smartcard.c			\
+	$(NULL)
+
+gtk_introspection_files =			\
+	$(libspice_client_gtkinclude_HEADERS)	\
+	spice-widget.c				\
+	spice-grabsequence.c			\
+	$(NULL)
 
 SpiceClientGLib-2.0.gir: libspice-client-glib-2.0.la
 SpiceClientGLib_2_0_gir_INCLUDES = GObject-2.0

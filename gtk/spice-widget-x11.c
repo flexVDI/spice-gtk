@@ -121,7 +121,7 @@ static int catch_no_mitshm(Display * dpy, XErrorEvent * event)
 G_GNUC_INTERNAL
 int spicex_image_create(SpiceDisplay *display)
 {
-    spice_display   *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate   *d = SPICE_DISPLAY_GET_PRIVATE(display);
     GdkDrawable     *window = gtk_widget_get_window(GTK_WIDGET(display));
     GdkDisplay      *gtkdpy = gdk_drawable_get_display(window);
     void            *old_handler = NULL;
@@ -187,7 +187,7 @@ int spicex_image_create(SpiceDisplay *display)
 G_GNUC_INTERNAL
 void spicex_image_destroy(SpiceDisplay *display)
 {
-    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     if (d->ximage) {
         /* avoid XDestroy to free shared memory, owned and freed by
@@ -218,7 +218,7 @@ G_GNUC_INTERNAL
 void spicex_expose_event(SpiceDisplay *display, GdkEventExpose *expose)
 {
     GdkDrawable *window = gtk_widget_get_window(GTK_WIDGET(display));
-    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     if (expose->area.x >= d->mx &&
         expose->area.y >= d->my &&
@@ -272,7 +272,7 @@ G_GNUC_INTERNAL
 void spicex_image_invalidate (SpiceDisplay *display,
                               gint *x, gint *y, gint *w, gint *h)
 {
-    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     /* Offset the Spice region to produce expose region */
     *x += d->mx;
     *y += d->my;

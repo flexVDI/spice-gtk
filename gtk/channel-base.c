@@ -23,11 +23,11 @@
 
 /* coroutine context */
 G_GNUC_INTERNAL
-void spice_channel_handle_set_ack(SpiceChannel *channel, spice_msg_in *in)
+void spice_channel_handle_set_ack(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
     SpiceMsgSetAck* ack = spice_msg_in_parsed(in);
-    spice_msg_out *out = spice_msg_out_new(channel, SPICE_MSGC_ACK_SYNC);
+    SpiceMsgOut *out = spice_msg_out_new(channel, SPICE_MSGC_ACK_SYNC);
     SpiceMsgcAckSync sync = {
         .generation = ack->generation,
     };
@@ -40,11 +40,11 @@ void spice_channel_handle_set_ack(SpiceChannel *channel, spice_msg_in *in)
 
 /* coroutine context */
 G_GNUC_INTERNAL
-void spice_channel_handle_ping(SpiceChannel *channel, spice_msg_in *in)
+void spice_channel_handle_ping(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
     SpiceMsgPing *ping = spice_msg_in_parsed(in);
-    spice_msg_out *pong = spice_msg_out_new(channel, SPICE_MSGC_PONG);
+    SpiceMsgOut *pong = spice_msg_out_new(channel, SPICE_MSGC_PONG);
 
     c->marshallers->msgc_pong(pong->marshaller, ping);
     spice_msg_out_send_internal(pong);
@@ -53,9 +53,9 @@ void spice_channel_handle_ping(SpiceChannel *channel, spice_msg_in *in)
 
 /* coroutine context */
 G_GNUC_INTERNAL
-void spice_channel_handle_notify(SpiceChannel *channel, spice_msg_in *in)
+void spice_channel_handle_notify(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
     static const char* severity_strings[] = {"info", "warn", "error"};
     static const char* visibility_strings[] = {"!", "!!", "!!!"};
 
@@ -84,7 +84,7 @@ void spice_channel_handle_notify(SpiceChannel *channel, spice_msg_in *in)
 
 /* coroutine context */
 G_GNUC_INTERNAL
-void spice_channel_handle_disconnect(SpiceChannel *channel, spice_msg_in *in)
+void spice_channel_handle_disconnect(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceMsgDisconnect *disconnect = spice_msg_in_parsed(in);
 
@@ -94,18 +94,18 @@ void spice_channel_handle_disconnect(SpiceChannel *channel, spice_msg_in *in)
 
 /* coroutine context */
 G_GNUC_INTERNAL
-void spice_channel_handle_wait_for_channels(SpiceChannel *channel, spice_msg_in *in)
+void spice_channel_handle_wait_for_channels(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    /* spice_channel *c = channel->priv;
+    /* SpiceChannelPrivate *c = channel->priv;
        SpiceMsgWaitForChannels *wfc = spice_msg_in_parsed(in); */
 
     SPICE_DEBUG("%s TODO", __FUNCTION__);
 }
 
 static void
-get_msg_handler(SpiceChannel *channel, spice_msg_in *in, gpointer data)
+get_msg_handler(SpiceChannel *channel, SpiceMsgIn *in, gpointer data)
 {
-    spice_msg_in **msg = data;
+    SpiceMsgIn **msg = data;
 
     g_return_if_fail(msg != NULL);
     g_return_if_fail(*msg == NULL);
@@ -116,12 +116,12 @@ get_msg_handler(SpiceChannel *channel, spice_msg_in *in, gpointer data)
 
 /* coroutine context */
 G_GNUC_INTERNAL
-void spice_channel_handle_migrate(SpiceChannel *channel, spice_msg_in *in)
+void spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    spice_msg_out *out;
-    spice_msg_in *data = NULL;
+    SpiceMsgOut *out;
+    SpiceMsgIn *data = NULL;
     SpiceMsgMigrate *mig = spice_msg_in_parsed(in);
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
 
     SPICE_DEBUG("%s: channel %s flags %u", __FUNCTION__, c->name, mig->flags);
     if (mig->flags & SPICE_MIGRATE_NEED_FLUSH) {

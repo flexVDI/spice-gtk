@@ -31,8 +31,8 @@ G_BEGIN_DECLS
 #define SPICE_IS_CHANNEL_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), SPICE_TYPE_CHANNEL))
 #define SPICE_CHANNEL_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), SPICE_TYPE_CHANNEL, SpiceChannelClass))
 
-typedef struct spice_msg_in  spice_msg_in;
-typedef struct spice_msg_out spice_msg_out;
+typedef struct _SpiceMsgIn  SpiceMsgIn;
+typedef struct _SpiceMsgOut SpiceMsgOut;
 
 /**
  * SpiceChannelEvent:
@@ -64,7 +64,7 @@ typedef enum
 struct _SpiceChannel
 {
     GObject parent;
-    spice_channel *priv;
+    SpiceChannelPrivate *priv;
     /* Do not add fields to this struct */
 };
 
@@ -74,7 +74,7 @@ struct _SpiceChannelClass
 
     /*< private >*/
     /* virtual methods, coroutine context */
-    void (*handle_msg)(SpiceChannel *channel, spice_msg_in *msg);
+    void (*handle_msg)(SpiceChannel *channel, SpiceMsgIn *msg);
     void (*channel_up)(SpiceChannel *channel);
     void (*iterate_write)(SpiceChannel *channel);
     void (*iterate_read)(SpiceChannel *channel);
@@ -96,13 +96,13 @@ struct _SpiceChannelClass
 
 GType spice_channel_get_type(void);
 
-typedef void (*spice_msg_handler)(SpiceChannel *channel, spice_msg_in *in);
+typedef void (*spice_msg_handler)(SpiceChannel *channel, SpiceMsgIn *in);
 
 SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id);
 void spice_channel_destroy(SpiceChannel *channel);
 gboolean spice_channel_connect(SpiceChannel *channel);
 gboolean spice_channel_open_fd(SpiceChannel *channel, int fd);
-void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent event);
+void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason);
 gboolean spice_channel_test_capability(SpiceChannel *channel, guint32 cap);
 gboolean spice_channel_test_common_capability(SpiceChannel *channel, guint32 cap);
 void spice_channel_set_capability(SpiceChannel *channel, guint32 cap);

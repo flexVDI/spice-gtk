@@ -46,9 +46,9 @@
  */
 
 #define SPICE_RECORD_CHANNEL_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_RECORD_CHANNEL, spice_record_channel))
+    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_RECORD_CHANNEL, SpiceRecordChannelPrivate))
 
-struct spice_record_channel {
+struct _SpiceRecordChannelPrivate {
     int                         mode;
     gboolean                    started;
     CELTMode                    *celt_mode;
@@ -81,7 +81,7 @@ enum {
 
 static guint signals[SPICE_RECORD_LAST_SIGNAL];
 
-static void spice_record_handle_msg(SpiceChannel *channel, spice_msg_in *msg);
+static void spice_record_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg);
 static void channel_up(SpiceChannel *channel);
 
 #define FRAME_SIZE 256
@@ -91,7 +91,7 @@ static void channel_up(SpiceChannel *channel);
 
 static void spice_record_channel_init(SpiceRecordChannel *channel)
 {
-    spice_record_channel *c;
+    SpiceRecordChannelPrivate *c;
 
     c = channel->priv = SPICE_RECORD_CHANNEL_GET_PRIVATE(channel);
     memset(c, 0, sizeof(*c));
@@ -101,7 +101,7 @@ static void spice_record_channel_init(SpiceRecordChannel *channel)
 
 static void spice_record_channel_finalize(GObject *obj)
 {
-    spice_record_channel *c = SPICE_RECORD_CHANNEL(obj)->priv;
+    SpiceRecordChannelPrivate *c = SPICE_RECORD_CHANNEL(obj)->priv;
 
     g_free(c->last_frame);
     c->last_frame = NULL;
@@ -129,7 +129,7 @@ static void spice_record_channel_get_property(GObject    *gobject,
                                               GParamSpec *pspec)
 {
     SpiceRecordChannel *channel = SPICE_RECORD_CHANNEL(gobject);
-    spice_record_channel *c = channel->priv;
+    SpiceRecordChannelPrivate *c = channel->priv;
 
     switch (prop_id) {
     case PROP_VOLUME:
@@ -238,7 +238,7 @@ static void spice_record_channel_class_init(SpiceRecordChannelClass *klass)
                      G_TYPE_NONE,
                      0);
 
-    g_type_class_add_private(klass, sizeof(spice_record_channel));
+    g_type_class_add_private(klass, sizeof(SpiceRecordChannelPrivate));
 }
 
 /* signal trampoline---------------------------------------------------------- */
@@ -276,7 +276,7 @@ static void spice_record_mode(SpiceRecordChannel *channel, uint32_t time,
                               uint32_t mode, uint8_t *data, uint32_t data_size)
 {
     SpiceMsgcRecordMode m = {0, };
-    spice_msg_out *msg;
+    SpiceMsgOut *msg;
 
     g_return_if_fail(channel != NULL);
 
@@ -294,7 +294,7 @@ static void spice_record_mode(SpiceRecordChannel *channel, uint32_t time,
 /* coroutine context */
 static void channel_up(SpiceChannel *channel)
 {
-    spice_record_channel *rc;
+    SpiceRecordChannelPrivate *rc;
 
     rc = SPICE_RECORD_CHANNEL(channel)->priv;
     if (spice_channel_test_capability(channel, SPICE_RECORD_CAP_CELT_0_5_1)) {
@@ -308,7 +308,7 @@ static void channel_up(SpiceChannel *channel)
 static void spice_record_start_mark(SpiceRecordChannel *channel, uint32_t time)
 {
     SpiceMsgcRecordStartMark m = {0, };
-    spice_msg_out *msg;
+    SpiceMsgOut *msg;
 
     g_return_if_fail(channel != NULL);
 
@@ -332,7 +332,7 @@ static void spice_record_start_mark(SpiceRecordChannel *channel, uint32_t time)
 void spice_record_send_data(SpiceRecordChannel *channel, gpointer data,
                             gsize bytes, uint32_t time)
 {
-    spice_record_channel *rc;
+    SpiceRecordChannelPrivate *rc;
     SpiceMsgcRecordPacket p = {0, };
     int celt_compressed_frame_bytes = FRAME_SIZE * CELT_BIT_RATE / 44100 / 8;
     uint8_t *celt_buf = NULL;
@@ -354,7 +354,7 @@ void spice_record_send_data(SpiceRecordChannel *channel, gpointer data,
 
     while (bytes > 0) {
         gsize n, frame_size;
-        spice_msg_out *msg;
+        SpiceMsgOut *msg;
         uint8_t *frame;
 
         if (rc->last_frame_current > 0) {
@@ -408,9 +408,9 @@ void spice_record_send_data(SpiceRecordChannel *channel, gpointer data,
 /* ------------------------------------------------------------------ */
 
 /* coroutine context */
-static void record_handle_start(SpiceChannel *channel, spice_msg_in *in)
+static void record_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    spice_record_channel *c = SPICE_RECORD_CHANNEL(channel)->priv;
+    SpiceRecordChannelPrivate *c = SPICE_RECORD_CHANNEL(channel)->priv;
     SpiceMsgRecordStart *start = spice_msg_in_parsed(in);
 
     SPICE_DEBUG("%s: fmt %d channels %d freq %d", __FUNCTION__,
@@ -455,18 +455,18 @@ static void record_handle_start(SpiceChannel *channel, spice_msg_in *in)
 }
 
 /* coroutine context */
-static void record_handle_stop(SpiceChannel *channel, spice_msg_in *in)
+static void record_handle_stop(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    spice_record_channel *rc = SPICE_RECORD_CHANNEL(channel)->priv;
+    SpiceRecordChannelPrivate *rc = SPICE_RECORD_CHANNEL(channel)->priv;
 
     emit_main_context(channel, SPICE_RECORD_STOP);
     rc->started = FALSE;
 }
 
 /* coroutine context */
-static void record_handle_set_volume(SpiceChannel *channel, spice_msg_in *in)
+static void record_handle_set_volume(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    spice_record_channel *c = SPICE_RECORD_CHANNEL(channel)->priv;
+    SpiceRecordChannelPrivate *c = SPICE_RECORD_CHANNEL(channel)->priv;
     SpiceMsgAudioVolume *vol = spice_msg_in_parsed(in);
 
     g_free(c->volume);
@@ -477,9 +477,9 @@ static void record_handle_set_volume(SpiceChannel *channel, spice_msg_in *in)
 }
 
 /* coroutine context */
-static void record_handle_set_mute(SpiceChannel *channel, spice_msg_in *in)
+static void record_handle_set_mute(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    spice_record_channel *c = SPICE_RECORD_CHANNEL(channel)->priv;
+    SpiceRecordChannelPrivate *c = SPICE_RECORD_CHANNEL(channel)->priv;
     SpiceMsgAudioMute *m = spice_msg_in_parsed(in);
 
     c->mute = m->mute;
@@ -494,7 +494,7 @@ static const spice_msg_handler record_handlers[] = {
 };
 
 /* coroutine context */
-static void spice_record_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
+static void spice_record_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
 {
     int type = spice_msg_in_type(msg);
 

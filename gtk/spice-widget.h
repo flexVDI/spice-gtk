@@ -37,11 +37,11 @@ G_BEGIN_DECLS
 
 typedef struct _SpiceDisplay SpiceDisplay;
 typedef struct _SpiceDisplayClass SpiceDisplayClass;
-typedef struct spice_display spice_display;
+typedef struct _SpiceDisplayPrivate SpiceDisplayPrivate;
 
 struct _SpiceDisplay {
     GtkDrawingArea parent;
-    spice_display *priv;
+    SpiceDisplayPrivate *priv;
     /* Do not add fields to this struct */
 };
 

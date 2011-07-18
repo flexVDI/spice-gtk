@@ -97,9 +97,9 @@ SpiceGrabSequence *spice_grab_sequence_new_from_string(const gchar *str)
 
 /**
  * spice_grab_sequence_copy:
- * @srcSequence: sequence to copy
+ * @sequence: sequence to copy
  *
- * Returns: a copy of @srcSequence
+ * Returns: (transfer full): a copy of @sequence
  **/
 SpiceGrabSequence *spice_grab_sequence_copy(SpiceGrabSequence *srcSequence)
 {

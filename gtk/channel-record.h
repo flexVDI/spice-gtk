@@ -31,11 +31,11 @@ G_BEGIN_DECLS
 
 typedef struct _SpiceRecordChannel SpiceRecordChannel;
 typedef struct _SpiceRecordChannelClass SpiceRecordChannelClass;
-typedef struct spice_record_channel spice_record_channel;
+typedef struct _SpiceRecordChannelPrivate SpiceRecordChannelPrivate;
 
 struct _SpiceRecordChannel {
     SpiceChannel parent;
-    spice_record_channel *priv;
+    SpiceRecordChannelPrivate *priv;
     /* Do not add fields to this struct */
 };
 
@@ -58,7 +58,7 @@ struct _SpiceRecordChannelClass {
 
 GType	        spice_record_channel_get_type(void);
 void            spice_record_send_data(SpiceRecordChannel *channel, gpointer data,
-                                       gsize bytes, uint32_t time);
+                                       gsize bytes, guint32 time);
 
 G_END_DECLS
 

@@ -30,6 +30,7 @@
 #include "spice-types.h"
 #include "spice-session.h"
 #include "spice-channel.h"
+#include "spice-option.h"
 
 #include "channel-main.h"
 #include "channel-display.h"

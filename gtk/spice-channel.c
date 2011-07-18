@@ -41,8 +41,8 @@
 
 #include "gio-coroutine.h"
 
-static void spice_channel_handle_msg(SpiceChannel *channel, spice_msg_in *msg);
-static void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out, gboolean buffered);
+static void spice_channel_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg);
+static void spice_channel_send_msg(SpiceChannel *channel, SpiceMsgOut *out, gboolean buffered);
 static void spice_channel_send_link(SpiceChannel *channel);
 static void channel_disconnect(SpiceChannel *channel);
 
@@ -64,7 +64,7 @@ static void channel_disconnect(SpiceChannel *channel);
 /* gobject glue                                                       */
 
 #define SPICE_CHANNEL_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_CHANNEL, spice_channel))
+    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_CHANNEL, SpiceChannelPrivate))
 
 G_DEFINE_TYPE(SpiceChannel, spice_channel, G_TYPE_OBJECT);
 
@@ -92,7 +92,7 @@ static void spice_channel_iterate_read(SpiceChannel *channel);
 
 static void spice_channel_init(SpiceChannel *channel)
 {
-    spice_channel *c;
+    SpiceChannelPrivate *c;
 
     c = channel->priv = SPICE_CHANNEL_GET_PRIVATE(channel);
 
@@ -109,7 +109,7 @@ static void spice_channel_init(SpiceChannel *channel)
 static void spice_channel_constructed(GObject *gobject)
 {
     SpiceChannel *channel = SPICE_CHANNEL(gobject);
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
     const char *desc = spice_channel_type_to_string(c->channel_type);
 
     snprintf(c->name, sizeof(c->name), "%s-%d:%d",
@@ -127,7 +127,7 @@ static void spice_channel_constructed(GObject *gobject)
 static void spice_channel_dispose(GObject *gobject)
 {
     SpiceChannel *channel = SPICE_CHANNEL(gobject);
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
 
     SPICE_DEBUG("%s: %s %p", c->name, __FUNCTION__, gobject);
 
@@ -149,7 +149,7 @@ static void spice_channel_dispose(GObject *gobject)
 static void spice_channel_finalize(GObject *gobject)
 {
     SpiceChannel *channel = SPICE_CHANNEL(gobject);
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
 
     SPICE_DEBUG("%s: %s %p", c->name, __FUNCTION__, gobject);
 
@@ -178,7 +178,7 @@ static void spice_channel_get_property(GObject    *gobject,
                                        GParamSpec *pspec)
 {
     SpiceChannel *channel = SPICE_CHANNEL(gobject);
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
 
     switch (prop_id) {
     case PROP_SESSION:
@@ -202,7 +202,7 @@ static void spice_channel_get_property(GObject    *gobject,
 G_GNUC_INTERNAL
 gint spice_channel_get_channel_id(SpiceChannel *channel)
 {
-    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
 
     g_return_val_if_fail(c != NULL, 0);
     return c->channel_id;
@@ -211,7 +211,7 @@ gint spice_channel_get_channel_id(SpiceChannel *channel)
 G_GNUC_INTERNAL
 gint spice_channel_get_channel_type(SpiceChannel *channel)
 {
-    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
 
     g_return_val_if_fail(c != NULL, 0);
     return c->channel_type;
@@ -223,7 +223,7 @@ static void spice_channel_set_property(GObject      *gobject,
                                        GParamSpec   *pspec)
 {
     SpiceChannel *channel = SPICE_CHANNEL(gobject);
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
 
     switch (prop_id) {
     case PROP_SESSION:
@@ -334,7 +334,7 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
                      1,
                      G_TYPE_INT);
 
-    g_type_class_add_private(klass, sizeof(spice_channel));
+    g_type_class_add_private(klass, sizeof(SpiceChannelPrivate));
 
     SSL_library_init();
     SSL_load_error_strings();
@@ -344,23 +344,23 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
 /* private msg api                                                  */
 
 G_GNUC_INTERNAL
-spice_msg_in *spice_msg_in_new(SpiceChannel *channel)
+SpiceMsgIn *spice_msg_in_new(SpiceChannel *channel)
 {
-    spice_msg_in *in;
+    SpiceMsgIn *in;
 
     g_return_val_if_fail(channel != NULL, NULL);
 
-    in = spice_new0(spice_msg_in, 1);
+    in = spice_new0(SpiceMsgIn, 1);
     in->refcount = 1;
     in->channel  = channel;
     return in;
 }
 
 G_GNUC_INTERNAL
-spice_msg_in *spice_msg_in_sub_new(SpiceChannel *channel, spice_msg_in *parent,
+SpiceMsgIn *spice_msg_in_sub_new(SpiceChannel *channel, SpiceMsgIn *parent,
                                    SpiceSubMessage *sub)
 {
-    spice_msg_in *in;
+    SpiceMsgIn *in;
 
     g_return_val_if_fail(channel != NULL, NULL);
 
@@ -375,7 +375,7 @@ spice_msg_in *spice_msg_in_sub_new(SpiceChannel *channel, spice_msg_in *parent,
 }
 
 G_GNUC_INTERNAL
-void spice_msg_in_ref(spice_msg_in *in)
+void spice_msg_in_ref(SpiceMsgIn *in)
 {
     g_return_if_fail(in != NULL);
 
@@ -383,7 +383,7 @@ void spice_msg_in_ref(spice_msg_in *in)
 }
 
 G_GNUC_INTERNAL
-void spice_msg_in_unref(spice_msg_in *in)
+void spice_msg_in_unref(SpiceMsgIn *in)
 {
     g_return_if_fail(in != NULL);
 
@@ -401,7 +401,7 @@ void spice_msg_in_unref(spice_msg_in *in)
 }
 
 G_GNUC_INTERNAL
-int spice_msg_in_type(spice_msg_in *in)
+int spice_msg_in_type(SpiceMsgIn *in)
 {
     g_return_val_if_fail(in != NULL, -1);
 
@@ -409,7 +409,7 @@ int spice_msg_in_type(spice_msg_in *in)
 }
 
 G_GNUC_INTERNAL
-void *spice_msg_in_parsed(spice_msg_in *in)
+void *spice_msg_in_parsed(SpiceMsgIn *in)
 {
     g_return_val_if_fail(in != NULL, NULL);
 
@@ -417,7 +417,7 @@ void *spice_msg_in_parsed(spice_msg_in *in)
 }
 
 G_GNUC_INTERNAL
-void *spice_msg_in_raw(spice_msg_in *in, int *len)
+void *spice_msg_in_raw(SpiceMsgIn *in, int *len)
 {
     g_return_val_if_fail(in != NULL, NULL);
     g_return_val_if_fail(len != NULL, NULL);
@@ -444,9 +444,9 @@ static void hexdump(char *prefix, unsigned char *data, int len)
 }
 
 G_GNUC_INTERNAL
-void spice_msg_in_hexdump(spice_msg_in *in)
+void spice_msg_in_hexdump(SpiceMsgIn *in)
 {
-    spice_channel *c = in->channel->priv;
+    SpiceChannelPrivate *c = in->channel->priv;
 
     fprintf(stderr, "--\n<< hdr: %s serial %" PRIu64 " type %d size %d sub-list %d\n",
             c->name, in->header.serial, in->header.type,
@@ -455,9 +455,9 @@ void spice_msg_in_hexdump(spice_msg_in *in)
 }
 
 G_GNUC_INTERNAL
-void spice_msg_out_hexdump(spice_msg_out *out, unsigned char *data, int len)
+void spice_msg_out_hexdump(SpiceMsgOut *out, unsigned char *data, int len)
 {
-    spice_channel *c = out->channel->priv;
+    SpiceChannelPrivate *c = out->channel->priv;
 
     fprintf(stderr, "--\n>> hdr: %s serial %" PRIu64 " type %d size %d sub-list %d\n",
             c->name, out->header->serial, out->header->type,
@@ -466,14 +466,14 @@ void spice_msg_out_hexdump(spice_msg_out *out, unsigned char *data, int len)
 }
 
 G_GNUC_INTERNAL
-spice_msg_out *spice_msg_out_new(SpiceChannel *channel, int type)
+SpiceMsgOut *spice_msg_out_new(SpiceChannel *channel, int type)
 {
-    spice_channel *c = channel->priv;
-    spice_msg_out *out;
+    SpiceChannelPrivate *c = channel->priv;
+    SpiceMsgOut *out;
 
     g_return_val_if_fail(c != NULL, NULL);
 
-    out = spice_new0(spice_msg_out, 1);
+    out = spice_new0(SpiceMsgOut, 1);
     out->refcount = 1;
     out->channel  = channel;
 
@@ -489,7 +489,7 @@ spice_msg_out *spice_msg_out_new(SpiceChannel *channel, int type)
 }
 
 G_GNUC_INTERNAL
-void spice_msg_out_ref(spice_msg_out *out)
+void spice_msg_out_ref(SpiceMsgOut *out)
 {
     g_return_if_fail(out != NULL);
 
@@ -497,7 +497,7 @@ void spice_msg_out_ref(spice_msg_out *out)
 }
 
 G_GNUC_INTERNAL
-void spice_msg_out_unref(spice_msg_out *out)
+void spice_msg_out_unref(SpiceMsgOut *out)
 {
     g_return_if_fail(out != NULL);
 
@@ -510,7 +510,7 @@ void spice_msg_out_unref(spice_msg_out *out)
 
 /* system context */
 G_GNUC_INTERNAL
-void spice_msg_out_send(spice_msg_out *out)
+void spice_msg_out_send(SpiceMsgOut *out)
 {
     g_return_if_fail(out != NULL);
 
@@ -524,7 +524,7 @@ void spice_msg_out_send(spice_msg_out *out)
 
 /* coroutine context */
 G_GNUC_INTERNAL
-void spice_msg_out_send_internal(spice_msg_out *out)
+void spice_msg_out_send_internal(SpiceMsgOut *out)
 {
     g_return_if_fail(out != NULL);
 
@@ -565,7 +565,7 @@ static void spice_channel_flush_wire(SpiceChannel *channel,
                                      const void *data,
                                      size_t datalen)
 {
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
     const char *ptr = data;
     size_t offset = 0;
     GIOCondition cond;
@@ -625,7 +625,7 @@ static void spice_channel_flush_wire(SpiceChannel *channel,
  */
 static void spice_channel_flush_sasl(SpiceChannel *channel, const void *data, size_t len)
 {
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
     const char *output;
     unsigned int outputlen;
     int err;
@@ -647,7 +647,7 @@ static void spice_channel_flush_sasl(SpiceChannel *channel, const void *data, si
 static void spice_channel_write(SpiceChannel *channel, const void *data, size_t len)
 {
 #if HAVE_SASL
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
 
     if (c->sasl_conn)
         spice_channel_flush_sasl(channel, data, len);
@@ -663,7 +663,7 @@ static void spice_channel_write(SpiceChannel *channel, const void *data, size_t 
 /* coroutine context */
 static int spice_channel_read_wire(SpiceChannel *channel, void *data, size_t len)
 {
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
     int ret;
     GIOCondition cond;
 
@@ -728,7 +728,7 @@ reread:
  */
 static int spice_channel_read_sasl(SpiceChannel *channel, void *data, size_t len)
 {
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
 
     /* SPICE_DEBUG("Read %lu SASL %p size %d offset %d", len, c->sasl_decoded, */
     /*             c->sasl_decoded_length, c->sasl_decoded_offset); */
@@ -776,7 +776,7 @@ static int spice_channel_read_sasl(SpiceChannel *channel, void *data, size_t len
 /* coroutine context */
 static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
 {
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
     gsize len = length;
     int ret;
 
@@ -807,7 +807,7 @@ static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
 /* coroutine context */
 static void spice_channel_send_spice_ticket(SpiceChannel *channel)
 {
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
     EVP_PKEY *pubkey;
     int nRSASize;
     BIO *bioKey;
@@ -848,7 +848,7 @@ static void spice_channel_send_spice_ticket(SpiceChannel *channel)
 /* coroutine context */
 static void spice_channel_recv_auth(SpiceChannel *channel)
 {
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
     uint32_t link_res;
     int rc;
 
@@ -877,7 +877,7 @@ static void spice_channel_recv_auth(SpiceChannel *channel)
 G_GNUC_INTERNAL
 void spice_channel_up(SpiceChannel *channel)
 {
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
 
     SPICE_DEBUG("%s: channel up, state %d", c->name, c->state);
 
@@ -888,7 +888,7 @@ void spice_channel_up(SpiceChannel *channel)
 /* coroutine context */
 static void spice_channel_send_link(SpiceChannel *channel)
 {
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
     uint8_t *buffer, *p;
     int protocol, i;
 
@@ -946,7 +946,7 @@ static void spice_channel_send_link(SpiceChannel *channel)
 /* coroutine context */
 static void spice_channel_recv_link_hdr(SpiceChannel *channel)
 {
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
     int rc;
 
     rc = spice_channel_read(channel, &c->peer_hdr, sizeof(c->peer_hdr));
@@ -1008,7 +1008,7 @@ static gboolean
 spice_channel_gather_sasl_credentials(SpiceChannel *channel,
 				       sasl_interact_t *interact)
 {
-    spice_channel *c;
+    SpiceChannelPrivate *c;
     int ninteract;
 
     g_return_val_if_fail(channel != NULL, FALSE);
@@ -1080,7 +1080,7 @@ spice_channel_gather_sasl_credentials(SpiceChannel *channel,
  */
 static gboolean spice_channel_perform_auth_sasl(SpiceChannel *channel)
 {
-    spice_channel *c;
+    SpiceChannelPrivate *c;
     sasl_conn_t *saslconn = NULL;
     sasl_security_properties_t secprops;
     const char *clientout;
@@ -1415,7 +1415,7 @@ error:
 /* coroutine context */
 static void spice_channel_recv_link_msg(SpiceChannel *channel)
 {
-    spice_channel *c;
+    SpiceChannelPrivate *c;
     int rc, num_caps, i;
 
     g_return_if_fail(channel != NULL);
@@ -1504,7 +1504,7 @@ error:
 /* system context */
 static void spice_channel_buffered_write(SpiceChannel *channel, const void *data, size_t size)
 {
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
     size_t left;
 
     left = c->xmit_buffer_capacity - c->xmit_buffer_size;
@@ -1525,14 +1525,14 @@ static void spice_channel_buffered_write(SpiceChannel *channel, const void *data
 G_GNUC_INTERNAL
 void spice_channel_wakeup(SpiceChannel *channel)
 {
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
 
     g_io_wakeup(&c->wait);
 }
 
 /* coroutine context if @buffered is FALSE,
    system context if @buffered is TRUE */
-static void spice_channel_send_msg(SpiceChannel *channel, spice_msg_out *out, gboolean buffered)
+static void spice_channel_send_msg(SpiceChannel *channel, SpiceMsgOut *out, gboolean buffered)
 {
     uint8_t *data;
     int free_data;
@@ -1558,8 +1558,8 @@ G_GNUC_INTERNAL
 void spice_channel_recv_msg(SpiceChannel *channel,
                             handler_msg_in msg_handler, gpointer data)
 {
-    spice_channel *c = channel->priv;
-    spice_msg_in *in;
+    SpiceChannelPrivate *c = channel->priv;
+    SpiceMsgIn *in;
     int rc;
 
     if (!c->msg_in) {
@@ -1595,7 +1595,7 @@ void spice_channel_recv_msg(SpiceChannel *channel,
     if (in->header.sub_list) {
         SpiceSubMessageList *sub_list;
         SpiceSubMessage *sub;
-        spice_msg_in *sub_in;
+        SpiceMsgIn *sub_in;
         int i;
 
         sub_list = (SpiceSubMessageList *)(in->data + in->header.sub_list);
@@ -1619,7 +1619,7 @@ void spice_channel_recv_msg(SpiceChannel *channel,
     if (c->message_ack_count) {
         c->message_ack_count--;
         if (!c->message_ack_count) {
-            spice_msg_out *out = spice_msg_out_new(channel, SPICE_MSGC_ACK);
+            SpiceMsgOut *out = spice_msg_out_new(channel, SPICE_MSGC_ACK);
             spice_msg_out_send_internal(out);
             spice_msg_out_unref(out);
             c->message_ack_count = c->message_ack_window;
@@ -1671,7 +1671,7 @@ const gchar* spice_channel_type_to_string(gint type)
 /**
  * spice_channel_new:
  * @s: the @SpiceSession the channel is linked to
- * @type: the requested SPICE_CHANNEL type
+ * @type: the requested SPICECHANNELPRIVATE type
  * @id: the channel-id
  *
  * Create a new #SpiceChannel of type @type, and channel ID @id.
@@ -1748,7 +1748,7 @@ void spice_channel_destroy(SpiceChannel *channel)
 /* coroutine context */
 static void spice_channel_iterate_write(SpiceChannel *channel)
 {
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
 
     if (c->xmit_buffer_size) {
         spice_channel_write(channel, c->xmit_buffer, c->xmit_buffer_size);
@@ -1759,7 +1759,7 @@ static void spice_channel_iterate_write(SpiceChannel *channel)
 /* coroutine context */
 static void spice_channel_iterate_read(SpiceChannel *channel)
 {
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
 
     /* TODO: get rid of state, and use coroutine state */
     switch (c->state) {
@@ -1784,7 +1784,7 @@ static void spice_channel_iterate_read(SpiceChannel *channel)
 /* coroutine context */
 static gboolean spice_channel_iterate(SpiceChannel *channel)
 {
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
     GIOCondition ret;
 
     do {
@@ -1832,7 +1832,7 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
 static gboolean spice_channel_delayed_unref(gpointer data)
 {
     SpiceChannel *channel = SPICE_CHANNEL(data);
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
 
     g_return_val_if_fail(channel != NULL, FALSE);
     SPICE_DEBUG("Delayed unref channel %s %p", c->name, channel);
@@ -1848,7 +1848,7 @@ static gboolean spice_channel_delayed_unref(gpointer data)
 static void *spice_channel_coroutine(void *data)
 {
     SpiceChannel *channel = SPICE_CHANNEL(data);
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
     guint verify;
 
     SPICE_DEBUG("Started background coroutine %p for %s", &c->coroutine, c->name);
@@ -1992,7 +1992,7 @@ end:
 static gboolean connect_delayed(gpointer data)
 {
     SpiceChannel *channel = data;
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
     struct coroutine *co;
 
     SPICE_DEBUG("Open coroutine starting %p", channel);
@@ -2012,7 +2012,7 @@ static gboolean connect_delayed(gpointer data)
 
 static gboolean channel_connect(SpiceChannel *channel)
 {
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
 
     g_return_val_if_fail(c != NULL, FALSE);
 
@@ -2054,7 +2054,7 @@ static gboolean channel_connect(SpiceChannel *channel)
 gboolean spice_channel_connect(SpiceChannel *channel)
 {
     g_return_val_if_fail(SPICE_IS_CHANNEL(channel), FALSE);
-    spice_channel *c = channel->priv;
+    SpiceChannelPrivate *c = channel->priv;
 
     if (c->state == SPICE_CHANNEL_STATE_CONNECTING)
         return TRUE;
@@ -2073,7 +2073,7 @@ gboolean spice_channel_connect(SpiceChannel *channel)
  **/
 gboolean spice_channel_open_fd(SpiceChannel *channel, int fd)
 {
-    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
 
     g_return_val_if_fail(c != NULL, FALSE);
     g_return_val_if_fail(fd >= 0, FALSE);
@@ -2086,7 +2086,7 @@ gboolean spice_channel_open_fd(SpiceChannel *channel, int fd)
 /* system or coroutine context */
 static void channel_disconnect(SpiceChannel *channel)
 {
-    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
 
     g_return_if_fail(c != NULL);
 
@@ -2162,7 +2162,7 @@ static void channel_disconnect(SpiceChannel *channel)
  **/
 void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
 {
-    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
 
     g_return_if_fail(c != NULL);
 
@@ -2214,7 +2214,7 @@ static gboolean test_capability(GArray *caps, guint32 cap)
  **/
 gboolean spice_channel_test_capability(SpiceChannel *self, guint32 cap)
 {
-    spice_channel *c;
+    SpiceChannelPrivate *c;
 
     g_return_val_if_fail(SPICE_IS_CHANNEL(self), FALSE);
 
@@ -2233,7 +2233,7 @@ gboolean spice_channel_test_capability(SpiceChannel *self, guint32 cap)
  **/
 gboolean spice_channel_test_common_capability(SpiceChannel *self, guint32 cap)
 {
-    spice_channel *c;
+    SpiceChannelPrivate *c;
 
     g_return_val_if_fail(SPICE_IS_CHANNEL(self), FALSE);
 
@@ -2264,7 +2264,7 @@ static void set_capability(GArray *caps, guint32 cap)
 /* FIXME: we may want to make caps read only from outside */
 void spice_channel_set_capability(SpiceChannel *channel, guint32 cap)
 {
-    spice_channel *c;
+    SpiceChannelPrivate *c;
 
     g_return_if_fail(SPICE_IS_CHANNEL(channel));
 
@@ -2275,7 +2275,7 @@ void spice_channel_set_capability(SpiceChannel *channel, guint32 cap)
 G_GNUC_INTERNAL
 void spice_channel_set_common_capability(SpiceChannel *channel, guint32 cap)
 {
-    spice_channel *c;
+    SpiceChannelPrivate *c;
 
     g_return_if_fail(SPICE_IS_CHANNEL(channel));
 
@@ -2294,8 +2294,8 @@ SpiceSession* spice_channel_get_session(SpiceChannel *channel)
 G_GNUC_INTERNAL
 void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap)
 {
-    spice_channel *c = SPICE_CHANNEL_GET_PRIVATE(channel);
-    spice_channel *s = SPICE_CHANNEL_GET_PRIVATE(swap);
+    SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    SpiceChannelPrivate *s = SPICE_CHANNEL_GET_PRIVATE(swap);
 
     g_return_if_fail(c != NULL);
     g_return_if_fail(s != NULL);
@@ -2350,7 +2350,7 @@ static const spice_msg_handler base_handlers[] = {
 };
 
 /* coroutine context */
-static void spice_channel_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
+static void spice_channel_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
 {
     int type = spice_msg_in_type(msg);
 

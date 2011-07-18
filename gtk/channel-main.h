@@ -31,11 +31,11 @@ G_BEGIN_DECLS
 
 typedef struct _SpiceMainChannel SpiceMainChannel;
 typedef struct _SpiceMainChannelClass SpiceMainChannelClass;
-typedef struct spice_main_channel spice_main_channel;
+typedef struct _SpiceMainChannelPrivate SpiceMainChannelPrivate;
 
 struct _SpiceMainChannel {
     SpiceChannel parent;
-    spice_main_channel *priv;
+    SpiceMainChannelPrivate *priv;
     /* Do not add fields to this struct */
 };
 

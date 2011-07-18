@@ -34,7 +34,7 @@ struct channel {
     RingItem          link;
 };
 
-struct spice_session {
+struct _SpiceSessionPrivate {
     char              *host;
     char              *port;
     char              *tls_port;
@@ -114,7 +114,7 @@ struct spice_session {
 /* gobject glue                                                       */
 
 #define SPICE_SESSION_GET_PRIVATE(obj) \
-    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_SESSION, spice_session))
+    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_SESSION, SpiceSessionPrivate))
 
 G_DEFINE_TYPE (SpiceSession, spice_session, G_TYPE_OBJECT);
 
@@ -155,7 +155,7 @@ static guint signals[SPICE_SESSION_LAST_SIGNAL];
 
 static void spice_session_init(SpiceSession *session)
 {
-    spice_session *s;
+    SpiceSessionPrivate *s;
 
     SPICE_DEBUG("New session (compiled from package " PACKAGE_STRING ")");
     s = session->priv = SPICE_SESSION_GET_PRIVATE(session);
@@ -171,7 +171,7 @@ static void
 spice_session_dispose(GObject *gobject)
 {
     SpiceSession *session = SPICE_SESSION(gobject);
-    spice_session *s = session->priv;
+    SpiceSessionPrivate *s = session->priv;
 
     SPICE_DEBUG("session dispose");
 
@@ -196,7 +196,7 @@ spice_session_dispose(GObject *gobject)
 G_GNUC_INTERNAL
 void spice_session_palettes_clear(SpiceSession *session)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     g_return_if_fail(s != NULL);
 
     for (;;) {
@@ -210,7 +210,7 @@ void spice_session_palettes_clear(SpiceSession *session)
 G_GNUC_INTERNAL
 void spice_session_images_clear(SpiceSession *session)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     g_return_if_fail(s != NULL);
 
     for (;;) {
@@ -226,7 +226,7 @@ static void
 spice_session_finalize(GObject *gobject)
 {
     SpiceSession *session = SPICE_SESSION(gobject);
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
 
     /* release stuff */
     g_free(s->host);
@@ -254,7 +254,7 @@ spice_session_finalize(GObject *gobject)
 
 static int spice_uri_create(SpiceSession *session, char *dest, int len)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     int pos = 0;
 
     if (s->host == NULL || (s->port == NULL && s->tls_port == NULL)) {
@@ -271,7 +271,7 @@ static int spice_uri_create(SpiceSession *session, char *dest, int len)
 
 static int spice_uri_parse(SpiceSession *session, const char *original_uri)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     char host[128], key[32], value[128];
     char *port = NULL, *tls_port = NULL, *uri = NULL, *password = NULL;
     int len, pos = 0;
@@ -339,7 +339,7 @@ static void spice_session_get_property(GObject    *gobject,
                                        GParamSpec *pspec)
 {
     SpiceSession *session = SPICE_SESSION(gobject);
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     char buf[256];
     int len;
 
@@ -411,7 +411,7 @@ static void spice_session_set_property(GObject      *gobject,
                                        GParamSpec   *pspec)
 {
     SpiceSession *session = SPICE_SESSION(gobject);
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     const char *str;
 
     switch (prop_id) {
@@ -823,7 +823,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                      1,
                      SPICE_TYPE_CHANNEL);
 
-    g_type_class_add_private(klass, sizeof(spice_session));
+    g_type_class_add_private(klass, sizeof(SpiceSessionPrivate));
 }
 
 /* ------------------------------------------------------------------ */
@@ -848,7 +848,7 @@ SpiceSession *spice_session_new_from_session(SpiceSession *session)
                                                     "host", NULL,
                                                     "ca-file", NULL,
                                                     NULL));
-    spice_session *c = copy->priv, *s = session->priv;
+    SpiceSessionPrivate *c = copy->priv, *s = session->priv;
 
     g_warn_if_fail (c->host == NULL);
     g_warn_if_fail (c->tls_port == NULL);
@@ -889,7 +889,7 @@ SpiceSession *spice_session_new_from_session(SpiceSession *session)
  **/
 gboolean spice_session_connect(SpiceSession *session)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
 
     g_return_val_if_fail(s != NULL, FALSE);
 
@@ -918,7 +918,7 @@ gboolean spice_session_connect(SpiceSession *session)
  **/
 gboolean spice_session_open_fd(SpiceSession *session, int fd)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
 
     g_return_val_if_fail(s != NULL, FALSE);
     g_return_val_if_fail(fd >= 0, FALSE);
@@ -935,7 +935,7 @@ gboolean spice_session_open_fd(SpiceSession *session, int fd)
 G_GNUC_INTERNAL
 gboolean spice_session_get_client_provided_socket(SpiceSession *session)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
 
     g_return_val_if_fail(s != NULL, FALSE);
     return s->client_provided_sockets;
@@ -944,7 +944,7 @@ gboolean spice_session_get_client_provided_socket(SpiceSession *session)
 G_GNUC_INTERNAL
 void spice_session_switching_disconnect(SpiceSession *session)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     struct channel *item;
     RingItem *ring, *next;
 
@@ -966,8 +966,8 @@ void spice_session_switching_disconnect(SpiceSession *session)
 G_GNUC_INTERNAL
 void spice_session_set_migration(SpiceSession *session, SpiceSession *migration)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
-    spice_session *m = SPICE_SESSION_GET_PRIVATE(migration);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *m = SPICE_SESSION_GET_PRIVATE(migration);
     gchar *tmp;
 
     g_return_if_fail(s != NULL);
@@ -1001,7 +1001,7 @@ SpiceChannel* get_channel_by_id_and_type(SpiceSession *session,
                                          gint id, gint type)
 {
     RingItem *ring, *next;
-    spice_session *s = session->priv;
+    SpiceSessionPrivate *s = session->priv;
     struct channel *c;
 
     g_return_val_if_fail(s != NULL, NULL);
@@ -1027,7 +1027,7 @@ SpiceChannel* get_channel_by_id_and_type(SpiceSession *session,
 G_GNUC_INTERNAL
 void spice_session_abort_migration(SpiceSession *session)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     RingItem *ring, *next;
     struct channel *c;
 
@@ -1060,7 +1060,7 @@ void spice_session_abort_migration(SpiceSession *session)
 G_GNUC_INTERNAL
 void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     SpiceChannel *c;
     gint id, type;
 
@@ -1095,7 +1095,7 @@ void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel)
  **/
 void spice_session_disconnect(SpiceSession *session)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     struct channel *item;
     RingItem *ring, *next;
 
@@ -1122,15 +1122,16 @@ void spice_session_disconnect(SpiceSession *session)
 
 /**
  * spice_session_get_channels:
- * @session:
+ * @session: a #SpiceSession
  *
  * Get the list of current channels associated with this @session.
  *
- * Returns: a #GList of unowned SpiceChannels.
+ * Returns: (element-type SpiceChannel) (transfer container): a #GList
+ *          of unowned #SpiceChannel channels.
  **/
 GList *spice_session_get_channels(SpiceSession *session)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     struct channel *item;
     GList *list = NULL;
     RingItem *ring;
@@ -1187,7 +1188,7 @@ static GSocket *channel_connect_socket(GSocketAddress *sockaddr,
 G_GNUC_INTERNAL
 GSocket* spice_session_channel_open_host(SpiceSession *session, gboolean use_tls)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     GSocketConnectable *addr;
     GSocketAddressEnumerator *enumerator;
     GSocketAddress *sockaddr;
@@ -1227,7 +1228,7 @@ GSocket* spice_session_channel_open_host(SpiceSession *session, gboolean use_tls
 G_GNUC_INTERNAL
 void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     struct channel *item;
 
     g_return_if_fail(s != NULL);
@@ -1255,7 +1256,7 @@ void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel)
 G_GNUC_INTERNAL
 void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     struct channel *item = NULL;
     RingItem *ring, *next;
 
@@ -1287,7 +1288,7 @@ void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel)
 G_GNUC_INTERNAL
 void spice_session_set_connection_id(SpiceSession *session, int id)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
 
     g_return_if_fail(s != NULL);
 
@@ -1297,7 +1298,7 @@ void spice_session_set_connection_id(SpiceSession *session, int id)
 G_GNUC_INTERNAL
 int spice_session_get_connection_id(SpiceSession *session)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
 
     g_return_val_if_fail(s != NULL, -1);
 
@@ -1319,7 +1320,7 @@ static guint64 g_get_monotonic_time(void)
 G_GNUC_INTERNAL
 guint32 spice_session_get_mm_time(SpiceSession *session)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
 
     g_return_val_if_fail(s != NULL, 0);
 
@@ -1331,7 +1332,7 @@ guint32 spice_session_get_mm_time(SpiceSession *session)
 G_GNUC_INTERNAL
 void spice_session_set_mm_time(SpiceSession *session, guint32 time)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
 
     g_return_if_fail(s != NULL);
 
@@ -1357,7 +1358,7 @@ void spice_session_set_port(SpiceSession *session, int port, gboolean tls)
 G_GNUC_INTERNAL
 void spice_session_get_pubkey(SpiceSession *session, guint8 **pubkey, guint *size)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
 
     g_return_if_fail(s != NULL);
     g_return_if_fail(pubkey != NULL);
@@ -1370,7 +1371,7 @@ void spice_session_get_pubkey(SpiceSession *session, guint8 **pubkey, guint *siz
 G_GNUC_INTERNAL
 guint spice_session_get_verify(SpiceSession *session)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
 
     g_return_val_if_fail(s != NULL, 0);
     return s->verify;
@@ -1379,7 +1380,7 @@ guint spice_session_get_verify(SpiceSession *session)
 G_GNUC_INTERNAL
 void spice_session_set_migration_state(SpiceSession *session, SpiceSessionMigration state)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
 
     g_return_if_fail(s != NULL);
     s->migration_state = state;
@@ -1389,7 +1390,7 @@ void spice_session_set_migration_state(SpiceSession *session, SpiceSessionMigrat
 G_GNUC_INTERNAL
 const gchar* spice_session_get_password(SpiceSession *session)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
 
     g_return_val_if_fail(s != NULL, NULL);
     return s->password;
@@ -1398,7 +1399,7 @@ const gchar* spice_session_get_password(SpiceSession *session)
 G_GNUC_INTERNAL
 const gchar* spice_session_get_host(SpiceSession *session)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
 
     g_return_val_if_fail(s != NULL, NULL);
     return s->host;
@@ -1407,7 +1408,7 @@ const gchar* spice_session_get_host(SpiceSession *session)
 G_GNUC_INTERNAL
 const gchar* spice_session_get_cert_subject(SpiceSession *session)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
 
     g_return_val_if_fail(s != NULL, NULL);
     return s->cert_subject;
@@ -1416,7 +1417,7 @@ const gchar* spice_session_get_cert_subject(SpiceSession *session)
 G_GNUC_INTERNAL
 const gchar* spice_session_get_ciphers(SpiceSession *session)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
 
     g_return_val_if_fail(s != NULL, NULL);
     return s->ciphers;
@@ -1425,7 +1426,7 @@ const gchar* spice_session_get_ciphers(SpiceSession *session)
 G_GNUC_INTERNAL
 const gchar* spice_session_get_ca_file(SpiceSession *session)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
 
     g_return_val_if_fail(s != NULL, NULL);
     return s->ca_file;
@@ -1437,7 +1438,7 @@ void spice_session_get_caches(SpiceSession *session,
                               display_cache **palettes,
                               SpiceGlzDecoderWindow **glz_window)
 {
-    spice_session *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
 
     g_return_if_fail(s != NULL);
 

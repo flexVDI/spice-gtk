@@ -35,7 +35,7 @@ static inline void gdk_drawable_get_size(GdkWindow *w, gint *ww, gint *wh)
 G_GNUC_INTERNAL
 int spicex_image_create(SpiceDisplay *display)
 {
-    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     if (d->format == SPICE_SURFACE_FMT_16_555 ||
         d->format == SPICE_SURFACE_FMT_16_565) {
@@ -54,7 +54,7 @@ int spicex_image_create(SpiceDisplay *display)
 G_GNUC_INTERNAL
 void spicex_image_destroy(SpiceDisplay *display)
 {
-    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     if (d->ximage) {
         cairo_surface_finish(d->ximage);
@@ -69,7 +69,7 @@ void spicex_image_destroy(SpiceDisplay *display)
 G_GNUC_INTERNAL
 void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
 {
-    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     int fbw = d->width, fbh = d->height;
     int mx = 0, my = 0;
     int ww, wh;
@@ -137,7 +137,7 @@ G_GNUC_INTERNAL
 void spicex_image_invalidate(SpiceDisplay *display,
                              gint *x, gint *y, gint *w, gint *h)
 {
-    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     int ww, wh;
 
     gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
@@ -173,6 +173,6 @@ void spicex_image_invalidate(SpiceDisplay *display,
 G_GNUC_INTERNAL
 gboolean spicex_is_scaled(SpiceDisplay *display)
 {
-    spice_display *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     return d->allow_scaling;
 }

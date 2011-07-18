@@ -44,9 +44,9 @@
  */
 
 #define SPICE_PLAYBACK_CHANNEL_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_PLAYBACK_CHANNEL, spice_playback_channel))
+    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_PLAYBACK_CHANNEL, SpicePlaybackChannelPrivate))
 
-struct spice_playback_channel {
+struct _SpicePlaybackChannelPrivate {
     int                         mode;
     CELTMode                    *celt_mode;
     CELTDecoder                 *celt_decoder;
@@ -79,13 +79,13 @@ enum {
 
 static guint signals[SPICE_PLAYBACK_LAST_SIGNAL];
 
-static void spice_playback_handle_msg(SpiceChannel *channel, spice_msg_in *msg);
+static void spice_playback_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg);
 
 /* ------------------------------------------------------------------ */
 
 static void spice_playback_channel_init(SpicePlaybackChannel *channel)
 {
-    spice_playback_channel *c;
+    SpicePlaybackChannelPrivate *c;
 
     c = channel->priv = SPICE_PLAYBACK_CHANNEL_GET_PRIVATE(channel);
     memset(c, 0, sizeof(*c));
@@ -95,7 +95,7 @@ static void spice_playback_channel_init(SpicePlaybackChannel *channel)
 
 static void spice_playback_channel_finalize(GObject *obj)
 {
-    spice_playback_channel *c = SPICE_PLAYBACK_CHANNEL(obj)->priv;
+    SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(obj)->priv;
 
     if (c->celt_decoder) {
         celt051_decoder_destroy(c->celt_decoder);
@@ -120,7 +120,7 @@ static void spice_playback_channel_get_property(GObject    *gobject,
                                                 GParamSpec *pspec)
 {
     SpicePlaybackChannel *channel = SPICE_PLAYBACK_CHANNEL(gobject);
-    spice_playback_channel *c = channel->priv;
+    SpicePlaybackChannelPrivate *c = channel->priv;
 
     switch (prop_id) {
     case PROP_VOLUME:
@@ -264,7 +264,7 @@ static void spice_playback_channel_class_init(SpicePlaybackChannelClass *klass)
                      G_TYPE_NONE,
                      0);
 
-    g_type_class_add_private(klass, sizeof(spice_playback_channel));
+    g_type_class_add_private(klass, sizeof(SpicePlaybackChannelPrivate));
 }
 
 /* signal trampoline---------------------------------------------------------- */
@@ -315,9 +315,9 @@ static void do_emit_main_context(GObject *object, int signum, gpointer params)
 /* ------------------------------------------------------------------ */
 
 /* coroutine context */
-static void playback_handle_data(SpiceChannel *channel, spice_msg_in *in)
+static void playback_handle_data(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    spice_playback_channel *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
+    SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackPacket *packet = spice_msg_in_parsed(in);
 
 #ifdef DEBUG
@@ -361,9 +361,9 @@ static void playback_handle_data(SpiceChannel *channel, spice_msg_in *in)
 }
 
 /* coroutine context */
-static void playback_handle_mode(SpiceChannel *channel, spice_msg_in *in)
+static void playback_handle_mode(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    spice_playback_channel *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
+    SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackMode *mode = spice_msg_in_parsed(in);
 
     SPICE_DEBUG("%s: time %d mode %d data %p size %d", __FUNCTION__,
@@ -381,9 +381,9 @@ static void playback_handle_mode(SpiceChannel *channel, spice_msg_in *in)
 }
 
 /* coroutine context */
-static void playback_handle_start(SpiceChannel *channel, spice_msg_in *in)
+static void playback_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    spice_playback_channel *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
+    SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackStart *start = spice_msg_in_parsed(in);
     int celt_mode_err;
 
@@ -424,15 +424,15 @@ static void playback_handle_start(SpiceChannel *channel, spice_msg_in *in)
 }
 
 /* coroutine context */
-static void playback_handle_stop(SpiceChannel *channel, spice_msg_in *in)
+static void playback_handle_stop(SpiceChannel *channel, SpiceMsgIn *in)
 {
     emit_main_context(channel, SPICE_PLAYBACK_STOP);
 }
 
 /* coroutine context */
-static void playback_handle_set_volume(SpiceChannel *channel, spice_msg_in *in)
+static void playback_handle_set_volume(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    spice_playback_channel *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
+    SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgAudioVolume *vol = spice_msg_in_parsed(in);
 
     g_free(c->volume);
@@ -443,9 +443,9 @@ static void playback_handle_set_volume(SpiceChannel *channel, spice_msg_in *in)
 }
 
 /* coroutine context */
-static void playback_handle_set_mute(SpiceChannel *channel, spice_msg_in *in)
+static void playback_handle_set_mute(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    spice_playback_channel *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
+    SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgAudioMute *m = spice_msg_in_parsed(in);
 
     c->mute = m->mute;
@@ -462,7 +462,7 @@ static const spice_msg_handler playback_handlers[] = {
 };
 
 /* coroutine context */
-static void spice_playback_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
+static void spice_playback_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
 {
     int type = spice_msg_in_type(msg);
     SpiceChannelClass *parent_class;
@@ -481,7 +481,7 @@ static void spice_playback_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
 
 void spice_playback_channel_set_delay(SpicePlaybackChannel *channel, guint32 delay_ms)
 {
-    spice_playback_channel *c;
+    SpicePlaybackChannelPrivate *c;
 
     g_return_if_fail(SPICE_IS_PLAYBACK_CHANNEL(channel));
 

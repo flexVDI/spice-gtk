@@ -54,9 +54,9 @@ typedef struct display_surface {
 } display_surface;
 
 typedef struct display_stream {
-    spice_msg_in                *msg_create;
-    spice_msg_in                *msg_clip;
-    spice_msg_in                *msg_data;
+    SpiceMsgIn                  *msg_create;
+    SpiceMsgIn                  *msg_clip;
+    SpiceMsgIn                  *msg_data;
 
     /* from messages */
     display_surface             *surface;

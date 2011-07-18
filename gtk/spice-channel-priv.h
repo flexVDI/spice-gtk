@@ -40,7 +40,7 @@
 
 G_BEGIN_DECLS
 
-struct spice_msg_out {
+struct _SpiceMsgOut {
     int                   refcount;
     SpiceChannel          *channel;
     SpiceMessageMarshallers *marshallers;
@@ -48,7 +48,7 @@ struct spice_msg_out {
     SpiceDataHeader       *header;
 };
 
-struct spice_msg_in {
+struct _SpiceMsgIn {
     int                   refcount;
     SpiceChannel          *channel;
     SpiceDataHeader       header;
@@ -57,7 +57,7 @@ struct spice_msg_in {
     uint8_t               *parsed;
     size_t                psize;
     message_destructor_t  pfree;
-    spice_msg_in          *parent;
+    SpiceMsgIn            *parent;
 };
 
 enum spice_channel_state {
@@ -71,7 +71,7 @@ enum spice_channel_state {
     SPICE_CHANNEL_STATE_MIGRATING,
 };
 
-struct spice_channel {
+struct _SpiceChannelPrivate {
     /* swapped on migration */
     SSL_CTX                     *ctx;
     SSL                         *ssl;
@@ -115,7 +115,7 @@ struct spice_channel {
     SpiceLinkReply*             peer_msg;
     int                         peer_pos;
 
-    spice_msg_in                *msg_in;
+    SpiceMsgIn                  *msg_in;
     int                         message_ack_window;
     int                         message_ack_count;
 
@@ -127,22 +127,22 @@ struct spice_channel {
     gsize                       total_read_bytes;
 };
 
-spice_msg_in *spice_msg_in_new(SpiceChannel *channel);
-spice_msg_in *spice_msg_in_sub_new(SpiceChannel *channel, spice_msg_in *parent,
+SpiceMsgIn *spice_msg_in_new(SpiceChannel *channel);
+SpiceMsgIn *spice_msg_in_sub_new(SpiceChannel *channel, SpiceMsgIn *parent,
                                    SpiceSubMessage *sub);
-void spice_msg_in_ref(spice_msg_in *in);
-void spice_msg_in_unref(spice_msg_in *in);
-int spice_msg_in_type(spice_msg_in *in);
-void *spice_msg_in_parsed(spice_msg_in *in);
-void *spice_msg_in_raw(spice_msg_in *in, int *len);
-void spice_msg_in_hexdump(spice_msg_in *in);
+void spice_msg_in_ref(SpiceMsgIn *in);
+void spice_msg_in_unref(SpiceMsgIn *in);
+int spice_msg_in_type(SpiceMsgIn *in);
+void *spice_msg_in_parsed(SpiceMsgIn *in);
+void *spice_msg_in_raw(SpiceMsgIn *in, int *len);
+void spice_msg_in_hexdump(SpiceMsgIn *in);
 
-spice_msg_out *spice_msg_out_new(SpiceChannel *channel, int type);
-void spice_msg_out_ref(spice_msg_out *out);
-void spice_msg_out_unref(spice_msg_out *out);
-void spice_msg_out_send(spice_msg_out *out);
-void spice_msg_out_send_internal(spice_msg_out *out);
-void spice_msg_out_hexdump(spice_msg_out *out, unsigned char *data, int len);
+SpiceMsgOut *spice_msg_out_new(SpiceChannel *channel, int type);
+void spice_msg_out_ref(SpiceMsgOut *out);
+void spice_msg_out_unref(SpiceMsgOut *out);
+void spice_msg_out_send(SpiceMsgOut *out);
+void spice_msg_out_send_internal(SpiceMsgOut *out);
+void spice_msg_out_hexdump(SpiceMsgOut *out, unsigned char *data, int len);
 
 void spice_channel_up(SpiceChannel *channel);
 void spice_channel_wakeup(SpiceChannel *channel);
@@ -150,17 +150,17 @@ void spice_channel_wakeup(SpiceChannel *channel);
 SpiceSession* spice_channel_get_session(SpiceChannel *channel);
 
 /* coroutine context */
-typedef void (*handler_msg_in)(SpiceChannel *channel, spice_msg_in *msg, gpointer data);
+typedef void (*handler_msg_in)(SpiceChannel *channel, SpiceMsgIn *msg, gpointer data);
 void spice_channel_recv_msg(SpiceChannel *channel, handler_msg_in handler, gpointer data);
 
 /* channel-base.c */
 /* coroutine context */
-void spice_channel_handle_set_ack(SpiceChannel *channel, spice_msg_in *in);
-void spice_channel_handle_ping(SpiceChannel *channel, spice_msg_in *in);
-void spice_channel_handle_notify(SpiceChannel *channel, spice_msg_in *in);
-void spice_channel_handle_disconnect(SpiceChannel *channel, spice_msg_in *in);
-void spice_channel_handle_wait_for_channels(SpiceChannel *channel, spice_msg_in *in);
-void spice_channel_handle_migrate(SpiceChannel *channel, spice_msg_in *in);
+void spice_channel_handle_set_ack(SpiceChannel *channel, SpiceMsgIn *in);
+void spice_channel_handle_ping(SpiceChannel *channel, SpiceMsgIn *in);
+void spice_channel_handle_notify(SpiceChannel *channel, SpiceMsgIn *in);
+void spice_channel_handle_disconnect(SpiceChannel *channel, SpiceMsgIn *in);
+void spice_channel_handle_wait_for_channels(SpiceChannel *channel, SpiceMsgIn *in);
+void spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in);
 
 gint spice_channel_get_channel_id(SpiceChannel *channel);
 gint spice_channel_get_channel_type(SpiceChannel *channel);

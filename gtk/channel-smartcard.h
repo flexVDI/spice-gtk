@@ -31,13 +31,13 @@ G_BEGIN_DECLS
 
 typedef struct _SpiceSmartcardChannel SpiceSmartcardChannel;
 typedef struct _SpiceSmartcardChannelClass SpiceSmartcardChannelClass;
-typedef struct spice_smartcard_channel spice_smartcard_channel;
+typedef struct _SpiceSmartcardChannelPrivate SpiceSmartcardChannelPrivate;
 
 struct _SpiceSmartcardChannel {
     SpiceChannel parent;
 
     /*< private >*/
-    spice_smartcard_channel *priv;
+    SpiceSmartcardChannelPrivate *priv;
     /* Do not add fields to this struct */
 };
 

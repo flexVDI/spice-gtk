@@ -49,18 +49,18 @@
  */
 
 #define SPICE_SMARTCARD_CHANNEL_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_SMARTCARD_CHANNEL, spice_smartcard_channel))
+    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_SMARTCARD_CHANNEL, SpiceSmartcardChannelPrivate))
 
 struct _SpiceSmartcardChannelMessage {
 #ifdef USE_SMARTCARD
     VSCMsgType message_type;
 #endif
-    spice_msg_out *message;
+    SpiceMsgOut *message;
 };
 typedef struct _SpiceSmartcardChannelMessage SpiceSmartcardChannelMessage;
 
 
-struct spice_smartcard_channel {
+struct _SpiceSmartcardChannelPrivate {
     /* track readers that have been added but for which we didn't receive
      * an ack from the spice server yet. We rely on the fact that the
      * readers in this list are ordered by the time we sent the request to
@@ -94,9 +94,9 @@ enum {
     SPICE_SMARTCARD_LAST_SIGNAL,
 };
 
-static void spice_smartcard_handle_msg(SpiceChannel *channel, spice_msg_in *msg);
+static void spice_smartcard_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg);
 static void spice_smartcard_channel_up(SpiceChannel *channel);
-static void handle_smartcard_msg(SpiceChannel *channel, spice_msg_in *in);
+static void handle_smartcard_msg(SpiceChannel *channel, SpiceMsgIn *in);
 static void smartcard_message_free(SpiceSmartcardChannelMessage *message);
 
 /* ------------------------------------------------------------------ */
@@ -113,7 +113,7 @@ static void card_removed_cb(SpiceSmartcardManager *manager, VReader *reader,
 
 static void spice_smartcard_channel_init(SpiceSmartcardChannel *channel)
 {
-    spice_smartcard_channel *priv;
+    SpiceSmartcardChannelPrivate *priv;
 
     channel->priv = SPICE_SMARTCARD_CHANNEL_GET_PRIVATE(channel);
     priv = channel->priv;
@@ -178,7 +178,7 @@ static void spice_smartcard_channel_class_init(SpiceSmartcardChannelClass *klass
     channel_class->handle_msg   = spice_smartcard_handle_msg;
     channel_class->channel_up   = spice_smartcard_channel_up;
 
-    g_type_class_add_private(klass, sizeof(spice_smartcard_channel));
+    g_type_class_add_private(klass, sizeof(SpiceSmartcardChannelPrivate));
 }
 
 static const spice_msg_handler smartcard_handlers[] = {
@@ -248,7 +248,7 @@ spice_channel_drop_pending_reader_removal(SpiceSmartcardChannel *channel,
 }
 
 static SpiceSmartcardChannelMessage *
-smartcard_message_new(VSCMsgType msg_type, spice_msg_out *msg_out)
+smartcard_message_new(VSCMsgType msg_type, SpiceMsgOut *msg_out)
 {
     SpiceSmartcardChannelMessage *message;
 
@@ -277,7 +277,7 @@ smartcard_message_complete_in_flight(SpiceSmartcardChannel *channel)
 
 static void smartcard_message_send(SpiceSmartcardChannel *channel,
                                    VSCMsgType msg_type,
-                                   spice_msg_out *msg_out, gboolean queue)
+                                   SpiceMsgOut *msg_out, gboolean queue)
 {
     SpiceSmartcardChannelMessage *message;
 
@@ -305,7 +305,7 @@ send_msg_generic_with_data(SpiceSmartcardChannel *channel, VReader *reader,
                            const uint8_t *data, gsize data_len,
                            gboolean serialize_msg)
 {
-    spice_msg_out *msg_out;
+    SpiceMsgOut *msg_out;
     VSCMsgHeader header = {
         .type = msg_type,
         .length = data_len
@@ -397,7 +397,7 @@ static void card_removed_cb(SpiceSmartcardManager *manager, VReader *reader,
 #endif /* USE_SMARTCARD */
 
 /* coroutine context */
-static void spice_smartcard_handle_msg(SpiceChannel *channel, spice_msg_in *msg)
+static void spice_smartcard_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
 {
     int type = spice_msg_in_type(msg);
     SpiceChannelClass *parent_class;
@@ -444,10 +444,10 @@ static void spice_smartcard_channel_up(SpiceChannel *channel)
     g_object_unref(session);
 }
 
-static void handle_smartcard_msg(SpiceChannel *channel, spice_msg_in *in)
+static void handle_smartcard_msg(SpiceChannel *channel, SpiceMsgIn *in)
 {
 #ifdef USE_SMARTCARD
-    spice_smartcard_channel *priv = SPICE_SMARTCARD_CHANNEL_GET_PRIVATE(channel);
+    SpiceSmartcardChannelPrivate *priv = SPICE_SMARTCARD_CHANNEL_GET_PRIVATE(channel);
     SpiceMsgSmartcard *msg = spice_msg_in_parsed(in);
     VReader *reader;
 

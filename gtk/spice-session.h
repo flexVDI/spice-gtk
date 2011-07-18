@@ -65,7 +65,7 @@ typedef enum {
 struct _SpiceSession
 {
     GObject parent;
-    spice_session *priv;
+    SpiceSessionPrivate *priv;
     /* Do not add fields to this struct */
 };
 

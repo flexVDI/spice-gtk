@@ -31,11 +31,11 @@ G_BEGIN_DECLS
 
 typedef struct _SpiceCursorChannel SpiceCursorChannel;
 typedef struct _SpiceCursorChannelClass SpiceCursorChannelClass;
-typedef struct spice_cursor_channel spice_cursor_channel;
+typedef struct _SpiceCursorChannelPrivate SpiceCursorChannelPrivate;
 
 struct _SpiceCursorChannel {
     SpiceChannel parent;
-    spice_cursor_channel *priv;
+    SpiceCursorChannelPrivate *priv;
     /* Do not add fields to this struct */
 };
 

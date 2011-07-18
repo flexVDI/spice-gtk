@@ -23,12 +23,12 @@ G_BEGIN_DECLS
 /* SpiceSession */
 typedef struct _SpiceSession SpiceSession;
 typedef struct _SpiceSessionClass SpiceSessionClass;
-typedef struct spice_session spice_session;
+typedef struct _SpiceSessionPrivate SpiceSessionPrivate;
 
 /* SpiceChannel */
 typedef struct _SpiceChannel SpiceChannel;
 typedef struct _SpiceChannelClass SpiceChannelClass;
-typedef struct spice_channel spice_channel;
+typedef struct _SpiceChannelPrivate SpiceChannelPrivate;
 
 G_END_DECLS
 

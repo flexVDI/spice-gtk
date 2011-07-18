@@ -47,9 +47,10 @@ static void option_debug(void)
 /**
  * spice_get_option_group:
  *
- * Returns: a #GOptionGroup for the commandline arguments specific to
- * Spice.  You have to call spice_set_session_option() after to set
- * the options on a #SpiceSession.
+ * Returns: (transfer full): a #GOptionGroup for the commandline
+ * arguments specific to Spice.  You have to call
+ * spice_set_session_option() after to set the options on a
+ * #SpiceSession.
  **/
 GOptionGroup* spice_get_option_group(void)
 {
