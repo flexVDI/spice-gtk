@@ -1,3 +1,17 @@
+v0.7
+====
+
+- smartcard support
+- better video playback performance (jpeg-turbo & audio improvements)
+- support for audio volume (needs qemu support)
+- controller support for Windows (NamedPipe)
+- make perl-Text-CSV optional for tarball builds
+- new spice_get_option_group()/spice_set_session_option()
+- keyboard improvements, grab-sequence can be configured, various windows fixes
+- new tool spicy-stats, to collect informations during a session
+- bugfixes: memleak fixes, SASL fixes, crash with virt-manager
+- various build fixes, should build on MacOS as well now
+
 v0.6
 ====
 

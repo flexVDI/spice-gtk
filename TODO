@@ -1,4 +1,6 @@
+* Pointer/cursor issues if no agent:
+** https://bugs.freedesktop.org/show_bug.cgi?id=36323
+** https://bugs.freedesktop.org/show_bug.cgi?id=38008
+** https://bugs.freedesktop.org/show_bug.cgi?id=38024
 * TunnelChannel
-* ungrab pointer when clicking for drag&drop in multi-display is broken if releasing outside
 * create a ChannelBaseAudio
-* document SmartcardChannel

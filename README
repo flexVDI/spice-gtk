@@ -27,33 +27,42 @@ snappy
    Command line tool, connects to spice server and writes out a
    screen shot.
 
+spicy-stats
+   Command line tool, connects to spice server and writes out a
+   summary of connection details, amount of bytes transferred...
+
 SpiceClientGtk python module (only built with Gtk+ 2.0)
 
 SpiceClientGlib and SpiceClientGtk GObject-introspection modules.
 
-Build depedencies:
+Build dependencies:
 ------------------
 
-On Fedora: (gtk2-devel if building with --with-gtk=2.0)
+. On Fedora: (gtk2-devel if building with --with-gtk=2.0)
 
-gtk3-devel spice-protocol pygtk2-devel intltool celt051-devel
-openssl-devel pulseaudio-libs-devel pixman-devel python perl-Text-CSV
+gtk3-devel spice-protocol intltool celt051-devel
+openssl-devel pulseaudio-libs-devel pixman-devel
 gobject-introspection-devel libjpeg-turbo-devel zlib-devel
 cyrus-sasl-devel gtk-doc
 
-The experimental GStreamer backend needs:
+. To build python bindings for virt-manager, you need gtk2, and:
+
+pygtk2-devel python
+
+. The experimental GStreamer backend needs:
 
 gstreamer-devel gstreamer-plugins-base-devel
 
-If you build from git, you'll also need:
+. If you build from git, you'll also need:
 
-libtool automake pyparsing vala
+libtool automake pyparsing vala perl-Text-CSV
 
 
 current state
 -------------
 
-Some features are missing, see TODO
+There are some known bugs, check the TODO list and
+bugzilla.freedesktop.org.
 
 Copyright 2009-2011 Red Hat, Inc. and/or its affiliates.
 
