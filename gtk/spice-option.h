@@ -19,7 +19,7 @@
 #define SPICE_OPTION_H
 
 #include <glib.h>
-#include <spice-session.h>
+#include "spice-session.h"
 
 G_BEGIN_DECLS
 

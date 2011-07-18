@@ -383,7 +383,7 @@
   (c-name "spice_channel_disconnect")
   (return-type "none")
   (parameters
-    '("SpiceChannelEvent" "event")
+    '("SpiceChannelEvent" "reason")
   )
 )
 
@@ -466,6 +466,23 @@
 (define-function spice_util_get_version_string
   (c-name "spice_util_get_version_string")
   (return-type "const-gchar*")
+)
+
+
+
+;; From spice-option.h
+
+(define-function spice_get_option_group
+  (c-name "spice_get_option_group")
+  (return-type "GOptionGroup*")
+)
+
+(define-function spice_set_session_option
+  (c-name "spice_set_session_option")
+  (return-type "none")
+  (parameters
+    '("SpiceSession*" "session")
+  )
 )
 
 
@@ -618,7 +635,7 @@
     '("SpiceRecordChannel*" "channel")
     '("gpointer" "data")
     '("gsize" "bytes")
-    '("uint32_t" "time")
+    '("guint32" "time")
   )
 )
 
