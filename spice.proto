@@ -1173,6 +1173,13 @@ channel SmartcardChannel : BaseChannel {
     } @ctype(VSCMsgReaderAdd) reader_add = 101;
 } @ifdef(USE_SMARTCARD);
 
+channel UsbredirChannel : BaseChannel {
+server:
+    Data data = 101;
+client:
+    Data data = 101;
+};
+
 protocol Spice {
     MainChannel main = 1;
     DisplayChannel display;
@@ -1182,4 +1189,5 @@ protocol Spice {
     RecordChannel record;
     TunnelChannel tunnel;
     SmartcardChannel smartcard;
+    UsbredirChannel usbredir;
 };
