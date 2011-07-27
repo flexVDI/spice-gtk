@@ -1750,9 +1750,34 @@ static void spice_channel_iterate_write(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
 
-    if (c->xmit_buffer_size) {
-        spice_channel_write(channel, c->xmit_buffer, c->xmit_buffer_size);
+    if (c->xmit_buffer) {
+        /*
+         * Take ownership of the buffer, so that if spice_channel_write calls
+         * g_io_wait and thus yields to the main context, and that then calls
+         * spice_channel_buffered_write it does not mess with the buffer
+         * being written out.
+         */
+        guint8 *buffer = c->xmit_buffer;
+        int size = c->xmit_buffer_size;
+        int capacity = c->xmit_buffer_capacity;
+
+        c->xmit_buffer = NULL;
         c->xmit_buffer_size = 0;
+        c->xmit_buffer_capacity = 0;
+
+        spice_channel_write(channel, buffer, size);
+
+        /*
+         * If no write has been done in the mean time, we can return the buffer
+         * so that it can be re-used.
+         */
+        if (c->xmit_buffer == NULL) {
+            c->xmit_buffer = buffer;
+            c->xmit_buffer_capacity = capacity;
+            c->xmit_buffer_size = 0;
+        } else {
+            g_free(buffer);
+        }
     }
 }
 
