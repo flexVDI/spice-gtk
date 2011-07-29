@@ -116,8 +116,6 @@ void stream_mjpeg_data(display_stream *st)
         }
         lines_read = jpeg_read_scanlines(&st->mjpeg_cinfo, lines,
                                 st->mjpeg_cinfo.rec_outbuf_height);
-        // this shouldn't happen either..
-        g_return_if_fail(lines_read == st->mjpeg_cinfo.rec_outbuf_height);
 #ifndef JCS_EXTENSIONS
         {
             uint8_t *s = lines[0];
