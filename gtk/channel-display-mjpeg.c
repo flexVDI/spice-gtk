@@ -69,7 +69,6 @@ void stream_mjpeg_data(display_stream *st)
     int height = info->stream_height;
     uint8_t *dest;
     uint8_t *lines[4];
-    int i, j;
 
     dest = malloc(width * height * 4);
 
@@ -103,8 +102,11 @@ void stream_mjpeg_data(display_stream *st)
         g_return_if_reached();
     }
 
-    for (i = 0; i < height; ) {
-        for (j = 0; j < st->mjpeg_cinfo.rec_outbuf_height; j++) {
+    while (st->mjpeg_cinfo.output_scanline < st->mjpeg_cinfo.output_height) {
+        /* only used when JCS_EXTENSIONS is undefined */
+        G_GNUC_UNUSED unsigned int lines_read;
+
+        for (unsigned int j = 0; j < st->mjpeg_cinfo.rec_outbuf_height; j++) {
             lines[j] = dest;
 #ifdef JCS_EXTENSIONS
             dest += 4 * width;
@@ -112,16 +114,16 @@ void stream_mjpeg_data(display_stream *st)
             dest += 3 * width;
 #endif
         }
-        j = jpeg_read_scanlines(&st->mjpeg_cinfo, lines,
+        lines_read = jpeg_read_scanlines(&st->mjpeg_cinfo, lines,
                                 st->mjpeg_cinfo.rec_outbuf_height);
         // this shouldn't happen either..
-        g_return_if_fail(j == st->mjpeg_cinfo.rec_outbuf_height);
+        g_return_if_fail(lines_read == st->mjpeg_cinfo.rec_outbuf_height);
 #ifndef JCS_EXTENSIONS
         {
             uint8_t *s = lines[0];
-            uint32_t *d = (uint32_t *)&st->out_frame[i * width * 4];
+            uint32_t *d = (uint32_t *)s;
 
-            for (j = j * width; j > 0; ) {
+            for (unsigned int j = lines_read * width; j > 0; ) {
                 j -= 1; // reverse order, bad for cache?
                 d[j] = s[j * 3 + 0] << 16 |
                     s[j * 3 + 1] << 8 |
@@ -129,8 +131,7 @@ void stream_mjpeg_data(display_stream *st)
             }
         }
 #endif
-        i += st->mjpeg_cinfo.rec_outbuf_height;
-        dest = &st->out_frame[i * width * 4];
+        dest = &st->out_frame[st->mjpeg_cinfo.output_scanline * width * 4];
     }
     jpeg_finish_decompress(&st->mjpeg_cinfo);
 }
