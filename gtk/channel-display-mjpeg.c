@@ -95,9 +95,15 @@ void stream_mjpeg_data(display_stream *st)
 #endif
     // TODO: in theory should check cinfo.output_height match with our height
     jpeg_start_decompress(&st->mjpeg_cinfo);
+    /* rec_outbuf_height is the recommended size of the output buffer we
+     * pass to libjpeg for optimum performance
+     */
+    if (st->mjpeg_cinfo.rec_outbuf_height > G_N_ELEMENTS(lines)) {
+        jpeg_abort_decompress(&st->mjpeg_cinfo);
+        g_return_if_reached();
+    }
+
     for (i = 0; i < height; ) {
-        // according to header
-        g_return_if_fail(st->mjpeg_cinfo.rec_outbuf_height <= 4);
         for (j = 0; j < st->mjpeg_cinfo.rec_outbuf_height; j++) {
             lines[j] = dest;
 #ifdef JCS_EXTENSIONS
