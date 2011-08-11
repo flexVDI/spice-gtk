@@ -59,6 +59,10 @@ struct _SpiceSessionPrivate {
      * fallback to using a default database.
      */
     char *            smartcard_db;
+
+    /* whether to enable USB redirection */
+    gboolean          usbredir;
+
     GStrv             disable_effects;
     gint              color_depth;
 
@@ -139,6 +143,7 @@ enum {
     PROP_SMARTCARD,
     PROP_SMARTCARD_CERTIFICATES,
     PROP_SMARTCARD_DB,
+    PROP_USBREDIR,
     PROP_DISABLE_EFFECTS,
     PROP_COLOR_DEPTH,
 };
@@ -160,6 +165,7 @@ static void spice_session_init(SpiceSession *session)
     SPICE_DEBUG("New session (compiled from package " PACKAGE_STRING ")");
     s = session->priv = SPICE_SESSION_GET_PRIVATE(session);
     memset(s, 0, sizeof(*s));
+    s->usbredir = TRUE;
 
     ring_init(&s->channels);
     cache_init(&s->images, "image");
@@ -393,6 +399,9 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_SMARTCARD_DB:
         g_value_set_string(value, s->smartcard_db);
         break;
+    case PROP_USBREDIR:
+        g_value_set_boolean(value, s->usbredir);
+        break;
     case PROP_DISABLE_EFFECTS:
         g_value_set_boxed(value, s->disable_effects);
         break;
@@ -478,6 +487,9 @@ static void spice_session_set_property(GObject      *gobject,
     case PROP_SMARTCARD_DB:
         g_free(s->smartcard_db);
         s->smartcard_db = g_value_dup_string(value);
+        break;
+    case PROP_USBREDIR:
+        s->usbredir = g_value_get_boolean(value);
         break;
     case PROP_DISABLE_EFFECTS:
         g_strfreev(s->disable_effects);
@@ -786,6 +798,23 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                               G_PARAM_READABLE |
                               G_PARAM_WRITABLE |
                               G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceSession:enable-usbredir:
+     *
+     * If set to TRUE, the usbredir channel will be enabled and USB devices
+     * can be redirected to the guest
+     *
+     * Since: 0.7
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_USBREDIR,
+         g_param_spec_boolean("enable-usbredir",
+                          "Enable USB device redirection",
+                          "Forward USB devices to the SPICE server",
+                          TRUE,
+                          G_PARAM_READWRITE |
+                          G_PARAM_STATIC_STRINGS));
 
     /**
      * SpiceSession::channel-new:

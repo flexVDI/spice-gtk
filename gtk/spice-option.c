@@ -32,6 +32,7 @@ static char *host_subject = NULL;
 static char *smartcard_db = NULL;
 static char *smartcard_certificates = NULL;
 static gboolean smartcard = FALSE;
+static gboolean disable_usbredir = FALSE;
 
 static void option_version(void)
 {
@@ -69,6 +70,8 @@ GOptionGroup* spice_get_option_group(void)
           N_("Certificates to use for software smartcards (field=values separated by commas)"), N_("<certificates>") },
         { "spice-smartcard-db", '\0', 0, G_OPTION_ARG_STRING, &smartcard_db,
           N_("Path to the local certificate database to use for software smartcard certificates"), N_("<certificate-db>") },
+        { "spice-disable-usbredir", '\0', 0, G_OPTION_ARG_NONE, &disable_usbredir,
+          N_("Disable USB redirection support"), NULL },
 
         { "spice-debug", '\0', G_OPTION_FLAG_NO_ARG, G_OPTION_ARG_CALLBACK, option_debug,
           N_("Enable Spice-GTK debugging"), NULL },
@@ -127,4 +130,6 @@ void spice_set_session_option(SpiceSession *session)
         if (smartcard_db)
             g_object_set(session, "smartcard-db", smartcard_db, NULL);
     }
+    if (disable_usbredir)
+        g_object_set(session, "enable-usbredir", FALSE, NULL);
 }

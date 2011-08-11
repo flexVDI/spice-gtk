@@ -1658,7 +1658,8 @@ const gchar* spice_channel_type_to_string(gint type)
         [ SPICE_CHANNEL_PLAYBACK ] = "playback",
         [ SPICE_CHANNEL_RECORD ] = "record",
         [ SPICE_CHANNEL_TUNNEL ] = "tunnel",
-        [ SPICE_CHANNEL_SMARTCARD ] = "smartcard"
+        [ SPICE_CHANNEL_SMARTCARD ] = "smartcard",
+        [ SPICE_CHANNEL_USBREDIR ] = "usbredir",
     };
     const char *str = NULL;
 
@@ -1714,6 +1715,18 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
             return NULL;
         }
         gtype = SPICE_TYPE_SMARTCARD_CHANNEL;
+        break;
+    }
+#endif
+#ifdef USE_USBREDIR
+    case SPICE_CHANNEL_USBREDIR: {
+        gboolean enabled;
+        g_object_get(G_OBJECT(s), "enable-usbredir", &enabled, NULL);
+        if (!enabled) {
+            g_debug("usbredir channel is disabled, not creating it");
+            return NULL;
+        }
+        gtype = SPICE_TYPE_USBREDIR_CHANNEL;
         break;
     }
 #endif

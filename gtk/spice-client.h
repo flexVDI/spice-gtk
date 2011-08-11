@@ -39,6 +39,7 @@
 #include "channel-playback.h"
 #include "channel-record.h"
 #include "channel-smartcard.h"
+#include "channel-usbredir.h"
 
 #define SPICE_CLIENT_ERROR spice_client_error_quark()
 

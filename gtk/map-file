@@ -74,6 +74,7 @@ spice_smartcard_manager_insert_card;
 spice_smartcard_manager_remove_card;
 spice_smartcard_reader_get_type;
 spice_smartcard_reader_is_software;
+spice_usbredir_channel_get_type;
 spice_util_get_debug;
 spice_util_get_version_string;
 spice_util_set_debug;

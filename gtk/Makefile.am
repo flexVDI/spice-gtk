@@ -74,6 +74,7 @@ SPICE_COMMON_CPPFLAGS = \
 	$(SMARTCARD_CFLAGS)		\
 	$(GUDEV_CFLAGS)			\
 	$(LIBUSB_CFLAGS)		\
+	$(LIBUSBREDIRHOST_CFLAGS)	\
 	$(NULL)
 
 AM_CPPFLAGS = \
@@ -154,6 +155,7 @@ libspice_client_glib_2_0_la_LIBADD =	\
 	$(SMARTCARD_LIBS)		\
 	$(GUDEV_LIBS)			\
 	$(LIBUSB_LIBS)			\
+	$(LIBUSBREDIRHOST_LIBS)		\
 	$(NULL)
 
 if WITH_USBREDIR
@@ -208,6 +210,8 @@ libspice_client_glib_2_0_la_SOURCES =	\
 	channel-playback.c		\
 	channel-record.c		\
 	channel-smartcard.c		\
+	channel-usbredir.c		\
+	channel-usbredir-priv.h		\
 	smartcard-manager.c		\
 	smartcard-manager.h		\
 	smartcard-manager-priv.h	\
@@ -259,6 +263,7 @@ libspice_client_glibinclude_HEADERS =	\
 	channel-playback.h		\
 	channel-record.h		\
 	channel-smartcard.h		\
+	channel-usbredir.h		\
 	$(NULL)
 
 # file for API compatibility, but we don't want warning during our compilation
@@ -518,6 +523,7 @@ glib_introspection_files =			\
 	channel-playback.c			\
 	channel-record.c			\
 	channel-smartcard.c			\
+	channel-usbredir.c			\
 	$(NULL)
 
 gtk_introspection_files =			\

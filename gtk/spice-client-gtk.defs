@@ -77,6 +77,13 @@
   (gtype-id "SPICE_TYPE_SMARTCARD_CHANNEL")
 )
 
+(define-object UsbredirChannel
+  (in-module "Spice")
+  (parent "SpiceChannel")
+  (c-name "SpiceUsbredirChannel")
+  (gtype-id "SPICE_TYPE_USBREDIR_CHANNEL")
+)
+
 ;; Enumerations and flags ...
 
 (define-enum DisplayKeyEvent
@@ -645,6 +652,15 @@
 
 (define-function spice_smartcard_channel_get_type
   (c-name "spice_smartcard_channel_get_type")
+  (return-type "GType")
+)
+
+
+
+;; From channel-usbredir.h
+
+(define-function spice_usbredir_channel_get_type
+  (c-name "spice_usbredir_channel_get_type")
   (return-type "GType")
 )
 
