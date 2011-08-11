@@ -2170,6 +2170,8 @@ static void channel_disconnect(SpiceChannel *channel)
     g_array_set_size(c->remote_caps, 0);
     g_array_set_size(c->common_caps, 0);
     g_array_set_size(c->caps, 0);
+    /* Restore our default capabilities in case the channel gets re-used */
+    spice_channel_set_common_capability(channel, SPICE_COMMON_CAP_PROTOCOL_AUTH_SELECTION);
 
     if (c->state == SPICE_CHANNEL_STATE_READY)
         emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_CLOSED);
