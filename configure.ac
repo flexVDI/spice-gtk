@@ -310,6 +310,21 @@ else
   AM_CONDITIONAL(WITH_SMARTCARD, true)
 fi
 
+AC_ARG_ENABLE([usbredir],
+  AS_HELP_STRING([--enable-usbredir=@<:@yes/no@:>@],
+                 [Enable usbredir support @<:@default=yes@:>@]),
+  [],
+  [enable_usbredir="yes"])
+
+if test "x$enable_usbredir" = "xno"; then
+  AM_CONDITIONAL(WITH_USBREDIR, false)
+else
+  PKG_CHECK_MODULES(GUDEV, gudev-1.0)
+  PKG_CHECK_MODULES(LIBUSB, libusb-1.0 >= 1.0.9)
+  AC_DEFINE(USE_USBREDIR, [1], [Define if supporting usbredir proxying])
+  AM_CONDITIONAL(WITH_USBREDIR, true)
+fi
+
 AC_ARG_WITH([coroutine],
   AS_HELP_STRING([--with-coroutine=@<:@ucontext/gthread/winfiber/auto@:>@],
                  [use ucontext or GThread for coroutines @<:@default=auto@:>@]),
@@ -544,6 +559,7 @@ AC_MSG_NOTICE([
         Target:                   ${red_target}
         SASL support:             ${enable_sasl}
         Smartcard support:        ${enable_smartcard}
+        USB redirection support:  ${enable_usbredir}
         Gtk:                      $GTK_API_VERSION
 
         Now type 'make' to build $PACKAGE

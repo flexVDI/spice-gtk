@@ -15,6 +15,7 @@ EXTRA_DIST =					\
 	coroutine_winfibers.c			\
 	continuation.h continuation.c		\
 	map-file				\
+	gusb/README.txt				\
 	$(NULL)
 
 bin_PROGRAMS = spicy snappy spicy-stats
@@ -71,6 +72,8 @@ SPICE_COMMON_CPPFLAGS = \
 	$(SASL_CFLAGS)			\
 	$(GST_CFLAGS)			\
 	$(SMARTCARD_CFLAGS)		\
+	$(GUDEV_CFLAGS)			\
+	$(LIBUSB_CFLAGS)		\
 	$(NULL)
 
 AM_CPPFLAGS = \
@@ -149,7 +152,26 @@ libspice_client_glib_2_0_la_LIBADD =	\
 	$(GST_LIBS)			\
 	$(SASL_LIBS)			\
 	$(SMARTCARD_LIBS)		\
+	$(GUDEV_LIBS)			\
+	$(LIBUSB_LIBS)			\
 	$(NULL)
+
+if WITH_USBREDIR
+GUSB_SRCS =				\
+	gusb/gusb-context.c		\
+	gusb/gusb-context.h		\
+	gusb/gusb-context-private.h	\
+	gusb/gusb-device.c		\
+	gusb/gusb-device.h		\
+	gusb/gusb-device-private.h	\
+	gusb/gusb-device-list.c		\
+	gusb/gusb-device-list.h		\
+	gusb/gusb-marshal.h		\
+	gusb/gusb-source.c		\
+	gusb/gusb-source.h
+else
+GUSB_SRCS =
+endif
 
 libspice_client_glib_2_0_la_SOURCES =	\
 	spice-audio.c			\
@@ -189,6 +211,7 @@ libspice_client_glib_2_0_la_SOURCES =	\
 	smartcard-manager.c		\
 	smartcard-manager.h		\
 	smartcard-manager-priv.h	\
+	$(GUSB_SRCS)			\
 	\
 	decode.h			\
 	decode-glz.c			\
