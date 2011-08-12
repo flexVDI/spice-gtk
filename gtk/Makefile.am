@@ -10,6 +10,10 @@ EXTRA_DIST =					\
 	keymap-gen.pl				\
 	keymaps.csv				\
 	decode-glz-tmpl.c			\
+	coroutine_gthread.c			\
+	coroutine_ucontext.c			\
+	coroutine_winfibers.c			\
+	continuation.h continuation.c		\
 	map-file				\
 	$(NULL)
 
@@ -255,11 +259,15 @@ endif
 
 if WITH_UCONTEXT
 libspice_client_glib_2_0_la_SOURCES += continuation.h continuation.c coroutine_ucontext.c
-EXTRA_DIST += coroutine_gthread.c
-else
+endif
+
+if WITH_WINFIBER
+libspice_client_glib_2_0_la_SOURCES += coroutine_winfibers.c
+endif
+
+if WITH_GTHREAD
 libspice_client_glib_2_0_la_SOURCES += coroutine_gthread.c
 libspice_client_glib_2_0_la_LIBADD += $(GTHREAD_LIBS)
-EXTRA_DIST += continuation.h continuation.c coroutine_ucontext.c
 endif
 
 displaysrc = \

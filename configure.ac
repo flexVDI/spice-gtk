@@ -311,15 +311,23 @@ else
 fi
 
 AC_ARG_WITH([coroutine],
-  AS_HELP_STRING([--with-coroutine=@<:@ucontext/gthread@:>@],
-                 [use ucontext or GThread for coroutines @<:@default=ucontext@:>@]),
+  AS_HELP_STRING([--with-coroutine=@<:@ucontext/gthread/winfiber/auto@:>@],
+                 [use ucontext or GThread for coroutines @<:@default=auto@:>@]),
   [],
-  [with_coroutine=ucontext])
+  [with_coroutine=auto])
 
 case $with_coroutine in
-  ucontext|gthread) ;;
+  ucontext|gthread|winfiber|auto) ;;
   *) AC_MSG_ERROR(Unsupported coroutine type)
 esac
+
+if test "$with_coroutine" = "auto"; then
+  if test "$os_win32" = "yes"; then
+    with_coroutine=winfiber
+  else
+    with_coroutine=ucontext
+  fi
+fi
 
 if test "$with_coroutine" = "ucontext"; then
   AC_CHECK_FUNC(makecontext, [],[with_coroutine=gthread])
@@ -327,15 +335,25 @@ if test "$with_coroutine" = "ucontext"; then
   AC_CHECK_FUNC(getcontext, [],[with_coroutine=gthread])
 fi
 
-if test "$with_coroutine" = "gthread"; then
-  # gthread is required anyway
-  WITH_UCONTEXT=0
-else
-  WITH_UCONTEXT=1
-fi
+WITH_UCONTEXT=0
+WITH_GTHREAD=0
+WITH_WINFIBER=0
+
+case $with_coroutine in
+  ucontext) WITH_UCONTEXT=1 ;;
+  gthread) WITH_GTHREAD=1 ;;
+  winfiber) WITH_WINFIBER=1 ;;
+  *) AC_MSG_ERROR(Unsupported coroutine type)
+esac
 
 AC_DEFINE_UNQUOTED(WITH_UCONTEXT,[$WITH_UCONTEXT], [Whether to use ucontext coroutine impl])
-AM_CONDITIONAL(WITH_UCONTEXT, [test "$WITH_UCONTEXT" != "0"])
+AM_CONDITIONAL(WITH_UCONTEXT, [test "x$WITH_UCONTEXT" = "x1"])
+
+AC_DEFINE_UNQUOTED(WITH_WINFIBER,[$WITH_WINFIBER], [Whether to use fiber coroutine impl])
+AM_CONDITIONAL(WITH_WINFIBER, [test "x$WITH_WINFIBER" = "x1"])
+
+AC_DEFINE_UNQUOTED(WITH_GTHREAD,[$WITH_GTHREAD], [Whether to use gthread coroutine impl])
+AM_CONDITIONAL(WITH_GTHREAD, [test "x$WITH_GTHREAD" = "x1"])
 
 AM_CONDITIONAL([HAVE_INTROSPECTION], [test "0" != "1"])
 PKG_CHECK_MODULES([GOBJECT_INTROSPECTION],

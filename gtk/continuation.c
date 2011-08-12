@@ -81,9 +81,9 @@ int cc_swap(struct continuation *from, struct continuation *to)
 	if (getcontext(&to->last) == -1)
 		return -1;
 	else if (to->exited == 0)
-		to->exited = 1;
-	else if (to->exited == 1)
-		return 1;
+		to->exited = 1; // so when coroutine finishes
+        else if (to->exited == 1)
+                return 1; // it ends up here
 
 	if (_setjmp(from->jmp) == 0)
 		_longjmp(to->jmp, 1);

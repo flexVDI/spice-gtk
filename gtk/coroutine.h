@@ -25,6 +25,8 @@
 
 #if WITH_UCONTEXT
 #include "continuation.h"
+#elif WITH_WINFIBER
+#include <windows.h>
 #else
 #include <glib.h>
 #endif
@@ -44,6 +46,9 @@ struct coroutine
 
 #if WITH_UCONTEXT
 	struct continuation cc;
+#elif WITH_WINFIBER
+        LPVOID fiber;
+        int ret;
 #else
 	GThread *thread;
 	gboolean runnable;
