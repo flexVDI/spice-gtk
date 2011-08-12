@@ -878,6 +878,7 @@ static gboolean focus_out_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_U
     if (d->keyboard_grab_active)
         return true;
 
+    release_keys(display);
     d->keyboard_have_focus = false;
     return true;
 }
