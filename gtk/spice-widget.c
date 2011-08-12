@@ -368,7 +368,6 @@ static void try_keyboard_grab(SpiceDisplay *display)
 {
     GtkWidget *widget = GTK_WIDGET(display);
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    time_t now;
     GdkGrabStatus status;
 
     if (d->keyboard_grab_active)
@@ -383,22 +382,6 @@ static void try_keyboard_grab(SpiceDisplay *display)
 
     g_return_if_fail(gtk_widget_is_focus(widget));
     g_return_if_fail(gtk_widget_has_focus(widget));
-
-    /*
-     * focus / keyboard grab behavior is funky sometime
-     * when going fullscreen (with KDE and GNOME-shell):
-     * focus-in-event -> grab -> focus-out-event -> ungrab -> repeat
-     * I have no idea why the grab triggers focus-out :-(
-     */
-    now = time(NULL);
-    if (d->keyboard_grab_time != now) {
-        d->keyboard_grab_time = now;
-        d->keyboard_grab_count = 0;
-    }
-    if (d->keyboard_grab_count++ > 32) {
-        g_critical("32 grabs last second -> emergency exit");
-        return;
-    }
 
     SPICE_DEBUG("grab keyboard");
 

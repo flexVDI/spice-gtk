@@ -104,8 +104,6 @@ struct _SpiceDisplayPrivate {
 
     bool                    keyboard_grab_active;
     bool                    keyboard_have_focus;
-    int                     keyboard_grab_count;
-    time_t                  keyboard_grab_time;
 
     const guint16 const     *keycode_map;
     size_t                  keycode_maplen;
