@@ -215,6 +215,7 @@ libspice_client_glib_2_0_la_SOURCES =	\
 	smartcard-manager.c		\
 	smartcard-manager.h		\
 	smartcard-manager-priv.h	\
+	usb-device-manager.c		\
 	$(GUSB_SRCS)			\
 	\
 	decode.h			\
@@ -264,6 +265,7 @@ libspice_client_glibinclude_HEADERS =	\
 	channel-record.h		\
 	channel-smartcard.h		\
 	channel-usbredir.h		\
+	usb-device-manager.h		\
 	$(NULL)
 
 # file for API compatibility, but we don't want warning during our compilation
@@ -524,6 +526,7 @@ glib_introspection_files =			\
 	channel-record.c			\
 	channel-smartcard.c			\
 	channel-usbredir.c			\
+	usb-device-manager.c            	\
 	$(NULL)
 
 gtk_introspection_files =			\

@@ -77,6 +77,13 @@
   (gtype-id "SPICE_TYPE_SMARTCARD_CHANNEL")
 )
 
+(define-object UsbDeviceManager
+  (in-module "Spice")
+  (parent "GObject")
+  (c-name "SpiceUsbDeviceManager")
+  (gtype-id "SPICE_TYPE_USB_DEVICE_MANAGER")
+)
+
 (define-object UsbredirChannel
   (in-module "Spice")
   (parent "SpiceChannel")
@@ -662,6 +669,81 @@
 (define-function spice_usbredir_channel_get_type
   (c-name "spice_usbredir_channel_get_type")
   (return-type "GType")
+)
+
+
+
+;; From usb-device-manager.h
+
+(define-function spice_usb_device_get_type
+  (c-name "spice_usb_device_get_type")
+  (return-type "GType")
+)
+
+(define-function spice_usb_device_manager_get_type
+  (c-name "spice_usb_device_manager_get_type")
+  (return-type "GType")
+)
+
+(define-function spice_usb_device_manager_get
+  (c-name "spice_usb_device_manager_get")
+  (return-type "SpiceUsbDeviceManager*")
+  (parameters
+    '("GMainContext*" "main_context")
+    '("GError**" "err")
+  )
+)
+
+(define-method register_channel
+  (of-object "SpiceUsbDeviceManager")
+  (c-name "spice_usb_device_manager_register_channel")
+  (return-type "none")
+  (parameters
+    '("SpiceUsbredirChannel*" "channel")
+  )
+)
+
+(define-method unregister_channel
+  (of-object "SpiceUsbDeviceManager")
+  (c-name "spice_usb_device_manager_unregister_channel")
+  (return-type "none")
+  (parameters
+    '("SpiceUsbredirChannel*" "channel")
+  )
+)
+
+(define-method get_devices
+  (of-object "SpiceUsbDeviceManager")
+  (c-name "spice_usb_device_manager_get_devices")
+  (return-type "GPtrArray*")
+)
+
+(define-method is_device_connected
+  (of-object "SpiceUsbDeviceManager")
+  (c-name "spice_usb_device_manager_is_device_connected")
+  (return-type "gboolean")
+  (parameters
+    '("SpiceUsbDevice*" "device")
+  )
+)
+
+(define-method connect_device
+  (of-object "SpiceUsbDeviceManager")
+  (c-name "spice_usb_device_manager_connect_device")
+  (return-type "gboolean")
+  (parameters
+    '("SpiceUsbDevice*" "device")
+    '("GError**" "err")
+  )
+)
+
+(define-method disconnect_device
+  (of-object "SpiceUsbDeviceManager")
+  (c-name "spice_usb_device_manager_disconnect_device")
+  (return-type "none")
+  (parameters
+    '("SpiceUsbDevice*" "device")
+  )
 )
 
 

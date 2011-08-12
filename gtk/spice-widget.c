@@ -1884,6 +1884,18 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     }
 #endif
 
+    if (SPICE_IS_USBREDIR_CHANNEL(channel)) {
+        SpiceUsbDeviceManager *manager;
+
+        /* FIXME: allow specifying a different GMainContext then the default */
+        manager = spice_usb_device_manager_get(NULL /* FIXME */, NULL);
+        if (manager) {
+            spice_usb_device_manager_register_channel(manager,
+                                              SPICE_USBREDIR_CHANNEL(channel));
+        }
+        return;
+    }
+
     return;
 }
 
@@ -1926,6 +1938,17 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
         return;
     }
 #endif
+
+    if (SPICE_IS_USBREDIR_CHANNEL(channel)) {
+        SpiceUsbDeviceManager *manager;
+
+        manager = spice_usb_device_manager_get(NULL /* FIXME */, NULL);
+        if (manager) {
+            spice_usb_device_manager_unregister_channel(manager,
+                                              SPICE_USBREDIR_CHANNEL(channel));
+        }
+        return;
+    }
 
     return;
 }
