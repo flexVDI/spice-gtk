@@ -862,6 +862,14 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     SPICE_DEBUG("%s", __FUNCTION__);
+
+    /*
+     * Ignore focus in when we already have the focus
+     * (this happens when doing an ungrab from the leave_event callback).
+     */
+    if (d->keyboard_have_focus)
+        return true;
+
     release_keys(display);
     sync_keyboard_lock_modifiers(display);
     d->keyboard_have_focus = true;
@@ -879,6 +887,14 @@ static gboolean focus_out_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_U
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     SPICE_DEBUG("%s", __FUNCTION__);
+
+    /*
+     * Ignore focus out after a keyboard grab
+     * (this happens when doing the grab from the enter_event callback).
+     */
+    if (d->keyboard_grab_active)
+        return true;
+
     d->keyboard_have_focus = false;
     return true;
 }
