@@ -686,7 +686,10 @@ static const char *spice_properties[] = {
     "grab-mouse",
     "resize-guest",
     "scaling",
-    "auto-clipboard"
+    "auto-clipboard",
+#ifdef USE_USBREDIR
+    "auto-usbredir",
+#endif
 };
 
 static const GtkToggleActionEntry tentries[] = {
@@ -711,6 +714,12 @@ static const GtkToggleActionEntry tentries[] = {
         .label       = N_("Automagic clipboard sharing between host and guest"),
         .callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
+#ifdef USE_USBREDIR
+        .name        = "auto-usbredir",
+        .label       = N_("Auto redirect newly plugged in USB devices"),
+        .callback    = G_CALLBACK(menu_cb_bool_prop),
+    },{
+#endif
         .name        = "Statusbar",
         .label       = N_("Statusbar"),
         .callback    = G_CALLBACK(menu_cb_statusbar),
@@ -752,6 +761,9 @@ static char ui_xml[] =
 "      <menuitem action='resize-guest'/>\n"
 "      <menuitem action='scaling'/>\n"
 "      <menuitem action='auto-clipboard'/>\n"
+#ifdef USE_USBREDIR
+"      <menuitem action='auto-usbredir'/>\n"
+#endif
 "    </menu>\n"
 "    <menu action='HelpMenu'>\n"
 "      <menuitem action='About'/>\n"
@@ -1304,6 +1316,24 @@ static void display_mark(SpiceChannel *channel, gint mark, spice_window *win)
     }
 }
 
+static void update_auto_usbredir_sensitive(spice_connection *conn)
+{
+#ifdef USE_USBREDIR
+    int i;
+    GtkAction *ac;
+    gboolean sensitive;
+
+    sensitive = spice_session_has_channel_type(conn->session,
+                                               SPICE_CHANNEL_USBREDIR);
+    for (i = 0; i < SPICE_N_ELEMENTS(conn->wins); i++) {
+        if (conn->wins[i] == NULL)
+            continue;
+        ac = gtk_action_group_get_action(conn->wins[i]->ag, "auto-usbredir");
+        gtk_action_set_sensitive(ac, sensitive);
+    }
+#endif
+}
+
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
     spice_connection *conn = data;
@@ -1334,6 +1364,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         conn->wins[id] = create_spice_window(conn, id, channel);
         g_signal_connect(channel, "display-mark",
                          G_CALLBACK(display_mark), conn->wins[id]);
+        update_auto_usbredir_sensitive(conn);
     }
 
     if (SPICE_IS_INPUTS_CHANNEL(channel)) {
@@ -1347,6 +1378,10 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
             return;
         SPICE_DEBUG("new audio channel");
         conn->audio = spice_audio_new(s, NULL, NULL);
+    }
+
+    if (SPICE_IS_USBREDIR_CHANNEL(channel)) {
+        update_auto_usbredir_sensitive(conn);
     }
 }
 
@@ -1376,6 +1411,10 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
             g_object_unref(conn->audio);
             conn->audio = NULL;
         }
+    }
+
+    if (SPICE_IS_USBREDIR_CHANNEL(channel)) {
+        update_auto_usbredir_sensitive(conn);
     }
 
     conn->channels--;
