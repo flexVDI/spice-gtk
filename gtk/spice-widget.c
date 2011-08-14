@@ -867,7 +867,7 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
     d->keyboard_have_focus = true;
     try_keyboard_grab(display);
 #ifdef WIN32
-    focus_window = (HWND)gdk_win32_drawable_get_handle(GDK_DRAWABLE(widget->window));
+    focus_window = GDK_WINDOW_HWND(gtk_widget_get_window(widget));
     g_return_val_if_fail(focus_window != NULL, true);
 #endif
     return true;
