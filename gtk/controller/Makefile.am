@@ -57,6 +57,13 @@ test_controller_SOURCES = test.c
 test_controller_LDADD = libspice-controller.la
 
 controller.vala.stamp: $(libspice_controller_la_VALASOURCES) custom.vapi
+	@if test -z "$(VALAC)"; then \
+		echo "" ; \
+		echo "  *** Error: missing valac!" ; \
+		echo "  *** You must run autogen.sh or configure --enable-vala" ; \
+		echo "" ; \
+		exit 1 ; \
+	fi
 	$(VALA_V)$(VALAC) $(VALAFLAGS) $(AM_VALAFLAGS) $(libspice_controller_la_VALASOURCES) -H spice-controller.h
 	@touch $@
 
