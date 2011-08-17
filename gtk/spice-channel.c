@@ -603,6 +603,7 @@ static void spice_channel_flush_wire(SpiceChannel *channel,
         if (ret == -1) {
             if (cond != 0) {
                 g_io_wait(c->sock, cond);
+                continue;
             } else {
                 SPICE_DEBUG("Closing the channel: spice_channel_flush %d", errno);
                 c->has_error = TRUE;
