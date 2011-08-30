@@ -50,9 +50,9 @@
 /* gobject glue                                                       */
 
 #define SPICE_SMARTCARD_MANAGER_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_SMARTCARD_MANAGER, spice_smartcard_manager))
+    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_SMARTCARD_MANAGER, SpiceSmartcardManagerPrivate))
 
-struct spice_smartcard_manager {
+struct _SpiceSmartcardManagerPrivate {
     guint monitor_id;
 
     /* software smartcard reader, the certificates to use for this reader
@@ -100,7 +100,7 @@ static gboolean smartcard_monitor_dispatch(VEvent *event, gpointer user_data);
 
 static void spice_smartcard_manager_init(SpiceSmartcardManager *smartcard_manager)
 {
-    spice_smartcard_manager *priv;
+    SpiceSmartcardManagerPrivate *priv;
 
     priv = SPICE_SMARTCARD_MANAGER_GET_PRIVATE(smartcard_manager);
     smartcard_manager->priv = priv;
@@ -119,7 +119,7 @@ static void spice_smartcard_manager_dispose(GObject *gobject)
 
 static void spice_smartcard_manager_finalize(GObject *gobject)
 {
-    spice_smartcard_manager *priv;
+    SpiceSmartcardManagerPrivate *priv;
 
     priv = SPICE_SMARTCARD_MANAGER_GET_PRIVATE(gobject);
     if (priv->monitor_id != 0) {
@@ -223,7 +223,7 @@ static void spice_smartcard_manager_class_init(SpiceSmartcardManagerClass *klass
     gobject_class->dispose      = spice_smartcard_manager_dispose;
     gobject_class->finalize     = spice_smartcard_manager_finalize;
 
-    g_type_class_add_private(klass, sizeof(spice_smartcard_manager));
+    g_type_class_add_private(klass, sizeof(SpiceSmartcardManagerPrivate));
 }
 
 /* ------------------------------------------------------------------ */

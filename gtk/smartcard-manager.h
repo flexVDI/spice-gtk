@@ -35,7 +35,7 @@ G_BEGIN_DECLS
 
 typedef struct _SpiceSmartcardManager SpiceSmartcardManager;
 typedef struct _SpiceSmartcardManagerClass SpiceSmartcardManagerClass;
-typedef struct spice_smartcard_manager spice_smartcard_manager;
+typedef struct _SpiceSmartcardManagerPrivate SpiceSmartcardManagerPrivate;
 typedef struct _SpiceSmartcardReader SpiceSmartcardReader;
 
 struct _SpiceSmartcardManager
@@ -43,7 +43,7 @@ struct _SpiceSmartcardManager
     GObject parent;
 
     /*< private >*/
-    spice_smartcard_manager *priv;
+    SpiceSmartcardManagerPrivate *priv;
     /* Do not add fields to this struct */
 };
 

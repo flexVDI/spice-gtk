@@ -33,11 +33,11 @@ G_BEGIN_DECLS
 
 typedef struct _SpiceGstAudio SpiceGstAudio;
 typedef struct _SpiceGstAudioClass SpiceGstAudioClass;
-typedef struct spice_gstaudio spice_gstaudio;
+typedef struct _SpiceGstaudioPrivate SpiceGstaudioPrivate;
 
 struct _SpiceGstAudio {
     SpiceAudio parent;
-    spice_gstaudio *priv;
+    SpiceGstaudioPrivate *priv;
     /* Do not add fields to this struct */
 };
 

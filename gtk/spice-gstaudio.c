@@ -30,7 +30,7 @@
 #include "spice-session.h"
 
 #define SPICE_GSTAUDIO_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_GSTAUDIO, spice_gstaudio))
+    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_GSTAUDIO, SpiceGstaudioPrivate))
 
 G_DEFINE_TYPE(SpiceGstAudio, spice_gstaudio, SPICE_TYPE_AUDIO)
 
@@ -42,7 +42,7 @@ struct stream {
     guint                   channels;
 };
 
-struct spice_gstaudio {
+struct _SpiceGstaudioPrivate {
     SpiceSession            *session;
     SpiceChannel            *pchannel;
     SpiceChannel            *rchannel;
@@ -80,7 +80,7 @@ void stream_dispose(struct stream *s)
 
 static void spice_gstaudio_dispose(GObject *obj)
 {
-    spice_gstaudio *p;
+    SpiceGstaudioPrivate *p;
     SPICE_DEBUG("%s", __FUNCTION__);
     p = SPICE_GSTAUDIO_GET_PRIVATE(obj);
 
@@ -104,7 +104,7 @@ static void spice_gstaudio_dispose(GObject *obj)
 
 static void spice_gstaudio_init(SpiceGstAudio *pulse)
 {
-    spice_gstaudio *p;
+    SpiceGstaudioPrivate *p;
 
     p = pulse->priv = SPICE_GSTAUDIO_GET_PRIVATE(pulse);
     memset(p, 0, sizeof(*p));
@@ -117,13 +117,13 @@ static void spice_gstaudio_class_init(SpiceGstAudioClass *klass)
     gobject_class->finalize = spice_gstaudio_finalize;
     gobject_class->dispose = spice_gstaudio_dispose;
 
-    g_type_class_add_private(klass, sizeof(spice_gstaudio));
+    g_type_class_add_private(klass, sizeof(SpiceGstaudioPrivate));
 }
 
 static void record_new_buffer(GstAppSink *appsink, gpointer data)
 {
     SpiceGstAudio *gstaudio = data;
-    spice_gstaudio *p = gstaudio->priv;
+    SpiceGstaudioPrivate *p = gstaudio->priv;
     GstMessage *msg;
 
     g_return_if_fail(p != NULL);
@@ -135,7 +135,7 @@ static void record_new_buffer(GstAppSink *appsink, gpointer data)
 static void record_stop(SpiceRecordChannel *channel, gpointer data)
 {
     SpiceGstAudio *gstaudio = data;
-    spice_gstaudio *p = gstaudio->priv;
+    SpiceGstaudioPrivate *p = gstaudio->priv;
 
     SPICE_DEBUG("%s", __FUNCTION__);
     if (p->record.pipe)
@@ -145,7 +145,7 @@ static void record_stop(SpiceRecordChannel *channel, gpointer data)
 static gboolean record_bus_cb(GstBus *bus, GstMessage *msg, gpointer data)
 {
     SpiceGstAudio *gstaudio = data;
-    spice_gstaudio *p = gstaudio->priv;
+    SpiceGstaudioPrivate *p = gstaudio->priv;
 
     g_return_val_if_fail(p != NULL, FALSE);
 
@@ -177,7 +177,7 @@ static void record_start(SpiceRecordChannel *channel, gint format, gint channels
                          gint frequency, gpointer data)
 {
     SpiceGstAudio *gstaudio = data;
-    spice_gstaudio *p = gstaudio->priv;
+    SpiceGstaudioPrivate *p = gstaudio->priv;
 
     g_return_if_fail(p != NULL);
     g_return_if_fail(format == SPICE_AUDIO_FMT_S16);
@@ -233,7 +233,7 @@ static void channel_event(SpiceChannel *channel, SpiceChannelEvent event,
                           gpointer data)
 {
     SpiceGstAudio *gstaudio = data;
-    spice_gstaudio *p = gstaudio->priv;
+    SpiceGstaudioPrivate *p = gstaudio->priv;
 
     switch (event) {
     case SPICE_CHANNEL_OPENED:
@@ -257,7 +257,7 @@ static void channel_event(SpiceChannel *channel, SpiceChannelEvent event,
 static void playback_stop(SpicePlaybackChannel *channel, gpointer data)
 {
     SpiceGstAudio *gstaudio = data;
-    spice_gstaudio *p = SPICE_GSTAUDIO_GET_PRIVATE(gstaudio);
+    SpiceGstaudioPrivate *p = SPICE_GSTAUDIO_GET_PRIVATE(gstaudio);
 
     if (p->playback.pipe)
         gst_element_set_state(p->playback.pipe, GST_STATE_READY);
@@ -270,7 +270,7 @@ static void playback_stop(SpicePlaybackChannel *channel, gpointer data)
 static gboolean update_mmtime_timeout_cb(gpointer data)
 {
     SpiceGstAudio *gstaudio = data;
-    spice_gstaudio *p = SPICE_GSTAUDIO_GET_PRIVATE(gstaudio);
+    SpiceGstaudioPrivate *p = SPICE_GSTAUDIO_GET_PRIVATE(gstaudio);
     GstQuery *q;
 
     q = gst_query_new_latency();
@@ -289,7 +289,7 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
                            gint frequency, gpointer data)
 {
     SpiceGstAudio *gstaudio = data;
-    spice_gstaudio *p = SPICE_GSTAUDIO_GET_PRIVATE(gstaudio);
+    SpiceGstaudioPrivate *p = SPICE_GSTAUDIO_GET_PRIVATE(gstaudio);
 
     g_return_if_fail(p != NULL);
     g_return_if_fail(format == SPICE_AUDIO_FMT_S16);
@@ -342,7 +342,7 @@ static void playback_data(SpicePlaybackChannel *channel,
                           gpointer data)
 {
     SpiceGstAudio *gstaudio = data;
-    spice_gstaudio *p = SPICE_GSTAUDIO_GET_PRIVATE(gstaudio);
+    SpiceGstaudioPrivate *p = SPICE_GSTAUDIO_GET_PRIVATE(gstaudio);
     GstBuffer *buf;
 
     g_return_if_fail(p != NULL);
@@ -360,7 +360,7 @@ static void playback_volume_changed(GObject *object, GParamSpec *pspec, gpointer
     GstElement *e;
     guint16 *volume;
     guint nchannels;
-    spice_gstaudio *p = gstaudio->priv;
+    SpiceGstaudioPrivate *p = gstaudio->priv;
     gdouble vol;
 
     if (!p->playback.sink)
@@ -391,7 +391,7 @@ static void playback_volume_changed(GObject *object, GParamSpec *pspec, gpointer
 static void playback_mute_changed(GObject *object, GParamSpec *pspec, gpointer data)
 {
     SpiceGstAudio *gstaudio = data;
-    spice_gstaudio *p = gstaudio->priv;
+    SpiceGstaudioPrivate *p = gstaudio->priv;
     GstElement *e;
     gboolean mute;
 
@@ -415,7 +415,7 @@ static void playback_mute_changed(GObject *object, GParamSpec *pspec, gpointer d
 static void record_volume_changed(GObject *object, GParamSpec *pspec, gpointer data)
 {
     SpiceGstAudio *gstaudio = data;
-    spice_gstaudio *p = gstaudio->priv;
+    SpiceGstaudioPrivate *p = gstaudio->priv;
     GstElement *e;
     guint16 *volume;
     guint nchannels;
@@ -452,7 +452,7 @@ static void record_volume_changed(GObject *object, GParamSpec *pspec, gpointer d
 static void record_mute_changed(GObject *object, GParamSpec *pspec, gpointer data)
 {
     SpiceGstAudio *gstaudio = data;
-    spice_gstaudio *p = gstaudio->priv;
+    SpiceGstaudioPrivate *p = gstaudio->priv;
     GstElement *e;
     gboolean mute;
 
@@ -477,7 +477,7 @@ static void record_mute_changed(GObject *object, GParamSpec *pspec, gpointer dat
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
     SpiceGstAudio *gstaudio = data;
-    spice_gstaudio *p = gstaudio->priv;
+    SpiceGstaudioPrivate *p = gstaudio->priv;
 
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
         g_return_if_fail(p->pchannel == NULL);
@@ -518,7 +518,7 @@ SpiceGstAudio *spice_gstaudio_new(SpiceSession *session, GMainContext *context,
                                   const char *name)
 {
     SpiceGstAudio *gstaudio;
-    spice_gstaudio *p;
+    SpiceGstaudioPrivate *p;
     GList *list;
 
     gst_init(NULL, NULL);
