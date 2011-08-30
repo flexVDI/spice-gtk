@@ -16,6 +16,9 @@ EXTRA_DIST =					\
 	continuation.h continuation.c		\
 	map-file				\
 	gusb/README.txt				\
+	spice-client-gtk.override		\
+	spice-client-gtk-manual.defs		\
+	spice-client-gtk-module.c		\
 	$(NULL)
 
 bin_PROGRAMS = spicy snappy spicy-stats
@@ -491,10 +494,7 @@ spice-client-gtk-module.defs.c: spice-client-gtk.override spice-client-gtk.defs 
 			  tmp.defs > $@
 	@rm tmp.defs
 
-CLEANFILES += spice-client-gtk-module.defs.c
-EXTRA_DIST += spice-client-gtk.override spice-client-gtk-manual.defs spice-client-gtk.defs
-else
-EXTRA_DIST += spice-client-gtk.override spice-client-gtk-module.c spice-client-gtk-manual.defs
+CLEANFILES += spice-client-gtk-module.defs.c spice-client-gtk.defs
 endif
 
 -include $(INTROSPECTION_MAKEFILE)
