@@ -351,6 +351,15 @@
   (return-type "GList*")
 )
 
+(define-method has_channel_type
+  (of-object "SpiceSession")
+  (c-name "spice_session_has_channel_type")
+  (return-type "gboolean")
+  (parameters
+    '("gint" "type")
+  )
+)
+
 
 
 ;; From spice-channel.h

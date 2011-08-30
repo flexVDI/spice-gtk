@@ -62,6 +62,7 @@ spice_session_connect;
 spice_session_disconnect;
 spice_session_get_channels;
 spice_session_get_type;
+spice_session_has_channel_type;
 spice_session_migration_get_type;
 spice_session_new;
 spice_session_open_fd;

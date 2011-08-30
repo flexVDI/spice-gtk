@@ -1176,6 +1176,34 @@ GList *spice_session_get_channels(SpiceSession *session)
     return list;
 }
 
+/**
+ * spice_session_has_channel_type:
+ * @session: a #SpiceSession
+ *
+ * See if there is a @type channel in the channels associated with this
+ * @session.
+ *
+ * Returns: TRUE if a @type channel is available otherwise FALSE.
+ **/
+gboolean spice_session_has_channel_type(SpiceSession *session, gint type)
+{
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
+    struct channel *item;
+    RingItem *ring;
+
+    g_return_val_if_fail(s != NULL, FALSE);
+
+    for (ring = ring_get_head(&s->channels);
+         ring != NULL;
+         ring = ring_next(&s->channels, ring)) {
+        item = SPICE_CONTAINEROF(ring, struct channel, link);
+        if (spice_channel_get_channel_type(item->channel) == type) {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
 /* ------------------------------------------------------------------ */
 /* private functions                                                  */
 
