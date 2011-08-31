@@ -271,7 +271,7 @@ static void spice_usb_device_manager_class_init(SpiceUsbDeviceManagerClass *klas
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceUsbDeviceManagerClass, device_added),
                      NULL, NULL,
-                     g_cclosure_user_marshal_VOID__BOXED,
+                     g_cclosure_marshal_VOID__BOXED,
                      G_TYPE_NONE,
                      1,
                      SPICE_TYPE_USB_DEVICE);
@@ -290,7 +290,7 @@ static void spice_usb_device_manager_class_init(SpiceUsbDeviceManagerClass *klas
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceUsbDeviceManagerClass, device_removed),
                      NULL, NULL,
-                     g_cclosure_user_marshal_VOID__BOXED,
+                     g_cclosure_marshal_VOID__BOXED,
                      G_TYPE_NONE,
                      1,
                      SPICE_TYPE_USB_DEVICE);

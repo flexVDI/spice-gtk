@@ -157,7 +157,7 @@ static void spice_smartcard_manager_class_init(SpiceSmartcardManagerClass *klass
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceSmartcardManagerClass, reader_added),
                      NULL, NULL,
-                     g_cclosure_user_marshal_VOID__BOXED,
+                     g_cclosure_marshal_VOID__BOXED,
                      G_TYPE_NONE,
                      1,
                      SPICE_TYPE_SMARTCARD_READER);
@@ -176,7 +176,7 @@ static void spice_smartcard_manager_class_init(SpiceSmartcardManagerClass *klass
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceSmartcardManagerClass, reader_removed),
                      NULL, NULL,
-                     g_cclosure_user_marshal_VOID__BOXED,
+                     g_cclosure_marshal_VOID__BOXED,
                      G_TYPE_NONE,
                      1,
                      SPICE_TYPE_SMARTCARD_READER);
@@ -196,7 +196,7 @@ static void spice_smartcard_manager_class_init(SpiceSmartcardManagerClass *klass
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceSmartcardManagerClass, card_inserted),
                      NULL, NULL,
-                     g_cclosure_user_marshal_VOID__BOXED,
+                     g_cclosure_marshal_VOID__BOXED,
                      G_TYPE_NONE,
                      1,
                      SPICE_TYPE_SMARTCARD_READER);
@@ -216,7 +216,7 @@ static void spice_smartcard_manager_class_init(SpiceSmartcardManagerClass *klass
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceSmartcardManagerClass, card_removed),
                      NULL, NULL,
-                     g_cclosure_user_marshal_VOID__BOXED,
+                     g_cclosure_marshal_VOID__BOXED,
                      G_TYPE_NONE,
                      1,
                      SPICE_TYPE_SMARTCARD_READER);
