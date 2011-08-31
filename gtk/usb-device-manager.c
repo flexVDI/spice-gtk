@@ -61,6 +61,7 @@ enum
 {
     DEVICE_ADDED,
     DEVICE_REMOVED,
+    AUTO_CONNECT_FAILED,
     LAST_SIGNAL,
 };
 
@@ -295,6 +296,28 @@ static void spice_usb_device_manager_class_init(SpiceUsbDeviceManagerClass *klas
                      1,
                      SPICE_TYPE_USB_DEVICE);
 
+    /**
+     * SpiceUsbDeviceManager::auto-connect-failed:
+     * @manager: the #SpiceUsbDeviceManager that emitted the signal
+     * @device: #SpiceUsbDevice boxed object corresponding to the device which failed to auto connect
+     * @error: #GError describing the reason why the autoconnect failed
+     *
+     * The #SpiceUsbDeviceManager::auto-connect-failed signal is emitted
+     * whenever the auto-connect property is true, and a newly plugged in
+     * device could not be auto-connected.
+     **/
+    signals[AUTO_CONNECT_FAILED] =
+        g_signal_new("auto-connect-failed",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_FIRST,
+                     G_STRUCT_OFFSET(SpiceUsbDeviceManagerClass, auto_connect_failed),
+                     NULL, NULL,
+                     g_cclosure_user_marshal_VOID__BOXED_BOXED,
+                     G_TYPE_NONE,
+                     2,
+                     SPICE_TYPE_USB_DEVICE,
+                     G_TYPE_ERROR);
+
     g_type_class_add_private(klass, sizeof(SpiceUsbDeviceManagerPrivate));
 }
 
@@ -338,6 +361,7 @@ static void spice_usb_device_manager_dev_added(GUsbDeviceList *devlist,
         if (err) {
             g_warning("Could not auto-redirect %s: %s",
                       spice_usb_device_get_description(device), err->message);
+            g_signal_emit(manager, signals[AUTO_CONNECT_FAILED], 0, device, err);
             g_error_free(err);
         }
     }

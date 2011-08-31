@@ -60,6 +60,7 @@ struct _SpiceUsbDeviceManager
  * @parent_class: Parent class.
  * @device_added: Signal class handler for the #SpiceUsbDeviceManager::device-added signal.
  * @device_removed: Signal class handler for the #SpiceUsbDeviceManager::device-removed signal.
+ * @auto_connect_failed: Signal class handler for the #SpiceUsbDeviceManager::auto-connect-failed signal.
  *
  * Class structure for #SpiceUsbDeviceManager.
  */
@@ -72,6 +73,8 @@ struct _SpiceUsbDeviceManagerClass
                           SpiceUsbDevice *device);
     void (*device_removed) (SpiceUsbDeviceManager *manager,
                             SpiceUsbDevice *device);
+    void (*auto_connect_failed) (SpiceUsbDeviceManager *manager,
+                                 SpiceUsbDevice *device, GError *error);
     /*< private >*/
     /*
      * If adding fields to this struct, remove corresponding

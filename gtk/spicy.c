@@ -1533,12 +1533,30 @@ signal_handler(int signum)
     g_main_loop_quit(mainloop);
 }
 
+static void auto_connect_failed(SpiceUsbDeviceManager *manager,
+                                SpiceUsbDevice        *device,
+                                GError                *error,
+                                gpointer               data)
+{
+    GtkWidget *dialog;
+
+    dialog = gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR,
+                                    GTK_BUTTONS_CLOSE,
+                                    "USB redirection error");
+    gtk_message_dialog_format_secondary_text(GTK_MESSAGE_DIALOG(dialog),
+        "Unable to auto redirect %s: %s",
+        spice_usb_device_get_description(device), error->message);
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    gtk_widget_destroy(dialog);
+}
+
 int main(int argc, char *argv[])
 {
     GError *error = NULL;
     GOptionContext *context;
     spice_connection *conn;
     gchar *conf_file, *conf;
+    SpiceUsbDeviceManager *manager;
 
     g_thread_init(NULL);
     bindtextdomain(GETTEXT_PACKAGE, SPICE_GTK_LOCALEDIR);
@@ -1598,6 +1616,12 @@ int main(int argc, char *argv[])
     if (rrscreen)
         g_signal_connect(rrscreen, "changed", G_CALLBACK(on_screen_changed), NULL);
     on_screen_changed(rrscreen, NULL);
+
+    manager = spice_usb_device_manager_get(NULL, NULL);
+    if (manager) {
+        g_signal_connect(manager, "auto-connect-failed",
+                         G_CALLBACK(auto_connect_failed), NULL);
+    }
 
     conn = connection_new();
     spice_set_session_option(conn->session);
