@@ -322,22 +322,22 @@ static gboolean spice_usb_device_manager_source_callback(gpointer user_data)
 }
 
 static void spice_usb_device_manager_dev_added(GUsbDeviceList *devlist,
-                                               GUsbDevice     *device,
+                                               GUsbDevice     *_device,
                                                GUdevDevice    *udev,
                                                gpointer        user_data)
 {
     SpiceUsbDeviceManager *manager = user_data;
     SpiceUsbDeviceManagerPrivate *priv = manager->priv;
+    SpiceUsbDevice *device = (SpiceUsbDevice *)_device;
 
     g_ptr_array_add(priv->devices, g_object_ref(device));
 
     if (priv->auto_connect) {
         GError *err = NULL;
-        spice_usb_device_manager_connect_device(manager,
-                                                (SpiceUsbDevice *)device,
-                                                &err);
+        spice_usb_device_manager_connect_device(manager, device, &err);
         if (err) {
-            g_warning("Could not auto-redirect USB device: %s", err->message);
+            g_warning("Could not auto-redirect %s: %s",
+                      spice_usb_device_get_description(device), err->message);
             g_error_free(err);
         }
     }
@@ -588,4 +588,27 @@ void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
     if (channel)
         spice_usbredir_channel_disconnect(channel);
 #endif
+}
+
+/**
+ * spice_usb_device_get_description:
+ * @device: #SpiceUsbDevice to get the description of
+ *
+ * Get a string describing the device which is suitable as a description of
+ * the device for the end user. The returned string should be freed with
+ * g_free() when no longer needed.
+ *
+ * Returns: a newly-allocated string holding the description
+ */
+gchar *spice_usb_device_get_description(SpiceUsbDevice *device)
+{
+    /* FIXME, extend gusb to get vid:pid + usb descriptor strings, use those */
+    int bus, address;
+
+    g_return_val_if_fail(device != NULL, "Unknown");
+
+    bus = g_usb_device_get_bus((GUsbDevice *)device);
+    address = g_usb_device_get_address((GUsbDevice *)device);
+
+    return g_strdup_printf("USB device at %d-%d", bus, address);
 }

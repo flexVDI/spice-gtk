@@ -77,6 +77,7 @@ spice_smartcard_reader_get_type;
 spice_smartcard_reader_is_software;
 spice_usbredir_channel_get_type;
 spice_usb_device_get_type;
+spice_usb_device_get_description;
 spice_usb_device_manager_get_type;
 spice_usb_device_manager_get;
 spice_usb_device_manager_register_channel;

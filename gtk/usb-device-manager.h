@@ -83,6 +83,8 @@ struct _SpiceUsbDeviceManagerClass
 GType spice_usb_device_get_type(void);
 GType spice_usb_device_manager_get_type(void);
 
+gchar *spice_usb_device_get_description(SpiceUsbDevice *device);
+
 SpiceUsbDeviceManager *spice_usb_device_manager_get(GMainContext *main_context,
                                                     GError **err);
 
