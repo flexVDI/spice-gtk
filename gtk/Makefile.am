@@ -173,7 +173,9 @@ GUSB_SRCS =				\
 	gusb/gusb-device-list.h		\
 	gusb/gusb-marshal.h		\
 	gusb/gusb-source.c		\
-	gusb/gusb-source.h
+	gusb/gusb-source.h		\
+	gusb/gusb-util.c		\
+	gusb/gusb-util.h
 else
 GUSB_SRCS =
 endif

@@ -25,6 +25,7 @@
 #include <usbredirhost.h>
 #include <gusb/gusb-context-private.h>
 #include <gusb/gusb-device-private.h>
+#include <gusb/gusb-util.h>
 #include "channel-usbredir-priv.h"
 #endif
 
@@ -32,9 +33,6 @@
 #include "spice-common.h"
 
 #include "spice-channel-priv.h"
-
-/* libusb_strerror is awaiting merging upstream */
-#define libusb_strerror(error) "unknown"
 
 /**
  * SECTION:channel-usbredir
@@ -140,7 +138,7 @@ gboolean spice_usbredir_channel_connect(SpiceUsbredirChannel *channel,
     if (rc != 0) {
         g_set_error(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                     "Could not open usb device: %s [%i]",
-                    libusb_strerror(rc), rc);
+                    gusb_strerror(rc), rc);
         return FALSE;
     }
 
