@@ -33,6 +33,21 @@
 #include "spice-client.h"
 #include "spice-marshal.h"
 
+/**
+ * SECTION:usb-device-manager
+ * @short_description: USB device management
+ * @title: Spice USB Manager
+ * @section_id:
+ * @see_also:
+ * @stability: Stable
+ * @include: usb-device-manager.h
+ *
+ * #SpiceUsbDeviceManager monitors USB redirection channels and USB
+ * devices plugging/unplugging. If #SpiceUsbDeviceManager:auto-connect
+ * is set to %TRUE, it will automatically connect newly plugged USB
+ * devices to available channels.
+ */
+
 #define SPICE_USB_DEVICE_MANAGER_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_USB_DEVICE_MANAGER, SpiceUsbDeviceManagerPrivate))
 
@@ -391,7 +406,7 @@ static SpiceUsbredirChannel *spice_usb_device_manager_get_channel_for_dev(
  * to it. A new #SpiceUsbDeviceManager instance will be created the first
  * time this function is called
  *
- * Returns: a weak reference to the #SpiceUsbDeviceManager singleton
+ * Returns: (transfer none): a weak reference to the #SpiceUsbDeviceManager singleton
  */
 SpiceUsbDeviceManager *spice_usb_device_manager_get(GMainContext *main_context,
                                                     GError **err)
@@ -461,7 +476,7 @@ void spice_usb_device_manager_unregister_channel(SpiceUsbDeviceManager *self,
  * spice_usb_device_manager_get_devices:
  * @manager: the #SpiceUsbDeviceManager manager
  *
- * Returns: a %GPtrArray array of %SpiceUsbDevice
+ * Returns: (element-type SpiceUsbDevice) (transfer full): a %GPtrArray array of %SpiceUsbDevice
  */
 GPtrArray* spice_usb_device_manager_get_devices(SpiceUsbDeviceManager *self)
 {

@@ -235,6 +235,51 @@ spice_smartcard_manager
 </SECTION>
 
 <SECTION>
+<FILE>channel-usbredir</FILE>
+<TITLE>SpiceUsbredirChannel</TITLE>
+SpiceUsbredirChannel
+SpiceUsbredirChannelClass
+<SUBSECTION Standard>
+SPICE_USBREDIR_CHANNEL
+SPICE_IS_USBREDIR_CHANNEL
+SPICE_TYPE_USBREDIR_CHANNEL
+spice_usbredir_channel_get_type
+SPICE_USBREDIR_CHANNEL_CLASS
+SPICE_IS_USBREDIR_CHANNEL_CLASS
+SPICE_USBREDIR_CHANNEL_GET_CLASS
+<SUBSECTION Private>
+SpiceUsbredirChannelPrivate
+</SECTION>
+
+<SECTION>
+<FILE>usb-device-manager</FILE>
+<TITLE>SpiceUsbDeviceManager</TITLE>
+SPICE_TYPE_USB_DEVICE
+SpiceUsbDeviceManager
+SpiceUsbDeviceManagerClass
+<SUBSECTION>
+spice_usb_device_manager_get
+spice_usb_device_manager_register_channel
+spice_usb_device_manager_unregister_channel
+spice_usb_device_manager_get_devices
+spice_usb_device_manager_is_device_connected
+spice_usb_device_manager_connect_device
+spice_usb_device_manager_disconnect_device
+SpiceUsbDevice
+<SUBSECTION Standard>
+SPICE_USB_DEVICE_MANAGER
+SPICE_IS_USB_DEVICE_MANAGER
+SPICE_TYPE_USB_DEVICE_MANAGER
+spice_usb_device_manager_get_type
+spice_usb_device_get_type
+SPICE_USB_DEVICE_MANAGER_CLASS
+SPICE_IS_USB_DEVICE_MANAGER_CLASS
+SPICE_USB_DEVICE_MANAGER_GET_CLASS
+<SUBSECTION Private>
+SpiceUsbDeviceManagerPrivate
+</SECTION>
+
+<SECTION>
 <FILE>spice-widget</FILE>
 <TITLE>SpiceDisplay</TITLE>
 SpiceDisplay
