@@ -33,12 +33,30 @@ typedef struct _SpiceDisplayChannel SpiceDisplayChannel;
 typedef struct _SpiceDisplayChannelClass SpiceDisplayChannelClass;
 typedef struct _SpiceDisplayChannelPrivate SpiceDisplayChannelPrivate;
 
+/**
+ * SpiceDisplayChannel:
+ * @parent: Parent instance.
+ *
+ * The #SpiceDisplayChannel struct is opaque and should not be accessed directly.
+ */
 struct _SpiceDisplayChannel {
     SpiceChannel parent;
+
+    /*< private >*/
     SpiceDisplayChannelPrivate *priv;
     /* Do not add fields to this struct */
 };
 
+/**
+ * SpiceDisplayChannelClass:
+ * @parent_class: Parent class.
+ * @display_primary_create: Signal class handler for the #SpiceDisplayChannel::display-primary-create signal.
+ * @display_primary_destroy: Signal class handler for the #SpiceDisplayChannel::display-primary-destroy signal.
+ * @display_invalidate: Signal class handler for the #SpiceDisplayChannel::display-invalidate signal.
+ * @display_mark: Signal class handler for the #SpiceDisplayChannel::display-mark signal.
+ *
+ * Class structure for #SpiceDisplayChannel.
+ */
 struct _SpiceDisplayChannelClass {
     SpiceChannelClass parent_class;
 

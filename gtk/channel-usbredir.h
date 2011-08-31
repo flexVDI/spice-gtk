@@ -36,6 +36,12 @@ typedef struct _SpiceUsbredirChannel SpiceUsbredirChannel;
 typedef struct _SpiceUsbredirChannelClass SpiceUsbredirChannelClass;
 typedef struct _SpiceUsbredirChannelPrivate SpiceUsbredirChannelPrivate;
 
+/**
+ * SpiceUsbredirChannel:
+ * @parent: Parent instance.
+ *
+ * The #SpiceUsbredirChannel struct is opaque and should not be accessed directly.
+ */
 struct _SpiceUsbredirChannel {
     SpiceChannel parent;
 
@@ -44,6 +50,12 @@ struct _SpiceUsbredirChannel {
     /* Do not add fields to this struct */
 };
 
+/**
+ * SpiceUsbredirChannelClass:
+ * @parent_class: Parent class.
+ *
+ * Class structure for #SpiceUsbredirChannel.
+ */
 struct _SpiceUsbredirChannelClass {
     SpiceChannelClass parent_class;
 

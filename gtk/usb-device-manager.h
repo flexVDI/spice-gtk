@@ -40,6 +40,12 @@ typedef struct _SpiceUsbDeviceManagerPrivate SpiceUsbDeviceManagerPrivate;
 
 typedef struct _SpiceUsbDevice SpiceUsbDevice;
 
+/**
+ * SpiceUsbDeviceManager:
+ * @parent: Parent instance.
+ *
+ * The #SpiceUsbDeviceManager struct is opaque and should not be accessed directly.
+ */
 struct _SpiceUsbDeviceManager
 {
     GObject parent;
@@ -49,16 +55,24 @@ struct _SpiceUsbDeviceManager
     /* Do not add fields to this struct */
 };
 
+/**
+ * SpiceUsbDeviceManagerClass:
+ * @parent_class: Parent class.
+ * @device_added: Signal class handler for the #SpiceUsbDeviceManager::device-added signal.
+ * @device_removed: Signal class handler for the #SpiceUsbDeviceManager::device-removed signal.
+ *
+ * Class structure for #SpiceUsbDeviceManager.
+ */
 struct _SpiceUsbDeviceManagerClass
 {
     GObjectClass parent_class;
-    /*< public >*/
 
-    /*< private >*/
+    /* signals */
     void (*device_added) (SpiceUsbDeviceManager *manager,
                           SpiceUsbDevice *device);
     void (*device_removed) (SpiceUsbDeviceManager *manager,
                             SpiceUsbDevice *device);
+    /*< private >*/
     /*
      * If adding fields to this struct, remove corresponding
      * amount of padding to avoid changing overall struct size

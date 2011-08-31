@@ -44,10 +44,22 @@ G_BEGIN_DECLS
 typedef struct _SpiceAudio SpiceAudio;
 typedef struct _SpiceAudioClass SpiceAudioClass;
 
+/**
+ * SpiceAudio:
+ * @parent: Parent instance.
+ *
+ * The #SpiceAudio struct is opaque and should not be accessed directly.
+ */
 struct _SpiceAudio {
     GObject parent;
 };
 
+/**
+ * SpiceAudioClass:
+ * @parent_class: Parent class.
+ *
+ * Class structure for #SpiceAudio.
+ */
 struct _SpiceAudioClass {
     GObjectClass parent_class;
 

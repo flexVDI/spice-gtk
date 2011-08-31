@@ -33,12 +33,30 @@ typedef struct _SpiceCursorChannel SpiceCursorChannel;
 typedef struct _SpiceCursorChannelClass SpiceCursorChannelClass;
 typedef struct _SpiceCursorChannelPrivate SpiceCursorChannelPrivate;
 
+/**
+ * SpiceCursorChannel:
+ * @parent: Parent instance.
+ *
+ * The #SpiceCursorChannel struct is opaque and should not be accessed directly.
+ */
 struct _SpiceCursorChannel {
     SpiceChannel parent;
+
+    /*< private >*/
     SpiceCursorChannelPrivate *priv;
     /* Do not add fields to this struct */
 };
 
+/**
+ * SpiceCursorChannelClass:
+ * @parent_class: Parent class.
+ * @cursor_set: Signal class handler for the #SpiceCursorChannel::cursor-set signal.
+ * @cursor_move: Signal class handler for the #SpiceCursorChannel::cursor-move signal.
+ * @cursor_hide: Signal class handler for the #SpiceCursorChannel::cursor-hide signal.
+ * @cursor_reset: Signal class handler for the #SpiceCursorChannel::cursor-reset signal.
+ *
+ * Class structure for #SpiceCursorChannel.
+ */
 struct _SpiceCursorChannelClass {
     SpiceChannelClass parent_class;
 

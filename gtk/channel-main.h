@@ -33,12 +33,28 @@ typedef struct _SpiceMainChannel SpiceMainChannel;
 typedef struct _SpiceMainChannelClass SpiceMainChannelClass;
 typedef struct _SpiceMainChannelPrivate SpiceMainChannelPrivate;
 
+/**
+ * SpiceMainChannel:
+ * @parent: Parent instance.
+ *
+ * The #SpiceMainChannel struct is opaque and should not be accessed directly.
+ */
 struct _SpiceMainChannel {
     SpiceChannel parent;
+
+    /*< private >*/
     SpiceMainChannelPrivate *priv;
     /* Do not add fields to this struct */
 };
 
+/**
+ * SpiceMainChannelClass:
+ * @parent_class: Parent class.
+ * @mouse_update: Signal class handler for the #SpiceMainChannel::mouse-update signal.
+ * @agent_update: Signal class handler for the #SpiceMainChannel::agent-update signal.
+ *
+ * Class structure for #SpiceMainChannel.
+ */
 struct _SpiceMainChannelClass {
     SpiceChannelClass parent_class;
 

@@ -33,6 +33,12 @@ typedef struct _SpiceSmartcardChannel SpiceSmartcardChannel;
 typedef struct _SpiceSmartcardChannelClass SpiceSmartcardChannelClass;
 typedef struct _SpiceSmartcardChannelPrivate SpiceSmartcardChannelPrivate;
 
+/**
+ * SpiceSmartcardChannel:
+ * @parent: Parent instance.
+ *
+ * The #SpiceSmartcardChannel struct is opaque and should not be accessed directly.
+ */
 struct _SpiceSmartcardChannel {
     SpiceChannel parent;
 
@@ -41,6 +47,12 @@ struct _SpiceSmartcardChannel {
     /* Do not add fields to this struct */
 };
 
+/**
+ * SpiceSmartcardChannelClass:
+ * @parent_class: Parent class.
+ *
+ * Class structure for #SpiceSmartcardChannel.
+ */
 struct _SpiceSmartcardChannelClass {
     SpiceChannelClass parent_class;
 

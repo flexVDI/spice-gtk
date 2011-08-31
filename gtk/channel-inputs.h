@@ -39,12 +39,27 @@ typedef enum {
     SPICE_INPUTS_CAPS_LOCK   = (1 << 2)
 } SpiceInputsLock;
 
+/**
+ * SpiceInputsChannel:
+ * @parent: Parent instance.
+ *
+ * The #SpiceInputsChannel struct is opaque and should not be accessed directly.
+ */
 struct _SpiceInputsChannel {
     SpiceChannel parent;
+
+    /*< private >*/
     SpiceInputsChannelPrivate *priv;
     /* Do not add fields to this struct */
 };
 
+/**
+ * SpiceInputsChannelClass:
+ * @parent_class: Parent class.
+ * @inputs_modifiers: Signal class handler for the #SpiceInputsChannel::inputs-modifiers signal.
+ *
+ * Class structure for #SpiceInputsChannel.
+ */
 struct _SpiceInputsChannelClass {
     SpiceChannelClass parent_class;
 

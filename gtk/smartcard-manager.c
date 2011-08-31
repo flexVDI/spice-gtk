@@ -38,7 +38,7 @@
  * @section_id:
  * @see_also:
  * @stability: Stable
- * @include: spice-smartcard-manager.h
+ * @include: smartcard-manager.h
  *
  * #SpiceSmartcardManager monitors smartcard reader plugging/unplugging,
  * and smartcard insertions/removals. It also provides methods to handle
@@ -531,7 +531,7 @@ gboolean spice_smartcard_manager_init_finish(SpiceSession *session,
  * @manager: a #SpiceSmartcardManager
  *
  * Simulates the insertion of a smartcard in the guest. Valid certificates
- * must have been set in #SpiceSession::smartcard-certificates for software
+ * must have been set in #SpiceSession:smartcard-certificates for software
  * smartcard support to work. At the moment, only one software smartcard
  * reader is supported, that's why there is no parameter to indicate which
  * reader to insert the card in.

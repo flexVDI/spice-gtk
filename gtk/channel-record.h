@@ -33,12 +33,29 @@ typedef struct _SpiceRecordChannel SpiceRecordChannel;
 typedef struct _SpiceRecordChannelClass SpiceRecordChannelClass;
 typedef struct _SpiceRecordChannelPrivate SpiceRecordChannelPrivate;
 
+/**
+ * SpiceRecordChannel:
+ * @parent: Parent instance.
+ *
+ * The #SpiceRecordChannel struct is opaque and should not be accessed directly.
+ */
 struct _SpiceRecordChannel {
     SpiceChannel parent;
+
+    /*< private >*/
     SpiceRecordChannelPrivate *priv;
     /* Do not add fields to this struct */
 };
 
+/**
+ * SpiceRecordChannelClass:
+ * @parent_class: Parent class.
+ * @record_start: Signal class handler for the #SpiceRecordChannel::record-start signal.
+ * @record_stop: Signal class handler for the #SpiceRecordChannel::record-stop signal.
+ * @record_data: Unused (deprecated).
+ *
+ * Class structure for #SpiceRecordChannel.
+ */
 struct _SpiceRecordChannelClass {
     SpiceChannelClass parent_class;
 

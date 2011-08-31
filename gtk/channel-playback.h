@@ -33,12 +33,29 @@ typedef struct _SpicePlaybackChannel SpicePlaybackChannel;
 typedef struct _SpicePlaybackChannelClass SpicePlaybackChannelClass;
 typedef struct _SpicePlaybackChannelPrivate SpicePlaybackChannelPrivate;
 
+/**
+ * SpicePlaybackChannel:
+ * @parent: Parent instance.
+ *
+ * The #SpicePlaybackChannel struct is opaque and should not be accessed directly.
+ */
 struct _SpicePlaybackChannel {
     SpiceChannel parent;
+
+    /*< private >*/
     SpicePlaybackChannelPrivate *priv;
     /* Do not add fields to this struct */
 };
 
+/**
+ * SpicePlaybackChannelClass:
+ * @parent_class: Parent class.
+ * @playback_start: Signal class handler for the #SpicePlaybackChannel::playback-start signal.
+ * @playback_data: Signal class handler for the #SpicePlaybackChannel::playback-data signal.
+ * @playback_stop: Signal class handler for the #SpicePlaybackChannel::playback-stop signal.
+ *
+ * Class structure for #SpicePlaybackChannel.
+ */
 struct _SpicePlaybackChannelClass {
     SpiceChannelClass parent_class;
 
