@@ -1544,8 +1544,7 @@ static void auto_connect_failed(SpiceUsbDeviceManager *manager,
                                     GTK_BUTTONS_CLOSE,
                                     "USB redirection error");
     gtk_message_dialog_format_secondary_text(GTK_MESSAGE_DIALOG(dialog),
-        "Unable to auto redirect %s: %s",
-        spice_usb_device_get_description(device), error->message);
+                                             "%s", error->message);
     gtk_dialog_run(GTK_DIALOG(dialog));
     gtk_widget_destroy(dialog);
 }

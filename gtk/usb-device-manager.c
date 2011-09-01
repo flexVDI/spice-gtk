@@ -359,8 +359,11 @@ static void spice_usb_device_manager_dev_added(GUsbDeviceList *devlist,
         GError *err = NULL;
         spice_usb_device_manager_connect_device(manager, device, &err);
         if (err) {
-            g_warning("Could not auto-redirect %s: %s",
-                      spice_usb_device_get_description(device), err->message);
+            gchar *desc = spice_usb_device_get_description(device);
+            g_prefix_error(&err, "Could not auto-redirect %s: ", desc);
+            g_free(desc);
+
+            g_warning("%s", err->message);
             g_signal_emit(manager, signals[AUTO_CONNECT_FAILED], 0, device, err);
             g_error_free(err);
         }
@@ -626,13 +629,17 @@ void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
  */
 gchar *spice_usb_device_get_description(SpiceUsbDevice *device)
 {
+#ifdef USE_USBREDIR
     /* FIXME, extend gusb to get vid:pid + usb descriptor strings, use those */
     int bus, address;
 
-    g_return_val_if_fail(device != NULL, "Unknown");
+    g_return_val_if_fail(device != NULL, NULL);
 
     bus = g_usb_device_get_bus((GUsbDevice *)device);
     address = g_usb_device_get_address((GUsbDevice *)device);
 
     return g_strdup_printf("USB device at %d-%d", bus, address);
+#else
+    return NULL;
+#endif
 }
