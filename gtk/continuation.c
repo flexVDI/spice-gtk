@@ -17,11 +17,11 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
+#undef _FORTIFY_SOURCE
 
 #include <config.h>
 
 #include "continuation.h"
-#undef _FORTIFY_SOURCE
 
 /*
  * va_args to makecontext() must be type 'int', so passing
