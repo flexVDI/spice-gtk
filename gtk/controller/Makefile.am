@@ -67,6 +67,10 @@ controller.vala.stamp: $(libspice_controller_la_VALASOURCES) custom.vapi
 	$(VALA_V)$(VALAC) $(VALAFLAGS) $(AM_VALAFLAGS) $(libspice_controller_la_VALASOURCES) -H spice-controller.h
 	@touch $@
 
+spice-controller.h: controller.vala.stamp
+menu.c: controller.vala.stamp
+controller.c: controller.vala.stamp
+
 EXTRA_DIST =					\
 	$(libspice_controller_la_VALASOURCES)	\
 	controller.vala.stamp			\
