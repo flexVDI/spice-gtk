@@ -10,10 +10,6 @@ EXTRA_DIST =					\
 	keymap-gen.pl				\
 	keymaps.csv				\
 	decode-glz-tmpl.c			\
-	coroutine_gthread.c			\
-	coroutine_ucontext.c			\
-	coroutine_winfibers.c			\
-	continuation.h continuation.c		\
 	map-file				\
 	generated_demarshallers.c		\
 	generated_demarshallers1.c		\
@@ -22,7 +18,6 @@ EXTRA_DIST =					\
 	gusb/README.txt				\
 	spice-client-gtk.override		\
 	spice-client-gtk-manual.defs		\
-	spice-client-gtk-module.c		\
 	$(NULL)
 
 bin_PROGRAMS = spicy snappy spicy-stats
