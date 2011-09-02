@@ -381,7 +381,17 @@ spicy_stats_LDADD =				\
 
 
 
-spice-channel.c: spice-marshal.h
+$(libspice_client_glib_2_0_la_SOURCES): spice-glib-enums.h spice-marshal.h
+
+if HAVE_GTK_2
+$(libspice_client_gtk_2_0_la_SOURCES): spice-glib-enums.h spice-widget-enums.h
+else
+$(libspice_client_gtk_3_0_la_SOURCES): spice-glib-enums.h spice-widget-enums.h
+endif
+
+spice-marshal.c: spice-marshal.h
+spice-glib-enums.c: spice-glib-enums.h
+spice-widget-enums.c: spice-widget-enums.h
 
 spice-marshal.c: spice-marshal.txt
 	$(AM_V_GEN)echo "#include \"spice-marshal.h\"" > $@ && \
@@ -389,8 +399,6 @@ spice-marshal.c: spice-marshal.txt
 
 spice-marshal.h: spice-marshal.txt
 	$(AM_V_GEN)glib-genmarshal --header $< > $@ || (rm -f $@ && exit 1)
-
-$(libspice_client_glib_2_0_la_SOURCES): spice-glib-enums.h
 
 spice-glib-enums.c: spice-channel.h channel-inputs.h spice-session.h
 	$(AM_V_GEN)glib-mkenums --fhead "#include <glib-object.h>\n" \
@@ -417,12 +425,6 @@ spice-glib-enums.h: spice-channel.h channel-inputs.h spice-session.h
 			--eprod "#define SPICE_TYPE_@ENUMSHORT@ @enum_name@_get_type()\n" \
 			--eprod "GType @enum_name@_get_type (void);\n" \
 		$^ >  $@
-
-if HAVE_GTK_2
-$(libspice_client_gtk_2_0_la_SOURCES): spice-glib-enums.h spice-widget-enums.h
-else
-$(libspice_client_gtk_3_0_la_SOURCES): spice-glib-enums.h spice-widget-enums.h
-endif
 
 spice-widget-enums.c: spice-widget.h
 	$(AM_V_GEN)glib-mkenums --fhead "#include <glib-object.h>\n" \
