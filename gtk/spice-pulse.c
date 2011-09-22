@@ -19,6 +19,7 @@
 #include "spice-common.h"
 #include "spice-session-priv.h"
 #include "spice-channel-priv.h"
+#include "spice-util-priv.h"
 
 #include <pulse/glib-mainloop.h>
 #include <pulse/pulseaudio.h>
@@ -113,26 +114,17 @@ static void spice_pulse_dispose(GObject *obj)
         pa_operation_unref(p->record.cork_op);
     p->record.cork_op = NULL;
 
-    if (p->pchannel != NULL) {
-        g_signal_handlers_disconnect_by_func(p->pchannel,
-                                             channel_event, obj);
+    if (p->pchannel)
         g_object_unref(p->pchannel);
-        p->pchannel = NULL;
-    }
+    p->pchannel = NULL;
 
-    if (p->rchannel != NULL) {
-        g_signal_handlers_disconnect_by_func(p->rchannel,
-                                             channel_event, obj);
+    if (p->rchannel)
         g_object_unref(p->rchannel);
-        p->rchannel = NULL;
-    }
+    p->rchannel = NULL;
 
-    if (p->session != NULL) {
-        g_signal_handlers_disconnect_by_func(p->session,
-                                             channel_new, obj);
+    if (p->session)
         g_object_unref(p->session);
-        p->session = NULL;
-    }
+    p->session = NULL;
 
     G_OBJECT_CLASS(spice_pulse_parent_class)->dispose(obj);
 }
@@ -720,36 +712,36 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
         g_return_if_fail(p->pchannel == NULL);
         p->pchannel = g_object_ref(channel);
-        g_signal_connect(channel, "playback-start",
-                         G_CALLBACK(playback_start), pulse);
-        g_signal_connect(channel, "playback-get-delay",
-                         G_CALLBACK(playback_get_delay), pulse);
-        g_signal_connect(channel, "playback-data",
-                         G_CALLBACK(playback_data), pulse);
-        g_signal_connect(channel, "playback-stop",
-                         G_CALLBACK(playback_stop), pulse);
-        g_signal_connect(channel, "channel-event",
-                         G_CALLBACK(channel_event), pulse);
-        g_signal_connect(channel, "notify::volume",
-                         G_CALLBACK(playback_volume_changed), pulse);
-        g_signal_connect(channel, "notify::mute",
-                         G_CALLBACK(playback_mute_changed), pulse);
+        spice_g_signal_connect_object(channel, "playback-start",
+                                      G_CALLBACK(playback_start), pulse, 0);
+        spice_g_signal_connect_object(channel, "playback-get-delay",
+                                      G_CALLBACK(playback_get_delay), pulse, 0);
+        spice_g_signal_connect_object(channel, "playback-data",
+                                      G_CALLBACK(playback_data), pulse, 0);
+        spice_g_signal_connect_object(channel, "playback-stop",
+                                      G_CALLBACK(playback_stop), pulse, 0);
+        spice_g_signal_connect_object(channel, "channel-event",
+                                      G_CALLBACK(channel_event), pulse, 0);
+        spice_g_signal_connect_object(channel, "notify::volume",
+                                      G_CALLBACK(playback_volume_changed), pulse, 0);
+        spice_g_signal_connect_object(channel, "notify::mute",
+                                      G_CALLBACK(playback_mute_changed), pulse, 0);
         spice_channel_connect(channel);
     }
 
     if (SPICE_IS_RECORD_CHANNEL(channel)) {
         g_return_if_fail(p->rchannel == NULL);
         p->rchannel = g_object_ref(channel);
-        g_signal_connect(channel, "record-start",
-                         G_CALLBACK(record_start), pulse);
-        g_signal_connect(channel, "record-stop",
-                         G_CALLBACK(record_stop), pulse);
-        g_signal_connect(channel, "channel-event",
-                         G_CALLBACK(channel_event), pulse);
-        g_signal_connect(channel, "notify::volume",
-                         G_CALLBACK(record_volume_changed), pulse);
-        g_signal_connect(channel, "notify::mute",
-                         G_CALLBACK(record_mute_changed), pulse);
+        spice_g_signal_connect_object(channel, "record-start",
+                                      G_CALLBACK(record_start), pulse, 0);
+        spice_g_signal_connect_object(channel, "record-stop",
+                                      G_CALLBACK(record_stop), pulse, 0);
+        spice_g_signal_connect_object(channel, "channel-event",
+                                      G_CALLBACK(channel_event), pulse, 0);
+        spice_g_signal_connect_object(channel, "notify::volume",
+                                      G_CALLBACK(record_volume_changed), pulse, 0);
+        spice_g_signal_connect_object(channel, "notify::mute",
+                                      G_CALLBACK(record_mute_changed), pulse, 0);
         spice_channel_connect(channel);
     }
 }
@@ -800,8 +792,8 @@ SpicePulse *spice_pulse_new(SpiceSession *session, GMainContext *context,
     p = SPICE_PULSE_GET_PRIVATE(pulse);
     p->session = g_object_ref(session);
 
-    g_signal_connect(session, "channel-new",
-                     G_CALLBACK(channel_new), pulse);
+    spice_g_signal_connect_object(session, "channel-new",
+                                  G_CALLBACK(channel_new), pulse, 0);
     list = spice_session_get_channels(session);
     for (tmp = g_list_first(list); tmp != NULL; tmp = g_list_next(tmp)) {
         channel_new(session, tmp->data, (gpointer)pulse);
