@@ -23,6 +23,11 @@
 G_BEGIN_DECLS
 
 gboolean spice_strv_contains(const GStrv strv, const gchar *str);
+gulong spice_g_signal_connect_object(gpointer instance,
+                                     const gchar *detailed_signal,
+                                     GCallback c_handler,
+                                     gpointer gobject,
+                                     GConnectFlags connect_flags);
 
 G_END_DECLS
 
