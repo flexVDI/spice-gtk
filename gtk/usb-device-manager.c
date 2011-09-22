@@ -24,6 +24,8 @@
 #include <glib-object.h>
 #include <gio/gio.h> /* For GInitable */
 
+#include "glib-compat.h"
+
 #ifdef USE_USBREDIR
 #include <gusb/gusb-source.h>
 #include <gusb/gusb-device-list.h>

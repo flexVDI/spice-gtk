@@ -186,6 +186,7 @@ GUSB_SRCS =
 endif
 
 libspice_client_glib_2_0_la_SOURCES =	\
+	glib-compat.h			\
 	spice-audio.c			\
 	spice-common.h			\
 	spice-util.c			\
@@ -317,6 +318,7 @@ libspice_client_glib_2_0_la_LIBADD += $(GTHREAD_LIBS)
 endif
 
 displaysrc = \
+	glib-compat.h				\
 	display/edid.h				\
 	display/edid-parse.c			\
 	display/display-name.c			\
