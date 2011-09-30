@@ -328,6 +328,12 @@ class CodeWriter:
         self.write("#ifdef %s" % (name)).newline()
         self.indentation = indentation
 
+    def ifdef_else(self, name):
+        indentation = self.indentation
+        self.indentation = 0;
+        self.write("#else /* %s */" % (name)).newline()
+        self.indentation = indentation
+
     def endif(self, name):
         indentation = self.indentation
         self.indentation = 0;

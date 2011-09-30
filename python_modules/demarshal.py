@@ -1192,6 +1192,11 @@ def write_get_channel_parser(writer, channel_parsers, max_channel, is_server):
             writer.write(",")
         writer.newline()
         if channel and channel.has_attr("ifdef"):
+            writer.ifdef_else(channel.attributes["ifdef"][0])
+            writer.write("{ NULL, 0 }")
+            if i != max_channel:
+                writer.write(",")
+            writer.newline()
             writer.endif(channel.attributes["ifdef"][0])
     writer.end_block(semicolon = True)
 
