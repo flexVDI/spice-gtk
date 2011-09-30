@@ -571,6 +571,8 @@ SpiceClientGLib_2_0_gir_INCLUDES = GObject-2.0
 SpiceClientGLib_2_0_gir_CFLAGS = $(SPICE_COMMON_CPPFLAGS)
 SpiceClientGLib_2_0_gir_LIBS = libspice-client-glib-2.0.la
 SpiceClientGLib_2_0_gir_FILES = $(glib_introspection_files)
+SpiceClientGLib_2_0_gir_EXPORT_PACKAGES = spice-client-glib-2.0
+SpiceClientGLib_2_0_gir_SCANNERFLAGS = --c-include="spice-client.h"
 INTROSPECTION_GIRS += SpiceClientGLib-2.0.gir
 
 if HAVE_GTK_2
@@ -579,12 +581,16 @@ SpiceClientGtk_2_0_gir_INCLUDES = GObject-2.0 Gtk-2.0 SpiceClientGLib-2.0
 SpiceClientGtk_2_0_gir_CFLAGS = $(SPICE_COMMON_CPPFLAGS)
 SpiceClientGtk_2_0_gir_LIBS = libspice-client-gtk-2.0.la libspice-client-glib-2.0.la
 SpiceClientGtk_2_0_gir_FILES = $(gtk_introspection_files)
+SpiceClientGtk_2_0_gir_EXPORT_PACKAGES = spice-client-gtk-2.0
+SpiceClientGtk_2_0_gir_SCANNERFLAGS = --c-include="spice-widget.h"
 else
 SpiceClientGtk-3.0.gir: libspice-client-gtk-3.0.la SpiceClientGLib-2.0.gir
 SpiceClientGtk_3_0_gir_INCLUDES = GObject-2.0 Gtk-3.0 SpiceClientGLib-2.0
 SpiceClientGtk_3_0_gir_CFLAGS = $(SPICE_COMMON_CPPFLAGS)
 SpiceClientGtk_3_0_gir_LIBS = libspice-client-gtk-3.0.la libspice-client-glib-2.0.la
 SpiceClientGtk_3_0_gir_FILES = $(gtk_introspection_files)
+SpiceClientGtk_3_0_gir_EXPORT_PACKAGES = spice-client-gtk-3.0
+SpiceClientGtk_3_0_gir_SCANNERFLAGS = --c-include="spice-widget.h"
 endif
 INTROSPECTION_GIRS += SpiceClientGtk-$(SPICE_GTK_API_VERSION).gir
 
