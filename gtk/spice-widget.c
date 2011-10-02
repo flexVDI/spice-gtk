@@ -675,6 +675,7 @@ static gboolean draw_event(GtkWidget *widget, cairo_t *cr)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    g_return_val_if_fail(d != NULL, false);
 
     if (d->mark == 0 || d->data == NULL)
         return false;
@@ -692,6 +693,7 @@ static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    g_return_val_if_fail(d != NULL, false);
 
     if (d->mark == 0 || d->data == NULL)
         return false;
@@ -1349,6 +1351,7 @@ static void mark(SpiceChannel *channel, gint mark, gpointer data)
 {
     SpiceDisplay *display = data;
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    g_return_if_fail(d != NULL);
 
     SPICE_DEBUG("widget mark: %d, channel %d", mark, d->channel_id);
     d->mark = mark;
