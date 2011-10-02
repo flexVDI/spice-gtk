@@ -309,10 +309,10 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
                      G_SIGNAL_RUN_FIRST,
                      G_STRUCT_OFFSET(SpiceChannelClass, channel_event),
                      NULL, NULL,
-                     g_cclosure_marshal_VOID__INT,
+                     g_cclosure_marshal_VOID__ENUM,
                      G_TYPE_NONE,
                      1,
-                     G_TYPE_INT);
+                     SPICE_TYPE_CHANNEL_EVENT);
 
     /**
      * SpiceChannel::open-fd:
