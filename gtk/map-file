@@ -69,6 +69,8 @@ spice_session_open_fd;
 spice_session_verify_get_type;
 spice_gtk_session_get;
 spice_gtk_session_get_type;
+spice_gtk_session_copy_to_guest;
+spice_gtk_session_paste_from_guest;
 spice_set_session_option;
 spice_smartcard_channel_get_type;
 spice_smartcard_manager_get;

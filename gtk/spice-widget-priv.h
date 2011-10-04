@@ -36,12 +36,10 @@ G_BEGIN_DECLS
 
 #include "spice-widget.h"
 #include "spice-common.h"
-#include <spice/vd_agent.h>
+#include "spice-gtk-session.h"
 
 #define SPICE_DISPLAY_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_DISPLAY, SpiceDisplayPrivate))
-
-#define CLIPBOARD_LAST (VD_AGENT_CLIPBOARD_SELECTION_SECONDARY + 1)
 
 struct _SpiceDisplayPrivate {
     gint                    channel_id;
@@ -50,7 +48,6 @@ struct _SpiceDisplayPrivate {
     bool                    keyboard_grab_enable;
     bool                    mouse_grab_enable;
     bool                    resize_guest_enable;
-    bool                    auto_clipboard_enable;
     bool                    auto_usbredir_enable;
 
     /* state */
@@ -77,16 +74,8 @@ struct _SpiceDisplayPrivate {
     cairo_surface_t         *ximage;
 #endif
 
-    GtkClipboard            *clipboard;
-    GtkClipboard            *clipboard_primary;
-    GtkTargetEntry          *clip_targets[CLIPBOARD_LAST];
-    guint                   nclip_targets[CLIPBOARD_LAST];
-    bool                    clip_hasdata[CLIPBOARD_LAST];
-    bool                    clip_grabbed[CLIPBOARD_LAST];
-    gboolean                clipboard_by_guest[CLIPBOARD_LAST];
-    gboolean                clipboard_selfgrab_pending[CLIPBOARD_LAST];
-
     SpiceSession            *session;
+    SpiceGtkSession         *gtk_session;
     SpiceMainChannel        *main;
     SpiceChannel            *display;
     SpiceCursorChannel      *cursor;

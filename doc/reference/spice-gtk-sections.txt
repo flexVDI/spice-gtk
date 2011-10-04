@@ -292,6 +292,8 @@ SpiceUsbDeviceManagerPrivate
 SpiceGtkSession
 SpiceGtkSessionClass
 spice_gtk_session_get
+spice_gtk_session_copy_to_guest
+spice_gtk_session_paste_from_guest
 <SUBSECTION Standard>
 SPICE_GTK_SESSION
 SPICE_IS_GTK_SESSION

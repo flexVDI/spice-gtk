@@ -110,8 +110,6 @@ static void try_keyboard_ungrab(SpiceDisplay *display);
 static void try_mouse_grab(GtkWidget *widget);
 static void try_mouse_ungrab(GtkWidget *widget);
 static void recalc_geometry(GtkWidget *widget, gboolean set_display);
-static void clipboard_owner_change(GtkClipboard *clipboard,
-                                   GdkEventOwnerChange *event, gpointer user_data);
 static void disconnect_main(SpiceDisplay *display);
 static void disconnect_cursor(SpiceDisplay *display);
 static void disconnect_display(SpiceDisplay *display);
@@ -129,6 +127,7 @@ static void spice_display_get_property(GObject    *object,
 {
     SpiceDisplay *display = SPICE_DISPLAY(object);
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    gboolean boolean;
 
     switch (prop_id) {
     case PROP_KEYBOARD_GRAB:
@@ -141,7 +140,8 @@ static void spice_display_get_property(GObject    *object,
         g_value_set_boolean(value, d->resize_guest_enable);
         break;
     case PROP_AUTO_CLIPBOARD:
-        g_value_set_boolean(value, d->auto_clipboard_enable);
+        g_object_get(d->gtk_session, "auto-clipboard", &boolean, NULL);
+        g_value_set_boolean(value, boolean);
         break;
     case PROP_AUTO_USBREDIR:
         g_value_set_boolean(value, d->auto_usbredir_enable);
@@ -198,7 +198,8 @@ static void spice_display_set_property(GObject      *object,
         }
         break;
     case PROP_AUTO_CLIPBOARD:
-        d->auto_clipboard_enable = g_value_get_boolean(value);
+        g_object_set(d->gtk_session, "auto-clipboard",
+                     g_value_get_boolean(value), NULL);
         break;
     case PROP_AUTO_USBREDIR:
         d->auto_usbredir_enable = g_value_get_boolean(value);
@@ -221,17 +222,6 @@ static void spice_display_dispose(GObject *obj)
     disconnect_display(display);
     disconnect_cursor(display);
 
-    if (d->clipboard) {
-        g_signal_handlers_disconnect_by_func(d->clipboard, G_CALLBACK(clipboard_owner_change),
-                                             display);
-        d->clipboard = NULL;
-    }
-
-    if (d->clipboard_primary) {
-        g_signal_handlers_disconnect_by_func(d->clipboard_primary, G_CALLBACK(clipboard_owner_change),
-                                             display);
-        d->clipboard_primary = NULL;
-    }
     if (d->session) {
         g_signal_handlers_disconnect_by_func(d->session, G_CALLBACK(channel_new),
                                              display);
@@ -239,6 +229,7 @@ static void spice_display_dispose(GObject *obj)
                                              display);
         g_object_unref(d->session);
         d->session = NULL;
+        d->gtk_session = NULL;
     }
 }
 
@@ -246,7 +237,6 @@ static void spice_display_finalize(GObject *obj)
 {
     SpiceDisplay *display = SPICE_DISPLAY(obj);
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    int i;
 
     SPICE_DEBUG("Finalize spice display");
 
@@ -256,11 +246,6 @@ static void spice_display_finalize(GObject *obj)
     }
     g_free(d->activeseq);
     d->activeseq = NULL;
-
-    for (i = 0; i < CLIPBOARD_LAST; ++i) {
-        g_free(d->clip_targets[i]);
-        d->clip_targets[i] = NULL;
-    }
 
     G_OBJECT_CLASS(spice_display_parent_class)->finalize(obj);
 }
@@ -288,13 +273,6 @@ static void spice_display_init(SpiceDisplay *display)
     d->keycode_map = vnc_display_keymap_gdk2xtkbd_table(&d->keycode_maplen);
     d->grabseq = spice_grab_sequence_new_from_string("Control_L+Alt_L");
     d->activeseq = g_new0(gboolean, d->grabseq->nkeysyms);
-
-    d->clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
-    g_signal_connect(G_OBJECT(d->clipboard), "owner-change",
-                     G_CALLBACK(clipboard_owner_change), display);
-    d->clipboard_primary = gtk_clipboard_get(GDK_SELECTION_PRIMARY);
-    g_signal_connect(G_OBJECT(d->clipboard_primary), "owner-change",
-                     G_CALLBACK(clipboard_owner_change), display);
 
     if (g_getenv("SPICE_DEBUG_CURSOR"))
         d->mouse_cursor = gdk_cursor_new(GDK_DOT);
@@ -1088,174 +1066,6 @@ static gboolean configure_event(GtkWidget *widget, GdkEventConfigure *conf)
 
 /* ---------------------------------------------------------------- */
 
-static GtkClipboard* get_clipboard_from_selection(SpiceDisplayPrivate *d, guint selection)
-{
-    if (selection == VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD) {
-        return d->clipboard;
-    } else if (selection == VD_AGENT_CLIPBOARD_SELECTION_PRIMARY) {
-        return d->clipboard_primary;
-    } else {
-        g_warning("Unhandled clipboard selection: %d", selection);
-        return NULL;
-    }
-}
-
-static gint get_selection_from_clipboard(SpiceDisplayPrivate *d, GtkClipboard* cb)
-{
-    if (cb == d->clipboard) {
-        return VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD;
-    } else if (cb == d->clipboard_primary) {
-        return VD_AGENT_CLIPBOARD_SELECTION_PRIMARY;
-    } else {
-        g_warning("Unhandled clipboard");
-        return -1;
-    }
-}
-
-static const struct {
-    const char  *xatom;
-    uint32_t    vdagent;
-    uint32_t    flags;
-} atom2agent[] = {
-    {
-        .vdagent = VD_AGENT_CLIPBOARD_UTF8_TEXT,
-        .xatom   = "UTF8_STRING",
-    },{
-        .vdagent = VD_AGENT_CLIPBOARD_UTF8_TEXT,
-        .xatom   = "text/plain;charset=utf-8"
-    },{
-        .vdagent = VD_AGENT_CLIPBOARD_UTF8_TEXT,
-        .xatom   = "STRING"
-    },{
-        .vdagent = VD_AGENT_CLIPBOARD_UTF8_TEXT,
-        .xatom   = "TEXT"
-    },{
-        .vdagent = VD_AGENT_CLIPBOARD_UTF8_TEXT,
-        .xatom   = "text/plain"
-    },{
-        .vdagent = VD_AGENT_CLIPBOARD_IMAGE_PNG,
-        .xatom   = "image/png"
-    },{
-        .vdagent = VD_AGENT_CLIPBOARD_IMAGE_BMP,
-        .xatom   = "image/bmp"
-    },{
-        .vdagent = VD_AGENT_CLIPBOARD_IMAGE_BMP,
-        .xatom   = "image/x-bmp"
-    },{
-        .vdagent = VD_AGENT_CLIPBOARD_IMAGE_BMP,
-        .xatom   = "image/x-MS-bmp"
-    },{
-        .vdagent = VD_AGENT_CLIPBOARD_IMAGE_BMP,
-        .xatom   = "image/x-win-bitmap"
-    },{
-        .vdagent = VD_AGENT_CLIPBOARD_IMAGE_TIFF,
-        .xatom   = "image/tiff"
-    },{
-        .vdagent = VD_AGENT_CLIPBOARD_IMAGE_JPG,
-        .xatom   = "image/jpeg"
-    }
-};
-
-static void clipboard_get_targets(GtkClipboard *clipboard,
-                                  GdkAtom *atoms,
-                                  gint n_atoms,
-                                  gpointer data)
-{
-    SpiceDisplay *display = data;
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    guint32 types[SPICE_N_ELEMENTS(atom2agent)];
-    char *name;
-    int a, m, t;
-    int selection;
-
-    selection = get_selection_from_clipboard(d, clipboard);
-    g_return_if_fail(selection != -1);
-
-    SPICE_DEBUG("%s:", __FUNCTION__);
-    if (spice_util_get_debug()) {
-        for (a = 0; a < n_atoms; a++) {
-            name = gdk_atom_name(atoms[a]);
-            SPICE_DEBUG(" \"%s\"", name);
-            g_free(name);
-        }
-    }
-
-    memset(types, 0, sizeof(types));
-    for (a = 0; a < n_atoms; a++) {
-        name = gdk_atom_name(atoms[a]);
-        for (m = 0; m < SPICE_N_ELEMENTS(atom2agent); m++) {
-            if (strcasecmp(name, atom2agent[m].xatom) != 0) {
-                continue;
-            }
-            /* found match */
-            for (t = 0; t < SPICE_N_ELEMENTS(atom2agent); t++) {
-                if (types[t] == atom2agent[m].vdagent) {
-                    /* type already in list */
-                    break;
-                }
-                if (types[t] == 0) {
-                    /* add type to empty slot */
-                    types[t] = atom2agent[m].vdagent;
-                    break;
-                }
-            }
-            break;
-        }
-        g_free(name);
-    }
-    for (t = 0; t < SPICE_N_ELEMENTS(atom2agent); t++) {
-        if (types[t] == 0) {
-            break;
-        }
-    }
-    if (!d->clip_grabbed[selection] && t > 0) {
-        d->clip_grabbed[selection] = TRUE;
-        spice_main_clipboard_selection_grab(d->main,
-            get_selection_from_clipboard(d, clipboard), types, t);
-        /* Sending a grab causes the agent to do an impicit release */
-        d->nclip_targets[selection] = 0;
-    }
-}
-
-static void clipboard_owner_change(GtkClipboard        *clipboard,
-                                   GdkEventOwnerChange *event,
-                                   gpointer            data)
-{
-    SpiceDisplay *display = data;
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    int selection;
-
-    selection = get_selection_from_clipboard(d, clipboard);
-    g_return_if_fail(selection != -1);
-
-    if (d->main == NULL)
-        return;
-
-    if (d->clip_grabbed[selection]) {
-        d->clip_grabbed[selection] = FALSE;
-        spice_main_clipboard_selection_release(d->main,
-            get_selection_from_clipboard(d, clipboard));
-    }
-
-    switch (event->reason) {
-    case GDK_OWNER_CHANGE_NEW_OWNER:
-        if (d->clipboard_selfgrab_pending[selection]) {
-            d->clipboard_selfgrab_pending[selection] = FALSE;
-            break;
-        }
-        d->clipboard_by_guest[selection] = FALSE;
-        d->clip_hasdata[selection] = TRUE;
-        if (d->auto_clipboard_enable)
-            gtk_clipboard_request_targets(clipboard, clipboard_get_targets, data);
-        break;
-    default:
-        d->clip_hasdata[selection] = FALSE;
-        break;
-    }
-}
-
-/* ---------------------------------------------------------------- */
-
 static void spice_display_class_init(SpiceDisplayClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
@@ -1314,6 +1124,12 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                               G_PARAM_CONSTRUCT |
                               G_PARAM_STATIC_STRINGS));
 
+    /**
+     * SpiceDisplay:auto-clipboard:
+     *
+     * When this is true the clipboard gets automatically shared between host
+     * and guest.
+     **/
     g_object_class_install_property
         (gobject_class, PROP_AUTO_CLIPBOARD,
          g_param_spec_boolean("auto-clipboard",
@@ -1593,18 +1409,12 @@ static void cursor_reset(SpiceCursorChannel *channel, gpointer data)
 static void disconnect_main(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    gint i;
 
     if (d->main == NULL)
         return;
     g_signal_handlers_disconnect_by_func(d->main, G_CALLBACK(mouse_update),
                                          display);
     d->main = NULL;
-    for (i = 0; i < CLIPBOARD_LAST; ++i) {
-        d->clipboard_by_guest[i] = FALSE;
-        d->clip_grabbed[i] = FALSE;
-        d->nclip_targets[i] = 0;
-    }
 }
 
 static void disconnect_display(SpiceDisplay *display)
@@ -1639,219 +1449,6 @@ static void disconnect_cursor(SpiceDisplay *display)
     d->cursor = NULL;
 }
 
-typedef struct
-{
-    GMainLoop *loop;
-    SpiceDisplay *display;
-    GtkSelectionData *selection_data;
-    guint info;
-    gulong timeout_handler;
-    guint selection;
-} RunInfo;
-
-static void clipboard_got_from_guest(SpiceMainChannel *main, guint selection,
-                                     guint type, guchar *data, guint size,
-                                     gpointer userdata)
-{
-    RunInfo *ri = userdata;
-
-    g_return_if_fail(selection == ri->selection);
-
-    SPICE_DEBUG("clipboard got data");
-
-    gtk_selection_data_set(ri->selection_data,
-        gdk_atom_intern_static_string(atom2agent[ri->info].xatom),
-        8, data, size);
-
-    if (g_main_loop_is_running (ri->loop))
-        g_main_loop_quit (ri->loop);
-}
-
-static gboolean clipboard_timeout(gpointer data)
-{
-    RunInfo *ri = data;
-
-    g_warning("clipboard get timed out");
-    if (g_main_loop_is_running (ri->loop))
-        g_main_loop_quit (ri->loop);
-
-    ri->timeout_handler = 0;
-    return FALSE;
-}
-
-static void clipboard_get(GtkClipboard *clipboard, GtkSelectionData *selection_data,
-                          guint info, gpointer display)
-{
-    RunInfo ri = { NULL, };
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    gulong clipboard_handler;
-
-    SPICE_DEBUG("clipboard get");
-
-    g_return_if_fail(info < SPICE_N_ELEMENTS(atom2agent));
-    g_return_if_fail(get_selection_from_clipboard(d, clipboard) != -1);
-
-    ri.display = display;
-    ri.selection_data = selection_data;
-    ri.info = info;
-    ri.loop = g_main_loop_new(NULL, FALSE);
-    ri.selection = get_selection_from_clipboard(d, clipboard);
-
-    clipboard_handler = g_signal_connect(d->main, "main-clipboard-selection",
-                                         G_CALLBACK(clipboard_got_from_guest), &ri);
-    ri.timeout_handler = g_timeout_add_seconds(7, clipboard_timeout, &ri);
-    spice_main_clipboard_selection_request(d->main, ri.selection, atom2agent[info].vdagent);
-
-    /* apparently, this is needed to avoid dead-lock, from
-       gtk_dialog_run */
-    GDK_THREADS_LEAVE();
-    g_main_loop_run(ri.loop);
-    GDK_THREADS_ENTER();
-
-    g_main_loop_unref(ri.loop);
-    ri.loop = NULL;
-    g_signal_handler_disconnect(d->main, clipboard_handler);
-    if (ri.timeout_handler != 0)
-        g_source_remove(ri.timeout_handler);
-}
-
-static void clipboard_clear(GtkClipboard *clipboard, gpointer display)
-{
-    SPICE_DEBUG("clipboard_clear");
-    /* We watch for clipboard ownership changes and act on those, so we
-       don't need to do anything here */
-}
-
-static gboolean clipboard_grab(SpiceMainChannel *main, guint selection,
-                               guint32* types, guint32 ntypes, gpointer display)
-{
-    int m, n, i;
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    GtkTargetEntry targets[SPICE_N_ELEMENTS(atom2agent)];
-    gboolean target_selected[SPICE_N_ELEMENTS(atom2agent)] = { FALSE, };
-    gboolean found;
-    GtkClipboard* cb;
-
-    cb = get_clipboard_from_selection(d, selection);
-    g_return_val_if_fail(cb != NULL, FALSE);
-
-    i = 0;
-    for (n = 0; n < ntypes; ++n) {
-        found = FALSE;
-        for (m = 0; m < SPICE_N_ELEMENTS(atom2agent); m++) {
-            if (atom2agent[m].vdagent == types[n] && !target_selected[m]) {
-                found = TRUE;
-                g_return_val_if_fail(i < SPICE_N_ELEMENTS(atom2agent), FALSE);
-                targets[i].target = (gchar*)atom2agent[m].xatom;
-                targets[i].flags = 0;
-                targets[i].info = m;
-                target_selected[m] = TRUE;
-                i += 1;
-            }
-        }
-        if (!found) {
-            g_warning("clipboard: couldn't find a matching type for: %d", types[n]);
-        }
-    }
-
-    g_free(d->clip_targets[selection]);
-    d->nclip_targets[selection] = i;
-    d->clip_targets[selection] = g_memdup(targets, sizeof(GtkTargetEntry) * i);
-    /* Receiving a grab implies we've released our own grab */
-    d->clip_grabbed[selection] = FALSE;
-
-    if (!d->auto_clipboard_enable || d->nclip_targets[selection] == 0)
-        goto skip_grab_clipboard;
-
-    if (!gtk_clipboard_set_with_data(cb, targets, i,
-                                     clipboard_get, clipboard_clear, display)) {
-        g_warning("clipboard grab failed");
-        return FALSE;
-    }
-    d->clipboard_selfgrab_pending[selection] = TRUE;
-    d->clipboard_by_guest[selection] = TRUE;
-    d->clip_hasdata[selection] = FALSE;
-
-skip_grab_clipboard:
-    return TRUE;
-}
-
-static void clipboard_received_cb(GtkClipboard *clipboard,
-                                  GtkSelectionData *selection_data,
-                                  gpointer display)
-{
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    gint len = 0, m;
-    guint32 type = VD_AGENT_CLIPBOARD_NONE;
-    gchar* name;
-    GdkAtom atom;
-
-    g_return_if_fail(get_selection_from_clipboard(d, clipboard) != -1);
-
-    len = gtk_selection_data_get_length(selection_data);
-    if (len == -1) {
-        SPICE_DEBUG("empty clipboard");
-        len = 0;
-    } else if (len == 0) {
-        SPICE_DEBUG("TODO: what should be done here?");
-    } else {
-        atom = gtk_selection_data_get_data_type(selection_data);
-        name = gdk_atom_name(atom);
-        for (m = 0; m < SPICE_N_ELEMENTS(atom2agent); m++) {
-            if (strcasecmp(name, atom2agent[m].xatom) == 0) {
-                break;
-            }
-        }
-
-        if (m >= SPICE_N_ELEMENTS(atom2agent)) {
-            g_warning("clipboard_received for unsupported type: %s", name);
-        } else {
-            type = atom2agent[m].vdagent;
-        }
-
-        g_free(name);
-    }
-
-    spice_main_clipboard_selection_notify(d->main, get_selection_from_clipboard(d, clipboard),
-        type, gtk_selection_data_get_data(selection_data), len);
-}
-
-static gboolean clipboard_request(SpiceMainChannel *main, guint selection,
-                                  guint type, gpointer display)
-{
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    int m;
-    GdkAtom atom;
-
-    for (m = 0; m < SPICE_N_ELEMENTS(atom2agent); m++) {
-        if (atom2agent[m].vdagent == type)
-            break;
-    }
-
-    g_return_val_if_fail(m < SPICE_N_ELEMENTS(atom2agent), FALSE);
-
-    atom = gdk_atom_intern_static_string(atom2agent[m].xatom);
-    gtk_clipboard_request_contents(get_clipboard_from_selection(d, selection), atom,
-                                   clipboard_received_cb, display);
-
-    return TRUE;
-}
-
-static void clipboard_release(SpiceMainChannel *main, guint selection, gpointer data)
-{
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(data);
-    GtkClipboard* clipboard = get_clipboard_from_selection(d, selection);
-    if (!clipboard)
-        return;
-
-    d->nclip_targets[selection] = 0;
-
-    if (!d->clipboard_by_guest[selection])
-        return;
-    gtk_clipboard_clear(clipboard);
-    d->clipboard_by_guest[selection] = FALSE;
-}
-
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
     SpiceDisplay *display = data;
@@ -1864,14 +1461,6 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         g_signal_connect(channel, "main-mouse-update",
                          G_CALLBACK(mouse_update), display);
         mouse_update(channel, display);
-        if (id != d->channel_id)
-            return;
-        g_signal_connect(channel, "main-clipboard-selection-grab",
-                         G_CALLBACK(clipboard_grab), display);
-        g_signal_connect(channel, "main-clipboard-selection-request",
-                         G_CALLBACK(clipboard_request), display);
-        g_signal_connect(channel, "main-clipboard-selection-release",
-                         G_CALLBACK(clipboard_release), display);
         return;
     }
 
@@ -2008,6 +1597,7 @@ SpiceDisplay *spice_display_new(SpiceSession *session, int id)
     display = g_object_new(SPICE_TYPE_DISPLAY, NULL);
     d = SPICE_DISPLAY_GET_PRIVATE(display);
     d->session = g_object_ref(session);
+    d->gtk_session = spice_gtk_session_get(d->session);
     d->channel_id = id;
 
     g_signal_connect(session, "channel-new",
@@ -2043,32 +1633,25 @@ void spice_display_mouse_ungrab(SpiceDisplay *display)
 void spice_display_copy_to_guest(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    int selection = VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD;
 
-    if (d->clip_hasdata[selection] && !d->clip_grabbed[selection]) {
-        gtk_clipboard_request_targets(d->clipboard, clipboard_get_targets, display);
-    }
+    g_return_if_fail(d->gtk_session != NULL);
+
+    spice_gtk_session_copy_to_guest(d->gtk_session);
 }
 
+/**
+ * spice_display_paste_from_guest:
+ * @display:
+ *
+ * Copy guest clipboard to client-side clipboard.
+ **/
 void spice_display_paste_from_guest(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    int selection = VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD;
 
-    if (d->nclip_targets[selection] == 0) {
-        g_warning("Guest clipboard is not available.");
-        return;
-    }
+    g_return_if_fail(d->gtk_session != NULL);
 
-    if (!gtk_clipboard_set_with_data(d->clipboard,
-                                     d->clip_targets[selection], d->nclip_targets[selection],
-                                     clipboard_get, clipboard_clear, display)) {
-        g_warning("Clipboard grab failed");
-        return;
-    }
-    d->clipboard_selfgrab_pending[selection] = TRUE;
-    d->clipboard_by_guest[selection] = TRUE;
-    d->clip_hasdata[selection] = FALSE;
+    spice_gtk_session_paste_from_guest(d->gtk_session);
 }
 
 /**
