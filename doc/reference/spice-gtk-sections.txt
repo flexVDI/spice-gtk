@@ -287,6 +287,24 @@ SpiceUsbDeviceManagerPrivate
 </SECTION>
 
 <SECTION>
+<FILE>spice-gtk-session</FILE>
+<TITLE>SpiceGtkSession</TITLE>
+SpiceGtkSession
+SpiceGtkSessionClass
+spice_gtk_session_get
+<SUBSECTION Standard>
+SPICE_GTK_SESSION
+SPICE_IS_GTK_SESSION
+SPICE_TYPE_GTK_SESSION
+spice_gtk_session_get_type
+SPICE_GTK_SESSION_CLASS
+SPICE_IS_GTK_SESSION_CLASS
+SPICE_GTK_SESSION_GET_CLASS
+<SUBSECTION Private>
+SpiceGtkSectionPrivate
+</SECTION>
+
+<SECTION>
 <FILE>spice-widget</FILE>
 <TITLE>SpiceDisplay</TITLE>
 SpiceDisplay

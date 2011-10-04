@@ -40,6 +40,7 @@
 
     <chapter>
       <title>GTK Widget, from spice-client-gtk</title>
+      <xi:include href="xml/spice-gtk-session.xml"/>
       <xi:include href="xml/spice-widget.xml"/>
     </chapter>
 

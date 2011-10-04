@@ -97,6 +97,7 @@ SPICE_GTK_LIBADD_COMMON =		\
 	$(NULL)
 
 SPICE_GTK_SOURCES_COMMON =		\
+	spice-gtk-session.c		\
 	spice-widget.c			\
 	spice-widget-priv.h		\
 	vncdisplaykeymap.c		\
@@ -134,6 +135,7 @@ endif
 
 libspice_client_gtkincludedir = $(includedir)/spice-client-gtk-$(SPICE_GTK_API_VERSION)
 libspice_client_gtkinclude_HEADERS =	\
+	spice-gtk-session.h		\
 	spice-widget.h			\
 	spice-grabsequence.h		\
 	$(NULL)
@@ -562,6 +564,7 @@ glib_introspection_files =			\
 gtk_introspection_files =			\
 	$(libspice_client_gtkinclude_HEADERS)	\
 	$(nodist_libspice_client_gtkinclude_HEADERS)	\
+	spice-gtk-session.c			\
 	spice-widget.c				\
 	spice-grabsequence.c			\
 	$(NULL)
