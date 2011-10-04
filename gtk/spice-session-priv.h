@@ -20,6 +20,7 @@
 
 #include <glib.h>
 #include <gio/gio.h>
+#include "spice-session.h"
 #include "spice-channel-cache.h"
 #include "decode.h"
 

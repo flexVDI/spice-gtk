@@ -19,6 +19,8 @@
 # define SPICE_CHANNEL_CACHE_H_
 
 /* spice/common */
+#include <inttypes.h> /* For PRIx64 */
+#include "mem.h"
 #include "ring.h"
 
 G_BEGIN_DECLS
