@@ -427,6 +427,20 @@ static void menu_cb_bool_prop(GtkToggleAction *action, gpointer data)
     g_object_set(G_OBJECT(win->spice), name, state, NULL);
 }
 
+static void menu_cb_bool_prop_changed(GObject    *gobject,
+                                      GParamSpec *pspec,
+                                      gpointer    user_data)
+{
+    struct spice_window *win = user_data;
+    const gchar *property = g_param_spec_get_name(pspec);
+    GtkAction *toggle;
+    gboolean state;
+
+    toggle = gtk_action_group_get_action(win->ag, property);
+    g_object_get(win->spice, property, &state, NULL);
+    gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(toggle), state);
+}
+
 static void menu_cb_toolbar(GtkToggleAction *action, gpointer data)
 {
     struct spice_window *win = data;
@@ -1133,9 +1147,15 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
 
     /* init toggle actions */
     for (i = 0; i < G_N_ELEMENTS(spice_properties); i++) {
+        char notify[64];
+
         toggle = gtk_action_group_get_action(win->ag, spice_properties[i]);
         g_object_get(win->spice, spice_properties[i], &state, NULL);
         gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(toggle), state);
+
+        snprintf(notify, sizeof(notify), "notify::%s", spice_properties[i]);
+        g_signal_connect(win->spice, notify,
+                         G_CALLBACK(menu_cb_bool_prop_changed), win);
     }
 
     toggle = gtk_action_group_get_action(win->ag, "Toolbar");

@@ -226,6 +226,15 @@ static void spice_display_set_property(GObject      *object,
     }
 }
 
+static void gtk_session_property_changed(GObject    *gobject,
+                                         GParamSpec *pspec,
+                                         gpointer    user_data)
+{
+    SpiceDisplay *display = user_data;
+
+    g_object_notify(G_OBJECT(display), g_param_spec_get_name(pspec));
+}
+
 static void spice_display_dispose(GObject *obj)
 {
     SpiceDisplay *display = SPICE_DISPLAY(obj);
@@ -328,6 +337,9 @@ spice_display_constructor(GType                  gtype,
         channel_new(d->session, it->data, (gpointer*)display);
     }
     g_list_free(list);
+
+    g_signal_connect(d->gtk_session, "notify::auto-clipboard",
+                     G_CALLBACK(gtk_session_property_changed), display);
 
     return obj;
 }
