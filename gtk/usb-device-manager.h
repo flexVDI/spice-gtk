@@ -88,13 +88,9 @@ GType spice_usb_device_manager_get_type(void);
 
 gchar *spice_usb_device_get_description(SpiceUsbDevice *device);
 
-SpiceUsbDeviceManager *spice_usb_device_manager_get(GMainContext *main_context,
+SpiceUsbDeviceManager *spice_usb_device_manager_get(SpiceSession *session,
+                                                    GMainContext *main_context,
                                                     GError **err);
-
-void spice_usb_device_manager_register_channel(SpiceUsbDeviceManager *manager,
-                                               SpiceUsbredirChannel *channel);
-void spice_usb_device_manager_unregister_channel(SpiceUsbDeviceManager *manager,
-                                                 SpiceUsbredirChannel *channel);
 
 GPtrArray *spice_usb_device_manager_get_devices(SpiceUsbDeviceManager *manager);
 

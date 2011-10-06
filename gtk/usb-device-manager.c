@@ -48,13 +48,29 @@
  * devices plugging/unplugging. If #SpiceUsbDeviceManager:auto-connect
  * is set to %TRUE, it will automatically connect newly plugged USB
  * devices to available channels.
+ *
+ * There should always be a 1:1 relation between #SpiceUsbDeviceManager objects
+ * and #SpiceSession objects. Therefor there is no
+ * spice_usb_device_manager_new, instead there is
+ * spice_usb_device_manager_get() which ensures this 1:1 relation.
  */
+
+/* ------------------------------------------------------------------ */
+/* Prototypes for private functions */
+static void channel_new(SpiceSession *session, SpiceChannel *channel,
+                        gpointer user_data);
+static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
+                            gpointer user_data);
+
+/* ------------------------------------------------------------------ */
+/* gobject glue                                                       */
 
 #define SPICE_USB_DEVICE_MANAGER_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_USB_DEVICE_MANAGER, SpiceUsbDeviceManagerPrivate))
 
 enum {
     PROP_0,
+    PROP_SESSION,
     PROP_MAIN_CONTEXT,
     PROP_AUTO_CONNECT,
 };
@@ -68,6 +84,7 @@ enum
 };
 
 struct _SpiceUsbDeviceManagerPrivate {
+    SpiceSession *session;
     GMainContext *main_context;
     gboolean auto_connect;
 #ifdef USE_USBREDIR
@@ -120,10 +137,13 @@ static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
                                                     GCancellable  *cancellable,
                                                     GError        **err)
 {
-#ifdef USE_USBREDIR
-    GError *my_err = NULL;
+    GList *list;
+    GList *it;
     SpiceUsbDeviceManager *self;
     SpiceUsbDeviceManagerPrivate *priv;
+#ifdef USE_USBREDIR
+    GError *my_err = NULL;
+#endif
 
     g_return_val_if_fail(SPICE_IS_USB_DEVICE_MANAGER(initable), FALSE);
     g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
@@ -131,11 +151,29 @@ static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
     if (cancellable != NULL) {
         g_set_error_literal(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                             "Cancellable initialization not supported");
+        return FALSE;
     }
 
     self = SPICE_USB_DEVICE_MANAGER(initable);
     priv = self->priv;
 
+    if (!priv->session) {
+        g_set_error_literal(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                "SpiceUsbDeviceManager constructed without a session");
+        return FALSE;
+    }
+
+    g_signal_connect(priv->session, "channel-new",
+                     G_CALLBACK(channel_new), self);
+    g_signal_connect(priv->session, "channel-destroy",
+                     G_CALLBACK(channel_destroy), self);
+    list = spice_session_get_channels(priv->session);
+    for (it = g_list_first(list); it != NULL; it = g_list_next(it)) {
+        channel_new(priv->session, it->data, (gpointer*)self);
+    }
+    g_list_free(list);
+
+#ifdef USE_USBREDIR
     priv->context = g_usb_context_new(&my_err);
     if (priv->context == NULL) {
         g_warning("Could not get a GUsbContext, disabling USB support: %s",
@@ -200,6 +238,9 @@ static void spice_usb_device_manager_get_property(GObject     *gobject,
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
 
     switch (prop_id) {
+    case PROP_SESSION:
+        g_value_set_object(value, priv->session);
+        break;
     case PROP_MAIN_CONTEXT:
         g_value_set_pointer(value, priv->main_context);
         break;
@@ -221,6 +262,9 @@ static void spice_usb_device_manager_set_property(GObject       *gobject,
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
 
     switch (prop_id) {
+    case PROP_SESSION:
+        priv->session = g_value_get_object(value);
+        break;
     case PROP_MAIN_CONTEXT:
         priv->main_context = g_value_get_pointer(value);
         break;
@@ -241,6 +285,21 @@ static void spice_usb_device_manager_class_init(SpiceUsbDeviceManagerClass *klas
     gobject_class->finalize     = spice_usb_device_manager_finalize;
     gobject_class->get_property = spice_usb_device_manager_get_property;
     gobject_class->set_property = spice_usb_device_manager_set_property;
+
+    /**
+     * SpiceUsbDeviceManager:session:
+     *
+     * #SpiceSession this #SpiceUsbDeviceManager is associated with
+     *
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_SESSION,
+         g_param_spec_object("session",
+                             "Session",
+                             "SpiceSession",
+                             SPICE_TYPE_SESSION,
+                             G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+                             G_PARAM_STATIC_STRINGS));
 
     /**
      * SpiceUsbDeviceManager:main-context:
@@ -326,6 +385,24 @@ static void spice_usb_device_manager_class_init(SpiceUsbDeviceManagerClass *klas
 /* ------------------------------------------------------------------ */
 /* callbacks                                                          */
 
+static void channel_new(SpiceSession *session, SpiceChannel *channel,
+                        gpointer user_data)
+{
+    SpiceUsbDeviceManager *self = user_data;
+
+    if (SPICE_IS_USBREDIR_CHANNEL(channel))
+        g_ptr_array_add(self->priv->channels, channel);
+}
+
+static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
+                            gpointer user_data)
+{
+    SpiceUsbDeviceManager *self = user_data;
+
+    if (SPICE_IS_USBREDIR_CHANNEL(channel))
+        g_ptr_array_remove(self->priv->channels, channel);
+}
+
 #ifdef USE_USBREDIR
 static gboolean spice_usb_device_manager_source_callback(gpointer user_data)
 {
@@ -392,17 +469,13 @@ static void spice_usb_device_manager_dev_removed(GUsbDeviceList *devlist,
 }
 #endif
 
-struct spice_usb_device_manager_new_params {
-    GMainContext *main_context;
-    GError **err;
-};
-
-static SpiceUsbDeviceManager *spice_usb_device_manager_new(void *p)
+static void
+spice_usb_device_manager_spice_session_destroyed_cb(gpointer user_data,
+                                                    GObject *object)
 {
-    struct spice_usb_device_manager_new_params *params = p;
+    SpiceUsbDeviceManager *self = user_data;
 
-    return g_initable_new(SPICE_TYPE_USB_DEVICE_MANAGER, NULL, params->err,
-                          "main-context", params->main_context, NULL);
+    g_object_unref(self);
 }
 
 /* ------------------------------------------------------------------ */
@@ -429,76 +502,43 @@ static SpiceUsbredirChannel *spice_usb_device_manager_get_channel_for_dev(
 
 /**
  * spice_usb_device_manager_get:
+ * @session: #SpiceSession for which to get the #SpiceUsbDeviceManager
  * @main_context: #GMainContext to use. If %NULL, the default context is used.
  *
- * #SpiceUsbDeviceManager is a singleton, use this function to get a pointer
- * to it. A new #SpiceUsbDeviceManager instance will be created the first
- * time this function is called
+ * Gets the #SpiceUsbDeviceManager associated with the passed in #SpiceSession.
+ * A new #SpiceUsbDeviceManager instance will be created the first time this
+ * function is called for a certain #SpiceSession.
  *
- * Returns: (transfer none): a weak reference to the #SpiceUsbDeviceManager singleton
+ * Note that this function returns a weak reference, which should not be used
+ * after the #SpiceSession itself has been unref-ed by the caller.
+ *
+ * Returns: (transfer none): a weak reference to the #SpiceUsbDeviceManager associated with the passed in #SpiceSession
  */
-SpiceUsbDeviceManager *spice_usb_device_manager_get(GMainContext *main_context,
+SpiceUsbDeviceManager *spice_usb_device_manager_get(SpiceSession *session,
+                                                    GMainContext *main_context,
                                                     GError **err)
 {
-    static GOnce manager_singleton_once = G_ONCE_INIT;
-    struct spice_usb_device_manager_new_params params;
+    SpiceUsbDeviceManager *self;
+    static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
 
     g_return_val_if_fail(err == NULL || *err == NULL, NULL);
 
-    params.main_context = main_context;
-    params.err = err;
-
-    return g_once(&manager_singleton_once,
-                  (GThreadFunc)spice_usb_device_manager_new,
-                  &params);
-}
-
-/**
- * spice_usb_device_manager_register_channel:
- * @manager: the #SpiceUsbDeviceManager manager
- * @channel: a #SpiceUsbredirChannel to register
- *
- * Register @channel to be managed by the USB device @manager.  When a
- * new device is added/plugged, the @manager will use an available
- * channel to establish the redirection with the Spice server.
- *
- * Note that this function takes a weak reference to the channel, it is the
- * callers responsibility to call spice_usb_device_manager_unregister_channel()
- * before it unrefs its own reference.
- **/
-void spice_usb_device_manager_register_channel(SpiceUsbDeviceManager *self,
-                                               SpiceUsbredirChannel *channel)
-{
-    SpiceUsbDeviceManagerPrivate *priv;
-    guint i;
-
-    g_return_if_fail(SPICE_IS_USB_DEVICE_MANAGER(self));
-    g_return_if_fail(SPICE_IS_USBREDIR_CHANNEL(channel));
-
-    priv = self->priv;
-
-    for (i = 0; i < priv->channels->len; i++) {
-        if (g_ptr_array_index(priv->channels, i) == channel) {
-            g_return_if_reached();
-        }
+    g_static_mutex_lock(&mutex);
+    self = g_object_get_data(G_OBJECT(session), "spice-usb-device-manager");
+    if (self == NULL) {
+        self = g_initable_new(SPICE_TYPE_USB_DEVICE_MANAGER, NULL, err,
+                              "session", session,
+                              "main-context", main_context, NULL);
+        g_object_set_data(G_OBJECT(session), "spice-usb-device-manager", self);
+        if (self)
+            /* Ensure we are destroyed together with the SpiceSession */
+            g_object_weak_ref(G_OBJECT(session),
+                          spice_usb_device_manager_spice_session_destroyed_cb,
+                          self);
     }
-    g_ptr_array_add(self->priv->channels, channel);
-}
+    g_static_mutex_unlock(&mutex);
 
-/**
- * spice_usb_device_manager_unregister_channel:
- * @manager: the #SpiceUsbDeviceManager manager
- * @channel: a #SpiceUsbredirChannel to unregister
- *
- * Remove @channel from the list of USB channels to be managed by @manager.
- */
-void spice_usb_device_manager_unregister_channel(SpiceUsbDeviceManager *self,
-                                                 SpiceUsbredirChannel *channel)
-{
-    g_return_if_fail(SPICE_IS_USB_DEVICE_MANAGER(self));
-    g_return_if_fail(SPICE_IS_USBREDIR_CHANNEL(channel));
-
-    g_warn_if_fail(g_ptr_array_remove(self->priv->channels, channel));
+    return self;
 }
 
 /**

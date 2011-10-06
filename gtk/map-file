@@ -84,8 +84,6 @@ spice_usb_device_get_type;
 spice_usb_device_get_description;
 spice_usb_device_manager_get_type;
 spice_usb_device_manager_get;
-spice_usb_device_manager_register_channel;
-spice_usb_device_manager_unregister_channel;
 spice_usb_device_manager_get_devices;
 spice_usb_device_manager_is_device_connected;
 spice_usb_device_manager_connect_device;

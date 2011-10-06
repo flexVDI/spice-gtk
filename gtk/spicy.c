@@ -96,6 +96,10 @@ static void connection_disconnect(spice_connection *conn);
 static void connection_destroy(spice_connection *conn);
 static void resolution_fullscreen(struct spice_window *win);
 static void resolution_restore(struct spice_window *win);
+static void auto_connect_failed(SpiceUsbDeviceManager *manager,
+                                SpiceUsbDevice        *device,
+                                GError                *error,
+                                gpointer               data);
 
 /* ------------------------------------------------------------------ */
 
@@ -1438,6 +1442,7 @@ static void migration_state(GObject *session,
 static spice_connection *connection_new(void)
 {
     spice_connection *conn;
+    SpiceUsbDeviceManager *manager;
 
     conn = g_new0(spice_connection, 1);
     conn->session = spice_session_new();
@@ -1447,6 +1452,13 @@ static spice_connection *connection_new(void)
                      G_CALLBACK(channel_destroy), conn);
     g_signal_connect(conn->session, "notify::migration-state",
                      G_CALLBACK(migration_state), conn);
+
+    manager = spice_usb_device_manager_get(conn->session, NULL, NULL);
+    if (manager) {
+        g_signal_connect(manager, "auto-connect-failed",
+                         G_CALLBACK(auto_connect_failed), NULL);
+    }
+
     connections++;
     SPICE_DEBUG("%s (%d)", __FUNCTION__, connections);
     return conn;
@@ -1555,7 +1567,6 @@ int main(int argc, char *argv[])
     GOptionContext *context;
     spice_connection *conn;
     gchar *conf_file, *conf;
-    SpiceUsbDeviceManager *manager;
 
     g_thread_init(NULL);
     bindtextdomain(GETTEXT_PACKAGE, SPICE_GTK_LOCALEDIR);
@@ -1615,12 +1626,6 @@ int main(int argc, char *argv[])
     if (rrscreen)
         g_signal_connect(rrscreen, "changed", G_CALLBACK(on_screen_changed), NULL);
     on_screen_changed(rrscreen, NULL);
-
-    manager = spice_usb_device_manager_get(NULL, NULL);
-    if (manager) {
-        g_signal_connect(manager, "auto-connect-failed",
-                         G_CALLBACK(auto_connect_failed), NULL);
-    }
 
     conn = connection_new();
     spice_set_session_option(conn->session);
