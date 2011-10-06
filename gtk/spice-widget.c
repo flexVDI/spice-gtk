@@ -83,6 +83,8 @@ G_DEFINE_TYPE(SpiceDisplay, spice_display, GTK_TYPE_DRAWING_AREA)
 /* Properties */
 enum {
     PROP_0,
+    PROP_SESSION,
+    PROP_CHANNEL_ID,
     PROP_KEYBOARD_GRAB,
     PROP_MOUSE_GRAB,
     PROP_RESIZE_GUEST,
@@ -130,6 +132,12 @@ static void spice_display_get_property(GObject    *object,
     gboolean boolean;
 
     switch (prop_id) {
+    case PROP_SESSION:
+        g_value_set_object(value, d->session);
+        break;
+    case PROP_CHANNEL_ID:
+        g_value_set_int(value, d->channel_id);
+        break;
     case PROP_KEYBOARD_GRAB:
         g_value_set_boolean(value, d->keyboard_grab_enable);
         break;
@@ -164,6 +172,13 @@ static void spice_display_set_property(GObject      *object,
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     switch (prop_id) {
+    case PROP_SESSION:
+        d->session = g_object_ref(g_value_get_object(value));
+        d->gtk_session = spice_gtk_session_get(d->session);
+        break;
+    case PROP_CHANNEL_ID:
+        d->channel_id = g_value_get_int(value);
+        break;
     case PROP_KEYBOARD_GRAB:
         d->keyboard_grab_enable = g_value_get_boolean(value);
         if (d->keyboard_grab_enable) {
@@ -256,7 +271,6 @@ static void spice_display_init(SpiceDisplay *display)
     SpiceDisplayPrivate *d;
 
     d = display->priv = SPICE_DISPLAY_GET_PRIVATE(display);
-    memset(d, 0, sizeof(*d));
 
     gtk_widget_add_events(widget,
                           GDK_STRUCTURE_MASK |
@@ -281,6 +295,42 @@ static void spice_display_init(SpiceDisplay *display)
     d->have_mitshm = true;
 }
 
+static GObject *
+spice_display_constructor(GType                  gtype,
+                          guint                  n_properties,
+                          GObjectConstructParam *properties)
+{
+    GObject *obj;
+    SpiceDisplay *display;
+    SpiceDisplayPrivate *d;
+    GList *list;
+    GList *it;
+
+    {
+        /* Always chain up to the parent constructor */
+        GObjectClass *parent_class;
+        parent_class = G_OBJECT_CLASS(spice_display_parent_class);
+        obj = parent_class->constructor(gtype, n_properties, properties);
+    }
+
+    display = SPICE_DISPLAY(obj);
+    d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    if (!d->session)
+        g_error("SpiceDisplay constructed without a session");
+
+    g_signal_connect(d->session, "channel-new",
+                     G_CALLBACK(channel_new), display);
+    g_signal_connect(d->session, "channel-destroy",
+                     G_CALLBACK(channel_destroy), display);
+    list = spice_session_get_channels(d->session);
+    for (it = g_list_first(list); it != NULL; it = g_list_next(it)) {
+        channel_new(d->session, it->data, (gpointer*)display);
+    }
+    g_list_free(list);
+
+    return obj;
+}
 
 /**
  * spice_display_set_grab_keys:
@@ -1088,10 +1138,41 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
     gtkwidget_class->configure_event = configure_event;
     gtkwidget_class->scroll_event = scroll_event;
 
+    gobject_class->constructor = spice_display_constructor;
     gobject_class->dispose = spice_display_dispose;
     gobject_class->finalize = spice_display_finalize;
     gobject_class->get_property = spice_display_get_property;
     gobject_class->set_property = spice_display_set_property;
+
+    /**
+     * SpiceDisplay:session:
+     *
+     * #SpiceSession for this #SpiceDisplay
+     *
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_SESSION,
+         g_param_spec_object("session",
+                             "Session",
+                             "SpiceSession",
+                             SPICE_TYPE_SESSION,
+                             G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+                             G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceDisplay:channel-id:
+     *
+     * channel-id for this #SpiceDisplay
+     *
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_CHANNEL_ID,
+         g_param_spec_int("channel-id",
+                          "Channel ID",
+                          "Channel ID for this display",
+                          0, 255, 0,
+                          G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+                          G_PARAM_STATIC_STRINGS));
 
     g_object_class_install_property
         (gobject_class, PROP_KEYBOARD_GRAB,
@@ -1589,28 +1670,8 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
  **/
 SpiceDisplay *spice_display_new(SpiceSession *session, int id)
 {
-    SpiceDisplay *display;
-    SpiceDisplayPrivate *d;
-    GList *list;
-    GList *it;
-
-    display = g_object_new(SPICE_TYPE_DISPLAY, NULL);
-    d = SPICE_DISPLAY_GET_PRIVATE(display);
-    d->session = g_object_ref(session);
-    d->gtk_session = spice_gtk_session_get(d->session);
-    d->channel_id = id;
-
-    g_signal_connect(session, "channel-new",
-                     G_CALLBACK(channel_new), display);
-    g_signal_connect(session, "channel-destroy",
-                     G_CALLBACK(channel_destroy), display);
-    list = spice_session_get_channels(session);
-    for (it = g_list_first(list); it != NULL; it = g_list_next(it)) {
-        channel_new(session, it->data, (gpointer*)display);
-    }
-    g_list_free(list);
-
-    return display;
+    return g_object_new(SPICE_TYPE_DISPLAY, "session", session,
+                        "channel-id", id, NULL);
 }
 
 /**
