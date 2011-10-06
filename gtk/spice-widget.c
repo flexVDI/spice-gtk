@@ -406,6 +406,9 @@ static void try_keyboard_grab(SpiceDisplay *display)
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     GdkGrabStatus status;
 
+    if (g_getenv("SPICE_NOGRAB"))
+        return;
+
     if (d->keyboard_grab_active)
         return;
 
@@ -523,6 +526,9 @@ static void try_mouse_grab(GtkWidget *widget)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    if (g_getenv("SPICE_NOGRAB"))
+        return;
 
     if (!d->mouse_grab_enable)
         return;
