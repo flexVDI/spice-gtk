@@ -95,8 +95,12 @@ static void glz_decoder_window_resize(SpiceGlzDecoderWindow *w)
     new_images = spice_new0(struct glz_image*, w->nimages * 2);
     for (i = 0; i < w->nimages; i++) {
         if (w->images[i] == NULL) {
-            /* FIXME: is this really an anormal condition? */
-            g_warn_if_reached();
+            /*
+             * We can have empty slots when images come in out of order, this
+             * can happen when a vm has multiple displays, since each display
+             * uses its own socket there is no guarantee that images
+             * originating from different displays are received in id order.
+             */
             continue;
         }
         new_slot = w->images[i]->hdr.id % (w->nimages * 2);
@@ -124,14 +128,14 @@ static void glz_decoder_window_add(SpiceGlzDecoderWindow *w,
 struct wait_for_image_data {
     SpiceGlzDecoderWindow     *window;
     uint64_t                   id;
-    uint32_t                   dist;
 };
 
 static gboolean wait_for_image(gpointer data)
 {
     struct wait_for_image_data *wait = data;
-    int slot = (wait->id - wait->dist) % wait->window->nimages;
-    gboolean ready = wait->window->images[slot] != NULL;
+    int slot = wait->id % wait->window->nimages;
+    struct glz_image *image = wait->window->images[slot];
+    gboolean ready = image && image->hdr.id == wait->id;
 
     SPICE_DEBUG("image with slot %d: %s", slot, ready ? "yes" : "no");
 
@@ -142,12 +146,11 @@ static void *glz_decoder_window_bits(SpiceGlzDecoderWindow *w, uint64_t id,
                                      uint32_t dist, uint32_t offset)
 {
     int slot = (id - dist) % w->nimages;
-    
-    if (!w->images[slot]) {
+
+    if (!w->images[slot] || w->images[slot]->hdr.id != id - dist) {
         struct wait_for_image_data data = {
             .window = w,
-            .id = id,
-            .dist = dist,
+            .id = id - dist,
         };
 
         g_condition_wait(wait_for_image, &data);
