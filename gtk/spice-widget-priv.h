@@ -48,7 +48,6 @@ struct _SpiceDisplayPrivate {
     bool                    keyboard_grab_enable;
     bool                    mouse_grab_enable;
     bool                    resize_guest_enable;
-    bool                    auto_usbredir_enable;
 
     /* state */
     enum SpiceSurfaceFmt    format;

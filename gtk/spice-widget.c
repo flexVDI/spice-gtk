@@ -32,6 +32,7 @@
 
 #include "spice-widget.h"
 #include "spice-widget-priv.h"
+#include "spice-gtk-session-priv.h"
 #include "vncdisplaykeymap.h"
 
 /* Some compatibility defines to let us build on both Gtk2 and Gtk3 */
@@ -84,7 +85,6 @@ enum {
     PROP_MOUSE_GRAB,
     PROP_RESIZE_GUEST,
     PROP_AUTO_CLIPBOARD,
-    PROP_AUTO_USBREDIR,
     PROP_SCALING,
 };
 
@@ -113,7 +113,6 @@ static void disconnect_display(SpiceDisplay *display);
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data);
 static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer data);
 static void sync_keyboard_lock_modifiers(SpiceDisplay *display);
-static void update_auto_usbredir(SpiceDisplay *display);
 
 /* ---------------------------------------------------------------- */
 
@@ -145,9 +144,6 @@ static void spice_display_get_property(GObject    *object,
     case PROP_AUTO_CLIPBOARD:
         g_object_get(d->gtk_session, "auto-clipboard", &boolean, NULL);
         g_value_set_boolean(value, boolean);
-        break;
-    case PROP_AUTO_USBREDIR:
-        g_value_set_boolean(value, d->auto_usbredir_enable);
         break;
     case PROP_SCALING:
         g_value_set_boolean(value, d->allow_scaling);
@@ -210,10 +206,6 @@ static void spice_display_set_property(GObject      *object,
     case PROP_AUTO_CLIPBOARD:
         g_object_set(d->gtk_session, "auto-clipboard",
                      g_value_get_boolean(value), NULL);
-        break;
-    case PROP_AUTO_USBREDIR:
-        d->auto_usbredir_enable = g_value_get_boolean(value);
-        update_auto_usbredir(display);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -616,22 +608,6 @@ static void recalc_geometry(GtkWidget *widget, gboolean set_display)
     }
 }
 
-static void update_auto_usbredir(SpiceDisplay *display)
-{
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    SpiceUsbDeviceManager *manager;
-    gboolean auto_connect = FALSE;
-
-    if (d->auto_usbredir_enable && d->keyboard_have_focus)
-        auto_connect = TRUE;
-
-    /* FIXME: allow specifying a different GMainContext then the default */
-    manager = spice_usb_device_manager_get(d->session, NULL /* FIXME */, NULL);
-    if (manager) {
-        g_object_set(manager, "auto-connect", auto_connect, NULL);
-    }
-}
-
 /* ---------------------------------------------------------------- */
 
 #define CONVERT_0565_TO_0888(s)                                         \
@@ -917,7 +893,8 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
     sync_keyboard_lock_modifiers(display);
     d->keyboard_have_focus = true;
     try_keyboard_grab(display);
-    update_auto_usbredir(display);
+    spice_gtk_session_update_keyboard_focus(d->gtk_session,
+                                            d->keyboard_have_focus);
 #ifdef WIN32
     focus_window = GDK_WINDOW_HWND(gtk_widget_get_window(widget));
     g_return_val_if_fail(focus_window != NULL, true);
@@ -941,7 +918,8 @@ static gboolean focus_out_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_U
 
     release_keys(display);
     d->keyboard_have_focus = false;
-    update_auto_usbredir(display);
+    spice_gtk_session_update_keyboard_focus(d->gtk_session,
+                                            d->keyboard_have_focus);
     return true;
 }
 
@@ -1228,17 +1206,6 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                               "host and guest.",
                               TRUE,
                               G_PARAM_READWRITE |
-                              G_PARAM_STATIC_STRINGS));
-
-    g_object_class_install_property
-        (gobject_class, PROP_AUTO_USBREDIR,
-         g_param_spec_boolean("auto-usbredir",
-                              "Auto USB Redirection",
-                              "Automatically redirect newly plugged in USB"
-                              "Devices to the guest.",
-                              TRUE,
-                              G_PARAM_READWRITE |
-                              G_PARAM_CONSTRUCT |
                               G_PARAM_STATIC_STRINGS));
 
     g_object_class_install_property

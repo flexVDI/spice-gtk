@@ -20,13 +20,15 @@
 #include <spice/vd_agent.h>
 #include "spice-common.h"
 #include "spice-gtk-session.h"
+#include "spice-gtk-session-priv.h"
 
 #define CLIPBOARD_LAST (VD_AGENT_CLIPBOARD_SELECTION_SECONDARY + 1)
 
 struct _SpiceGtkSessionPrivate {
     SpiceSession            *session;
-    SpiceMainChannel        *main;
+    /* Clipboard related */
     gboolean                auto_clipboard_enable;
+    SpiceMainChannel        *main;
     GtkClipboard            *clipboard;
     GtkClipboard            *clipboard_primary;
     GtkTargetEntry          *clip_targets[CLIPBOARD_LAST];
@@ -35,6 +37,9 @@ struct _SpiceGtkSessionPrivate {
     gboolean                clip_grabbed[CLIPBOARD_LAST];
     gboolean                clipboard_by_guest[CLIPBOARD_LAST];
     gboolean                clipboard_selfgrab_pending[CLIPBOARD_LAST];
+    /* auto-usbredir related */
+    gboolean                auto_usbredir_enable;
+    gboolean                keyboard_focus;
 };
 
 /**
@@ -85,6 +90,7 @@ enum {
     PROP_0,
     PROP_SESSION,
     PROP_AUTO_CLIPBOARD,
+    PROP_AUTO_USBREDIR,
 };
 
 static void spice_gtk_session_init(SpiceGtkSession *self)
@@ -202,6 +208,9 @@ static void spice_gtk_session_get_property(GObject    *gobject,
     case PROP_AUTO_CLIPBOARD:
         g_value_set_boolean(value, s->auto_clipboard_enable);
         break;
+    case PROP_AUTO_USBREDIR:
+        g_value_set_boolean(value, s->auto_usbredir_enable);
+        break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -222,6 +231,10 @@ static void spice_gtk_session_set_property(GObject      *gobject,
         break;
     case PROP_AUTO_CLIPBOARD:
         s->auto_clipboard_enable = g_value_get_boolean(value);
+        break;
+    case PROP_AUTO_USBREDIR:
+        s->auto_usbredir_enable = g_value_get_boolean(value);
+        spice_gtk_session_update_keyboard_focus(self, s->keyboard_focus);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -271,6 +284,26 @@ static void spice_gtk_session_class_init(SpiceGtkSessionClass *klass)
                               "Automatically relay clipboard changes between "
                               "host and guest.",
                               TRUE,
+                              G_PARAM_READWRITE |
+                              G_PARAM_CONSTRUCT |
+                              G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceGtkSession:auto-usbredir:
+     *
+     * Automatically redirect newly plugged in USB devices. Note the auto
+     * redirection only happens when a #SpiceDisplay associated with the
+     * session had keyboard focus.
+     *
+     * Since: 0.8
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_AUTO_USBREDIR,
+         g_param_spec_boolean("auto-usbredir",
+                              "Auto USB Redirection",
+                              "Automatically redirect newly plugged in USB"
+                              "Devices to the guest.",
+                              FALSE,
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
                               G_PARAM_STATIC_STRINGS));
@@ -724,6 +757,26 @@ static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
             s->clip_grabbed[i] = FALSE;
             s->nclip_targets[i] = 0;
         }
+    }
+}
+
+/* ---------------------------------------------------------------- */
+/* private functions (usbredir related)                             */
+void spice_gtk_session_update_keyboard_focus(SpiceGtkSession *self,
+                                             gboolean state)
+{
+    SpiceGtkSessionPrivate *s = SPICE_GTK_SESSION_GET_PRIVATE(self);
+    SpiceUsbDeviceManager *manager;
+    gboolean auto_connect = FALSE;
+
+    s->keyboard_focus = state;
+
+    if (s->auto_usbredir_enable && s->keyboard_focus)
+        auto_connect = TRUE;
+
+    manager = spice_usb_device_manager_get(s->session, NULL, NULL);
+    if (manager) {
+        g_object_set(manager, "auto-connect", auto_connect, NULL);
     }
 }
 

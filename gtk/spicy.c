@@ -721,13 +721,13 @@ static const char *spice_display_properties[] = {
     "grab-mouse",
     "resize-guest",
     "scaling",
-#ifdef USE_USBREDIR
-    "auto-usbredir",
-#endif
 };
 
 static const char *spice_gtk_session_properties[] = {
     "auto-clipboard",
+#ifdef USE_USBREDIR
+    "auto-usbredir",
+#endif
 };
 
 static const GtkToggleActionEntry tentries[] = {
