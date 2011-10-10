@@ -1,6 +1,6 @@
 /* -*- Mode: C; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 /*
-   Copyright (C) 2010 Red Hat, Inc.
+   Copyright (C) 2010-2011 Red Hat, Inc.
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public
@@ -33,6 +33,7 @@
 #endif
 
 #include "spice-widget.h"
+#include "spice-gtk-session.h"
 #include "spice-audio.h"
 #include "spice-common.h"
 #include "spice-cmdline.h"
@@ -74,6 +75,7 @@ struct spice_window {
 
 struct spice_connection {
     SpiceSession     *session;
+    SpiceGtkSession  *gtk_session;
     spice_window     *wins[4];
     SpiceAudio       *audio;
     char             *mouse_state;
@@ -100,6 +102,7 @@ static void auto_connect_failed(SpiceUsbDeviceManager *manager,
                                 SpiceUsbDevice        *device,
                                 GError                *error,
                                 gpointer               data);
+static gboolean is_gtk_session_property(const gchar *property);
 
 /* ------------------------------------------------------------------ */
 
@@ -317,14 +320,14 @@ static void menu_cb_copy(GtkAction *action, void *data)
 {
     struct spice_window *win = data;
 
-    spice_display_copy_to_guest(SPICE_DISPLAY(win->spice));
+    spice_gtk_session_copy_to_guest(win->conn->gtk_session);
 }
 
 static void menu_cb_paste(GtkAction *action, void *data)
 {
     struct spice_window *win = data;
 
-    spice_display_paste_from_guest(SPICE_DISPLAY(win->spice));
+    spice_gtk_session_paste_from_guest(win->conn->gtk_session);
 }
 
 static void window_set_fullscreen(struct spice_window *win, gboolean fs)
@@ -419,17 +422,24 @@ static void menu_cb_bool_prop(GtkToggleAction *action, gpointer data)
     struct spice_window *win = data;
     gboolean state = gtk_toggle_action_get_active(action);
     const char *name;
+    gpointer object;
 
     name = gtk_action_get_name(GTK_ACTION(action));
     SPICE_DEBUG("%s: %s = %s", __FUNCTION__, name, state ? _("yes") : _("no"));
 
     g_key_file_set_boolean(keyfile, "general", name, state);
-    g_object_set(G_OBJECT(win->spice), name, state, NULL);
+
+    if (is_gtk_session_property(name)) {
+        object = win->conn->gtk_session;
+    } else {
+        object = win->spice;
+    }
+    g_object_set(object, name, state, NULL);
 }
 
-static void menu_cb_bool_prop_changed(GObject    *gobject,
-                                      GParamSpec *pspec,
-                                      gpointer    user_data)
+static void menu_cb_conn_bool_prop_changed(GObject    *gobject,
+                                           GParamSpec *pspec,
+                                           gpointer    user_data)
 {
     struct spice_window *win = user_data;
     const gchar *property = g_param_spec_get_name(pspec);
@@ -437,7 +447,7 @@ static void menu_cb_bool_prop_changed(GObject    *gobject,
     gboolean state;
 
     toggle = gtk_action_group_get_action(win->ag, property);
-    g_object_get(win->spice, property, &state, NULL);
+    g_object_get(win->conn->gtk_session, property, &state, NULL);
     gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(toggle), state);
 }
 
@@ -564,6 +574,7 @@ static void restore_configuration(struct spice_window *win)
     gchar **keys = NULL;
     gsize nkeys, i;
     GError *error = NULL;
+    gpointer object;
 
     keys = g_key_file_get_keys(keyfile, "general", &nkeys, &error);
     if (error != NULL) {
@@ -585,7 +596,13 @@ static void restore_configuration(struct spice_window *win)
             g_clear_error(&error);
             continue;
         }
-        g_object_set(G_OBJECT(win->spice), keys[i], state, NULL);
+
+        if (is_gtk_session_property(keys[i])) {
+            object = win->conn->gtk_session;
+        } else {
+            object = win->spice;
+        }
+        g_object_set(object, keys[i], state, NULL);
     }
 
     g_strfreev(keys);
@@ -699,15 +716,18 @@ static const GtkActionEntry entries[] = {
     }
 };
 
-static const char *spice_properties[] = {
+static const char *spice_display_properties[] = {
     "grab-keyboard",
     "grab-mouse",
     "resize-guest",
     "scaling",
-    "auto-clipboard",
 #ifdef USE_USBREDIR
     "auto-usbredir",
 #endif
+};
+
+static const char *spice_gtk_session_properties[] = {
+    "auto-clipboard",
 };
 
 static const GtkToggleActionEntry tentries[] = {
@@ -796,6 +816,18 @@ static char ui_xml[] =
 "    <toolitem action='Fullscreen'/>\n"
 "  </toolbar>\n"
 "</ui>\n";
+
+static gboolean is_gtk_session_property(const gchar *property)
+{
+    int i;
+
+    for (i = 0; i < G_N_ELEMENTS(spice_gtk_session_properties); i++) {
+        if (!strcmp(spice_gtk_session_properties[i], property)) {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
 
 #ifndef WIN32
 static void recent_item_activated_cb(GtkRecentChooser *chooser, gpointer data)
@@ -1146,16 +1178,26 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     restore_configuration(win);
 
     /* init toggle actions */
-    for (i = 0; i < G_N_ELEMENTS(spice_properties); i++) {
+    for (i = 0; i < G_N_ELEMENTS(spice_display_properties); i++) {
+        toggle = gtk_action_group_get_action(win->ag,
+                                             spice_display_properties[i]);
+        g_object_get(win->spice, spice_display_properties[i], &state, NULL);
+        gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(toggle), state);
+    }
+
+    for (i = 0; i < G_N_ELEMENTS(spice_gtk_session_properties); i++) {
         char notify[64];
 
-        toggle = gtk_action_group_get_action(win->ag, spice_properties[i]);
-        g_object_get(win->spice, spice_properties[i], &state, NULL);
+        toggle = gtk_action_group_get_action(win->ag,
+                                             spice_gtk_session_properties[i]);
+        g_object_get(win->conn->gtk_session, spice_gtk_session_properties[i],
+                     &state, NULL);
         gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(toggle), state);
 
-        snprintf(notify, sizeof(notify), "notify::%s", spice_properties[i]);
-        g_signal_connect(win->spice, notify,
-                         G_CALLBACK(menu_cb_bool_prop_changed), win);
+        snprintf(notify, sizeof(notify), "notify::%s",
+                 spice_gtk_session_properties[i]);
+        g_signal_connect(win->conn->gtk_session, notify,
+                         G_CALLBACK(menu_cb_conn_bool_prop_changed), win);
     }
 
     toggle = gtk_action_group_get_action(win->ag, "Toolbar");
@@ -1466,6 +1508,7 @@ static spice_connection *connection_new(void)
 
     conn = g_new0(spice_connection, 1);
     conn->session = spice_session_new();
+    conn->gtk_session = spice_gtk_session_get(conn->session);
     g_signal_connect(conn->session, "channel-new",
                      G_CALLBACK(channel_new), conn);
     g_signal_connect(conn->session, "channel-destroy",
