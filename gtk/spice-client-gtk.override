@@ -4,6 +4,7 @@ headers
 #include "pygobject.h"
 #include "spice-common.h"
 #include "spice-widget.h"
+#include "spice-gtk-session.h"
 #include "spice-audio.h"
 %%
 modulename spice_client_gtk
