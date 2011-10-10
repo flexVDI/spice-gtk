@@ -56,13 +56,10 @@ struct _SpiceGtkSessionPrivate {
  * and #SpiceSession objects. Therefor there is no spice_gtk_session_new,
  * instead there is spice_gtk_session_get() which ensures this 1:1 relation.
  *
- * #SpiceDisplay uses #SpiceGtkSession internally, some #SpiceDisplay
- * properties map directly to #SpiceGtkSession properties, this means that
- * changing them for one #SpiceDisplay changes them for all displays.
- *
- * Depending on your UI, you may want to not show these properties on a
- * per display basis and instead show them in a global settings menu which
- * directly uses SpiceGtkSession.
+ * Client and guest clipboards will be shared automatically if
+ * #SpiceGtkSession:auto-clipboard is set to #TRUE. Alternatively, you
+ * can send / receive clipboard data from client to guest with
+ * spice_gtk_session_copy_to_guest() / spice_gtk_session_paste_from_guest().
  */
 
 /* ------------------------------------------------------------------ */
@@ -247,6 +244,7 @@ static void spice_gtk_session_class_init(SpiceGtkSessionClass *klass)
      *
      * #SpiceSession this #SpiceGtkSession is associated with
      *
+     * Since: 0.8
      **/
     g_object_class_install_property
         (gobject_class, PROP_SESSION,
@@ -263,6 +261,8 @@ static void spice_gtk_session_class_init(SpiceGtkSessionClass *klass)
      *
      * When this is true the clipboard gets automatically shared between host
      * and guest.
+     *
+     * Since: 0.8
      **/
     g_object_class_install_property
         (gobject_class, PROP_AUTO_CLIPBOARD,
@@ -742,6 +742,8 @@ static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
  * after the #SpiceSession itself has been unref-ed by the caller.
  *
  * Returns: (transfer none): a weak reference to the #SpiceGtkSession associated with the passed in #SpiceSession
+ *
+ * Since 0.8
  **/
 SpiceGtkSession *spice_gtk_session_get(SpiceSession *session)
 {
@@ -768,6 +770,8 @@ SpiceGtkSession *spice_gtk_session_get(SpiceSession *session)
  * @self:
  *
  * Copy client-side clipboard to guest clipboard.
+ *
+ * Since 0.8
  **/
 void spice_gtk_session_copy_to_guest(SpiceGtkSession *self)
 {
@@ -785,6 +789,8 @@ void spice_gtk_session_copy_to_guest(SpiceGtkSession *self)
  * @self:
  *
  * Copy guest clipboard to client-side clipboard.
+ *
+ * Since 0.8
  **/
 void spice_gtk_session_paste_from_guest(SpiceGtkSession *self)
 {

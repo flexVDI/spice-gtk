@@ -68,11 +68,6 @@ static inline void gdk_drawable_get_size(GdkWindow *w, gint *ww, gint *wh)
  * ungrabbed with spice_display_mouse_ungrab(), and by setting a key
  * combination with spice_display_set_grab_keys().
  *
- * Client and guest clipboards will be shared automatically if
- * #SpiceDisplay:auto-clipboard is set to #TRUE. Alternatively, you
- * can send clipboard data from client to guest with
- * spice_display_copy_to_guest().
-
  * Finally, spice_display_get_pixbuf() will take a screenshot of the
  * current display and return an #GdkPixbuf (that you can then easily
  * save to disk).
@@ -1222,6 +1217,8 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
      *
      * When this is true the clipboard gets automatically shared between host
      * and guest.
+     *
+     * Deprecated: 0.8: Use #SpiceGtkSession's auto-clipboard property instead
      **/
     g_object_class_install_property
         (gobject_class, PROP_AUTO_CLIPBOARD,
@@ -1678,6 +1675,8 @@ void spice_display_mouse_ungrab(SpiceDisplay *display)
  * @display:
  *
  * Copy client-side clipboard to guest clipboard.
+ *
+ * Deprecated: 0.8: Use spice_gtk_session_copy_to_guest() instead
  **/
 void spice_display_copy_to_guest(SpiceDisplay *display)
 {
@@ -1693,6 +1692,8 @@ void spice_display_copy_to_guest(SpiceDisplay *display)
  * @display:
  *
  * Copy guest clipboard to client-side clipboard.
+ *
+ * Deprecated: 0.8: Use spice_gtk_session_paste_from_guest() instead
  **/
 void spice_display_paste_from_guest(SpiceDisplay *display)
 {
