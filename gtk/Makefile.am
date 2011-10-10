@@ -98,6 +98,7 @@ SPICE_GTK_LIBADD_COMMON =		\
 
 SPICE_GTK_SOURCES_COMMON =		\
 	spice-gtk-session.c		\
+	spice-gtk-session-priv.h	\
 	spice-widget.c			\
 	spice-widget-priv.h		\
 	vncdisplaykeymap.c		\
