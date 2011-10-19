@@ -976,6 +976,11 @@ static void spice_channel_recv_link_hdr(SpiceChannel *channel)
     }
 
     c->peer_msg = spice_malloc(c->peer_hdr.size);
+    if (c->peer_msg == NULL) {
+        g_critical("invalid peer header size: %u", c->peer_hdr.size);
+        goto error;
+    }
+
     c->state = SPICE_CHANNEL_STATE_LINK_MSG;
     return;
 
