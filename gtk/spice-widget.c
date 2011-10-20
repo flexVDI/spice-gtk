@@ -242,6 +242,8 @@ static void spice_display_dispose(GObject *obj)
         d->session = NULL;
         d->gtk_session = NULL;
     }
+
+    G_OBJECT_CLASS(spice_display_parent_class)->dispose(obj);
 }
 
 static void spice_display_finalize(GObject *obj)
