@@ -387,7 +387,14 @@ VALA_REQUIRED=0.11.7
 if test x$enable_vala = xyes ; then
     # check for vala
     AM_PROG_VALAC([$VALA_REQUIRED])
+    AC_PATH_PROG(VAPIGEN, vapigen, no)
+    if test "x$VAPIGEN" == "xno"; then
+        AC_MSG_ERROR([Cannot find the "vapigen" binary in your PATH])
+    fi
+    AC_SUBST(VAPIGEN)
 fi
+
+AM_CONDITIONAL(WITH_VALA, [test "x$enable_vala" = "xyes"])
 
 VAPIDIR="${datadir}/vala/vapi"
 AC_SUBST(VAPIDIR)
@@ -544,6 +551,7 @@ gtk/Makefile
 gtk/controller/Makefile
 doc/Makefile
 doc/reference/Makefile
+vapi/Makefile
 ])
 
 dnl ==========================================================================

@@ -1,7 +1,7 @@
 ACLOCAL_AMFLAGS = -I m4
 NULL =
 
-SUBDIRS = common gtk po python_modules doc data
+SUBDIRS = common gtk po python_modules doc data vapi
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA =					\
