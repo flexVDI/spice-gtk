@@ -24,6 +24,7 @@
 #include "spice-grabsequence.h"
 #include "spice-widget-enums.h"
 #include "spice-util.h"
+#include "spice-gtk-session.h"
 
 G_BEGIN_DECLS
 
