@@ -290,6 +290,10 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
     if (sscanf(uri, "spice://%127[-.0-9a-zA-Z]%n", host, &len) != 1)
         goto fail;
     pos += len;
+
+    if (uri[pos] == '/')
+        pos++;
+
     for (;;) {
         if (uri[pos] == '?' || uri[pos] == ';' || uri[pos] == '&') {
             pos++;
