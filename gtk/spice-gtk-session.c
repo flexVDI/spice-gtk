@@ -126,7 +126,7 @@ spice_gtk_session_constructor(GType                  gtype,
     }
 
     self = SPICE_GTK_SESSION(obj);
-    s = SPICE_GTK_SESSION_GET_PRIVATE(self);
+    s = self->priv;
     if (!s->session)
         g_error("SpiceGtKSession constructed without a session");
 
@@ -146,7 +146,7 @@ spice_gtk_session_constructor(GType                  gtype,
 static void spice_gtk_session_dispose(GObject *gobject)
 {
     SpiceGtkSession *self = SPICE_GTK_SESSION(gobject);
-    SpiceGtkSessionPrivate *s = SPICE_GTK_SESSION_GET_PRIVATE(self);
+    SpiceGtkSessionPrivate *s = self->priv;
 
     /* release stuff */
     if (s->clipboard) {
@@ -179,7 +179,7 @@ static void spice_gtk_session_dispose(GObject *gobject)
 static void spice_gtk_session_finalize(GObject *gobject)
 {
     SpiceGtkSession *self = SPICE_GTK_SESSION(gobject);
-    SpiceGtkSessionPrivate *s = SPICE_GTK_SESSION_GET_PRIVATE(self);
+    SpiceGtkSessionPrivate *s = self->priv;
     int i;
 
     /* release stuff */
@@ -199,7 +199,7 @@ static void spice_gtk_session_get_property(GObject    *gobject,
                                            GParamSpec *pspec)
 {
     SpiceGtkSession *self = SPICE_GTK_SESSION(gobject);
-    SpiceGtkSessionPrivate *s = SPICE_GTK_SESSION_GET_PRIVATE(self);
+    SpiceGtkSessionPrivate *s = self->priv;
 
     switch (prop_id) {
     case PROP_SESSION:
@@ -223,7 +223,7 @@ static void spice_gtk_session_set_property(GObject      *gobject,
                                            GParamSpec   *pspec)
 {
     SpiceGtkSession *self = SPICE_GTK_SESSION(gobject);
-    SpiceGtkSessionPrivate *s = SPICE_GTK_SESSION_GET_PRIVATE(self);
+    SpiceGtkSessionPrivate *s = self->priv;
 
     switch (prop_id) {
     case PROP_SESSION:
@@ -398,8 +398,10 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
                                   gint n_atoms,
                                   gpointer user_data)
 {
+    g_return_if_fail(SPICE_IS_GTK_SESSION(user_data));
+
     SpiceGtkSession *self = user_data;
-    SpiceGtkSessionPrivate *s = SPICE_GTK_SESSION_GET_PRIVATE(self);
+    SpiceGtkSessionPrivate *s = self->priv;
     guint32 types[SPICE_N_ELEMENTS(atom2agent)];
     char *name;
     int a, m, t;
@@ -458,8 +460,10 @@ static void clipboard_owner_change(GtkClipboard        *clipboard,
                                    GdkEventOwnerChange *event,
                                    gpointer            user_data)
 {
+    g_return_if_fail(SPICE_IS_GTK_SESSION(user_data));
+
     SpiceGtkSession *self = user_data;
-    SpiceGtkSessionPrivate *s = SPICE_GTK_SESSION_GET_PRIVATE(self);
+    SpiceGtkSessionPrivate *s = self->priv;
     int selection;
 
     selection = get_selection_from_clipboard(s, clipboard);
@@ -534,9 +538,11 @@ static void clipboard_get(GtkClipboard *clipboard,
                           GtkSelectionData *selection_data,
                           guint info, gpointer user_data)
 {
+    g_return_if_fail(SPICE_IS_GTK_SESSION(user_data));
+
     RunInfo ri = { NULL, };
     SpiceGtkSession *self = user_data;
-    SpiceGtkSessionPrivate *s = SPICE_GTK_SESSION_GET_PRIVATE(self);
+    SpiceGtkSessionPrivate *s = self->priv;
     gulong clipboard_handler;
     int selection;
 
@@ -583,8 +589,10 @@ static gboolean clipboard_grab(SpiceMainChannel *main, guint selection,
                                guint32* types, guint32 ntypes,
                                gpointer user_data)
 {
+    g_return_val_if_fail(SPICE_IS_GTK_SESSION(user_data), FALSE);
+
     SpiceGtkSession *self = user_data;
-    SpiceGtkSessionPrivate *s = SPICE_GTK_SESSION_GET_PRIVATE(self);
+    SpiceGtkSessionPrivate *s = self->priv;
     GtkTargetEntry targets[SPICE_N_ELEMENTS(atom2agent)];
     gboolean target_selected[SPICE_N_ELEMENTS(atom2agent)] = { FALSE, };
     gboolean found;
@@ -640,8 +648,10 @@ static void clipboard_received_cb(GtkClipboard *clipboard,
                                   GtkSelectionData *selection_data,
                                   gpointer user_data)
 {
+    g_return_if_fail(SPICE_IS_GTK_SESSION(user_data));
+
     SpiceGtkSession *self = user_data;
-    SpiceGtkSessionPrivate *s = SPICE_GTK_SESSION_GET_PRIVATE(self);
+    SpiceGtkSessionPrivate *s = self->priv;
     gint len = 0, m;
     guint32 type = VD_AGENT_CLIPBOARD_NONE;
     gchar* name;
@@ -682,8 +692,10 @@ static void clipboard_received_cb(GtkClipboard *clipboard,
 static gboolean clipboard_request(SpiceMainChannel *main, guint selection,
                                   guint type, gpointer user_data)
 {
+    g_return_val_if_fail(SPICE_IS_GTK_SESSION(user_data), FALSE);
+
     SpiceGtkSession *self = user_data;
-    SpiceGtkSessionPrivate *s = SPICE_GTK_SESSION_GET_PRIVATE(self);
+    SpiceGtkSessionPrivate *s = self->priv;
     GdkAtom atom;
     GtkClipboard* cb;
     int m;
@@ -707,9 +719,12 @@ static gboolean clipboard_request(SpiceMainChannel *main, guint selection,
 static void clipboard_release(SpiceMainChannel *main, guint selection,
                               gpointer user_data)
 {
+    g_return_if_fail(SPICE_IS_GTK_SESSION(user_data));
+
     SpiceGtkSession *self = user_data;
-    SpiceGtkSessionPrivate *s = SPICE_GTK_SESSION_GET_PRIVATE(self);
+    SpiceGtkSessionPrivate *s = self->priv;
     GtkClipboard* clipboard = get_clipboard_from_selection(s, selection);
+
     if (!clipboard)
         return;
 
@@ -724,8 +739,10 @@ static void clipboard_release(SpiceMainChannel *main, guint selection,
 static void channel_new(SpiceSession *session, SpiceChannel *channel,
                         gpointer user_data)
 {
+    g_return_if_fail(SPICE_IS_GTK_SESSION(user_data));
+
     SpiceGtkSession *self = user_data;
-    SpiceGtkSessionPrivate *s = SPICE_GTK_SESSION_GET_PRIVATE(self);
+    SpiceGtkSessionPrivate *s = self->priv;
 
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
         s->main = SPICE_MAIN_CHANNEL(channel);
@@ -741,8 +758,10 @@ static void channel_new(SpiceSession *session, SpiceChannel *channel,
 static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
                             gpointer user_data)
 {
+    g_return_if_fail(SPICE_IS_GTK_SESSION(user_data));
+
     SpiceGtkSession *self = user_data;
-    SpiceGtkSessionPrivate *s = SPICE_GTK_SESSION_GET_PRIVATE(self);
+    SpiceGtkSessionPrivate *s = self->priv;
     guint i;
 
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
@@ -762,10 +781,13 @@ static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
 
 /* ---------------------------------------------------------------- */
 /* private functions (usbredir related)                             */
+G_GNUC_INTERNAL
 void spice_gtk_session_update_keyboard_focus(SpiceGtkSession *self,
                                              gboolean state)
 {
-    SpiceGtkSessionPrivate *s = SPICE_GTK_SESSION_GET_PRIVATE(self);
+    g_return_if_fail(SPICE_IS_GTK_SESSION(self));
+
+    SpiceGtkSessionPrivate *s = self->priv;
     SpiceUsbDeviceManager *manager;
     gboolean auto_connect = FALSE;
 
@@ -800,6 +822,8 @@ void spice_gtk_session_update_keyboard_focus(SpiceGtkSession *self,
  **/
 SpiceGtkSession *spice_gtk_session_get(SpiceSession *session)
 {
+    g_return_val_if_fail(SPICE_IS_SESSION(session), NULL);
+
     GObject *self;
     static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
 
@@ -828,7 +852,9 @@ SpiceGtkSession *spice_gtk_session_get(SpiceSession *session)
  **/
 void spice_gtk_session_copy_to_guest(SpiceGtkSession *self)
 {
-    SpiceGtkSessionPrivate *s = SPICE_GTK_SESSION_GET_PRIVATE(self);
+    g_return_if_fail(SPICE_IS_GTK_SESSION(self));
+
+    SpiceGtkSessionPrivate *s = self->priv;
     int selection = VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD;
 
     if (s->clip_hasdata[selection] && !s->clip_grabbed[selection]) {
@@ -847,7 +873,9 @@ void spice_gtk_session_copy_to_guest(SpiceGtkSession *self)
  **/
 void spice_gtk_session_paste_from_guest(SpiceGtkSession *self)
 {
-    SpiceGtkSessionPrivate *s = SPICE_GTK_SESSION_GET_PRIVATE(self);
+    g_return_if_fail(SPICE_IS_GTK_SESSION(self));
+
+    SpiceGtkSessionPrivate *s = self->priv;
     int selection = VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD;
 
     if (s->nclip_targets[selection] == 0) {
