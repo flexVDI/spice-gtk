@@ -1703,6 +1703,10 @@ GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
     data = g_malloc(d->width * d->height * 3);
     src = d->data;
     dest = data;
+
+    if (src == NULL || dest == NULL)
+        return NULL;
+
     for (y = 0; y < d->height; ++y) {
         for (x = 0; x < d->width; ++x) {
           dest[0] = src[x * 4 + 2];
