@@ -64,22 +64,23 @@ static void spice_audio_init(SpiceAudio *self G_GNUC_UNUSED)
  * spice_audio_new:
  * @session: the #SpiceSession to connect to
  * @context: a #GMainContext to attach to (or %NULL for default).
- * @name: a name for the audio channels (or %NULL for default).
+ * @name: a name for the audio channels (or %NULL for application name).
  *
  * Once instantiated, #SpiceAudio will handle the playback and record
  * channels to stream to your local audio system.
  *
  * Returns: a new #SpiceAudio instance or %NULL if no backend or failed.
+ * Deprecated: 0.8: Use spice_audio_get() instead
  **/
 SpiceAudio *spice_audio_new(SpiceSession *session, GMainContext *context,
-                         const char *name)
+                            const char *name)
 {
     SpiceAudio *audio = NULL;
 
     if (context == NULL)
-      context = g_main_context_default();
+        context = g_main_context_default();
     if (name == NULL)
-      name = "spice";
+        name = g_get_application_name();
 
 #ifdef WITH_PULSE
     audio = SPICE_AUDIO(spice_pulse_new(session, context, name));
