@@ -32,6 +32,7 @@ static char *host_subject = NULL;
 static char *smartcard_db = NULL;
 static char *smartcard_certificates = NULL;
 static gboolean smartcard = FALSE;
+static gboolean disable_audio = FALSE;
 static gboolean disable_usbredir = FALSE;
 
 static void option_version(void)
@@ -64,6 +65,8 @@ GOptionGroup* spice_get_option_group(void)
           N_("Truststore file for secure connections"), N_("<file>") },
         { "spice-host-subject", '\0', 0, G_OPTION_ARG_STRING, &host_subject,
           N_("Subject of the host certificate (field=value pairs separated by commas)"), N_("<host-subject>") },
+        { "spice-disable-audio", '\0', 0, G_OPTION_ARG_NONE, &disable_audio,
+          N_("Disable audio support"), NULL },
         { "spice-smartcard", '\0', 0, G_OPTION_ARG_NONE, &smartcard,
           N_("Enable smartcard support"), NULL },
         { "spice-smartcard-certificates", '\0', 0, G_OPTION_ARG_STRING, &smartcard_certificates,
@@ -132,4 +135,6 @@ void spice_set_session_option(SpiceSession *session)
     }
     if (disable_usbredir)
         g_object_set(session, "enable-usbredir", FALSE, NULL);
+    if (disable_audio)
+        g_object_set(session, "enable-audio", FALSE, NULL);
 }

@@ -1706,11 +1706,17 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
         gtype = SPICE_TYPE_INPUTS_CHANNEL;
         break;
     case SPICE_CHANNEL_PLAYBACK:
-        gtype = SPICE_TYPE_PLAYBACK_CHANNEL;
+    case SPICE_CHANNEL_RECORD: {
+        gboolean enabled;
+        g_object_get(G_OBJECT(s), "enable-audio", &enabled, NULL);
+        if (!enabled) {
+            g_debug("audio channel is disabled, not creating it");
+            return NULL;
+        }
+        gtype = type == SPICE_CHANNEL_RECORD ?
+            SPICE_TYPE_RECORD_CHANNEL : SPICE_TYPE_PLAYBACK_CHANNEL;
         break;
-    case SPICE_CHANNEL_RECORD:
-        gtype = SPICE_TYPE_RECORD_CHANNEL;
-        break;
+    }
 #ifdef USE_SMARTCARD
     case SPICE_CHANNEL_SMARTCARD: {
         gboolean enabled;

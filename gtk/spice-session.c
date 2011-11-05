@@ -45,6 +45,9 @@ struct _SpiceSessionPrivate {
     char              *cert_subject;
     guint             verify;
 
+    /* whether to enable audio */
+    gboolean          audio;
+
     /* whether to enable smartcard event forwarding to the server */
     gboolean          smartcard;
 
@@ -140,6 +143,7 @@ enum {
     PROP_CERT_SUBJECT,
     PROP_VERIFY,
     PROP_MIGRATION_STATE,
+    PROP_AUDIO,
     PROP_SMARTCARD,
     PROP_SMARTCARD_CERTIFICATES,
     PROP_SMARTCARD_DB,
@@ -166,6 +170,7 @@ static void spice_session_init(SpiceSession *session)
     s = session->priv = SPICE_SESSION_GET_PRIVATE(session);
     memset(s, 0, sizeof(*s));
     s->usbredir = TRUE;
+    s->audio = TRUE;
 
     ring_init(&s->channels);
     cache_init(&s->images, "image");
@@ -412,6 +417,9 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_COLOR_DEPTH:
         g_value_set_int(value, s->color_depth);
         break;
+    case PROP_AUDIO:
+        g_value_set_boolean(value, s->audio);
+        break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -501,6 +509,9 @@ static void spice_session_set_property(GObject      *gobject,
         break;
     case PROP_COLOR_DEPTH:
         s->color_depth = g_value_get_int(value);
+        break;
+    case PROP_AUDIO:
+        s->audio = g_value_get_boolean(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -761,6 +772,23 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                           "Enable smartcard event forwarding",
                           "Forward smartcard events to the SPICE server",
                           FALSE,
+                          G_PARAM_READWRITE |
+                          G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceSession:enable-audio:
+     *
+     * If set to TRUE, the audio channels will be enabled for
+     * playback and recording.
+     *
+     * Since: 0.8
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_AUDIO,
+         g_param_spec_boolean("enable-audio",
+                          "Enable audio channels",
+                          "Enable audio channels",
+                          TRUE,
                           G_PARAM_READWRITE |
                           G_PARAM_STATIC_STRINGS));
 
