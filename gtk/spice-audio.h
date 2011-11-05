@@ -69,9 +69,9 @@ struct _SpiceAudioClass {
 
 GType spice_audio_get_type(void);
 
-SpiceAudio *spice_audio_new(SpiceSession *session,
-                         GMainContext *context,
-                         const char *name);
+SpiceAudio* spice_audio_new(SpiceSession *session, GMainContext *context, const char *name);
+
+SpiceAudio* spice_audio_get(SpiceSession *session, GMainContext *context);
 
 G_END_DECLS
 

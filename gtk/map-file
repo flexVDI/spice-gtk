@@ -2,6 +2,7 @@ SPICEGTK_1 {
 global:
 spice_audio_get_type;
 spice_audio_new;
+spice_audio_get;
 spice_channel_connect;
 spice_channel_destroy;
 spice_channel_disconnect;
