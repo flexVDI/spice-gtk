@@ -41,6 +41,7 @@
 #include "channel-smartcard.h"
 #include "channel-usbredir.h"
 #include "usb-device-manager.h"
+#include "spice-audio.h"
 
 #define SPICE_CLIENT_ERROR spice_client_error_quark()
 
