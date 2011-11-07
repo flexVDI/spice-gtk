@@ -21,10 +21,68 @@
 #include <glib.h>
 #include <gio/gio.h>
 #include "spice-session.h"
+#include "spice-gtk-session.h"
 #include "spice-channel-cache.h"
 #include "decode.h"
 
 G_BEGIN_DECLS
+
+struct _SpiceSessionPrivate {
+    char              *host;
+    char              *port;
+    char              *tls_port;
+    char              *password;
+    char              *ca_file;
+    char              *ciphers;
+    GByteArray        *pubkey;
+    char              *cert_subject;
+    guint             verify;
+
+    /* whether to enable audio */
+    gboolean          audio;
+
+    /* whether to enable smartcard event forwarding to the server */
+    gboolean          smartcard;
+
+    /* list of certificates to use for the software smartcard reader if
+     * enabled. For now, it has to contain exactly 3 certificates for
+     * the software reader to be functional
+     */
+    GStrv             smartcard_certificates;
+
+    /* path to the local certificate database to use to lookup the
+     * certificates stored in 'certificates'. If NULL, libcacard will
+     * fallback to using a default database.
+     */
+    char *            smartcard_db;
+
+    /* whether to enable USB redirection */
+    gboolean          usbredir;
+
+    GStrv             disable_effects;
+    gint              color_depth;
+
+    int               connection_id;
+    int               protocol;
+    SpiceChannel      *cmain; /* weak reference */
+    Ring              channels;
+    guint32           mm_time;
+    gboolean          client_provided_sockets;
+    guint64           mm_time_at_clock;
+    SpiceSession      *migration;
+    GList             *migration_left;
+    SpiceSessionMigration migration_state;
+    gboolean          disconnecting;
+
+    display_cache     images;
+    display_cache     palettes;
+    SpiceGlzDecoderWindow *glz_window;
+
+    /* associated objects */
+    SpiceAudio        *audio_manager;
+    SpiceGtkSession   *gtk_session;
+    SpiceUsbDeviceManager *usb_manager;
+};
 
 SpiceSession *spice_session_new_from_session(SpiceSession *session);
 

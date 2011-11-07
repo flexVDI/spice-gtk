@@ -32,6 +32,7 @@
 #include "channel-usbredir-priv.h"
 #endif
 
+#include "spice-session-priv.h"
 #include "spice-client.h"
 #include "spice-marshal.h"
 
@@ -469,15 +470,6 @@ static void spice_usb_device_manager_dev_removed(GUsbDeviceList *devlist,
 }
 #endif
 
-static void
-spice_usb_device_manager_spice_session_destroyed_cb(gpointer user_data,
-                                                    GObject *object)
-{
-    SpiceUsbDeviceManager *self = user_data;
-
-    g_object_unref(self);
-}
-
 /* ------------------------------------------------------------------ */
 /* private api                                                        */
 static SpiceUsbredirChannel *spice_usb_device_manager_get_channel_for_dev(
@@ -524,17 +516,12 @@ SpiceUsbDeviceManager *spice_usb_device_manager_get(SpiceSession *session,
     g_return_val_if_fail(err == NULL || *err == NULL, NULL);
 
     g_static_mutex_lock(&mutex);
-    self = g_object_get_data(G_OBJECT(session), "spice-usb-device-manager");
+    self = session->priv->usb_manager;
     if (self == NULL) {
         self = g_initable_new(SPICE_TYPE_USB_DEVICE_MANAGER, NULL, err,
                               "session", session,
                               "main-context", main_context, NULL);
-        g_object_set_data(G_OBJECT(session), "spice-usb-device-manager", self);
-        if (self)
-            /* Ensure we are destroyed together with the SpiceSession */
-            g_object_weak_ref(G_OBJECT(session),
-                          spice_usb_device_manager_spice_session_destroyed_cb,
-                          self);
+        session->priv->usb_manager = self;
     }
     g_static_mutex_unlock(&mutex);
 

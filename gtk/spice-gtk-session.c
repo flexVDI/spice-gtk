@@ -21,6 +21,7 @@
 #include "spice-common.h"
 #include "spice-gtk-session.h"
 #include "spice-gtk-session-priv.h"
+#include "spice-session-priv.h"
 
 #define CLIPBOARD_LAST (VD_AGENT_CLIPBOARD_SELECTION_SECONDARY + 1)
 
@@ -309,15 +310,6 @@ static void spice_gtk_session_class_init(SpiceGtkSessionClass *klass)
                               G_PARAM_STATIC_STRINGS));
 
     g_type_class_add_private(klass, sizeof(SpiceGtkSessionPrivate));
-}
-
-static void
-spice_gtk_session_spice_session_destroyed_cb(gpointer user_data,
-                                             GObject *object)
-{
-    SpiceGtkSession *self = user_data;
-
-    g_object_unref(self);
 }
 
 /* ---------------------------------------------------------------- */
@@ -824,18 +816,14 @@ SpiceGtkSession *spice_gtk_session_get(SpiceSession *session)
 {
     g_return_val_if_fail(SPICE_IS_SESSION(session), NULL);
 
-    GObject *self;
+    SpiceGtkSession *self;
     static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
 
     g_static_mutex_lock(&mutex);
-    self = g_object_get_data(G_OBJECT(session), "spice-gtk-session");
+    self = session->priv->gtk_session;
     if (self == NULL) {
         self = g_object_new(SPICE_TYPE_GTK_SESSION, "session", session, NULL);
-        g_object_set_data(G_OBJECT(session), "spice-gtk-session", self);
-        /* Ensure we are destroyed together with the SpiceSession */
-        g_object_weak_ref(G_OBJECT(session),
-                          spice_gtk_session_spice_session_destroyed_cb,
-                          self);
+        session->priv->gtk_session = self;
     }
     g_static_mutex_unlock(&mutex);
 

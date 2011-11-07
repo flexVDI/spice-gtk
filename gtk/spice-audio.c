@@ -40,6 +40,7 @@
 #include "spice-common.h"
 
 #include "spice-audio.h"
+#include "spice-session-priv.h"
 
 #ifdef WITH_PULSE
 #include "spice-pulse.h"
@@ -112,12 +113,10 @@ SpiceAudio *spice_audio_get(SpiceSession *session, GMainContext *context)
     SpiceAudio *self;
 
     g_static_mutex_lock(&mutex);
-    self = g_object_get_data(G_OBJECT(session), "spice-audio");
+    self = session->priv->audio_manager;
     if (self == NULL) {
         self = spice_audio_new(session, context, NULL);
-        g_object_set_data(G_OBJECT(session), "spice-audio", self);
-        if (self)
-            g_object_weak_ref(G_OBJECT(session), (GWeakNotify)g_object_unref, self);
+        session->priv->audio_manager = self;
     }
     g_static_mutex_unlock(&mutex);
 
