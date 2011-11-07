@@ -1206,7 +1206,7 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
      * When this is true the clipboard gets automatically shared between host
      * and guest.
      *
-     * Deprecated: 0.8: Use #SpiceGtkSession's auto-clipboard property instead
+     * Deprecated: 0.8: Use SpiceGtkSession:auto-clipboard property instead
      **/
     g_object_class_install_property
         (gobject_class, PROP_AUTO_CLIPBOARD,
@@ -1216,7 +1216,8 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                               "host and guest.",
                               TRUE,
                               G_PARAM_READWRITE |
-                              G_PARAM_STATIC_STRINGS));
+                              G_PARAM_STATIC_STRINGS |
+                              G_PARAM_DEPRECATED));
 
     g_object_class_install_property
         (gobject_class, PROP_SCALING,
@@ -1656,6 +1657,7 @@ void spice_display_mouse_ungrab(SpiceDisplay *display)
  *
  * Deprecated: 0.8: Use spice_gtk_session_copy_to_guest() instead
  **/
+GLIB_DEPRECATED_FOR(spice_gtk_session_copy_to_guest)
 void spice_display_copy_to_guest(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
@@ -1673,6 +1675,7 @@ void spice_display_copy_to_guest(SpiceDisplay *display)
  *
  * Deprecated: 0.8: Use spice_gtk_session_paste_from_guest() instead
  **/
+GLIB_DEPRECATED_FOR(spice_gtk_session_paste_from_guest)
 void spice_display_paste_from_guest(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);

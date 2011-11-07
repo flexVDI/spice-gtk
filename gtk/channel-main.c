@@ -418,7 +418,7 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
     signals[SPICE_MAIN_CLIPBOARD] =
         g_signal_new("main-clipboard",
                      G_OBJECT_CLASS_TYPE(gobject_class),
-                     G_SIGNAL_RUN_LAST,
+                     G_SIGNAL_RUN_LAST | G_SIGNAL_DEPRECATED,
                      0,
                      NULL, NULL,
                      g_cclosure_user_marshal_VOID__UINT_POINTER_UINT,
@@ -457,7 +457,7 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
     signals[SPICE_MAIN_CLIPBOARD_GRAB] =
         g_signal_new("main-clipboard-grab",
                      G_OBJECT_CLASS_TYPE(gobject_class),
-                     G_SIGNAL_RUN_LAST,
+                     G_SIGNAL_RUN_LAST | G_SIGNAL_DEPRECATED,
                      0,
                      NULL, NULL,
                      g_cclosure_user_marshal_BOOLEAN__POINTER_UINT,
@@ -500,7 +500,7 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
     signals[SPICE_MAIN_CLIPBOARD_REQUEST] =
         g_signal_new("main-clipboard-request",
                      G_OBJECT_CLASS_TYPE(gobject_class),
-                     G_SIGNAL_RUN_LAST,
+                     G_SIGNAL_RUN_LAST | G_SIGNAL_DEPRECATED,
                      0,
                      NULL, NULL,
                      g_cclosure_user_marshal_BOOLEAN__UINT,
@@ -541,7 +541,7 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
     signals[SPICE_MAIN_CLIPBOARD_RELEASE] =
         g_signal_new("main-clipboard-release",
                      G_OBJECT_CLASS_TYPE(gobject_class),
-                     G_SIGNAL_RUN_LAST,
+                     G_SIGNAL_RUN_LAST | G_SIGNAL_DEPRECATED,
                      0,
                      NULL, NULL,
                      g_cclosure_marshal_VOID__VOID,
@@ -1666,6 +1666,7 @@ void spice_main_set_display(SpiceMainChannel *channel, int id,
  *
  * Deprecated: 0.6: use spice_main_clipboard_selection_grab() instead.
  **/
+GLIB_DEPRECATED_FOR(spice_main_clipboard_selection_grab)
 void spice_main_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int ntypes)
 {
     spice_main_clipboard_selection_grab(channel, VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD, types, ntypes);
@@ -1701,6 +1702,7 @@ void spice_main_clipboard_selection_grab(SpiceMainChannel *channel, guint select
  *
  * Deprecated: 0.6: use spice_main_clipboard_selection_release() instead.
  **/
+GLIB_DEPRECATED_FOR(spice_main_clipboard_selection_release)
 void spice_main_clipboard_release(SpiceMainChannel *channel)
 {
     spice_main_clipboard_selection_release(channel, VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD);
@@ -1741,6 +1743,7 @@ void spice_main_clipboard_selection_release(SpiceMainChannel *channel, guint sel
  *
  * Deprecated: 0.6: use spice_main_clipboard_selection_notify() instead.
  **/
+GLIB_DEPRECATED_FOR(spice_main_clipboard_selection_notify)
 void spice_main_clipboard_notify(SpiceMainChannel *channel,
                                  guint32 type, const guchar *data, size_t size)
 {
@@ -1780,6 +1783,7 @@ void spice_main_clipboard_selection_notify(SpiceMainChannel *channel, guint sele
  *
  * Deprecated: 0.6: use spice_main_clipboard_selection_request() instead.
  **/
+GLIB_DEPRECATED_FOR(spice_main_clipboard_selection_request)
 void spice_main_clipboard_request(SpiceMainChannel *channel, guint32 type)
 {
     spice_main_clipboard_selection_request(channel, VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD, type);

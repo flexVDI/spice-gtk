@@ -62,4 +62,8 @@ type_name##_get_type (void) \
 #endif /* __GNUC__ */
 #endif /* glib 2.26 */
 
+#if !GLIB_CHECK_VERSION(2,32,0)
+# define G_SIGNAL_DEPRECATED (1 << 9)
+#endif
+
 #endif /* GLIB_COMPAT_H */
