@@ -169,8 +169,6 @@ static void spice_session_init(SpiceSession *session)
     SPICE_DEBUG("New session (compiled from package " PACKAGE_STRING ")");
     s = session->priv = SPICE_SESSION_GET_PRIVATE(session);
     memset(s, 0, sizeof(*s));
-    s->usbredir = TRUE;
-    s->audio = TRUE;
 
     ring_init(&s->channels);
     cache_init(&s->images, "image");
@@ -789,7 +787,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                           "Enable audio channels",
                           "Enable audio channels",
                           TRUE,
-                          G_PARAM_READWRITE |
+                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT |
                           G_PARAM_STATIC_STRINGS));
 
     /**
@@ -845,7 +843,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                           "Enable USB device redirection",
                           "Forward USB devices to the SPICE server",
                           TRUE,
-                          G_PARAM_READWRITE |
+                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT |
                           G_PARAM_STATIC_STRINGS));
 
     /**
