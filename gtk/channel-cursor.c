@@ -80,7 +80,6 @@ static void spice_cursor_channel_init(SpiceCursorChannel *channel)
     SpiceCursorChannelPrivate *c;
 
     c = channel->priv = SPICE_CURSOR_CHANNEL_GET_PRIVATE(channel);
-    memset(c, 0, sizeof(*c));
 
     cache_init(&c->cursors, "cursor");
 }

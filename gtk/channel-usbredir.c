@@ -81,8 +81,6 @@ static int usbredir_write_callback(void *user_data, uint8_t *data, int count);
 static void spice_usbredir_channel_init(SpiceUsbredirChannel *channel)
 {
     channel->priv = SPICE_USBREDIR_CHANNEL_GET_PRIVATE(channel);
-
-    memset(channel->priv, 0, sizeof(SpiceUsbredirChannelPrivate));
 }
 
 static void spice_usbredir_channel_finalize(GObject *obj)

@@ -91,10 +91,8 @@ static void channel_up(SpiceChannel *channel);
 
 static void spice_record_channel_init(SpiceRecordChannel *channel)
 {
-    SpiceRecordChannelPrivate *c;
+    channel->priv = SPICE_RECORD_CHANNEL_GET_PRIVATE(channel);
 
-    c = channel->priv = SPICE_RECORD_CHANNEL_GET_PRIVATE(channel);
-    memset(c, 0, sizeof(*c));
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_RECORD_CAP_CELT_0_5_1);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_RECORD_CAP_VOLUME);
 }

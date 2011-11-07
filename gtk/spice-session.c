@@ -168,7 +168,6 @@ static void spice_session_init(SpiceSession *session)
 
     SPICE_DEBUG("New session (compiled from package " PACKAGE_STRING ")");
     s = session->priv = SPICE_SESSION_GET_PRIVATE(session);
-    memset(s, 0, sizeof(*s));
 
     ring_init(&s->channels);
     cache_init(&s->images, "image");

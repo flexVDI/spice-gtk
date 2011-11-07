@@ -74,10 +74,7 @@ static void spice_inputs_channel_up(SpiceChannel *channel);
 
 static void spice_inputs_channel_init(SpiceInputsChannel *channel)
 {
-    SpiceInputsChannelPrivate *c;
-
-    c = channel->priv = SPICE_INPUTS_CHANNEL_GET_PRIVATE(channel);
-    memset(c, 0, sizeof(*c));
+    channel->priv = SPICE_INPUTS_CHANNEL_GET_PRIVATE(channel);
 }
 
 static void spice_inputs_get_property(GObject    *object,

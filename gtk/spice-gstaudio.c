@@ -104,10 +104,7 @@ static void spice_gstaudio_dispose(GObject *obj)
 
 static void spice_gstaudio_init(SpiceGstaudio *pulse)
 {
-    SpiceGstaudioPrivate *p;
-
-    p = pulse->priv = SPICE_GSTAUDIO_GET_PRIVATE(pulse);
-    memset(p, 0, sizeof(*p));
+    pulse->priv = SPICE_GSTAUDIO_GET_PRIVATE(pulse);
 }
 
 static void spice_gstaudio_class_init(SpiceGstaudioClass *klass)

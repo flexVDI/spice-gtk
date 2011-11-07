@@ -555,7 +555,6 @@ static void spice_display_channel_init(SpiceDisplayChannel *channel)
     SpiceDisplayChannelPrivate *c;
 
     c = channel->priv = SPICE_DISPLAY_CHANNEL_GET_PRIVATE(channel);
-    memset(c, 0, sizeof(*c));
 
     ring_init(&c->surfaces);
     c->image_cache.ops = &image_cache_ops;

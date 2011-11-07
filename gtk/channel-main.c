@@ -155,7 +155,6 @@ static void spice_main_channel_init(SpiceMainChannel *channel)
     SpiceMainChannelPrivate *c;
 
     c = channel->priv = SPICE_MAIN_CHANNEL_GET_PRIVATE(channel);
-    memset(c, 0, sizeof(*c));
     c->agent_msg_queue = g_queue_new();
 }
 

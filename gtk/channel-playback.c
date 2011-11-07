@@ -85,10 +85,8 @@ static void spice_playback_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg);
 
 static void spice_playback_channel_init(SpicePlaybackChannel *channel)
 {
-    SpicePlaybackChannelPrivate *c;
+    channel->priv = SPICE_PLAYBACK_CHANNEL_GET_PRIVATE(channel);
 
-    c = channel->priv = SPICE_PLAYBACK_CHANNEL_GET_PRIVATE(channel);
-    memset(c, 0, sizeof(*c));
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_PLAYBACK_CAP_CELT_0_5_1);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_PLAYBACK_CAP_VOLUME);
 }

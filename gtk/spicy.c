@@ -1073,10 +1073,7 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     int i;
     SpiceGrabSequence *seq;
 
-    win = malloc(sizeof(*win));
-    if (NULL == win)
-        return NULL;
-    memset(win,0,sizeof(*win));
+    win = g_new0(struct spice_window, 1);
     win->id = id;
     win->conn = conn;
     win->display_channel = channel;

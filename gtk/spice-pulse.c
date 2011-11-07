@@ -131,10 +131,7 @@ static void spice_pulse_dispose(GObject *obj)
 
 static void spice_pulse_init(SpicePulse *pulse)
 {
-    SpicePulsePrivate *p;
-
-    p = pulse->priv = SPICE_PULSE_GET_PRIVATE(pulse);
-    memset(p, 0, sizeof(*p));
+    pulse->priv = SPICE_PULSE_GET_PRIVATE(pulse);
 }
 
 static void spice_pulse_class_init(SpicePulseClass *klass)
