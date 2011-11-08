@@ -153,26 +153,59 @@ static gboolean spice_usbredir_channel_open_device(
 }
 
 G_GNUC_INTERNAL
-gboolean spice_usbredir_channel_connect(SpiceUsbredirChannel *channel,
-                                        GUsbContext *context,
-                                        GUsbDevice *device,
-                                        GError **err)
+void spice_usbredir_channel_connect_async(SpiceUsbredirChannel *channel,
+                                          GUsbContext          *context,
+                                          GUsbDevice           *device,
+                                          GCancellable         *cancellable,
+                                          GAsyncReadyCallback   callback,
+                                          gpointer              user_data)
 {
     SpiceUsbredirChannelPrivate *priv = channel->priv;
+    GSimpleAsyncResult *result;
+    GError *err = NULL;
 
-    g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
+    g_return_if_fail(SPICE_IS_USBREDIR_CHANNEL(channel));
+    g_return_if_fail(context != NULL);
+    g_return_if_fail(device != NULL);
 
     SPICE_DEBUG("connecting usb channel %p", channel);
 
-    spice_channel_disconnect(SPICE_CHANNEL(channel), SPICE_CHANNEL_NONE);
+    result = g_simple_async_result_new(G_OBJECT(channel), callback, user_data,
+                                       spice_usbredir_channel_connect_async);
+
+    if (priv->device) {
+        g_simple_async_result_set_error(result,
+                            SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                            "Error channel is busy");
+        goto done;
+    }
 
     priv->context = g_object_ref(context);
     priv->device  = g_object_ref(device);
-    if (!spice_usbredir_channel_open_device(channel, err)) {
+    if (!spice_usbredir_channel_open_device(channel, &err)) {
+        g_simple_async_result_take_error(result, err);
         g_clear_object(&priv->context);
         g_clear_object(&priv->device);
-        return FALSE;
     }
+
+done:
+    g_simple_async_result_complete_in_idle(result);
+    g_object_unref(result);
+}
+
+G_GNUC_INTERNAL
+gboolean spice_usbredir_channel_connect_finish(SpiceUsbredirChannel *channel,
+                                               GAsyncResult         *res,
+                                               GError              **err)
+{
+    GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT(res);
+
+    g_return_val_if_fail(g_simple_async_result_is_valid(res, G_OBJECT(channel),
+                                     spice_usbredir_channel_connect_async),
+                         FALSE);
+
+    if (g_simple_async_result_propagate_error(result, err))
+        return FALSE;
 
     return TRUE;
 }

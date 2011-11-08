@@ -480,6 +480,21 @@ static void spice_usb_device_manager_dev_removed(GUsbDeviceList *devlist,
     g_signal_emit(manager, signals[DEVICE_REMOVED], 0, device);
     g_ptr_array_remove(priv->devices, device);
 }
+
+static void spice_usb_device_manager_channel_connect_cb(
+    GObject *gobject, GAsyncResult *channel_res, gpointer user_data)
+{
+    SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(gobject);
+    GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT(user_data);
+    GError *err = NULL;
+
+    spice_usbredir_channel_connect_finish(channel, channel_res, &err);
+    if (err) {
+        g_simple_async_result_take_error(result, err);
+    }
+    g_simple_async_result_complete(result);
+    g_object_unref(result);
+}
 #endif
 
 /* ------------------------------------------------------------------ */
@@ -635,13 +650,13 @@ void spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
         if (spice_usbredir_channel_get_device(channel))
             continue; /* Skip already used channels */
 
-        if (!spice_usbredir_channel_connect(channel, priv->context,
-                                            (GUsbDevice *)device, &e)) {
-            g_simple_async_result_take_error(result, e);
-            goto done;
-        }
-
-        goto done;
+        spice_usbredir_channel_connect_async(channel,
+                                 priv->context,
+                                 (GUsbDevice *)device,
+                                 cancellable,
+                                 spice_usb_device_manager_channel_connect_cb,
+                                 result);
+        return;
     }
 #endif
 

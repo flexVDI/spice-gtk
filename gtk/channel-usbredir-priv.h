@@ -28,10 +28,16 @@
 
 G_BEGIN_DECLS
 
-gboolean spice_usbredir_channel_connect(SpiceUsbredirChannel *channel,
-                                        GUsbContext *context,
-                                        GUsbDevice *device,
-                                        GError **err);
+void spice_usbredir_channel_connect_async(SpiceUsbredirChannel *channel,
+                                          GUsbContext          *context,
+                                          GUsbDevice           *device,
+                                          GCancellable         *cancellable,
+                                          GAsyncReadyCallback   callback,
+                                          gpointer              user_data);
+gboolean spice_usbredir_channel_connect_finish(SpiceUsbredirChannel *channel,
+                                               GAsyncResult         *res,
+                                               GError              **err);
+
 void spice_usbredir_channel_disconnect(SpiceUsbredirChannel *channel);
 
 GUsbDevice *spice_usbredir_channel_get_device(SpiceUsbredirChannel *channel);
