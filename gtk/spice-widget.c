@@ -1657,7 +1657,7 @@ void spice_display_mouse_ungrab(SpiceDisplay *display)
  *
  * Deprecated: 0.8: Use spice_gtk_session_copy_to_guest() instead
  **/
-GLIB_DEPRECATED_FOR(spice_gtk_session_copy_to_guest)
+G_GNUC_DEPRECATED_FOR(spice_gtk_session_copy_to_guest)
 void spice_display_copy_to_guest(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
@@ -1675,7 +1675,7 @@ void spice_display_copy_to_guest(SpiceDisplay *display)
  *
  * Deprecated: 0.8: Use spice_gtk_session_paste_from_guest() instead
  **/
-GLIB_DEPRECATED_FOR(spice_gtk_session_paste_from_guest)
+G_GNUC_DEPRECATED_FOR(spice_gtk_session_paste_from_guest)
 void spice_display_paste_from_guest(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);

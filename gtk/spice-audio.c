@@ -73,7 +73,7 @@ static void spice_audio_init(SpiceAudio *self G_GNUC_UNUSED)
  * Returns: a new #SpiceAudio instance or %NULL if no backend or failed.
  * Deprecated: 0.8: Use spice_audio_get() instead
  **/
-GLIB_DEPRECATED_FOR(spice_audio_get)
+G_GNUC_DEPRECATED_FOR(spice_audio_get)
 SpiceAudio *spice_audio_new(SpiceSession *session, GMainContext *context,
                             const char *name)
 {

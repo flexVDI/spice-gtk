@@ -15,6 +15,7 @@
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
+#include "glib-compat.h"
 #include "spice-client.h"
 #include "spice-common.h"
 #include "spice-marshal.h"
@@ -1666,7 +1667,7 @@ void spice_main_set_display(SpiceMainChannel *channel, int id,
  *
  * Deprecated: 0.6: use spice_main_clipboard_selection_grab() instead.
  **/
-GLIB_DEPRECATED_FOR(spice_main_clipboard_selection_grab)
+G_GNUC_DEPRECATED_FOR(spice_main_clipboard_selection_grab)
 void spice_main_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int ntypes)
 {
     spice_main_clipboard_selection_grab(channel, VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD, types, ntypes);
@@ -1702,7 +1703,7 @@ void spice_main_clipboard_selection_grab(SpiceMainChannel *channel, guint select
  *
  * Deprecated: 0.6: use spice_main_clipboard_selection_release() instead.
  **/
-GLIB_DEPRECATED_FOR(spice_main_clipboard_selection_release)
+G_GNUC_DEPRECATED_FOR(spice_main_clipboard_selection_release)
 void spice_main_clipboard_release(SpiceMainChannel *channel)
 {
     spice_main_clipboard_selection_release(channel, VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD);
@@ -1743,7 +1744,7 @@ void spice_main_clipboard_selection_release(SpiceMainChannel *channel, guint sel
  *
  * Deprecated: 0.6: use spice_main_clipboard_selection_notify() instead.
  **/
-GLIB_DEPRECATED_FOR(spice_main_clipboard_selection_notify)
+G_GNUC_DEPRECATED_FOR(spice_main_clipboard_selection_notify)
 void spice_main_clipboard_notify(SpiceMainChannel *channel,
                                  guint32 type, const guchar *data, size_t size)
 {
@@ -1783,7 +1784,7 @@ void spice_main_clipboard_selection_notify(SpiceMainChannel *channel, guint sele
  *
  * Deprecated: 0.6: use spice_main_clipboard_selection_request() instead.
  **/
-GLIB_DEPRECATED_FOR(spice_main_clipboard_selection_request)
+G_GNUC_DEPRECATED_FOR(spice_main_clipboard_selection_request)
 void spice_main_clipboard_request(SpiceMainChannel *channel, guint32 type)
 {
     spice_main_clipboard_selection_request(channel, VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD, type);
