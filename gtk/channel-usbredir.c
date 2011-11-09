@@ -118,23 +118,14 @@ static const spice_msg_handler usbredir_handlers[] = {
 /* ------------------------------------------------------------------ */
 /* private api                                                        */
 
-G_GNUC_INTERNAL
-gboolean spice_usbredir_channel_connect(SpiceUsbredirChannel *channel,
-                                        GUsbContext *context,
-                                        GUsbDevice *device,
-                                        GError **err)
+static gboolean spice_usbredir_channel_open_device(
+    SpiceUsbredirChannel *channel, GError **err)
 {
     SpiceUsbredirChannelPrivate *priv = channel->priv;
     libusb_device_handle *handle = NULL;
     int rc;
 
-    g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
-
-    SPICE_DEBUG("connecting usb channel %p", channel);
-
-    spice_usbredir_channel_disconnect(channel);
-
-    rc = libusb_open(_g_usb_device_get_device(device), &handle);
+    rc = libusb_open(_g_usb_device_get_device(priv->device), &handle);
     if (rc != 0) {
         g_set_error(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                     "Could not open usb device: %s [%i]",
@@ -143,7 +134,7 @@ gboolean spice_usbredir_channel_connect(SpiceUsbredirChannel *channel,
     }
 
     priv->catch_error = err;
-    priv->host = usbredirhost_open(_g_usb_context_get_context(context),
+    priv->host = usbredirhost_open(_g_usb_context_get_context(priv->context),
                                    handle, usbredir_log,
                                    usbredir_read_callback,
                                    usbredir_write_callback,
@@ -152,13 +143,36 @@ gboolean spice_usbredir_channel_connect(SpiceUsbredirChannel *channel,
                                    usbredirhost_fl_write_cb_owns_buffer);
     priv->catch_error = NULL;
     if (!priv->host) {
+        g_return_val_if_fail(err == NULL || *err != NULL, FALSE);
         return FALSE;
     }
 
+    spice_channel_connect(SPICE_CHANNEL(channel));
+
+    return TRUE;
+}
+
+G_GNUC_INTERNAL
+gboolean spice_usbredir_channel_connect(SpiceUsbredirChannel *channel,
+                                        GUsbContext *context,
+                                        GUsbDevice *device,
+                                        GError **err)
+{
+    SpiceUsbredirChannelPrivate *priv = channel->priv;
+
+    g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
+
+    SPICE_DEBUG("connecting usb channel %p", channel);
+
+    spice_channel_disconnect(SPICE_CHANNEL(channel), SPICE_CHANNEL_NONE);
+
     priv->context = g_object_ref(context);
     priv->device  = g_object_ref(device);
-
-    spice_channel_connect(SPICE_CHANNEL(channel));
+    if (!spice_usbredir_channel_open_device(channel, err)) {
+        g_clear_object(&priv->context);
+        g_clear_object(&priv->device);
+        return FALSE;
+    }
 
     return TRUE;
 }
