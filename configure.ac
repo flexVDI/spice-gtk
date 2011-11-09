@@ -315,15 +315,34 @@ AC_ARG_ENABLE([usbredir],
                  [Enable usbredir support @<:@default=yes@:>@]),
   [],
   [enable_usbredir="yes"])
+AC_ARG_ENABLE([polkit],
+  AS_HELP_STRING([--enable-polkit=@<:@yes/no@:>@],
+                 [Enable policykit support (for the usb acl helper)@<:@default=yes@:>@]),
+  [],
+  [enable_polkit="yes"])
 
 if test "x$enable_usbredir" = "xno"; then
   AM_CONDITIONAL(WITH_USBREDIR, false)
+  AM_CONDITIONAL(WITH_POLKIT, false)
 else
   PKG_CHECK_MODULES(GUDEV, gudev-1.0)
   PKG_CHECK_MODULES(LIBUSB, libusb-1.0 >= 1.0.9)
   PKG_CHECK_MODULES(LIBUSBREDIRHOST, libusbredirhost >= 0.3.1)
   AC_DEFINE(USE_USBREDIR, [1], [Define if supporting usbredir proxying])
   AM_CONDITIONAL(WITH_USBREDIR, true)
+  if test "x$enable_polkit" = "xno"; then
+    AM_CONDITIONAL(WITH_POLKIT, false)
+  else
+    PKG_CHECK_MODULES(POLKIT, polkit-gobject-1)
+    AC_CHECK_HEADER([acl/libacl.h],,
+                    AC_MSG_ERROR([cannot find headers for libacl]))
+    AC_CHECK_LIB([acl], [acl_get_file], [ACL_LIBS=-lacl] [AC_SUBST(ACL_LIBS)],
+                 AC_MSG_ERROR([cannot find libacl]))
+    AC_DEFINE(USE_POLKIT, [1], [Define if supporting polkit])
+    AM_CONDITIONAL(WITH_POLKIT, true)
+    POLICYDIR=`${PKG_CONFIG} polkit-gobject-1 --variable=policydir`
+    AC_SUBST(POLICYDIR)
+  fi
 fi
 
 AC_ARG_WITH([coroutine],

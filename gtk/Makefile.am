@@ -21,6 +21,10 @@ EXTRA_DIST =					\
 	$(NULL)
 
 bin_PROGRAMS = spicy snappy spicy-stats
+if WITH_POLKIT
+bin_PROGRAMS += spice-client-glib-usb-acl-helper
+endif
+
 lib_LTLIBRARIES = \
 	libspice-client-glib-2.0.la
 
@@ -188,6 +192,14 @@ else
 GUSB_SRCS =
 endif
 
+if WITH_POLKIT
+USB_ACL_HELPER_SRCS = \
+	usb-acl-helper.c		\
+	usb-acl-helper.h
+else
+USB_ACL_HELPER_SRCS =
+endif
+
 libspice_client_glib_2_0_la_SOURCES =	\
 	glib-compat.h			\
 	spice-audio.c			\
@@ -224,6 +236,7 @@ libspice_client_glib_2_0_la_SOURCES =	\
 	smartcard-manager-priv.h	\
 	usb-device-manager.c		\
 	$(GUSB_SRCS)			\
+	$(USB_ACL_HELPER_SRCS)		\
 	\
 	decode.h			\
 	decode-glz.c			\
@@ -362,6 +375,32 @@ spicy_CPPFLAGS =			\
 	$(XRANDR_CFLAGS)		\
 	$(GTHREAD_CFLAGS)		\
 	$(NULL)
+
+
+if WITH_POLKIT
+spice_client_glib_usb_acl_helper_SOURCES =	\
+	spice-client-glib-usb-acl-helper.c	\
+	$(NULL)
+
+spice_client_glib_usb_acl_helper_LDADD =	\
+	$(GLIB2_LIBS)				\
+	$(GIO_LIBS)				\
+	$(POLKIT_LIBS)				\
+	$(ACL_LIBS)				\
+	$(NULL)
+
+spice_client_glib_usb_acl_helper_CPPFLAGS =	\
+	$(SPICE_CFLAGS)				\
+	$(GLIB2_CFLAGS)				\
+	$(GIO_CFLAGS)				\
+	$(POLKIT_CFLAGS)			\
+	$(NULL)
+
+install-exec-hook:
+	-chown root $(DESTDIR)$(bindir)/spice-client-glib-usb-acl-helper
+	-chmod u+s  $(DESTDIR)$(bindir)/spice-client-glib-usb-acl-helper
+
+endif
 
 
 snappy_SOURCES =			\

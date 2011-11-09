@@ -26,6 +26,9 @@
 #include <gusb/gusb-context-private.h>
 #include <gusb/gusb-device-private.h>
 #include <gusb/gusb-util.h>
+#if USE_POLKIT
+#include "usb-acl-helper.h"
+#endif
 #include "channel-usbredir-priv.h"
 #endif
 
@@ -51,6 +54,16 @@
 #define SPICE_USBREDIR_CHANNEL_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_USBREDIR_CHANNEL, SpiceUsbredirChannelPrivate))
 
+enum SpiceUsbredirChannelState {
+    STATE_DISCONNECTED,
+#if USE_POLKIT
+    STATE_WAITING_FOR_ACL_HELPER,
+#endif
+    STATE_CONNECTING,
+    STATE_CONNECTED,
+    STATE_DISCONNECTING,
+};
+
 struct _SpiceUsbredirChannelPrivate {
     GUsbContext *context;
     GUsbDevice *device;
@@ -61,7 +74,11 @@ struct _SpiceUsbredirChannelPrivate {
     const uint8_t *read_buf;
     int read_buf_size;
     SpiceMsgOut *msg_out;
-    gboolean up;
+    enum SpiceUsbredirChannelState state;
+#if USE_POLKIT
+    GSimpleAsyncResult *result;
+    SpiceUsbAclHelper *acl_helper;
+#endif
 };
 
 static void spice_usbredir_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg);
@@ -111,6 +128,27 @@ static void spice_usbredir_channel_dispose(GObject *obj)
         G_OBJECT_CLASS(spice_usbredir_channel_parent_class)->dispose(obj);
 }
 
+/*
+ * Note we don't have a finalize to unref our : device / context / acl_helper /
+ * result references. The reason for this is that depending on our state they
+ * are either:
+ * 1) Already unreferenced
+ * 2) Will be unreferenced by the disconnect call from dispose
+ * 3) Will be unreferenced by spice_usbredir_channel_open_acl_cb
+ *
+ * Now the last one may seem like an issue, since what will happen if
+ * spice_usbredir_channel_open_acl_cb will run after finalization?
+ *
+ * This will never happens since the GSimpleAsyncResult created before we
+ * get into the STATE_WAITING_FOR_ACL_HELPER takes a reference to its
+ * source object, which is our SpiceUsbredirChannel object, so
+ * the finalize won't hapen until spice_usbredir_channel_open_acl_cb runs,
+ * and unrefs priv->result which will in turn unref ourselve once the
+ * complete_in_idle call it does has completed. And once
+ * spice_usbredir_channel_open_acl_cb has run, all references we hold have
+ * been released even in the 3th scenario.
+ */
+
 static const spice_msg_handler usbredir_handlers[] = {
     [ SPICE_MSG_SPICEVMC_DATA ] = usbredir_handle_msg,
 };
@@ -124,6 +162,12 @@ static gboolean spice_usbredir_channel_open_device(
     SpiceUsbredirChannelPrivate *priv = channel->priv;
     libusb_device_handle *handle = NULL;
     int rc;
+
+    g_return_val_if_fail(priv->state == STATE_DISCONNECTED
+#if USE_POLKIT
+                         || priv->state == STATE_WAITING_FOR_ACL_HELPER
+#endif
+                         , FALSE);
 
     rc = libusb_open(_g_usb_device_get_device(priv->device), &handle);
     if (rc != 0) {
@@ -148,9 +192,46 @@ static gboolean spice_usbredir_channel_open_device(
     }
 
     spice_channel_connect(SPICE_CHANNEL(channel));
+    priv->state = STATE_CONNECTING;
 
     return TRUE;
 }
+
+#if USE_POLKIT
+static void spice_usbredir_channel_open_acl_cb(
+    GObject *gobject, GAsyncResult *acl_res, gpointer user_data)
+{
+    SpiceUsbAclHelper *acl_helper = SPICE_USB_ACL_HELPER(gobject);
+    SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(user_data);
+    SpiceUsbredirChannelPrivate *priv = channel->priv;
+    GError *err = NULL;
+
+    g_return_if_fail(acl_helper == priv->acl_helper);
+    g_return_if_fail(priv->state == STATE_WAITING_FOR_ACL_HELPER ||
+                     priv->state == STATE_DISCONNECTING);
+
+    spice_usb_acl_helper_open_acl_finish(acl_helper, acl_res, &err);
+    if (!err && priv->state == STATE_DISCONNECTING) {
+        err = g_error_new_literal(G_IO_ERROR, G_IO_ERROR_CANCELLED,
+                                  "USB redirection channel connect cancelled");
+    }
+    if (!err) {
+        spice_usbredir_channel_open_device(channel, &err);
+    }
+    if (err) {
+        g_simple_async_result_take_error(priv->result, err);
+        g_clear_object(&priv->context);
+        g_clear_object(&priv->device);
+        priv->state = STATE_DISCONNECTED;
+    }
+
+    spice_usb_acl_helper_close_acl(priv->acl_helper);
+    g_clear_object(&priv->acl_helper);
+
+    g_simple_async_result_complete_in_idle(priv->result);
+    g_clear_object(&priv->result);
+}
+#endif
 
 G_GNUC_INTERNAL
 void spice_usbredir_channel_connect_async(SpiceUsbredirChannel *channel,
@@ -173,7 +254,7 @@ void spice_usbredir_channel_connect_async(SpiceUsbredirChannel *channel,
     result = g_simple_async_result_new(G_OBJECT(channel), callback, user_data,
                                        spice_usbredir_channel_connect_async);
 
-    if (priv->device) {
+    if (priv->state != STATE_DISCONNECTED) {
         g_simple_async_result_set_error(result,
                             SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                             "Error channel is busy");
@@ -183,9 +264,22 @@ void spice_usbredir_channel_connect_async(SpiceUsbredirChannel *channel,
     priv->context = g_object_ref(context);
     priv->device  = g_object_ref(device);
     if (!spice_usbredir_channel_open_device(channel, &err)) {
+#if USE_POLKIT
+        priv->result = result;
+        priv->state = STATE_WAITING_FOR_ACL_HELPER;
+        priv->acl_helper = spice_usb_acl_helper_new();
+        spice_usb_acl_helper_open_acl(priv->acl_helper,
+                                      g_usb_device_get_bus(device),
+                                      g_usb_device_get_address(device),
+                                      cancellable,
+                                      spice_usbredir_channel_open_acl_cb,
+                                      channel);
+        return;
+#else
         g_simple_async_result_take_error(result, err);
         g_clear_object(&priv->context);
         g_clear_object(&priv->device);
+#endif
     }
 
 done:
@@ -217,15 +311,27 @@ void spice_usbredir_channel_disconnect(SpiceUsbredirChannel *channel)
 
     SPICE_DEBUG("disconnecting usb channel %p", channel);
 
-    spice_channel_disconnect(SPICE_CHANNEL(channel), SPICE_CHANNEL_NONE);
-    priv->up = FALSE;
-
-    if (priv->host) {
+    switch (priv->state) {
+    case STATE_DISCONNECTED:
+    case STATE_DISCONNECTING:
+        break;
+#if USE_POLKIT
+    case STATE_WAITING_FOR_ACL_HELPER:
+        priv->state = STATE_DISCONNECTING;
+        /* We're still waiting for the acl helper -> cancel it */
+        spice_usb_acl_helper_close_acl(priv->acl_helper);
+        break;
+#endif
+    case STATE_CONNECTING:
+    case STATE_CONNECTED:
+        spice_channel_disconnect(SPICE_CHANNEL(channel), SPICE_CHANNEL_NONE);
         /* This also closes the libusb handle we passed to its _open */
         usbredirhost_close(priv->host);
         priv->host = NULL;
         g_clear_object(&priv->device);
         g_clear_object(&priv->context);
+        priv->state = STATE_DISCONNECTED;
+        break;
     }
 }
 
@@ -243,7 +349,8 @@ void spice_usbredir_channel_do_write(SpiceUsbredirChannel *channel)
     /* No recursion allowed! */
     g_return_if_fail(priv->msg_out == NULL);
 
-    if (!priv->up || !usbredirhost_has_data_to_write(priv->host))
+    if (priv->state != STATE_CONNECTED ||
+            !usbredirhost_has_data_to_write(priv->host))
         return;
 
     priv->msg_out = spice_msg_out_new(SPICE_CHANNEL(channel),
@@ -345,7 +452,9 @@ static void spice_usbredir_channel_up(SpiceChannel *c)
     SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(c);
     SpiceUsbredirChannelPrivate *priv = channel->priv;
 
-    priv->up = TRUE;
+    g_return_if_fail(priv->state == STATE_CONNECTING);
+
+    priv->state = STATE_CONNECTED;
     /* Flush any pending writes */
     spice_usbredir_channel_do_write(channel);
 }
