@@ -227,6 +227,8 @@ static void spice_usbredir_channel_open_acl_cb(
 
     spice_usb_acl_helper_close_acl(priv->acl_helper);
     g_clear_object(&priv->acl_helper);
+    g_object_set(spice_channel_get_session(SPICE_CHANNEL(channel)),
+                 "inhibit-keyboard-grab", FALSE, NULL);
 
     g_simple_async_result_complete_in_idle(priv->result);
     g_clear_object(&priv->result);
@@ -268,6 +270,8 @@ void spice_usbredir_channel_connect_async(SpiceUsbredirChannel *channel,
         priv->result = result;
         priv->state = STATE_WAITING_FOR_ACL_HELPER;
         priv->acl_helper = spice_usb_acl_helper_new();
+        g_object_set(spice_channel_get_session(SPICE_CHANNEL(channel)),
+                     "inhibit-keyboard-grab", TRUE, NULL);
         spice_usb_acl_helper_open_acl(priv->acl_helper,
                                       g_usb_device_get_bus(device),
                                       g_usb_device_get_address(device),

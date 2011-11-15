@@ -46,6 +46,7 @@ struct _SpiceDisplayPrivate {
 
     /* options */
     bool                    keyboard_grab_enable;
+    gboolean                keyboard_grab_inhibit;
     bool                    mouse_grab_enable;
     bool                    resize_guest_enable;
 

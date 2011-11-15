@@ -96,6 +96,7 @@ enum {
     PROP_SMARTCARD_CERTIFICATES,
     PROP_SMARTCARD_DB,
     PROP_USBREDIR,
+    PROP_INHIBIT_KEYBOARD_GRAB,
     PROP_DISABLE_EFFECTS,
     PROP_COLOR_DEPTH,
 };
@@ -360,6 +361,9 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_USBREDIR:
         g_value_set_boolean(value, s->usbredir);
         break;
+    case PROP_INHIBIT_KEYBOARD_GRAB:
+        g_value_set_boolean(value, s->inhibit_keyboard_grab);
+        break;
     case PROP_DISABLE_EFFECTS:
         g_value_set_boxed(value, s->disable_effects);
         break;
@@ -451,6 +455,9 @@ static void spice_session_set_property(GObject      *gobject,
         break;
     case PROP_USBREDIR:
         s->usbredir = g_value_get_boolean(value);
+        break;
+    case PROP_INHIBIT_KEYBOARD_GRAB:
+        s->inhibit_keyboard_grab = g_value_get_boolean(value);
         break;
     case PROP_DISABLE_EFFECTS:
         g_strfreev(s->disable_effects);
@@ -796,6 +803,24 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                           TRUE,
                           G_PARAM_READWRITE | G_PARAM_CONSTRUCT |
                           G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceSession::inhibit-keyboard-grab
+     *
+     * This boolean is set by the usbredir channel to indicate to #SpiceDisplay
+     * that the keyboard grab should be temporarily released, because it is
+     * going to invoke policykit. It will get reset when the usbredir channel
+     * is done with polickit.
+     *
+     * Since: 0.8
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_INHIBIT_KEYBOARD_GRAB,
+         g_param_spec_boolean("inhibit-keyboard-grab",
+                        "Inhibit Keyboard Grab",
+                        "Request that SpiceDisplays don't grab the keyboard",
+                        FALSE,
+                        G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
     /**
      * SpiceSession::channel-new:

@@ -222,6 +222,22 @@ static void gtk_session_property_changed(GObject    *gobject,
     g_object_notify(G_OBJECT(display), g_param_spec_get_name(pspec));
 }
 
+static void session_inhibit_keyboard_grab_changed(GObject    *gobject,
+                                                  GParamSpec *pspec,
+                                                  gpointer    user_data)
+{
+    SpiceDisplay *display = user_data;
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    g_object_get(d->session, "inhibit-keyboard-grab",
+                 &d->keyboard_grab_inhibit, NULL);
+    if (d->keyboard_grab_inhibit) {
+        try_keyboard_ungrab(display);
+    } else {
+        try_keyboard_grab(display);
+    }
+}
+
 static void spice_display_dispose(GObject *obj)
 {
     SpiceDisplay *display = SPICE_DISPLAY(obj);
@@ -330,6 +346,10 @@ spice_display_constructor(GType                  gtype,
     g_signal_connect(d->gtk_session, "notify::auto-clipboard",
                      G_CALLBACK(gtk_session_property_changed), display);
 
+    g_signal_connect(d->session, "notify::inhibit-keyboard-grab",
+                     G_CALLBACK(session_inhibit_keyboard_grab_changed),
+                     display);
+
     return obj;
 }
 
@@ -414,6 +434,8 @@ static void try_keyboard_grab(SpiceDisplay *display)
     if (d->keyboard_grab_active)
         return;
 
+    if (d->keyboard_grab_inhibit)
+        return;
     if (!d->keyboard_grab_enable)
         return;
     if (!d->keyboard_have_focus)

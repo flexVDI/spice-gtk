@@ -59,6 +59,10 @@ struct _SpiceSessionPrivate {
     /* whether to enable USB redirection */
     gboolean          usbredir;
 
+    /* Set when a usbredir channel has requested the keyboard grab to be
+       temporarily released (because it is going to invoke policykit) */
+    gboolean          inhibit_keyboard_grab;
+
     GStrv             disable_effects;
     gint              color_depth;
 
