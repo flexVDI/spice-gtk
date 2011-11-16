@@ -4,6 +4,7 @@ if WITH_VALA
 vapidir = $(datadir)/vala/vapi
 vapi_DATA =						\
 	spice-client-glib-2.0.vapi			\
+	spice-client-glib-2.0.deps			\
 	spice-client-gtk-$(SPICE_GTK_API_VERSION).deps	\
 	spice-client-gtk-$(SPICE_GTK_API_VERSION).vapi	\
 	$(NULL)

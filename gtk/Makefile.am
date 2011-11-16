@@ -571,7 +571,7 @@ gtk_introspection_files =			\
 	$(NULL)
 
 SpiceClientGLib-2.0.gir: libspice-client-glib-2.0.la
-SpiceClientGLib_2_0_gir_INCLUDES = GObject-2.0
+SpiceClientGLib_2_0_gir_INCLUDES = GObject-2.0 Gio-2.0
 SpiceClientGLib_2_0_gir_CFLAGS = $(SPICE_COMMON_CPPFLAGS)
 SpiceClientGLib_2_0_gir_LIBS = libspice-client-glib-2.0.la
 SpiceClientGLib_2_0_gir_FILES = $(glib_introspection_files)

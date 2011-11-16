@@ -22,6 +22,7 @@
 #define __SPICE_USB_DEVICE_MANAGER_H__
 
 #include "spice-client.h"
+#include <gio/gio.h>
 
 G_BEGIN_DECLS
 
@@ -96,9 +97,15 @@ GPtrArray *spice_usb_device_manager_get_devices(SpiceUsbDeviceManager *manager);
 
 gboolean spice_usb_device_manager_is_device_connected(SpiceUsbDeviceManager *manager,
                                                       SpiceUsbDevice *device);
-gboolean spice_usb_device_manager_connect_device(SpiceUsbDeviceManager *manager,
-                                                 SpiceUsbDevice *device,
-                                                 GError **err);
+void spice_usb_device_manager_connect_device_async(
+                                             SpiceUsbDeviceManager *manager,
+                                             SpiceUsbDevice *device,
+                                             GCancellable *cancellable,
+                                             GAsyncReadyCallback callback,
+                                             gpointer user_data);
+gboolean spice_usb_device_manager_connect_device_finish(
+    SpiceUsbDeviceManager *self, GAsyncResult *res, GError **err);
+
 void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *manager,
                                                 SpiceUsbDevice *device);
 

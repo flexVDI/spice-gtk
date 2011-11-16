@@ -22,7 +22,6 @@
 #include "config.h"
 
 #include <glib-object.h>
-#include <gio/gio.h> /* For GInitable */
 
 #include "glib-compat.h"
 
@@ -424,6 +423,27 @@ static gboolean spice_usb_device_manager_source_callback(gpointer user_data)
     return TRUE;
 }
 
+static void spice_usb_device_manager_auto_connect_cb(GObject      *gobject,
+                                                     GAsyncResult *res,
+                                                     gpointer      user_data)
+{
+    SpiceUsbDeviceManager *self = SPICE_USB_DEVICE_MANAGER(gobject);
+    SpiceUsbDevice *device = user_data;
+    GError *err = NULL;
+
+    spice_usb_device_manager_connect_device_finish(self, res, &err);
+    if (err) {
+        gchar *desc = spice_usb_device_get_description(device);
+        g_prefix_error(&err, "Could not auto-redirect %s: ", desc);
+        g_free(desc);
+
+        g_warning("%s", err->message);
+        g_signal_emit(self, signals[AUTO_CONNECT_FAILED], 0, device, err);
+        g_error_free(err);
+    }
+    g_object_unref(device);
+}
+
 static void spice_usb_device_manager_dev_added(GUsbDeviceList *devlist,
                                                GUsbDevice     *_device,
                                                GUdevDevice    *udev,
@@ -436,17 +456,9 @@ static void spice_usb_device_manager_dev_added(GUsbDeviceList *devlist,
     g_ptr_array_add(priv->devices, g_object_ref(device));
 
     if (priv->auto_connect) {
-        GError *err = NULL;
-        spice_usb_device_manager_connect_device(manager, device, &err);
-        if (err) {
-            gchar *desc = spice_usb_device_get_description(device);
-            g_prefix_error(&err, "Could not auto-redirect %s: ", desc);
-            g_free(desc);
-
-            g_warning("%s", err->message);
-            g_signal_emit(manager, signals[AUTO_CONNECT_FAILED], 0, device, err);
-            g_error_free(err);
-        }
+        spice_usb_device_manager_connect_device_async(manager, device, NULL,
+                                   spice_usb_device_manager_auto_connect_cb,
+                                   g_object_ref(device));
     }
 
     SPICE_DEBUG("device added %p", device);
@@ -570,36 +582,47 @@ gboolean spice_usb_device_manager_is_device_connected(SpiceUsbDeviceManager *sel
 }
 
 /**
- * spice_usb_device_manager_connect_device:
+ * spice_usb_device_manager_connect_device_async:
  * @manager: the #SpiceUsbDeviceManager manager
  * @device: a #SpiceUsbDevice to redirect
- *
- * Returns: %TRUE if @device has been successfully connected and
- * associated with a redirection chanel
+ * @cancellable: a #GCancellable or NULL
+ * @callback: a #GAsyncReadyCallback to call when the request is satisfied
+ * @user_data: data to pass to callback
  */
-gboolean spice_usb_device_manager_connect_device(SpiceUsbDeviceManager *self,
-                                                 SpiceUsbDevice *device, GError **err)
+void spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
+                                             SpiceUsbDevice *device,
+                                             GCancellable *cancellable,
+                                             GAsyncReadyCallback callback,
+                                             gpointer user_data)
 {
-    g_return_val_if_fail(SPICE_IS_USB_DEVICE_MANAGER(self), FALSE);
-    g_return_val_if_fail(device != NULL, FALSE);
-    g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
+    GSimpleAsyncResult *result;
+
+    g_return_if_fail(SPICE_IS_USB_DEVICE_MANAGER(self));
+    g_return_if_fail(device != NULL);
 
     SPICE_DEBUG("connecting device %p", device);
 
+    result = g_simple_async_result_new(G_OBJECT(self), callback, user_data,
+                               spice_usb_device_manager_connect_device_async);
+
 #ifdef USE_USBREDIR
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
+    GError *e = NULL;
     guint i;
 
     if (spice_usb_device_manager_is_device_connected(self, device)) {
-        g_set_error_literal(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+        g_simple_async_result_set_error(result,
+                            SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                             "Cannot connect an already connected usb device");
-        return FALSE;
+        goto done;
     }
 
     if (!priv->source) {
-        priv->source = g_usb_source_new(priv->main_context, priv->context, err);
-        if (*err)
-            return FALSE;
+        priv->source = g_usb_source_new(priv->main_context, priv->context, &e);
+        if (e) {
+            g_simple_async_result_take_error(result, e);
+            goto done;
+        }
 
         g_usb_source_set_callback(priv->source,
                                   spice_usb_device_manager_source_callback,
@@ -612,14 +635,39 @@ gboolean spice_usb_device_manager_connect_device(SpiceUsbDeviceManager *self,
         if (spice_usbredir_channel_get_device(channel))
             continue; /* Skip already used channels */
 
-        return spice_usbredir_channel_connect(channel, priv->context,
-                                              (GUsbDevice *)device, err);
+        if (!spice_usbredir_channel_connect(channel, priv->context,
+                                            (GUsbDevice *)device, &e)) {
+            g_simple_async_result_take_error(result, e);
+            goto done;
+        }
+
+        goto done;
     }
 #endif
 
-    g_set_error_literal(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
-                        "No free USB channel");
-    return FALSE;
+    g_simple_async_result_set_error(result,
+                            SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                            "No free USB channel");
+#ifdef USE_USBREDIR
+done:
+#endif
+    g_simple_async_result_complete_in_idle(result);
+    g_object_unref(result);
+}
+
+gboolean spice_usb_device_manager_connect_device_finish(
+    SpiceUsbDeviceManager *self, GAsyncResult *res, GError **err)
+{
+    GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT(res);
+
+    g_return_val_if_fail(g_simple_async_result_is_valid(res, G_OBJECT(self),
+                               spice_usb_device_manager_connect_device_async),
+                         FALSE);
+
+    if (g_simple_async_result_propagate_error(simple, err))
+        return FALSE;
+
+    return TRUE;
 }
 
 /**
