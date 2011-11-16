@@ -786,7 +786,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
      * If set to TRUE, the usbredir channel will be enabled and USB devices
      * can be redirected to the guest
      *
-     * Since: 0.7
+     * Since: 0.8
      **/
     g_object_class_install_property
         (gobject_class, PROP_USBREDIR,
