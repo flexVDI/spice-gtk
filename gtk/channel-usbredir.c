@@ -66,7 +66,7 @@ struct _SpiceUsbredirChannelPrivate {
 
 static void spice_usbredir_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg);
 static void spice_usbredir_channel_up(SpiceChannel *channel);
-static void spice_usbredir_channel_finalize(GObject *obj);
+static void spice_usbredir_channel_dispose(GObject *obj);
 static void usbredir_handle_msg(SpiceChannel *channel, SpiceMsgIn *in);
 
 static void usbredir_log(void *user_data, int level, const char *msg);
@@ -91,7 +91,7 @@ static void spice_usbredir_channel_class_init(SpiceUsbredirChannelClass *klass)
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
     SpiceChannelClass *channel_class = SPICE_CHANNEL_CLASS(klass);
 
-    gobject_class->finalize     = spice_usbredir_channel_finalize;
+    gobject_class->dispose      = spice_usbredir_channel_dispose;
     channel_class->handle_msg   = spice_usbredir_handle_msg;
     channel_class->channel_up   = spice_usbredir_channel_up;
 
@@ -100,14 +100,15 @@ static void spice_usbredir_channel_class_init(SpiceUsbredirChannelClass *klass)
 }
 
 #ifdef USE_USBREDIR
-static void spice_usbredir_channel_finalize(GObject *obj)
+static void spice_usbredir_channel_dispose(GObject *obj)
 {
     SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(obj);
 
     spice_usbredir_channel_disconnect(channel);
 
-    if (G_OBJECT_CLASS(spice_usbredir_channel_parent_class)->finalize)
-        G_OBJECT_CLASS(spice_usbredir_channel_parent_class)->finalize(obj);
+    /* Chain up to the parent class */
+    if (G_OBJECT_CLASS(spice_usbredir_channel_parent_class)->dispose)
+        G_OBJECT_CLASS(spice_usbredir_channel_parent_class)->dispose(obj);
 }
 
 static const spice_msg_handler usbredir_handlers[] = {
