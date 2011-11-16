@@ -46,11 +46,12 @@
  * from the Spice client to the VM. This channel handles these messages.
  */
 
+#ifdef USE_USBREDIR
+
 #define SPICE_USBREDIR_CHANNEL_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_USBREDIR_CHANNEL, SpiceUsbredirChannelPrivate))
 
 struct _SpiceUsbredirChannelPrivate {
-#ifdef USE_USBREDIR
     GUsbContext *context;
     GUsbDevice *device;
     struct usbredirhost *host;
@@ -61,42 +62,32 @@ struct _SpiceUsbredirChannelPrivate {
     int read_buf_size;
     SpiceMsgOut *msg_out;
     gboolean up;
-#endif
 };
-
-G_DEFINE_TYPE(SpiceUsbredirChannel, spice_usbredir_channel, SPICE_TYPE_CHANNEL)
 
 static void spice_usbredir_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg);
 static void spice_usbredir_channel_up(SpiceChannel *channel);
+static void spice_usbredir_channel_finalize(GObject *obj);
 static void usbredir_handle_msg(SpiceChannel *channel, SpiceMsgIn *in);
 
-#ifdef USE_USBREDIR
 static void usbredir_log(void *user_data, int level, const char *msg);
 static int usbredir_read_callback(void *user_data, uint8_t *data, int count);
 static int usbredir_write_callback(void *user_data, uint8_t *data, int count);
 #endif
 
+G_DEFINE_TYPE(SpiceUsbredirChannel, spice_usbredir_channel, SPICE_TYPE_CHANNEL)
+
 /* ------------------------------------------------------------------ */
 
 static void spice_usbredir_channel_init(SpiceUsbredirChannel *channel)
 {
-    channel->priv = SPICE_USBREDIR_CHANNEL_GET_PRIVATE(channel);
-}
-
-static void spice_usbredir_channel_finalize(GObject *obj)
-{
 #ifdef USE_USBREDIR
-    SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(obj);
-
-    spice_usbredir_channel_disconnect(channel);
+    channel->priv = SPICE_USBREDIR_CHANNEL_GET_PRIVATE(channel);
 #endif
-
-    if (G_OBJECT_CLASS(spice_usbredir_channel_parent_class)->finalize)
-        G_OBJECT_CLASS(spice_usbredir_channel_parent_class)->finalize(obj);
 }
 
 static void spice_usbredir_channel_class_init(SpiceUsbredirChannelClass *klass)
 {
+#ifdef USE_USBREDIR
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
     SpiceChannelClass *channel_class = SPICE_CHANNEL_CLASS(klass);
 
@@ -105,13 +96,23 @@ static void spice_usbredir_channel_class_init(SpiceUsbredirChannelClass *klass)
     channel_class->channel_up   = spice_usbredir_channel_up;
 
     g_type_class_add_private(klass, sizeof(SpiceUsbredirChannelPrivate));
+#endif
+}
+
+#ifdef USE_USBREDIR
+static void spice_usbredir_channel_finalize(GObject *obj)
+{
+    SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(obj);
+
+    spice_usbredir_channel_disconnect(channel);
+
+    if (G_OBJECT_CLASS(spice_usbredir_channel_parent_class)->finalize)
+        G_OBJECT_CLASS(spice_usbredir_channel_parent_class)->finalize(obj);
 }
 
 static const spice_msg_handler usbredir_handlers[] = {
     [ SPICE_MSG_SPICEVMC_DATA ] = usbredir_handle_msg,
 };
-
-#ifdef USE_USBREDIR
 
 /* ------------------------------------------------------------------ */
 /* private api                                                        */
@@ -272,8 +273,6 @@ static int usbredir_write_callback(void *user_data, uint8_t *data, int count)
     return count;
 }
 
-#endif /* USE_USBREDIR */
-
 /* --------------------------------------------------------------------- */
 /* coroutine context                                                     */
 static void spice_usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *msg)
@@ -295,19 +294,16 @@ static void spice_usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *msg)
 
 static void spice_usbredir_channel_up(SpiceChannel *c)
 {
-#ifdef USE_USBREDIR
     SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(c);
     SpiceUsbredirChannelPrivate *priv = channel->priv;
 
     priv->up = TRUE;
     /* Flush any pending writes */
     spice_usbredir_channel_do_write(channel);
-#endif
 }
 
 static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
 {
-#ifdef USE_USBREDIR
     SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(c);
     SpiceUsbredirChannelPrivate *priv = channel->priv;
     int size;
@@ -325,5 +321,6 @@ static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
     usbredirhost_read_guest_data(priv->host);
     /* Send any acks, etc. which may be queued now */
     spice_usbredir_channel_do_write(channel);
-#endif
 }
+
+#endif /* USE_USBREDIR */
