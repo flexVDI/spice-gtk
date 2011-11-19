@@ -443,7 +443,7 @@ static void spice_usb_device_manager_auto_connect_cb(GObject      *gobject,
         g_prefix_error(&err, "Could not auto-redirect %s: ", desc);
         g_free(desc);
 
-        g_warning("%s", err->message);
+        SPICE_DEBUG("%s", err->message);
         g_signal_emit(self, signals[AUTO_CONNECT_FAILED], 0, device, err);
         g_error_free(err);
     }
