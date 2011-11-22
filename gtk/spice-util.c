@@ -148,6 +148,19 @@ closure_invalidated_cb (gpointer ctx_,
 }
 
 /* Copied from tp_g_signal_connect_object. See documentation. */
+/**
+  * spice_g_signal_connect_object: (skip)
+  * @instance: the instance to connect to.
+  * @detailed_signal: a string of the form "signal-name::detail".
+  * @c_handler: the #GCallback to connect.
+  * @gobject: the object to pass as data to @c_handler.
+  * @connect_flags: a combination of #GConnectFlags.
+  *
+  * Similar to g_signal_connect_object() but will delete connection
+  * when any of the objects is destroyed.
+  *
+  * Returns: the handler id.
+  */
 gulong spice_g_signal_connect_object (gpointer instance,
                                       const gchar *detailed_signal,
                                       GCallback c_handler,

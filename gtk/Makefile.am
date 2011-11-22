@@ -590,6 +590,7 @@ glib_introspection_files =			\
 	spice-channel.c				\
 	spice-glib-enums.c			\
 	spice-option.c				\
+	spice-util.c				\
 	channel-cursor.c			\
 	channel-display.c			\
 	channel-inputs.c			\
@@ -598,6 +599,7 @@ glib_introspection_files =			\
 	channel-record.c			\
 	channel-smartcard.c			\
 	channel-usbredir.c			\
+	smartcard-manager.c			\
 	usb-device-manager.c            	\
 	$(NULL)
 

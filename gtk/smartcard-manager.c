@@ -246,7 +246,7 @@ static SpiceSmartcardManager *spice_smartcard_manager_new(void)
  * to it. A new SpiceSmartcardManager instance will be created the first
  * time this function is called
  *
- * Returns: a pointer to the #SpiceSmartcardManager singleton
+ * Returns: (transfer none): a weak reference to the #SpiceSmartcardManager
  */
 SpiceSmartcardManager *spice_smartcard_manager_get(void)
 {
