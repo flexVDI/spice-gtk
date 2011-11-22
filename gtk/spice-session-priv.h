@@ -37,6 +37,7 @@ struct _SpiceSessionPrivate {
     GByteArray        *pubkey;
     char              *cert_subject;
     guint             verify;
+    gboolean          read_only;
 
     /* whether to enable audio */
     gboolean          audio;

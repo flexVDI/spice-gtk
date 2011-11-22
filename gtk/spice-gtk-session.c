@@ -77,6 +77,7 @@ static void channel_new(SpiceSession *session, SpiceChannel *channel,
                         gpointer user_data);
 static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
                             gpointer user_data);
+static gboolean read_only(SpiceGtkSession *self);
 
 /* ------------------------------------------------------------------ */
 /* gobject glue                                                       */
@@ -477,7 +478,7 @@ static void clipboard_owner_change(GtkClipboard        *clipboard,
         }
         s->clipboard_by_guest[selection] = FALSE;
         s->clip_hasdata[selection] = TRUE;
-        if (s->auto_clipboard_enable)
+        if (s->auto_clipboard_enable && !read_only(self))
             gtk_clipboard_request_targets(clipboard, clipboard_get_targets,
                                           self);
         break;
@@ -620,7 +621,9 @@ static gboolean clipboard_grab(SpiceMainChannel *main, guint selection,
     /* Receiving a grab implies we've released our own grab */
     s->clip_grabbed[selection] = FALSE;
 
-    if (!s->auto_clipboard_enable || s->nclip_targets[selection] == 0)
+    if (read_only(self) ||
+        !s->auto_clipboard_enable ||
+        s->nclip_targets[selection] == 0)
         goto skip_grab_clipboard;
 
     if (!gtk_clipboard_set_with_data(cb, targets, i, clipboard_get,
@@ -691,6 +694,9 @@ static gboolean clipboard_request(SpiceMainChannel *main, guint selection,
     GdkAtom atom;
     GtkClipboard* cb;
     int m;
+
+    if (read_only(self))
+        return FALSE;
 
     cb = get_clipboard_from_selection(s, selection);
     g_return_val_if_fail(cb != NULL, FALSE);
@@ -771,6 +777,11 @@ static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
     }
 }
 
+static gboolean read_only(SpiceGtkSession *self)
+{
+    return spice_session_get_read_only(self->priv->session);
+}
+
 /* ---------------------------------------------------------------- */
 /* private functions (usbredir related)                             */
 G_GNUC_INTERNAL
@@ -841,6 +852,7 @@ SpiceGtkSession *spice_gtk_session_get(SpiceSession *session)
 void spice_gtk_session_copy_to_guest(SpiceGtkSession *self)
 {
     g_return_if_fail(SPICE_IS_GTK_SESSION(self));
+    g_return_if_fail(read_only(self) == FALSE);
 
     SpiceGtkSessionPrivate *s = self->priv;
     int selection = VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD;
@@ -862,6 +874,7 @@ void spice_gtk_session_copy_to_guest(SpiceGtkSession *self)
 void spice_gtk_session_paste_from_guest(SpiceGtkSession *self)
 {
     g_return_if_fail(SPICE_IS_GTK_SESSION(self));
+    g_return_if_fail(read_only(self) == FALSE);
 
     SpiceGtkSessionPrivate *s = self->priv;
     int selection = VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD;

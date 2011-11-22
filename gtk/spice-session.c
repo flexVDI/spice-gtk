@@ -99,6 +99,7 @@ enum {
     PROP_INHIBIT_KEYBOARD_GRAB,
     PROP_DISABLE_EFFECTS,
     PROP_COLOR_DEPTH,
+    PROP_READ_ONLY,
 };
 
 /* signals */
@@ -373,6 +374,9 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_AUDIO:
         g_value_set_boolean(value, s->audio);
         break;
+    case PROP_READ_ONLY:
+        g_value_set_boolean(value, s->read_only);
+	break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -468,6 +472,10 @@ static void spice_session_set_property(GObject      *gobject,
         break;
     case PROP_AUDIO:
         s->audio = g_value_get_boolean(value);
+        break;
+    case PROP_READ_ONLY:
+        s->read_only = g_value_get_boolean(value);
+        g_object_notify(gobject, "read-only");
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -858,6 +866,22 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                      1,
                      SPICE_TYPE_CHANNEL);
 
+    /**
+     * SpiceSession:read-only:
+     *
+     * Whether this connection is read-only mode.
+     *
+     * Since: 0.8
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_READ_ONLY,
+         g_param_spec_boolean("read-only", "Read-only",
+                              "Whether this connection is read-only mode",
+                              FALSE,
+                              G_PARAM_READWRITE |
+                              G_PARAM_CONSTRUCT |
+                              G_PARAM_STATIC_STRINGS));
+
     g_type_class_add_private(klass, sizeof(SpiceSessionPrivate));
 }
 
@@ -1120,6 +1144,19 @@ void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel)
         s->migration = NULL;
         spice_session_set_migration_state(session, SPICE_SESSION_MIGRATION_NONE);
     }
+}
+
+/**
+ * spice_session_get_read_only:
+ * @session: a #SpiceSession
+ *
+ * Returns: wether the @session is in read-only mode.
+ **/
+gboolean spice_session_get_read_only(SpiceSession *self)
+{
+    g_return_val_if_fail(SPICE_IS_SESSION(self), FALSE);
+
+    return self->priv->read_only;
 }
 
 /**
