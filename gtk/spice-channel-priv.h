@@ -46,6 +46,7 @@ struct _SpiceMsgOut {
     SpiceMessageMarshallers *marshallers;
     SpiceMarshaller       *marshaller;
     SpiceDataHeader       *header;
+    gboolean              ro_check;
 };
 
 struct _SpiceMsgIn {

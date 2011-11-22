@@ -465,6 +465,30 @@ void spice_msg_out_hexdump(SpiceMsgOut *out, unsigned char *data, int len)
     hexdump(">> msg", data, len);
 }
 
+static gboolean msg_check_read_only (int channel_type, int msg_type)
+{
+    if (msg_type < 100) // those are the common messages
+        return FALSE;
+
+    switch (channel_type) {
+    /* messages allowed to be sent in read-only mode */
+    case SPICE_CHANNEL_MAIN:
+        switch (msg_type) {
+        case SPICE_MSGC_MAIN_CLIENT_INFO:
+        case SPICE_MSGC_MAIN_MIGRATE_CONNECTED:
+        case SPICE_MSGC_MAIN_MIGRATE_CONNECT_ERROR:
+        case SPICE_MSGC_MAIN_ATTACH_CHANNELS:
+        case SPICE_MSGC_MAIN_MIGRATE_END:
+            return FALSE;
+        }
+        break;
+    case SPICE_CHANNEL_DISPLAY:
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
 G_GNUC_INTERNAL
 SpiceMsgOut *spice_msg_out_new(SpiceChannel *channel, int type)
 {
@@ -476,6 +500,7 @@ SpiceMsgOut *spice_msg_out_new(SpiceChannel *channel, int type)
     out = spice_new0(SpiceMsgOut, 1);
     out->refcount = 1;
     out->channel  = channel;
+    out->ro_check = msg_check_read_only(c->channel_type, type);
 
     out->marshallers = c->marshallers;
     out->marshaller = spice_marshaller_new();
@@ -1547,6 +1572,12 @@ static void spice_channel_send_msg(SpiceChannel *channel, SpiceMsgOut *out, gboo
     g_return_if_fail(channel != NULL);
     g_return_if_fail(out != NULL);
 
+    if (out->ro_check &&
+        spice_session_get_read_only(channel->priv->session)) {
+        g_warning("Try to send message while read-only. Please report a bug.");
+        return;
+    }
+
     data = spice_marshaller_linearize(out->marshaller, 0,
                                       &len, &free_data);
     /* spice_msg_out_hexdump(out, data, len); */
@@ -1554,9 +1585,9 @@ static void spice_channel_send_msg(SpiceChannel *channel, SpiceMsgOut *out, gboo
         spice_channel_buffered_write(channel, data, len);
     else
         spice_channel_write(channel, data, len);
-    if (free_data) {
+
+    if (free_data)
         free(data);
-    }
 }
 
 /* coroutine context */
