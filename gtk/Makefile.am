@@ -232,7 +232,6 @@ libspice_client_glib_2_0_la_SOURCES =	\
 	channel-usbredir.c		\
 	channel-usbredir-priv.h		\
 	smartcard-manager.c		\
-	smartcard-manager.h		\
 	smartcard-manager-priv.h	\
 	usb-device-manager.c		\
 	$(GUSB_SRCS)			\
@@ -295,6 +294,7 @@ libspice_client_glibinclude_HEADERS =	\
 	channel-smartcard.h		\
 	channel-usbredir.h		\
 	usb-device-manager.h		\
+	smartcard-manager.h		\
 	$(NULL)
 
 nodist_libspice_client_glibinclude_HEADERS =	\
@@ -577,7 +577,7 @@ PREFIX_ARGS = --strip-prefix=Spice
 endif
 
 INTROSPECTION_GIRS =
-INTROSPECTION_SCANNER_ARGS = --warn-all --add-include-path=$(builddir) $(PREFIX_ARGS)
+INTROSPECTION_SCANNER_ARGS = --warn-all --accept-unprefixed --add-include-path=$(builddir) $(PREFIX_ARGS)
 INTROSPECTION_COMPILER_ARGS = --includedir=$(builddir)
 
 if HAVE_INTROSPECTION
