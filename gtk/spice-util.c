@@ -148,7 +148,6 @@ closure_invalidated_cb (gpointer ctx_,
 }
 
 /* Copied from tp_g_signal_connect_object. See documentation. */
-G_GNUC_INTERNAL
 gulong spice_g_signal_connect_object (gpointer instance,
                                       const gchar *detailed_signal,
                                       GCallback c_handler,

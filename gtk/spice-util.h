@@ -25,6 +25,11 @@ G_BEGIN_DECLS
 void spice_util_set_debug(gboolean enabled);
 gboolean spice_util_get_debug(void);
 const gchar *spice_util_get_version_string(void);
+gulong spice_g_signal_connect_object(gpointer instance,
+                                     const gchar *detailed_signal,
+                                     GCallback c_handler,
+                                     gpointer gobject,
+                                     GConnectFlags connect_flags);
 
 #define SPICE_DEBUG(fmt, ...)                                   \
     do {                                                        \
