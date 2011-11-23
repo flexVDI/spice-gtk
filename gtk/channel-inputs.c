@@ -215,6 +215,9 @@ static void send_position(SpiceInputsChannel *channel)
 {
     SpiceMsgOut *msg;
 
+    if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
+        return;
+
     msg = mouse_position(channel);
     if (!msg) /* if no motion */
         return;
@@ -227,6 +230,9 @@ static void send_position(SpiceInputsChannel *channel)
 static void send_motion(SpiceInputsChannel *channel)
 {
     SpiceMsgOut *msg;
+
+    if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
+        return;
 
     msg = mouse_motion(channel);
     if (!msg) /* if no motion */
@@ -382,6 +388,8 @@ void spice_inputs_button_press(SpiceInputsChannel *channel, gint button,
 
     if (SPICE_CHANNEL(channel)->priv->state != SPICE_CHANNEL_STATE_READY)
         return;
+    if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
+        return;
 
     c = channel->priv;
     switch (button) {
@@ -428,6 +436,8 @@ void spice_inputs_button_release(SpiceInputsChannel *channel, gint button,
 
     if (SPICE_CHANNEL(channel)->priv->state != SPICE_CHANNEL_STATE_READY)
         return;
+    if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
+        return;
 
     c = channel->priv;
     switch (button) {
@@ -442,7 +452,7 @@ void spice_inputs_button_release(SpiceInputsChannel *channel, gint button,
         break;
     }
 
-    c->bs  = button_state;
+    c->bs = button_state;
     send_motion(channel);
     send_position(channel);
 
@@ -470,6 +480,8 @@ void spice_inputs_key_press(SpiceInputsChannel *channel, guint scancode)
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_CHANNEL(channel)->priv->state != SPICE_CHANNEL_STATE_UNCONNECTED);
     if (SPICE_CHANNEL(channel)->priv->state != SPICE_CHANNEL_STATE_READY)
+        return;
+    if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
         return;
 
     SPICE_DEBUG("%s: scancode %d", __FUNCTION__, scancode);
@@ -501,6 +513,8 @@ void spice_inputs_key_release(SpiceInputsChannel *channel, guint scancode)
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_CHANNEL(channel)->priv->state != SPICE_CHANNEL_STATE_UNCONNECTED);
     if (SPICE_CHANNEL(channel)->priv->state != SPICE_CHANNEL_STATE_READY)
+        return;
+    if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
         return;
 
     SPICE_DEBUG("%s: scancode %d", __FUNCTION__, scancode);
@@ -552,6 +566,9 @@ void spice_inputs_set_key_locks(SpiceInputsChannel *channel, guint locks)
 {
     SpiceMsgOut *msg;
 
+    if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
+        return;
+
     msg = set_key_locks(channel, locks);
     if (!msg) /* you can set_key_locks() even if the channel is not ready */
         return;
@@ -565,6 +582,9 @@ static void spice_inputs_channel_up(SpiceChannel *channel)
 {
     SpiceInputsChannelPrivate *c = SPICE_INPUTS_CHANNEL(channel)->priv;
     SpiceMsgOut *msg;
+
+    if (spice_channel_get_read_only(channel))
+        return;
 
     msg = set_key_locks(SPICE_INPUTS_CHANNEL(channel), c->locks);
     spice_msg_out_send_internal(msg);

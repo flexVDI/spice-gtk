@@ -1561,6 +1561,12 @@ void spice_channel_wakeup(SpiceChannel *channel)
     g_io_wakeup(&c->wait);
 }
 
+G_GNUC_INTERNAL
+gboolean spice_channel_get_read_only(SpiceChannel *channel)
+{
+    return spice_session_get_read_only(channel->priv->session);
+}
+
 /* coroutine context if @buffered is FALSE,
    system context if @buffered is TRUE */
 static void spice_channel_send_msg(SpiceChannel *channel, SpiceMsgOut *out, gboolean buffered)
@@ -1573,7 +1579,7 @@ static void spice_channel_send_msg(SpiceChannel *channel, SpiceMsgOut *out, gboo
     g_return_if_fail(out != NULL);
 
     if (out->ro_check &&
-        spice_session_get_read_only(channel->priv->session)) {
+        spice_channel_get_read_only(channel)) {
         g_warning("Try to send message while read-only. Please report a bug.");
         return;
     }

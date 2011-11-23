@@ -1054,11 +1054,14 @@ static void set_mouse_mode(SpiceMainChannel *channel, uint32_t supported, uint32
     }
 
     /* switch to client mode if possible */
-    if ((supported & SPICE_MOUSE_MODE_CLIENT) && (current != SPICE_MOUSE_MODE_CLIENT)) {
+    if (!spice_channel_get_read_only(SPICE_CHANNEL(channel)) &&
+        supported & SPICE_MOUSE_MODE_CLIENT &&
+        current != SPICE_MOUSE_MODE_CLIENT) {
         SpiceMsgcMainMouseModeRequest req = {
             .mode = SPICE_MOUSE_MODE_CLIENT,
         };
         SpiceMsgOut *out;
+
         out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_MOUSE_MODE_REQUEST);
         out->marshallers->msgc_main_mouse_mode_request(out->marshaller, &req);
         spice_msg_out_send_internal(out);

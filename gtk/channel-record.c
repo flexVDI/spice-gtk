@@ -277,6 +277,8 @@ static void spice_record_mode(SpiceRecordChannel *channel, uint32_t time,
     SpiceMsgOut *msg;
 
     g_return_if_fail(channel != NULL);
+    if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
+        return;
 
     m.mode = mode;
     m.time = time;
@@ -309,6 +311,8 @@ static void spice_record_start_mark(SpiceRecordChannel *channel, uint32_t time)
     SpiceMsgOut *msg;
 
     g_return_if_fail(channel != NULL);
+    if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
+        return;
 
     m.time = time;
 
@@ -336,6 +340,7 @@ void spice_record_send_data(SpiceRecordChannel *channel, gpointer data,
     uint8_t *celt_buf = NULL;
 
     g_return_if_fail(channel != NULL);
+    g_return_if_fail(spice_channel_get_read_only(SPICE_CHANNEL(channel)) == FALSE);
 
     rc = channel->priv;
 

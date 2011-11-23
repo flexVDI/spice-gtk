@@ -281,6 +281,9 @@ static void smartcard_message_send(SpiceSmartcardChannel *channel,
 {
     SpiceSmartcardChannelMessage *message;
 
+    if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
+        return;
+
     SPICE_DEBUG("smartcard: send message %d, %s",
                 msg_type, queue ? "queued" : "now");
     if (!queue) {
