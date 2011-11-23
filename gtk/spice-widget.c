@@ -104,8 +104,8 @@ static HWND focus_window = NULL;
 
 static void try_keyboard_grab(SpiceDisplay *display);
 static void try_keyboard_ungrab(SpiceDisplay *display);
-static void try_mouse_grab(GtkWidget *widget);
-static void try_mouse_ungrab(GtkWidget *widget);
+static void try_mouse_grab(SpiceDisplay *display);
+static void try_mouse_ungrab(SpiceDisplay *display);
 static void recalc_geometry(GtkWidget *widget, gboolean set_display);
 static void disconnect_main(SpiceDisplay *display);
 static void disconnect_cursor(SpiceDisplay *display);
@@ -181,7 +181,7 @@ static void spice_display_set_property(GObject      *object,
     case PROP_MOUSE_GRAB:
         d->mouse_grab_enable = g_value_get_boolean(value);
         if (!d->mouse_grab_enable) {
-            try_mouse_ungrab(GTK_WIDGET(display));
+            try_mouse_ungrab(display);
         }
         break;
     case PROP_RESIZE_GUEST:
@@ -343,8 +343,8 @@ spice_display_constructor(GType                  gtype,
     }
     g_list_free(list);
 
-    g_signal_connect(d->gtk_session, "notify::auto-clipboard",
-                     G_CALLBACK(gtk_session_property_changed), display);
+    spice_g_signal_connect_object(d->gtk_session, "notify::auto-clipboard",
+                                  G_CALLBACK(gtk_session_property_changed), display, 0);
 
     g_signal_connect(d->session, "notify::inhibit-keyboard-grab",
                      G_CALLBACK(session_inhibit_keyboard_grab_changed),
@@ -536,8 +536,9 @@ static void update_mouse_pointer(SpiceDisplay *display)
         if (!d->mouse_grab_active) {
             gdk_window_set_cursor(window, NULL);
         } else {
+            // FIXME: should it be transparent instead?
             gdk_window_set_cursor(window, d->mouse_cursor);
-            try_mouse_grab(GTK_WIDGET(display));
+            try_mouse_grab(display);
         }
         break;
     default:
@@ -546,9 +547,8 @@ static void update_mouse_pointer(SpiceDisplay *display)
     }
 }
 
-static void try_mouse_grab(GtkWidget *widget)
+static void try_mouse_grab(SpiceDisplay *display)
 {
-    SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     if (g_getenv("SPICE_NOGRAB"))
@@ -601,9 +601,8 @@ static void mouse_check_edges(GtkWidget *widget, GdkEventMotion *motion)
     }
 }
 
-static void try_mouse_ungrab(GtkWidget *widget)
+static void try_mouse_ungrab(SpiceDisplay *display)
 {
-    SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     if (!d->mouse_grab_active)
@@ -612,7 +611,7 @@ static void try_mouse_ungrab(GtkWidget *widget)
     gdk_pointer_ungrab(GDK_CURRENT_TIME);
     d->mouse_grab_active = false;
     update_mouse_pointer(display);
-    g_signal_emit(widget, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, false);
+    g_signal_emit(display, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, false);
 }
 
 static void recalc_geometry(GtkWidget *widget, gboolean set_display)
@@ -836,11 +835,11 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
     if (check_for_grab_key(display, key->type, key->keyval)) {
         g_signal_emit(widget, signals[SPICE_DISPLAY_GRAB_KEY_PRESSED], 0);
         if (d->mouse_grab_active)
-            try_mouse_ungrab(widget);
+            try_mouse_ungrab(display);
         else
             /* TODO: gtk-vnc has a weird condition here
                if (!d->grab_keyboard || !d->absolute) */
-            try_mouse_grab(widget);
+            try_mouse_grab(display);
     }
 
 
@@ -1091,7 +1090,7 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
 
     gtk_widget_grab_focus(widget);
     if (d->mouse_mode == SPICE_MOUSE_MODE_SERVER)
-        try_mouse_grab(widget);
+        try_mouse_grab(display);
     else /* allow to drag and drop between windows/displays:
             FIXME: should be multiple widget grab, but how?
             or should now the position of the other widgets?..
@@ -1317,7 +1316,7 @@ static void mouse_update(SpiceChannel *channel, gpointer data)
     d->mouse_guest_x = -1;
     d->mouse_guest_y = -1;
     if (d->mouse_mode == SPICE_MOUSE_MODE_CLIENT) {
-        try_mouse_ungrab(GTK_WIDGET(display));
+        try_mouse_ungrab(display);
     }
     update_mouse_pointer(display);
 }
@@ -1668,7 +1667,7 @@ SpiceDisplay *spice_display_new(SpiceSession *session, int id)
  **/
 void spice_display_mouse_ungrab(SpiceDisplay *display)
 {
-    try_mouse_ungrab(GTK_WIDGET(display));
+    try_mouse_ungrab(display);
 }
 
 /**
