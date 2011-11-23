@@ -86,6 +86,7 @@ enum {
     PROP_RESIZE_GUEST,
     PROP_AUTO_CLIPBOARD,
     PROP_SCALING,
+    PROP_DISABLE_INPUTS,
 };
 
 /* Signals */
@@ -102,8 +103,10 @@ static guint signals[SPICE_DISPLAY_LAST_SIGNAL];
 static HWND focus_window = NULL;
 #endif
 
+static void update_keyboard_grab(SpiceDisplay *display);
 static void try_keyboard_grab(SpiceDisplay *display);
 static void try_keyboard_ungrab(SpiceDisplay *display);
+static void update_mouse_grab(SpiceDisplay *display);
 static void try_mouse_grab(SpiceDisplay *display);
 static void try_mouse_ungrab(SpiceDisplay *display);
 static void recalc_geometry(GtkWidget *widget, gboolean set_display);
@@ -148,6 +151,9 @@ static void spice_display_get_property(GObject    *object,
     case PROP_SCALING:
         g_value_set_boolean(value, d->allow_scaling);
 	break;
+    case PROP_DISABLE_INPUTS:
+        g_value_set_boolean(value, d->disable_inputs);
+	break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
         break;
@@ -172,17 +178,11 @@ static void spice_display_set_property(GObject      *object,
         break;
     case PROP_KEYBOARD_GRAB:
         d->keyboard_grab_enable = g_value_get_boolean(value);
-        if (d->keyboard_grab_enable) {
-            try_keyboard_grab(display);
-        } else {
-            try_keyboard_ungrab(display);
-        }
+        update_keyboard_grab(display);
         break;
     case PROP_MOUSE_GRAB:
         d->mouse_grab_enable = g_value_get_boolean(value);
-        if (!d->mouse_grab_enable) {
-            try_mouse_ungrab(display);
-        }
+        update_mouse_grab(display);
         break;
     case PROP_RESIZE_GUEST:
         d->resize_guest_enable = g_value_get_boolean(value);
@@ -206,6 +206,12 @@ static void spice_display_set_property(GObject      *object,
     case PROP_AUTO_CLIPBOARD:
         g_object_set(d->gtk_session, "auto-clipboard",
                      g_value_get_boolean(value), NULL);
+        break;
+    case PROP_DISABLE_INPUTS:
+        d->disable_inputs = g_value_get_boolean(value);
+        gtk_widget_set_can_focus(GTK_WIDGET(display), !d->disable_inputs);
+        update_keyboard_grab(display);
+        update_mouse_grab(display);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -231,11 +237,7 @@ static void session_inhibit_keyboard_grab_changed(GObject    *gobject,
 
     g_object_get(d->session, "inhibit-keyboard-grab",
                  &d->keyboard_grab_inhibit, NULL);
-    if (d->keyboard_grab_inhibit) {
-        try_keyboard_ungrab(display);
-    } else {
-        try_keyboard_grab(display);
-    }
+    update_keyboard_grab(display);
 }
 
 static void spice_display_dispose(GObject *obj)
@@ -430,13 +432,14 @@ static void try_keyboard_grab(SpiceDisplay *display)
 
     if (g_getenv("SPICE_NOGRAB"))
         return;
-
-    if (d->keyboard_grab_active)
+    if (d->disable_inputs)
         return;
 
     if (d->keyboard_grab_inhibit)
         return;
     if (!d->keyboard_grab_enable)
+        return;
+    if (d->keyboard_grab_active)
         return;
     if (!d->keyboard_have_focus)
         return;
@@ -463,7 +466,6 @@ static void try_keyboard_grab(SpiceDisplay *display)
     }
 }
 
-
 static void try_keyboard_ungrab(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
@@ -480,6 +482,18 @@ static void try_keyboard_ungrab(SpiceDisplay *display)
 #endif
     d->keyboard_grab_active = false;
     g_signal_emit(widget, signals[SPICE_DISPLAY_KEYBOARD_GRAB], 0, false);
+}
+
+static void update_keyboard_grab(SpiceDisplay *display)
+{
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    if (d->keyboard_grab_enable &&
+        !d->keyboard_grab_inhibit &&
+        !d->disable_inputs)
+        try_keyboard_grab(display);
+    else
+        try_keyboard_ungrab(display);
 }
 
 static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
@@ -553,6 +567,8 @@ static void try_mouse_grab(SpiceDisplay *display)
 
     if (g_getenv("SPICE_NOGRAB"))
         return;
+    if (d->disable_inputs)
+        return;
 
     if (!d->mouse_grab_enable)
         return;
@@ -612,6 +628,16 @@ static void try_mouse_ungrab(SpiceDisplay *display)
     d->mouse_grab_active = false;
     update_mouse_pointer(display);
     g_signal_emit(display, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, false);
+}
+
+static void update_mouse_grab(SpiceDisplay *display)
+{
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    if (d->mouse_grab_enable && !d->disable_inputs)
+        update_mouse_pointer(display);
+    else
+        try_mouse_ungrab(display);
 }
 
 static void recalc_geometry(GtkWidget *widget, gboolean set_display)
@@ -744,6 +770,9 @@ static void send_key(SpiceDisplay *display, int scancode, int down)
     uint32_t i, b, m;
 
     if (!d->inputs)
+        return;
+
+    if (d->disable_inputs)
         return;
 
     i = scancode / 32;
@@ -991,6 +1020,8 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
 
     if (!d->inputs)
         return true;
+    if (d->disable_inputs)
+        return true;
 
     gdk_drawable_get_size(gtk_widget_get_window(widget), &ww, &wh);
     if (spicex_is_scaled(display)) {
@@ -1051,6 +1082,8 @@ static gboolean scroll_event(GtkWidget *widget, GdkEventScroll *scroll)
 
     if (!d->inputs)
         return true;
+    if (d->disable_inputs)
+        return true;
 
     if (scroll->direction == GDK_SCROLL_UP)
         button = SPICE_MOUSE_BUTTON_UP;
@@ -1076,6 +1109,9 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
     SPICE_DEBUG("%s %s: button %d, state 0x%x", __FUNCTION__,
             button->type == GDK_BUTTON_PRESS ? "press" : "release",
             button->button, button->state);
+
+    if (d->disable_inputs)
+        return true;
 
     if (!spicex_is_scaled(display)) {
         gint x, y;
@@ -1248,6 +1284,23 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
                               G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceDisplay:disable-inputs:
+     *
+     * Disable all keyboard & mouse inputs.
+     *
+     * Since: 0.8
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_DISABLE_INPUTS,
+         g_param_spec_boolean("disable-inputs", "Disable inputs",
+                              "Whether inputs should be disabled",
+                              FALSE,
+                              G_PARAM_READWRITE |
+                              G_PARAM_CONSTRUCT |
+                              G_PARAM_STATIC_STRINGS));
+
     /**
      * SpiceDisplay::mouse-grab:
      * @display: the #SpiceDisplay that emitted the signal
@@ -1773,6 +1826,9 @@ static void sync_keyboard_lock_modifiers(SpiceDisplay *display)
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     guint32 modifiers;
     GdkWindow *w;
+
+    if (d->disable_inputs)
+        return;
 
     w = gtk_widget_get_parent_window(GTK_WIDGET(display));
     if (w == NULL) /* it can happen if the display is not yet shown */

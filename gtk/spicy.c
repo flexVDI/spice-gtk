@@ -721,6 +721,7 @@ static const char *spice_display_properties[] = {
     "grab-mouse",
     "resize-guest",
     "scaling",
+    "disable-inputs",
 };
 
 static const char *spice_gtk_session_properties[] = {
@@ -746,6 +747,10 @@ static const GtkToggleActionEntry tentries[] = {
     },{
         .name        = "scaling",
         .label       = N_("Scale display"),
+        .callback    = G_CALLBACK(menu_cb_bool_prop),
+    },{
+        .name        = "disable-inputs",
+        .label       = N_("Disable inputs"),
         .callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
         .name        = "auto-clipboard",
@@ -798,6 +803,7 @@ static char ui_xml[] =
 "      <menuitem action='grab-mouse'/>\n"
 "      <menuitem action='resize-guest'/>\n"
 "      <menuitem action='scaling'/>\n"
+"      <menuitem action='disable-inputs'/>\n"
 "      <menuitem action='auto-clipboard'/>\n"
 #ifdef USE_USBREDIR
 "      <menuitem action='auto-usbredir'/>\n"

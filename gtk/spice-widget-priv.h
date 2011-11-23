@@ -62,6 +62,7 @@ struct _SpiceDisplayPrivate {
     bool                    convert;
     bool                    have_mitshm;
     gboolean                allow_scaling;
+    gboolean                disable_inputs;
 
     /* TODO: make a display object instead? */
 #ifdef WITH_X11
