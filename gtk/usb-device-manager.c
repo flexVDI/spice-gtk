@@ -216,6 +216,11 @@ static void spice_usb_device_manager_finalize(GObject *gobject)
     }
 #endif
 
+    if (priv->main_context) {
+        g_main_context_unref(priv->main_context);
+        priv->main_context = NULL;
+    }
+
     g_ptr_array_unref(priv->channels);
     g_ptr_array_unref(priv->devices);
 
@@ -242,7 +247,7 @@ static void spice_usb_device_manager_get_property(GObject     *gobject,
         g_value_set_object(value, priv->session);
         break;
     case PROP_MAIN_CONTEXT:
-        g_value_set_pointer(value, priv->main_context);
+        g_value_set_boxed(value, priv->main_context);
         break;
     case PROP_AUTO_CONNECT:
         g_value_set_boolean(value, priv->auto_connect);
@@ -266,7 +271,7 @@ static void spice_usb_device_manager_set_property(GObject       *gobject,
         priv->session = g_value_get_object(value);
         break;
     case PROP_MAIN_CONTEXT:
-        priv->main_context = g_value_get_pointer(value);
+        priv->main_context = g_value_dup_boxed(value);
         break;
     case PROP_AUTO_CONNECT:
         priv->auto_connect = g_value_get_boolean(value);
@@ -304,10 +309,11 @@ static void spice_usb_device_manager_class_init(SpiceUsbDeviceManagerClass *klas
     /**
      * SpiceUsbDeviceManager:main-context:
      */
-    pspec = g_param_spec_pointer("main-context", "Main Context",
-                                 "GMainContext to use for the event source",
-                                 G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
-                                 G_PARAM_STATIC_STRINGS);
+    pspec = g_param_spec_boxed("main-context", "Main Context",
+                               "GMainContext to use for the event source",
+                               G_TYPE_MAIN_CONTEXT,
+                               G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+                               G_PARAM_STATIC_STRINGS);
     g_object_class_install_property(gobject_class, PROP_MAIN_CONTEXT, pspec);
 
     /**
