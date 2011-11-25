@@ -28,6 +28,7 @@
 #include "spice-gstaudio.h"
 #include "spice-common.h"
 #include "spice-session.h"
+#include "spice-util.h"
 
 #define SPICE_GSTAUDIO_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_GSTAUDIO, SpiceGstaudioPrivate))
@@ -43,7 +44,6 @@ struct stream {
 };
 
 struct _SpiceGstaudioPrivate {
-    SpiceSession            *session;
     SpiceChannel            *pchannel;
     SpiceChannel            *rchannel;
     struct stream           playback;
@@ -53,6 +53,7 @@ struct _SpiceGstaudioPrivate {
 
 static void channel_event(SpiceChannel *channel, SpiceChannelEvent event,
                           gpointer data);
+static gboolean connect_channel(SpiceAudio *audio, SpiceChannel *channel);
 
 static void spice_gstaudio_finalize(GObject *obj)
 {
@@ -110,6 +111,9 @@ static void spice_gstaudio_init(SpiceGstaudio *pulse)
 static void spice_gstaudio_class_init(SpiceGstaudioClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+    SpiceAudioClass *audio_class = SPICE_AUDIO_CLASS(klass);
+
+    audio_class->connect_channel = connect_channel;
 
     gobject_class->finalize = spice_gstaudio_finalize;
     gobject_class->dispose = spice_gstaudio_dispose;
@@ -213,8 +217,8 @@ static void record_start(SpiceRecordChannel *channel, gint format, gint channels
         p->record.channels = channels;
 
         gst_app_sink_set_emit_signals(GST_APP_SINK(p->record.sink), TRUE);
-        g_signal_connect(p->record.sink, "new-buffer",
-                         G_CALLBACK(record_new_buffer), data);
+        spice_g_signal_connect_object(p->record.sink, "new-buffer",
+                                      G_CALLBACK(record_new_buffer), gstaudio, 0);
 
 lerr:
         g_clear_error(&error);
@@ -471,65 +475,62 @@ static void record_mute_changed(GObject *object, GParamSpec *pspec, gpointer dat
     g_object_unref(e);
 }
 
-static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
+static gboolean connect_channel(SpiceAudio *audio, SpiceChannel *channel)
 {
-    SpiceGstaudio *gstaudio = data;
+    SpiceGstaudio *gstaudio = SPICE_GSTAUDIO(audio);
     SpiceGstaudioPrivate *p = gstaudio->priv;
 
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
-        g_return_if_fail(p->pchannel == NULL);
+        g_return_val_if_fail(p->pchannel == NULL, FALSE);
+
         p->pchannel = g_object_ref(channel);
-        g_signal_connect(channel, "playback-start",
-                         G_CALLBACK(playback_start), gstaudio);
-        g_signal_connect(channel, "playback-data",
-                         G_CALLBACK(playback_data), gstaudio);
-        g_signal_connect(channel, "playback-stop",
-                         G_CALLBACK(playback_stop), gstaudio);
-        g_signal_connect(channel, "channel-event",
-                         G_CALLBACK(channel_event), gstaudio);
-        g_signal_connect(channel, "notify::volume",
-                         G_CALLBACK(playback_volume_changed), gstaudio);
-        g_signal_connect(channel, "notify::mute",
-                         G_CALLBACK(playback_mute_changed), gstaudio);
-        spice_channel_connect(channel);
+        spice_g_signal_connect_object(channel, "playback-start",
+                                      G_CALLBACK(playback_start), gstaudio, 0);
+        spice_g_signal_connect_object(channel, "playback-data",
+                                      G_CALLBACK(playback_data), gstaudio, 0);
+        spice_g_signal_connect_object(channel, "playback-stop",
+                                      G_CALLBACK(playback_stop), gstaudio, 0);
+        spice_g_signal_connect_object(channel, "channel-event",
+                                      G_CALLBACK(channel_event), gstaudio, 0);
+        spice_g_signal_connect_object(channel, "notify::volume",
+                                      G_CALLBACK(playback_volume_changed), gstaudio, 0);
+        spice_g_signal_connect_object(channel, "notify::mute",
+                                      G_CALLBACK(playback_mute_changed), gstaudio, 0);
+
+        return TRUE;
     }
 
     if (SPICE_IS_RECORD_CHANNEL(channel)) {
-        g_return_if_fail(p->rchannel == NULL);
+        g_return_val_if_fail(p->rchannel == NULL, FALSE);
+
         p->rchannel = g_object_ref(channel);
-        g_signal_connect(channel, "record-start",
-                         G_CALLBACK(record_start), gstaudio);
-        g_signal_connect(channel, "record-stop",
-                         G_CALLBACK(record_stop), gstaudio);
-        g_signal_connect(channel, "channel-event",
-                         G_CALLBACK(channel_event), gstaudio);
-        g_signal_connect(channel, "notify::volume",
-                         G_CALLBACK(record_volume_changed), gstaudio);
-        g_signal_connect(channel, "notify::mute",
-                         G_CALLBACK(record_mute_changed), gstaudio);
-        spice_channel_connect(channel);
+        spice_g_signal_connect_object(channel, "record-start",
+                                      G_CALLBACK(record_start), gstaudio, 0);
+        spice_g_signal_connect_object(channel, "record-stop",
+                                      G_CALLBACK(record_stop), gstaudio, 0);
+        spice_g_signal_connect_object(channel, "channel-event",
+                                      G_CALLBACK(channel_event), gstaudio, 0);
+        spice_g_signal_connect_object(channel, "notify::volume",
+                                      G_CALLBACK(record_volume_changed), gstaudio, 0);
+        spice_g_signal_connect_object(channel, "notify::mute",
+                                      G_CALLBACK(record_mute_changed), gstaudio, 0);
+
+        return TRUE;
     }
+
+    return FALSE;
 }
 
 SpiceGstaudio *spice_gstaudio_new(SpiceSession *session, GMainContext *context,
                                   const char *name)
 {
     SpiceGstaudio *gstaudio;
-    SpiceGstaudioPrivate *p;
-    GList *list;
 
     gst_init(NULL, NULL);
-    gstaudio = g_object_new(SPICE_TYPE_GSTAUDIO, NULL);
-    p = SPICE_GSTAUDIO_GET_PRIVATE(gstaudio);
-    p->session = g_object_ref(session);
-
-    g_signal_connect(session, "channel-new",
-                     G_CALLBACK(channel_new), gstaudio);
-    list = spice_session_get_channels(session);
-    for (list = g_list_first(list); list != NULL; list = g_list_next(list)) {
-        channel_new(session, list->data, (gpointer)gstaudio);
-    }
-    g_list_free(list);
+    gstaudio = g_object_new(SPICE_TYPE_GSTAUDIO,
+                            "session", session,
+                            "main-context", context,
+                            NULL);
 
     return gstaudio;
 }

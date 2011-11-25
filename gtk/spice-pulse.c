@@ -37,7 +37,6 @@ struct stream {
 };
 
 struct _SpicePulsePrivate {
-    SpiceSession            *session;
     SpiceChannel            *pchannel;
     SpiceChannel            *rchannel;
 
@@ -73,8 +72,7 @@ static const char *context_state_names[] = {
 static void channel_event(SpiceChannel *channel, SpiceChannelEvent event,
                           gpointer data);
 static void stream_stop(SpicePulse *pulse, struct stream *s);
-static void channel_new(SpiceSession *s, SpiceChannel *channel,
-                        gpointer data);
+static gboolean connect_channel(SpiceAudio *audio, SpiceChannel *channel);
 
 static void spice_pulse_finalize(GObject *obj)
 {
@@ -122,10 +120,6 @@ static void spice_pulse_dispose(GObject *obj)
         g_object_unref(p->rchannel);
     p->rchannel = NULL;
 
-    if (p->session)
-        g_object_unref(p->session);
-    p->session = NULL;
-
     G_OBJECT_CLASS(spice_pulse_parent_class)->dispose(obj);
 }
 
@@ -137,6 +131,9 @@ static void spice_pulse_init(SpicePulse *pulse)
 static void spice_pulse_class_init(SpicePulseClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+    SpiceAudioClass *audio_class = SPICE_AUDIO_CLASS(klass);
+
+    audio_class->connect_channel = connect_channel;
 
     gobject_class->finalize = spice_pulse_finalize;
     gobject_class->dispose = spice_pulse_dispose;
@@ -701,13 +698,14 @@ static void record_volume_changed(GObject *object, GParamSpec *pspec, gpointer d
         pa_operation_unref(op);
 }
 
-static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
+static gboolean connect_channel(SpiceAudio *audio, SpiceChannel *channel)
 {
-    SpicePulse *pulse = data;
+    SpicePulse *pulse = SPICE_PULSE(audio);
     SpicePulsePrivate *p = pulse->priv;
 
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
-        g_return_if_fail(p->pchannel == NULL);
+        g_return_val_if_fail(p->pchannel == NULL, FALSE);
+
         p->pchannel = g_object_ref(channel);
         spice_g_signal_connect_object(channel, "playback-start",
                                       G_CALLBACK(playback_start), pulse, 0);
@@ -723,11 +721,13 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
                                       G_CALLBACK(playback_volume_changed), pulse, 0);
         spice_g_signal_connect_object(channel, "notify::mute",
                                       G_CALLBACK(playback_mute_changed), pulse, 0);
-        spice_channel_connect(channel);
+
+        return TRUE;
     }
 
     if (SPICE_IS_RECORD_CHANNEL(channel)) {
-        g_return_if_fail(p->rchannel == NULL);
+        g_return_val_if_fail(p->rchannel == NULL, FALSE);
+
         p->rchannel = g_object_ref(channel);
         spice_g_signal_connect_object(channel, "record-start",
                                       G_CALLBACK(record_start), pulse, 0);
@@ -739,8 +739,11 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
                                       G_CALLBACK(record_volume_changed), pulse, 0);
         spice_g_signal_connect_object(channel, "notify::mute",
                                       G_CALLBACK(record_mute_changed), pulse, 0);
-        spice_channel_connect(channel);
+
+        return TRUE;
     }
+
+    return FALSE;
 }
 
 static void context_state_callback(pa_context *c, void *userdata)
@@ -783,19 +786,12 @@ SpicePulse *spice_pulse_new(SpiceSession *session, GMainContext *context,
 {
     SpicePulse *pulse;
     SpicePulsePrivate *p;
-    GList *list, *tmp;
 
-    pulse = g_object_new(SPICE_TYPE_PULSE, NULL);
+    pulse = g_object_new(SPICE_TYPE_PULSE,
+                         "session", session,
+                         "main-context", context,
+                         NULL);
     p = SPICE_PULSE_GET_PRIVATE(pulse);
-    p->session = g_object_ref(session);
-
-    spice_g_signal_connect_object(session, "channel-new",
-                                  G_CALLBACK(channel_new), pulse, 0);
-    list = spice_session_get_channels(session);
-    for (tmp = g_list_first(list); tmp != NULL; tmp = g_list_next(tmp)) {
-        channel_new(session, tmp->data, (gpointer)pulse);
-    }
-    g_list_free(list);
 
     p->mainloop = pa_glib_mainloop_new(context);
     p->state = PA_CONTEXT_READY;

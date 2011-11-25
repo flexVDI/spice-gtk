@@ -43,6 +43,7 @@ G_BEGIN_DECLS
 
 typedef struct _SpiceAudio SpiceAudio;
 typedef struct _SpiceAudioClass SpiceAudioClass;
+typedef struct _SpiceAudioPrivate SpiceAudioPrivate;
 
 /**
  * SpiceAudio:
@@ -52,6 +53,7 @@ typedef struct _SpiceAudioClass SpiceAudioClass;
  */
 struct _SpiceAudio {
     GObject parent;
+    /* FIXME: break ABI!! SpiceAudioPrivate *priv; */
 };
 
 /**
@@ -64,7 +66,9 @@ struct _SpiceAudioClass {
     GObjectClass parent_class;
 
     /*< private >*/
-    gchar _spice_reserved[SPICE_RESERVED_PADDING];
+    gboolean (*connect_channel)(SpiceAudio *audio, SpiceChannel *channel);
+
+    gchar _spice_reserved[SPICE_RESERVED_PADDING - sizeof(void*)];
 };
 
 GType spice_audio_get_type(void);

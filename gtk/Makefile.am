@@ -203,6 +203,7 @@ endif
 libspice_client_glib_2_0_la_SOURCES =	\
 	glib-compat.h			\
 	spice-audio.c			\
+	spice-audio-priv.h		\
 	spice-common.h			\
 	spice-util.c			\
 	spice-util-priv.h		\
