@@ -229,14 +229,23 @@ static void stdin_read_complete(GObject *src, GAsyncResult *res, gpointer data)
             break;
         }
 
-        state = STATE_WAITING_FOR_POL_KIT;
-
-        polkit_cancellable = g_cancellable_new();
-        polkit_authority_check_authorization(
-            authority, subject, "org.spice-space.lowlevelusbaccess", NULL,
-            POLKIT_CHECK_AUTHORIZATION_FLAGS_ALLOW_USER_INTERACTION,
-            polkit_cancellable, (GAsyncReadyCallback)check_authorization_cb,
-            loop);
+        /*
+         * The set_facl() call is a no-op for root, so no need to ask PolKit
+         * and then if ok call set_facl(), when called by a root process.
+         */
+        if (getuid() != 0) {
+            polkit_cancellable = g_cancellable_new();
+            polkit_authority_check_authorization(
+                authority, subject, "org.spice-space.lowlevelusbaccess", NULL,
+                POLKIT_CHECK_AUTHORIZATION_FLAGS_ALLOW_USER_INTERACTION,
+                polkit_cancellable,
+                (GAsyncReadyCallback)check_authorization_cb, NULL);
+            state = STATE_WAITING_FOR_POL_KIT;
+        } else {
+            fprintf(stdout, "SUCCESS\n");
+            fflush(stdout);
+            state = STATE_WAITING_FOR_STDIN_EOF;
+        }
 
         g_data_input_stream_read_line_async(stdin_stream, G_PRIORITY_DEFAULT,
                                             NULL, stdin_read_complete, NULL);

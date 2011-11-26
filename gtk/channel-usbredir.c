@@ -245,7 +245,6 @@ void spice_usbredir_channel_connect_async(SpiceUsbredirChannel *channel,
 {
     SpiceUsbredirChannelPrivate *priv = channel->priv;
     GSimpleAsyncResult *result;
-    GError *err = NULL;
 
     g_return_if_fail(SPICE_IS_USBREDIR_CHANNEL(channel));
     g_return_if_fail(context != NULL);
@@ -265,26 +264,27 @@ void spice_usbredir_channel_connect_async(SpiceUsbredirChannel *channel,
 
     priv->context = g_object_ref(context);
     priv->device  = g_object_ref(device);
-    if (!spice_usbredir_channel_open_device(channel, &err)) {
 #if USE_POLKIT
-        priv->result = result;
-        priv->state = STATE_WAITING_FOR_ACL_HELPER;
-        priv->acl_helper = spice_usb_acl_helper_new();
-        g_object_set(spice_channel_get_session(SPICE_CHANNEL(channel)),
-                     "inhibit-keyboard-grab", TRUE, NULL);
-        spice_usb_acl_helper_open_acl(priv->acl_helper,
-                                      g_usb_device_get_bus(device),
-                                      g_usb_device_get_address(device),
-                                      cancellable,
-                                      spice_usbredir_channel_open_acl_cb,
-                                      channel);
-        return;
+    priv->result = result;
+    priv->state = STATE_WAITING_FOR_ACL_HELPER;
+    priv->acl_helper = spice_usb_acl_helper_new();
+    g_object_set(spice_channel_get_session(SPICE_CHANNEL(channel)),
+                 "inhibit-keyboard-grab", TRUE, NULL);
+    spice_usb_acl_helper_open_acl(priv->acl_helper,
+                                  g_usb_device_get_bus(device),
+                                  g_usb_device_get_address(device),
+                                  cancellable,
+                                  spice_usbredir_channel_open_acl_cb,
+                                  channel);
+    return;
 #else
+    GError *err = NULL;
+    if (!spice_usbredir_channel_open_device(channel, &err)) {
         g_simple_async_result_take_error(result, err);
         g_clear_object(&priv->context);
         g_clear_object(&priv->device);
-#endif
     }
+#endif
 
 done:
     g_simple_async_result_complete_in_idle(result);
