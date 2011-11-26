@@ -71,7 +71,8 @@ G_DEFINE_TYPE(SpiceSmartcardManager, spice_smartcard_manager, G_TYPE_OBJECT)
 #ifdef USE_SMARTCARD
 G_DEFINE_BOXED_TYPE(VReader, spice_smartcard_reader, vreader_reference, vreader_free)
 #else
-G_DEFINE_BOXED_TYPE(GObject, spice_smartcard_reader, NULL, NULL)
+typedef GObject VReader;
+G_DEFINE_BOXED_TYPE(VReader, spice_smartcard_reader, g_object_ref, g_object_unref)
 #endif
 
 /* Properties */
