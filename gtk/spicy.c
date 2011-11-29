@@ -1618,6 +1618,9 @@ static void auto_connect_failed(SpiceUsbDeviceManager *manager,
 {
     GtkWidget *dialog;
 
+    if (error->domain == G_IO_ERROR && error->code == G_IO_ERROR_CANCELLED)
+        return;
+
     dialog = gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR,
                                     GTK_BUTTONS_CLOSE,
                                     "USB redirection error");
