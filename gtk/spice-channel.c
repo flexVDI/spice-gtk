@@ -690,6 +690,12 @@ static void spice_channel_write_msg(SpiceChannel *channel, SpiceMsgOut *out)
     g_return_if_fail(out != NULL);
     g_return_if_fail(channel == out->channel);
 
+    if (out->ro_check &&
+        spice_channel_get_read_only(channel)) {
+        g_warning("Try to send message while read-only. Please report a bug.");
+        return;
+    }
+
     out->header->size =
         spice_marshaller_get_total_size(out->marshaller) - sizeof(SpiceDataHeader);
     data = spice_marshaller_linearize(out->marshaller, 0, &len, &free_data);
@@ -1569,12 +1575,6 @@ static void spice_channel_send_msg(SpiceChannel *channel, SpiceMsgOut *out, gboo
 
     g_return_if_fail(channel != NULL);
     g_return_if_fail(out != NULL);
-
-    if (out->ro_check &&
-        spice_channel_get_read_only(channel)) {
-        g_warning("Try to send message while read-only. Please report a bug.");
-        return;
-    }
 
     if (buffered) {
         g_queue_push_tail(&c->xmit_queue, out);
