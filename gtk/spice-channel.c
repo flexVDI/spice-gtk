@@ -1807,7 +1807,7 @@ static void spice_channel_iterate_write(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
 
-    if (c->xmit_buffer) {
+    while (c->xmit_buffer_size) {
         /*
          * Take ownership of the buffer, so that if spice_channel_write calls
          * g_io_wait and thus yields to the main context, and that then calls
