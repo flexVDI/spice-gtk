@@ -104,6 +104,7 @@ static void spice_channel_init(SpiceChannel *channel)
     c->remote_caps = g_array_new(FALSE, TRUE, sizeof(guint32));
     c->remote_common_caps = g_array_new(FALSE, TRUE, sizeof(guint32));
     spice_channel_set_common_capability(channel, SPICE_COMMON_CAP_PROTOCOL_AUTH_SELECTION);
+    g_queue_init(&c->xmit_queue);
 }
 
 static void spice_channel_constructed(GObject *gobject)
@@ -545,8 +546,6 @@ void spice_msg_out_send(SpiceMsgOut *out)
 
     /* TODO: we currently flush/wakeup immediately all buffered messages */
     spice_channel_wakeup(out->channel);
-
-    spice_msg_out_unref(out);
 }
 
 /* coroutine context */
@@ -558,7 +557,6 @@ void spice_msg_out_send_internal(SpiceMsgOut *out)
     out->header->size =
         spice_marshaller_get_total_size(out->marshaller) - sizeof(SpiceDataHeader);
     spice_channel_send_msg(out->channel, out, FALSE);
-    spice_msg_out_unref(out);
 }
 
 /* ---------------------------------------------------------------- */
@@ -683,6 +681,27 @@ static void spice_channel_write(SpiceChannel *channel, const void *data, size_t 
     else
 #endif
         spice_channel_flush_wire(channel, data, len);
+}
+
+/* coroutine context */
+static void spice_channel_write_msg(SpiceChannel *channel, SpiceMsgOut *out)
+{
+    uint8_t *data;
+    int free_data;
+    size_t len;
+
+    g_return_if_fail(channel != NULL);
+    g_return_if_fail(out != NULL);
+    g_return_if_fail(channel == out->channel);
+
+    data = spice_marshaller_linearize(out->marshaller, 0, &len, &free_data);
+    /* spice_msg_out_hexdump(out, data, len); */
+    spice_channel_write(channel, data, len);
+
+    if (free_data)
+        free(data);
+
+    spice_msg_out_unref(out);
 }
 
 /*
@@ -1529,25 +1548,6 @@ error:
 }
 
 /* system context */
-static void spice_channel_buffered_write(SpiceChannel *channel, const void *data, size_t size)
-{
-    SpiceChannelPrivate *c = channel->priv;
-    size_t left;
-
-    left = c->xmit_buffer_capacity - c->xmit_buffer_size;
-    if (left < size) {
-        c->xmit_buffer_capacity += size + 4095;
-        c->xmit_buffer_capacity &= ~4095;
-
-        c->xmit_buffer = g_realloc(c->xmit_buffer, c->xmit_buffer_capacity);
-    }
-
-    memcpy(&c->xmit_buffer[c->xmit_buffer_size], data, size);
-
-    c->xmit_buffer_size += size;
-}
-
-/* system context */
 /* TODO: we currently flush/wakeup immediately all buffered messages */
 G_GNUC_INTERNAL
 void spice_channel_wakeup(SpiceChannel *channel)
@@ -1567,9 +1567,7 @@ gboolean spice_channel_get_read_only(SpiceChannel *channel)
    system context if @buffered is TRUE */
 static void spice_channel_send_msg(SpiceChannel *channel, SpiceMsgOut *out, gboolean buffered)
 {
-    uint8_t *data;
-    int free_data;
-    size_t len;
+    SpiceChannelPrivate *c = channel->priv;
 
     g_return_if_fail(channel != NULL);
     g_return_if_fail(out != NULL);
@@ -1580,16 +1578,11 @@ static void spice_channel_send_msg(SpiceChannel *channel, SpiceMsgOut *out, gboo
         return;
     }
 
-    data = spice_marshaller_linearize(out->marshaller, 0,
-                                      &len, &free_data);
-    /* spice_msg_out_hexdump(out, data, len); */
-    if (buffered)
-        spice_channel_buffered_write(channel, data, len);
-    else
-        spice_channel_write(channel, data, len);
-
-    if (free_data)
-        free(data);
+    if (buffered) {
+        g_queue_push_tail(&c->xmit_queue, out);
+    } else {
+        spice_channel_write_msg(channel, out);
+    }
 }
 
 /* coroutine context */
@@ -1806,36 +1799,10 @@ void spice_channel_destroy(SpiceChannel *channel)
 static void spice_channel_iterate_write(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
+    SpiceMsgOut *out;
 
-    while (c->xmit_buffer_size) {
-        /*
-         * Take ownership of the buffer, so that if spice_channel_write calls
-         * g_io_wait and thus yields to the main context, and that then calls
-         * spice_channel_buffered_write it does not mess with the buffer
-         * being written out.
-         */
-        guint8 *buffer = c->xmit_buffer;
-        int size = c->xmit_buffer_size;
-        int capacity = c->xmit_buffer_capacity;
-
-        c->xmit_buffer = NULL;
-        c->xmit_buffer_size = 0;
-        c->xmit_buffer_capacity = 0;
-
-        spice_channel_write(channel, buffer, size);
-
-        /*
-         * If no write has been done in the mean time, we can return the buffer
-         * so that it can be re-used.
-         */
-        if (c->xmit_buffer == NULL) {
-            c->xmit_buffer = buffer;
-            c->xmit_buffer_capacity = capacity;
-            c->xmit_buffer_size = 0;
-        } else {
-            g_free(buffer);
-        }
-    }
+    while ((out = g_queue_pop_head(&c->xmit_queue)))
+        spice_channel_write_msg(channel, out);
 }
 
 /* coroutine context */
@@ -2215,12 +2182,8 @@ static void channel_disconnect(SpiceChannel *channel)
     c->peer_msg = NULL;
     c->peer_pos = 0;
 
-    if (c->xmit_buffer) {
-        g_free(c->xmit_buffer);
-        c->xmit_buffer = NULL;
-        c->xmit_buffer_size = 0;
-        c->xmit_buffer_capacity = 0;
-    }
+    g_queue_foreach(&c->xmit_queue, (GFunc)spice_msg_out_unref, NULL);
+    g_queue_clear(&c->xmit_queue);
 
     g_array_set_size(c->remote_common_caps, 0);
     g_array_set_size(c->remote_caps, 0);

@@ -94,9 +94,7 @@ struct _SpiceChannelPrivate {
     guint                       connect_delayed_id;
 
     struct wait_queue           wait;
-    guint8                      *xmit_buffer;
-    int                         xmit_buffer_capacity;
-    int                         xmit_buffer_size;
+    GQueue                      xmit_queue;
 
     char                        name[16];
     enum spice_channel_state    state;
