@@ -42,7 +42,7 @@
 #include "gio-coroutine.h"
 
 static void spice_channel_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg);
-static void spice_channel_send_msg(SpiceChannel *channel, SpiceMsgOut *out, gboolean buffered);
+static void spice_channel_write_msg(SpiceChannel *channel, SpiceMsgOut *out);
 static void spice_channel_send_link(SpiceChannel *channel);
 static void channel_disconnect(SpiceChannel *channel);
 
@@ -539,8 +539,9 @@ G_GNUC_INTERNAL
 void spice_msg_out_send(SpiceMsgOut *out)
 {
     g_return_if_fail(out != NULL);
+    g_return_if_fail(out->channel != NULL);
 
-    spice_channel_send_msg(out->channel, out, TRUE);
+    g_queue_push_tail(&out->channel->priv->xmit_queue, out);
 
     /* TODO: we currently flush/wakeup immediately all buffered messages */
     spice_channel_wakeup(out->channel);
@@ -552,7 +553,7 @@ void spice_msg_out_send_internal(SpiceMsgOut *out)
 {
     g_return_if_fail(out != NULL);
 
-    spice_channel_send_msg(out->channel, out, FALSE);
+    spice_channel_write_msg(out->channel, out);
 }
 
 /* ---------------------------------------------------------------- */
@@ -1565,22 +1566,6 @@ G_GNUC_INTERNAL
 gboolean spice_channel_get_read_only(SpiceChannel *channel)
 {
     return spice_session_get_read_only(channel->priv->session);
-}
-
-/* coroutine context if @buffered is FALSE,
-   system context if @buffered is TRUE */
-static void spice_channel_send_msg(SpiceChannel *channel, SpiceMsgOut *out, gboolean buffered)
-{
-    SpiceChannelPrivate *c = channel->priv;
-
-    g_return_if_fail(channel != NULL);
-    g_return_if_fail(out != NULL);
-
-    if (buffered) {
-        g_queue_push_tail(&c->xmit_queue, out);
-    } else {
-        spice_channel_write_msg(channel, out);
-    }
 }
 
 /* coroutine context */
