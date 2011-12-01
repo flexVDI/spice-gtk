@@ -540,8 +540,6 @@ void spice_msg_out_send(SpiceMsgOut *out)
 {
     g_return_if_fail(out != NULL);
 
-    out->header->size =
-        spice_marshaller_get_total_size(out->marshaller) - sizeof(SpiceDataHeader);
     spice_channel_send_msg(out->channel, out, TRUE);
 
     /* TODO: we currently flush/wakeup immediately all buffered messages */
@@ -554,8 +552,6 @@ void spice_msg_out_send_internal(SpiceMsgOut *out)
 {
     g_return_if_fail(out != NULL);
 
-    out->header->size =
-        spice_marshaller_get_total_size(out->marshaller) - sizeof(SpiceDataHeader);
     spice_channel_send_msg(out->channel, out, FALSE);
 }
 
@@ -694,6 +690,8 @@ static void spice_channel_write_msg(SpiceChannel *channel, SpiceMsgOut *out)
     g_return_if_fail(out != NULL);
     g_return_if_fail(channel == out->channel);
 
+    out->header->size =
+        spice_marshaller_get_total_size(out->marshaller) - sizeof(SpiceDataHeader);
     data = spice_marshaller_linearize(out->marshaller, 0, &len, &free_data);
     /* spice_msg_out_hexdump(out, data, len); */
     spice_channel_write(channel, data, len);
