@@ -93,7 +93,6 @@ struct _SpiceChannelPrivate {
     gboolean                    has_error;
     guint                       connect_delayed_id;
 
-    int                         wait_interruptible;
     struct wait_queue           wait;
     guint8                      *xmit_buffer;
     int                         xmit_buffer_capacity;

@@ -724,14 +724,7 @@ reread:
 
     if (ret == -1) {
         if (cond != 0) {
-            if (c->wait_interruptible) {
-                if (!g_io_wait_interruptible(&c->wait, c->sock, cond)) {
-                    // SPICE_DEBUG("Read blocking interrupted %d", priv->has_error);
-                    return -EAGAIN;
-                }
-            } else {
-                g_io_wait(c->sock, cond);
-            }
+            g_io_wait(c->sock, cond);
             goto reread;
         } else {
             c->has_error = TRUE;
