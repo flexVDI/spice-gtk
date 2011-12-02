@@ -266,7 +266,7 @@ AC_SUBST(PULSE_CFLAGS)
 AC_SUBST(PULSE_LIBS)
 
 AS_IF([test "x$with_audio" = "xgstreamer"],
-      [PKG_CHECK_MODULES(GST, gstreamer-0.10 gstreamer-base-0.10 gstreamer-app-0.10, [have_gst=yes GST_LIBS="$GST_LIBS -lgstapp-0.10 -lgstaudio-0.10"], [have_gst=no])],
+      [PKG_CHECK_MODULES(GST, gstreamer-0.10 gstreamer-base-0.10 gstreamer-app-0.10 gstreamer-audio-0.10, [have_gst=yes], [have_gst=no])],
       [have_gst=no])
 
 AS_IF([test "x$have_gst" = "xyes"],

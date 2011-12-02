@@ -98,6 +98,7 @@ SPICE_GTK_LIBADD_COMMON =		\
 	libspice-client-glib-2.0.la	\
 	$(GTK_LIBS)			\
 	$(CAIRO_LIBS)			\
+	$(XRANDR_LIBS)			\
 	$(NULL)
 
 SPICE_GTK_SOURCES_COMMON =		\
