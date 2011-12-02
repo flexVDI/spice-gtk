@@ -1,12 +1,18 @@
 NULL =
+CLEANFILES =
 
 if WITH_VALA
-vapidir = $(datadir)/vala/vapi
-vapi_DATA =						\
+BUILT_VAPI =						\
 	spice-client-glib-2.0.vapi			\
-	spice-client-glib-2.0.deps			\
 	spice-client-gtk-$(SPICE_GTK_API_VERSION).deps	\
 	spice-client-gtk-$(SPICE_GTK_API_VERSION).vapi	\
+	$(NULL)
+CLEANFILES += $(BUILT_VAPI)
+
+vapidir = $(datadir)/vala/vapi
+vapi_DATA =						\
+	spice-client-glib-2.0.deps			\
+	$(BUILT_VAPI)
 	$(NULL)
 
 spice-client-glib-2.0.vapi: $(top_builddir)/gtk/SpiceClientGLib-2.0.gir
@@ -28,7 +34,5 @@ spice-client-gtk-$(SPICE_GTK_API_VERSION).deps: spice-client-gtk-$(SPICE_GTK_API
 	@echo "gtk+-$(GTK_API_VERSION)" >> $@
 
 endif
-
-CLEANFILES = $(vapi_DATA)
 
 -include $(top_srcdir)/git.mk
