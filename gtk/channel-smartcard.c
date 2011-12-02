@@ -430,7 +430,7 @@ static void spice_smartcard_channel_up_cb(GObject *source_object,
     spice_smartcard_manager_init_finish(SPICE_SESSION(source_object),
                                         res, &error);
     if (error)
-        g_warning(error->message);
+        g_warning("%s", error->message);
     g_clear_error(&error);
 }
 

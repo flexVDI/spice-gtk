@@ -173,10 +173,10 @@ void notified (GObject    *gobject, GParamSpec *pspec,
       gchar** p = (gchar **)g_value_get_boxed (&value);
       g_message ("notify::%s == ", pspec->name);
       while (*p)
-        g_message (*p++);
+        g_message ("%s", *p++);
     } else if (pspec->value_type == G_TYPE_OBJECT) {
       GObject *o = g_value_get_object (&value);
-      g_message ("notify::%s == %s", G_OBJECT_TYPE_NAME (o));
+      g_message ("notify::%s == %s", pspec->name, G_OBJECT_TYPE_NAME (o));
     } else {
       g_value_transform (&value, &strvalue);
       g_message ("notify::%s  = %s", pspec->name, g_value_get_string (&strvalue));
