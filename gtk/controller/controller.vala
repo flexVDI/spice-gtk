@@ -223,13 +223,16 @@ public class Controller: Object {
 	{
 		if (addr == null)
 #if WIN32
-			addr = (string*)"\\\\.\\pipe\\SpiceController-%lu".printf (GetCurrentProcessId ());
+			if (Environment.get_variable ("SPICE_XPI_NAMEDPIPE") != null)
+				addr = (string*)"%s".printf (Environment.get_variable ("SPICE_XPI_NAMEDPIPE")); // FIXME vala...
+            else
+                addr = (string*)"\\\\.\\pipe\\SpiceController-%lu".printf (GetCurrentProcessId ());
 #else
 			if (Environment.get_variable ("SPICE_XPI_SOCKET") != null)
 				addr = (string*)"%s".printf (Environment.get_variable ("SPICE_XPI_SOCKET")); // FIXME vala...
 #endif
 		if (addr == null)
-			throw new SpiceCtrl.Error.VALUE ("Missing SPICE_XPI_SOCKET");
+			throw new SpiceCtrl.Error.VALUE ("Missing socket or namedpipe address");
 		FileUtils.unlink (addr);
 
 #if WIN32
