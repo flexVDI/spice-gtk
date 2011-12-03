@@ -1,6 +1,7 @@
 NULL =
 CLEANFILES =
 
+if HAVE_INTROSPECTION
 if WITH_VALA
 BUILT_VAPI =						\
 	spice-client-glib-2.0.vapi			\
@@ -33,6 +34,7 @@ spice-client-gtk-$(SPICE_GTK_API_VERSION).deps: spice-client-gtk-$(SPICE_GTK_API
 	@echo "spice-client-glib-2.0" > $@
 	@echo "gtk+-$(GTK_API_VERSION)" >> $@
 
+endif
 endif
 
 -include $(top_srcdir)/git.mk
