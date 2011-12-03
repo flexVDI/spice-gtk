@@ -556,11 +556,13 @@ static void update_mouse_pointer(SpiceDisplay *display)
 
     switch (d->mouse_mode) {
     case SPICE_MOUSE_MODE_CLIENT:
-        gdk_window_set_cursor(window, d->mouse_cursor);
+        if (gdk_window_get_cursor(window) != d->mouse_cursor)
+            gdk_window_set_cursor(window, d->mouse_cursor);
         break;
     case SPICE_MOUSE_MODE_SERVER:
         if (!d->mouse_grab_active) {
-            gdk_window_set_cursor(window, NULL);
+            if (gdk_window_get_cursor(window) != NULL)
+                gdk_window_set_cursor(window, NULL);
         } else {
             try_mouse_grab(display);
         }
@@ -751,6 +753,7 @@ static gboolean draw_event(GtkWidget *widget, cairo_t *cr)
     }
 
     spicex_draw_event(display, cr);
+    update_mouse_pointer(display);
 
     return true;
 }
@@ -769,6 +772,8 @@ static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
     }
 
     spicex_expose_event(display, expose);
+    update_mouse_pointer(display);
+
     return true;
 }
 #endif
