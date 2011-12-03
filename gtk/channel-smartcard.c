@@ -191,7 +191,8 @@ static const spice_msg_handler smartcard_handlers[] = {
 static void
 smartcard_message_free(SpiceSmartcardChannelMessage *message)
 {
-    spice_msg_out_unref(message->message);
+    if (message->message)
+        spice_msg_out_unref(message->message);
     g_slice_free(SpiceSmartcardChannelMessage, message);
 }
 
@@ -268,8 +269,11 @@ smartcard_message_complete_in_flight(SpiceSmartcardChannel *channel)
 
     smartcard_message_free(channel->priv->in_flight_message);
     channel->priv->in_flight_message = g_queue_pop_head(channel->priv->message_queue);
-    if (channel->priv->in_flight_message != NULL)
+    if (channel->priv->in_flight_message != NULL) {
         spice_msg_out_send(channel->priv->in_flight_message->message);
+        spice_msg_out_unref(channel->priv->in_flight_message->message);
+        channel->priv->in_flight_message->message = NULL;
+    }
 }
 
 static void smartcard_message_send(SpiceSmartcardChannel *channel,
@@ -293,7 +297,9 @@ static void smartcard_message_send(SpiceSmartcardChannel *channel,
     if (channel->priv->in_flight_message == NULL) {
         g_return_if_fail(g_queue_is_empty(channel->priv->message_queue));
         channel->priv->in_flight_message = message;
-        spice_msg_out_send(msg_out);
+        spice_msg_out_send(channel->priv->in_flight_message->message);
+        spice_msg_out_unref(channel->priv->in_flight_message->message);
+        channel->priv->in_flight_message->message = NULL;
     } else {
         g_queue_push_tail(channel->priv->message_queue, message);
     }
