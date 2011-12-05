@@ -1317,6 +1317,8 @@ GSocket* spice_session_channel_open_host(SpiceSession *session, gboolean use_tls
         SPICE_DEBUG("Trying one socket");
         g_clear_error(&conn_error);
         sock = channel_connect_socket(sockaddr, &conn_error);
+        if (conn_error != NULL)
+            g_warning(conn_error->message);
         g_object_unref(sockaddr);
     }
     g_object_unref(enumerator);
