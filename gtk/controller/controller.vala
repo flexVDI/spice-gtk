@@ -76,9 +76,9 @@ public class Controller: Object {
 	private int nclients;
 	List<IOStream> clients;
 
-	private bool handle_message (SpiceProtocol.Controller.Msg msg) {
-		var v = (SpiceProtocol.Controller.MsgValue*)(&msg);
-		var d = (SpiceProtocol.Controller.MsgData*)(&msg);
+	private bool handle_message (SpiceProtocol.Controller.Msg* msg) {
+		var v = (SpiceProtocol.Controller.MsgValue*)(msg);
+		var d = (SpiceProtocol.Controller.MsgData*)(msg);
 		unowned string str = (string)(&d.data);
 
 		switch (msg.id) {
@@ -209,7 +209,7 @@ public class Controller: Object {
 					break;
 			}
 
-			handle_message (*msg);
+			handle_message (msg);
 		}
 
 		if (excl)
