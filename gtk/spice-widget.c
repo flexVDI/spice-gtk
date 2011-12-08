@@ -282,6 +282,14 @@ static void spice_display_finalize(GObject *obj)
     G_OBJECT_CLASS(spice_display_parent_class)->finalize(obj);
 }
 
+static GdkCursor* get_blank_cursor(void)
+{
+    if (g_getenv("SPICE_DEBUG_CURSOR"))
+        return gdk_cursor_new(GDK_DOT);
+
+    return gdk_cursor_new(GDK_BLANK_CURSOR);
+}
+
 static void spice_display_init(SpiceDisplay *display)
 {
     GtkWidget *widget = GTK_WIDGET(display);
@@ -305,10 +313,7 @@ static void spice_display_init(SpiceDisplay *display)
     d->grabseq = spice_grab_sequence_new_from_string("Control_L+Alt_L");
     d->activeseq = g_new0(gboolean, d->grabseq->nkeysyms);
 
-    if (g_getenv("SPICE_DEBUG_CURSOR"))
-        d->mouse_cursor = gdk_cursor_new(GDK_DOT);
-    else
-        d->mouse_cursor = gdk_cursor_new(GDK_BLANK_CURSOR);
+    d->mouse_cursor = get_blank_cursor();
     d->have_mitshm = true;
 }
 
