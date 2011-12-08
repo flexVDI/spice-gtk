@@ -1141,12 +1141,16 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
     }
 
     gtk_widget_grab_focus(widget);
-    if (d->mouse_mode == SPICE_MOUSE_MODE_SERVER)
-        try_mouse_grab(display);
-    else /* allow to drag and drop between windows/displays:
-            FIXME: should be multiple widget grab, but how?
-            or should now the position of the other widgets?..
-         */
+    if (d->mouse_mode == SPICE_MOUSE_MODE_SERVER) {
+        if (!d->mouse_grab_active) {
+            try_mouse_grab(display);
+            return true;
+        }
+    } else
+        /* allow to drag and drop between windows/displays:
+           FIXME: should be multiple widget grab, but how?
+           or should now the position of the other widgets?..
+        */
         gdk_pointer_ungrab(GDK_CURRENT_TIME);
 
     if (!d->inputs)
