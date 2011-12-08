@@ -95,15 +95,23 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
     if (d->ximage) {
         if (d->allow_scaling) {
             double sx, sy;
-            /* Scale to fill window */
-            sx = (double)ww / (double)fbw;
-            sy = (double)wh / (double)fbh;
+            spice_display_get_scaling(display, &sx, &sy);
             cairo_scale(cr, sx, sy);
             cairo_set_source_surface(cr, d->ximage, 0, 0);
         } else {
             cairo_set_source_surface(cr, d->ximage, d->mx, d->my);
         }
         cairo_paint(cr);
+
+        if (d->mouse_mode == SPICE_MOUSE_MODE_SERVER) {
+            GdkPixbuf *image = d->mouse_pixbuf;
+            if (image != NULL) {
+                gdk_cairo_set_source_pixbuf(cr, image,
+                                            d->mx + d->mouse_guest_x - d->mouse_hotspot.x,
+                                            d->my + d->mouse_guest_y - d->mouse_hotspot.y);
+                cairo_paint(cr);
+            }
+        }
     }
 }
 

@@ -116,6 +116,7 @@ static void disconnect_display(SpiceDisplay *display);
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data);
 static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer data);
 static void sync_keyboard_lock_modifiers(SpiceDisplay *display);
+static void cursor_invalidate(SpiceDisplay *display);
 
 /* ---------------------------------------------------------------- */
 
@@ -507,6 +508,7 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     GdkWindow *window = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
     GdkGrabStatus status;
+    GdkCursor *blank = get_blank_cursor();
 
     if (!gtk_widget_get_realized(GTK_WIDGET(display)))
         return GDK_GRAB_BROKEN;
@@ -527,7 +529,8 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
                      GDK_BUTTON_RELEASE_MASK |
                      GDK_BUTTON_MOTION_MASK |
                      GDK_SCROLL_MASK,
-                     NULL, d->mouse_cursor,
+                     NULL,
+                     blank,
                      GDK_CURRENT_TIME);
     if (status != GDK_GRAB_SUCCESS) {
         d->mouse_grab_active = false;
@@ -539,6 +542,7 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
 
     gtk_grab_add(GTK_WIDGET(display));
 
+    g_object_unref(blank);
     return status;
 }
 
@@ -558,8 +562,6 @@ static void update_mouse_pointer(SpiceDisplay *display)
         if (!d->mouse_grab_active) {
             gdk_window_set_cursor(window, NULL);
         } else {
-            // FIXME: should it be transparent instead?
-            gdk_window_set_cursor(window, d->mouse_cursor);
             try_mouse_grab(display);
         }
         break;
@@ -600,24 +602,22 @@ static void mouse_check_edges(GtkWidget *widget, GdkEventMotion *motion)
     int x = (int)motion->x_root;
     int y = (int)motion->y_root;
 
-    if (d->mouse_guest_x != -1 && d->mouse_guest_y != -1) {
-        SPICE_DEBUG("skip mouse_check_edges");
-        return;
-    }
-
     /* from gtk-vnc:
      * In relative mode check to see if client pointer hit one of the
-     * screen edges, and if so move it back by 200 pixels. This is
+     * screen edges, and if so move it back by 100 pixels. This is
      * important because the pointer in the server doesn't correspond
      * 1-for-1, and so may still be only half way across the
      * screen. Without this warp, the server pointer would thus appear
      * to hit an invisible wall */
-    if (motion->x <= 0) x += 200;
-    if (motion->y <= 0) y += 200;
-    if (motion->x >= (gdk_screen_get_width(screen) - 1)) x -= 200;
-    if (motion->y >= (gdk_screen_get_height(screen) - 1)) y -= 200;
+    if (x <= 0) x += 100;
+    if (y <= 0) y += 100;
+    if (x >= (gdk_screen_get_width(screen) - 1)) x -= 100;
+    if (y >= (gdk_screen_get_height(screen) - 1)) y -= 100;
 
     if (x != (int)motion->x_root || y != (int)motion->y_root) {
+        /* FIXME: we try our best to ignore that next pointer move event.. */
+        gdk_display_sync(gdk_screen_get_display(screen));
+
         gdk_display_warp_pointer(gtk_widget_get_display(widget),
                                  screen, x, y);
         d->mouse_last_x = -1;
@@ -1129,7 +1129,8 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
     if (d->disable_inputs)
         return true;
 
-    if (!spicex_is_scaled(display)) {
+    if (!spicex_is_scaled(display)
+        && d->mouse_mode == SPICE_MOUSE_MODE_CLIENT) {
         gint x, y;
 
         /* rule out clicks in outside region */
@@ -1471,31 +1472,34 @@ static void cursor_set(SpiceCursorChannel *channel,
     SpiceDisplay *display = data;
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
+    cursor_invalidate(display);
+
     if (d->mouse_cursor) {
         gdk_cursor_unref(d->mouse_cursor);
         d->mouse_cursor = NULL;
     }
 
+    if (d->mouse_pixbuf) {
+        g_object_unref(d->mouse_pixbuf);
+        d->mouse_pixbuf = NULL;
+    }
+
     if (rgba != NULL) {
-        GdkPixbuf *pixbuf;
-        GdkDisplay *gtkdpy;
-
-        gtkdpy = gtk_widget_get_display(GTK_WIDGET(display));
-
-        pixbuf = gdk_pixbuf_new_from_data(rgba,
-                                          GDK_COLORSPACE_RGB,
-                                          TRUE, 8,
-                                          width,
-                                          height,
-                                          width * 4,
-                                          NULL, NULL);
+        d->mouse_pixbuf = gdk_pixbuf_new_from_data(g_memdup(rgba, width * height * 4),
+                                                   GDK_COLORSPACE_RGB,
+                                                   TRUE, 8,
+                                                   width,
+                                                   height,
+                                                   width * 4,
+                                                   (GdkPixbufDestroyNotify)g_free, NULL);
+        d->mouse_hotspot.x = hot_x;
+        d->mouse_hotspot.y = hot_y;
 
         /* gdk_cursor_new_from_pixbuf() will copy pixbuf data on
            x11/win32/macos. No worries if rgba pointer is freed
            after. */
-        d->mouse_cursor = gdk_cursor_new_from_pixbuf(gtkdpy, pixbuf,
-                                                     hot_x, hot_y);
-        g_object_unref(pixbuf);
+        d->mouse_cursor = gdk_cursor_new_from_pixbuf(gtk_widget_get_display(GTK_WIDGET(display)),
+                                                     d->mouse_pixbuf, hot_x, hot_y);
     }
 
     update_mouse_pointer(display);
@@ -1510,42 +1514,59 @@ static void cursor_hide(SpiceCursorChannel *channel, gpointer data)
         return;
 
     d->show_cursor = d->mouse_cursor;
-    d->mouse_cursor = gdk_cursor_new(GDK_BLANK_CURSOR);
+    d->mouse_cursor = get_blank_cursor();
     update_mouse_pointer(display);
+}
+
+G_GNUC_INTERNAL
+void spice_display_get_scaling(SpiceDisplay *display, double *sx, double *sy)
+{
+    SpiceDisplayPrivate *d = display->priv;
+    int fbw = d->width, fbh = d->height;
+    int ww, wh;
+
+    if (!spicex_is_scaled(display)) {
+        *sx = 1.0;
+        *sy = 1.0;
+        return;
+    }
+
+    gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
+
+    *sx = (double)ww / (double)fbw;
+    *sy = (double)wh / (double)fbh;
+}
+
+static void cursor_invalidate(SpiceDisplay *display)
+{
+    SpiceDisplayPrivate *d = display->priv;
+    double sx, sy;
+
+    if (d->mouse_pixbuf == NULL)
+        return;
+
+    spice_display_get_scaling(display, &sx, &sy);
+
+    gtk_widget_queue_draw_area(GTK_WIDGET(display),
+                               (d->mouse_guest_x + d->mx - d->mouse_hotspot.x) * sx,
+                               (d->mouse_guest_y + d->my - d->mouse_hotspot.y) * sy,
+                               gdk_pixbuf_get_width(d->mouse_pixbuf) * sx,
+                               gdk_pixbuf_get_height(d->mouse_pixbuf) * sy);
 }
 
 static void cursor_move(SpiceCursorChannel *channel, gint x, gint y, gpointer data)
 {
     SpiceDisplay *display = data;
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    GdkScreen *screen = gtk_widget_get_screen(GTK_WIDGET(display));
-    int wx, wy;
+    SpiceDisplayPrivate *d = display->priv;
 
-    SPICE_DEBUG("%s: +%d+%d", __FUNCTION__, x, y);
+    cursor_invalidate(display);
 
-    d->mouse_last_x = x;
-    d->mouse_last_y = y;
     d->mouse_guest_x = x;
     d->mouse_guest_y = y;
 
-    if (spicex_is_scaled(display) && gtk_widget_get_realized(GTK_WIDGET(display))) {
-        gint ww, wh;
+    cursor_invalidate(display);
 
-        gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
-        x = x * ((double)ww / (double)(d->width));
-        y = y * ((double)wh / (double)(d->height));
-    } else {
-        /* black borders offset */
-        x += d->mx;
-        y += d->my;
-    }
-
-    if (d->mouse_grab_active && gtk_widget_get_realized(GTK_WIDGET(display))) {
-        gdk_window_get_origin(GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display))), &wx, &wy);
-        gdk_display_warp_pointer(gtk_widget_get_display(GTK_WIDGET(display)), screen, x + wx, y + wy);
-    }
-
-    /* FIXME: apparently we have to restore cursor when "cursor_move" ?? */
+    /* apparently we have to restore cursor when "cursor_move" */
     if (d->show_cursor != NULL) {
         gdk_cursor_unref(d->mouse_cursor);
         d->mouse_cursor = d->show_cursor;

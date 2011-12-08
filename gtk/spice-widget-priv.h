@@ -87,6 +87,8 @@ struct _SpiceDisplayPrivate {
     int                     mouse_grab_active;
     bool                    mouse_have_pointer;
     GdkCursor               *mouse_cursor;
+    GdkPixbuf               *mouse_pixbuf;
+    GdkPoint                mouse_hotspot;
     GdkCursor               *show_cursor;
     int                     mouse_last_x;
     int                     mouse_last_y;
@@ -116,6 +118,7 @@ void     spicex_draw_event                   (SpiceDisplay *display, cairo_t *cr
 void     spicex_expose_event                 (SpiceDisplay *display, GdkEventExpose *ev);
 #endif
 gboolean spicex_is_scaled                    (SpiceDisplay *display);
+void     spice_display_get_scaling           (SpiceDisplay *display, double *sx, double *sy);
 
 G_END_DECLS
 
