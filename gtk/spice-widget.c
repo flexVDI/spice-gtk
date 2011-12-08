@@ -196,6 +196,7 @@ static void spice_display_set_property(GObject      *object,
         break;
     case PROP_SCALING:
         d->allow_scaling = g_value_get_boolean(value);
+        recalc_geometry(GTK_WIDGET(display), FALSE);
         if (d->ximage &&
             gtk_widget_get_window(GTK_WIDGET(display))) { /* if not yet shown */
             int ww, wh;

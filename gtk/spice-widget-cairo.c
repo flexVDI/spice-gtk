@@ -71,15 +71,9 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     int fbw = d->width, fbh = d->height;
-    int mx = 0, my = 0;
     int ww, wh;
 
     gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
-
-    if (ww > fbw)
-        mx = (ww - fbw) / 2;
-    if (wh > fbh)
-        my = (wh - fbh) / 2;
 
     /* If we don't have a pixmap, or we're not scaling, then
        we need to fill with background color */
@@ -92,7 +86,7 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
            behaviour of drawing the rectangle from right to left
            to cut out the whole */
         if (d->ximage)
-            cairo_rectangle(cr, mx + fbw, my,
+            cairo_rectangle(cr, d->mx + fbw, d->my,
                             -1 * fbw, fbh);
         cairo_fill(cr);
     }
@@ -107,7 +101,7 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
             cairo_scale(cr, sx, sy);
             cairo_set_source_surface(cr, d->ximage, 0, 0);
         } else {
-            cairo_set_source_surface(cr, d->ximage, mx, my);
+            cairo_set_source_surface(cr, d->ximage, d->mx, d->my);
         }
         cairo_paint(cr);
     }
