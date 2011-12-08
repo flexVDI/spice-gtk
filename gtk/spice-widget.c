@@ -537,6 +537,8 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
         g_signal_emit(display, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, true);
     }
 
+    gtk_grab_add(GTK_WIDGET(display));
+
     return status;
 }
 
@@ -631,7 +633,10 @@ static void try_mouse_ungrab(SpiceDisplay *display)
         return;
 
     gdk_pointer_ungrab(GDK_CURRENT_TIME);
+    gtk_grab_remove(GTK_WIDGET(display));
+
     d->mouse_grab_active = false;
+
     update_mouse_pointer(display);
     g_signal_emit(display, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, false);
 }
@@ -936,8 +941,13 @@ static gboolean leave_event(GtkWidget *widget, GdkEventCrossing *crossing G_GNUC
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     SPICE_DEBUG("%s", __FUNCTION__);
+
+    if (d->mouse_grab_active)
+        return true;
+
     d->mouse_have_pointer = false;
     try_keyboard_ungrab(display);
+
     return true;
 }
 
