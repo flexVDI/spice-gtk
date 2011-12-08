@@ -326,6 +326,9 @@ void spice_inputs_motion(SpiceInputsChannel *channel, gint dx, gint dy,
     if (SPICE_CHANNEL(channel)->priv->state != SPICE_CHANNEL_STATE_READY)
         return;
 
+    if (dx == 0 && dy == 0)
+        return;
+
     c = channel->priv;
     c->bs  = button_state;
     c->dx += dx;
