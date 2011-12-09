@@ -575,12 +575,8 @@ static void update_mouse_pointer(SpiceDisplay *display)
             gdk_window_set_cursor(window, d->mouse_cursor);
         break;
     case SPICE_MOUSE_MODE_SERVER:
-        if (!d->mouse_grab_active) {
-            if (gdk_window_get_cursor(window) != NULL)
-                gdk_window_set_cursor(window, NULL);
-        } else {
-            try_mouse_grab(display);
-        }
+        if (gdk_window_get_cursor(window) != NULL)
+            gdk_window_set_cursor(window, NULL);
         break;
     default:
         g_warn_if_reached();
@@ -595,6 +591,11 @@ static void try_mouse_grab(SpiceDisplay *display)
     if (g_getenv("SPICE_NOGRAB"))
         return;
     if (d->disable_inputs)
+        return;
+
+    if (!d->mouse_have_pointer)
+        return;
+    if (!d->keyboard_have_focus)
         return;
 
     if (!d->mouse_grab_enable)
@@ -654,7 +655,6 @@ static void try_mouse_ungrab(SpiceDisplay *display)
 
     d->mouse_grab_active = false;
 
-    update_mouse_pointer(display);
     g_signal_emit(display, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, false);
 }
 
@@ -663,7 +663,7 @@ static void update_mouse_grab(SpiceDisplay *display)
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     if (d->mouse_grab_enable && !d->disable_inputs)
-        update_mouse_pointer(display);
+        try_mouse_grab(display);
     else
         try_mouse_ungrab(display);
 }
@@ -1419,9 +1419,7 @@ static void mouse_update(SpiceChannel *channel, gpointer data)
         try_mouse_ungrab(display);
         break;
     case SPICE_MOUSE_MODE_SERVER:
-        if (d->mouse_have_pointer &&
-            d->keyboard_have_focus)
-            try_mouse_grab(display);
+        try_mouse_grab(display);
         break;
     default:
         g_warn_if_reached();
