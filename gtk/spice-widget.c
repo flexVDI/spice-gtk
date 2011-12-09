@@ -876,6 +876,16 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
             __FUNCTION__, key->type == GDK_KEY_PRESS ? "press" : "release",
             key->hardware_keycode, key->state, key->group);
 
+    if (check_for_grab_key(display, key->type, key->keyval) &&
+        d->mouse_mode == SPICE_MOUSE_MODE_SERVER) {
+        g_signal_emit(widget, signals[SPICE_DISPLAY_GRAB_KEY_PRESSED], 0);
+        if (d->mouse_grab_active)
+            try_mouse_ungrab(display);
+        else
+            try_mouse_grab(display);
+        return true;
+    }
+
     if (!d->inputs)
         return true;
 
@@ -891,17 +901,6 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
     default:
         break;
     }
-
-    if (check_for_grab_key(display, key->type, key->keyval)) {
-        g_signal_emit(widget, signals[SPICE_DISPLAY_GRAB_KEY_PRESSED], 0);
-        if (d->mouse_grab_active)
-            try_mouse_ungrab(display);
-        else
-            /* TODO: gtk-vnc has a weird condition here
-               if (!d->grab_keyboard || !d->absolute) */
-            try_mouse_grab(display);
-    }
-
 
     return true;
 }
