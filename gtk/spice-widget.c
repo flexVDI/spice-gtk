@@ -1414,8 +1414,18 @@ static void mouse_update(SpiceChannel *channel, gpointer data)
     g_object_get(channel, "mouse-mode", &d->mouse_mode, NULL);
     SPICE_DEBUG("mouse mode %d", d->mouse_mode);
 
-    if (d->mouse_mode == SPICE_MOUSE_MODE_CLIENT)
+    switch (d->mouse_mode) {
+    case SPICE_MOUSE_MODE_CLIENT:
         try_mouse_ungrab(display);
+        break;
+    case SPICE_MOUSE_MODE_SERVER:
+        if (d->mouse_have_pointer &&
+            d->keyboard_have_focus)
+            try_mouse_grab(display);
+        break;
+    default:
+        g_warn_if_reached();
+    }
 
     update_mouse_pointer(display);
     cursor_invalidate(display);
