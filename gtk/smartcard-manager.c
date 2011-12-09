@@ -315,8 +315,6 @@ struct _SmartcardSource {
 };
 typedef struct _SmartcardSource SmartcardSource;
 
-typedef gboolean (*SmartcardSourceFunc)(VEvent *event, gpointer user_data);
-
 static gboolean smartcard_source_prepare(GSource *source, gint *timeout)
 {
     SmartcardSource *smartcard_source = (SmartcardSource *)source;
