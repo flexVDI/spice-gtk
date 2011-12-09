@@ -1400,12 +1400,11 @@ static void mouse_update(SpiceChannel *channel, gpointer data)
     g_object_get(channel, "mouse-mode", &d->mouse_mode, NULL);
     SPICE_DEBUG("mouse mode %d", d->mouse_mode);
 
-    d->mouse_guest_x = -1;
-    d->mouse_guest_y = -1;
-    if (d->mouse_mode == SPICE_MOUSE_MODE_CLIENT) {
+    if (d->mouse_mode == SPICE_MOUSE_MODE_CLIENT)
         try_mouse_ungrab(display);
-    }
+
     update_mouse_pointer(display);
+    cursor_invalidate(display);
 }
 
 static void primary_create(SpiceChannel *channel, gint format,
