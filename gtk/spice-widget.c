@@ -1149,8 +1149,16 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
         }
     } else
         /* allow to drag and drop between windows/displays:
+
+           By default, X (and other window system) do a pointer grab
+           when you press a button, so that the release event is
+           received by the same window regardless of where the pointer
+           is. Here, we change that behaviour, so that you can press
+           and release in two differents displays. This is only
+           supported in client mouse mode.
+
            FIXME: should be multiple widget grab, but how?
-           or should now the position of the other widgets?..
+           or should know the position of the other widgets?
         */
         gdk_pointer_ungrab(GDK_CURRENT_TIME);
 
