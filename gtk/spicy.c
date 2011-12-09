@@ -238,7 +238,7 @@ static int connect_dialog(SpiceSession *session)
         }
     }
 
-    label = gtk_label_new("Recent connexions:");
+    label = gtk_label_new("Recent connections:");
     gtk_box_pack_start(GTK_BOX(area), label, TRUE, TRUE, 0);
     gtk_misc_set_alignment(GTK_MISC(label), 0, 0.5);
 #ifndef WIN32
