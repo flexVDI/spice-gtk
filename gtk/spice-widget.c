@@ -1406,7 +1406,7 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
 
 /* ---------------------------------------------------------------- */
 
-static void mouse_update(SpiceChannel *channel, gpointer data)
+static void update_mouse_mode(SpiceChannel *channel, gpointer data)
 {
     SpiceDisplay *display = data;
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
@@ -1634,7 +1634,7 @@ static void disconnect_main(SpiceDisplay *display)
 
     if (d->main == NULL)
         return;
-    g_signal_handlers_disconnect_by_func(d->main, G_CALLBACK(mouse_update),
+    g_signal_handlers_disconnect_by_func(d->main, G_CALLBACK(update_mouse_mode),
                                          display);
     d->main = NULL;
 }
@@ -1681,8 +1681,8 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
         d->main = SPICE_MAIN_CHANNEL(channel);
         g_signal_connect(channel, "main-mouse-update",
-                         G_CALLBACK(mouse_update), display);
-        mouse_update(channel, display);
+                         G_CALLBACK(update_mouse_mode), display);
+        update_mouse_mode(channel, display);
         return;
     }
 
