@@ -557,7 +557,7 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
 
     gtk_grab_add(GTK_WIDGET(display));
 
-    g_object_unref(blank);
+    gdk_cursor_unref(blank);
     return status;
 }
 
