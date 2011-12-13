@@ -628,27 +628,31 @@ static void mouse_check_edges(GtkWidget *widget, GdkEventMotion *motion)
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     GdkScreen *screen = gtk_widget_get_screen(widget);
-    int x = (int)motion->x_root;
-    int y = (int)motion->y_root;
+    gint ww, wh;
 
-    /* from gtk-vnc:
-     * In relative mode check to see if client pointer hit one of the
-     * screen edges, and if so move it back by 100 pixels. This is
+    gdk_drawable_get_size(gtk_widget_get_window(widget), &ww, &wh);
+    int x = (int)motion->x;
+    int y = (int)motion->y;
+    int xr = (int)motion->x_root;
+    int yr = (int)motion->y_root;
+
+    /* from gtk-vnc: In relative mode check to see if client pointer
+     * hit the window edges, and if so move it back by 100px. This is
      * important because the pointer in the server doesn't correspond
      * 1-for-1, and so may still be only half way across the
      * screen. Without this warp, the server pointer would thus appear
      * to hit an invisible wall */
-    if (x <= 0) x += 100;
-    if (y <= 0) y += 100;
-    if (x >= (gdk_screen_get_width(screen) - 1)) x -= 100;
-    if (y >= (gdk_screen_get_height(screen) - 1)) y -= 100;
+    if (x <= 0) xr += 100;
+    if (y <= 0) yr += 100;
+    if (x >= (ww - 1)) xr -= 100;
+    if (y >= (wh - 1)) yr -= 100;
 
-    if (x != (int)motion->x_root || y != (int)motion->y_root) {
+    if (xr != (int)motion->x_root || yr != (int)motion->y_root) {
         /* FIXME: we try our best to ignore that next pointer move event.. */
         gdk_display_sync(gdk_screen_get_display(screen));
 
         gdk_display_warp_pointer(gtk_widget_get_display(widget),
-                                 screen, x, y);
+                                 screen, xr, yr);
         d->mouse_last_x = -1;
         d->mouse_last_y = -1;
     }
