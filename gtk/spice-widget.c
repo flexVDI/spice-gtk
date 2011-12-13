@@ -554,7 +554,18 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
         d->mouse_grab_active = true;
         g_signal_emit(display, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, true);
     }
+#ifdef WIN32
+    {
+        RECT client_rect;
+        POINT origin;
 
+        origin.x = origin.y = 0;
+        ClientToScreen(focus_window, &origin);
+        GetClientRect(focus_window, &client_rect);
+        OffsetRect(&client_rect, origin.x, origin.y);
+        ClipCursor(&client_rect);
+    }
+#endif
     gtk_grab_add(GTK_WIDGET(display));
 
     gdk_cursor_unref(blank);
@@ -652,6 +663,9 @@ static void try_mouse_ungrab(SpiceDisplay *display)
 
     gdk_pointer_ungrab(GDK_CURRENT_TIME);
     gtk_grab_remove(GTK_WIDGET(display));
+#ifdef WIN32
+    ClipCursor(NULL);
+#endif
 
     d->mouse_grab_active = false;
 
