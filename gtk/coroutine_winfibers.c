@@ -60,6 +60,7 @@ int coroutine_init(struct coroutine *co)
 	}
 
 	co->fiber = CreateFiber(0, &coroutine_trampoline, co);
+	co->ret = 0;
 	if (co->fiber == NULL)
 		return -1;
 
