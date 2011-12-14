@@ -264,10 +264,7 @@ smartcard_message_new(VSCMsgType msg_type, SpiceMsgOut *msg_out)
 static void
 smartcard_message_complete_in_flight(SpiceSmartcardChannel *channel)
 {
-    if (channel->priv->in_flight_message == NULL) {
-        g_return_if_fail(g_queue_is_empty(channel->priv->message_queue));
-        return;
-    }
+    g_return_if_fail(channel->priv->in_flight_message != NULL);
 
     smartcard_message_free(channel->priv->in_flight_message);
     channel->priv->in_flight_message = g_queue_pop_head(channel->priv->message_queue);
