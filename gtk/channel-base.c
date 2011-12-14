@@ -35,7 +35,6 @@ void spice_channel_handle_set_ack(SpiceChannel *channel, SpiceMsgIn *in)
     c->message_ack_window = c->message_ack_count = ack->window;
     c->marshallers->msgc_ack_sync(out->marshaller, &sync);
     spice_msg_out_send_internal(out);
-    spice_msg_out_unref(out);
 }
 
 /* coroutine context */
@@ -48,7 +47,6 @@ void spice_channel_handle_ping(SpiceChannel *channel, SpiceMsgIn *in)
 
     c->marshallers->msgc_pong(pong->marshaller, ping);
     spice_msg_out_send_internal(pong);
-    spice_msg_out_unref(pong);
 }
 
 /* coroutine context */
@@ -130,7 +128,6 @@ void spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in)
 
         out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MIGRATE_FLUSH_MARK);
         spice_msg_out_send_internal(out);
-        spice_msg_out_unref(out);
         SPICE_CHANNEL_GET_CLASS(channel)->iterate_write(channel);
     }
     if (mig->flags & SPICE_MIGRATE_NEED_DATA_TRANSFER) {
@@ -148,6 +145,5 @@ void spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in)
         out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MIGRATE_DATA);
         spice_marshaller_add(out->marshaller, data->data, data->header.size);
         spice_msg_out_send_internal(out);
-        spice_msg_out_unref(out);
     }
 }

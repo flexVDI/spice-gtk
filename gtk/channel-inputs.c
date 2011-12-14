@@ -223,7 +223,6 @@ static void send_position(SpiceInputsChannel *channel)
         return;
 
     spice_msg_out_send(msg);
-    spice_msg_out_unref(msg);
 }
 
 /* main context */
@@ -239,7 +238,6 @@ static void send_motion(SpiceInputsChannel *channel)
         return;
 
     spice_msg_out_send(msg);
-    spice_msg_out_unref(msg);
 }
 
 /* coroutine context */
@@ -273,13 +271,11 @@ static void inputs_handle_ack(SpiceChannel *channel, SpiceMsgIn *in)
     msg = mouse_motion(SPICE_INPUTS_CHANNEL(channel));
     if (msg) { /* if no motion, msg == NULL */
         spice_msg_out_send_internal(msg);
-        spice_msg_out_unref(msg);
     }
 
     msg = mouse_position(SPICE_INPUTS_CHANNEL(channel));
     if (msg) {
         spice_msg_out_send_internal(msg);
-        spice_msg_out_unref(msg);
     }
 }
 
@@ -417,7 +413,6 @@ void spice_inputs_button_press(SpiceInputsChannel *channel, gint button,
     press.buttons_state = button_state;
     msg->marshallers->msgc_inputs_mouse_press(msg->marshaller, &press);
     spice_msg_out_send(msg);
-    spice_msg_out_unref(msg);
 }
 
 /**
@@ -465,7 +460,6 @@ void spice_inputs_button_release(SpiceInputsChannel *channel, gint button,
     release.buttons_state = button_state;
     msg->marshallers->msgc_inputs_mouse_release(msg->marshaller, &release);
     spice_msg_out_send(msg);
-    spice_msg_out_unref(msg);
 }
 
 /**
@@ -498,7 +492,6 @@ void spice_inputs_key_press(SpiceInputsChannel *channel, guint scancode)
                             SPICE_MSGC_INPUTS_KEY_DOWN);
     msg->marshallers->msgc_inputs_key_down(msg->marshaller, &down);
     spice_msg_out_send(msg);
-    spice_msg_out_unref(msg);
 }
 
 /**
@@ -531,7 +524,6 @@ void spice_inputs_key_release(SpiceInputsChannel *channel, guint scancode)
                             SPICE_MSGC_INPUTS_KEY_UP);
     msg->marshallers->msgc_inputs_key_up(msg->marshaller, &up);
     spice_msg_out_send(msg);
-    spice_msg_out_unref(msg);
 }
 
 /* main or coroutine context */
@@ -577,7 +569,6 @@ void spice_inputs_set_key_locks(SpiceInputsChannel *channel, guint locks)
         return;
 
     spice_msg_out_send(msg); /* main -> coroutine */
-    spice_msg_out_unref(msg);
 }
 
 /* coroutine context */
@@ -591,5 +582,4 @@ static void spice_inputs_channel_up(SpiceChannel *channel)
 
     msg = set_key_locks(SPICE_INPUTS_CHANNEL(channel), c->locks);
     spice_msg_out_send_internal(msg);
-    spice_msg_out_unref(msg);
 }

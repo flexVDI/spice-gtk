@@ -288,7 +288,6 @@ static void spice_record_mode(SpiceRecordChannel *channel, uint32_t time,
     msg = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_RECORD_MODE);
     msg->marshallers->msgc_record_mode(msg->marshaller, &m);
     spice_msg_out_send(msg);
-    spice_msg_out_unref(msg);
 }
 
 /* coroutine context */
@@ -319,7 +318,6 @@ static void spice_record_start_mark(SpiceRecordChannel *channel, uint32_t time)
     msg = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_RECORD_START_MARK);
     msg->marshallers->msgc_record_start_mark(msg->marshaller, &m);
     spice_msg_out_send(msg);
-    spice_msg_out_unref(msg);
 }
 
 /**
@@ -398,7 +396,6 @@ void spice_record_send_data(SpiceRecordChannel *channel, gpointer data,
         msg->marshallers->msgc_record_data(msg->marshaller, &p);
         spice_marshaller_add(msg->marshaller, frame, frame_size);
         spice_msg_out_send(msg);
-        spice_msg_out_unref(msg);
 
         if (rc->last_frame_current == rc->frame_bytes)
             rc->last_frame_current = 0;

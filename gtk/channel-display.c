@@ -701,7 +701,6 @@ static void spice_display_channel_up(SpiceChannel *channel)
     out = spice_msg_out_new(channel, SPICE_MSGC_DISPLAY_INIT);
     out->marshallers->msgc_display_init(out->marshaller, &init);
     spice_msg_out_send_internal(out);
-    spice_msg_out_unref(out);
 }
 
 #define DRAW(type) {                                                    \

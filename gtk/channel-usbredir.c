@@ -367,7 +367,6 @@ void spice_usbredir_channel_do_write(SpiceUsbredirChannel *channel)
     usbredirhost_write_guest_data(priv->host);
 
     spice_msg_out_send(priv->msg_out);
-    spice_msg_out_unref(priv->msg_out);
     priv->msg_out = NULL;
 }
 

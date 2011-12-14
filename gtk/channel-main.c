@@ -717,7 +717,6 @@ static void agent_send_msg_queue(SpiceMainChannel *channel)
         c->agent_tokens--;
         out = g_queue_pop_head(c->agent_msg_queue);
         spice_msg_out_send_internal(out);
-        spice_msg_out_unref(out);
     }
 }
 
@@ -1023,7 +1022,6 @@ static void agent_start(SpiceMainChannel *channel)
     out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_AGENT_START);
     out->marshallers->msgc_main_agent_start(out->marshaller, &agent_start);
     spice_msg_out_send_internal(out);
-    spice_msg_out_unref(out);
 
     if (c->agent_connected) {
         agent_announce_caps(channel);
@@ -1065,7 +1063,6 @@ static void set_mouse_mode(SpiceMainChannel *channel, uint32_t supported, uint32
         out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_MOUSE_MODE_REQUEST);
         out->marshallers->msgc_main_mouse_mode_request(out->marshaller, &req);
         spice_msg_out_send_internal(out);
-        spice_msg_out_unref(out);
     }
 }
 
@@ -1082,7 +1079,6 @@ static void main_handle_init(SpiceChannel *channel, SpiceMsgIn *in)
 
     out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_ATTACH_CHANNELS);
     spice_msg_out_send_internal(out);
-    spice_msg_out_unref(out);
 
     set_mouse_mode(SPICE_MAIN_CHANNEL(channel), init->supported_mouse_modes,
                    init->current_mouse_mode);
@@ -1508,7 +1504,6 @@ static void main_handle_migrate_begin(SpiceChannel *channel, SpiceMsgIn *in)
 
     out = spice_msg_out_new(SPICE_CHANNEL(channel), reply_type);
     spice_msg_out_send(out);
-    spice_msg_out_unref(out);
 }
 
 /* main context */

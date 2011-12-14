@@ -545,6 +545,8 @@ void spice_msg_out_send(SpiceMsgOut *out)
 
     /* TODO: we currently flush/wakeup immediately all buffered messages */
     spice_channel_wakeup(out->channel);
+
+    spice_msg_out_unref(out);
 }
 
 /* coroutine context */
@@ -556,6 +558,7 @@ void spice_msg_out_send_internal(SpiceMsgOut *out)
     out->header->size =
         spice_marshaller_get_total_size(out->marshaller) - sizeof(SpiceDataHeader);
     spice_channel_send_msg(out->channel, out, FALSE);
+    spice_msg_out_unref(out);
 }
 
 /* ---------------------------------------------------------------- */
@@ -1657,7 +1660,6 @@ void spice_channel_recv_msg(SpiceChannel *channel,
         if (!c->message_ack_count) {
             SpiceMsgOut *out = spice_msg_out_new(channel, SPICE_MSGC_ACK);
             spice_msg_out_send_internal(out);
-            spice_msg_out_unref(out);
             c->message_ack_count = c->message_ack_window;
         }
     }
