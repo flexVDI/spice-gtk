@@ -25,6 +25,10 @@
 #include <X11/XKBlib.h>
 #include <gdk/gdkx.h>
 #endif
+#ifdef GDK_WINDOWING_X11
+#include <X11/Xlib.h>
+#include <gdk/gdkx.h>
+#endif
 #ifdef WIN32
 #include <windows.h>
 #include <gdk/gdkwin32.h>
@@ -568,6 +572,21 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
 #endif
     gtk_grab_add(GTK_WIDGET(display));
 
+#ifdef GDK_WINDOWING_X11
+    if (status == GDK_GRAB_SUCCESS) {
+        int accel_numerator;
+        int accel_denominator;
+        int threshold;
+        GdkWindow *w = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
+        Display *x_display = GDK_WINDOW_XDISPLAY(w);
+    
+        XGetPointerControl(x_display, &accel_numerator, &accel_denominator,
+                           &threshold);
+        XChangePointerControl(x_display, False, False, accel_numerator,
+                              accel_denominator, threshold);
+    }
+#endif
+
     gdk_cursor_unref(blank);
     return status;
 }
@@ -669,6 +688,20 @@ static void try_mouse_ungrab(SpiceDisplay *display)
     gtk_grab_remove(GTK_WIDGET(display));
 #ifdef WIN32
     ClipCursor(NULL);
+#endif
+#ifdef GDK_WINDOWING_X11
+    {
+        int accel_numerator;
+        int accel_denominator;
+        int threshold;
+        GdkWindow *w = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
+        Display *x_display = GDK_WINDOW_XDISPLAY(w);
+    
+        XGetPointerControl(x_display, &accel_numerator, &accel_denominator,
+                           &threshold);
+        XChangePointerControl(x_display, True, True, accel_numerator,
+                              accel_denominator, threshold);
+    }
 #endif
 
     d->mouse_grab_active = false;
