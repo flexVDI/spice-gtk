@@ -73,7 +73,6 @@ struct _SpiceUsbredirChannelPrivate {
     /* Data passed from channel handle msg to the usbredirhost read cb */
     const uint8_t *read_buf;
     int read_buf_size;
-    SpiceMsgOut *msg_out;
     enum SpiceUsbredirChannelState state;
 #if USE_POLKIT
     GSimpleAsyncResult *result;
@@ -89,6 +88,7 @@ static void usbredir_handle_msg(SpiceChannel *channel, SpiceMsgIn *in);
 static void usbredir_log(void *user_data, int level, const char *msg);
 static int usbredir_read_callback(void *user_data, uint8_t *data, int count);
 static int usbredir_write_callback(void *user_data, uint8_t *data, int count);
+static void usbredir_write_flush_callback(void *user_data);
 #endif
 
 G_DEFINE_TYPE(SpiceUsbredirChannel, spice_usbredir_channel, SPICE_TYPE_CHANNEL)
@@ -188,10 +188,16 @@ static gboolean spice_usbredir_channel_open_device(
     }
 
     priv->catch_error = err;
-    priv->host = usbredirhost_open(_g_usb_context_get_context(priv->context),
+    priv->host = usbredirhost_open_full(
+                                   _g_usb_context_get_context(priv->context),
                                    handle, usbredir_log,
                                    usbredir_read_callback,
                                    usbredir_write_callback,
+                                   usbredir_write_flush_callback,
+                                   NULL,
+                                   NULL,
+                                   NULL,
+                                   NULL,
                                    channel, PACKAGE_STRING,
                                    spice_util_get_debug() ? usbredirparser_debug : usbredirparser_warning,
                                    usbredirhost_fl_write_cb_owns_buffer);
@@ -355,26 +361,17 @@ GUsbDevice *spice_usbredir_channel_get_device(SpiceUsbredirChannel *channel)
     return channel->priv->device;
 }
 
-G_GNUC_INTERNAL
-void spice_usbredir_channel_do_write(SpiceUsbredirChannel *channel)
+/* Note that this function must be re-entrant safe, as it can get called
+   from both the main thread as well as from the usb event handling thread */
+static void usbredir_write_flush_callback(void *user_data)
 {
+    SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(user_data);
     SpiceUsbredirChannelPrivate *priv = channel->priv;
 
-    /* No recursion allowed! */
-    g_return_if_fail(priv->msg_out == NULL);
-
-    if (priv->state != STATE_CONNECTED ||
-            !usbredirhost_has_data_to_write(priv->host))
+    if (priv->state != STATE_CONNECTED)
         return;
 
-    priv->msg_out = spice_msg_out_new(SPICE_CHANNEL(channel),
-                                      SPICE_MSGC_SPICEVMC_DATA);
-
-    /* Collect all pending writes in priv->msg_out->marshaller */
     usbredirhost_write_guest_data(priv->host);
-
-    spice_msg_out_send(priv->msg_out);
-    priv->msg_out = NULL;
 }
 
 /* ------------------------------------------------------------------ */
@@ -434,10 +431,14 @@ static void usbredir_free_write_cb_data(uint8_t *data, void *user_data)
 static int usbredir_write_callback(void *user_data, uint8_t *data, int count)
 {
     SpiceUsbredirChannel *channel = user_data;
-    SpiceUsbredirChannelPrivate *priv = channel->priv;
+    SpiceMsgOut *msg_out;
 
-    spice_marshaller_add_ref_full(priv->msg_out->marshaller, data, count,
+    msg_out = spice_msg_out_new(SPICE_CHANNEL(channel),
+                                SPICE_MSGC_SPICEVMC_DATA);
+    spice_marshaller_add_ref_full(msg_out->marshaller, data, count,
                                   usbredir_free_write_cb_data, channel);
+    spice_msg_out_send(msg_out);
+
     return count;
 }
 
@@ -469,7 +470,7 @@ static void spice_usbredir_channel_up(SpiceChannel *c)
 
     priv->state = STATE_CONNECTED;
     /* Flush any pending writes */
-    spice_usbredir_channel_do_write(channel);
+    usbredirhost_write_guest_data(priv->host);
 }
 
 static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
@@ -489,8 +490,6 @@ static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
     priv->read_buf_size = size;
 
     usbredirhost_read_guest_data(priv->host);
-    /* Send any acks, etc. which may be queued now */
-    spice_usbredir_channel_do_write(channel);
 }
 
 #endif /* USE_USBREDIR */

@@ -330,7 +330,7 @@ if test "x$enable_usbredir" = "xno"; then
 else
   PKG_CHECK_MODULES(GUDEV, gudev-1.0)
   PKG_CHECK_MODULES(LIBUSB, libusb-1.0 >= 1.0.9)
-  PKG_CHECK_MODULES(LIBUSBREDIRHOST, libusbredirhost >= 0.3.1)
+  PKG_CHECK_MODULES(LIBUSBREDIRHOST, libusbredirhost >= 0.3.2)
   AC_DEFINE(USE_USBREDIR, [1], [Define if supporting usbredir proxying])
   AM_CONDITIONAL(WITH_USBREDIR, true)
   if test "x$enable_polkit" = "xno"; then

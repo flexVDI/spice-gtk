@@ -404,25 +404,6 @@ static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
 }
 
 #ifdef USE_USBREDIR
-static gboolean spice_usb_device_manager_source_callback(gpointer user_data)
-{
-    SpiceUsbDeviceManager *self = user_data;
-    SpiceUsbDeviceManagerPrivate *priv = self->priv;
-    guint i;
-
-    /*
-     * Flush any writes which may have been caused by async usb packets
-     * completing.
-     */
-    for (i = 0; i < priv->channels->len; i++) {
-        SpiceUsbredirChannel *channel = g_ptr_array_index(priv->channels, i);
-
-        spice_usbredir_channel_do_write(channel);
-    }
-
-    return TRUE;
-}
-
 static void spice_usb_device_manager_auto_connect_cb(GObject      *gobject,
                                                      GAsyncResult *res,
                                                      gpointer      user_data)
@@ -638,10 +619,6 @@ void spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
             g_simple_async_result_take_error(result, e);
             goto done;
         }
-
-        g_usb_source_set_callback(priv->source,
-                                  spice_usb_device_manager_source_callback,
-                                  self, NULL);
     }
 
     for (i = 0; i < priv->channels->len; i++) {

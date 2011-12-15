@@ -42,8 +42,6 @@ void spice_usbredir_channel_disconnect(SpiceUsbredirChannel *channel);
 
 GUsbDevice *spice_usbredir_channel_get_device(SpiceUsbredirChannel *channel);
 
-void spice_usbredir_channel_do_write(SpiceUsbredirChannel *channel);
-
 G_END_DECLS
 
 #endif /* __SPICE_CLIENT_USBREDIR_CHANNEL_PRIV_H__ */
