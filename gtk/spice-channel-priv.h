@@ -95,6 +95,9 @@ struct _SpiceChannelPrivate {
 
     struct wait_queue           wait;
     GQueue                      xmit_queue;
+    gboolean                    xmit_queue_blocked;
+    GStaticMutex                xmit_queue_lock;
+    GThread                     *main_thread;
 
     char                        name[16];
     enum spice_channel_state    state;

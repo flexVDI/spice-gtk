@@ -107,6 +107,8 @@ static void spice_channel_init(SpiceChannel *channel)
     c->remote_common_caps = g_array_new(FALSE, TRUE, sizeof(guint32));
     spice_channel_set_common_capability(channel, SPICE_COMMON_CAP_PROTOCOL_AUTH_SELECTION);
     g_queue_init(&c->xmit_queue);
+    g_static_mutex_init(&c->xmit_queue_lock);
+    c->main_thread = g_thread_self();
 }
 
 static void spice_channel_constructed(GObject *gobject)
@@ -538,16 +540,35 @@ void spice_msg_out_unref(SpiceMsgOut *out)
 }
 
 /* system context */
+static gboolean spice_channel_idle_wakeup(gpointer user_data)
+{
+    SpiceChannel *channel = SPICE_CHANNEL(user_data);
+
+    spice_channel_wakeup(channel);
+    g_object_unref(channel);
+
+    return FALSE;
+}
+
+/* system context */
 G_GNUC_INTERNAL
 void spice_msg_out_send(SpiceMsgOut *out)
 {
     g_return_if_fail(out != NULL);
     g_return_if_fail(out->channel != NULL);
 
-    g_queue_push_tail(&out->channel->priv->xmit_queue, out);
+    g_static_mutex_lock(&out->channel->priv->xmit_queue_lock);
+    if (!out->channel->priv->xmit_queue_blocked)
+        g_queue_push_tail(&out->channel->priv->xmit_queue, out);
+    g_static_mutex_unlock(&out->channel->priv->xmit_queue_lock);
 
     /* TODO: we currently flush/wakeup immediately all buffered messages */
-    spice_channel_wakeup(out->channel);
+    if (g_thread_self() != out->channel->priv->main_thread)
+        /* We use g_timeout_add_full so that can specify the priority */
+        g_timeout_add_full(G_PRIORITY_HIGH, 0, spice_channel_idle_wakeup,
+                           g_object_ref(out->channel), NULL);
+    else
+        spice_channel_wakeup(out->channel);
 }
 
 /* coroutine context */
@@ -1788,8 +1809,13 @@ static void spice_channel_iterate_write(SpiceChannel *channel)
     SpiceChannelPrivate *c = channel->priv;
     SpiceMsgOut *out;
 
-    while ((out = g_queue_pop_head(&c->xmit_queue)))
-        spice_channel_write_msg(channel, out);
+    do {
+        g_static_mutex_lock(&c->xmit_queue_lock);
+        out = g_queue_pop_head(&c->xmit_queue);
+        g_static_mutex_unlock(&c->xmit_queue_lock);
+        if (out)
+            spice_channel_write_msg(channel, out);
+    } while (out);
 }
 
 /* coroutine context */
@@ -2089,6 +2115,7 @@ static gboolean channel_connect(SpiceChannel *channel)
         }
     }
     c->state = SPICE_CHANNEL_STATE_CONNECTING;
+    c->xmit_queue_blocked = FALSE;
 
     g_return_val_if_fail(c->sock == NULL, FALSE);
     g_object_ref(G_OBJECT(channel)); /* Unref'd when co-routine exits */
@@ -2181,8 +2208,11 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
     c->peer_msg = NULL;
     c->peer_pos = 0;
 
+    g_static_mutex_lock(&c->xmit_queue_lock);
+    c->xmit_queue_blocked = TRUE; /* Disallow queuing new messages */
     g_queue_foreach(&c->xmit_queue, (GFunc)spice_msg_out_unref, NULL);
     g_queue_clear(&c->xmit_queue);
+    g_static_mutex_unlock(&c->xmit_queue_lock);
 
     g_array_set_size(c->remote_common_caps, 0);
     g_array_set_size(c->remote_caps, 0);
