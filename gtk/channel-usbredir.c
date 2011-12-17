@@ -30,6 +30,7 @@
 #include "usb-acl-helper.h"
 #endif
 #include "channel-usbredir-priv.h"
+#include "usb-device-manager-priv.h"
 #endif
 
 #include "spice-client.h"
@@ -207,6 +208,16 @@ static gboolean spice_usbredir_channel_open_device(
         return FALSE;
     }
 
+    if (!spice_usb_device_manager_start_event_listening(
+            spice_usb_device_manager_get(
+                spice_channel_get_session(SPICE_CHANNEL(channel)),
+                NULL, NULL),
+            err)) {
+        usbredirhost_close(priv->host);
+        priv->host = NULL;
+        return FALSE;
+    }
+
     spice_channel_connect(SPICE_CHANNEL(channel));
     priv->state = STATE_CONNECTING;
 
@@ -345,6 +356,10 @@ void spice_usbredir_channel_disconnect(SpiceUsbredirChannel *channel)
     case STATE_CONNECTING:
     case STATE_CONNECTED:
         spice_channel_disconnect(SPICE_CHANNEL(channel), SPICE_CHANNEL_NONE);
+        spice_usb_device_manager_stop_event_listening(
+            spice_usb_device_manager_get(
+                spice_channel_get_session(SPICE_CHANNEL(channel)),
+                NULL, NULL));
         /* This also closes the libusb handle we passed to its _open */
         usbredirhost_close(priv->host);
         priv->host = NULL;

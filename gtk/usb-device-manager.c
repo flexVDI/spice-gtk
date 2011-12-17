@@ -34,6 +34,7 @@
 #include "spice-session-priv.h"
 #include "spice-client.h"
 #include "spice-marshal.h"
+#include "usb-device-manager-priv.h"
 
 /**
  * SECTION:usb-device-manager
@@ -91,6 +92,7 @@ struct _SpiceUsbDeviceManagerPrivate {
     GUsbContext *context;
     GUsbDeviceList *devlist;
     GUsbSource *source;
+    int event_listeners;
 #endif
     GPtrArray *devices;
     GPtrArray *channels;
@@ -202,8 +204,6 @@ static void spice_usb_device_manager_finalize(GObject *gobject)
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
 
 #ifdef USE_USBREDIR
-    if (priv->source)
-        g_usb_source_destroy(priv->source);
     if (priv->devlist) {
         g_object_unref(priv->devlist);
         g_object_unref(priv->context);
@@ -476,10 +476,45 @@ static void spice_usb_device_manager_channel_connect_cb(
     g_simple_async_result_complete(result);
     g_object_unref(result);
 }
-#endif
 
 /* ------------------------------------------------------------------ */
 /* private api                                                        */
+
+gboolean spice_usb_device_manager_start_event_listening(
+    SpiceUsbDeviceManager *self, GError **err)
+{
+    SpiceUsbDeviceManagerPrivate *priv = self->priv;
+
+    g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
+
+    priv->event_listeners++;
+    if (priv->event_listeners > 1)
+        return TRUE;
+
+    g_return_val_if_fail(priv->source == NULL, FALSE);
+
+    priv->source = g_usb_source_new(priv->main_context, priv->context, err);
+    return priv->source != NULL;
+}
+
+void spice_usb_device_manager_stop_event_listening(
+    SpiceUsbDeviceManager *self)
+{
+    SpiceUsbDeviceManagerPrivate *priv = self->priv;
+
+    g_return_if_fail(priv->event_listeners > 0);
+
+    priv->event_listeners--;
+    if (priv->event_listeners != 0)
+        return;
+
+    g_return_if_fail(priv->source != NULL);
+
+    g_usb_source_destroy(priv->source);
+    priv->source = NULL;
+}
+#endif
+
 static SpiceUsbredirChannel *spice_usb_device_manager_get_channel_for_dev(
     SpiceUsbDeviceManager *manager, SpiceUsbDevice *_device)
 {
@@ -603,7 +638,6 @@ void spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
 
 #ifdef USE_USBREDIR
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
-    GError *e = NULL;
     guint i;
 
     if (spice_usb_device_manager_is_device_connected(self, device)) {
@@ -611,14 +645,6 @@ void spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
                             SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                             "Cannot connect an already connected usb device");
         goto done;
-    }
-
-    if (!priv->source) {
-        priv->source = g_usb_source_new(priv->main_context, priv->context, &e);
-        if (e) {
-            g_simple_async_result_take_error(result, e);
-            goto done;
-        }
     }
 
     for (i = 0; i < priv->channels->len; i++) {
