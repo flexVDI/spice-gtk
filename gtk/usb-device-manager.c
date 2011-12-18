@@ -122,15 +122,9 @@ static void spice_usb_device_manager_init(SpiceUsbDeviceManager *self)
     priv = SPICE_USB_DEVICE_MANAGER_GET_PRIVATE(self);
     self->priv = priv;
 
-    priv->main_context = NULL;
     priv->channels = g_ptr_array_new();
     priv->devices  = g_ptr_array_new_with_free_func((GDestroyNotify)
                                                     g_object_unref);
-#ifdef USE_USBREDIR
-    priv->context = NULL;
-    priv->source  = NULL;
-    priv->devlist = NULL;
-#endif
 }
 
 static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
