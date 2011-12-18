@@ -102,6 +102,15 @@ static void spice_usbredir_channel_init(SpiceUsbredirChannel *channel)
 #endif
 }
 
+#ifdef USE_USBREDIR
+static void spice_usbredir_channel_reset(SpiceChannel *channel, gboolean migrating)
+{
+    spice_usbredir_channel_disconnect(SPICE_USBREDIR_CHANNEL(channel));
+
+    SPICE_CHANNEL_CLASS(spice_usbredir_channel_parent_class)->channel_reset(channel, migrating);
+}
+#endif
+
 static void spice_usbredir_channel_class_init(SpiceUsbredirChannelClass *klass)
 {
 #ifdef USE_USBREDIR
@@ -111,6 +120,7 @@ static void spice_usbredir_channel_class_init(SpiceUsbredirChannelClass *klass)
     gobject_class->dispose      = spice_usbredir_channel_dispose;
     channel_class->handle_msg   = spice_usbredir_handle_msg;
     channel_class->channel_up   = spice_usbredir_channel_up;
+    channel_class->channel_reset = spice_usbredir_channel_reset;
 
     g_type_class_add_private(klass, sizeof(SpiceUsbredirChannelPrivate));
 #endif

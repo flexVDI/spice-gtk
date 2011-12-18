@@ -92,6 +92,17 @@ static void spice_cursor_channel_finalize(GObject *obj)
         G_OBJECT_CLASS(spice_cursor_channel_parent_class)->finalize(obj);
 }
 
+/* coroutine context */
+static void spice_cursor_channel_reset(SpiceChannel *channel, gboolean migrating)
+{
+    SpiceCursorChannelPrivate *c = SPICE_CURSOR_CHANNEL(channel)->priv;
+
+    delete_cursor_all(channel);
+    c->init_done = FALSE;
+
+    SPICE_CHANNEL_CLASS(spice_cursor_channel_parent_class)->channel_reset(channel, migrating);
+}
+
 static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
@@ -99,6 +110,7 @@ static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
 
     gobject_class->finalize     = spice_cursor_channel_finalize;
     channel_class->handle_msg   = spice_cursor_handle_msg;
+    channel_class->channel_reset = spice_cursor_channel_reset;
 
     /**
      * SpiceCursorChannel::cursor-set:

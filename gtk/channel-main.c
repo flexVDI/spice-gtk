@@ -122,6 +122,7 @@ static guint signals[SPICE_MAIN_LAST_SIGNAL];
 
 static void spice_main_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg);
 static void agent_send_msg_queue(SpiceMainChannel *channel);
+static void agent_free_msg_queue(SpiceMainChannel *channel);
 static void migrate_channel_event_cb(SpiceChannel *channel, SpiceChannelEvent event,
                                      gpointer data);
 
@@ -250,7 +251,7 @@ static void spice_main_channel_finalize(GObject *obj)
     SpiceMainChannelPrivate *c = SPICE_MAIN_CHANNEL(obj)->priv;
 
     g_free(c->agent_msg_data);
-    g_queue_free(c->agent_msg_queue);
+    agent_free_msg_queue(SPICE_MAIN_CHANNEL(obj));
 
     if (G_OBJECT_CLASS(spice_main_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_main_channel_parent_class)->finalize(obj);
@@ -265,6 +266,26 @@ static void spice_channel_iterate_write(SpiceChannel *channel)
         SPICE_CHANNEL_CLASS(spice_main_channel_parent_class)->iterate_write(channel);
 }
 
+/* main or coroutine context */
+static void spice_main_channel_reset(SpiceChannel *channel, gboolean migrating)
+{
+    SpiceMainChannelPrivate *c = SPICE_MAIN_CHANNEL(channel)->priv;
+
+    c->agent_connected = FALSE;
+    c->agent_caps_received = FALSE;
+    c->agent_display_config_sent = FALSE;
+    c->agent_tokens = 0;
+    c->agent_msg_pos = 0;
+    g_free(c->agent_msg_data);
+    c->agent_msg_data = NULL;
+    c->agent_msg_size = 0;
+
+    agent_free_msg_queue(SPICE_MAIN_CHANNEL(channel));
+    c->agent_msg_queue = g_queue_new();
+
+    SPICE_CHANNEL_CLASS(spice_main_channel_parent_class)->channel_reset(channel, migrating);
+}
+
 static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
@@ -277,6 +298,7 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
 
     channel_class->handle_msg    = spice_main_handle_msg;
     channel_class->iterate_write = spice_channel_iterate_write;
+    channel_class->channel_reset = spice_main_channel_reset;
 
     /**
      * SpiceMainChannel:mouse-mode:
@@ -705,6 +727,23 @@ static void do_emit_main_context(GObject *object, int signum, gpointer params)
 }
 
 /* ------------------------------------------------------------------ */
+
+static void agent_free_msg_queue(SpiceMainChannel *channel)
+{
+    SpiceMainChannelPrivate *c = channel->priv;
+    SpiceMsgOut *out;
+
+    if (!c->agent_msg_queue)
+        return;
+
+    while (!g_queue_is_empty(c->agent_msg_queue)) {
+        out = g_queue_pop_head(c->agent_msg_queue);
+        spice_msg_out_unref(out);
+    }
+
+    g_queue_free(c->agent_msg_queue);
+    c->agent_msg_queue = NULL;
+}
 
 /* coroutine context */
 static void agent_send_msg_queue(SpiceMainChannel *channel)

@@ -163,6 +163,26 @@ static void spice_record_channel_set_property(GObject      *gobject,
     }
 }
 
+static void channel_reset(SpiceChannel *channel, gboolean migrating)
+{
+    SpiceRecordChannelPrivate *c = SPICE_RECORD_CHANNEL(channel)->priv;
+
+    g_free(c->last_frame);
+    c->last_frame = NULL;
+
+    if (c->celt_encoder) {
+        celt051_encoder_destroy(c->celt_encoder);
+        c->celt_encoder = NULL;
+    }
+
+    if (c->celt_mode) {
+        celt051_mode_destroy(c->celt_mode);
+        c->celt_mode = NULL;
+    }
+
+    SPICE_CHANNEL_CLASS(spice_record_channel_parent_class)->channel_reset(channel, migrating);
+}
+
 static void spice_record_channel_class_init(SpiceRecordChannelClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
@@ -173,6 +193,7 @@ static void spice_record_channel_class_init(SpiceRecordChannelClass *klass)
     gobject_class->set_property = spice_record_channel_set_property;
     channel_class->handle_msg   = spice_record_handle_msg;
     channel_class->channel_up   = channel_up;
+    channel_class->channel_reset = channel_reset;
 
     g_object_class_install_property
         (gobject_class, PROP_NCHANNELS,

@@ -45,6 +45,7 @@ static void spice_channel_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg);
 static void spice_channel_write_msg(SpiceChannel *channel, SpiceMsgOut *out);
 static void spice_channel_send_link(SpiceChannel *channel);
 static void channel_disconnect(SpiceChannel *channel);
+static void channel_reset(SpiceChannel *channel, gboolean migrating);
 
 /**
  * SECTION:spice-channel
@@ -249,6 +250,7 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
     klass->iterate_write = spice_channel_iterate_write;
     klass->iterate_read  = spice_channel_iterate_read;
     klass->channel_disconnect = channel_disconnect;
+    klass->channel_reset = channel_reset;
 
     gobject_class->constructed  = spice_channel_constructed;
     gobject_class->dispose      = spice_channel_dispose;
@@ -2116,17 +2118,9 @@ gboolean spice_channel_open_fd(SpiceChannel *channel, int fd)
 }
 
 /* system or coroutine context */
-static void channel_disconnect(SpiceChannel *channel)
+static void channel_reset(SpiceChannel *channel, gboolean migrating)
 {
     SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
-
-    g_return_if_fail(c != NULL);
-
-    if (c->state == SPICE_CHANNEL_STATE_UNCONNECTED) {
-        return;
-    }
-
-    c->has_error = TRUE; /* break the loop */
 
     if (c->connect_delayed_id) {
         g_source_remove(c->connect_delayed_id);
@@ -2174,9 +2168,32 @@ static void channel_disconnect(SpiceChannel *channel)
     g_array_set_size(c->caps, 0);
     /* Restore our default capabilities in case the channel gets re-used */
     spice_channel_set_common_capability(channel, SPICE_COMMON_CAP_PROTOCOL_AUTH_SELECTION);
+}
+
+/* system or coroutine context */
+G_GNUC_INTERNAL
+void spice_channel_reset(SpiceChannel *channel, gboolean migrating)
+{
+    SPICE_CHANNEL_GET_CLASS(channel)->channel_reset(channel, migrating);
+}
+
+/* system or coroutine context */
+static void channel_disconnect(SpiceChannel *channel)
+{
+    SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+
+    g_return_if_fail(c != NULL);
+
+    if (c->state == SPICE_CHANNEL_STATE_UNCONNECTED)
+        return;
+
+    c->has_error = TRUE; /* break the loop */
+
+    spice_channel_reset(channel, FALSE);
 
     if (c->state == SPICE_CHANNEL_STATE_READY)
         emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_CLOSED);
+
     g_return_if_fail(SPICE_IS_CHANNEL(channel));
     c->state = SPICE_CHANNEL_STATE_UNCONNECTED;
 }

@@ -166,6 +166,8 @@ void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap);
 void spice_channel_set_common_capability(SpiceChannel *channel, guint32 cap);
 gboolean spice_channel_get_read_only(SpiceChannel *channel);
 
+void spice_channel_reset(SpiceChannel *channel, gboolean migrating);
+
 /* coroutine context */
 #define emit_main_context(object, event, args...)                       \
     G_STMT_START {                                                      \

@@ -87,11 +87,13 @@ struct _SpiceChannelClass
     /*< private >*/
     /* virtual method, any context */
     void (*channel_disconnect)(SpiceChannel *channel);
+
+    void (*channel_reset)(SpiceChannel *channel, gboolean migrating);
     /*
      * If adding fields to this struct, remove corresponding
      * amount of padding to avoid changing overall struct size
      */
-    gchar _spice_reserved[SPICE_RESERVED_PADDING - 4 * sizeof(void*)];
+    gchar _spice_reserved[SPICE_RESERVED_PADDING - 5 * sizeof(void*)];
 };
 
 GType spice_channel_get_type(void);

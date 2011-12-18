@@ -154,6 +154,24 @@ static void spice_playback_channel_set_property(GObject      *gobject,
     }
 }
 
+/* main or coroutine context */
+static void spice_playback_channel_reset(SpiceChannel *channel, gboolean migrating)
+{
+    SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
+
+    if (c->celt_decoder) {
+        celt051_decoder_destroy(c->celt_decoder);
+        c->celt_decoder = NULL;
+    }
+
+    if (c->celt_mode) {
+        celt051_mode_destroy(c->celt_mode);
+        c->celt_mode = NULL;
+    }
+
+    SPICE_CHANNEL_CLASS(spice_playback_channel_parent_class)->channel_reset(channel, migrating);
+}
+
 static void spice_playback_channel_class_init(SpicePlaybackChannelClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
@@ -164,6 +182,7 @@ static void spice_playback_channel_class_init(SpicePlaybackChannelClass *klass)
     gobject_class->set_property = spice_playback_channel_set_property;
 
     channel_class->handle_msg   = spice_playback_handle_msg;
+    channel_class->channel_reset = spice_playback_channel_reset;
 
     g_object_class_install_property
         (gobject_class, PROP_NCHANNELS,

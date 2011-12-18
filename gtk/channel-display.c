@@ -73,6 +73,7 @@ struct _SpiceDisplayChannelPrivate {
 #ifdef WIN32
     HDC dc;
 #endif
+    gboolean                    migrate_wait_primary;
 };
 
 G_DEFINE_TYPE(SpiceDisplayChannel, spice_display_channel, SPICE_TYPE_CHANNEL)
@@ -103,6 +104,8 @@ static void clear_surfaces(SpiceChannel *channel);
 static void clear_streams(SpiceChannel *channel);
 static display_surface *find_surface(SpiceDisplayChannelPrivate *c, int surface_id);
 static gboolean display_stream_render(display_stream *st);
+static void spice_display_channel_reset(SpiceChannel *channel, gboolean migrating);
+static void destroy_canvas(display_surface *surface);
 
 /* ------------------------------------------------------------------ */
 
@@ -181,6 +184,20 @@ static void spice_display_set_property(GObject      *object,
     }
 }
 
+/* main or coroutine context */
+static void spice_display_channel_reset(SpiceChannel *channel, gboolean migrating)
+{
+    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
+
+    /* palettes, images, and glz_window are cleared in the session */
+
+    c->migrate_wait_primary = migrating;
+    clear_streams(channel);
+    clear_surfaces(channel);
+
+    SPICE_CHANNEL_CLASS(spice_display_channel_parent_class)->channel_reset(channel, migrating);
+}
+
 static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
@@ -194,6 +211,7 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
 
     channel_class->handle_msg   = spice_display_handle_msg;
     channel_class->channel_up   = spice_display_channel_up;
+    channel_class->channel_reset = spice_display_channel_reset;
 
     g_object_class_install_property
         (gobject_class, PROP_HEIGHT,

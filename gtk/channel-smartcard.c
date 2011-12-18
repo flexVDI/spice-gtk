@@ -144,29 +144,54 @@ static void spice_smartcard_channel_init(SpiceSmartcardChannel *channel)
 
 static void spice_smartcard_channel_finalize(GObject *obj)
 {
-    SpiceSmartcardChannel *channel = SPICE_SMARTCARD_CHANNEL(obj);
+    SpiceSmartcardChannelPrivate *c = SPICE_SMARTCARD_CHANNEL_GET_PRIVATE(obj);
 
-    if (channel->priv->pending_card_insertions != NULL) {
-        g_hash_table_destroy(channel->priv->pending_card_insertions);
-        channel->priv->pending_card_insertions = NULL;
+    if (c->pending_card_insertions != NULL) {
+        g_hash_table_destroy(c->pending_card_insertions);
+        c->pending_card_insertions = NULL;
     }
-    if (channel->priv->pending_reader_removals != NULL) {
-        g_hash_table_destroy(channel->priv->pending_reader_removals);
-        channel->priv->pending_reader_removals = NULL;
+    if (c->pending_reader_removals != NULL) {
+        g_hash_table_destroy(c->pending_reader_removals);
+        c->pending_reader_removals = NULL;
     }
-    if (channel->priv->message_queue != NULL) {
-        g_queue_foreach(channel->priv->message_queue,
-                        (GFunc)smartcard_message_free, NULL);
-        g_queue_free(channel->priv->message_queue);
-        channel->priv->message_queue = NULL;
+    if (c->message_queue != NULL) {
+        g_queue_foreach(c->message_queue, (GFunc)smartcard_message_free, NULL);
+        g_queue_free(c->message_queue);
+        c->message_queue = NULL;
     }
-    if (channel->priv->in_flight_message != NULL) {
-        smartcard_message_free(channel->priv->in_flight_message);
-        channel->priv->in_flight_message = NULL;
+    if (c->in_flight_message != NULL) {
+        smartcard_message_free(c->in_flight_message);
+        c->in_flight_message = NULL;
     }
+
+    g_list_free(c->pending_reader_additions);
+    c->pending_reader_additions = NULL;
 
     if (G_OBJECT_CLASS(spice_smartcard_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_smartcard_channel_parent_class)->finalize(obj);
+}
+
+static void spice_smartcard_channel_reset(SpiceChannel *channel, gboolean migrating)
+{
+    SpiceSmartcardChannelPrivate *c = SPICE_SMARTCARD_CHANNEL_GET_PRIVATE(channel);
+
+    g_hash_table_remove_all(c->pending_card_insertions);
+    g_hash_table_remove_all(c->pending_reader_removals);
+
+    if (c->message_queue != NULL) {
+        g_queue_foreach(c->message_queue, (GFunc)smartcard_message_free, NULL);
+        g_queue_clear(c->message_queue);
+    }
+
+    if (c->in_flight_message != NULL) {
+        smartcard_message_free(c->in_flight_message);
+        c->in_flight_message = NULL;
+    }
+
+    g_list_free(c->pending_reader_additions);
+    c->pending_reader_additions = NULL;
+
+    SPICE_CHANNEL_CLASS(spice_smartcard_channel_parent_class)->channel_reset(channel, migrating);
 }
 
 static void spice_smartcard_channel_class_init(SpiceSmartcardChannelClass *klass)
@@ -177,6 +202,7 @@ static void spice_smartcard_channel_class_init(SpiceSmartcardChannelClass *klass
     gobject_class->finalize     = spice_smartcard_channel_finalize;
     channel_class->handle_msg   = spice_smartcard_handle_msg;
     channel_class->channel_up   = spice_smartcard_channel_up;
+    channel_class->channel_reset = spice_smartcard_channel_reset;
 
     g_type_class_add_private(klass, sizeof(SpiceSmartcardChannelPrivate));
 }
