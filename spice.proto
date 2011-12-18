@@ -167,9 +167,8 @@ channel MainChannel : BaseChannel {
 	uint16 sport;
 	uint32 host_size;
 	uint8 *host_data[host_size] @zero_terminated @marshall @nonnull;
-	pubkey_type pub_key_type;
-	uint32 pub_key_size;
-	uint8 *pub_key_data[pub_key_size] @zero_terminated  @marshall @nonnull;
+	uint32 cert_subject_size;
+	uint8 *cert_subject_data[cert_subject_size] @zero_terminated @marshall;
     } @ctype(SpiceMsgMainMigrationBegin) migrate_begin = 101;
 
     Empty migrate_cancel;
@@ -220,6 +219,8 @@ channel MainChannel : BaseChannel {
       uint8 *cert_subject_data[cert_subject_size] @zero_terminated  @marshall;
     } @ctype(SpiceMsgMainMigrationSwitchHost) migrate_switch_host;
 
+    Empty migrate_end;
+
  client:
     message {
 	uint64 cache_size;
@@ -244,6 +245,8 @@ channel MainChannel : BaseChannel {
     message {
         uint32 num_tokens;
     } @ctype(SpiceMsgcMainAgentTokens) agent_token;
+
+    Empty migrate_end;
 };
 
 enum8 clip_type {

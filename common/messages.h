@@ -73,6 +73,8 @@ typedef struct SpiceMsgMainMigrationBegin {
     uint16_t pub_key_type;
     uint32_t pub_key_size;
     uint8_t *pub_key_data;
+    uint32_t cert_subject_size;
+    uint8_t *cert_subject_data;
 } SpiceMsgMainMigrationBegin;
 
 typedef struct SpiceMsgMainMigrationSwitchHost {
