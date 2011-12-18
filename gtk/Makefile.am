@@ -15,7 +15,6 @@ EXTRA_DIST =					\
 	generated_demarshallers1.c		\
 	generated_marshallers.c			\
 	generated_marshallers1.c		\
-	gusb/README.txt				\
 	spice-client-gtk.override		\
 	spice-client-gtk-manual.defs		\
 	$(NULL)
@@ -176,25 +175,6 @@ libspice_client_glib_2_0_la_LIBADD =	\
 	$(LIBUSBREDIRHOST_LIBS)		\
 	$(NULL)
 
-if WITH_USBREDIR
-GUSB_SRCS =				\
-	gusb/gusb-context.c		\
-	gusb/gusb-context.h		\
-	gusb/gusb-context-private.h	\
-	gusb/gusb-device.c		\
-	gusb/gusb-device.h		\
-	gusb/gusb-device-private.h	\
-	gusb/gusb-device-list.c		\
-	gusb/gusb-device-list.h		\
-	gusb/gusb-marshal.h		\
-	gusb/gusb-source.c		\
-	gusb/gusb-source.h		\
-	gusb/gusb-util.c		\
-	gusb/gusb-util.h
-else
-GUSB_SRCS =
-endif
-
 if WITH_POLKIT
 USB_ACL_HELPER_SRCS = \
 	usb-acl-helper.c		\
@@ -240,7 +220,6 @@ libspice_client_glib_2_0_la_SOURCES =	\
 	smartcard-manager-priv.h	\
 	usb-device-manager.c		\
 	usb-device-manager-priv.h	\
-	$(GUSB_SRCS)			\
 	$(USB_ACL_HELPER_SRCS)		\
 	\
 	decode.h			\

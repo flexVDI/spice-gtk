@@ -25,6 +25,8 @@
 
 G_BEGIN_DECLS
 
+const char *spice_usb_device_manager_libusb_strerror(enum libusb_error error_code);
+
 gboolean spice_usb_device_manager_start_event_listening(
     SpiceUsbDeviceManager *manager, GError **err);
 

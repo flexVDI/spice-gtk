@@ -23,9 +23,6 @@
 
 #ifdef USE_USBREDIR
 #include <usbredirhost.h>
-#include <gusb/gusb-context-private.h>
-#include <gusb/gusb-device-private.h>
-#include <gusb/gusb-util.h>
 #if USE_POLKIT
 #include "usb-acl-helper.h"
 #endif
@@ -66,8 +63,8 @@ enum SpiceUsbredirChannelState {
 };
 
 struct _SpiceUsbredirChannelPrivate {
-    GUsbContext *context;
-    GUsbDevice *device;
+    libusb_context *context;
+    libusb_device *device;
     struct usbredirhost *host;
     /* To catch usbredirhost error messages and report them as a GError */
     GError **catch_error;
@@ -180,17 +177,17 @@ static gboolean spice_usbredir_channel_open_device(
 #endif
                          , FALSE);
 
-    rc = libusb_open(_g_usb_device_get_device(priv->device), &handle);
+    rc = libusb_open(priv->device, &handle);
     if (rc != 0) {
         g_set_error(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                     "Could not open usb device: %s [%i]",
-                    gusb_strerror(rc), rc);
+                    spice_usb_device_manager_libusb_strerror(rc), rc);
         return FALSE;
     }
 
     priv->catch_error = err;
     priv->host = usbredirhost_open_full(
-                                   _g_usb_context_get_context(priv->context),
+                                   priv->context,
                                    handle, usbredir_log,
                                    usbredir_read_callback,
                                    usbredir_write_callback,
@@ -246,8 +243,9 @@ static void spice_usbredir_channel_open_acl_cb(
     }
     if (err) {
         g_simple_async_result_take_error(priv->result, err);
-        g_clear_object(&priv->context);
-        g_clear_object(&priv->device);
+        libusb_unref_device(priv->device);
+        priv->device  = NULL;
+        priv->context = NULL;
         priv->state = STATE_DISCONNECTED;
     }
 
@@ -263,8 +261,8 @@ static void spice_usbredir_channel_open_acl_cb(
 
 G_GNUC_INTERNAL
 void spice_usbredir_channel_connect_async(SpiceUsbredirChannel *channel,
-                                          GUsbContext          *context,
-                                          GUsbDevice           *device,
+                                          libusb_context       *context,
+                                          libusb_device        *device,
                                           GCancellable         *cancellable,
                                           GAsyncReadyCallback   callback,
                                           gpointer              user_data)
@@ -288,8 +286,8 @@ void spice_usbredir_channel_connect_async(SpiceUsbredirChannel *channel,
         goto done;
     }
 
-    priv->context = g_object_ref(context);
-    priv->device  = g_object_ref(device);
+    priv->context = context;
+    priv->device  = libusb_ref_device(device);
 #if USE_POLKIT
     priv->result = result;
     priv->state = STATE_WAITING_FOR_ACL_HELPER;
@@ -297,8 +295,8 @@ void spice_usbredir_channel_connect_async(SpiceUsbredirChannel *channel,
     g_object_set(spice_channel_get_session(SPICE_CHANNEL(channel)),
                  "inhibit-keyboard-grab", TRUE, NULL);
     spice_usb_acl_helper_open_acl(priv->acl_helper,
-                                  g_usb_device_get_bus(device),
-                                  g_usb_device_get_address(device),
+                                  libusb_get_bus_number(device),
+                                  libusb_get_device_address(device),
                                   cancellable,
                                   spice_usbredir_channel_open_acl_cb,
                                   channel);
@@ -307,8 +305,9 @@ void spice_usbredir_channel_connect_async(SpiceUsbredirChannel *channel,
     GError *err = NULL;
     if (!spice_usbredir_channel_open_device(channel, &err)) {
         g_simple_async_result_take_error(result, err);
-        g_clear_object(&priv->context);
-        g_clear_object(&priv->device);
+        libusb_unref_device(priv->device);
+        priv->device  = NULL;
+        priv->context = NULL;
     }
 #endif
 
@@ -366,15 +365,16 @@ void spice_usbredir_channel_disconnect(SpiceUsbredirChannel *channel)
         /* This also closes the libusb handle we passed to its _open */
         usbredirhost_close(priv->host);
         priv->host = NULL;
-        g_clear_object(&priv->device);
-        g_clear_object(&priv->context);
+        libusb_unref_device(priv->device);
+        priv->device  = NULL;
+        priv->context = NULL;
         priv->state = STATE_DISCONNECTED;
         break;
     }
 }
 
 G_GNUC_INTERNAL
-GUsbDevice *spice_usbredir_channel_get_device(SpiceUsbredirChannel *channel)
+libusb_device *spice_usbredir_channel_get_device(SpiceUsbredirChannel *channel)
 {
     return channel->priv->device;
 }

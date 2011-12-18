@@ -21,16 +21,14 @@
 #ifndef __SPICE_CLIENT_USBREDIR_CHANNEL_PRIV_H__
 #define __SPICE_CLIENT_USBREDIR_CHANNEL_PRIV_H__
 
-#include <gusb/gusb-context.h>
-#include <gusb/gusb-device.h>
-
+#include <libusb.h>
 #include "spice-client.h"
 
 G_BEGIN_DECLS
 
 void spice_usbredir_channel_connect_async(SpiceUsbredirChannel *channel,
-                                          GUsbContext          *context,
-                                          GUsbDevice           *device,
+                                          libusb_context       *context,
+                                          libusb_device        *device,
                                           GCancellable         *cancellable,
                                           GAsyncReadyCallback   callback,
                                           gpointer              user_data);
@@ -40,7 +38,7 @@ gboolean spice_usbredir_channel_connect_finish(SpiceUsbredirChannel *channel,
 
 void spice_usbredir_channel_disconnect(SpiceUsbredirChannel *channel);
 
-GUsbDevice *spice_usbredir_channel_get_device(SpiceUsbredirChannel *channel);
+libusb_device *spice_usbredir_channel_get_device(SpiceUsbredirChannel *channel);
 
 G_END_DECLS
 
