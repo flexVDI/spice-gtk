@@ -122,13 +122,17 @@ static void spice_display_channel_dispose(GObject *object)
         G_OBJECT_CLASS(spice_display_channel_parent_class)->dispose(object);
 }
 
-static void spice_display_channel_finalize(GObject *obj)
+static void spice_display_channel_finalize(GObject *object)
 {
-    clear_surfaces(SPICE_CHANNEL(obj));
-    clear_streams(SPICE_CHANNEL(obj));
+    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(object)->priv;
+
+    c->migrate_wait_primary = FALSE;
+
+    clear_surfaces(SPICE_CHANNEL(object));
+    clear_streams(SPICE_CHANNEL(object));
 
     if (G_OBJECT_CLASS(spice_display_channel_parent_class)->finalize)
-        G_OBJECT_CLASS(spice_display_channel_parent_class)->finalize(obj);
+        G_OBJECT_CLASS(spice_display_channel_parent_class)->finalize(object);
 }
 
 static void spice_display_channel_constructed(GObject *object)
@@ -590,7 +594,26 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
 
     if (surface->primary) {
+        display_surface *primary = find_surface(c, 0);
+
+        if (primary) {
+            if (c->migrate_wait_primary &&
+                primary->width == surface->width &&
+                primary->height == surface->height) {
+                c->migrate_wait_primary = FALSE;
+                SPICE_DEBUG("Reusing existing primary surface");
+                return 0;
+            }
+
+            emit_main_context(channel, SPICE_DISPLAY_PRIMARY_DESTROY);
+            ring_remove(&primary->link);
+            destroy_canvas(primary);
+            free(primary);
+        }
+
         SPICE_DEBUG("display: create primary canvas");
+        c->migrate_wait_primary = FALSE;
+
 #ifdef HAVE_SYS_SHM_H
         surface->shmid = shmget(IPC_PRIVATE, surface->size, IPC_CREAT | 0777);
         if (surface->shmid >= 0) {
@@ -637,6 +660,12 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
                                              surface->zlib_decoder);
 
     g_return_val_if_fail(surface->canvas != NULL, 0);
+    ring_add(&c->surfaces, &surface->link);
+
+    if (surface->primary)
+        emit_main_context(channel, SPICE_DISPLAY_PRIMARY_CREATE,
+                          surface->format, surface->width, surface->height,
+                          surface->stride, surface->shmid, surface->data);
     return 0;
 }
 
@@ -685,9 +714,15 @@ static void clear_surfaces(SpiceChannel *channel)
     display_surface *surface;
     RingItem *item;
 
-    while (!ring_is_empty(&c->surfaces)) {
-        item = ring_get_head(&c->surfaces);
+    for (item = ring_get_head(&c->surfaces); item != NULL; ) {
         surface = SPICE_CONTAINEROF(item, display_surface, link);
+        item = ring_next(&c->surfaces, item);
+
+        if (c->migrate_wait_primary && surface->primary) {
+            SPICE_DEBUG("Try to keep exisiting primary surface during migration");
+            continue;
+        }
+
         ring_remove(&surface->link);
         destroy_canvas(surface);
         free(surface);
@@ -738,16 +773,9 @@ static void display_handle_mode(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     SpiceMsgDisplayMode *mode = spice_msg_in_parsed(in);
-    display_surface *surface = find_surface(c, 0);
+    display_surface *surface;
 
     g_warn_if_fail(c->mark == FALSE);
-
-    if (surface) {
-        emit_main_context(channel, SPICE_DISPLAY_PRIMARY_DESTROY);
-        ring_remove(&surface->link);
-        destroy_canvas(surface);
-        free(surface);
-    }
 
     surface = spice_new0(display_surface, 1);
     surface->format  = mode->bits == 32 ?
@@ -758,15 +786,11 @@ static void display_handle_mode(SpiceChannel *channel, SpiceMsgIn *in)
     surface->size    = surface->height * surface->stride;
     surface->primary = true;
     create_canvas(channel, surface);
-    emit_main_context(channel, SPICE_DISPLAY_PRIMARY_CREATE,
-                      surface->format, surface->width, surface->height,
-                      surface->stride, surface->shmid, surface->data);
 #ifdef HAVE_SYS_SHM_H
     if (surface->shmid != -1) {
         shmctl(surface->shmid, IPC_RMID, 0);
     }
 #endif
-    ring_add(&c->surfaces, &surface->link);
 }
 
 /* coroutine context */
@@ -1219,9 +1243,6 @@ static void display_handle_surface_create(SpiceChannel *channel, SpiceMsgIn *in)
     if (create->flags == SPICE_SURFACE_FLAGS_PRIMARY) {
         surface->primary = true;
         create_canvas(channel, surface);
-        emit_main_context(channel, SPICE_DISPLAY_PRIMARY_CREATE,
-                          surface->format, surface->width, surface->height,
-                          surface->stride, surface->shmid, surface->data);
         if (c->mark_false_event_id != 0) {
             g_source_remove(c->mark_false_event_id);
             c->mark_false_event_id = FALSE;
@@ -1230,8 +1251,6 @@ static void display_handle_surface_create(SpiceChannel *channel, SpiceMsgIn *in)
         surface->primary = false;
         create_canvas(channel, surface);
     }
-
-    ring_add(&c->surfaces, &surface->link);
 }
 
 static gboolean display_mark_false(gpointer data)
