@@ -360,9 +360,6 @@ void spice_usbredir_channel_do_write(SpiceUsbredirChannel *channel)
 {
     SpiceUsbredirChannelPrivate *priv = channel->priv;
 
-    if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
-        return;
-
     /* No recursion allowed! */
     g_return_if_fail(priv->msg_out == NULL);
 
