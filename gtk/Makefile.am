@@ -99,6 +99,7 @@ SPICE_GTK_LIBADD_COMMON =		\
 	$(GTK_LIBS)			\
 	$(CAIRO_LIBS)			\
 	$(XRANDR_LIBS)			\
+	$(LIBM)				\
 	$(NULL)
 
 SPICE_GTK_SOURCES_COMMON =		\
@@ -370,6 +371,8 @@ spicy_LDADD =				\
 	libspice-client-glib-2.0.la		\
 	$(XRANDR_LIBS)			\
 	$(GTHREAD_LIBS)			\
+	$(GTK_LIBS)			\
+	$(LIBM)				\
 	$(NULL)
 
 spicy_CPPFLAGS =			\
@@ -413,6 +416,7 @@ snappy_SOURCES =			\
 
 snappy_LDADD =				\
 	libspice-client-glib-2.0.la		\
+	$(GOBJECT2_LIBS)		\
 	$(NULL)
 
 spicy_stats_SOURCES =			\
@@ -423,6 +427,7 @@ spicy_stats_SOURCES =			\
 
 spicy_stats_LDADD =				\
 	libspice-client-glib-2.0.la		\
+	$(GOBJECT2_LIBS)		\
 	$(NULL)
 
 
