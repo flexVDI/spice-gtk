@@ -73,7 +73,6 @@ static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
 enum {
     PROP_0,
     PROP_SESSION,
-    PROP_MAIN_CONTEXT,
     PROP_AUTO_CONNECT,
 };
 
@@ -87,7 +86,6 @@ enum
 
 struct _SpiceUsbDeviceManagerPrivate {
     SpiceSession *session;
-    GMainContext *main_context;
     gboolean auto_connect;
 #ifdef USE_USBREDIR
     GUsbContext *context;
@@ -215,11 +213,6 @@ static void spice_usb_device_manager_finalize(GObject *gobject)
     }
 #endif
 
-    if (priv->main_context) {
-        g_main_context_unref(priv->main_context);
-        priv->main_context = NULL;
-    }
-
     g_ptr_array_unref(priv->channels);
     g_ptr_array_unref(priv->devices);
 
@@ -245,9 +238,6 @@ static void spice_usb_device_manager_get_property(GObject     *gobject,
     case PROP_SESSION:
         g_value_set_object(value, priv->session);
         break;
-    case PROP_MAIN_CONTEXT:
-        g_value_set_boxed(value, priv->main_context);
-        break;
     case PROP_AUTO_CONNECT:
         g_value_set_boolean(value, priv->auto_connect);
         break;
@@ -268,9 +258,6 @@ static void spice_usb_device_manager_set_property(GObject       *gobject,
     switch (prop_id) {
     case PROP_SESSION:
         priv->session = g_value_get_object(value);
-        break;
-    case PROP_MAIN_CONTEXT:
-        priv->main_context = g_value_dup_boxed(value);
         break;
     case PROP_AUTO_CONNECT:
         priv->auto_connect = g_value_get_boolean(value);
@@ -304,16 +291,6 @@ static void spice_usb_device_manager_class_init(SpiceUsbDeviceManagerClass *klas
                              SPICE_TYPE_SESSION,
                              G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
                              G_PARAM_STATIC_STRINGS));
-
-    /**
-     * SpiceUsbDeviceManager:main-context:
-     */
-    pspec = g_param_spec_boxed("main-context", "Main Context",
-                               "GMainContext to use for the event source",
-                               G_TYPE_MAIN_CONTEXT,
-                               G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
-                               G_PARAM_STATIC_STRINGS);
-    g_object_class_install_property(gobject_class, PROP_MAIN_CONTEXT, pspec);
 
     /**
      * SpiceUsbDeviceManager:auto-connect:
@@ -563,7 +540,6 @@ static SpiceUsbredirChannel *spice_usb_device_manager_get_channel_for_dev(
 /**
  * spice_usb_device_manager_get:
  * @session: #SpiceSession for which to get the #SpiceUsbDeviceManager
- * @main_context: #GMainContext to use. If %NULL, the default context is used.
  *
  * Gets the #SpiceUsbDeviceManager associated with the passed in #SpiceSession.
  * A new #SpiceUsbDeviceManager instance will be created the first time this
@@ -575,7 +551,6 @@ static SpiceUsbredirChannel *spice_usb_device_manager_get_channel_for_dev(
  * Returns: (transfer none): a weak reference to the #SpiceUsbDeviceManager associated with the passed in #SpiceSession
  */
 SpiceUsbDeviceManager *spice_usb_device_manager_get(SpiceSession *session,
-                                                    GMainContext *main_context,
                                                     GError **err)
 {
     SpiceUsbDeviceManager *self;
@@ -587,8 +562,7 @@ SpiceUsbDeviceManager *spice_usb_device_manager_get(SpiceSession *session,
     self = session->priv->usb_manager;
     if (self == NULL) {
         self = g_initable_new(SPICE_TYPE_USB_DEVICE_MANAGER, NULL, err,
-                              "session", session,
-                              "main-context", main_context, NULL);
+                              "session", session, NULL);
         session->priv->usb_manager = self;
     }
     g_static_mutex_unlock(&mutex);

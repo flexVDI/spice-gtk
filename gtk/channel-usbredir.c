@@ -210,8 +210,7 @@ static gboolean spice_usbredir_channel_open_device(
 
     if (!spice_usb_device_manager_start_event_listening(
             spice_usb_device_manager_get(
-                spice_channel_get_session(SPICE_CHANNEL(channel)),
-                NULL, NULL),
+                spice_channel_get_session(SPICE_CHANNEL(channel)), NULL),
             err)) {
         usbredirhost_close(priv->host);
         priv->host = NULL;
@@ -363,8 +362,7 @@ void spice_usbredir_channel_disconnect(SpiceUsbredirChannel *channel)
          */
         spice_usb_device_manager_stop_event_listening(
             spice_usb_device_manager_get(
-                spice_channel_get_session(SPICE_CHANNEL(channel)),
-                NULL, NULL));
+                spice_channel_get_session(SPICE_CHANNEL(channel)), NULL));
         /* This also closes the libusb handle we passed to its _open */
         usbredirhost_close(priv->host);
         priv->host = NULL;

@@ -799,7 +799,7 @@ void spice_gtk_session_update_keyboard_focus(SpiceGtkSession *self,
     if (s->auto_usbredir_enable && s->keyboard_focus)
         auto_connect = TRUE;
 
-    manager = spice_usb_device_manager_get(s->session, NULL, NULL);
+    manager = spice_usb_device_manager_get(s->session, NULL);
     if (manager) {
         g_object_set(manager, "auto-connect", auto_connect, NULL);
     }

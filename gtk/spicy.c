@@ -1519,7 +1519,7 @@ static spice_connection *connection_new(void)
     g_signal_connect(conn->session, "notify::migration-state",
                      G_CALLBACK(migration_state), conn);
 
-    manager = spice_usb_device_manager_get(conn->session, NULL, NULL);
+    manager = spice_usb_device_manager_get(conn->session, NULL);
     if (manager) {
         g_signal_connect(manager, "auto-connect-failed",
                          G_CALLBACK(auto_connect_failed), NULL);

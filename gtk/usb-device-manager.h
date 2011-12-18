@@ -90,7 +90,6 @@ GType spice_usb_device_manager_get_type(void);
 gchar *spice_usb_device_get_description(SpiceUsbDevice *device);
 
 SpiceUsbDeviceManager *spice_usb_device_manager_get(SpiceSession *session,
-                                                    GMainContext *main_context,
                                                     GError **err);
 
 GPtrArray *spice_usb_device_manager_get_devices(SpiceUsbDeviceManager *manager);
