@@ -356,6 +356,11 @@ void spice_usbredir_channel_disconnect(SpiceUsbredirChannel *channel)
     case STATE_CONNECTING:
     case STATE_CONNECTED:
         spice_channel_disconnect(SPICE_CHANNEL(channel), SPICE_CHANNEL_NONE);
+        /*
+         * This sets the usb event thread run condition to FALSE, therefor
+         * it must be done before usbredirhost_close, as usbredirhost_close
+         * will interrupt the libusb_handle_events call in the thread.
+         */
         spice_usb_device_manager_stop_event_listening(
             spice_usb_device_manager_get(
                 spice_channel_get_session(SPICE_CHANNEL(channel)),

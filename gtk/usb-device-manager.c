@@ -26,8 +26,9 @@
 #include "glib-compat.h"
 
 #ifdef USE_USBREDIR
-#include <gusb/gusb-source.h>
 #include <gusb/gusb-device-list.h>
+#include <gusb/gusb-context-private.h>
+#include <gusb/gusb-util.h>
 #include "channel-usbredir-priv.h"
 #endif
 
@@ -91,8 +92,9 @@ struct _SpiceUsbDeviceManagerPrivate {
 #ifdef USE_USBREDIR
     GUsbContext *context;
     GUsbDeviceList *devlist;
-    GUsbSource *source;
     int event_listeners;
+    GThread *event_thread;
+    gboolean event_thread_run;
 #endif
     GPtrArray *devices;
     GPtrArray *channels;
@@ -204,6 +206,9 @@ static void spice_usb_device_manager_finalize(GObject *gobject)
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
 
 #ifdef USE_USBREDIR
+    if (priv->event_thread)
+        g_thread_join(priv->event_thread);
+
     if (priv->devlist) {
         g_object_unref(priv->devlist);
         g_object_unref(priv->context);
@@ -480,6 +485,23 @@ static void spice_usb_device_manager_channel_connect_cb(
 /* ------------------------------------------------------------------ */
 /* private api                                                        */
 
+static gpointer spice_usb_device_manager_usb_ev_thread(gpointer user_data)
+{
+    SpiceUsbDeviceManager *self = SPICE_USB_DEVICE_MANAGER(user_data);
+    SpiceUsbDeviceManagerPrivate *priv = self->priv;
+    int rc;
+
+    while (priv->event_thread_run) {
+        rc = libusb_handle_events(_g_usb_context_get_context(priv->context));
+        if (rc) {
+            const char *desc = gusb_strerror(rc);
+            g_warning("Error handling USB events: %s [%i]", desc, rc);
+        }
+    }
+
+    return NULL;
+}
+
 gboolean spice_usb_device_manager_start_event_listening(
     SpiceUsbDeviceManager *self, GError **err)
 {
@@ -491,10 +513,18 @@ gboolean spice_usb_device_manager_start_event_listening(
     if (priv->event_listeners > 1)
         return TRUE;
 
-    g_return_val_if_fail(priv->source == NULL, FALSE);
-
-    priv->source = g_usb_source_new(priv->main_context, priv->context, err);
-    return priv->source != NULL;
+    /* We don't join the thread when we stop event listening, as the
+       libusb_handle_events call in the thread won't exit until the
+       libusb_close call for the device is made from usbredirhost_close. */
+    if (priv->event_thread) {
+         g_thread_join(priv->event_thread);
+         priv->event_thread = NULL;
+    }
+    priv->event_thread_run = TRUE;
+    priv->event_thread = g_thread_create(
+                             spice_usb_device_manager_usb_ev_thread,
+                             self, TRUE, err);
+    return priv->event_thread != NULL;
 }
 
 void spice_usb_device_manager_stop_event_listening(
@@ -505,13 +535,8 @@ void spice_usb_device_manager_stop_event_listening(
     g_return_if_fail(priv->event_listeners > 0);
 
     priv->event_listeners--;
-    if (priv->event_listeners != 0)
-        return;
-
-    g_return_if_fail(priv->source != NULL);
-
-    g_usb_source_destroy(priv->source);
-    priv->source = NULL;
+    if (priv->event_listeners == 0)
+        priv->event_thread_run = FALSE;
 }
 #endif
 
