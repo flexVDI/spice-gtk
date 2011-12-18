@@ -1470,7 +1470,7 @@ static gboolean migrate_connect(gpointer data)
     mig->session = spice_session_new_from_session(session);
 
     if ((c->peer_hdr.major_version == 1) &&
-        (c->peer_hdr.minor_version < 2)) {
+        (c->peer_hdr.minor_version < 1)) {
         OldRedMigrationBegin *info = (OldRedMigrationBegin *)mig->info;
         SPICE_DEBUG("migrate_begin old %s %d %d",
                     info->host, info->port, info->sport);
@@ -1478,19 +1478,34 @@ static gboolean migrate_connect(gpointer data)
         sport = info->sport;
         host = info->host;
     } else {
-        GByteArray *pubkey = g_byte_array_new();
         SpiceMsgMainMigrationBegin *info = mig->info;
         SPICE_DEBUG("migrate_begin %d %s %d %d",
                     info->host_size, info->host_data, info->port, info->sport);
         port = info->port;
         sport = info->sport;
         host = (char*)info->host_data;
-        g_byte_array_append(pubkey, info->pub_key_data, info->pub_key_size);
-        g_object_set(mig->session,
-                     "pubkey", pubkey,
-                     "verify", SPICE_SESSION_VERIFY_PUBKEY,
-                     NULL);
-        g_byte_array_unref(pubkey);
+
+        if ((c->peer_hdr.major_version == 1) ||
+            (c->peer_hdr.major_version == 2 && c->peer_hdr.minor_version < 1)) {
+            GByteArray *pubkey = g_byte_array_new();
+
+            g_byte_array_append(pubkey, info->pub_key_data, info->pub_key_size);
+            g_object_set(mig->session,
+                         "pubkey", pubkey,
+                         "verify", SPICE_SESSION_VERIFY_PUBKEY,
+                         NULL);
+            g_byte_array_unref(pubkey);
+        } else {
+            gchar *subject = g_alloca(info->cert_subject_size + 1);
+            strncpy(subject, (const char*)info->cert_subject_data, info->cert_subject_size);
+            subject[info->cert_subject_size] = '\0';
+
+            // session data are already copied
+            g_object_set(mig->session,
+                         "cert-subject", subject,
+                         "verify", SPICE_SESSION_VERIFY_SUBJECT,
+                         NULL);
+        }
     }
 
     if (g_getenv("SPICE_MIG_HOST"))
