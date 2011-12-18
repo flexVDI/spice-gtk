@@ -1008,6 +1008,7 @@ static void spice_channel_recv_link_hdr(SpiceChannel *channel)
         goto error;
     }
 
+    SPICE_DEBUG("Peer version: %d:%d", c->peer_hdr.major_version, c->peer_hdr.minor_version);
     if (c->peer_hdr.major_version != c->link_hdr.major_version) {
         if (c->peer_hdr.major_version == 1) {
             /* enter spice 0.4 mode */
@@ -1810,9 +1811,24 @@ static void spice_channel_iterate_read(SpiceChannel *channel)
         spice_channel_recv_msg(channel,
             (handler_msg_in)SPICE_CHANNEL_GET_CLASS(channel)->handle_msg, NULL);
         break;
+    case SPICE_CHANNEL_STATE_MIGRATING:
+        return;
     default:
         g_critical("unknown state %d", c->state);
     }
+}
+
+static gboolean wait_migration(gpointer data)
+{
+    SpiceChannel *channel = SPICE_CHANNEL(data);
+    SpiceChannelPrivate *c = channel->priv;
+
+    if (c->state != SPICE_CHANNEL_STATE_MIGRATING) {
+        SPICE_DEBUG("unfreeze channel %s", c->name);
+        return TRUE;
+    }
+
+    return FALSE;
 }
 
 /* coroutine context */
@@ -1822,11 +1838,9 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
     GIOCondition ret;
 
     do {
-        while (c->state == SPICE_CHANNEL_STATE_MIGRATING) {
-            /* freeze coroutine */
-            coroutine_yield(NULL);
-            g_return_val_if_fail(c->state != SPICE_CHANNEL_STATE_MIGRATING, FALSE);
-        }
+        /* freeze coroutine */
+        if (c->state == SPICE_CHANNEL_STATE_MIGRATING)
+            g_condition_wait(wait_migration, channel);
 
         if (c->has_error) {
             SPICE_DEBUG("channel has error, breaking loop");
@@ -1835,6 +1849,7 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
 
         SPICE_CHANNEL_GET_CLASS(channel)->iterate_write(channel);
         ret = g_io_wait_interruptible(&c->wait, c->sock, G_IO_IN);
+
 #ifdef WIN32
         /* FIXME: windows gsocket is buggy, it doesn't return correct condition... */
         ret = g_socket_condition_check(c->sock, G_IO_IN);
@@ -2211,6 +2226,7 @@ void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
 {
     SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
 
+    SPICE_DEBUG("channel disconnect %d", reason);
     g_return_if_fail(c != NULL);
 
     if (c->state == SPICE_CHANNEL_STATE_UNCONNECTED)
@@ -2223,13 +2239,11 @@ void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
 
     if (c->state == SPICE_CHANNEL_STATE_MIGRATING) {
         c->state = SPICE_CHANNEL_STATE_READY;
-        coroutine_yieldto(&c->coroutine, NULL);
     } else
         spice_channel_wakeup(channel);
 
-    if (reason != SPICE_CHANNEL_NONE) {
+    if (reason != SPICE_CHANNEL_NONE)
         g_signal_emit(G_OBJECT(channel), signals[SPICE_CHANNEL_EVENT], 0, reason);
-    }
 }
 
 static gboolean test_capability(GArray *caps, guint32 cap)

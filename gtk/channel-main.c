@@ -75,6 +75,7 @@ struct _SpiceMainChannelPrivate  {
     GQueue                      *agent_msg_queue;
 
     guint                       switch_host_delayed_id;
+    guint                       migrate_delayed_id;
 };
 
 typedef struct spice_migrate spice_migrate;
@@ -158,6 +159,8 @@ static void spice_main_channel_init(SpiceMainChannel *channel)
 
     c = channel->priv = SPICE_MAIN_CHANNEL_GET_PRIVATE(channel);
     c->agent_msg_queue = g_queue_new();
+
+    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_MAIN_CAP_SEMI_SEAMLESS_MIGRATE);
 }
 
 static void spice_main_get_property(GObject    *object,
@@ -240,6 +243,11 @@ static void spice_main_channel_dispose(GObject *obj)
     if (c->switch_host_delayed_id) {
         g_source_remove(c->switch_host_delayed_id);
         c->switch_host_delayed_id = 0;
+    }
+
+    if (c->migrate_delayed_id) {
+        g_source_remove(c->migrate_delayed_id);
+        c->migrate_delayed_id = 0;
     }
 
     if (G_OBJECT_CLASS(spice_main_channel_parent_class)->dispose)
@@ -1116,18 +1124,20 @@ static void main_handle_init(SpiceChannel *channel, SpiceMsgIn *in)
     session = spice_channel_get_session(channel);
     spice_session_set_connection_id(session, init->session_id);
 
-    out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_ATTACH_CHANNELS);
-    spice_msg_out_send_internal(out);
-
     set_mouse_mode(SPICE_MAIN_CHANNEL(channel), init->supported_mouse_modes,
                    init->current_mouse_mode);
 
-    c->agent_tokens = init->agent_tokens;
-    if (init->agent_connected) {
-        agent_start(SPICE_MAIN_CHANNEL(channel));
-    }
-
     spice_session_set_mm_time(session, init->multi_media_time);
+
+    c->agent_tokens = init->agent_tokens;
+    if (init->agent_connected)
+        agent_start(SPICE_MAIN_CHANNEL(channel));
+
+    if (spice_session_migrate_after_main_init(session))
+        return;
+
+    out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_ATTACH_CHANNELS);
+    spice_msg_out_send_internal(out);
 }
 
 /* coroutine context */
@@ -1389,13 +1399,15 @@ static void migrate_channel_new_cb(SpiceSession *s, SpiceChannel *channel, gpoin
                      G_CALLBACK(migrate_channel_event_cb), data);
 }
 
-static void migrate_channel_connect(spice_migrate *mig, int type, int id)
+static SpiceChannel* migrate_channel_connect(spice_migrate *mig, int type, int id)
 {
     SPICE_DEBUG("migrate_channel_connect %d:%d", type, id);
 
     SpiceChannel *newc = spice_channel_new(mig->session, type, id);
     spice_channel_connect(newc);
     mig->nchannels++;
+
+    return newc;
 }
 
 /* main context */
@@ -1522,7 +1534,7 @@ static gboolean migrate_connect(gpointer data)
 
     /* the migration process is in 2 steps, first the main channel and
        then the rest of the channels */
-    migrate_channel_connect(mig, SPICE_CHANNEL_MAIN, 0);
+    mig->session->priv->cmain = migrate_channel_connect(mig, SPICE_CHANNEL_MAIN, 0);
 
     return FALSE;
 }
@@ -1558,6 +1570,33 @@ static void main_handle_migrate_begin(SpiceChannel *channel, SpiceMsgIn *in)
 
     out = spice_msg_out_new(SPICE_CHANNEL(channel), reply_type);
     spice_msg_out_send(out);
+}
+
+/* main context */
+static gboolean migrate_delayed(gpointer data)
+{
+    SpiceChannel *channel = data;
+    SpiceMainChannelPrivate *c = SPICE_MAIN_CHANNEL(channel)->priv;
+
+    g_warn_if_fail(c->migrate_delayed_id != 0);
+    c->migrate_delayed_id = 0;
+
+    spice_session_migrate_end(channel->priv->session);
+
+    return FALSE;
+}
+
+/* coroutine context */
+static void main_handle_migrate_end(SpiceChannel *channel, SpiceMsgIn *in)
+{
+    SpiceMainChannelPrivate *c = SPICE_MAIN_CHANNEL(channel)->priv;
+
+    SPICE_DEBUG("migrate end");
+
+    g_return_if_fail(c->migrate_delayed_id == 0);
+    g_return_if_fail(spice_channel_test_capability(channel, SPICE_MAIN_CAP_SEMI_SEAMLESS_MIGRATE));
+
+    c->migrate_delayed_id = g_idle_add(migrate_delayed, channel);
 }
 
 /* main context */
@@ -1638,6 +1677,7 @@ static const spice_msg_handler main_handlers[] = {
     [ SPICE_MSG_MAIN_AGENT_TOKEN ]         = main_handle_agent_token,
 
     [ SPICE_MSG_MAIN_MIGRATE_BEGIN ]       = main_handle_migrate_begin,
+    [ SPICE_MSG_MAIN_MIGRATE_END ]         = main_handle_migrate_end,
     [ SPICE_MSG_MAIN_MIGRATE_CANCEL ]      = main_handle_migrate_cancel,
     [ SPICE_MSG_MAIN_MIGRATE_SWITCH_HOST ] = main_handle_migrate_switch_host,
 };

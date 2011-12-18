@@ -146,6 +146,11 @@ spice_session_dispose(GObject *gobject)
         s->migration_left = NULL;
     }
 
+    if (s->after_main_init) {
+        g_source_remove(s->after_main_init);
+        s->after_main_init = 0;
+    }
+
     g_clear_object(&s->audio_manager);
     g_clear_object(&s->gtk_session);
     g_clear_object(&s->usb_manager);
@@ -1144,6 +1149,85 @@ void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel)
         s->migration = NULL;
         spice_session_set_migration_state(session, SPICE_SESSION_MIGRATION_NONE);
     }
+}
+
+/* main context */
+static gboolean after_main_init(gpointer data)
+{
+    SpiceSession *self = data;
+    SpiceSessionPrivate *s = self->priv;
+    GList *l;
+
+    for (l = s->migration_left; l != NULL; ) {
+        SpiceChannel *channel = l->data;
+        l = l->next;
+
+        spice_session_channel_migrate(self, channel);
+        channel->priv->state = SPICE_CHANNEL_STATE_READY;
+        spice_channel_up(channel);
+    }
+
+    s->after_main_init = 0;
+    return FALSE;
+}
+
+/* coroutine context */
+G_GNUC_INTERNAL
+gboolean spice_session_migrate_after_main_init(SpiceSession *self)
+{
+    SpiceSessionPrivate *s = self->priv;
+
+    if (!s->migrate_wait_init)
+        return FALSE;
+
+    g_return_val_if_fail(g_list_length(s->migration_left) != 0, FALSE);
+    g_return_val_if_fail(s->after_main_init == 0, FALSE);
+
+    s->migrate_wait_init = FALSE;
+    s->after_main_init = g_idle_add(after_main_init, self);
+
+    return TRUE;
+}
+
+/* main context */
+G_GNUC_INTERNAL
+void spice_session_migrate_end(SpiceSession *self)
+{
+    SpiceSessionPrivate *s = self->priv;
+    SpiceMsgOut *out;
+    GList *l;
+
+    g_return_if_fail(s->migration);
+    g_return_if_fail(s->migration->priv->cmain);
+    g_return_if_fail(g_list_length(s->migration_left) != 0);
+
+    /* disconnect and reset all channels */
+    for (l = s->migration_left; l != NULL; ) {
+        SpiceChannel *channel = l->data;
+        l = l->next;
+
+        /* reset for migration, disconnect */
+        spice_channel_reset(channel, TRUE);
+
+        if (SPICE_IS_MAIN_CHANNEL(channel)) {
+            /* migrate main to target, so we can start talking */
+            spice_session_channel_migrate(self, channel);
+        } else {
+            /* freeze other channels */
+            channel->priv->state = SPICE_CHANNEL_STATE_MIGRATING;
+        }
+    }
+
+    spice_session_palettes_clear(self);
+    spice_session_images_clear(self);
+    glz_decoder_window_clear(s->glz_window);
+
+    /* send MIGRATE_END to target */
+    out = spice_msg_out_new(s->cmain, SPICE_MSGC_MAIN_MIGRATE_END);
+    spice_msg_out_send(out);
+
+    /* now wait after main init for the rest of channels migration */
+    s->migrate_wait_init = TRUE;
 }
 
 /**

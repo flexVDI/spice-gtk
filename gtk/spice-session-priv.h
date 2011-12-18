@@ -78,6 +78,8 @@ struct _SpiceSessionPrivate {
     GList             *migration_left;
     SpiceSessionMigration migration_state;
     gboolean          disconnecting;
+    gboolean          migrate_wait_init;
+    guint             after_main_init;
 
     display_cache     images;
     display_cache     palettes;
@@ -123,6 +125,8 @@ void spice_session_get_caches(SpiceSession *session,
                               SpiceGlzDecoderWindow **glz_window);
 void spice_session_palettes_clear(SpiceSession *session);
 void spice_session_images_clear(SpiceSession *session);
+void spice_session_migrate_end(SpiceSession *session);
+gboolean spice_session_migrate_after_main_init(SpiceSession *session);
 
 G_END_DECLS
 
