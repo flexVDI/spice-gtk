@@ -22,10 +22,17 @@
 #include "config.h"
 
 #include <glib-object.h>
+#include <glib/gi18n.h>
 
 #include "glib-compat.h"
 
 #ifdef USE_USBREDIR
+#ifdef __linux__
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#endif
 #include <libusb.h>
 #include <gudev/gudev.h>
 #include "channel-usbredir-priv.h"
@@ -422,6 +429,33 @@ const char *spice_usb_device_manager_libusb_strerror(enum libusb_error error_cod
     }
     return "Unknown error";
 }
+
+#ifdef __linux__
+/* <Sigh> libusb does not allow getting the manufacturer and product strings
+   without opening the device, so grab them directly from sysfs */
+static gchar *spice_usb_device_manager_get_sysfs_attribute(
+    int bus, int address, const char *attribute)
+{
+    struct stat stat_buf;
+    char filename[256];
+    gchar *contents;
+
+    snprintf(filename, sizeof(filename), "/dev/bus/usb/%03d/%03d",
+             bus, address);
+    if (stat(filename, &stat_buf) != 0)
+        return NULL;
+
+    snprintf(filename, sizeof(filename), "/sys/dev/char/%d:%d/%s",
+             major(stat_buf.st_rdev), minor(stat_buf.st_rdev), attribute);
+    if (!g_file_get_contents(filename, &contents, NULL, NULL))
+        return NULL;
+
+    /* Remove the newline at the end */
+    contents[strlen(contents) - 1] = '\0';
+
+    return contents;
+}
+#endif
 #endif
 
 /* ------------------------------------------------------------------ */
@@ -848,14 +882,40 @@ gchar *spice_usb_device_get_description(SpiceUsbDevice *_device)
 {
 #ifdef USE_USBREDIR
     libusb_device *device = (libusb_device *)_device;
-    int bus, address;
+    struct libusb_device_descriptor desc;
+    int rc, bus, address;
+    gchar *description, *manufacturer = NULL, *product = NULL;
 
     g_return_val_if_fail(device != NULL, NULL);
 
     bus     = libusb_get_bus_number(device);
     address = libusb_get_device_address(device);
 
-    return g_strdup_printf("USB device at %d-%d", bus, address);
+#if __linux__
+    manufacturer = spice_usb_device_manager_get_sysfs_attribute(bus, address,
+                                                              "manufacturer");
+    product = spice_usb_device_manager_get_sysfs_attribute(bus, address,
+                                                           "product");
+#endif
+    if (!manufacturer)
+        manufacturer = g_strdup(_("USB"));
+    if (!product)
+        product = g_strdup(_("Device"));
+
+    rc = libusb_get_device_descriptor(device, &desc);
+    if (rc == LIBUSB_SUCCESS) {
+        description = g_strdup_printf(_("%s %s [%04x:%04x] at %d-%d"),
+                                      manufacturer, product, desc.idVendor,
+                                      desc.idProduct, bus, address);
+    } else {
+        description = g_strdup_printf(_("%s %s at %d-%d"), manufacturer,
+                                      product, bus, address);
+    }
+
+    g_free(manufacturer);
+    g_free(product);
+
+    return description;
 #else
     return NULL;
 #endif
