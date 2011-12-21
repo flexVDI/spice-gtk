@@ -1,20 +1,24 @@
 NULL =
 CLEANFILES =
 
-if HAVE_INTROSPECTION
-if WITH_VALA
 BUILT_VAPI =						\
 	spice-client-glib-2.0.vapi			\
 	spice-client-gtk-$(SPICE_GTK_API_VERSION).deps	\
 	spice-client-gtk-$(SPICE_GTK_API_VERSION).vapi	\
 	$(NULL)
-CLEANFILES += $(BUILT_VAPI)
 
 vapidir = $(datadir)/vala/vapi
 vapi_DATA =						\
 	spice-client-glib-2.0.deps			\
 	$(BUILT_VAPI)
 	$(NULL)
+
+EXTRA_DIST = $(vapi_DATA)
+
+if HAVE_INTROSPECTION
+if WITH_VALA
+
+CLEANFILES += $(BUILT_VAPI)
 
 spice-client-glib-2.0.vapi: $(top_builddir)/gtk/SpiceClientGLib-2.0.gir
 	$(AM_V_GEN)$(VAPIGEN)			\

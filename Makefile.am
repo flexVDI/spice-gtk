@@ -58,7 +58,14 @@ BUILT_SOURCES = $(top_srcdir)/.version
 $(top_srcdir)/.version:
 	echo $(VERSION) > $@-t && mv $@-t $@
 
-DISTCHECK_CONFIGURE_FLAGS = --enable-introspection --enable-werror --enable-gtk-doc
+DISTCHECK_CONFIGURE_FLAGS =			\
+	--enable-introspection			\
+	--disable-vala				\
+	--disable-usbredir			\
+	--enable-gtk-doc			\
+	--enable-werror				\
+	--with-gtk=3.0				\
+	$(NULL)
 
 spicy-for-windows.exe:
 	PATH=$$PATH:/usr/i686-pc-mingw32/sys-root/mingw/bin/:/usr/i686-pc-mingw32/sys-root/mingw/lib \

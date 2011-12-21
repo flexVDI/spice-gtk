@@ -412,7 +412,7 @@ AC_ARG_ENABLE([vala],
   [],
   enable_vala="no")
 
-VALA_REQUIRED=0.11.7
+VALA_REQUIRED=0.14
 if test x$enable_vala = xyes ; then
     # check for vala
     AM_PROG_VALAC([$VALA_REQUIRED])
