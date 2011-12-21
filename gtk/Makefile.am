@@ -22,7 +22,8 @@ EXTRA_DIST =					\
 
 bin_PROGRAMS = spicy snappy spicy-stats
 if WITH_POLKIT
-bin_PROGRAMS += spice-client-glib-usb-acl-helper
+acldir = $(ACL_HELPER_DIR)
+acl_PROGRAMS = spice-client-glib-usb-acl-helper
 endif
 
 lib_LTLIBRARIES = \
@@ -198,6 +199,7 @@ if WITH_POLKIT
 USB_ACL_HELPER_SRCS = \
 	usb-acl-helper.c		\
 	usb-acl-helper.h
+AM_CPPFLAGS += -DACL_HELPER_PATH="\"$(ACL_HELPER_DIR)\""
 else
 USB_ACL_HELPER_SRCS =
 endif
@@ -402,8 +404,8 @@ spice_client_glib_usb_acl_helper_CPPFLAGS =	\
 	$(NULL)
 
 install-exec-hook:
-	-chown root $(DESTDIR)$(bindir)/spice-client-glib-usb-acl-helper
-	-chmod u+s  $(DESTDIR)$(bindir)/spice-client-glib-usb-acl-helper
+	-chown root $(DESTDIR)$(acldir)/spice-client-glib-usb-acl-helper
+	-chmod u+s  $(DESTDIR)$(acldir)/spice-client-glib-usb-acl-helper
 
 endif
 

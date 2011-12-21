@@ -184,7 +184,7 @@ void spice_usb_acl_helper_open_acl(SpiceUsbAclHelper *self,
     GIOStatus status;
     GPid helper_pid;
     gsize bytes_written;
-    gchar *argv[] = { "spice-client-glib-usb-acl-helper", NULL };
+    gchar *argv[] = { ACL_HELPER_PATH"/spice-client-glib-usb-acl-helper", NULL };
     gint in, out;
     gchar buf[128];
 

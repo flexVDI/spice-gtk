@@ -348,6 +348,13 @@ else
   fi
 fi
 
+AC_ARG_WITH([usb-acl-helper-dir],
+  AS_HELP_STRING([--with-usb-acl-helper-dir=DIR],
+                 [Directory where the USB ACL helper binary should be installed]),
+  [ACL_HELPER_DIR="$with_usb_acl_helper_dir"],
+  [ACL_HELPER_DIR="${bindir}/"])
+AC_SUBST([ACL_HELPER_DIR])
+
 AC_ARG_WITH([coroutine],
   AS_HELP_STRING([--with-coroutine=@<:@ucontext/gthread/winfiber/auto@:>@],
                  [use ucontext or GThread for coroutines @<:@default=auto@:>@]),
