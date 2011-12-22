@@ -1,19 +1,20 @@
 NULL =
 CLEANFILES =
 
-if HAVE_INTROSPECTION
-if WITH_VALA
-BUILT_VAPI =						\
-	spice-client-glib-2.0.vapi			\
-	spice-client-gtk-$(SPICE_GTK_API_VERSION).deps	\
-	spice-client-gtk-$(SPICE_GTK_API_VERSION).vapi	\
-	$(NULL)
-CLEANFILES += $(BUILT_VAPI)
-
 vapidir = $(datadir)/vala/vapi
 vapi_DATA =						\
+	spice-client-glib-2.0.vapi			\
+	spice-client-gtk-$(SPICE_GTK_API_VERSION).vapi	\
+	$(NULL)
+dist_vapi_DATA =					\
+	spice-client-gtk-$(SPICE_GTK_API_VERSION).deps	\
 	spice-client-glib-2.0.deps			\
-	$(BUILT_VAPI)
+	$(NULL)
+
+BUILT_SOURCES = $(vapi_DATA)
+EXTRA_DIST =						\
+	spice-client-gtk-2.0.deps			\
+	spice-client-gtk-3.0.deps			\
 	$(NULL)
 
 spice-client-glib-2.0.vapi: $(top_builddir)/gtk/SpiceClientGLib-2.0.gir
@@ -29,12 +30,5 @@ spice-client-gtk-$(SPICE_GTK_API_VERSION).vapi: $(top_builddir)/gtk/SpiceClientG
 		--pkg gtk+-$(GTK_API_VERSION)				\
 		--library spice-client-gtk-$(SPICE_GTK_API_VERSION)	\
 		$<
-
-spice-client-gtk-$(SPICE_GTK_API_VERSION).deps: spice-client-gtk-$(SPICE_GTK_API_VERSION).vapi
-	@echo "spice-client-glib-2.0" > $@
-	@echo "gtk+-$(GTK_API_VERSION)" >> $@
-
-endif
-endif
 
 -include $(top_srcdir)/git.mk
