@@ -3,17 +3,22 @@ CLEANFILES =
 
 BUILT_VAPI =						\
 	spice-client-glib-2.0.vapi			\
-	spice-client-gtk-$(SPICE_GTK_API_VERSION).deps	\
 	spice-client-gtk-$(SPICE_GTK_API_VERSION).vapi	\
 	$(NULL)
 
 vapidir = $(datadir)/vala/vapi
 vapi_DATA =						\
+	spice-client-gtk-$(SPICE_GTK_API_VERSION).deps	\
 	spice-client-glib-2.0.deps			\
-	$(BUILT_VAPI)
+	$(BUILT_VAPI)					\
 	$(NULL)
 
-EXTRA_DIST = $(vapi_DATA)
+EXTRA_DIST =						\
+	$(vapi_DATA)					\
+	spice-client-gtk-2.0.vapi			\
+	spice-client-gtk-3.0.vapi			\
+	spice-client-gtk-2.0.deps			\
+	spice-client-gtk-3.0.deps
 
 if HAVE_INTROSPECTION
 if WITH_VALA
@@ -33,10 +38,6 @@ spice-client-gtk-$(SPICE_GTK_API_VERSION).vapi: $(top_builddir)/gtk/SpiceClientG
 		--pkg gtk+-$(GTK_API_VERSION)				\
 		--library spice-client-gtk-$(SPICE_GTK_API_VERSION)	\
 		$<
-
-spice-client-gtk-$(SPICE_GTK_API_VERSION).deps: spice-client-gtk-$(SPICE_GTK_API_VERSION).vapi
-	@echo "spice-client-glib-2.0" > $@
-	@echo "gtk+-$(GTK_API_VERSION)" >> $@
 
 endif
 endif
