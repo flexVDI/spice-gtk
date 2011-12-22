@@ -562,8 +562,6 @@ spice-client-gtk-2.0.pc
 spice-client-gtk-3.0.pc
 spice-controller.pc
 common/Makefile
-common/win/Makefile
-common/win/my_getopt-1.5/Makefile
 data/Makefile
 data/spicy.desktop.in
 data/spicy.nsis
