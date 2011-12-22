@@ -33,6 +33,7 @@
 #endif
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
+#include <netinet/tcp.h> // TCP_NODELAY
 #endif
 #ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
@@ -1899,6 +1900,7 @@ static void *spice_channel_coroutine(void *data)
     SpiceChannel *channel = SPICE_CHANNEL(data);
     SpiceChannelPrivate *c = channel->priv;
     guint verify;
+    int rc, delay_val = 1;
 
     SPICE_DEBUG("Started background coroutine %p for %s", &c->coroutine, c->name);
 
@@ -1934,8 +1936,6 @@ reconnect:
     c->has_error = FALSE;
 
     if (c->tls) {
-        int rc;
-
         c->ctx = SSL_CTX_new(TLSv1_method());
         if (c->ctx == NULL) {
             g_critical("SSL_CTX_new failed");
@@ -2011,6 +2011,13 @@ ssl_reconnect:
     }
 
 connected:
+    rc = setsockopt(g_socket_get_fd(c->sock), IPPROTO_TCP, TCP_NODELAY,
+                    &delay_val, sizeof(delay_val));
+    if (rc != 0) {
+        g_warning("%s: could not set sockopt TCP_NODELAY: %s", c->name,
+                  strerror(errno));
+    }
+
     c->state = SPICE_CHANNEL_STATE_LINK_HDR;
     spice_channel_send_link(channel);
 
