@@ -1,10 +1,7 @@
 ACLOCAL_AMFLAGS = -I m4
 NULL =
 
-SUBDIRS = common gtk po python_modules doc data
-if WITH_VALA
-SUBDIRS += vapi
-endif
+SUBDIRS = common gtk po python_modules doc data vapi
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA =					\
@@ -61,14 +58,7 @@ BUILT_SOURCES = $(top_srcdir)/.version
 $(top_srcdir)/.version:
 	echo $(VERSION) > $@-t && mv $@-t $@
 
-DISTCHECK_CONFIGURE_FLAGS =			\
-	--enable-introspection			\
-	--disable-vala				\
-	--disable-usbredir			\
-	--enable-gtk-doc			\
-	--enable-werror				\
-	--with-gtk=3.0				\
-	$(NULL)
+DISTCHECK_CONFIGURE_FLAGS = --enable-introspection --enable-werror --enable-gtk-doc
 
 spicy-for-windows.exe:
 	PATH=$$PATH:/usr/i686-pc-mingw32/sys-root/mingw/bin/:/usr/i686-pc-mingw32/sys-root/mingw/lib \
