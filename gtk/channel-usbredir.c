@@ -103,8 +103,6 @@ static void spice_usbredir_channel_init(SpiceUsbredirChannel *channel)
 #ifdef USE_USBREDIR
 static void spice_usbredir_channel_reset(SpiceChannel *channel, gboolean migrating)
 {
-    spice_usbredir_channel_disconnect(SPICE_USBREDIR_CHANNEL(channel));
-
     SPICE_CHANNEL_CLASS(spice_usbredir_channel_parent_class)->channel_reset(channel, migrating);
 }
 #endif
