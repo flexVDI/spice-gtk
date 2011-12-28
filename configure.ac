@@ -61,7 +61,7 @@ AC_CHECK_HEADERS([sys/socket.h netinet/in.h arpa/inet.h])
 
 dnl =========================================================================
 dnl Chek optional features
-PKG_CHECK_MODULES(PROTOCOL, spice-protocol >= 0.9.1)
+PKG_CHECK_MODULES(PROTOCOL, spice-protocol >= 0.10.1)
 AC_SUBST(PROTOCOL_CFLAGS)
 
 AC_CHECK_LIBM
