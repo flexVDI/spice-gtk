@@ -1632,7 +1632,7 @@ void spice_channel_recv_msg(SpiceChannel *channel,
             return;
     }
 
-    if (in->header.sub_list) {
+    if (in->header.type == SPICE_MSG_LIST || in->header.sub_list) {
         SpiceSubMessageList *sub_list;
         SpiceSubMessage *sub;
         SpiceMsgIn *sub_in;
@@ -1663,6 +1663,10 @@ void spice_channel_recv_msg(SpiceChannel *channel,
             spice_msg_out_send_internal(out);
             c->message_ack_count = c->message_ack_window;
         }
+    }
+
+    if (in->header.type == SPICE_MSG_LIST) {
+        goto end;
     }
 
     /* parse message */
