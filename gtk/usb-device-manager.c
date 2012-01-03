@@ -496,7 +496,7 @@ static void spice_usb_device_manager_auto_connect_cb(GObject      *gobject,
 
     spice_usb_device_manager_connect_device_finish(self, res, &err);
     if (err) {
-        gchar *desc = spice_usb_device_get_description((SpiceUsbDevice *)device);
+        gchar *desc = spice_usb_device_get_description((SpiceUsbDevice *)device, NULL);
         g_prefix_error(&err, "Could not auto-redirect %s: ", desc);
         g_free(desc);
 
@@ -879,20 +879,30 @@ void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
 /**
  * spice_usb_device_get_description:
  * @device: #SpiceUsbDevice to get the description of
+ * @format: an optionnal printf() format string with positional parameters
  *
  * Get a string describing the device which is suitable as a description of
  * the device for the end user. The returned string should be freed with
  * g_free() when no longer needed.
  *
- * Returns: a newly-allocated string holding the description
+ * The @format positional parameters are the following:
+ * - '%%1$s' manufacturer
+ * - '%%2$s' product
+ * - '%%3$s' descriptor (a [vendor_id:product_id] string)
+ * - '%%4$d' bus
+ * - '%%5$d' address
+ *
+ * (the default format string is "%%s %%s %%s at %%d-%%d")
+ *
+ * Returns: a newly-allocated string holding the description, or %NULL if failed
  */
-gchar *spice_usb_device_get_description(SpiceUsbDevice *_device)
+gchar *spice_usb_device_get_description(SpiceUsbDevice *_device, const gchar *format)
 {
 #ifdef USE_USBREDIR
     libusb_device *device = (libusb_device *)_device;
     struct libusb_device_descriptor desc;
-    int rc, bus, address;
-    gchar *description, *manufacturer = NULL, *product = NULL;
+    int bus, address;
+    gchar *description, *descriptor, *manufacturer = NULL, *product = NULL;
 
     g_return_val_if_fail(device != NULL, NULL);
 
@@ -910,17 +920,18 @@ gchar *spice_usb_device_get_description(SpiceUsbDevice *_device)
     if (!product)
         product = g_strdup(_("Device"));
 
-    rc = libusb_get_device_descriptor(device, &desc);
-    if (rc == LIBUSB_SUCCESS) {
-        description = g_strdup_printf(_("%s %s [%04x:%04x] at %d-%d"),
-                                      manufacturer, product, desc.idVendor,
-                                      desc.idProduct, bus, address);
-    } else {
-        description = g_strdup_printf(_("%s %s at %d-%d"), manufacturer,
-                                      product, bus, address);
-    }
+    if (libusb_get_device_descriptor(device, &desc) == LIBUSB_SUCCESS)
+        descriptor = g_strdup_printf("[%04x:%04x]", desc.idVendor, desc.idProduct);
+    else
+        descriptor = g_strdup("");
+
+    if (!format)
+        format = _("%s %s %s at %d-%d");
+
+    description = g_strdup_printf(format, manufacturer, product, descriptor, bus, address);
 
     g_free(manufacturer);
+    g_free(descriptor);
     g_free(product);
 
     return description;
