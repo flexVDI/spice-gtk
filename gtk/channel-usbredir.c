@@ -87,6 +87,12 @@ static void usbredir_log(void *user_data, int level, const char *msg);
 static int usbredir_read_callback(void *user_data, uint8_t *data, int count);
 static int usbredir_write_callback(void *user_data, uint8_t *data, int count);
 static void usbredir_write_flush_callback(void *user_data);
+
+static void *usbredir_alloc_lock(void);
+static void usbredir_lock_lock(void *user_data);
+static void usbredir_unlock_lock(void *user_data);
+static void usbredir_free_lock(void *user_data);
+
 #endif
 
 G_DEFINE_TYPE(SpiceUsbredirChannel, spice_usbredir_channel, SPICE_TYPE_CHANNEL)
@@ -190,10 +196,10 @@ static gboolean spice_usbredir_channel_open_device(
                                    usbredir_read_callback,
                                    usbredir_write_callback,
                                    usbredir_write_flush_callback,
-                                   (usbredirparser_alloc_lock)g_mutex_new,
-                                   (usbredirparser_lock)g_mutex_lock,
-                                   (usbredirparser_unlock)g_mutex_unlock,
-                                   (usbredirparser_free_lock)g_mutex_free,
+                                   usbredir_alloc_lock,
+                                   usbredir_lock_lock,
+                                   usbredir_unlock_lock,
+                                   usbredir_free_lock,
                                    channel, PACKAGE_STRING,
                                    spice_util_get_debug() ? usbredirparser_debug : usbredirparser_warning,
                                    usbredirhost_fl_write_cb_owns_buffer);
@@ -456,6 +462,28 @@ static int usbredir_write_callback(void *user_data, uint8_t *data, int count)
     spice_msg_out_send(msg_out);
 
     return count;
+}
+
+static void *usbredir_alloc_lock(void) {
+    return g_mutex_new();
+}
+
+static void usbredir_lock_lock(void *user_data) {
+    GMutex *mutex = user_data;
+
+    g_mutex_lock(mutex);
+}
+
+static void usbredir_unlock_lock(void *user_data) {
+    GMutex *mutex = user_data;
+
+    g_mutex_unlock(mutex);
+}
+
+static void usbredir_free_lock(void *user_data) {
+    GMutex *mutex = user_data;
+
+    g_mutex_free(mutex);
 }
 
 /* --------------------------------------------------------------------- */
