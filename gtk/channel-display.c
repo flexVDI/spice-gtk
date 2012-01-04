@@ -863,6 +863,8 @@ static void display_handle_inv_list(SpiceChannel *channel, SpiceMsgIn *in)
 /* coroutine context */
 static void display_handle_inv_pixmap_all(SpiceChannel *channel, SpiceMsgIn *in)
 {
+    spice_channel_handle_wait_for_channels(channel, in);
+
     spice_session_images_clear(spice_channel_get_session(channel));
 }
 
