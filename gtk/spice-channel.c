@@ -1680,6 +1680,8 @@ void spice_channel_recv_msg(SpiceChannel *channel,
     msg_handler(channel, in, data);
 
 end:
+    c->last_message_serial = in->header.serial;
+
     /* release message */
     c->msg_in = NULL;
     spice_msg_in_unref(in);

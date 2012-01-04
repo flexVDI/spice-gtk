@@ -1086,8 +1086,7 @@ void spice_session_set_migration(SpiceSession *session, SpiceSession *migration)
 }
 
 G_GNUC_INTERNAL
-SpiceChannel* get_channel_by_id_and_type(SpiceSession *session,
-                                         gint id, gint type)
+SpiceChannel* spice_session_lookup_channel(SpiceSession *session, gint id, gint type)
 {
     RingItem *ring, *next;
     SpiceSessionPrivate *s = session->priv;
@@ -1132,9 +1131,9 @@ void spice_session_abort_migration(SpiceSession *session)
             continue;
 
         spice_channel_swap(c->channel,
-            get_channel_by_id_and_type(s->migration,
-                                       spice_channel_get_channel_id(c->channel),
-                                       spice_channel_get_channel_type(c->channel)));
+            spice_session_lookup_channel(s->migration,
+                                         spice_channel_get_channel_id(c->channel),
+                                         spice_channel_get_channel_type(c->channel)));
     }
 
     g_list_free(s->migration_left);
@@ -1161,7 +1160,7 @@ void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel)
     type = spice_channel_get_channel_type(channel);
     SPICE_DEBUG("migrating channel id:%d type:%d", id, type);
 
-    c = get_channel_by_id_and_type(s->migration, id, type);
+    c = spice_session_lookup_channel(s->migration, id, type);
     g_return_if_fail(c != NULL);
 
     spice_channel_swap(channel, c);

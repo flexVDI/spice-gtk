@@ -90,14 +90,47 @@ void spice_channel_handle_disconnect(SpiceChannel *channel, SpiceMsgIn *in)
                 disconnect->time_stamp, disconnect->reason);
 }
 
+typedef struct WaitForChannelData
+{
+    SpiceWaitForChannel *wait;
+    SpiceChannel *channel;
+} WaitForChannelData;
+
+/* coroutine and main context */
+static gboolean wait_for_channel(gpointer data)
+{
+    WaitForChannelData *wfc = data;
+    SpiceChannelPrivate *c = wfc->channel->priv;
+    SpiceChannel *wait_channel;
+
+    wait_channel = spice_session_lookup_channel(c->session, wfc->wait->channel_id, wfc->wait->channel_type);
+    g_return_val_if_fail(wait_channel != NULL, TRUE);
+
+    if (wait_channel->priv->last_message_serial >= wfc->wait->message_serial)
+        return TRUE;
+
+    return FALSE;
+}
+
 /* coroutine context */
 G_GNUC_INTERNAL
 void spice_channel_handle_wait_for_channels(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    /* SpiceChannelPrivate *c = channel->priv;
-       SpiceMsgWaitForChannels *wfc = spice_msg_in_parsed(in); */
+    SpiceMsgWaitForChannels *wfc = spice_msg_in_parsed(in);
+    int i;
 
-    SPICE_DEBUG("%s TODO", __FUNCTION__);
+    g_return_if_fail(in->header.size >= sizeof(*wfc) + wfc->wait_count * sizeof(wfc->wait_list[0]));
+
+    for (i = 0; i < wfc->wait_count; ++i) {
+        WaitForChannelData data = {
+            .wait = wfc->wait_list + i,
+            .channel = channel
+        };
+
+        SPICE_DEBUG("waiting for serial %lu (%d/%d)", data.wait->message_serial, i + 1, wfc->wait_count);
+        g_condition_wait(wait_for_channel, &data);
+        SPICE_DEBUG("waiting for serial %lu, done", data.wait->message_serial);
+    }
 }
 
 static void

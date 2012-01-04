@@ -127,6 +127,7 @@ void spice_session_palettes_clear(SpiceSession *session);
 void spice_session_images_clear(SpiceSession *session);
 void spice_session_migrate_end(SpiceSession *session);
 gboolean spice_session_migrate_after_main_init(SpiceSession *session);
+SpiceChannel* spice_session_lookup_channel(SpiceSession *session, gint id, gint type);
 
 G_END_DECLS
 
