@@ -383,7 +383,7 @@ spice_client_glib_usb_acl_helper_CPPFLAGS =	\
 	$(POLKIT_CFLAGS)			\
 	$(NULL)
 
-install-exec-hook:
+install-data-hook:
 	-chown root $(DESTDIR)$(acldir)/spice-client-glib-usb-acl-helper
 	-chmod u+s  $(DESTDIR)$(acldir)/spice-client-glib-usb-acl-helper
 
