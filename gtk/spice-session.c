@@ -241,6 +241,7 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     char host[128], key[32], value[128];
     char *port = NULL, *tls_port = NULL, *uri = NULL, *password = NULL;
+    char **target_key;
     int len, pos = 0;
 
     g_return_val_if_fail(original_uri != NULL, -1);
@@ -266,16 +267,24 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
         if (sscanf(uri + pos, "%31[-a-zA-Z0-9]=%127[^;&]%n", key, value, &len) != 2)
             goto fail;
         pos += len;
+        target_key = NULL;
         if (g_str_equal(key, "port")) {
-            port = g_strdup(value);
+            target_key = &port;
         } else if (g_str_equal(key, "tls-port")) {
-            tls_port = g_strdup(value);
+            target_key = &tls_port;
         } else if (g_str_equal(key, "password")) {
-            password = g_strdup(value);
+            target_key = &password;
             g_warning("password may be visible in process listings");
         } else {
             g_warning("unknown key in spice URI parsing: %s", key);
             goto fail;
+        }
+        if (target_key) {
+            if (*target_key) {
+                g_warning("double set of %s", key);
+                goto fail;
+            }
+            *target_key = g_strdup(value);
         }
     }
 
