@@ -112,6 +112,13 @@ static void spice_usb_device_manager_uevent_cb(GUdevClient     *client,
                                                gpointer         user_data);
 static void spice_usb_device_manager_add_dev(SpiceUsbDeviceManager  *self,
                                              GUdevDevice            *udev);
+
+G_DEFINE_BOXED_TYPE(SpiceUsbDevice, spice_usb_device,
+                    (GBoxedCopyFunc)libusb_ref_device,
+                    (GBoxedFreeFunc)libusb_unref_device)
+
+#else
+G_DEFINE_BOXED_TYPE(SpiceUsbDevice, spice_usb_device, g_object_ref, g_object_unref)
 #endif
 static void spice_usb_device_manager_initable_iface_init(GInitableIface *iface);
 
@@ -119,10 +126,6 @@ static guint signals[LAST_SIGNAL] = { 0, };
 
 G_DEFINE_TYPE_WITH_CODE(SpiceUsbDeviceManager, spice_usb_device_manager, G_TYPE_OBJECT,
      G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE, spice_usb_device_manager_initable_iface_init));
-
-G_DEFINE_BOXED_TYPE(SpiceUsbDevice, spice_usb_device,
-                    (GBoxedCopyFunc)libusb_ref_device,
-                    (GBoxedFreeFunc)libusb_unref_device)
 
 static void spice_usb_device_manager_init(SpiceUsbDeviceManager *self)
 {
@@ -132,8 +135,10 @@ static void spice_usb_device_manager_init(SpiceUsbDeviceManager *self)
     self->priv = priv;
 
     priv->channels = g_ptr_array_new();
+#ifdef USE_USBREDIR
     priv->devices  = g_ptr_array_new_with_free_func((GDestroyNotify)
                                                     libusb_unref_device);
+#endif
 }
 
 static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
@@ -216,7 +221,8 @@ static void spice_usb_device_manager_finalize(GObject *gobject)
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
 
     g_ptr_array_unref(priv->channels);
-    g_ptr_array_unref(priv->devices);
+    if (priv->devices)
+        g_ptr_array_unref(priv->devices);
 
 #ifdef USE_USBREDIR
     g_clear_object(&priv->udev);
@@ -735,19 +741,20 @@ SpiceUsbDeviceManager *spice_usb_device_manager_get(SpiceSession *session,
  */
 GPtrArray* spice_usb_device_manager_get_devices(SpiceUsbDeviceManager *self)
 {
-    SpiceUsbDeviceManagerPrivate *priv;
-    GPtrArray *devices_copy;
-    guint i;
+    GPtrArray *devices_copy = NULL;
 
     g_return_val_if_fail(SPICE_IS_USB_DEVICE_MANAGER(self), NULL);
 
-    priv = self->priv;
+#ifdef USE_USBREDIR
+    SpiceUsbDeviceManagerPrivate *priv = self->priv;
+
     devices_copy = g_ptr_array_new_with_free_func((GDestroyNotify)
                                                   libusb_unref_device);
     for (i = 0; i < priv->devices->len; i++) {
         libusb_device *device = g_ptr_array_index(priv->devices, i);
         g_ptr_array_add(devices_copy, libusb_ref_device(device));
     }
+#endif
 
     return devices_copy;
 }
