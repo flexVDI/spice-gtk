@@ -242,6 +242,7 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
     char host[128], key[32], value[128];
     char *port = NULL, *tls_port = NULL, *uri = NULL, *password = NULL;
     char **target_key;
+    int punctuation = 0;
     int len, pos = 0;
 
     g_return_val_if_fail(original_uri != NULL, -1);
@@ -259,13 +260,28 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
     for (;;) {
         if (uri[pos] == '?' || uri[pos] == ';' || uri[pos] == '&') {
             pos++;
+            punctuation++;
             continue;
         }
         if (uri[pos] == 0) {
             break;
         }
-        if (sscanf(uri + pos, "%31[-a-zA-Z0-9]=%127[^;&]%n", key, value, &len) != 2)
-            goto fail;
+        if (uri[pos] == ':') {
+            if (punctuation++) {
+                g_warning("colon seen after a previous punctuation (?;&:)");
+                goto fail;
+            }
+            pos++;
+            /* port numbers are 16 bit, fits in five decimal figures. */
+            if (sscanf(uri + pos, "%5[0-9]%n", value, &len) != 1)
+                goto fail;
+            port = g_strdup(value);
+            pos += len;
+            continue;
+        } else {
+            if (sscanf(uri + pos, "%31[-a-zA-Z0-9]=%127[^;&]%n", key, value, &len) != 2)
+                goto fail;
+        }
         pos += len;
         target_key = NULL;
         if (g_str_equal(key, "port")) {
