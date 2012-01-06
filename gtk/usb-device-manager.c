@@ -747,6 +747,7 @@ GPtrArray* spice_usb_device_manager_get_devices(SpiceUsbDeviceManager *self)
 
 #ifdef USE_USBREDIR
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
+    guint i;
 
     devices_copy = g_ptr_array_new_with_free_func((GDestroyNotify)
                                                   libusb_unref_device);
