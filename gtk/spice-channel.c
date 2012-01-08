@@ -98,7 +98,8 @@ static void spice_channel_init(SpiceChannel *channel)
 
     c = channel->priv = SPICE_CHANNEL_GET_PRIVATE(channel);
 
-    c->serial = 1;
+    c->out_serial = 1;
+    c->in_serial = 1;
     c->fd = -1;
     strcpy(c->name, "?");
     c->caps = g_array_new(FALSE, TRUE, sizeof(guint32));
@@ -106,6 +107,7 @@ static void spice_channel_init(SpiceChannel *channel)
     c->remote_caps = g_array_new(FALSE, TRUE, sizeof(guint32));
     c->remote_common_caps = g_array_new(FALSE, TRUE, sizeof(guint32));
     spice_channel_set_common_capability(channel, SPICE_COMMON_CAP_PROTOCOL_AUTH_SELECTION);
+    spice_channel_set_common_capability(channel, SPICE_COMMON_CAP_MINI_HEADER);
     g_queue_init(&c->xmit_queue);
     g_static_mutex_init(&c->xmit_queue_lock);
     c->main_thread = g_thread_self();
@@ -347,6 +349,101 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
 }
 
 /* ---------------------------------------------------------------- */
+/* private header api                                               */
+
+static inline void spice_header_set_msg_type(uint8_t *header, gboolean is_mini_header,
+                                             uint16_t type)
+{
+    if (is_mini_header) {
+        ((SpiceMiniDataHeader *)header)->type = type;
+    } else {
+        ((SpiceDataHeader *)header)->type = type;
+    }
+}
+
+static inline void spice_header_set_msg_size(uint8_t *header, gboolean is_mini_header,
+                                             uint32_t size)
+{
+    if (is_mini_header) {
+        ((SpiceMiniDataHeader *)header)->size = size;
+    } else {
+        ((SpiceDataHeader *)header)->size = size;
+    }
+}
+
+G_GNUC_INTERNAL
+uint16_t spice_header_get_msg_type(uint8_t *header, gboolean is_mini_header)
+{
+    if (is_mini_header) {
+        return ((SpiceMiniDataHeader *)header)->type;
+    } else {
+        return ((SpiceDataHeader *)header)->type;
+    }
+}
+
+G_GNUC_INTERNAL
+uint32_t spice_header_get_msg_size(uint8_t *header, gboolean is_mini_header)
+{
+    if (is_mini_header) {
+        return ((SpiceMiniDataHeader *)header)->size;
+    } else {
+        return ((SpiceDataHeader *)header)->size;
+    }
+}
+
+static inline int spice_header_get_header_size(gboolean is_mini_header)
+{
+    return is_mini_header ? sizeof(SpiceMiniDataHeader) : sizeof(SpiceDataHeader);
+}
+
+static inline void spice_header_set_msg_serial(uint8_t *header, gboolean is_mini_header,
+                                               uint64_t serial)
+{
+    if (!is_mini_header) {
+        ((SpiceDataHeader *)header)->serial = serial;
+    }
+}
+
+static inline void spice_header_reset_msg_sub_list(uint8_t *header, gboolean is_mini_header)
+{
+    if (!is_mini_header) {
+        ((SpiceDataHeader *)header)->sub_list = 0;
+    }
+}
+
+static inline uint64_t spice_header_get_in_msg_serial(SpiceMsgIn *in)
+{
+    SpiceChannelPrivate *c = in->channel->priv;
+    uint8_t *header = in->header;
+
+    if (c->use_mini_header) {
+        return c->in_serial;
+    } else {
+        return ((SpiceDataHeader *)header)->serial;
+    }
+}
+
+static inline uint64_t spice_header_get_out_msg_serial(SpiceMsgOut *out)
+{
+    SpiceChannelPrivate *c = out->channel->priv;
+
+    if (c->use_mini_header) {
+        return c->out_serial;
+    } else {
+        return ((SpiceDataHeader *)out->header)->serial;
+    }
+}
+
+static inline uint32_t spice_header_get_msg_sub_list(uint8_t *header, gboolean is_mini_header)
+{
+    if (is_mini_header) {
+        return 0;
+    } else {
+        return ((SpiceDataHeader *)header)->sub_list;
+    }
+}
+
+/* ---------------------------------------------------------------- */
 /* private msg api                                                  */
 
 G_GNUC_INTERNAL
@@ -359,6 +456,7 @@ SpiceMsgIn *spice_msg_in_new(SpiceChannel *channel)
     in = spice_new0(SpiceMsgIn, 1);
     in->refcount = 1;
     in->channel  = channel;
+
     return in;
 }
 
@@ -371,8 +469,8 @@ SpiceMsgIn *spice_msg_in_sub_new(SpiceChannel *channel, SpiceMsgIn *parent,
     g_return_val_if_fail(channel != NULL, NULL);
 
     in = spice_msg_in_new(channel);
-    in->header.type = sub->type;
-    in->header.size = sub->size;
+    spice_header_set_msg_type(in->header, channel->priv->use_mini_header, sub->type);
+    spice_header_set_msg_size(in->header, channel->priv->use_mini_header, sub->size);
     in->data = (uint8_t*)(sub+1);
     in->dpos = sub->size;
     in->parent = parent;
@@ -411,7 +509,7 @@ int spice_msg_in_type(SpiceMsgIn *in)
 {
     g_return_val_if_fail(in != NULL, -1);
 
-    return in->header.type;
+    return spice_header_get_msg_type(in->header, in->channel->priv->use_mini_header);
 }
 
 G_GNUC_INTERNAL
@@ -455,8 +553,10 @@ void spice_msg_in_hexdump(SpiceMsgIn *in)
     SpiceChannelPrivate *c = in->channel->priv;
 
     fprintf(stderr, "--\n<< hdr: %s serial %" PRIu64 " type %d size %d sub-list %d\n",
-            c->name, in->header.serial, in->header.type,
-            in->header.size, in->header.sub_list);
+            c->name, spice_header_get_in_msg_serial(in),
+            spice_header_get_msg_type(in->header, c->use_mini_header),
+            spice_header_get_msg_size(in->header, c->use_mini_header),
+            spice_header_get_msg_sub_list(in->header, c->use_mini_header));
     hexdump("<< msg", in->data, in->dpos);
 }
 
@@ -466,8 +566,11 @@ void spice_msg_out_hexdump(SpiceMsgOut *out, unsigned char *data, int len)
     SpiceChannelPrivate *c = out->channel->priv;
 
     fprintf(stderr, "--\n>> hdr: %s serial %" PRIu64 " type %d size %d sub-list %d\n",
-            c->name, out->header->serial, out->header->type,
-            out->header->size, out->header->sub_list);
+            c->name,
+            spice_header_get_out_msg_serial(out),
+            spice_header_get_msg_type(out->header, c->use_mini_header),
+            spice_header_get_msg_size(out->header, c->use_mini_header),
+            spice_header_get_msg_sub_list(out->header, c->use_mini_header));
     hexdump(">> msg", data, len);
 }
 
@@ -510,12 +613,15 @@ SpiceMsgOut *spice_msg_out_new(SpiceChannel *channel, int type)
 
     out->marshallers = c->marshallers;
     out->marshaller = spice_marshaller_new();
-    out->header = (SpiceDataHeader *)
-        spice_marshaller_reserve_space(out->marshaller, sizeof(SpiceDataHeader));
-    spice_marshaller_set_base(out->marshaller, sizeof(SpiceDataHeader));
-    out->header->serial = c->serial++;
-    out->header->type = type;
-    out->header->sub_list = 0;
+
+    out->header = spice_marshaller_reserve_space(out->marshaller,
+                                                 spice_header_get_header_size(c->use_mini_header));
+    spice_marshaller_set_base(out->marshaller, spice_header_get_header_size(c->use_mini_header));
+    spice_header_set_msg_type(out->header, c->use_mini_header, type);
+    spice_header_set_msg_serial(out->header, c->use_mini_header, c->out_serial);
+    spice_header_reset_msg_sub_list(out->header, c->use_mini_header);
+
+    c->out_serial++;
     return out;
 }
 
@@ -710,6 +816,7 @@ static void spice_channel_write_msg(SpiceChannel *channel, SpiceMsgOut *out)
     uint8_t *data;
     int free_data;
     size_t len;
+    uint32_t msg_size;
 
     g_return_if_fail(channel != NULL);
     g_return_if_fail(out != NULL);
@@ -721,8 +828,9 @@ static void spice_channel_write_msg(SpiceChannel *channel, SpiceMsgOut *out)
         return;
     }
 
-    out->header->size =
-        spice_marshaller_get_total_size(out->marshaller) - sizeof(SpiceDataHeader);
+    msg_size = spice_marshaller_get_total_size(out->marshaller) -
+               spice_header_get_header_size(channel->priv->use_mini_header);
+    spice_header_set_msg_size(out->header, channel->priv->use_mini_header, msg_size);
     data = spice_marshaller_linearize(out->marshaller, 0, &len, &free_data);
     /* spice_msg_out_hexdump(out, data, len); */
     spice_channel_write(channel, data, len);
@@ -1569,7 +1677,9 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
             goto error;
         }
     }
-
+    c->use_mini_header = spice_channel_test_common_capability(channel,
+                                                              SPICE_COMMON_CAP_MINI_HEADER);
+    SPICE_DEBUG("use mini header: %d", c->use_mini_header);
     return;
 
 error:
@@ -1600,54 +1710,65 @@ void spice_channel_recv_msg(SpiceChannel *channel,
 {
     SpiceChannelPrivate *c = channel->priv;
     SpiceMsgIn *in;
+    int header_size;
+    int msg_size;
+    int msg_type;
+    int sub_list_offset = 0;
     int rc;
 
     if (!c->msg_in) {
         c->msg_in = spice_msg_in_new(channel);
     }
     in = c->msg_in;
+    header_size = spice_header_get_header_size(c->use_mini_header);
 
     /* receive message */
-    if (in->hpos < sizeof(in->header)) {
-        rc = spice_channel_read(channel, (uint8_t*)&in->header + in->hpos,
-                                sizeof(in->header) - in->hpos);
+    if (in->hpos < header_size) {
+        rc = spice_channel_read(channel, in->header + in->hpos,
+                                header_size - in->hpos);
         if (rc < 0) {
             g_critical("recv hdr: %s", strerror(errno));
             return;
         }
         in->hpos += rc;
-        if (in->hpos < sizeof(in->header))
+        if (in->hpos < header_size)
             return;
-        in->data = spice_malloc(in->header.size);
+        in->data = spice_malloc(spice_header_get_msg_size(in->header, c->use_mini_header));
     }
-    if (in->dpos < in->header.size) {
+    msg_size = spice_header_get_msg_size(in->header, c->use_mini_header);
+    if (in->dpos < msg_size) {
         rc = spice_channel_read(channel, in->data + in->dpos,
-                                in->header.size - in->dpos);
+                                msg_size - in->dpos);
         if (rc < 0) {
             g_critical("recv msg: %s", strerror(errno));
             return;
         }
         in->dpos += rc;
-        if (in->dpos < in->header.size)
+        if (in->dpos < msg_size)
             return;
     }
 
-    if (in->header.type == SPICE_MSG_LIST || in->header.sub_list) {
+    msg_type = spice_header_get_msg_type(in->header, c->use_mini_header);
+    sub_list_offset = spice_header_get_msg_sub_list(in->header, c->use_mini_header);
+
+    if (msg_type == SPICE_MSG_LIST || sub_list_offset) {
         SpiceSubMessageList *sub_list;
         SpiceSubMessage *sub;
         SpiceMsgIn *sub_in;
         int i;
 
-        sub_list = (SpiceSubMessageList *)(in->data + in->header.sub_list);
+        sub_list = (SpiceSubMessageList *)(in->data + sub_list_offset);
         for (i = 0; i < sub_list->size; i++) {
             sub = (SpiceSubMessage *)(in->data + sub_list->sub_messages[i]);
             sub_in = spice_msg_in_sub_new(channel, in, sub);
             sub_in->parsed = c->parser(sub_in->data, sub_in->data + sub_in->dpos,
-                                       sub_in->header.type, c->peer_hdr.minor_version,
+                                       spice_header_get_msg_type(sub_in->header,
+                                                                 c->use_mini_header),
+                                       c->peer_hdr.minor_version,
                                        &sub_in->psize, &sub_in->pfree);
             if (sub_in->parsed == NULL) {
                 g_critical("failed to parse sub-message: %s type %d",
-                           c->name, sub_in->header.type);
+                           c->name, spice_header_get_msg_type(sub_in->header, c->use_mini_header));
                 return;
             }
             msg_handler(channel, sub_in, data);
@@ -1665,16 +1786,16 @@ void spice_channel_recv_msg(SpiceChannel *channel,
         }
     }
 
-    if (in->header.type == SPICE_MSG_LIST) {
+    if (msg_type == SPICE_MSG_LIST) {
         goto end;
     }
 
     /* parse message */
-    in->parsed = c->parser(in->data, in->data + in->dpos, in->header.type,
+    in->parsed = c->parser(in->data, in->data + in->dpos, msg_type,
                            c->peer_hdr.minor_version, &in->psize, &in->pfree);
     if (in->parsed == NULL) {
         g_critical("failed to parse message: %s type %d",
-                   c->name, in->header.type);
+                   c->name, msg_type);
         goto end;
     }
 
@@ -1684,8 +1805,10 @@ void spice_channel_recv_msg(SpiceChannel *channel,
     msg_handler(channel, in, data);
 
 end:
-    c->last_message_serial = in->header.serial;
-
+    /* If the server uses full header, the serial is not necessarily equal
+     * to c->in_serial (the server can sometimes skip serials) */
+    c->last_message_serial = spice_header_get_in_msg_serial(in);
+    c->in_serial++;
     /* release message */
     c->msg_in = NULL;
     spice_msg_in_unref(in);
@@ -2226,6 +2349,7 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
     g_array_set_size(c->caps, 0);
     /* Restore our default capabilities in case the channel gets re-used */
     spice_channel_set_common_capability(channel, SPICE_COMMON_CAP_PROTOCOL_AUTH_SELECTION);
+    spice_channel_set_common_capability(channel, SPICE_COMMON_CAP_MINI_HEADER);
 }
 
 /* system or coroutine context */

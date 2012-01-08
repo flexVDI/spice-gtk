@@ -119,7 +119,8 @@ void spice_channel_handle_wait_for_channels(SpiceChannel *channel, SpiceMsgIn *i
     SpiceMsgWaitForChannels *wfc = spice_msg_in_parsed(in);
     int i;
 
-    g_return_if_fail(in->header.size >= sizeof(*wfc) + wfc->wait_count * sizeof(wfc->wait_list[0]));
+    g_return_if_fail(spice_header_get_msg_size(in->header, channel->priv->use_mini_header) >=
+                     sizeof(*wfc) + wfc->wait_count * sizeof(wfc->wait_list[0]));
 
     for (i = 0; i < wfc->wait_count; ++i) {
         WaitForChannelData data = {
@@ -167,8 +168,10 @@ void spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in)
         spice_channel_recv_msg(channel, get_msg_handler, &data);
         if (!data) {
             g_warning("expected SPICE_MSG_MIGRATE_DATA, got empty message");
-        } else if (data->header.type != SPICE_MSG_MIGRATE_DATA) {
-            g_warning("expected SPICE_MSG_MIGRATE_DATA, got %d", data->header.type);
+        } else if (spice_header_get_msg_type(data->header, c->use_mini_header) !=
+                   SPICE_MSG_MIGRATE_DATA) {
+            g_warning("expected SPICE_MSG_MIGRATE_DATA, got %d",
+                      spice_header_get_msg_type(data->header, c->use_mini_header));
         }
     }
 
@@ -176,7 +179,8 @@ void spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in)
 
     if ((mig->flags & SPICE_MIGRATE_NEED_DATA_TRANSFER) && (data != NULL)) {
         out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MIGRATE_DATA);
-        spice_marshaller_add(out->marshaller, data->data, data->header.size);
+        spice_marshaller_add(out->marshaller, data->data,
+                             spice_header_get_msg_size(data->header, c->use_mini_header));
         spice_msg_out_send_internal(out);
     }
 }

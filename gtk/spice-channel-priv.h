@@ -40,19 +40,21 @@
 
 G_BEGIN_DECLS
 
+#define MAX_SPICE_DATA_HEADER_SIZE sizeof(SpiceDataHeader)
+
 struct _SpiceMsgOut {
     int                   refcount;
     SpiceChannel          *channel;
     SpiceMessageMarshallers *marshallers;
     SpiceMarshaller       *marshaller;
-    SpiceDataHeader       *header;
+    uint8_t               *header;
     gboolean              ro_check;
 };
 
 struct _SpiceMsgIn {
     int                   refcount;
     SpiceChannel          *channel;
-    SpiceDataHeader       header;
+    uint8_t               header[MAX_SPICE_DATA_HEADER_SIZE];
     uint8_t               *data;
     int                   hpos,dpos;
     uint8_t               *parsed;
@@ -86,6 +88,10 @@ struct _SpiceChannelPrivate {
     unsigned int                sasl_decoded_offset;
 #endif
 
+    gboolean                    use_mini_header;
+    uint64_t                    out_serial;
+    uint64_t                    in_serial;
+
     /* not swapped */
     SpiceSession                *session;
     struct coroutine            coroutine;
@@ -109,7 +115,6 @@ struct _SpiceChannelPrivate {
     int                         connection_id;
     int                         channel_id;
     int                         channel_type;
-    int                         serial;
     SpiceLinkHeader             link_hdr;
     SpiceLinkMess               link_msg;
     SpiceLinkHeader             peer_hdr;
@@ -145,6 +150,9 @@ void spice_msg_out_unref(SpiceMsgOut *out);
 void spice_msg_out_send(SpiceMsgOut *out);
 void spice_msg_out_send_internal(SpiceMsgOut *out);
 void spice_msg_out_hexdump(SpiceMsgOut *out, unsigned char *data, int len);
+
+uint16_t spice_header_get_msg_type(uint8_t *header, gboolean is_mini_header);
+uint32_t spice_header_get_msg_size(uint8_t *header, gboolean is_mini_header);
 
 void spice_channel_up(SpiceChannel *channel);
 void spice_channel_wakeup(SpiceChannel *channel);
