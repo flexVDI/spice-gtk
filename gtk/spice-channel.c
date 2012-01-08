@@ -2536,16 +2536,25 @@ void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap)
         SSL_CTX *ctx = c->ctx;
         SSL *ssl = c->ssl;
         SpiceOpenSSLVerify *sslverify = c->sslverify;
+        uint64_t in_serial = c->in_serial;
+        uint64_t out_serial = c->out_serial;
+        gboolean use_mini_header = c->use_mini_header;
 
         c->sock = s->sock;
         c->ctx = s->ctx;
         c->ssl = s->ssl;
         c->sslverify = s->sslverify;
+        c->in_serial = s->in_serial;
+        c->out_serial = s->out_serial;
+        c->use_mini_header = s->use_mini_header;
 
         s->sock = sock;
         s->ctx = ctx;
         s->ssl = ssl;
         s->sslverify = sslverify;
+        s->in_serial = in_serial;
+        s->out_serial = out_serial;
+        s->use_mini_header = use_mini_header;
     }
 
 #if HAVE_SASL
