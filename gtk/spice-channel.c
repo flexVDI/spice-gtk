@@ -755,7 +755,7 @@ static void spice_channel_flush_wire(SpiceChannel *channel,
         }
         if (ret == -1) {
             if (cond != 0) {
-                g_io_wait(c->sock, cond);
+                g_coroutine_socket_wait(&c->coroutine, c->sock, cond);
                 continue;
             } else {
                 SPICE_DEBUG("Closing the channel: spice_channel_flush %d", errno);
@@ -883,7 +883,7 @@ reread:
 
     if (ret == -1) {
         if (cond != 0) {
-            g_io_wait(c->sock, cond);
+            g_coroutine_socket_wait(&c->coroutine, c->sock, cond);
             goto reread;
         } else {
             c->has_error = TRUE;
@@ -1694,7 +1694,7 @@ void spice_channel_wakeup(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
 
-    g_io_wakeup(&c->coroutine);
+    g_coroutine_wakeup(&c->coroutine);
 }
 
 G_GNUC_INTERNAL
@@ -2004,7 +2004,7 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
         }
 
         SPICE_CHANNEL_GET_CLASS(channel)->iterate_write(channel);
-        ret = g_io_wait_interruptible(&c->coroutine, c->sock, G_IO_IN);
+        ret = g_coroutine_socket_wait(&c->coroutine, c->sock, G_IO_IN);
 
 #ifdef WIN32
         /* FIXME: windows gsocket is buggy, it doesn't return correct condition... */
@@ -2075,7 +2075,7 @@ static void *spice_channel_coroutine(void *data)
     }
 
 reconnect:
-    c->sock = spice_session_channel_open_host(c->session, c->tls);
+    c->sock = spice_session_channel_open_host(c->session, channel, c->tls);
     if (c->sock == NULL) {
         if (!c->tls) {
             SPICE_DEBUG("connection failed, trying with TLS port");
@@ -2154,7 +2154,7 @@ ssl_reconnect:
         if (rc <= 0) {
             rc = SSL_get_error(c->ssl, rc);
             if (rc == SSL_ERROR_WANT_READ || rc == SSL_ERROR_WANT_WRITE) {
-                g_io_wait(c->sock, G_IO_OUT|G_IO_ERR|G_IO_HUP);
+                g_coroutine_socket_wait(&c->coroutine, c->sock, G_IO_OUT|G_IO_ERR|G_IO_HUP);
                 goto ssl_reconnect;
             } else {
                 g_warning("%s: SSL_connect: %s",

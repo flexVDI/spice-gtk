@@ -29,6 +29,11 @@ typedef struct _GConditionWaitSource
     gpointer data;
 } GConditionWaitSource;
 
+GCoroutine* g_coroutine_self(void)
+{
+    return (GCoroutine*)coroutine_self();
+}
+
 /* Main loop helper functions */
 static gboolean g_io_wait_helper(GSocket *sock G_GNUC_UNUSED,
 				 GIOCondition cond,
@@ -39,52 +44,38 @@ static gboolean g_io_wait_helper(GSocket *sock G_GNUC_UNUSED,
     return FALSE;
 }
 
-GIOCondition g_io_wait(GSocket *sock, GIOCondition cond)
-{
-    GIOCondition *ret;
-    GSource *src = g_socket_create_source(sock,
-                                          cond | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-                                          NULL);
-    g_source_set_callback(src, (GSourceFunc)g_io_wait_helper, coroutine_self(), NULL);
-    g_source_attach(src, NULL);
-    ret = coroutine_yield(NULL);
-    g_source_unref(src);
-    return *ret;
-}
-
-
-GIOCondition g_io_wait_interruptible(GCoroutine *self,
+GIOCondition g_coroutine_socket_wait(GCoroutine *self,
                                      GSocket *sock,
                                      GIOCondition cond)
 {
-    GIOCondition *ret;
-    gint id;
+    GIOCondition *ret, val = 0;
+    GSource *src;
 
     g_return_val_if_fail(self != NULL, 0);
+    g_return_val_if_fail(self->wait_id == 0, 0);
     g_return_val_if_fail(sock != NULL, 0);
 
-    GSource *src = g_socket_create_source(sock,
-                                          cond | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-                                          NULL);
+    src = g_socket_create_source(sock, cond | G_IO_HUP | G_IO_ERR | G_IO_NVAL, NULL);
     g_source_set_callback(src, (GSourceFunc)g_io_wait_helper, self, NULL);
-    id = g_source_attach(src, NULL);
-    self->waiting = TRUE;
+    self->wait_id = g_source_attach(src, NULL);
     ret = coroutine_yield(NULL);
-    self->waiting = FALSE;
     g_source_unref(src);
 
-    if (ret == NULL) {
-        g_source_remove(id);
-        return 0;
-    } else
-        return *ret;
+    if (ret != NULL)
+        val = *ret;
+    else
+        g_source_remove(self->wait_id);
+
+    self->wait_id = 0;
+    return val;
 }
 
-void g_io_wakeup(GCoroutine *coroutine)
+void g_coroutine_wakeup(GCoroutine *coroutine)
 {
     g_return_if_fail(coroutine != NULL);
+    g_return_if_fail(coroutine != g_coroutine_self());
 
-    if (coroutine->waiting)
+    if (coroutine->wait_id)
         coroutine_yieldto(&coroutine->coroutine, NULL);
 }
 

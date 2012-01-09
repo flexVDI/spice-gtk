@@ -1359,9 +1359,11 @@ gboolean spice_session_has_channel_type(SpiceSession *session, gint type)
 /* ------------------------------------------------------------------ */
 /* private functions                                                  */
 
-static GSocket *channel_connect_socket(GSocketAddress *sockaddr,
+static GSocket *channel_connect_socket(SpiceChannel *channel,
+                                       GSocketAddress *sockaddr,
                                        GError **error)
 {
+    SpiceChannelPrivate *c = channel->priv;
     GSocket *sock = g_socket_new(g_socket_address_get_family(sockaddr),
                                  G_SOCKET_TYPE_STREAM,
                                  G_SOCKET_PROTOCOL_DEFAULT,
@@ -1375,7 +1377,7 @@ static GSocket *channel_connect_socket(GSocketAddress *sockaddr,
         if (*error && (*error)->code == G_IO_ERROR_PENDING) {
             g_clear_error(error);
             SPICE_DEBUG("Socket pending");
-            g_io_wait(sock, G_IO_OUT | G_IO_ERR | G_IO_HUP);
+            g_coroutine_socket_wait(&c->coroutine, sock, G_IO_OUT | G_IO_ERR | G_IO_HUP);
 
             if (!g_socket_check_connect_result(sock, error)) {
                 SPICE_DEBUG("Failed to connect %s", (*error)->message);
@@ -1394,8 +1396,10 @@ static GSocket *channel_connect_socket(GSocketAddress *sockaddr,
     return sock;
 }
 
+/* coroutine context */
 G_GNUC_INTERNAL
-GSocket* spice_session_channel_open_host(SpiceSession *session, gboolean use_tls)
+GSocket* spice_session_channel_open_host(SpiceSession *session, SpiceChannel *channel,
+                                         gboolean use_tls)
 {
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     GSocketConnectable *addr;
@@ -1425,7 +1429,7 @@ GSocket* spice_session_channel_open_host(SpiceSession *session, gboolean use_tls
            (sockaddr = g_socket_address_enumerator_next(enumerator, NULL, &conn_error))) {
         SPICE_DEBUG("Trying one socket");
         g_clear_error(&conn_error);
-        sock = channel_connect_socket(sockaddr, &conn_error);
+        sock = channel_connect_socket(channel, sockaddr, &conn_error);
         if (conn_error != NULL)
             SPICE_DEBUG("%s", conn_error->message);
         g_object_unref(sockaddr);
