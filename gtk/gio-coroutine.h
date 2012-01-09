@@ -26,10 +26,12 @@
 
 G_BEGIN_DECLS
 
-struct wait_queue
+typedef struct _GCoroutine GCoroutine;
+
+struct _GCoroutine
 {
+    struct coroutine coroutine;
     gboolean waiting;
-    struct coroutine *context;
 };
 
 /*
@@ -47,8 +49,8 @@ typedef void (*GSignalEmitMainFunc)(GObject *object, int signum, gpointer params
 
 GIOCondition g_io_wait              (GSocket *sock, GIOCondition cond);
 gboolean     g_condition_wait       (GConditionWaitFunc func, gpointer data);
-void         g_io_wakeup            (struct wait_queue *wait);
-GIOCondition g_io_wait_interruptible(struct wait_queue *wait, GSocket *sock, GIOCondition cond);
+void         g_io_wakeup            (GCoroutine *coroutine);
+GIOCondition g_io_wait_interruptible(GCoroutine *coroutine, GSocket *sock, GIOCondition cond);
 void         g_signal_emit_main_context(GObject *object, GSignalEmitMainFunc func,
                                         int signum, gpointer params, const char *debug_info);
 void         g_object_notify_main_context(GObject *object, const gchar *property_name);

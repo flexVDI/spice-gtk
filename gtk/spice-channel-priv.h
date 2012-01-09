@@ -94,12 +94,11 @@ struct _SpiceChannelPrivate {
 
     /* not swapped */
     SpiceSession                *session;
-    struct coroutine            coroutine;
+    GCoroutine                  coroutine;
     int                         fd;
     gboolean                    has_error;
     guint                       connect_delayed_id;
 
-    struct wait_queue           wait;
     GQueue                      xmit_queue;
     gboolean                    xmit_queue_blocked;
     GStaticMutex                xmit_queue_lock;

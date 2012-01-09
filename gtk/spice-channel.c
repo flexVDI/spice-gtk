@@ -1694,7 +1694,7 @@ void spice_channel_wakeup(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
 
-    g_io_wakeup(&c->wait);
+    g_io_wakeup(&c->coroutine);
 }
 
 G_GNUC_INTERNAL
@@ -2004,7 +2004,7 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
         }
 
         SPICE_CHANNEL_GET_CLASS(channel)->iterate_write(channel);
-        ret = g_io_wait_interruptible(&c->wait, c->sock, G_IO_IN);
+        ret = g_io_wait_interruptible(&c->coroutine, c->sock, G_IO_IN);
 
 #ifdef WIN32
         /* FIXME: windows gsocket is buggy, it doesn't return correct condition... */
@@ -2042,7 +2042,7 @@ static gboolean spice_channel_delayed_unref(gpointer data)
     g_return_val_if_fail(channel != NULL, FALSE);
     SPICE_DEBUG("Delayed unref channel %s %p", c->name, channel);
 
-    g_return_val_if_fail(c->coroutine.exited == TRUE, FALSE);
+    g_return_val_if_fail(c->coroutine.coroutine.exited == TRUE, FALSE);
 
     g_object_unref(G_OBJECT(data));
 
@@ -2209,7 +2209,7 @@ static gboolean connect_delayed(gpointer data)
     SPICE_DEBUG("Open coroutine starting %p", channel);
     c->connect_delayed_id = 0;
 
-    co = &c->coroutine;
+    co = &c->coroutine.coroutine;
 
     co->stack_size = 16 << 20; /* 16Mb */
     co->entry = spice_channel_coroutine;

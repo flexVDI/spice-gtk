@@ -53,26 +53,24 @@ GIOCondition g_io_wait(GSocket *sock, GIOCondition cond)
 }
 
 
-GIOCondition g_io_wait_interruptible(struct wait_queue *wait,
+GIOCondition g_io_wait_interruptible(GCoroutine *self,
                                      GSocket *sock,
                                      GIOCondition cond)
 {
     GIOCondition *ret;
     gint id;
 
-    g_return_val_if_fail(wait != NULL, 0);
+    g_return_val_if_fail(self != NULL, 0);
     g_return_val_if_fail(sock != NULL, 0);
 
-    wait->context = coroutine_self();
     GSource *src = g_socket_create_source(sock,
                                           cond | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
                                           NULL);
-    g_source_set_callback(src, (GSourceFunc)g_io_wait_helper,
-                          wait->context, NULL);
+    g_source_set_callback(src, (GSourceFunc)g_io_wait_helper, self, NULL);
     id = g_source_attach(src, NULL);
-    wait->waiting = TRUE;
+    self->waiting = TRUE;
     ret = coroutine_yield(NULL);
-    wait->waiting = FALSE;
+    self->waiting = FALSE;
     g_source_unref(src);
 
     if (ret == NULL) {
@@ -82,10 +80,12 @@ GIOCondition g_io_wait_interruptible(struct wait_queue *wait,
         return *ret;
 }
 
-void g_io_wakeup(struct wait_queue *wait)
+void g_io_wakeup(GCoroutine *coroutine)
 {
-    if (wait->waiting)
-        coroutine_yieldto(wait->context, NULL);
+    g_return_if_fail(coroutine != NULL);
+
+    if (coroutine->waiting)
+        coroutine_yieldto(&coroutine->coroutine, NULL);
 }
 
 
@@ -124,8 +124,8 @@ GSourceFuncs waitFuncs = {
 
 static gboolean g_condition_wait_helper(gpointer data)
 {
-    struct coroutine *co = (struct coroutine *)data;
-    coroutine_yieldto(co, NULL);
+    GCoroutine *self = (GCoroutine *)data;
+    coroutine_yieldto(&self->coroutine, NULL);
     return FALSE;
 }
 
