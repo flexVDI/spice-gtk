@@ -650,7 +650,7 @@ static gboolean spice_channel_idle_wakeup(gpointer user_data)
 {
     SpiceChannel *channel = SPICE_CHANNEL(user_data);
 
-    spice_channel_wakeup(channel);
+    spice_channel_wakeup(channel, FALSE);
     g_object_unref(channel);
 
     return FALSE;
@@ -674,7 +674,7 @@ void spice_msg_out_send(SpiceMsgOut *out)
         g_timeout_add_full(G_PRIORITY_HIGH, 0, spice_channel_idle_wakeup,
                            g_object_ref(out->channel), NULL);
     else
-        spice_channel_wakeup(out->channel);
+        spice_channel_wakeup(out->channel, FALSE);
 }
 
 /* coroutine context */
@@ -1690,11 +1690,14 @@ error:
 /* system context */
 /* TODO: we currently flush/wakeup immediately all buffered messages */
 G_GNUC_INTERNAL
-void spice_channel_wakeup(SpiceChannel *channel)
+void spice_channel_wakeup(SpiceChannel *channel, gboolean cancel)
 {
-    SpiceChannelPrivate *c = channel->priv;
+    GCoroutine *c = &channel->priv->coroutine;
 
-    g_coroutine_wakeup(&c->coroutine);
+    if (cancel)
+        g_coroutine_condition_cancel(c);
+
+    g_coroutine_wakeup(c);
 }
 
 G_GNUC_INTERNAL
@@ -1996,7 +1999,7 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
     do {
         /* freeze coroutine */
         if (c->state == SPICE_CHANNEL_STATE_MIGRATING)
-            g_condition_wait(wait_migration, channel);
+            g_coroutine_condition_wait(&c->coroutine, wait_migration, channel);
 
         if (c->has_error) {
             SPICE_DEBUG("channel has error, breaking loop");
@@ -2407,7 +2410,7 @@ void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
     if (c->state == SPICE_CHANNEL_STATE_MIGRATING) {
         c->state = SPICE_CHANNEL_STATE_READY;
     } else
-        spice_channel_wakeup(channel);
+        spice_channel_wakeup(channel, TRUE);
 
     if (reason != SPICE_CHANNEL_NONE)
         g_signal_emit(G_OBJECT(channel), signals[SPICE_CHANNEL_EVENT], 0, reason);

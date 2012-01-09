@@ -23,8 +23,8 @@
 
 typedef struct _GConditionWaitSource
 {
+    GCoroutine *self;
     GSource src;
-    struct coroutine *co;
     GConditionWaitFunc func;
     gpointer data;
 } GConditionWaitSource;
@@ -70,6 +70,17 @@ GIOCondition g_coroutine_socket_wait(GCoroutine *self,
     return val;
 }
 
+void g_coroutine_condition_cancel(GCoroutine *coroutine)
+{
+    g_return_if_fail(coroutine != NULL);
+
+    if (coroutine->condition_id == 0)
+        return;
+
+    g_source_remove(coroutine->condition_id);
+    coroutine->condition_id = 0;
+}
+
 void g_coroutine_wakeup(GCoroutine *coroutine)
 {
     g_return_if_fail(coroutine != NULL);
@@ -78,7 +89,6 @@ void g_coroutine_wakeup(GCoroutine *coroutine)
     if (coroutine->wait_id)
         coroutine_yieldto(&coroutine->coroutine, NULL);
 }
-
 
 /*
  * Call immediately before the main loop does an iteration. Returns
@@ -120,15 +130,32 @@ static gboolean g_condition_wait_helper(gpointer data)
     return FALSE;
 }
 
-gboolean g_condition_wait(GConditionWaitFunc func, gpointer data)
+/*
+ * g_coroutine_condition_wait:
+ * @coroutine: the coroutine to wait on
+ * @func: the condition callback
+ * @data: the user data passed to @func callback
+ *
+ * This function will wait on caller coroutine until @func returns %TRUE.
+ *
+ * @func is called when entering the main loop from the main context (coroutine).
+ *
+ * The condition can be cancelled by calling g_coroutine_wakeup()
+ *
+ * Returns: %TRUE if condition reached, %FALSE if not and cancelled
+ */
+gboolean g_coroutine_condition_wait(GCoroutine *self, GConditionWaitFunc func, gpointer data)
 {
     GSource *src;
     GConditionWaitSource *vsrc;
 
+    g_return_val_if_fail(self != NULL, FALSE);
+    g_return_val_if_fail(self->condition_id == 0, FALSE);
+    g_return_val_if_fail(func != NULL, FALSE);
+
     /* Short-circuit check in case we've got it ahead of time */
-    if (func(data)) {
+    if (func(data))
         return TRUE;
-    }
 
     /*
      * Don't have it, so yield to the main loop, checking the condition
@@ -139,13 +166,18 @@ gboolean g_condition_wait(GConditionWaitFunc func, gpointer data)
 
     vsrc->func = func;
     vsrc->data = data;
-    vsrc->co = coroutine_self();
+    vsrc->self = self;
 
-    g_source_attach(src, NULL);
-    g_source_set_callback(src, g_condition_wait_helper, coroutine_self(), NULL);
+    self->condition_id = g_source_attach(src, NULL);
+    g_source_set_callback(src, g_condition_wait_helper, self, NULL);
     coroutine_yield(NULL);
     g_source_unref(src);
 
+    /* it got woked up / cancelled? */
+    if (self->condition_id == 0)
+        return func(data);
+
+    self->condition_id = 0;
     return TRUE;
 }
 

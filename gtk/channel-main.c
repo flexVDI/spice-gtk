@@ -1709,7 +1709,7 @@ static gboolean timer_set_display(gpointer data)
     c->timer_id = 0;
     if (c->agent_connected)
         spice_main_send_monitor_config(SPICE_MAIN_CHANNEL(channel));
-    spice_channel_wakeup(channel);
+    spice_channel_wakeup(channel, FALSE);
 
     return false;
 }
@@ -1783,7 +1783,7 @@ void spice_main_clipboard_selection_grab(SpiceMainChannel *channel, guint select
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
     agent_clipboard_grab(channel, selection, types, ntypes);
-    spice_channel_wakeup(SPICE_CHANNEL(channel));
+    spice_channel_wakeup(SPICE_CHANNEL(channel), FALSE);
 }
 
 /**
@@ -1822,7 +1822,7 @@ void spice_main_clipboard_selection_release(SpiceMainChannel *channel, guint sel
         return;
 
     agent_clipboard_release(channel, selection);
-    spice_channel_wakeup(SPICE_CHANNEL(channel));
+    spice_channel_wakeup(SPICE_CHANNEL(channel), FALSE);
 }
 
 /**
@@ -1863,7 +1863,7 @@ void spice_main_clipboard_selection_notify(SpiceMainChannel *channel, guint sele
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
     agent_clipboard_notify(channel, selection, type, data, size);
-    spice_channel_wakeup(SPICE_CHANNEL(channel));
+    spice_channel_wakeup(SPICE_CHANNEL(channel), FALSE);
 }
 
 /**
@@ -1899,7 +1899,7 @@ void spice_main_clipboard_selection_request(SpiceMainChannel *channel, guint sel
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
     agent_clipboard_request(channel, selection, type);
-    spice_channel_wakeup(SPICE_CHANNEL(channel));
+    spice_channel_wakeup(SPICE_CHANNEL(channel), FALSE);
 }
 
 /**

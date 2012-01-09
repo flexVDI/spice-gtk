@@ -116,6 +116,7 @@ static gboolean wait_for_channel(gpointer data)
 G_GNUC_INTERNAL
 void spice_channel_handle_wait_for_channels(SpiceChannel *channel, SpiceMsgIn *in)
 {
+    SpiceChannelPrivate *c = channel->priv;
     SpiceMsgWaitForChannels *wfc = spice_msg_in_parsed(in);
     int i;
 
@@ -129,7 +130,7 @@ void spice_channel_handle_wait_for_channels(SpiceChannel *channel, SpiceMsgIn *i
         };
 
         SPICE_DEBUG("waiting for serial %lu (%d/%d)", data.wait->message_serial, i + 1, wfc->wait_count);
-        g_condition_wait(wait_for_channel, &data);
+        g_coroutine_condition_wait(&c->coroutine, wait_for_channel, &data);
         SPICE_DEBUG("waiting for serial %lu, done", data.wait->message_serial);
     }
 }

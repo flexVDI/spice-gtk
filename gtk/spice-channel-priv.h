@@ -154,7 +154,7 @@ uint16_t spice_header_get_msg_type(uint8_t *header, gboolean is_mini_header);
 uint32_t spice_header_get_msg_size(uint8_t *header, gboolean is_mini_header);
 
 void spice_channel_up(SpiceChannel *channel);
-void spice_channel_wakeup(SpiceChannel *channel);
+void spice_channel_wakeup(SpiceChannel *channel, gboolean cancel);
 
 SpiceSession* spice_channel_get_session(SpiceChannel *channel);
 

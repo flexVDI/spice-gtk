@@ -32,6 +32,7 @@ struct _GCoroutine
 {
     struct coroutine coroutine;
     guint wait_id;
+    guint condition_id;
 };
 
 /*
@@ -47,11 +48,14 @@ typedef gboolean (*GConditionWaitFunc)(gpointer);
 
 typedef void (*GSignalEmitMainFunc)(GObject *object, int signum, gpointer params);
 
-GCoroutine*  g_coroutine_self       (void);
-void         g_coroutine_wakeup     (GCoroutine *coroutine);
-GIOCondition g_coroutine_socket_wait(GCoroutine *coroutine, GSocket *sock, GIOCondition cond);
+GCoroutine*  g_coroutine_self           (void);
+void         g_coroutine_wakeup         (GCoroutine *coroutine);
+GIOCondition g_coroutine_socket_wait    (GCoroutine *coroutine,
+                                         GSocket *sock, GIOCondition cond);
+gboolean     g_coroutine_condition_wait (GCoroutine *coroutine,
+                                         GConditionWaitFunc func, gpointer data);
+void         g_coroutine_condition_cancel(GCoroutine *coroutine);
 
-gboolean     g_condition_wait       (GConditionWaitFunc func, gpointer data);
 void         g_signal_emit_main_context(GObject *object, GSignalEmitMainFunc func,
                                         int signum, gpointer params, const char *debug_info);
 void         g_object_notify_main_context(GObject *object, const gchar *property_name);
