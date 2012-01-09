@@ -404,18 +404,44 @@ static void image_put(SpiceImageCache *cache, uint64_t id, pixman_image_t *image
     item->ptr = pixman_image_ref(image);
 }
 
+typedef struct _WaitImageData
+{
+    gboolean lossy;
+    SpiceImageCache *cache;
+    uint64_t id;
+    pixman_image_t *image;
+} WaitImageData;
+
+static gboolean wait_image(gpointer data)
+{
+    display_cache_item *item;
+    WaitImageData *wait = data;
+    SpiceDisplayChannelPrivate *c =
+        SPICE_CONTAINEROF(wait->cache, SpiceDisplayChannelPrivate, image_cache);
+
+    item = cache_find(c->images, wait->id);
+    if (item == NULL ||
+        (item->lossy && !wait->lossy))
+        return FALSE;
+
+    cache_used(c->images, item);
+    wait->image = pixman_image_ref(item->ptr);
+
+    return TRUE;
+}
+
 static pixman_image_t *image_get(SpiceImageCache *cache, uint64_t id)
 {
-    SpiceDisplayChannelPrivate *c =
-        SPICE_CONTAINEROF(cache, SpiceDisplayChannelPrivate, image_cache);
-    display_cache_item *item;
+    WaitImageData wait = {
+        .lossy = TRUE,
+        .cache = cache,
+        .id = id,
+        .image = NULL
+    };
+    if (!g_coroutine_condition_wait(g_coroutine_self(), wait_image, &wait))
+        SPICE_DEBUG("wait image got cancelled");
 
-    item = cache_find(c->images, id);
-    if (item) {
-        cache_used(c->images, item);
-        return pixman_image_ref(item->ptr);
-    }
-    return NULL;
+    return wait.image;
 }
 
 static void image_remove(SpiceImageCache *cache, uint64_t id)
@@ -511,20 +537,16 @@ static void image_replace_lossy(SpiceImageCache *cache, uint64_t id,
 
 static pixman_image_t* image_get_lossless(SpiceImageCache *cache, uint64_t id)
 {
-    SpiceDisplayChannelPrivate *c =
-        SPICE_CONTAINEROF(cache, SpiceDisplayChannelPrivate, image_cache);
-    display_cache_item *item;
+    WaitImageData wait = {
+        .lossy = FALSE,
+        .cache = cache,
+        .id = id,
+        .image = NULL
+    };
+    if (!g_coroutine_condition_wait(g_coroutine_self(), wait_image, &wait))
+        SPICE_DEBUG("wait lossless got cancelled");
 
-    item = cache_find(c->images, id);
-    if (!item)
-        return NULL;
-
-    /* TODO: shared_cache.hpp does wait until it is lossless..., is
-       that necessary? */
-    g_warn_if_fail(item->lossy == FALSE);
-
-    cache_used(c->images, item);
-    return pixman_image_ref(item->ptr);
+    return wait.image;
 }
 #endif
 
