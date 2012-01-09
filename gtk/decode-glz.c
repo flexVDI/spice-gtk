@@ -153,7 +153,9 @@ static void *glz_decoder_window_bits(SpiceGlzDecoderWindow *w, uint64_t id,
             .id = id - dist,
         };
 
-        g_coroutine_condition_wait(g_coroutine_self(), wait_for_image, &data);
+        if (!g_coroutine_condition_wait(g_coroutine_self(), wait_for_image, &data))
+            SPICE_DEBUG("wait for image cancelled");
+
         slot = (id - dist) % w->nimages;
     }
 

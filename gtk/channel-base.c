@@ -130,8 +130,10 @@ void spice_channel_handle_wait_for_channels(SpiceChannel *channel, SpiceMsgIn *i
         };
 
         SPICE_DEBUG("waiting for serial %lu (%d/%d)", data.wait->message_serial, i + 1, wfc->wait_count);
-        g_coroutine_condition_wait(&c->coroutine, wait_for_channel, &data);
-        SPICE_DEBUG("waiting for serial %lu, done", data.wait->message_serial);
+        if (g_coroutine_condition_wait(&c->coroutine, wait_for_channel, &data))
+            SPICE_DEBUG("waiting for serial %lu, done", data.wait->message_serial);
+        else
+            SPICE_DEBUG("waiting for serial %lu, cancelled", data.wait->message_serial);
     }
 }
 

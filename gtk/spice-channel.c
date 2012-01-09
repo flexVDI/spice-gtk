@@ -1997,9 +1997,9 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
     GIOCondition ret;
 
     do {
-        /* freeze coroutine */
-        if (c->state == SPICE_CHANNEL_STATE_MIGRATING)
-            g_coroutine_condition_wait(&c->coroutine, wait_migration, channel);
+        if (c->state == SPICE_CHANNEL_STATE_MIGRATING &&
+            !g_coroutine_condition_wait(&c->coroutine, wait_migration, channel))
+                SPICE_DEBUG("migration wait cancelled");
 
         if (c->has_error) {
             SPICE_DEBUG("channel has error, breaking loop");
