@@ -41,20 +41,12 @@ struct wait_queue
  * to busy wait on a timeout, since our condition is only checked
  * when some other source's state changes
  */
-typedef gboolean (*g_condition_wait_func)(gpointer);
-
-struct g_condition_wait_source
-{
-    GSource src;
-    struct coroutine *co;
-    g_condition_wait_func func;
-    gpointer data;
-};
+typedef gboolean (*GConditionWaitFunc)(gpointer);
 
 typedef void (*GSignalEmitMainFunc)(GObject *object, int signum, gpointer params);
 
 GIOCondition g_io_wait              (GSocket *sock, GIOCondition cond);
-gboolean     g_condition_wait       (g_condition_wait_func func, gpointer data);
+gboolean     g_condition_wait       (GConditionWaitFunc func, gpointer data);
 void         g_io_wakeup            (struct wait_queue *wait);
 GIOCondition g_io_wait_interruptible(struct wait_queue *wait, GSocket *sock, GIOCondition cond);
 void         g_signal_emit_main_context(GObject *object, GSignalEmitMainFunc func,

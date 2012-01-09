@@ -21,6 +21,14 @@
 
 #include "gio-coroutine.h"
 
+typedef struct _GConditionWaitSource
+{
+    GSource src;
+    struct coroutine *co;
+    GConditionWaitFunc func;
+    gpointer data;
+} GConditionWaitSource;
+
 /* Main loop helper functions */
 static gboolean g_io_wait_helper(GSocket *sock G_GNUC_UNUSED,
 				 GIOCondition cond,
@@ -87,7 +95,7 @@ void g_io_wakeup(struct wait_queue *wait)
  */
 static gboolean g_condition_wait_prepare(GSource *src,
 					 int *timeout) {
-    struct g_condition_wait_source *vsrc = (struct g_condition_wait_source *)src;
+    GConditionWaitSource *vsrc = (GConditionWaitSource *)src;
     *timeout = -1;
     return vsrc->func(vsrc->data);
 }
@@ -98,7 +106,7 @@ static gboolean g_condition_wait_prepare(GSource *src,
  */
 static gboolean g_condition_wait_check(GSource *src)
 {
-    struct g_condition_wait_source *vsrc = (struct g_condition_wait_source *)src;
+    GConditionWaitSource *vsrc = (GConditionWaitSource *)src;
     return vsrc->func(vsrc->data);
 }
 
@@ -121,10 +129,10 @@ static gboolean g_condition_wait_helper(gpointer data)
     return FALSE;
 }
 
-gboolean g_condition_wait(g_condition_wait_func func, gpointer data)
+gboolean g_condition_wait(GConditionWaitFunc func, gpointer data)
 {
     GSource *src;
-    struct g_condition_wait_source *vsrc;
+    GConditionWaitSource *vsrc;
 
     /* Short-circuit check in case we've got it ahead of time */
     if (func(data)) {
@@ -135,8 +143,8 @@ gboolean g_condition_wait(g_condition_wait_func func, gpointer data)
      * Don't have it, so yield to the main loop, checking the condition
      * on each iteration of the main loop
      */
-    src = g_source_new(&waitFuncs, sizeof(struct g_condition_wait_source));
-    vsrc = (struct g_condition_wait_source *)src;
+    src = g_source_new(&waitFuncs, sizeof(GConditionWaitSource));
+    vsrc = (GConditionWaitSource *)src;
 
     vsrc->func = func;
     vsrc->data = data;
