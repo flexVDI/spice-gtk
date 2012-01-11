@@ -33,9 +33,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #endif
+#include <errno.h>
 #include <libusb.h>
 #include <gudev/gudev.h>
 #include "channel-usbredir-priv.h"
+#include "usbredirhost.h"
 #endif
 
 #include "spice-session-priv.h"
@@ -80,6 +82,7 @@ enum {
     PROP_0,
     PROP_SESSION,
     PROP_AUTO_CONNECT,
+    PROP_AUTO_CONNECT_FILTER,
 };
 
 enum
@@ -93,6 +96,7 @@ enum
 struct _SpiceUsbDeviceManagerPrivate {
     SpiceSession *session;
     gboolean auto_connect;
+    gchar *auto_connect_filter;
 #ifdef USE_USBREDIR
     libusb_context *context;
     GUdevClient *udev;
@@ -100,6 +104,8 @@ struct _SpiceUsbDeviceManagerPrivate {
     GThread *event_thread;
     gboolean event_thread_run;
     libusb_device **coldplug_list; /* Avoid needless reprobing during init */
+    struct usbredirfilter_rule *auto_conn_filter_rules;
+    int auto_conn_filter_rules_count;
 #endif
     GPtrArray *devices;
     GPtrArray *channels;
@@ -257,6 +263,9 @@ static void spice_usb_device_manager_get_property(GObject     *gobject,
     case PROP_AUTO_CONNECT:
         g_value_set_boolean(value, priv->auto_connect);
         break;
+    case PROP_AUTO_CONNECT_FILTER:
+        g_value_set_string(value, priv->auto_connect_filter);
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
         break;
@@ -278,6 +287,28 @@ static void spice_usb_device_manager_set_property(GObject       *gobject,
     case PROP_AUTO_CONNECT:
         priv->auto_connect = g_value_get_boolean(value);
         break;
+    case PROP_AUTO_CONNECT_FILTER: {
+        const gchar *filter = g_value_get_string(value);
+#ifdef USE_USBREDIR
+        struct usbredirfilter_rule *rules;
+        int r, count;
+
+        r = usbredirfilter_string_to_rules(filter, ",", "|", &rules, &count);
+        if (r) {
+            if (r == -ENOMEM)
+                g_error("Failed to allocate memory for auto-connect-filter");
+            g_warning("Error parsing auto-connect-filter string, keeping old filter\n");
+            break;
+        }
+
+        free(priv->auto_conn_filter_rules);
+        priv->auto_conn_filter_rules = rules;
+        priv->auto_conn_filter_rules_count = count;
+#endif
+        g_free(priv->auto_connect_filter);
+        priv->auto_connect_filter = g_strdup(filter);
+        break;
+    }
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
         break;
@@ -316,6 +347,36 @@ static void spice_usb_device_manager_class_init(SpiceUsbDeviceManagerClass *klas
                                  FALSE,
                                  G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
     g_object_class_install_property(gobject_class, PROP_AUTO_CONNECT, pspec);
+
+    /**
+     * SpiceUsbDeviceManager:auto-connect-filter:
+     *
+     * Set a string specifying a filter to use to determine which USB devices
+     * to autoconnect when plugged in, a filter consists of one or more rules.
+     * Where each rule has the form of:
+     *
+     * @class,@vendor,@product,@version,@allow
+     *
+     * Use -1 for @class/@vendor/@product/@version to accept any value.
+     *
+     * And the rules are themselves are concatonated like this:
+     *
+     * @rule1|@rule2|@rule3
+     *
+     * The default setting filters out HID (class 0x03) USB devices from auto
+     * connect and auto connects anything else. Note the explicit allow rule at
+     * the end, this is necessary since by default all devices without a
+     * matching filter rule will not auto-connect.
+     *
+     * Filter strings in this format can be easily created with the RHEV-M
+     * USB filter editor tool.
+     */
+    pspec = g_param_spec_string("auto-connect-filter", "Auto Connect Filter ",
+               "Filter determining which USB devices to auto connect",
+               "0x03,-1,-1,-1,0|-1,-1,-1,-1,1",
+               G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_STATIC_STRINGS);
+    g_object_class_install_property(gobject_class, PROP_AUTO_CONNECT_FILTER,
+                                    pspec);
 
     /**
      * SpiceUsbDeviceManager::device-added:
@@ -555,7 +616,11 @@ static void spice_usb_device_manager_add_dev(SpiceUsbDeviceManager  *self,
     g_ptr_array_add(priv->devices, device);
 
     if (priv->auto_connect) {
-        spice_usb_device_manager_connect_device_async(self,
+        if (usbredirhost_check_device_filter(
+                priv->auto_conn_filter_rules,
+                priv->auto_conn_filter_rules_count,
+                device, 0) == 0)
+            spice_usb_device_manager_connect_device_async(self,
                                    (SpiceUsbDevice *)device, NULL,
                                    spice_usb_device_manager_auto_connect_cb,
                                    libusb_ref_device(device));
