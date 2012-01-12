@@ -257,6 +257,21 @@ static void stdin_read_complete(GObject *src, GAsyncResult *res, gpointer data)
     }
 }
 
+/* Fix for polkit 0.97 and later */
+#if !HAVE_POLKIT_AUTHORITY_GET_SYNC
+static PolkitAuthority *
+polkit_authority_get_sync (GCancellable *cancellable, GError **error)
+{
+    PolkitAuthority *authority;
+
+    authority = polkit_authority_get ();
+    if (!authority)
+        g_set_error (error, 0, 0, "failed to get the PolicyKit authority");
+
+    return authority;
+}
+#endif
+
 int main(void)
 {
     pid_t parent_pid;

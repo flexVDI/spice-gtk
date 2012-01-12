@@ -336,7 +336,7 @@ else
   if test "x$enable_polkit" = "xno"; then
     AM_CONDITIONAL(WITH_POLKIT, false)
   else
-    PKG_CHECK_MODULES(POLKIT, polkit-gobject-1)
+    PKG_CHECK_MODULES(POLKIT, polkit-gobject-1 >= 0.96)
     AC_CHECK_HEADER([acl/libacl.h],,
                     AC_MSG_ERROR([cannot find headers for libacl]))
     AC_CHECK_LIB([acl], [acl_get_file], [ACL_LIBS=-lacl] [AC_SUBST(ACL_LIBS)],
@@ -345,6 +345,9 @@ else
     AM_CONDITIONAL(WITH_POLKIT, true)
     POLICYDIR=`${PKG_CONFIG} polkit-gobject-1 --variable=policydir`
     AC_SUBST(POLICYDIR)
+    # Check for polkit_authority_get_sync()
+    AC_CHECK_LIB([polkit-gobject-1], [polkit_authority_get_sync], ac_have_pk_auth_get_sync="1", ac_have_pk_auth_get_sync="0")
+    AC_DEFINE_UNQUOTED(HAVE_POLKIT_AUTHORITY_GET_SYNC, $ac_have_pk_auth_get_sync, [Define if you have a polkit with polkit_authority_get_sync()])
   fi
 fi
 
