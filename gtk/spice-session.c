@@ -1427,7 +1427,7 @@ GSocket* spice_session_channel_open_host(SpiceSession *session, gboolean use_tls
         g_clear_error(&conn_error);
         sock = channel_connect_socket(sockaddr, &conn_error);
         if (conn_error != NULL)
-            g_warning("%s", conn_error->message);
+            SPICE_DEBUG("%s", conn_error->message);
         g_object_unref(sockaddr);
     }
     g_object_unref(enumerator);
