@@ -39,19 +39,29 @@
 #include "spice-gtk-session-priv.h"
 #include "vncdisplaykeymap.h"
 
+#include "glib-compat.h"
+
 /* Some compatibility defines to let us build on both Gtk2 and Gtk3 */
 #if GTK_CHECK_VERSION (2, 91, 0)
 
 static inline void gdk_drawable_get_size(GdkWindow *w, gint *ww, gint *wh)
 {
-       *ww = gdk_window_get_width(w);
-       *wh = gdk_window_get_height(w);
+    *ww = gdk_window_get_width(w);
+    *wh = gdk_window_get_height(w);
 }
 
 #define GtkObject GtkWidget
 #define GtkObjectClass GtkWidgetClass
 #define GTK_OBJECT_CLASS(c) GTK_WIDGET_CLASS(c)
 
+#endif
+
+#if !GTK_CHECK_VERSION(2, 20, 0)
+static gboolean gtk_widget_get_realized(GtkWidget *widget)
+{
+    g_return_val_if_fail (GTK_IS_WIDGET (widget), FALSE);
+    return GTK_WIDGET_REALIZED(widget);
+}
 #endif
 
 /**
