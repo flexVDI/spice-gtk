@@ -33,6 +33,8 @@
 #include <polkit/polkit.h>
 #include <acl/libacl.h>
 
+#include "glib-compat.h"
+
 #define FATAL_ERROR(...) \
     do { \
         /* We print the error both to stdout, for the app invoking us and \

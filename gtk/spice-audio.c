@@ -51,6 +51,8 @@
 #include "spice-gstaudio.h"
 #endif
 
+#include "glib-compat.h"
+
 #define SPICE_AUDIO_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_AUDIO, SpiceAudioPrivate))
 

@@ -34,6 +34,7 @@
 #include "spice-common.h"
 
 #include "spice-channel-priv.h"
+#include "glib-compat.h"
 
 /**
  * SECTION:channel-usbredir

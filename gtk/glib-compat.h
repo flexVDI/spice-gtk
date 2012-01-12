@@ -17,6 +17,7 @@
 #define GLIB_COMPAT_H
 
 #include <glib-object.h>
+#include <gio/gio.h>
 
 #if !GLIB_CHECK_VERSION(2,26,0)
 #define G_DEFINE_BOXED_TYPE(TypeName, type_name, copy_func, free_func) G_DEFINE_BOXED_TYPE_WITH_CODE (TypeName, type_name, copy_func, free_func, {})
@@ -60,7 +61,46 @@ type_name##_get_type (void) \
                                       (GBoxedFreeFunc) free_func); \
       { /* custom code follows */
 #endif /* __GNUC__ */
+
+#define g_source_set_name(source, name) G_STMT_START { } G_STMT_END
+
+#define G_TYPE_ERROR (spice_error_get_type ())
+GType spice_error_get_type (void) G_GNUC_CONST;
+
+#if    __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 5)
+#define G_GNUC_DEPRECATED_FOR(f)                        \
+  __attribute__((deprecated("Use " #f " instead")))
+#else
+#define G_GNUC_DEPRECATED_FOR(f)        G_GNUC_DEPRECATED
+#endif /* __GNUC__ */
+
+#define G_PARAM_DEPRECATED  (1 << 31)
 #endif /* glib 2.26 */
+
+#if !GLIB_CHECK_VERSION(2,28,0)
+#define g_clear_object(object_ptr) \
+  G_STMT_START {                                                             \
+    /* Only one access, please */                                            \
+    gpointer *_p = (gpointer) (object_ptr);                                  \
+    gpointer _o;                                                             \
+                                                                             \
+    do                                                                       \
+      _o = g_atomic_pointer_get (_p);                                        \
+    while G_UNLIKELY (!g_atomic_pointer_compare_and_exchange (_p, _o, NULL));\
+                                                                             \
+    if (_o)                                                                  \
+      g_object_unref (_o);                                                   \
+  } G_STMT_END
+
+void
+g_simple_async_result_take_error(GSimpleAsyncResult *simple,
+                                 GError             *error);
+#endif /* glib 2.28 */
+
+#if !GLIB_CHECK_VERSION(2,30,0)
+#define G_TYPE_MAIN_CONTEXT (spice_main_context_get_type ())
+GType spice_main_context_get_type (void) G_GNUC_CONST;
+#endif
 
 #if !GLIB_CHECK_VERSION(2,32,0)
 # define G_SIGNAL_DEPRECATED (1 << 9)

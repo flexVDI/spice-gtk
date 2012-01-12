@@ -28,6 +28,7 @@
 #include "ring.h"
 
 #include "gio-coroutine.h"
+#include "glib-compat.h"
 
 struct channel {
     SpiceChannel      *channel;

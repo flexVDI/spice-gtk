@@ -185,6 +185,7 @@ USB_ACL_HELPER_SRCS =
 endif
 
 libspice_client_glib_2_0_la_SOURCES =	\
+	glib-compat.c			\
 	glib-compat.h			\
 	spice-audio.c			\
 	spice-audio-priv.h		\
@@ -366,6 +367,8 @@ spicy_CPPFLAGS =			\
 
 if WITH_POLKIT
 spice_client_glib_usb_acl_helper_SOURCES =	\
+	glib-compat.c				\
+	glib-compat.h				\
 	spice-client-glib-usb-acl-helper.c	\
 	$(NULL)
 
