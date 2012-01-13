@@ -483,9 +483,9 @@ static void try_keyboard_grab(SpiceDisplay *display)
         return;
 
     g_return_if_fail(gtk_widget_is_focus(widget));
-    g_return_if_fail(gtk_widget_has_focus(widget));
 
     SPICE_DEBUG("grab keyboard");
+    gtk_widget_grab_focus(widget);
 
 #ifdef WIN32
     d->keyboard_hook = SetWindowsHookEx(WH_KEYBOARD_LL, keyboard_hook_cb,
