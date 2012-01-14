@@ -83,6 +83,7 @@ struct SpiceGlzDecoderWindow {
     struct glz_image        **images;
     uint32_t                nimages;
     uint64_t                oldest;
+    uint64_t                tail_gap;
 };
 
 static void glz_decoder_window_resize(SpiceGlzDecoderWindow *w)
@@ -123,6 +124,10 @@ static void glz_decoder_window_add(SpiceGlzDecoderWindow *w,
     }
 
     w->images[slot] = img;
+
+    /* close the gap */
+    while (w->tail_gap <= img->hdr.id && w->images[w->tail_gap % w->nimages] != NULL)
+        w->tail_gap++;
 }
 
 struct wait_for_image_data {
@@ -145,20 +150,17 @@ static gboolean wait_for_image(gpointer data)
 static void *glz_decoder_window_bits(SpiceGlzDecoderWindow *w, uint64_t id,
                                      uint32_t dist, uint32_t offset)
 {
+    struct wait_for_image_data data = {
+        .window = w,
+        .id = id - dist,
+    };
+
+    if (!g_coroutine_condition_wait(g_coroutine_self(), wait_for_image, &data))
+        SPICE_DEBUG("wait for image cancelled");
+
     int slot = (id - dist) % w->nimages;
 
-    if (!w->images[slot] || w->images[slot]->hdr.id != id - dist) {
-        struct wait_for_image_data data = {
-            .window = w,
-            .id = id - dist,
-        };
-
-        if (!g_coroutine_condition_wait(g_coroutine_self(), wait_for_image, &data))
-            SPICE_DEBUG("wait for image cancelled");
-
-        slot = (id - dist) % w->nimages;
-    }
-
+    g_return_val_if_fail(w->images[slot] != NULL, NULL);
     g_return_val_if_fail(w->images[slot]->hdr.id == id - dist, NULL);
     g_return_val_if_fail(w->images[slot]->hdr.gross_pixels >= offset, NULL);
 
@@ -406,8 +408,17 @@ static void decode(SpiceGlzDecoder *decoder,
                              d->image.gross_pixels, d->image.id, palette);
     }
 
-    glz_decoder_window_release(d->window, d->image.id - d->image.win_head_dist);
     glz_decoder_window_add(d->window, decoded_image);
+
+    { /* release old images from last tail_gap, only if the gap is closed  */
+        uint64_t oldest;
+        struct glz_image *image = d->window->images[(d->window->tail_gap - 1) % d->window->nimages];
+
+        g_return_if_fail(image != NULL);
+
+        oldest = image->hdr.id - image->hdr.win_head_dist;
+        glz_decoder_window_release(d->window, oldest);
+    }
 }
 
 /* ------------------------------------------------------------------ */
@@ -431,6 +442,7 @@ void glz_decoder_window_clear(SpiceGlzDecoderWindow *w)
     w->nimages = 16;
     g_free(w->images);
     w->images = spice_new0(struct glz_image*, w->nimages);
+    w->tail_gap = 0;
 }
 
 SpiceGlzDecoderWindow *glz_decoder_window_new(void)
