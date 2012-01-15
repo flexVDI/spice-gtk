@@ -129,11 +129,11 @@ void spice_channel_handle_wait_for_channels(SpiceChannel *channel, SpiceMsgIn *i
             .channel = channel
         };
 
-        SPICE_DEBUG("waiting for serial %lu (%d/%d)", data.wait->message_serial, i + 1, wfc->wait_count);
+        SPICE_DEBUG("waiting for serial %" PRIu64 " (%d/%d)", data.wait->message_serial, i + 1, wfc->wait_count);
         if (g_coroutine_condition_wait(&c->coroutine, wait_for_channel, &data))
-            SPICE_DEBUG("waiting for serial %lu, done", data.wait->message_serial);
+            SPICE_DEBUG("waiting for serial %"  PRIu64 ", done", data.wait->message_serial);
         else
-            SPICE_DEBUG("waiting for serial %lu, cancelled", data.wait->message_serial);
+            SPICE_DEBUG("waiting for serial %" PRIu64 ", cancelled", data.wait->message_serial);
     }
 }
 
