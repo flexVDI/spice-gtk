@@ -941,13 +941,16 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
             __FUNCTION__, key->type == GDK_KEY_PRESS ? "press" : "release",
             key->hardware_keycode, key->state, key->group);
 
-    if (check_for_grab_key(display, key->type, key->keyval) &&
-        d->mouse_mode == SPICE_MOUSE_MODE_SERVER) {
+    if (check_for_grab_key(display, key->type, key->keyval)) {
         g_signal_emit(widget, signals[SPICE_DISPLAY_GRAB_KEY_PRESSED], 0);
-        if (d->mouse_grab_active)
-            try_mouse_ungrab(display);
-        else
-            try_mouse_grab(display);
+
+        if (d->mouse_mode == SPICE_MOUSE_MODE_SERVER) {
+            if (d->mouse_grab_active)
+                try_mouse_ungrab(display);
+            else
+                try_mouse_grab(display);
+        }
+
         return true;
     }
 
