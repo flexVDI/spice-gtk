@@ -488,8 +488,10 @@ static void try_keyboard_grab(SpiceDisplay *display)
     gtk_widget_grab_focus(widget);
 
 #ifdef WIN32
-    d->keyboard_hook = SetWindowsHookEx(WH_KEYBOARD_LL, keyboard_hook_cb,
-                                        GetModuleHandle(NULL), 0);
+    if (d->keyboard_hook == NULL)
+        d->keyboard_hook = SetWindowsHookEx(WH_KEYBOARD_LL, keyboard_hook_cb,
+                                            GetModuleHandle(NULL), 0);
+    g_warn_if_fail(d->keyboard_hook != NULL);
 #endif
     status = gdk_keyboard_grab(gtk_widget_get_window(widget), FALSE,
                                GDK_CURRENT_TIME);
@@ -513,8 +515,10 @@ static void try_keyboard_ungrab(SpiceDisplay *display)
     SPICE_DEBUG("ungrab keyboard");
     gdk_keyboard_ungrab(GDK_CURRENT_TIME);
 #ifdef WIN32
-    UnhookWindowsHookEx(d->keyboard_hook);
-    d->keyboard_hook = 0;
+    if (d->keyboard_hook != NULL) {
+        UnhookWindowsHookEx(d->keyboard_hook);
+        d->keyboard_hook = NULL;
+    }
 #endif
     d->keyboard_grab_active = false;
     g_signal_emit(widget, signals[SPICE_DISPLAY_KEYBOARD_GRAB], 0, false);
