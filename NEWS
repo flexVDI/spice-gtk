@@ -1,3 +1,17 @@
+v0.8
+====
+
+- add USB redirection support, see Hans comments in the log and that
+  post for details: http://hansdegoede.livejournal.com/11084.html
+- introduce SpiceGtkSession to deal with session-wide Gtk events, such
+  as clipboard, instead of doing it per display
+- many cursor and keyboard handling improvements
+- handle the new "semi-seamless" migration
+- support new Spice mini-headers
+- better coroutines: fibers on windows & jmp on linux
+- add Vala vapi bindings generation
+- many bug fixes and code improvements
+
 v0.7
 ====
 
