@@ -1128,6 +1128,7 @@ static void main_handle_init(SpiceChannel *channel, SpiceMsgIn *in)
                    init->current_mouse_mode);
 
     spice_session_set_mm_time(session, init->multi_media_time);
+    spice_session_set_caches_hints(session, init->ram_hint, init->display_channels_hint);
 
     c->agent_tokens = init->agent_tokens;
     if (init->agent_connected)
