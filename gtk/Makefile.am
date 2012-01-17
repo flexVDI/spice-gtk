@@ -546,10 +546,12 @@ CODEGENDIR = `pkg-config --variable=codegendir pygtk-2.0`
 DEFSDIR = `pkg-config --variable=defsdir pygtk-2.0`
 
 spice-client-gtk.defs: $(libspice_client_gtkinclude_HEADERS) $(nodist_libspice_client_gtkinclude_HEADERS) $(libspice_client_glibinclude_HEADERS) $(nodist_libspice_client_glibinclude_HEADERS)
-	$(AM_V_GEN)$(PYTHON) $(CODEGENDIR)/h2def.py -f spice-client-gtk-manual.defs $(libspice_client_gtkinclude_HEADERS) $(nodist_libspice_client_gtkinclude_HEADERS) $(libspice_client_glibinclude_HEADERS) $(nodist_libspice_client_glibinclude_HEADERS) > $@
+	$(AM_V_GEN)$(PYTHON) $(CODEGENDIR)/h2def.py \
+		-f $(srcdir)/spice-client-gtk-manual.defs \
+		$^ > $@
 
 spice-client-gtk-module.defs.c: spice-client-gtk.override spice-client-gtk.defs spice-client-gtk-manual.defs
-	@cat $(srcdir)/spice-client-gtk.defs $(srcdir)/spice-client-gtk-manual.defs > tmp.defs
+	@cat spice-client-gtk.defs $(srcdir)/spice-client-gtk-manual.defs > tmp.defs
 	$(AM_V_GEN)pygobject-codegen-2.0 --prefix spice \
 			  --register $(DEFSDIR)/gdk-types.defs \
 			  --register $(DEFSDIR)/gtk-types.defs \
