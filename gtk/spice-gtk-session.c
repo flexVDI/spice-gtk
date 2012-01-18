@@ -743,6 +743,7 @@ static void channel_new(SpiceSession *session, SpiceChannel *channel,
     SpiceGtkSessionPrivate *s = self->priv;
 
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
+        SPICE_DEBUG("Changing main channel from %p to %p", s->main, channel);
         s->main = SPICE_MAIN_CHANNEL(channel);
         g_signal_connect(channel, "main-clipboard-selection-grab",
                          G_CALLBACK(clipboard_grab), self);
@@ -762,7 +763,7 @@ static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
     SpiceGtkSessionPrivate *s = self->priv;
     guint i;
 
-    if (SPICE_IS_MAIN_CHANNEL(channel)) {
+    if (SPICE_IS_MAIN_CHANNEL(channel) && SPICE_MAIN_CHANNEL(channel) == s->main) {
         s->main = NULL;
         for (i = 0; i < CLIPBOARD_LAST; ++i) {
             if (s->clipboard_by_guest[i]) {
