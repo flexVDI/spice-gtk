@@ -221,29 +221,8 @@ public class Controller: Object {
 
 	public async void listen (string? addr = null) throws GLib.Error, SpiceCtrl.Error
 	{
-		if (addr == null)
-#if WIN32
-			if (Environment.get_variable ("SPICE_XPI_NAMEDPIPE") != null)
-				addr = (string*)"%s".printf (Environment.get_variable ("SPICE_XPI_NAMEDPIPE")); // FIXME vala...
-            else
-                addr = (string*)"\\\\.\\pipe\\SpiceController-%lu".printf (GetCurrentProcessId ());
-#else
-			if (Environment.get_variable ("SPICE_XPI_SOCKET") != null)
-				addr = (string*)"%s".printf (Environment.get_variable ("SPICE_XPI_SOCKET")); // FIXME vala...
-#endif
-		if (addr == null)
-			throw new SpiceCtrl.Error.VALUE ("Missing socket or namedpipe address");
-		FileUtils.unlink (addr);
+		var listener = ControllerListener.new_listener (addr);
 
-#if WIN32
-		var listener = new NamedPipeListener ();
-		var np = new NamedPipe (addr);
-		listener.add_named_pipe (np);
-#else
-		var listener = new SocketListener ();
-		listener.add_address (new UnixSocketAddress (addr),
-							  SocketType.STREAM, SocketProtocol.DEFAULT, null, null);
-#endif
 		for (;;) {
 			var c = yield listener.accept_async ();
 			nclients += 1;

@@ -14,12 +14,6 @@ AM_VALAFLAGS =							\
 	-C -g							\
 	$(NULL)
 
-if OS_WIN32
-AM_VALAFLAGS += --pkg gio-windows-2.0 -D WIN32
-else
-AM_VALAFLAGS += --pkg gio-unix-2.0
-endif
-
 lib_LTLIBRARIES = libspice-controller.la
 noinst_PROGRAMS = test-controller
 
@@ -31,6 +25,8 @@ libspice_controller_la_VALASOURCES =		\
 	$(NULL)
 libspice_controller_la_SOURCES =		\
 	custom.h				\
+	spice-controller-listener.c		\
+	spice-controller-listener.h		\
 	$(libspice_controller_la_VALASOURCES:.vala=.c) \
 	$(NULL)
 
