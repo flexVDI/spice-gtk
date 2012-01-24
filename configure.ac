@@ -314,42 +314,59 @@ else
 fi
 
 AC_ARG_ENABLE([usbredir],
-  AS_HELP_STRING([--enable-usbredir=@<:@yes/no@:>@],
-                 [Enable usbredir support @<:@default=yes@:>@]),
+  AS_HELP_STRING([--enable-usbredir=@<:@auto/yes/no@:>@],
+                 [Enable usbredir support @<:@default=auto@:>@]),
   [],
-  [enable_usbredir="yes"])
-AC_ARG_ENABLE([polkit],
-  AS_HELP_STRING([--enable-polkit=@<:@yes/no@:>@],
-                 [Enable policykit support (for the usb acl helper)@<:@default=yes@:>@]),
-  [],
-  [enable_polkit="yes"])
+  [enable_usbredir="auto"])
 
 if test "x$enable_usbredir" = "xno"; then
   AM_CONDITIONAL(WITH_USBREDIR, false)
   AM_CONDITIONAL(WITH_POLKIT, false)
 else
-  PKG_CHECK_MODULES(GUDEV, gudev-1.0)
-  PKG_CHECK_MODULES(LIBUSB, libusb-1.0 >= 1.0.9)
-  PKG_CHECK_MODULES(LIBUSBREDIRHOST, libusbredirhost >= 0.3.3)
-  AC_DEFINE(USE_USBREDIR, [1], [Define if supporting usbredir proxying])
-  AM_CONDITIONAL(WITH_USBREDIR, true)
-  if test "x$enable_polkit" = "xno"; then
-    AM_CONDITIONAL(WITH_POLKIT, false)
-  else
-    PKG_CHECK_MODULES(POLKIT, polkit-gobject-1 >= 0.96)
-    AC_CHECK_HEADER([acl/libacl.h],,
-                    AC_MSG_ERROR([cannot find headers for libacl]))
-    AC_CHECK_LIB([acl], [acl_get_file], [ACL_LIBS=-lacl] [AC_SUBST(ACL_LIBS)],
-                 AC_MSG_ERROR([cannot find libacl]))
-    AC_DEFINE(USE_POLKIT, [1], [Define if supporting polkit])
-    AM_CONDITIONAL(WITH_POLKIT, true)
-    POLICYDIR=`${PKG_CONFIG} polkit-gobject-1 --variable=policydir`
-    AC_SUBST(POLICYDIR)
-    # Check for polkit_authority_get_sync()
-    AC_CHECK_LIB([polkit-gobject-1], [polkit_authority_get_sync], ac_have_pk_auth_get_sync="1", ac_have_pk_auth_get_sync="0")
-    AC_DEFINE_UNQUOTED(HAVE_POLKIT_AUTHORITY_GET_SYNC, $ac_have_pk_auth_get_sync, [Define if you have a polkit with polkit_authority_get_sync()])
+  PKG_CHECK_MODULES([USBREDIR],
+                    [gudev-1.0 libusb-1.0 >= 1.0.9 libusbredirhost >= 0.3.3],
+                    [have_usbredir=yes],
+                    [have_usbredir=no])
+  if test x"$have_usbredir" = "xno" && test x"$enable_usbredir" = "xyes"; then
+    AC_MSG_ERROR([usbredir support explicitly requested, but some required packages are not available])
   fi
+  if test x"$have_usbredir" = "xyes"; then
+    AC_DEFINE(USE_USBREDIR, [1], [Define if supporting usbredir proxying])
+  fi
+  AM_CONDITIONAL([WITH_USBREDIR], [test x"$have_usbredir" = "xyes"])
 fi
+
+AC_ARG_ENABLE([polkit],
+  AS_HELP_STRING([--enable-polkit=@<:@yes/no@:>@],
+                 [Enable policykit support (for the usb acl helper)@<:@default=yes@:>@]),
+  [],
+  [enable_polkit="auto"])
+
+if test x"$have_usbredir" = "xyes" && test "x$enable_polkit" != "xno"; then
+  have_polkit=yes
+  PKG_CHECK_MODULES([POLKIT], [polkit-gobject-1 >= 0.96],
+                              [],
+                              [have_polkit=no])
+  AC_CHECK_HEADER([acl/libacl.h], [], [have_polkit=no])
+  AC_CHECK_LIB([acl], [acl_get_file], [ACL_LIBS=-lacl], [have_polkit=no])
+  if test x"$enable_polkit" = "xyes" && test x"$have_polkit" = "xno"; then
+    AC_MSG_ERROR([PolicyKit support explicitly requested, but some required packages are not available])
+  fi
+
+  if test x"$have_polkit" = "xyes"; then
+    AC_SUBST(ACL_LIBS)
+    AC_DEFINE(USE_POLKIT, [1], [Define if supporting polkit])
+  fi
+  AM_CONDITIONAL([WITH_POLKIT], [test x"$have_polkit" = "xyes"])
+  POLICYDIR=`${PKG_CONFIG} polkit-gobject-1 --variable=policydir`
+  AC_SUBST(POLICYDIR)
+  # Check for polkit_authority_get_sync()
+  AC_CHECK_LIB([polkit-gobject-1], [polkit_authority_get_sync], ac_have_pk_auth_get_sync="1", ac_have_pk_auth_get_sync="0")
+  AC_DEFINE_UNQUOTED(HAVE_POLKIT_AUTHORITY_GET_SYNC, $ac_have_pk_auth_get_sync, [Define if you have a polkit with polkit_authority_get_sync()])
+else
+  AM_CONDITIONAL(WITH_POLKIT, false)
+fi
+
 
 AC_ARG_WITH([usb-acl-helper-dir],
   AS_HELP_STRING([--with-usb-acl-helper-dir=DIR],
@@ -598,7 +615,7 @@ AC_MSG_NOTICE([
         Target:                   ${red_target}
         SASL support:             ${enable_sasl}
         Smartcard support:        ${enable_smartcard}
-        USB redirection support:  ${enable_usbredir}
+        USB redirection support:  ${have_usbredir}
         Gtk:                      $GTK_API_VERSION
 
         Now type 'make' to build $PACKAGE
