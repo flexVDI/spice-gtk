@@ -91,6 +91,8 @@ spice_usb_device_manager_get;
 spice_usb_device_manager_get_devices;
 spice_usb_device_manager_get_type;
 spice_usb_device_manager_is_device_connected;
+spice_usb_device_widget_get_type;
+spice_usb_device_widget_new;
 spice_usbredir_channel_get_type;
 spice_util_get_debug;
 spice_util_get_version_string;

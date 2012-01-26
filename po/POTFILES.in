@@ -11,3 +11,4 @@ gtk/spice-option.c
 gtk/spicy-stats.c
 gtk/spicy.c
 gtk/usb-device-manager.c
+gtk/usb-device-widget.c

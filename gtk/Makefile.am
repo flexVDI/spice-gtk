@@ -101,6 +101,8 @@ SPICE_GTK_LIBADD_COMMON =		\
 	$(NULL)
 
 SPICE_GTK_SOURCES_COMMON =		\
+	glib-compat.c			\
+	glib-compat.h			\
 	spice-gtk-session.c		\
 	spice-gtk-session-priv.h	\
 	spice-widget.c			\
@@ -109,10 +111,12 @@ SPICE_GTK_SOURCES_COMMON =		\
 	vncdisplaykeymap.h		\
 	spice-grabsequence.c		\
 	spice-grabsequence.h		\
+	usb-device-widget.c		\
 	$(NULL)
 
 nodist_SPICE_GTK_SOURCES_COMMON =	\
 	spice-widget-enums.c		\
+	spice-marshal.c			\
 	$(NULL)
 
 if WITH_X11
@@ -143,6 +147,7 @@ libspice_client_gtkinclude_HEADERS =	\
 	spice-gtk-session.h		\
 	spice-widget.h			\
 	spice-grabsequence.h		\
+	usb-device-widget.h		\
 	$(NULL)
 
 nodist_libspice_client_gtkinclude_HEADERS =	\

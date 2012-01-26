@@ -18,6 +18,7 @@
 #include "spice-grabsequence.h"
 #include "smartcard-manager.h"
 #include "usb-device-manager.h"
+#include "usb-device-widget.h"
 
 spice_audio_get_type
 spice_channel_event_get_type
@@ -40,3 +41,4 @@ spice_session_verify_get_type
 spice_usbredir_channel_get_type
 spice_usb_device_get_type
 spice_usb_device_manager_get_type
+spice_usb_device_widget_get_type

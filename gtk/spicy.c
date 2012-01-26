@@ -38,6 +38,7 @@
 #include "spice-common.h"
 #include "spice-cmdline.h"
 #include "spice-option.h"
+#include "usb-device-widget.h"
 
 /* config */
 static gboolean fullscreen = false;
@@ -98,10 +99,10 @@ static void connection_disconnect(spice_connection *conn);
 static void connection_destroy(spice_connection *conn);
 static void resolution_fullscreen(struct spice_window *win);
 static void resolution_restore(struct spice_window *win);
-static void auto_connect_failed(SpiceUsbDeviceManager *manager,
-                                SpiceUsbDevice        *device,
-                                GError                *error,
-                                gpointer               data);
+static void usb_connect_failed(GObject               *object,
+                               SpiceUsbDevice        *device,
+                               GError                *error,
+                               gpointer               data);
 static gboolean is_gtk_session_property(const gchar *property);
 
 /* ------------------------------------------------------------------ */
@@ -417,6 +418,35 @@ static void menu_cb_remove_smartcard(GtkAction *action, void *data)
 }
 #endif
 
+#ifdef USE_USBREDIR
+static void menu_cb_select_usb_devices(GtkAction *action, void *data)
+{
+    GtkWidget *dialog, *area, *usb_device_widget;
+    struct spice_window *win = data;
+
+    /* Create the widgets */
+    dialog = gtk_dialog_new_with_buttons(
+                    _("Select USB devices for redirection"),
+                    GTK_WINDOW(win->toplevel),
+                    GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+                    GTK_STOCK_OK, GTK_RESPONSE_ACCEPT,
+                    NULL);
+    gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_ACCEPT);
+    area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+
+    usb_device_widget = spice_usb_device_widget_new(win->conn->session,
+                                                    "%s %s");
+    g_signal_connect(usb_device_widget, "connect-failed",
+                     G_CALLBACK(usb_connect_failed), NULL);
+    gtk_box_pack_start(GTK_BOX(area), usb_device_widget, TRUE, TRUE, 5);
+
+    /* show and run */
+    gtk_widget_show_all(dialog);
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    gtk_widget_destroy(dialog);
+}
+#endif
+
 static void menu_cb_bool_prop(GtkToggleAction *action, gpointer data)
 {
     struct spice_window *win = data;
@@ -708,6 +738,14 @@ static const GtkActionEntry entries[] = {
     },{
 #endif
 
+#ifdef USE_USBREDIR
+        .name        = "SelectUsbDevices",
+        .label       = N_("_Select USB Devices for redirection"),
+        .callback    = G_CALLBACK(menu_cb_select_usb_devices),
+        .accelerator = "<shift>F10",
+    },{
+#endif
+
         /* Help menu */
         .name        = "About",
         .stock_id    = GTK_STOCK_ABOUT,
@@ -796,6 +834,9 @@ static char ui_xml[] =
 #ifdef USE_SMARTCARD
 "      <menuitem action='InsertSmartcard'/>\n"
 "      <menuitem action='RemoveSmartcard'/>\n"
+#endif
+#ifdef USE_USBREDIR
+"      <menuitem action='SelectUsbDevices'/>\n"
 #endif
 "    </menu>\n"
 "    <menu action='OptionMenu'>\n"
@@ -1522,7 +1563,7 @@ static spice_connection *connection_new(void)
     manager = spice_usb_device_manager_get(conn->session, NULL);
     if (manager) {
         g_signal_connect(manager, "auto-connect-failed",
-                         G_CALLBACK(auto_connect_failed), NULL);
+                         G_CALLBACK(usb_connect_failed), NULL);
     }
 
     connections++;
@@ -1611,10 +1652,10 @@ signal_handler(int signum)
     g_main_loop_quit(mainloop);
 }
 
-static void auto_connect_failed(SpiceUsbDeviceManager *manager,
-                                SpiceUsbDevice        *device,
-                                GError                *error,
-                                gpointer               data)
+static void usb_connect_failed(GObject               *object,
+                               SpiceUsbDevice        *device,
+                               GError                *error,
+                               gpointer               data)
 {
     GtkWidget *dialog;
 

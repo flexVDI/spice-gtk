@@ -342,6 +342,24 @@ SpiceDisplayPrivate
 </SECTION>
 
 <SECTION>
+<FILE>usb-device-widget</FILE>
+<TITLE>SpiceUsbDeviceWidget</TITLE>
+SpiceUsbDeviceWidget
+SpiceUsbDeviceWidgetClass
+<SUBSECTION>
+spice_usb_device_widget_new
+<SUBSECTION Standard>
+SPICE_USB_DEVICE_WIDGET
+SPICE_IS_USB_DEVICE_WIDGET
+spice_usb_device_widget_get_type
+SPICE_USB_DEVICE_WIDGET_CLASS
+SPICE_IS_USB_DEVICE_WIDGET_CLASS
+SPICE_USB_DEVICE_WIDGET_GET_CLASS
+<SUBSECTION Private>
+SpiceUsbDeviceWidgetPrivate
+</SECTION>
+
+<SECTION>
 <FILE>spice-util</FILE>
 spice_util_set_debug
 spice_util_get_version_string
