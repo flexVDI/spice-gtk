@@ -255,6 +255,7 @@ static void stdin_read_complete(GObject *src, GAsyncResult *res, gpointer data)
     default:
         FATAL_ERROR("Unexpected extra input in state %d: %s\n", state, s);
     }
+    g_free(s);
 }
 
 /* Fix for polkit 0.97 and later */
