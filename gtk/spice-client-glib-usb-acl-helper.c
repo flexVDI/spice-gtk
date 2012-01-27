@@ -1,6 +1,6 @@
 /* -*- Mode: C; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 /*
-   Copyright (C) 2011 Red Hat, Inc.
+   Copyright (C) 2011,2012 Red Hat, Inc.
    Copyright (C) 2009 Kay Sievers <kay.sievers@vrfy.org>
 
    Red Hat Authors:
@@ -29,6 +29,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <gio/gunixinputstream.h>
 #include <polkit/polkit.h>
 #include <acl/libacl.h>
@@ -163,6 +166,7 @@ static void check_authorization_cb(PolkitAuthority *authority,
 {
     PolkitAuthorizationResult *result;
     GError *err = NULL;
+    struct stat stat_buf;
 
     g_clear_object(&polkit_cancellable);
 
@@ -179,6 +183,16 @@ static void check_authorization_cb(PolkitAuthority *authority,
     }
 
     snprintf(path, PATH_MAX, "/dev/bus/usb/%03d/%03d", busnum, devnum);
+
+    if (stat(path, &stat_buf) != 0) {
+        FATAL_ERROR("statting %s: %s\n", path, strerror(errno));
+        return;
+    }
+    if (!S_ISCHR(stat_buf.st_mode)) {
+        FATAL_ERROR("%s is not a character device\n", path);
+        return;
+    }
+
     if (set_facl(path, getuid(), 1)) {
         FATAL_ERROR("setting facl: %s\n", strerror(errno));
         return;
