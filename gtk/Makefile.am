@@ -373,6 +373,7 @@ spice_client_glib_usb_acl_helper_LDADD =	\
 	$(GIO_LIBS)				\
 	$(POLKIT_LIBS)				\
 	$(ACL_LIBS)				\
+	$(PIE_LDFLAGS)				\
 	$(NULL)
 
 spice_client_glib_usb_acl_helper_CPPFLAGS =	\
@@ -380,6 +381,7 @@ spice_client_glib_usb_acl_helper_CPPFLAGS =	\
 	$(GLIB2_CFLAGS)				\
 	$(GIO_CFLAGS)				\
 	$(POLKIT_CFLAGS)			\
+	$(PIE_CFLAGS)				\
 	$(NULL)
 
 install-data-hook:

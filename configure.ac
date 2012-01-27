@@ -390,6 +390,35 @@ if test "x$have_usbredir" = "xyes" && test "x$have_polkit" != "xyes"; then
   AC_MSG_WARN([Building with usbredir support, but *not* building the usb acl helper])
 fi
 
+AC_ARG_ENABLE([pie],
+  AS_HELP_STRING([--enable-pie=@<:@auto/yes/no@:>@],
+                 [Enable position-independent-executable support (for the usb acl helper)@<:@default=auto@:>@]),
+  [],
+  [enable_pie="auto"])
+
+if test "x$have_polkit" = "xyes" && test "x$enable_pie" != "xno"; then
+  save_CFLAGS="$CFLAGS"
+  save_LDFLAGS="$LDFLAGS"
+  CFLAGS="$CFLAGS -fPIE"
+  LDFLAGS="$LDFLAGS -pie -Wl,-z,relro -Wl,-z,now"
+  AC_MSG_CHECKING([for PIE support])
+  AC_LINK_IFELSE([AC_LANG_SOURCE([void main () {}])],
+                 [have_pie=yes],
+                 [have_pie=no])
+  AC_MSG_RESULT([$have_pie])
+  if test "x$have_pie" = "xno" && test "x$enable_pie" = "xyes"; then
+    AC_MSG_ERROR([pie support explicitly requested, but your toolchain does not support it])
+  fi
+  if test "x$have_pie" = "xyes"; then
+    PIE_CFLAGS="-fPIE"
+    PIE_LDFLAGS="-pie -Wl,-z,relro -Wl,-z,now"
+    AC_SUBST(PIE_CFLAGS)
+    AC_SUBST(PIE_LDFLAGS)
+  fi
+  CFLAGS="$save_CFLAGS"
+  LDFLAGS="$save_LDFLAGS"
+fi
+
 AC_ARG_WITH([usb-acl-helper-dir],
   AS_HELP_STRING([--with-usb-acl-helper-dir=DIR],
                  [Directory where the USB ACL helper binary should be installed]),
