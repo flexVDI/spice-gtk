@@ -342,7 +342,6 @@ AC_ARG_ENABLE([usbredir],
 
 if test "x$enable_usbredir" = "xno"; then
   AM_CONDITIONAL(WITH_USBREDIR, false)
-  AM_CONDITIONAL(WITH_POLKIT, false)
 else
   PKG_CHECK_MODULES([USBREDIR],
                     [gudev-1.0 libusb-1.0 >= 1.0.9 libusbredirhost >= 0.3.3],
@@ -358,15 +357,14 @@ else
 fi
 
 AC_ARG_ENABLE([polkit],
-  AS_HELP_STRING([--enable-polkit=@<:@yes/no@:>@],
-                 [Enable policykit support (for the usb acl helper)@<:@default=yes@:>@]),
+  AS_HELP_STRING([--enable-polkit=@<:@auto/yes/no@:>@],
+                 [Enable PolicyKit support (for the usb acl helper)@<:@default=auto@:>@]),
   [],
   [enable_polkit="auto"])
 
 if test x"$have_usbredir" = "xyes" && test "x$enable_polkit" != "xno"; then
-  have_polkit=yes
   PKG_CHECK_MODULES([POLKIT], [polkit-gobject-1 >= 0.96],
-                              [],
+                              [have_polkit=yes],
                               [have_polkit=no])
   AC_CHECK_HEADER([acl/libacl.h], [], [have_polkit=no])
   AC_CHECK_LIB([acl], [acl_get_file], [ACL_LIBS=-lacl], [have_polkit=no])
@@ -388,6 +386,9 @@ else
   AM_CONDITIONAL(WITH_POLKIT, false)
 fi
 
+if test "x$have_usbredir" = "xyes" && test "x$have_polkit" != "xyes"; then
+  AC_MSG_WARN([Building with usbredir support, but *not* building the usb acl helper])
+fi
 
 AC_ARG_WITH([usb-acl-helper-dir],
   AS_HELP_STRING([--with-usb-acl-helper-dir=DIR],
