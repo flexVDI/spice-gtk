@@ -28,7 +28,7 @@ SPICE_COMMON_SRCDIR='$(top_srcdir)'/common
 
 AC_PROG_CC
 AC_PROG_CC_C99
-if test x"$ac_cv_prog_cc_c99" = xno; then
+if test "x$ac_cv_prog_cc_c99" = xno; then
     AC_MSG_ERROR([C99 compiler is required.])
 fi
 
@@ -347,13 +347,13 @@ else
                     [gudev-1.0 libusb-1.0 >= 1.0.9 libusbredirhost >= 0.3.3],
                     [have_usbredir=yes],
                     [have_usbredir=no])
-  if test x"$have_usbredir" = "xno" && test x"$enable_usbredir" = "xyes"; then
+  if test "x$have_usbredir" = "xno" && test "x$enable_usbredir" = "xyes"; then
     AC_MSG_ERROR([usbredir support explicitly requested, but some required packages are not available])
   fi
-  if test x"$have_usbredir" = "xyes"; then
+  if test "x$have_usbredir" = "xyes"; then
     AC_DEFINE(USE_USBREDIR, [1], [Define if supporting usbredir proxying])
   fi
-  AM_CONDITIONAL([WITH_USBREDIR], [test x"$have_usbredir" = "xyes"])
+  AM_CONDITIONAL([WITH_USBREDIR], [test "x$have_usbredir" = "xyes"])
 fi
 
 AC_ARG_ENABLE([polkit],
@@ -362,21 +362,21 @@ AC_ARG_ENABLE([polkit],
   [],
   [enable_polkit="auto"])
 
-if test x"$have_usbredir" = "xyes" && test "x$enable_polkit" != "xno"; then
+if test "x$have_usbredir" = "xyes" && test "x$enable_polkit" != "xno"; then
   PKG_CHECK_MODULES([POLKIT], [polkit-gobject-1 >= 0.96],
                               [have_polkit=yes],
                               [have_polkit=no])
   AC_CHECK_HEADER([acl/libacl.h], [], [have_polkit=no])
   AC_CHECK_LIB([acl], [acl_get_file], [ACL_LIBS=-lacl], [have_polkit=no])
-  if test x"$enable_polkit" = "xyes" && test x"$have_polkit" = "xno"; then
+  if test "x$enable_polkit" = "xyes" && test "x$have_polkit" = "xno"; then
     AC_MSG_ERROR([PolicyKit support explicitly requested, but some required packages are not available])
   fi
 
-  if test x"$have_polkit" = "xyes"; then
+  if test "x$have_polkit" = "xyes"; then
     AC_SUBST(ACL_LIBS)
     AC_DEFINE(USE_POLKIT, [1], [Define if supporting polkit])
   fi
-  AM_CONDITIONAL([WITH_POLKIT], [test x"$have_polkit" = "xyes"])
+  AM_CONDITIONAL([WITH_POLKIT], [test "x$have_polkit" = "xyes"])
   POLICYDIR=`${PKG_CONFIG} polkit-gobject-1 --variable=policydir`
   AC_SUBST(POLICYDIR)
   # Check for polkit_authority_get_sync()
