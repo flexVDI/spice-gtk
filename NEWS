@@ -1,3 +1,9 @@
+v0.9
+====
+- Add command line options for setting the cache size and the glz window size
+- Add a USB device selection widget to libspice-client-gtk
+- Various bug fixes and code improvements
+
 v0.8
 ====
 

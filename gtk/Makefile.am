@@ -87,7 +87,7 @@ AM_CPPFLAGS = \
 
 # http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 SPICE_GTK_LDFLAGS_COMMON =		\
-	-version-info 2:0:1		\
+	-version-info 3:0:2		\
 	-no-undefined			\
 	$(VERSION_LDFLAGS)		\
 	$(NULL)
