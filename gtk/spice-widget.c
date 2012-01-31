@@ -1632,7 +1632,7 @@ void spice_display_get_scaling(SpiceDisplay *display, double *sx, double *sy)
     int fbw = d->width, fbh = d->height;
     int ww, wh;
 
-    if (!spicex_is_scaled(display)) {
+    if (!spicex_is_scaled(display) || !gtk_widget_get_window(GTK_WIDGET(display))) {
         *sx = 1.0;
         *sy = 1.0;
         return;
