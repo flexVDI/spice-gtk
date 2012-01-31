@@ -50,6 +50,7 @@ SpiceMainChannelClass
 <SUBSECTION>
 spice_main_channel
 spice_main_set_display
+spice_main_agent_test_capability
 spice_main_clipboard_selection_grab
 spice_main_clipboard_selection_notify
 spice_main_clipboard_selection_release

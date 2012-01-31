@@ -478,7 +478,9 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
     }
     if (!s->clip_grabbed[selection] && t > 0) {
         s->clip_grabbed[selection] = TRUE;
-        spice_main_clipboard_selection_grab(s->main, selection, types, t);
+
+        if (spice_main_agent_test_capability(s->main, VD_AGENT_CAP_CLIPBOARD_BY_DEMAND))
+            spice_main_clipboard_selection_grab(s->main, selection, types, t);
         /* Sending a grab causes the agent to do an impicit release */
         s->nclip_targets[selection] = 0;
     }
@@ -502,7 +504,8 @@ static void clipboard_owner_change(GtkClipboard        *clipboard,
 
     if (s->clip_grabbed[selection]) {
         s->clip_grabbed[selection] = FALSE;
-        spice_main_clipboard_selection_release(s->main, selection);
+        if (spice_main_agent_test_capability(s->main, VD_AGENT_CAP_CLIPBOARD_BY_DEMAND))
+            spice_main_clipboard_selection_release(s->main, selection);
     }
 
     switch (event->reason) {

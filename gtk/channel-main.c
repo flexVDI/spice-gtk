@@ -736,6 +736,7 @@ static void do_emit_main_context(GObject *object, int signum, gpointer params)
 
 /* ------------------------------------------------------------------ */
 
+
 static void agent_free_msg_queue(SpiceMainChannel *channel)
 {
     SpiceMainChannelPrivate *c = channel->priv;
@@ -1713,6 +1714,27 @@ static gboolean timer_set_display(gpointer data)
     spice_channel_wakeup(channel, FALSE);
 
     return false;
+}
+
+/**
+ * spice_main_agent_test_capability:
+ * @channel:
+ * @cap: an agent capability identifier
+ *
+ * Test capability of a remote agent.
+ *
+ * Returns: %TRUE if @cap (channel kind capability) is available.
+ **/
+gboolean spice_main_agent_test_capability(SpiceMainChannel *channel, guint32 cap)
+{
+    g_return_val_if_fail(SPICE_IS_MAIN_CHANNEL(channel), FALSE);
+
+    SpiceMainChannelPrivate *c = channel->priv;
+
+    if (!c->agent_caps_received)
+        return FALSE;
+
+    return VD_AGENT_HAS_CAPABILITY(c->agent_caps, sizeof(c->agent_caps), cap);
 }
 
 /**
