@@ -123,7 +123,7 @@ static void try_keyboard_ungrab(SpiceDisplay *display);
 static void update_mouse_grab(SpiceDisplay *display);
 static void try_mouse_grab(SpiceDisplay *display);
 static void try_mouse_ungrab(SpiceDisplay *display);
-static void recalc_geometry(GtkWidget *widget, gboolean set_display);
+static void recalc_geometry(GtkWidget *widget);
 static void disconnect_main(SpiceDisplay *display);
 static void disconnect_cursor(SpiceDisplay *display);
 static void disconnect_display(SpiceDisplay *display);
@@ -175,6 +175,36 @@ static void spice_display_get_property(GObject    *object,
     }
 }
 
+static void scaling_updated(SpiceDisplay *display)
+{
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(display));
+
+    recalc_geometry(GTK_WIDGET(display));
+    if (d->ximage && window) { /* if not yet shown */
+        int ww, wh;
+        gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
+        gtk_widget_queue_draw_area(GTK_WIDGET(display), 0, 0, ww, wh);
+    }
+}
+
+static void update_size_request(SpiceDisplay *display)
+{
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    gint reqwidth, reqheight;
+
+    if (d->resize_guest_enable) {
+        reqwidth = 640;
+        reqheight = 480;
+    } else {
+        reqwidth = d->width;
+        reqheight = d->height;
+    }
+
+    gtk_widget_set_size_request(GTK_WIDGET(display), reqwidth, reqheight);
+    recalc_geometry(GTK_WIDGET(display));
+}
+
 static void spice_display_set_property(GObject      *object,
                                        guint         prop_id,
                                        const GValue *value,
@@ -201,23 +231,11 @@ static void spice_display_set_property(GObject      *object,
         break;
     case PROP_RESIZE_GUEST:
         d->resize_guest_enable = g_value_get_boolean(value);
-        if (d->resize_guest_enable) {
-            gtk_widget_set_size_request(GTK_WIDGET(display), 640, 480);
-            recalc_geometry(GTK_WIDGET(display), TRUE);
-        } else {
-            gtk_widget_set_size_request(GTK_WIDGET(display),
-                                        d->width, d->height);
-        }
+        update_size_request(display);
         break;
     case PROP_SCALING:
         d->allow_scaling = g_value_get_boolean(value);
-        recalc_geometry(GTK_WIDGET(display), FALSE);
-        if (d->ximage &&
-            gtk_widget_get_window(GTK_WIDGET(display))) { /* if not yet shown */
-            int ww, wh;
-            gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
-            gtk_widget_queue_draw_area(GTK_WIDGET(display), 0, 0, ww, wh);
-        }
+        scaling_updated(display);
         break;
     case PROP_AUTO_CLIPBOARD:
         g_object_set(d->gtk_session, "auto-clipboard",
@@ -733,7 +751,7 @@ static void update_mouse_grab(SpiceDisplay *display)
         try_mouse_ungrab(display);
 }
 
-static void recalc_geometry(GtkWidget *widget, gboolean set_display)
+static void recalc_geometry(GtkWidget *widget)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
@@ -750,10 +768,9 @@ static void recalc_geometry(GtkWidget *widget, gboolean set_display)
     SPICE_DEBUG("monitors: id %d, guest %dx%d, window %dx%d, offset +%d+%d",
                 d->channel_id, d->width, d->height, d->ww, d->wh, d->mx, d->my);
 
-    if (d->resize_guest_enable && set_display) {
+    if (d->resize_guest_enable)
         spice_main_set_display(d->main, d->channel_id,
                                0, 0, d->ww, d->wh);
-    }
 }
 
 /* ---------------------------------------------------------------- */
@@ -1277,7 +1294,7 @@ static gboolean configure_event(GtkWidget *widget, GdkEventConfigure *conf)
     if (conf->width != d->ww  || conf->height != d->wh) {
         d->ww = conf->width;
         d->wh = conf->height;
-        recalc_geometry(widget, TRUE);
+        recalc_geometry(widget);
     }
     return true;
 }
@@ -1503,7 +1520,6 @@ static void primary_create(SpiceChannel *channel, gint format,
 {
     SpiceDisplay *display = data;
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    gboolean set_display = FALSE;
 
     d->format = format;
     d->stride = stride;
@@ -1511,14 +1527,9 @@ static void primary_create(SpiceChannel *channel, gint format,
     d->data_origin = d->data = imgdata;
 
     if (d->width != width || d->height != height) {
-        if (d->width != 0 && d->height != 0)
-            set_display = TRUE;
         d->width  = width;
         d->height = height;
-        recalc_geometry(GTK_WIDGET(display), set_display);
-        if (!d->resize_guest_enable) {
-            gtk_widget_set_size_request(GTK_WIDGET(display), width, height);
-        }
+        update_size_request(display);
     }
 }
 
