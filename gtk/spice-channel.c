@@ -1055,14 +1055,14 @@ static void spice_channel_recv_auth(SpiceChannel *channel)
 
     rc = spice_channel_read(channel, &link_res, sizeof(link_res));
     if (rc != sizeof(link_res)) {
-        g_critical("incomplete auth reply (%d/%" G_GSIZE_FORMAT ")",
-                   rc, sizeof(link_res));
+        SPICE_DEBUG("incomplete auth reply (%d/%" G_GSIZE_FORMAT ")",
+                    rc, sizeof(link_res));
         emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_LINK);
         return;
     }
 
     if (link_res != SPICE_LINK_ERR_OK) {
-        g_critical("link result: reply %d", link_res);
+        SPICE_DEBUG("link result: reply %d", link_res);
         emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_AUTH);
         return;
     }
