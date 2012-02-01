@@ -101,6 +101,7 @@ enum {
     PROP_AUTO_CLIPBOARD,
     PROP_SCALING,
     PROP_DISABLE_INPUTS,
+    PROP_ZOOM_LEVEL
 };
 
 /* Signals */
@@ -169,6 +170,9 @@ static void spice_display_get_property(GObject    *object,
     case PROP_DISABLE_INPUTS:
         g_value_set_boolean(value, d->disable_inputs);
 	break;
+    case PROP_ZOOM_LEVEL:
+        g_value_set_int(value, d->zoom_level);
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
         break;
@@ -246,6 +250,10 @@ static void spice_display_set_property(GObject      *object,
         gtk_widget_set_can_focus(GTK_WIDGET(display), !d->disable_inputs);
         update_keyboard_grab(display);
         update_mouse_grab(display);
+        break;
+    case PROP_ZOOM_LEVEL:
+        d->zoom_level = g_value_get_int(value);
+        scaling_updated(display);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -755,6 +763,7 @@ static void recalc_geometry(GtkWidget *widget)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    gdouble zoom = 1.0;
 
     d->mx = 0;
     d->my = 0;
@@ -763,14 +772,15 @@ static void recalc_geometry(GtkWidget *widget)
             d->mx = (d->ww - d->width) / 2;
         if (d->wh > d->height)
             d->my = (d->wh - d->height) / 2;
-    }
+    } else
+        zoom = (gdouble)d->zoom_level / 100;
 
-    SPICE_DEBUG("monitors: id %d, guest %dx%d, window %dx%d, offset +%d+%d",
-                d->channel_id, d->width, d->height, d->ww, d->wh, d->mx, d->my);
+    SPICE_DEBUG("monitors: id %d, guest %dx%d, window %dx%d, zoom %g, offset +%d+%d",
+                d->channel_id, d->width, d->height, d->ww, d->wh, zoom, d->mx, d->my);
 
     if (d->resize_guest_enable)
         spice_main_set_display(d->main, d->channel_id,
-                               0, 0, d->ww, d->wh);
+                               0, 0, d->ww / zoom, d->wh / zoom);
 }
 
 /* ---------------------------------------------------------------- */
@@ -1433,6 +1443,25 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
                               G_PARAM_STATIC_STRINGS));
+
+
+    /**
+     * SpiceDisplay:zoom-level:
+     *
+     * Zoom level in percentage, from 10 to 400. Default to 100.
+     * (this option is only supported with cairo backend when scaling
+     * is enabled)
+     *
+     * Since: 0.10
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_ZOOM_LEVEL,
+         g_param_spec_int("zoom-level", "Zoom Level",
+                          "Zoom Level",
+                          10, 400, 100,
+                          G_PARAM_READWRITE |
+                          G_PARAM_CONSTRUCT |
+                          G_PARAM_STATIC_STRINGS));
 
     /**
      * SpiceDisplay::mouse-grab:

@@ -107,6 +107,7 @@ struct _SpiceDisplayPrivate {
 #ifdef WIN32
     HHOOK                   keyboard_hook;
 #endif
+    gint                    zoom_level;
 };
 
 int      spicex_image_create                 (SpiceDisplay *display);
