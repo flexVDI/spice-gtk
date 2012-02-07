@@ -2193,7 +2193,7 @@ ssl_reconnect:
 connected:
     rc = setsockopt(g_socket_get_fd(c->sock), IPPROTO_TCP, TCP_NODELAY,
                     (const char*)&delay_val, sizeof(delay_val));
-    if (rc != 0) {
+    if (rc != 0 && errno != ENOTSUP) {
         g_warning("%s: could not set sockopt TCP_NODELAY: %s", c->name,
                   strerror(errno));
     }
