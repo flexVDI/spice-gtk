@@ -224,6 +224,8 @@ libspice_client_glib_2_0_la_SOURCES =	\
 	smartcard-manager-priv.h	\
 	usb-device-manager.c		\
 	usb-device-manager-priv.h	\
+	usbutil.c			\
+	usbutil.h			\
 	$(USB_ACL_HELPER_SRCS)		\
 	\
 	decode.h			\

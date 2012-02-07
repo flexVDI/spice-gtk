@@ -1,6 +1,6 @@
 /* -*- Mode: C; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 /*
-   Copyright (C) 2011 Red Hat, Inc.
+   Copyright (C) 2011, 2012 Red Hat, Inc.
 
    Red Hat Authors:
    Hans de Goede <hdegoede@redhat.com>

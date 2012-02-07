@@ -1,6 +1,6 @@
 /* -*- Mode: C; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 /*
-   Copyright (C) 2011 Red Hat, Inc.
+   Copyright (C) 2011, 2012 Red Hat, Inc.
 
    Red Hat Authors:
    Hans de Goede <hdegoede@redhat.com>
@@ -27,17 +27,12 @@
 #include "glib-compat.h"
 
 #ifdef USE_USBREDIR
-#ifdef __linux__
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#endif
 #include <errno.h>
 #include <libusb.h>
 #include <gudev/gudev.h>
 #include "channel-usbredir-priv.h"
 #include "usbredirhost.h"
+#include "usbutil.h"
 #endif
 
 #include "spice-session-priv.h"
@@ -191,7 +186,7 @@ static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
 #ifdef USE_USBREDIR
     rc = libusb_init(&priv->context);
     if (rc < 0) {
-        const char *desc = spice_usb_device_manager_libusb_strerror(rc);
+        const char *desc = spice_usbutil_libusb_strerror(rc);
         g_warning("Error initializing USB support: %s [%i]", desc, rc);
         g_set_error(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                     "Error initializing USB support: %s [%i]", desc, rc);
@@ -461,68 +456,6 @@ static gboolean spice_usb_device_manager_get_udev_bus_n_address(
 
     return *bus && *address;
 }
-
-const char *spice_usb_device_manager_libusb_strerror(enum libusb_error error_code)
-{
-    switch (error_code) {
-    case LIBUSB_SUCCESS:
-        return "Success";
-    case LIBUSB_ERROR_IO:
-        return "Input/output error";
-    case LIBUSB_ERROR_INVALID_PARAM:
-        return "Invalid parameter";
-    case LIBUSB_ERROR_ACCESS:
-        return "Access denied (insufficient permissions)";
-    case LIBUSB_ERROR_NO_DEVICE:
-        return "No such device (it may have been disconnected)";
-    case LIBUSB_ERROR_NOT_FOUND:
-        return "Entity not found";
-    case LIBUSB_ERROR_BUSY:
-        return "Resource busy";
-    case LIBUSB_ERROR_TIMEOUT:
-        return "Operation timed out";
-    case LIBUSB_ERROR_OVERFLOW:
-        return "Overflow";
-    case LIBUSB_ERROR_PIPE:
-        return "Pipe error";
-    case LIBUSB_ERROR_INTERRUPTED:
-        return "System call interrupted (perhaps due to signal)";
-    case LIBUSB_ERROR_NO_MEM:
-        return "Insufficient memory";
-    case LIBUSB_ERROR_NOT_SUPPORTED:
-        return "Operation not supported or unimplemented on this platform";
-    case LIBUSB_ERROR_OTHER:
-        return "Other error";
-    }
-    return "Unknown error";
-}
-
-#ifdef __linux__
-/* <Sigh> libusb does not allow getting the manufacturer and product strings
-   without opening the device, so grab them directly from sysfs */
-static gchar *spice_usb_device_manager_get_sysfs_attribute(
-    int bus, int address, const char *attribute)
-{
-    struct stat stat_buf;
-    char filename[256];
-    gchar *contents;
-
-    snprintf(filename, sizeof(filename), "/dev/bus/usb/%03d/%03d",
-             bus, address);
-    if (stat(filename, &stat_buf) != 0)
-        return NULL;
-
-    snprintf(filename, sizeof(filename), "/sys/dev/char/%d:%d/%s",
-             major(stat_buf.st_rdev), minor(stat_buf.st_rdev), attribute);
-    if (!g_file_get_contents(filename, &contents, NULL, NULL))
-        return NULL;
-
-    /* Remove the newline at the end */
-    contents[strlen(contents) - 1] = '\0';
-
-    return contents;
-}
-#endif
 #endif
 
 /* ------------------------------------------------------------------ */
@@ -699,7 +632,7 @@ static gpointer spice_usb_device_manager_usb_ev_thread(gpointer user_data)
     while (priv->event_thread_run) {
         rc = libusb_handle_events(priv->context);
         if (rc) {
-            const char *desc = spice_usb_device_manager_libusb_strerror(rc);
+            const char *desc = spice_usbutil_libusb_strerror(rc);
             g_warning("Error handling USB events: %s [%i]", desc, rc);
         }
     }
@@ -975,10 +908,8 @@ gchar *spice_usb_device_get_description(SpiceUsbDevice *_device, const gchar *fo
     address = libusb_get_device_address(device);
 
 #if __linux__
-    manufacturer = spice_usb_device_manager_get_sysfs_attribute(bus, address,
-                                                              "manufacturer");
-    product = spice_usb_device_manager_get_sysfs_attribute(bus, address,
-                                                           "product");
+    manufacturer = spice_usbutil_get_sysfs_attribute(bus, address, "manufacturer");
+    product = spice_usbutil_get_sysfs_attribute(bus, address, "product");
 #endif
     if (!manufacturer)
         manufacturer = g_strdup(_("USB"));

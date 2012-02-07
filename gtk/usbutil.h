@@ -1,6 +1,6 @@
 /* -*- Mode: C; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 /*
-   Copyright (C) 2011,2012 Red Hat, Inc.
+   Copyright (C) 2012 Red Hat, Inc.
 
    Red Hat Authors:
    Hans de Goede <hdegoede@redhat.com>
@@ -18,19 +18,20 @@
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __SPICE_USB_DEVICE_MANAGER_PRIV_H__
-#define __SPICE_USB_DEVICE_MANAGER_PRIV_H__
+#ifndef __SPICE_USBUTIL_H__
+#define __SPICE_USBUTIL_H__
 
-#include "usb-device-manager.h"
+#ifdef USE_USBREDIR
+#include <libusb.h>
 
 G_BEGIN_DECLS
 
-gboolean spice_usb_device_manager_start_event_listening(
-    SpiceUsbDeviceManager *manager, GError **err);
-
-void spice_usb_device_manager_stop_event_listening(
-    SpiceUsbDeviceManager *manager);
+const char *spice_usbutil_libusb_strerror(enum libusb_error error_code);
+#ifdef __linux__
+gchar *spice_usbutil_get_sysfs_attribute(int bus, int address, const char *attribute);
+#endif
 
 G_END_DECLS
 
-#endif /* __SPICE_USB_DEVICE_MANAGER_PRIV_H__ */
+#endif /* USE_USBREDIR */
+#endif /* __SPICE_USBUTIL_H__ */

@@ -1,6 +1,6 @@
 /* -*- Mode: C; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 /*
-   Copyright 2010-2011 Red Hat, Inc.
+   Copyright 2010-2012 Red Hat, Inc.
 
    Red Hat Authors:
    Hans de Goede <hdegoede@redhat.com>
@@ -28,6 +28,7 @@
 #endif
 #include "channel-usbredir-priv.h"
 #include "usb-device-manager-priv.h"
+#include "usbutil.h"
 #endif
 
 #include "spice-client.h"
@@ -186,7 +187,7 @@ static gboolean spice_usbredir_channel_open_device(
     if (rc != 0) {
         g_set_error(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                     "Could not open usb device: %s [%i]",
-                    spice_usb_device_manager_libusb_strerror(rc), rc);
+                    spice_usbutil_libusb_strerror(rc), rc);
         return FALSE;
     }
 
