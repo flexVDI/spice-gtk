@@ -619,7 +619,7 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
         int threshold;
         GdkWindow *w = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
         Display *x_display = GDK_WINDOW_XDISPLAY(w);
-    
+
         XGetPointerControl(x_display, &accel_numerator, &accel_denominator,
                            &threshold);
         XChangePointerControl(x_display, False, False, accel_numerator,
@@ -682,35 +682,19 @@ static void try_mouse_grab(SpiceDisplay *display)
     d->mouse_last_y = -1;
 }
 
-static void mouse_check_edges(GtkWidget *widget, GdkEventMotion *motion)
+static void mouse_wrap(SpiceDisplay *display, GdkEventMotion *motion)
 {
-    SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    GdkScreen *screen = gtk_widget_get_screen(widget);
-    gint ww, wh;
+    GdkScreen *screen = gtk_widget_get_screen(GTK_WIDGET(display));
 
-    gdk_drawable_get_size(gtk_widget_get_window(widget), &ww, &wh);
-    int x = (int)motion->x;
-    int y = (int)motion->y;
-    int xr = (int)motion->x_root;
-    int yr = (int)motion->y_root;
+    gint xr = gdk_screen_get_width(screen) / 2;
+    gint yr = gdk_screen_get_height(screen) / 2;
 
-    /* from gtk-vnc: In relative mode check to see if client pointer
-     * hit the window edges, and if so move it back by 100px. This is
-     * important because the pointer in the server doesn't correspond
-     * 1-for-1, and so may still be only half way across the
-     * screen. Without this warp, the server pointer would thus appear
-     * to hit an invisible wall */
-    if (x <= 0) xr += 100;
-    if (y <= 0) yr += 100;
-    if (x >= (ww - 1)) xr -= 100;
-    if (y >= (wh - 1)) yr -= 100;
-
-    if (xr != (int)motion->x_root || yr != (int)motion->y_root) {
+    if (xr != (gint)motion->x_root || yr != (gint)motion->y_root) {
         /* FIXME: we try our best to ignore that next pointer move event.. */
         gdk_display_sync(gdk_screen_get_display(screen));
 
-        gdk_display_warp_pointer(gtk_widget_get_display(widget),
+        gdk_display_warp_pointer(gtk_widget_get_display(GTK_WIDGET(display)),
                                  screen, xr, yr);
         d->mouse_last_x = -1;
         d->mouse_last_y = -1;
@@ -736,7 +720,7 @@ static void try_mouse_ungrab(SpiceDisplay *display)
         int threshold;
         GdkWindow *w = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
         Display *x_display = GDK_WINDOW_XDISPLAY(w);
-    
+
         XGetPointerControl(x_display, &accel_numerator, &accel_denominator,
                            &threshold);
         XChangePointerControl(x_display, True, True, accel_numerator,
@@ -1181,18 +1165,15 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
         break;
     case SPICE_MOUSE_MODE_SERVER:
         if (d->mouse_grab_active) {
-            if (d->mouse_last_x != -1 &&
-                d->mouse_last_y != -1) {
-                gint dx = motion->x - d->mouse_last_x;
-                gint dy = motion->y - d->mouse_last_y;
+            gint dx = d->mouse_last_x != -1 ? motion->x - d->mouse_last_x : 0;
+            gint dy = d->mouse_last_y != -1 ? motion->y - d->mouse_last_y : 0;
 
-                spice_inputs_motion(d->inputs, dx, dy,
-                                    button_mask_gdk_to_spice(motion->state));
-            }
+            spice_inputs_motion(d->inputs, dx, dy,
+                                button_mask_gdk_to_spice(motion->state));
 
             d->mouse_last_x = motion->x;
             d->mouse_last_y = motion->y;
-            mouse_check_edges(widget, motion);
+            mouse_wrap(display, motion);
         }
         break;
     default:
