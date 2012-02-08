@@ -344,7 +344,7 @@ if test "x$enable_usbredir" = "xno"; then
   AM_CONDITIONAL(WITH_USBREDIR, false)
 else
   PKG_CHECK_MODULES([USBREDIR],
-                    [gudev-1.0 libusb-1.0 >= 1.0.9 libusbredirhost >= 0.3.3],
+                    [gudev-1.0 libusb-1.0 >= 1.0.9 libusbredirhost >= 0.3.3 libusbredirparser >= 0.3.3],
                     [have_usbredir=yes],
                     [have_usbredir=no])
   if test "x$have_usbredir" = "xno" && test "x$enable_usbredir" = "xyes"; then
