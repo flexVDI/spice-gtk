@@ -907,32 +907,16 @@ gchar *spice_usb_device_get_description(SpiceUsbDevice *_device, const gchar *fo
     bus     = libusb_get_bus_number(device);
     address = libusb_get_device_address(device);
 
-#if __linux__
-    manufacturer = spice_usbutil_get_sysfs_attribute(bus, address, "manufacturer");
-    product = spice_usbutil_get_sysfs_attribute(bus, address, "product");
-#endif
-    if (!manufacturer)
-        manufacturer = g_strdup(_("USB"));
-    if (!product)
-        product = g_strdup(_("Device"));
-
-    /* Some devices have unwanted whitespace in their strings */
-    g_strstrip(manufacturer);
-    g_strstrip(product);
-
-    /* Some devices repeat the manufacturer at the beginning of product */
-    if (g_str_has_prefix(product, manufacturer) &&
-            strlen(product) > strlen(manufacturer)) {
-        gchar *tmp = g_strdup(product + strlen(manufacturer));
-        g_free(product);
-        product = tmp;
-        g_strstrip(product);
-    }
-
-    if (libusb_get_device_descriptor(device, &desc) == LIBUSB_SUCCESS)
+    if (libusb_get_device_descriptor(device, &desc) == LIBUSB_SUCCESS) {
+        spice_usb_util_get_device_strings(bus, address,
+                                          desc.idVendor, desc.idProduct,
+                                          &manufacturer, &product);
         descriptor = g_strdup_printf("[%04x:%04x]", desc.idVendor, desc.idProduct);
-    else
+    } else {
+        spice_usb_util_get_device_strings(bus, address, -1, -1,
+                                          &manufacturer, &product);
         descriptor = g_strdup("");
+    }
 
     if (!format)
         format = _("%s %s %s at %d-%d");

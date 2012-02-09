@@ -21,15 +21,17 @@
 #ifndef __SPICE_USBUTIL_H__
 #define __SPICE_USBUTIL_H__
 
+#include <glib.h>
+
 #ifdef USE_USBREDIR
 #include <libusb.h>
 
 G_BEGIN_DECLS
 
 const char *spice_usbutil_libusb_strerror(enum libusb_error error_code);
-#ifdef __linux__
-gchar *spice_usbutil_get_sysfs_attribute(int bus, int address, const char *attribute);
-#endif
+void spice_usb_util_get_device_strings(int bus, int address,
+                                       int vendor_id, int product_id,
+                                       gchar **manufacturer, gchar **product);
 
 G_END_DECLS
 

@@ -74,7 +74,8 @@ const char *spice_usbutil_libusb_strerror(enum libusb_error error_code)
 #ifdef __linux__
 /* <Sigh> libusb does not allow getting the manufacturer and product strings
    without opening the device, so grab them directly from sysfs */
-gchar *spice_usbutil_get_sysfs_attribute(int bus, int address, const char *attribute)
+static gchar *spice_usbutil_get_sysfs_attribute(int bus, int address,
+                                                const char *attribute)
 {
     struct stat stat_buf;
     char filename[256];
@@ -96,4 +97,39 @@ gchar *spice_usbutil_get_sysfs_attribute(int bus, int address, const char *attri
     return contents;
 }
 #endif
+
+G_GNUC_INTERNAL
+void spice_usb_util_get_device_strings(int bus, int address,
+                                       int vendor_id, int product_id,
+                                       gchar **manufacturer, gchar **product)
+{
+    g_return_if_fail(manufacturer != NULL);
+    g_return_if_fail(product != NULL);
+
+    *manufacturer = NULL;
+    *product = NULL;
+
+#if __linux__
+    *manufacturer = spice_usbutil_get_sysfs_attribute(bus, address, "manufacturer");
+    *product = spice_usbutil_get_sysfs_attribute(bus, address, "product");
+#endif
+    if (!*manufacturer)
+        *manufacturer = g_strdup(_("USB"));
+    if (!*product)
+        *product = g_strdup(_("Device"));
+
+    /* Some devices have unwanted whitespace in their strings */
+    g_strstrip(*manufacturer);
+    g_strstrip(*product);
+
+    /* Some devices repeat the manufacturer at the beginning of product */
+    if (g_str_has_prefix(*product, *manufacturer) &&
+            strlen(*product) > strlen(*manufacturer)) {
+        gchar *tmp = g_strdup(*product + strlen(*manufacturer));
+        g_free(*product);
+        *product = tmp;
+        g_strstrip(*product);
+    }
+}
+
 #endif
