@@ -426,6 +426,27 @@ AC_ARG_WITH([usb-acl-helper-dir],
   [ACL_HELPER_DIR="${bindir}/"])
 AC_SUBST([ACL_HELPER_DIR])
 
+AC_ARG_WITH([usb-ids-path],
+  AC_HELP_STRING([--with-usb-ids-path],
+                 [Specify the path to usb.ids @<:@default=auto@:>@]),
+  [USB_IDS="$with_usb_ids_path"],
+  [USB_IDS="auto"])
+AC_MSG_CHECKING([for usb.ids])
+if test "x$USB_IDS" = "xauto"; then
+  if test -n "$PKG_CONFIG"; then
+    USB_IDS=$($PKG_CONFIG --variable=usbids usbutils)
+  else
+    USB_IDS=
+  fi
+fi
+if test -n "$USB_IDS"; then
+  AC_MSG_RESULT([$USB_IDS])
+  AC_SUBST(USB_IDS)
+  AC_DEFINE(WITH_USBIDS, [1], [Define if compiling with usb.ids support])
+else
+  AC_MSG_RESULT([not found])
+fi
+
 AC_ARG_WITH([coroutine],
   AS_HELP_STRING([--with-coroutine=@<:@ucontext/gthread/winfiber/auto@:>@],
                  [use ucontext or GThread for coroutines @<:@default=auto@:>@]),

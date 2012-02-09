@@ -23,6 +23,8 @@
 
 #include <glib-object.h>
 #include <glib/gi18n.h>
+#include <ctype.h>
+#include <stdlib.h>
 
 #include "glib-compat.h"
 
@@ -34,6 +36,27 @@
 #include <sys/stat.h>
 #endif
 #include "usbutil.h"
+
+#ifdef WITH_USBIDS
+#define VENDOR_NAME_LEN (122 - sizeof(void *))
+#define PRODUCT_NAME_LEN 126
+
+typedef struct _usb_product_info {
+    guint16 product_id;
+    char name[PRODUCT_NAME_LEN];
+} usb_product_info;
+
+typedef struct _usb_vendor_info {
+    usb_product_info *product_info;
+    int product_count;
+    guint16 vendor_id;
+    char name[VENDOR_NAME_LEN];
+} usb_vendor_info;
+
+GStaticMutex usbids_parse_mutex = G_STATIC_MUTEX_INIT;
+int usbids_vendor_count;
+usb_vendor_info *usbids_vendor_info;
+#endif
 
 G_GNUC_INTERNAL
 const char *spice_usbutil_libusb_strerror(enum libusb_error error_code)
@@ -98,11 +121,112 @@ static gchar *spice_usbutil_get_sysfs_attribute(int bus, int address,
 }
 #endif
 
+#ifdef WITH_USBIDS
+static void spice_usbutil_parse_usbids(void)
+{
+    gchar *contents, *line, **lines;
+    usb_product_info *product_info;
+    int i, j, id, product_count = 0;
+
+    g_static_mutex_lock(&usbids_parse_mutex);
+    if (usbids_vendor_count)
+        goto leave;
+
+    if (!g_file_get_contents(USB_IDS, &contents, NULL, NULL)) {
+        usbids_vendor_count = -1;
+        goto leave;
+    }
+    lines = g_strsplit(contents, "\n", -1);
+
+    for (i = 0; lines[i]; i++) {
+        if (!isxdigit(lines[i][0]) || !isxdigit(lines[i][1]))
+            continue;
+
+        for (j = 1; lines[i + j] &&
+                   (lines[i + j][0] == '\t' ||
+                    lines[i + j][0] == '#'  ||
+                    lines[i + j][0] == '\0'); j++) {
+            if (lines[i + j][0] == '\t' && isxdigit(lines[i + j][1]))
+                product_count++;
+        }
+        i += j - 1;
+
+        usbids_vendor_count++;
+    }
+
+    usbids_vendor_info = g_new(usb_vendor_info, usbids_vendor_count);
+    product_info = g_new(usb_product_info, product_count);
+
+    usbids_vendor_count = 0;
+    for (i = 0; lines[i]; i++) {
+        line = lines[i];
+
+        if (!isxdigit(line[0]) || !isxdigit(line[1]))
+            continue;
+
+        id = strtoul(line, &line, 16);
+        while(isspace(line[0]))
+            line++;
+        usbids_vendor_info[usbids_vendor_count].vendor_id = id;
+        snprintf(usbids_vendor_info[usbids_vendor_count].name,
+                 VENDOR_NAME_LEN, "%s", line);
+
+        product_count = 0;
+        for (j = 1; lines[i + j] &&
+                   (lines[i + j][0] == '\t' ||
+                    lines[i + j][0] == '#'  ||
+                    lines[i + j][0] == '\0'); j++) {
+            line = lines[i + j];
+
+            if (line[0] != '\t' || !isxdigit(line[1]))
+                continue;
+
+            id = strtoul(line + 1, &line, 16);
+            while(isspace(line[0]))
+                line++;
+            product_info[product_count].product_id = id;
+            snprintf(product_info[product_count].name,
+                     PRODUCT_NAME_LEN, "%s", line);
+
+            product_count++;
+        }
+        i += j - 1;
+
+        usbids_vendor_info[usbids_vendor_count].product_count = product_count;
+        usbids_vendor_info[usbids_vendor_count].product_info  = product_info;
+        product_info += product_count;
+        usbids_vendor_count++;
+    }
+
+    g_strfreev(lines);
+    g_free(contents);
+
+#if 0 /* Testing only */
+    for (i = 0; i < usbids_vendor_count; i++) {
+        printf("%04x  %s\n", usbids_vendor_info[i].vendor_id,
+               usbids_vendor_info[i].name);
+        product_info = usbids_vendor_info[i].product_info;
+        for (j = 0; j < usbids_vendor_info[i].product_count; j++) {
+            printf("\t%04x  %s\n", product_info[j].product_id,
+                   product_info[j].name);
+        }
+    }
+#endif
+leave:
+    g_static_mutex_unlock(&usbids_parse_mutex);
+}
+#endif
+
 G_GNUC_INTERNAL
 void spice_usb_util_get_device_strings(int bus, int address,
                                        int vendor_id, int product_id,
                                        gchar **manufacturer, gchar **product)
 {
+#ifdef WITH_USBIDS
+    usb_product_info *product_info;
+    int i, j;
+#endif
+
     g_return_if_fail(manufacturer != NULL);
     g_return_if_fail(product != NULL);
 
@@ -112,6 +236,32 @@ void spice_usb_util_get_device_strings(int bus, int address,
 #if __linux__
     *manufacturer = spice_usbutil_get_sysfs_attribute(bus, address, "manufacturer");
     *product = spice_usbutil_get_sysfs_attribute(bus, address, "product");
+#endif
+
+#ifdef WITH_USBIDS
+    if (!*manufacturer || !*product) {
+        spice_usbutil_parse_usbids();
+
+        for (i = 0; i < usbids_vendor_count; i++) {
+            if ((int)usbids_vendor_info[i].vendor_id != vendor_id)
+                continue;
+
+            if (!*manufacturer && usbids_vendor_info[i].name[0])
+                *manufacturer = g_strdup(usbids_vendor_info[i].name);
+
+            product_info = usbids_vendor_info[i].product_info;
+            for (j = 0; j < usbids_vendor_info[i].product_count; j++) {
+                if ((int)product_info[j].product_id != product_id)
+                    continue;
+
+                if (!*product && product_info[j].name[0])
+                    *product = g_strdup(product_info[j].name);
+
+                break;
+            }
+            break;
+        }
+    }
 #endif
     if (!*manufacturer)
         *manufacturer = g_strdup(_("USB"));
