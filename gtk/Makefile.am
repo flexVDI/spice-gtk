@@ -63,8 +63,6 @@ SPICE_COMMON_CPPFLAGS = \
 	-DUSB_IDS=\""$(USB_IDS)"\"\
 	\
 	-I$(COMMON_DIR)			\
-	-I$(CLIENT_DIR)			\
-	-I$(CLIENT_DIR)/x11		\
 	\
 	$(PROTOCOL_CFLAGS)		\
 	$(PIXMAN_CFLAGS)		\
