@@ -572,76 +572,8 @@ AM_CONDITIONAL(WITH_PYTHON, [test "$WITH_PYTHON" = "yes"])
 dnl ===========================================================================
 dnl check compiler flags
 
-AC_DEFUN([SPICE_CC_TRY_FLAG], [
-  AC_MSG_CHECKING([whether $CC supports $1])
+SPICE_COMPILE_WARNINGS
 
-  spice_save_CFLAGS="$CFLAGS"
-  CFLAGS="$CFLAGS $1"
-
-  AC_COMPILE_IFELSE([AC_LANG_SOURCE([ ])], [spice_cc_flag=yes], [spice_cc_flag=no])
-  CFLAGS="$spice_save_CFLAGS"
-
-  if test "x$spice_cc_flag" = "xyes"; then
-    ifelse([$2], , :, [$2])
-  else
-    ifelse([$3], , :, [$3])
-  fi
-  AC_MSG_RESULT([$spice_cc_flag])
-])
-
-
-dnl Use lots of warning flags with with gcc and compatible compilers
-
-dnl Note: if you change the following variable, the cache is automatically
-dnl skipped and all flags rechecked.  So there's no need to do anything
-dnl else.  If for any reason you need to force a recheck, just change
-dnl MAYBE_WARN in an ignorable way (like adding whitespace)
-
-dnl MAYBE_WARN="-Wall -Wno-sign-compare -Werror -Wno-deprecated-declarations"
-
-MAYBE_WARN="-Wall -Wno-sign-compare -Wno-deprecated-declarations"
-
-AC_ARG_ENABLE([werror],
-  AS_HELP_STRING([--enable-werror], [Use -Werror (if supported)]),
-  [set_werror="$enableval"],
-  [if test -d $srcdir/.git; then
-     is_git_version=true
-     set_werror=yes
-   else
-     set_werror=no
-   fi])
-
-# invalidate cached value if MAYBE_WARN has changed
-if test "x$spice_cv_warn_maybe" != "x$MAYBE_WARN"; then
-	unset spice_cv_warn_cflags
-fi
-AC_CACHE_CHECK([for supported warning flags], spice_cv_warn_cflags, [
-	echo
-	WARN_CFLAGS=""
-
-	# Some warning options are not supported by all versions of
-	# gcc, so test all desired options against the current
-	# compiler.
-	#
-	# Note that there are some order dependencies
-	# here. Specifically, an option that disables a warning will
-	# have no net effect if a later option then enables that
-	# warnings, (perhaps implicitly). So we put some grouped
-	# options (-Wall and -Wextra) up front and the -Wno options
-	# last.
-
-	for W in $MAYBE_WARN; do
-		SPICE_CC_TRY_FLAG([$W], [WARN_CFLAGS="$WARN_CFLAGS $W"])
-	done
-	if test "$set_werror" != "no"; then
-		SPICE_CC_TRY_FLAG(["-Werror"], [WARN_CFLAGS="$WARN_CFLAGS -Werror"])
-	fi
-
-	spice_cv_warn_cflags=$WARN_CFLAGS
-	spice_cv_warn_maybe=$MAYBE_WARN
-
-	AC_MSG_CHECKING([which warning flags were supported])])
-WARN_CFLAGS="$spice_cv_warn_cflags"
 SPICE_CFLAGS="$SPICE_CFLAGS $WARN_CFLAGS"
 
 AC_SUBST(SPICE_CFLAGS)
