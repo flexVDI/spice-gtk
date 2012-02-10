@@ -79,12 +79,13 @@ static int verify_pubkey(X509* cert, const char *key, size_t key_size)
 
     ret = EVP_PKEY_cmp(orig_pubkey, cert_pubkey);
 
-    if (ret == 1)
+    if (ret == 1) {
         SPICE_DEBUG("public keys match");
-    else if (ret == 0)
+    } else if (ret == 0) {
         SPICE_DEBUG("public keys mismatch");
-    else
+    } else {
         SPICE_DEBUG("public keys types mismatch");
+    }
 
 finish:
     if (bio)
@@ -250,8 +251,9 @@ static int verify_hostname(X509* cert, const char *hostname)
         }
     }
 
-    if (!cn_match)
+    if (!cn_match) {
         SPICE_DEBUG("warning: common name mismatch");
+    }
 
     return cn_match;
 }
@@ -375,10 +377,11 @@ int verify_subject(X509* cert, SpiceOpenSSLVerify* verify)
 
     ret = X509_NAME_cmp(cert_subject, verify->in_subject);
 
-    if (ret == 0)
+    if (ret == 0) {
         SPICE_DEBUG("subjects match");
-    else
+    } else {
         SPICE_DEBUG("subjects mismatch");
+    }
 
     return !ret;
 }
