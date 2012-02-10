@@ -626,7 +626,6 @@ static void restore_configuration(struct spice_window *win)
         return;
     }
 
-    g_return_if_fail(nkeys >= 0);
     if (nkeys > 0)
         g_return_if_fail(keys != NULL);
 

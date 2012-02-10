@@ -375,7 +375,8 @@ void spice_record_send_data(SpiceRecordChannel *channel, gpointer data,
     p.time = time;
 
     while (bytes > 0) {
-        gsize n, frame_size;
+        gsize n;
+        int frame_size;
         SpiceMsgOut *msg;
         uint8_t *frame;
 

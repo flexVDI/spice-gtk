@@ -315,7 +315,7 @@ void spice_pixman_fill_rect_rop(pixman_image_t *dest,
     ASSERT(height > 0);
     ASSERT(x + width <= pixman_image_get_width(dest));
     ASSERT(y + height <= pixman_image_get_height(dest));
-    ASSERT(rop >= 0 && rop < 16);
+    ASSERT(rop < 16);
 
     if (depth == 8) {
         solid_rop_8_func_t rop_func = solid_rops_8[rop];
@@ -466,7 +466,7 @@ void spice_pixman_tile_rect_rop(pixman_image_t *dest,
     ASSERT(height > 0);
     ASSERT(x + width <= pixman_image_get_width(dest));
     ASSERT(y + height <= pixman_image_get_height(dest));
-    ASSERT(rop >= 0 && rop < 16);
+    ASSERT(rop < 16);
     ASSERT(depth == spice_pixman_image_get_bpp(tile));
 
     tile_start_x = (x - offset_x) % tile_width;
