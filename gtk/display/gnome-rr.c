@@ -195,7 +195,7 @@ screen_info_free (ScreenInfo *info)
     g_free (info);
 }
 
-gboolean
+static gboolean
 has_similar_mode (GnomeRROutput *output, GnomeRRMode *mode)
 {
     int i;

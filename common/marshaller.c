@@ -391,7 +391,7 @@ SpiceMarshaller *spice_marshaller_get_ptr_submarshaller(SpiceMarshaller *m, int 
     return m2;
 }
 
-uint8_t *lookup_ref(MarshallerRef *ref)
+static uint8_t *lookup_ref(MarshallerRef *ref)
 {
     MarshallerItem *item;
 

@@ -53,8 +53,8 @@ static void FNAME(golomb_coding)(const BYTE n, const unsigned int l, unsigned in
     }
 }
 
-unsigned int FNAME(golomb_decoding)(const unsigned int l, const unsigned int bits,
-                                    unsigned int * const codewordlen)
+static unsigned int FNAME(golomb_decoding)(const unsigned int l, const unsigned int bits,
+                                           unsigned int * const codewordlen)
 {
     if (bits > VNAME(family).notGRprefixmask[l]) { /*GR*/
         const unsigned int zeroprefix = cnt_l_zeroes(bits);       /* leading zeroes in codeword */

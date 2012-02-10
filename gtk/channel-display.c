@@ -549,8 +549,8 @@ static pixman_image_t* image_get_lossless(SpiceImageCache *cache, uint64_t id)
 }
 #endif
 
-SpiceCanvas *surfaces_get(SpiceImageSurfaces *surfaces,
-                          uint32_t surface_id)
+static SpiceCanvas *surfaces_get(SpiceImageSurfaces *surfaces,
+                                 uint32_t surface_id)
 {
     SpiceDisplayChannelPrivate *c =
         SPICE_CONTAINEROF(surfaces, SpiceDisplayChannelPrivate, image_surfaces);
