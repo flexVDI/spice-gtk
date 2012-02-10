@@ -35,8 +35,6 @@ G_BEGIN_DECLS
 #define SPICE_IS_USB_ACL_HELPER_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), SPICE_TYPE_USB_ACL_HELPER))
 #define SPICE_USB_ACL_HELPER_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), SPICE_TYPE_USB_ACL_HELPER, SpiceUsbAclHelperClass))
 
-#define SPICE_TYPE_USB_DEVICE                    (spice_usb_device_get_type())
-
 typedef struct _SpiceUsbAclHelper SpiceUsbAclHelper;
 typedef struct _SpiceUsbAclHelperClass SpiceUsbAclHelperClass;
 typedef struct _SpiceUsbAclHelperPrivate SpiceUsbAclHelperPrivate;
@@ -55,7 +53,6 @@ struct _SpiceUsbAclHelperClass
     GObjectClass parent_class;
 };
 
-GType spice_usb_device_get_type(void);
 GType spice_usb_acl_helper_get_type(void);
 
 SpiceUsbAclHelper *spice_usb_acl_helper_new(void);

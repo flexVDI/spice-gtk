@@ -97,7 +97,6 @@ enum {
 static guint signals[SPICE_DISPLAY_LAST_SIGNAL];
 
 static void spice_display_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg);
-static void spice_display_channel_init(SpiceDisplayChannel *channel);
 static void spice_display_channel_up(SpiceChannel *channel);
 
 static void clear_surfaces(SpiceChannel *channel);
