@@ -26,7 +26,6 @@ DISTCLEANFILES = $(pkgconfig_DATA)		\
 		 intltool-merge			\
 		 intltool-update		\
 		 gnome-doc-utils.make		\
-		 gtk-doc.make			\
 		 po/.intltool-merge-cache	\
 		 $(NULL)
 
@@ -55,6 +54,7 @@ MAINTAINERCLEANFILES =				\
 	build-aux/missing			\
 	build-aux/mkinstalldirs			\
 	po/Makefile.in.in			\
+	gtk-doc.make				\
 	$(NULL)
 
 # Generate the ChangeLog file (with all entries since the switch to git)
