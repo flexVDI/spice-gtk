@@ -79,8 +79,8 @@ struct spice_connection {
     SpiceGtkSession  *gtk_session;
     spice_window     *wins[4];
     SpiceAudio       *audio;
-    char             *mouse_state;
-    char             *agent_state;
+    const char       *mouse_state;
+    const char       *agent_state;
     gboolean         agent_connected;
     int              channels;
     int              disconnecting;
@@ -515,9 +515,9 @@ static void menu_cb_about(GtkAction *action, void *data)
 {
     char *comments = _("gtk test client app for the\n"
         "spice remote desktop protocol");
-    static char *copyright = "(c) 2010 Red Hat";
-    static char *website = "http://www.spice-space.org";
-    static char *authors[] = { "Gerd Hoffmann <kraxel@redhat.com>",
+    static const char *copyright = "(c) 2010 Red Hat";
+    static const char *website = "http://www.spice-space.org";
+    static const char *authors[] = { "Gerd Hoffmann <kraxel@redhat.com>",
                                "Marc-André Lureau <marcandre.lureau@redhat.com>",
                                NULL };
     struct spice_window *win = data;
@@ -1302,9 +1302,9 @@ static void recent_add(SpiceSession *session)
 {
     GtkRecentManager *recent;
     GtkRecentData meta = {
-        .mime_type    = "application/x-spice",
-        .app_name     = "spicy",
-        .app_exec     = "spicy --uri=%u",
+        .mime_type    = (char*)"application/x-spice",
+        .app_name     = (char*)"spicy",
+        .app_exec     = (char*)"spicy --uri=%u",
     };
     char *uri;
 

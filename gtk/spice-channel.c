@@ -530,7 +530,7 @@ void *spice_msg_in_raw(SpiceMsgIn *in, int *len)
     return in->data;
 }
 
-static void hexdump(char *prefix, unsigned char *data, int len)
+static void hexdump(const char *prefix, unsigned char *data, int len)
 {
     int i;
 
