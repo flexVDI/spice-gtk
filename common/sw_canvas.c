@@ -1278,7 +1278,7 @@ SpiceCanvas *canvas_create_for_data(int width, int height, uint32_t format,
                                 );
 }
 
-void sw_canvas_init() //unsafe global function
+void sw_canvas_init(void) //unsafe global function
 {
     if (!need_init) {
         return;

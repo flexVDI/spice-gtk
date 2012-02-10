@@ -150,7 +150,7 @@ out:
     return ret;
 }
 
-static void cleanup()
+static void cleanup(void)
 {
     if (polkit_cancellable)
         g_cancellable_cancel(polkit_cancellable);

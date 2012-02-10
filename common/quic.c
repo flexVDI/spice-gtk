@@ -246,7 +246,7 @@ static const unsigned int tabrand_chaos[TABRAND_TABSIZE] = {
     0x81474925, 0xa8b6c7ad, 0xee5931de, 0xb2f8158d, 0x59fb7409, 0x2e3dfaed, 0x9af25a3f, 0xe1fed4d5,
 };
 
-static unsigned int stabrand()
+static unsigned int stabrand(void)
 {
     //ASSERT( !(TABRAND_SEEDMASK & TABRAND_TABSIZE));
     //ASSERT( TABRAND_SEEDMASK + 1 == TABRAND_TABSIZE );
@@ -530,7 +530,7 @@ static int J[MELCSTATES] = {
 };
 
 /* creates the bit counting look-up table. */
-static void init_zeroLUT()
+static void init_zeroLUT(void)
 {
     int i, j, k, l;
 
@@ -1690,7 +1690,7 @@ void quic_destroy(QuicContext *quic)
     encoder->usr->free(encoder->usr, encoder);
 }
 
-void quic_init()
+void quic_init(void)
 {
     if (!need_init) {
         return;

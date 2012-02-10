@@ -38,7 +38,7 @@ typedef void (*rop3_with_pattern_handler_t)(pixman_image_t *d, pixman_image_t *s
 typedef void (*rop3_with_color_handler_t)(pixman_image_t *d, pixman_image_t *s,
                                           SpicePoint *src_pos, uint32_t rgb);
 
-typedef void (*rop3_test_handler_t)();
+typedef void (*rop3_test_handler_t)(void);
 
 #define ROP3_NUM_OPS 256
 
@@ -63,7 +63,7 @@ static void default_rop3_withe_color_handler(pixman_image_t *d, pixman_image_t *
     WARN("not implemented 0x%x");
 }
 
-static void default_rop3_test_handler()
+static void default_rop3_test_handler(void)
 {
 }
 
@@ -134,7 +134,7 @@ static void rop3_handle_c##depth##_##name(pixman_image_t *d, pixman_image_t *s, 
     }                                                                                           \
 }                                                                                               \
                                                                                                 \
-static void rop3_test##depth##_##name()                                                         \
+static void rop3_test##depth##_##name(void)                                                     \
 {                                                                                               \
     uint8_t d = 0xaa;                                                                           \
     uint8_t s = 0xcc;                                                                           \
@@ -381,7 +381,7 @@ ROP3_HANDLERS(DPSoo, *src | *pat | *dest, 0xfe);
     rop3_test_handlers_32[index] = rop3_test32_##op;             \
     rop3_test_handlers_16[index] = rop3_test16_##op;
 
-void rop3_init()
+void rop3_init(void)
 {
     static int need_init = 1;
     int i;
