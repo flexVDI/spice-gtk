@@ -204,7 +204,6 @@ static void session_enable_audio(GObject *gobject, GParamSpec *pspec,
  * Returns: a new #SpiceAudio instance or %NULL if no backend or failed.
  * Deprecated: 0.8: Use spice_audio_get() instead
  **/
-G_GNUC_DEPRECATED_FOR(spice_audio_get)
 SpiceAudio *spice_audio_new(SpiceSession *session, GMainContext *context,
                             const char *name)
 {

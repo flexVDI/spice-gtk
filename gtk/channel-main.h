@@ -73,9 +73,13 @@ void spice_main_set_display(SpiceMainChannel *channel, int id,
 void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled);
 gboolean spice_main_send_monitor_config(SpiceMainChannel *channel);
 
+SPICE_DEPRECATED_FOR(spice_main_clipboard_selection_grab)
 void spice_main_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int ntypes);
+SPICE_DEPRECATED_FOR(spice_main_clipboard_selection_release)
 void spice_main_clipboard_release(SpiceMainChannel *channel);
+SPICE_DEPRECATED_FOR(spice_main_clipboard_selection_notify)
 void spice_main_clipboard_notify(SpiceMainChannel *channel, guint32 type, const guchar *data, size_t size);
+SPICE_DEPRECATED_FOR(spice_main_clipboard_selection_request)
 void spice_main_clipboard_request(SpiceMainChannel *channel, guint32 type);
 
 void spice_main_clipboard_selection_grab(SpiceMainChannel *channel, guint selection, guint32 *types, int ntypes);

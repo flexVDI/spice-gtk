@@ -72,7 +72,9 @@ GType	        spice_display_get_type(void);
 
 SpiceDisplay* spice_display_new(SpiceSession *session, int id);
 void spice_display_mouse_ungrab(SpiceDisplay *display);
+SPICE_DEPRECATED_FOR(spice_gtk_session_copy_to_guest)
 void spice_display_copy_to_guest(SpiceDisplay *display);
+SPICE_DEPRECATED_FOR(spice_gtk_session_paste_from_guest)
 void spice_display_paste_from_guest(SpiceDisplay *display);
 void spice_display_set_grab_keys(SpiceDisplay *display, SpiceGrabSequence *seq);
 SpiceGrabSequence *spice_display_get_grab_keys(SpiceDisplay *display);

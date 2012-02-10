@@ -39,6 +39,13 @@ gulong spice_g_signal_connect_object(gpointer instance,
 
 #define SPICE_RESERVED_PADDING 44
 
+#ifndef SPICE_NO_DEPRECATED
+#define SPICE_DEPRECATED_FOR(f) \
+    G_GNUC_DEPRECATED_FOR(f)
+#else
+#define SPICE_DEPRECATED_FOR(f)
+#endif
+
 G_END_DECLS
 
 #endif /* SPICE_UTIL_H */
