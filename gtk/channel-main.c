@@ -777,7 +777,7 @@ static void agent_msg_queue(SpiceMainChannel *channel, int type, int size, void 
     SpiceMainChannelPrivate *c = channel->priv;
     SpiceMsgOut *out;
     VDAgentMessage msg;
-    void *payload;
+    guint8 *payload;
     guint32 paysize;
     guint8 *d = data;
 
