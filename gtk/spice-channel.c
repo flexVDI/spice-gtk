@@ -21,6 +21,7 @@
 #include "spice-channel-priv.h"
 #include "spice-session-priv.h"
 #include "spice-marshal.h"
+#include "bio-gsocket.h"
 
 #include <openssl/rsa.h>
 #include <openssl/evp.h>
@@ -2156,12 +2157,10 @@ reconnect:
             g_critical("SSL_new failed");
             goto cleanup;
         }
-        rc = SSL_set_fd(c->ssl, g_socket_get_fd(c->sock));
-        if (rc <= 0) {
-            g_critical("SSL_set_fd failed");
-            goto cleanup;
-        }
 
+
+        BIO *bio = bio_new_gsocket(c->sock);
+        SSL_set_bio(c->ssl, bio, bio);
 
         {
             guint8 *pubkey;
