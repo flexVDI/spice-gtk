@@ -2091,12 +2091,13 @@ static void *spice_channel_coroutine(void *data)
             goto cleanup;
         }
 
-	if (!(c->sock = g_socket_new_from_fd(c->fd, NULL))) {
-		SPICE_DEBUG("Failed to open socket from fd %d", c->fd);
-		return FALSE;
-	}
+        if (!(c->sock = g_socket_new_from_fd(c->fd, NULL))) {
+                SPICE_DEBUG("Failed to open socket from fd %d", c->fd);
+                return FALSE;
+        }
 
-	g_socket_set_blocking(c->sock, FALSE);
+        g_socket_set_blocking(c->sock, FALSE);
+        g_socket_set_keepalive(c->sock, TRUE);
         goto connected;
     }
 

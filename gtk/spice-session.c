@@ -1417,6 +1417,8 @@ static GSocket *channel_connect_socket(SpiceChannel *channel,
         return NULL;
 
     g_socket_set_blocking(sock, FALSE);
+    g_socket_set_keepalive(sock, TRUE);
+
     if (!g_socket_connect(sock, sockaddr, NULL, error)) {
         if (*error && (*error)->code == G_IO_ERROR_PENDING) {
             g_clear_error(error);
