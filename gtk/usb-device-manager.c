@@ -466,8 +466,14 @@ static void channel_new(SpiceSession *session, SpiceChannel *channel,
 {
     SpiceUsbDeviceManager *self = user_data;
 
-    if (SPICE_IS_USBREDIR_CHANNEL(channel))
+    if (SPICE_IS_USBREDIR_CHANNEL(channel)) {
+#ifdef USE_USBREDIR
+        spice_usbredir_channel_set_context(SPICE_USBREDIR_CHANNEL(channel),
+                                           self->priv->context);
+        spice_channel_connect(channel);
+#endif
         g_ptr_array_add(self->priv->channels, channel);
+    }
 }
 
 static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
@@ -612,7 +618,7 @@ static void spice_usb_device_manager_channel_connect_cb(
     GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT(user_data);
     GError *err = NULL;
 
-    spice_usbredir_channel_connect_finish(channel, channel_res, &err);
+    spice_usbredir_channel_connect_device_finish(channel, channel_res, &err);
     if (err) {
         g_simple_async_result_take_error(result, err);
     }
@@ -815,8 +821,7 @@ void spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
         if (spice_usbredir_channel_get_device(channel))
             continue; /* Skip already used channels */
 
-        spice_usbredir_channel_connect_async(channel,
-                                 priv->context,
+        spice_usbredir_channel_connect_device_async(channel,
                                  (libusb_device *)device,
                                  cancellable,
                                  spice_usb_device_manager_channel_connect_cb,
@@ -870,7 +875,7 @@ void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
 
     channel = spice_usb_device_manager_get_channel_for_dev(self, device);
     if (channel)
-        spice_usbredir_channel_disconnect(channel);
+        spice_usbredir_channel_disconnect_device(channel);
 #endif
 }
 

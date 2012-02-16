@@ -2549,6 +2549,15 @@ SpiceSession* spice_channel_get_session(SpiceChannel *channel)
 }
 
 G_GNUC_INTERNAL
+enum spice_channel_state spice_channel_get_state(SpiceChannel *channel)
+{
+    g_return_val_if_fail(SPICE_IS_CHANNEL(channel),
+                         SPICE_CHANNEL_STATE_UNCONNECTED);
+
+    return channel->priv->state;
+}
+
+G_GNUC_INTERNAL
 void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap)
 {
     SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);

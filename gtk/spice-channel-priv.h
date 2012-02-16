@@ -157,6 +157,7 @@ void spice_channel_up(SpiceChannel *channel);
 void spice_channel_wakeup(SpiceChannel *channel, gboolean cancel);
 
 SpiceSession* spice_channel_get_session(SpiceChannel *channel);
+enum spice_channel_state spice_channel_get_state(SpiceChannel *channel);
 
 /* coroutine context */
 typedef void (*handler_msg_in)(SpiceChannel *channel, SpiceMsgIn *msg, gpointer data);

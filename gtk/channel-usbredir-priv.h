@@ -26,17 +26,26 @@
 
 G_BEGIN_DECLS
 
-void spice_usbredir_channel_connect_async(SpiceUsbredirChannel *channel,
-                                          libusb_context       *context,
-                                          libusb_device        *device,
-                                          GCancellable         *cancellable,
-                                          GAsyncReadyCallback   callback,
-                                          gpointer              user_data);
-gboolean spice_usbredir_channel_connect_finish(SpiceUsbredirChannel *channel,
-                                               GAsyncResult         *res,
-                                               GError              **err);
+/* Note: this must be called before calling any other functions, and the
+   context should not be destroyed before the last device has been
+   disconnected */
+void spice_usbredir_channel_set_context(SpiceUsbredirChannel *channel,
+                                        libusb_context       *context);
 
-void spice_usbredir_channel_disconnect(SpiceUsbredirChannel *channel);
+/* Note the context must be set, and the channel must be brought up
+   (through spice_channel_connect()), before calling this. */
+void spice_usbredir_channel_connect_device_async(
+                                        SpiceUsbredirChannel *channel,
+                                        libusb_device        *device,
+                                        GCancellable         *cancellable,
+                                        GAsyncReadyCallback   callback,
+                                        gpointer              user_data);
+gboolean spice_usbredir_channel_connect_device_finish(
+                                        SpiceUsbredirChannel *channel,
+                                        GAsyncResult         *res,
+                                        GError              **err);
+
+void spice_usbredir_channel_disconnect_device(SpiceUsbredirChannel *channel);
 
 libusb_device *spice_usbredir_channel_get_device(SpiceUsbredirChannel *channel);
 
