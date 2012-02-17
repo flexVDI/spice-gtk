@@ -60,6 +60,8 @@ namespace SpiceProtocol {
 			SHOW,
 			HIDE,
 
+			ENABLE_SMARTCARD,
+
 			//spice client -> extrenal app
 			MENU_ITEM_CLICK,
 		}

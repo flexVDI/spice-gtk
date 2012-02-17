@@ -39,6 +39,7 @@ public class Controller: Object {
 	public string[] secure_channels { private set; get; }
 	public string[] disable_channels { private set; get; }
 	public SpiceCtrl.Menu? menu  { private set; get; }
+	public bool enable_smartcard { private set; get; }
 
 	public signal void do_connect ();
 	public signal void show ();
@@ -118,6 +119,9 @@ public class Controller: Object {
 			break;
 		case SpiceProtocol.Controller.MsgId.SET_TITLE:
 			title = str;
+			break;
+		case SpiceProtocol.Controller.MsgId.ENABLE_SMARTCARD:
+			enable_smartcard = (bool)v.value;
 			break;
 
 		case SpiceProtocol.Controller.MsgId.CREATE_MENU:
