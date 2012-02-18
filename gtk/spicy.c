@@ -419,6 +419,11 @@ static void menu_cb_remove_smartcard(GtkAction *action, void *data)
 #endif
 
 #ifdef USE_USBREDIR
+static void remove_cb(GtkContainer *container, GtkWidget *widget, void *data)
+{
+    gtk_window_resize(GTK_WINDOW(data), 1, 1);
+}
+
 static void menu_cb_select_usb_devices(GtkAction *action, void *data)
 {
     GtkWidget *dialog, *area, *usb_device_widget;
@@ -439,6 +444,10 @@ static void menu_cb_select_usb_devices(GtkAction *action, void *data)
     g_signal_connect(usb_device_widget, "connect-failed",
                      G_CALLBACK(usb_connect_failed), NULL);
     gtk_box_pack_start(GTK_BOX(area), usb_device_widget, TRUE, TRUE, 5);
+
+    /* This shrinks the dialog when USB devices are unplugged */
+    g_signal_connect(usb_device_widget, "remove",
+                     G_CALLBACK(remove_cb), dialog);
 
     /* show and run */
     gtk_widget_show_all(dialog);
