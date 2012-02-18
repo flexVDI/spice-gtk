@@ -45,6 +45,8 @@ static void device_added_cb(SpiceUsbDeviceManager *manager,
     SpiceUsbDevice *device, gpointer user_data);
 static void device_removed_cb(SpiceUsbDeviceManager *manager,
     SpiceUsbDevice *device, gpointer user_data);
+static void device_error_cb(SpiceUsbDeviceManager *manager,
+    SpiceUsbDevice *device, GError *err, gpointer user_data);
 
 /* ------------------------------------------------------------------ */
 /* gobject glue                                                       */
@@ -156,6 +158,8 @@ static GObject *spice_usb_device_widget_constructor(
                              G_CALLBACK(device_added_cb), self);
             g_signal_connect(priv->manager, "device-removed",
                              G_CALLBACK(device_removed_cb), self);
+            g_signal_connect(priv->manager, "device-error",
+                             G_CALLBACK(device_error_cb), self);
             devices = spice_usb_device_manager_get_devices(priv->manager);
         } else
             err_msg = err->message;
@@ -189,6 +193,8 @@ static void spice_usb_device_widget_finalize(GObject *object)
                                              device_added_cb, self);
         g_signal_handlers_disconnect_by_func(priv->manager,
                                              device_removed_cb, self);
+        g_signal_handlers_disconnect_by_func(priv->manager,
+                                             device_error_cb, self);
     }
     g_object_unref(priv->session);
     g_free(priv->device_format_string);
@@ -391,4 +397,19 @@ static void device_removed_cb(SpiceUsbDeviceManager *manager,
 
     gtk_container_foreach(GTK_CONTAINER(self),
                           destroy_widget_by_usb_device, device);
+}
+
+static void set_inactive_by_usb_device(GtkWidget *widget, gpointer user_data)
+{
+    if (g_object_get_data(G_OBJECT(widget), "usb-device") == user_data)
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), FALSE);
+}
+
+static void device_error_cb(SpiceUsbDeviceManager *manager,
+    SpiceUsbDevice *device, GError *err, gpointer user_data)
+{
+    SpiceUsbDeviceWidget *self = SPICE_USB_DEVICE_WIDGET(user_data);
+
+    gtk_container_foreach(GTK_CONTAINER(self),
+                          set_inactive_by_usb_device, device);
 }

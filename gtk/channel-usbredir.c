@@ -513,6 +513,42 @@ static void usbredir_free_lock(void *user_data) {
 }
 
 /* --------------------------------------------------------------------- */
+
+/* Events to be handled in main context */
+enum {
+    DEVICE_ERROR,
+};
+
+struct DEVICE_ERROR {
+    libusb_device *device;
+    GError *error;
+};
+
+/* main context */
+static void do_emit_main_context(GObject *object, int event, gpointer params)
+{
+    SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(object);
+    SpiceUsbredirChannelPrivate *priv = channel->priv;
+
+    switch (event) {
+    case DEVICE_ERROR: {
+        struct DEVICE_ERROR *p = params;
+        /* Check that the device has not changed before we manage to run */
+        if (p->device == priv->device) {
+            spice_usbredir_channel_disconnect_device(channel);
+            spice_usb_device_manager_device_error(
+                spice_usb_device_manager_get(
+                    spice_channel_get_session(SPICE_CHANNEL(channel)), NULL),
+                (SpiceUsbDevice *)p->device, p->error);
+        }
+        break;
+    }
+    default:
+        g_warn_if_reached();
+    }
+}
+
+/* --------------------------------------------------------------------- */
 /* coroutine context                                                     */
 static void spice_usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *msg)
 {
@@ -544,7 +580,7 @@ static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
 {
     SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(c);
     SpiceUsbredirChannelPrivate *priv = channel->priv;
-    int size;
+    int r, size;
     uint8_t *buf;
 
     g_return_if_fail(priv->host != NULL);
@@ -556,7 +592,28 @@ static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
     priv->read_buf = buf;
     priv->read_buf_size = size;
 
-    usbredirhost_read_guest_data(priv->host);
+    r = usbredirhost_read_guest_data(priv->host);
+    if (r == usbredirhost_read_device_rejected) {
+        libusb_device *device = priv->device;
+        gchar *desc;
+        GError *err;
+
+        g_return_if_fail(device != NULL);
+
+        desc = spice_usb_device_get_description((SpiceUsbDevice *)device,
+                                                NULL);
+        err  = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                           "%s rejected by host", desc);
+        g_free(desc);
+
+        SPICE_DEBUG("%s", err->message);
+
+        g_boxed_copy(spice_usb_device_get_type(), device);
+        emit_main_context(channel, DEVICE_ERROR, device, err);
+        g_boxed_free(spice_usb_device_get_type(), device);
+
+        g_error_free(err);
+    }
 }
 
 #endif /* USE_USBREDIR */

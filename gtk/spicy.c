@@ -1573,6 +1573,8 @@ static spice_connection *connection_new(void)
     if (manager) {
         g_signal_connect(manager, "auto-connect-failed",
                          G_CALLBACK(usb_connect_failed), NULL);
+        g_signal_connect(manager, "device-error",
+                         G_CALLBACK(usb_connect_failed), NULL);
     }
 
     connections++;

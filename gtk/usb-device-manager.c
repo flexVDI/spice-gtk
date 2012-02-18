@@ -85,6 +85,7 @@ enum
     DEVICE_ADDED,
     DEVICE_REMOVED,
     AUTO_CONNECT_FAILED,
+    DEVICE_ERROR,
     LAST_SIGNAL,
 };
 
@@ -433,6 +434,28 @@ static void spice_usb_device_manager_class_init(SpiceUsbDeviceManagerClass *klas
                      SPICE_TYPE_USB_DEVICE,
                      G_TYPE_ERROR);
 
+    /**
+     * SpiceUsbDeviceManager::device-error:
+     * @manager: #SpiceUsbDeviceManager that emitted the signal
+     * @device:  #SpiceUsbDevice boxed object corresponding to the device which has an error
+     * @error:   #GError describing the error
+     *
+     * The #SpiceUsbDeviceManager::device-error signal is emitted whenever an
+     * error happens which causes a device to no longer be available to the
+     * guest.
+     **/
+    signals[DEVICE_ERROR] =
+        g_signal_new("device-error",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_FIRST,
+                     G_STRUCT_OFFSET(SpiceUsbDeviceManagerClass, device_error),
+                     NULL, NULL,
+                     g_cclosure_user_marshal_VOID__BOXED_BOXED,
+                     G_TYPE_NONE,
+                     2,
+                     SPICE_TYPE_USB_DEVICE,
+                     G_TYPE_ERROR);
+
     g_type_class_add_private(klass, sizeof(SpiceUsbDeviceManagerPrivate));
 }
 
@@ -681,6 +704,12 @@ void spice_usb_device_manager_stop_event_listening(
     priv->event_listeners--;
     if (priv->event_listeners == 0)
         priv->event_thread_run = FALSE;
+}
+
+void spice_usb_device_manager_device_error(
+    SpiceUsbDeviceManager *self, SpiceUsbDevice *device, GError *err)
+{
+    g_signal_emit(self, signals[DEVICE_ERROR], 0, device, err);
 }
 #endif
 

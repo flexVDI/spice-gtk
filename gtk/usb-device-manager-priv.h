@@ -31,6 +31,9 @@ gboolean spice_usb_device_manager_start_event_listening(
 void spice_usb_device_manager_stop_event_listening(
     SpiceUsbDeviceManager *manager);
 
+void spice_usb_device_manager_device_error(
+    SpiceUsbDeviceManager *manager, SpiceUsbDevice *device, GError *err);
+
 G_END_DECLS
 
 #endif /* __SPICE_USB_DEVICE_MANAGER_PRIV_H__ */
