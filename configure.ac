@@ -346,7 +346,7 @@ if test "x$enable_usbredir" = "xno"; then
   have_usbredir="no"
 else
   PKG_CHECK_MODULES([USBREDIR],
-                    [gudev-1.0 libusb-1.0 >= 1.0.9 libusbredirhost >= 0.3.4 libusbredirparser >= 0.3.4],
+                    [gudev-1.0 libusb-1.0 >= 1.0.9 libusbredirhost >= 0.4 libusbredirparser >= 0.4],
                     [have_usbredir=yes],
                     [have_usbredir=no])
   if test "x$have_usbredir" = "xno" && test "x$enable_usbredir" = "xyes"; then

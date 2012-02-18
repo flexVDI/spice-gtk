@@ -408,6 +408,22 @@ libusb_device *spice_usbredir_channel_get_device(SpiceUsbredirChannel *channel)
     return channel->priv->device;
 }
 
+G_GNUC_INTERNAL
+void spice_usbredir_channel_get_guest_filter(
+                          SpiceUsbredirChannel               *channel,
+                          const struct usbredirfilter_rule  **rules_ret,
+                          int                                *rules_count_ret)
+{
+    SpiceUsbredirChannelPrivate *priv = channel->priv;
+
+    g_return_if_fail(priv->host != NULL);
+
+    usbredirhost_get_guest_filter(priv->host, rules_ret, rules_count_ret);
+}
+
+/* ------------------------------------------------------------------ */
+/* callbacks (any context)                                            */
+
 /* Note that this function must be re-entrant safe, as it can get called
    from both the main thread as well as from the usb event handling thread */
 static void usbredir_write_flush_callback(void *user_data)
@@ -421,9 +437,6 @@ static void usbredir_write_flush_callback(void *user_data)
 
     usbredirhost_write_guest_data(priv->host);
 }
-
-/* ------------------------------------------------------------------ */
-/* callbacks (any context)                                            */
 
 static void usbredir_log(void *user_data, int level, const char *msg)
 {

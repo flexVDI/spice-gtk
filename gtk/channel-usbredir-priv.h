@@ -22,6 +22,7 @@
 #define __SPICE_CLIENT_USBREDIR_CHANNEL_PRIV_H__
 
 #include <libusb.h>
+#include <usbredirfilter.h>
 #include "spice-client.h"
 
 G_BEGIN_DECLS
@@ -48,6 +49,11 @@ gboolean spice_usbredir_channel_connect_device_finish(
 void spice_usbredir_channel_disconnect_device(SpiceUsbredirChannel *channel);
 
 libusb_device *spice_usbredir_channel_get_device(SpiceUsbredirChannel *channel);
+
+void spice_usbredir_channel_get_guest_filter(
+                          SpiceUsbredirChannel               *channel,
+                          const struct usbredirfilter_rule  **rules_ret,
+                          int                                *rules_count_ret);
 
 G_END_DECLS
 

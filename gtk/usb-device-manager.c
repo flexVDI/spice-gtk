@@ -921,8 +921,9 @@ spice_usb_device_manager_can_redirect_device(SpiceUsbDeviceManager  *self,
                                              GError                **err)
 {
 #ifdef USE_USBREDIR
+    const struct usbredirfilter_rule *guest_filter_rules = NULL;
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
-    int i;
+    int i, guest_filter_rules_count;
     gboolean enabled;
 
     g_return_val_if_fail(SPICE_IS_USB_DEVICE_MANAGER(self), FALSE);
@@ -945,6 +946,21 @@ spice_usb_device_manager_can_redirect_device(SpiceUsbDeviceManager  *self,
     /* Skip the other checks for already connected devices */
     if (spice_usb_device_manager_is_device_connected(self, device))
         return TRUE;
+
+    /* We assume all channels have the same filter, so we just take the
+       filter from the first channel */
+    spice_usbredir_channel_get_guest_filter(
+        g_ptr_array_index(priv->channels, 0),
+        &guest_filter_rules, &guest_filter_rules_count);
+
+    if (guest_filter_rules &&
+            usbredirhost_check_device_filter(
+                            guest_filter_rules, guest_filter_rules_count,
+                            (libusb_device *)device, 0) != 0) {
+        g_set_error_literal(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                            _("Some USB devices are blocked by host policy"));
+        return FALSE;
+    }
 
     /* Check if there are free channels */
     for (i = 0; i < priv->channels->len; i++) {
