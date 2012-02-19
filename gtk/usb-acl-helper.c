@@ -87,6 +87,13 @@ static void spice_usb_acl_helper_class_init(SpiceUsbAclHelperClass *klass)
 /* ------------------------------------------------------------------ */
 /* callbacks                                                          */
 
+static void async_result_set_cancelled(GSimpleAsyncResult *result)
+{
+    g_simple_async_result_set_error(result,
+                G_IO_ERROR, G_IO_ERROR_CANCELLED,
+                "Setting USB device node ACL cancelled");
+}
+
 static gboolean cb_out_watch(GIOChannel    *channel,
                              GIOCondition   cond,
                              gpointer      *user_data)
@@ -111,6 +118,8 @@ static gboolean cb_out_watch(GIOChannel    *channel,
             string[strlen(string) - 1] = 0;
             if (!strcmp(string, "SUCCESS")) {
                 success = TRUE;
+            } else if (!strcmp(string, "CANCELED")) {
+                async_result_set_cancelled(priv->result);
             } else {
                 g_simple_async_result_set_error(priv->result,
                             SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
@@ -278,9 +287,7 @@ void spice_usb_acl_helper_close_acl(SpiceUsbAclHelper *self)
 
     /* If the acl open has not completed yet report it as cancelled */
     if (priv->result) {
-        g_simple_async_result_set_error(priv->result,
-                    G_IO_ERROR, G_IO_ERROR_CANCELLED,
-                    "Setting USB device node ACL cancelled");
+        async_result_set_cancelled(priv->result);
         g_simple_async_result_complete_in_idle(priv->result);
     }
 

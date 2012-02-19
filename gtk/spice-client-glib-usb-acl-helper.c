@@ -177,6 +177,11 @@ static void check_authorization_cb(PolkitAuthority *authority,
         return;
     }
 
+    if (polkit_authorization_result_get_dismissed(result)) {
+        ERROR("CANCELED\n");
+        return;
+    }
+
     if (!polkit_authorization_result_get_is_authorized(result)) {
         ERROR("Not authorized\n");
         return;
