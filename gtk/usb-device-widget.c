@@ -70,6 +70,7 @@ struct _SpiceUsbDeviceWidgetPrivate {
     SpiceSession *session;
     gchar *device_format_string;
     SpiceUsbDeviceManager *manager;
+    GtkWidget *info_bar;
 };
 
 static guint signals[LAST_SIGNAL] = { 0, };
@@ -118,6 +119,48 @@ static void spice_usb_device_widget_set_property(GObject       *gobject,
     }
 }
 
+static void spice_usb_device_widget_hide_info_bar(SpiceUsbDeviceWidget *self)
+{
+    SpiceUsbDeviceWidgetPrivate *priv = self->priv;
+
+    if (priv->info_bar) {
+        gtk_widget_destroy(priv->info_bar);
+        priv->info_bar = NULL;
+    }
+}
+
+static void
+spice_usb_device_widget_show_info_bar(SpiceUsbDeviceWidget *self,
+                                      const gchar          *message,
+                                      GtkMessageType        message_type,
+                                      const gchar          *stock_icon_id)
+{
+    SpiceUsbDeviceWidgetPrivate *priv = self->priv;
+    GtkWidget *info_bar, *content_area, *hbox, *widget;
+
+    spice_usb_device_widget_hide_info_bar(self);
+
+    info_bar = gtk_info_bar_new();
+    gtk_info_bar_set_message_type(GTK_INFO_BAR(info_bar), message_type);
+
+    content_area = gtk_info_bar_get_content_area(GTK_INFO_BAR(info_bar));
+    hbox = gtk_hbox_new(FALSE, 12);
+    gtk_container_add(GTK_CONTAINER(content_area), hbox);
+
+    widget = gtk_image_new_from_stock(stock_icon_id,
+                                      GTK_ICON_SIZE_SMALL_TOOLBAR);
+    gtk_box_pack_start(GTK_BOX(hbox), widget, FALSE, FALSE, 0);
+
+    widget = gtk_label_new(message);
+    gtk_box_pack_start(GTK_BOX(hbox), widget, TRUE, TRUE, 0);
+
+    priv->info_bar = gtk_alignment_new(0.0, 0.0, 1.0, 0.0);
+    gtk_alignment_set_padding(GTK_ALIGNMENT(priv->info_bar), 0, 0, 12, 0);
+    gtk_container_add(GTK_CONTAINER(priv->info_bar), info_bar);
+    gtk_box_pack_start(GTK_BOX(self), priv->info_bar, FALSE, FALSE, 0);
+    gtk_widget_show_all(priv->info_bar);
+}
+
 static GObject *spice_usb_device_widget_constructor(
     GType gtype, guint n_properties, GObjectConstructParam *properties)
 {
@@ -129,6 +172,7 @@ static GObject *spice_usb_device_widget_constructor(
     GError *err = NULL;
     GtkWidget *label;
     gboolean enabled;
+    gchar *str;
     int i;
 
     {
@@ -165,15 +209,20 @@ static GObject *spice_usb_device_widget_constructor(
             err_msg = err->message;
     }
 
+    label = gtk_label_new(NULL);
+    str = g_strdup_printf("<b>%s</b>", _("Select USB devices to redirect"));
+    gtk_label_set_markup(GTK_LABEL (label), str);
+    g_free(str);
+    gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.5);
+    gtk_box_pack_start(GTK_BOX(self), label, FALSE, FALSE, 0);
+
     if (err_msg) {
-        label = gtk_label_new(err_msg);
-        gtk_box_pack_start(GTK_BOX(self), label, TRUE, TRUE, 5);
+        spice_usb_device_widget_show_info_bar(self, err_msg,
+                                              GTK_MESSAGE_WARNING,
+                                              GTK_STOCK_DIALOG_WARNING);
         g_clear_error(&err);
         return obj;
     }
-
-    label = gtk_label_new(_("Select USB devices to redirect"));
-    gtk_box_pack_start(GTK_BOX(self), label, TRUE, TRUE, 5);
 
     for (i = 0; i < devices->len; i++)
         device_added_cb(NULL, g_ptr_array_index(devices, i), self);
@@ -286,11 +335,22 @@ GtkWidget *spice_usb_device_widget_new(SpiceSession    *session,
     return g_object_new(SPICE_TYPE_USB_DEVICE_WIDGET,
                         "session", session,
                         "device-format-string", device_format_string,
+                        "spacing", 6,
                         NULL);
 }
 
 /* ------------------------------------------------------------------ */
 /* callbacks                                                          */
+
+static SpiceUsbDevice *get_usb_device(GtkWidget *widget)
+{
+    if (!GTK_IS_ALIGNMENT(widget))
+        return NULL;
+
+    widget = gtk_bin_get_child(GTK_BIN(widget));
+    return g_object_get_data(G_OBJECT(widget), "usb-device");
+}
+
 typedef struct _connect_cb_data {
     GtkWidget *check;
     SpiceUsbDeviceWidget *self;
@@ -359,13 +419,13 @@ static void device_added_cb(SpiceUsbDeviceManager *manager,
 {
     SpiceUsbDeviceWidget *self = SPICE_USB_DEVICE_WIDGET(user_data);
     SpiceUsbDeviceWidgetPrivate *priv = self->priv;
-    GtkWidget *check;
+    GtkWidget *align, *check;
     gchar *desc;
 
     desc = spice_usb_device_get_description(device,
                                             priv->device_format_string);
-
     check = gtk_check_button_new_with_label(desc);
+    g_free(desc);
 
     if (spice_usb_device_manager_is_device_connected(priv->manager,
                                                      device))
@@ -378,15 +438,17 @@ static void device_added_cb(SpiceUsbDeviceManager *manager,
     g_signal_connect(G_OBJECT(check), "clicked",
                      G_CALLBACK(checkbox_clicked_cb), self);
 
-    gtk_box_pack_start(GTK_BOX(self), check, TRUE, TRUE, 5);
-    gtk_widget_show(check);
-
-    g_free(desc);
+    align = gtk_alignment_new(0, 0, 0, 0);
+    gtk_alignment_set_padding(GTK_ALIGNMENT(align), 0, 0, 12, 0);
+    gtk_container_add(GTK_CONTAINER(align), check);
+    gtk_box_pack_end(GTK_BOX(self), align, FALSE, FALSE, 0);
+    spice_usb_device_widget_update_status(self);
+    gtk_widget_show_all(align);
 }
 
 static void destroy_widget_by_usb_device(GtkWidget *widget, gpointer user_data)
 {
-    if (g_object_get_data(G_OBJECT(widget), "usb-device") == user_data)
+    if (get_usb_device(widget) == user_data)
         gtk_widget_destroy(widget);
 }
 
@@ -401,7 +463,7 @@ static void device_removed_cb(SpiceUsbDeviceManager *manager,
 
 static void set_inactive_by_usb_device(GtkWidget *widget, gpointer user_data)
 {
-    if (g_object_get_data(G_OBJECT(widget), "usb-device") == user_data)
+    if (get_usb_device(widget) == user_data)
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), FALSE);
 }
 
