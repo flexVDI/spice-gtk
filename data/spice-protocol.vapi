@@ -34,7 +34,7 @@ namespace SpiceProtocol {
 
 		[CCode (cprefix = "CONTROLLER_")]
 		public enum MsgId {
-			//extrenal app -> spice client
+			//external app -> spice client
 			HOST,
 			PORT,
 			SPORT,
@@ -62,7 +62,7 @@ namespace SpiceProtocol {
 
 			ENABLE_SMARTCARD,
 
-			//spice client -> extrenal app
+			//spice client -> external app
 			MENU_ITEM_CLICK,
 		}
 
@@ -107,4 +107,95 @@ namespace SpiceProtocol {
 			GRAYED,
 		}
 	}
+
+    [CCode (cprefix = "FrgMenu", cheader_filename = "spice/foreign_menu_prot.h")]
+    namespace ForeignMenu {
+        [CCode (cname = "FOREIGN_MENU_MAGIC")]
+        public const uint32 MAGIC;
+        [CCode (cname = "FOREIGN_MENU_VERSION")]
+        public const int VERSION;
+
+        [Compact]
+        public struct InitHeader {
+            uint32 magic;
+            uint32 version;
+            uint32 size;
+        }
+
+        [Compact]
+        [CCode (has_destroy_function = false)]
+        public struct Init {
+            InitHeader base;
+            uint64 credentials;
+            string title; // utf8
+        }
+
+        [Compact]
+        public struct Msg {
+            uint32 id;
+            uint32 size;
+        }
+
+        [CCode (cprefix = "FOREIGN_MENU_", cname = "int")]
+        public enum MsgId {
+            //external app -> spice client
+            SET_TITLE,
+            ADD_ITEM,
+            MODIFY_ITEM,
+            REMOVE_ITEM,
+            CLEAR,
+
+            //spice client -> external app
+            ITEM_EVENT,
+            APP_ACTIVATED,
+            APP_DEACTIVATED,
+        }
+
+        [Compact]
+        [CCode (cname = "FrgMenuSetTitle")]
+        public struct SetTitle {
+            Msg base;
+            string string; // utf8
+        }
+
+        [CCode (cprefix = "FOREIGN_MENU_ITEM_TYPE_", cname = "unsigned int", has_type_id = false)]
+        [Flags]
+        public enum MenuFlags {
+            CHECKED,
+            DIM,
+            SEPARATOR
+        }
+
+        [Compact]
+        [CCode (cname = "FrgMenuAddItem")]
+        public struct AddItem {
+            Msg base;
+            uint32 id;
+            uint32 type;
+            uint32 position;
+            string string; // utf8
+        }
+
+        [Compact]
+        [CCode (cname = "FrgMenuRmItem")]
+        public struct RmItem {
+            Msg base;
+            uint32 id;
+        }
+
+        [CCode (cprefix = "FOREIGN_MENU_EVENT_", cname = "int")]
+        public enum EventType {
+            CLICK,
+            CHECKED,
+            UNCHECKED,
+        }
+
+        [Compact]
+        [CCode (cname = "FrgMenuEvent")]
+        public struct Event {
+            Msg base;
+            uint32 id;
+            uint32 action;
+        }
+    }
 }

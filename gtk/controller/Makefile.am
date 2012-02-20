@@ -1,6 +1,11 @@
 NULL =
 
-AM_CPPFLAGS = $(GIO_CFLAGS) $(PROTOCOL_CFLAGS)
+AM_CPPFLAGS =					\
+	-DG_LOG_DOMAIN=\"GSpiceController\"	\
+	$(GIO_CFLAGS)				\
+	$(PROTOCOL_CFLAGS)			\
+	$(NULL)
+
 # http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 AM_LDFLAGS =					\
 	-no-undefined				\
@@ -22,11 +27,14 @@ BUILT_SOURCES = controller.vala.stamp
 libspice_controller_la_VALASOURCES =		\
 	menu.vala				\
 	controller.vala				\
+	foreign-menu.vala			\
 	$(NULL)
 libspice_controller_la_SOURCES =		\
 	custom.h				\
 	spice-controller-listener.c		\
 	spice-controller-listener.h		\
+	spice-foreign-menu-listener.c		\
+	spice-foreign-menu-listener.h		\
 	$(libspice_controller_la_VALASOURCES:.vala=.c) \
 	$(NULL)
 
