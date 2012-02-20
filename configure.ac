@@ -343,7 +343,7 @@ AC_ARG_ENABLE([usbredir],
   [enable_usbredir="auto"])
 
 if test "x$enable_usbredir" = "xno"; then
-  AM_CONDITIONAL(WITH_USBREDIR, false)
+  have_usbredir="no"
 else
   PKG_CHECK_MODULES([USBREDIR],
                     [gudev-1.0 libusb-1.0 >= 1.0.9 libusbredirhost >= 0.3.4 libusbredirparser >= 0.3.4],
@@ -355,8 +355,8 @@ else
   if test "x$have_usbredir" = "xyes"; then
     AC_DEFINE(USE_USBREDIR, [1], [Define if supporting usbredir proxying])
   fi
-  AM_CONDITIONAL([WITH_USBREDIR], [test "x$have_usbredir" = "xyes"])
 fi
+AM_CONDITIONAL([WITH_USBREDIR], [test "x$have_usbredir" = "xyes"])
 
 AC_ARG_ENABLE([polkit],
   AS_HELP_STRING([--enable-polkit=@<:@auto/yes/no@:>@],
