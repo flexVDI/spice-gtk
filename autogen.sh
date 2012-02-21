@@ -5,6 +5,9 @@ set -e # exit on errors
 srcdir=`dirname $0`
 test -z "$srcdir" && srcdir=.
 
+git submodule init
+git submodule update
+
 gtkdocize
 autoreconf -v --force --install
 intltoolize -f

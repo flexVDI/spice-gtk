@@ -59,13 +59,15 @@ AM_CONDITIONAL([OS_WIN32],[test "$os_win32" = "yes"])
 AC_CHECK_HEADERS([sys/ipc.h sys/shm.h])
 AC_CHECK_HEADERS([sys/socket.h netinet/in.h arpa/inet.h])
 
-dnl =========================================================================
-dnl Chek optional features
-PKG_CHECK_MODULES(PROTOCOL, spice-protocol >= 0.10.2)
-AC_SUBST(PROTOCOL_CFLAGS)
-
 AC_CHECK_LIBM
 AC_SUBST(LIBM)
+
+AC_CONFIG_SUBDIRS([spice-protocol])
+PROTOCOL_CFLAGS='-I ${top_srcdir}/spice-protocol'
+AC_SUBST(PROTOCOL_CFLAGS)
+
+dnl =========================================================================
+dnl Chek optional features
 
 srcdir="$(dirname $0)"
 if test ! -e "$srcdir/gtk/generated_marshallers.c"; then

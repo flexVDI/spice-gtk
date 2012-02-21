@@ -2,6 +2,8 @@ ACLOCAL_AMFLAGS = -I m4
 NULL =
 
 SUBDIRS = common gtk po python_modules doc data
+DIST_SUBDIRS = spice-protocol vapi $(SUBDIRS)
+
 if HAVE_INTROSPECTION
 if WITH_VALA
 SUBDIRS += vapi
