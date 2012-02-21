@@ -212,7 +212,7 @@ static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
     return TRUE;
 #else
     g_set_error_literal(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
-                        "USB redirection support not compiled in");
+                        _("USB redirection support not compiled in"));
     return FALSE;
 #endif
 }
@@ -578,10 +578,17 @@ static void spice_usb_device_manager_add_dev(SpiceUsbDeviceManager  *self,
     g_ptr_array_add(priv->devices, device);
 
     if (priv->auto_connect) {
-        if (usbredirhost_check_device_filter(
-                priv->auto_conn_filter_rules,
-                priv->auto_conn_filter_rules_count,
-                device, 0) == 0)
+        gboolean can_redirect, auto_ok;
+
+        can_redirect = spice_usb_device_manager_can_redirect_device(
+                                        self, (SpiceUsbDevice *)device, NULL);
+
+        auto_ok = usbredirhost_check_device_filter(
+                            priv->auto_conn_filter_rules,
+                            priv->auto_conn_filter_rules_count,
+                            device, 0) == 0;
+
+        if (can_redirect && auto_ok)
             spice_usb_device_manager_connect_device_async(self,
                                    (SpiceUsbDevice *)device, NULL,
                                    spice_usb_device_manager_auto_connect_cb,
@@ -861,7 +868,7 @@ void spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
 
     g_simple_async_result_set_error(result,
                             SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
-                            "No free USB channel");
+                            _("No free USB channel"));
 #ifdef USE_USBREDIR
 done:
 #endif
@@ -905,6 +912,58 @@ void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
     channel = spice_usb_device_manager_get_channel_for_dev(self, device);
     if (channel)
         spice_usbredir_channel_disconnect_device(channel);
+#endif
+}
+
+gboolean
+spice_usb_device_manager_can_redirect_device(SpiceUsbDeviceManager  *self,
+                                             SpiceUsbDevice         *device,
+                                             GError                **err)
+{
+#ifdef USE_USBREDIR
+    SpiceUsbDeviceManagerPrivate *priv = self->priv;
+    int i;
+    gboolean enabled;
+
+    g_return_val_if_fail(SPICE_IS_USB_DEVICE_MANAGER(self), FALSE);
+    g_return_val_if_fail(device != NULL, FALSE);
+    g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
+
+    g_object_get(G_OBJECT(priv->session), "enable-usbredir", &enabled, NULL);
+    if (!enabled) {
+        g_set_error_literal(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                            _("USB redirection is disabled"));
+        return FALSE;
+    }
+
+    if (!priv->channels->len) {
+        g_set_error_literal(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                            _("The connected VM is not configured for USB redirection"));
+        return FALSE;
+    }
+
+    /* Skip the other checks for already connected devices */
+    if (spice_usb_device_manager_is_device_connected(self, device))
+        return TRUE;
+
+    /* Check if there are free channels */
+    for (i = 0; i < priv->channels->len; i++) {
+        SpiceUsbredirChannel *channel = g_ptr_array_index(priv->channels, i);
+
+        if (!spice_usbredir_channel_get_device(channel))
+            break;
+    }
+    if (i == priv->channels->len) {
+        g_set_error_literal(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                            _("There are no free USB channels"));
+        return FALSE;
+    }
+
+    return TRUE;
+#else
+    g_set_error_literal(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                        _("USB redirection support not compiled in"));
+    return FALSE;
 #endif
 }
 

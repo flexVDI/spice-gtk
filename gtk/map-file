@@ -85,6 +85,7 @@ spice_smartcard_reader_get_type;
 spice_smartcard_reader_is_software;
 spice_usb_device_get_description;
 spice_usb_device_get_type;
+spice_usb_device_manager_can_redirect_device;
 spice_usb_device_manager_connect_device_async;
 spice_usb_device_manager_connect_device_finish;
 spice_usb_device_manager_disconnect_device;

@@ -71,6 +71,7 @@ struct _SpiceUsbDeviceWidgetPrivate {
     gchar *device_format_string;
     SpiceUsbDeviceManager *manager;
     GtkWidget *info_bar;
+    gchar *err_msg;
 };
 
 static guint signals[LAST_SIGNAL] = { 0, };
@@ -167,11 +168,9 @@ static GObject *spice_usb_device_widget_constructor(
     GObject *obj;
     SpiceUsbDeviceWidget *self;
     SpiceUsbDeviceWidgetPrivate *priv;
-    const gchar *err_msg = NULL;
     GPtrArray *devices = NULL;
     GError *err = NULL;
     GtkWidget *label;
-    gboolean enabled;
     gchar *str;
     int i;
 
@@ -187,28 +186,6 @@ static GObject *spice_usb_device_widget_constructor(
     if (!priv->session)
         g_error("SpiceUsbDeviceWidget constructed without a session");
 
-    g_object_get(G_OBJECT(priv->session), "enable-usbredir", &enabled, NULL);
-    if (!enabled)
-        err_msg = _("USB redirection is disabled");
-
-    if (!err_msg && !spice_session_has_channel_type(priv->session,
-                                                    SPICE_CHANNEL_USBREDIR))
-        err_msg = _("The connected VM is not configured for USB redirection");
-
-    if (!err_msg) {
-        priv->manager = spice_usb_device_manager_get(priv->session, &err);
-        if (!err) {
-            g_signal_connect(priv->manager, "device-added",
-                             G_CALLBACK(device_added_cb), self);
-            g_signal_connect(priv->manager, "device-removed",
-                             G_CALLBACK(device_removed_cb), self);
-            g_signal_connect(priv->manager, "device-error",
-                             G_CALLBACK(device_error_cb), self);
-            devices = spice_usb_device_manager_get_devices(priv->manager);
-        } else
-            err_msg = err->message;
-    }
-
     label = gtk_label_new(NULL);
     str = g_strdup_printf("<b>%s</b>", _("Select USB devices to redirect"));
     gtk_label_set_markup(GTK_LABEL (label), str);
@@ -216,13 +193,23 @@ static GObject *spice_usb_device_widget_constructor(
     gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.5);
     gtk_box_pack_start(GTK_BOX(self), label, FALSE, FALSE, 0);
 
-    if (err_msg) {
-        spice_usb_device_widget_show_info_bar(self, err_msg,
+    priv->manager = spice_usb_device_manager_get(priv->session, &err);
+    if (err) {
+        spice_usb_device_widget_show_info_bar(self, err->message,
                                               GTK_MESSAGE_WARNING,
                                               GTK_STOCK_DIALOG_WARNING);
         g_clear_error(&err);
         return obj;
     }
+
+    g_signal_connect(priv->manager, "device-added",
+                     G_CALLBACK(device_added_cb), self);
+    g_signal_connect(priv->manager, "device-removed",
+                     G_CALLBACK(device_removed_cb), self);
+    g_signal_connect(priv->manager, "device-error",
+                     G_CALLBACK(device_error_cb), self);
+
+    devices = spice_usb_device_manager_get_devices(priv->manager);
 
     for (i = 0; i < devices->len; i++)
         device_added_cb(NULL, g_ptr_array_index(devices, i), self);
@@ -351,6 +338,60 @@ static SpiceUsbDevice *get_usb_device(GtkWidget *widget)
     return g_object_get_data(G_OBJECT(widget), "usb-device");
 }
 
+static void check_can_redirect(GtkWidget *widget, gpointer user_data)
+{
+    SpiceUsbDeviceWidget *self = SPICE_USB_DEVICE_WIDGET(user_data);
+    SpiceUsbDeviceWidgetPrivate *priv = self->priv;
+    SpiceUsbDevice *device;
+    gboolean can_redirect;
+    GError *err = NULL;
+
+    device = get_usb_device(widget);
+    if (!device)
+        return; /* Non device widget, ie the info_bar */
+
+    can_redirect = spice_usb_device_manager_can_redirect_device(priv->manager,
+                                                                device, &err);
+    gtk_widget_set_sensitive(widget, can_redirect);
+
+    /* If we can not redirect this device, append the error message to
+       err_msg, but only if it is *not* already there! */
+    if (!can_redirect) {
+        if (priv->err_msg) {
+            if (!strstr(priv->err_msg, err->message)) {
+                gchar *old_err_msg = priv->err_msg;
+
+                priv->err_msg = g_strdup_printf("%s\n%s", priv->err_msg,
+                                                err->message);
+                g_free(old_err_msg);
+            }
+        } else {
+            priv->err_msg = g_strdup(err->message);
+        }
+    }
+
+    g_clear_error(&err);
+}
+
+static gboolean spice_usb_device_widget_update_status(gpointer user_data)
+{
+    SpiceUsbDeviceWidget *self = SPICE_USB_DEVICE_WIDGET(user_data);
+    SpiceUsbDeviceWidgetPrivate *priv = self->priv;
+
+    gtk_container_foreach(GTK_CONTAINER(self), check_can_redirect, self);
+
+    if (priv->err_msg) {
+        spice_usb_device_widget_show_info_bar(self, priv->err_msg,
+                                              GTK_MESSAGE_INFO,
+                                              GTK_STOCK_DIALOG_WARNING);
+        g_free(priv->err_msg);
+        priv->err_msg = NULL;
+    } else {
+        spice_usb_device_widget_hide_info_bar(self);
+    }
+    return FALSE;
+}
+
 typedef struct _connect_cb_data {
     GtkWidget *check;
     SpiceUsbDeviceWidget *self;
@@ -379,6 +420,7 @@ static void connect_cb(GObject *gobject, GAsyncResult *res, gpointer user_data)
         g_error_free(err);
 
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(data->check), FALSE);
+        spice_usb_device_widget_update_status(self);
     }
 
     g_object_unref(data->check);
@@ -407,6 +449,7 @@ static void checkbox_clicked_cb(GtkWidget *check, gpointer user_data)
         spice_usb_device_manager_disconnect_device(priv->manager,
                                                    device);
     }
+    spice_usb_device_widget_update_status(self);
 }
 
 static void checkbox_usb_device_destroy_notify(gpointer data)
@@ -459,6 +502,8 @@ static void device_removed_cb(SpiceUsbDeviceManager *manager,
 
     gtk_container_foreach(GTK_CONTAINER(self),
                           destroy_widget_by_usb_device, device);
+
+    spice_usb_device_widget_update_status(self);
 }
 
 static void set_inactive_by_usb_device(GtkWidget *widget, gpointer user_data)
@@ -474,4 +519,6 @@ static void device_error_cb(SpiceUsbDeviceManager *manager,
 
     gtk_container_foreach(GTK_CONTAINER(self),
                           set_inactive_by_usb_device, device);
+
+    spice_usb_device_widget_update_status(self);
 }

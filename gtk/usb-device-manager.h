@@ -110,6 +110,11 @@ gboolean spice_usb_device_manager_connect_device_finish(
 void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *manager,
                                                 SpiceUsbDevice *device);
 
+gboolean
+spice_usb_device_manager_can_redirect_device(SpiceUsbDeviceManager  *self,
+                                             SpiceUsbDevice         *device,
+                                             GError                **err);
+
 G_END_DECLS
 
 #endif /* __SPICE_USB_DEVICE_MANAGER_H__ */
