@@ -155,5 +155,5 @@ void spice_set_session_option(SpiceSession *session)
     if (cache_size)
         g_object_set(session, "cache-size", cache_size, NULL);
     if (glz_window_size)
-        g_object_set(session, "glz_window_size", glz_window_size, NULL);
+        g_object_set(session, "glz-window-size", glz_window_size, NULL);
 }
