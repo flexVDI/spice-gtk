@@ -1,5 +1,18 @@
+v0.10
+=====
+
+- USB redir is now aware of host/guest side filtering
+- you can query spice_usb_device_manager_can_redirect_device()
+- fix the usbredir channel lifetime to be equal to session lifetime
+- set keepalive on channel socket
+- fix hangs on windows when using ssl chanels
+- add a SpiceDisplay::zoom-level to maintain a scaling ratio
+- add controller ENABLE_SMARTCARD option
+- remove a few warnings, ui improvements, build fixes
+
 v0.9
 ====
+
 - Add command line options for setting the cache size and the glz window size
 - Add a USB device selection widget to libspice-client-gtk
 - Various bug fixes and code improvements
