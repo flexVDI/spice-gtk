@@ -384,6 +384,8 @@ if test "x$have_usbredir" = "xyes" && test "x$enable_polkit" != "xno"; then
   # Check for polkit_authority_get_sync()
   AC_CHECK_LIB([polkit-gobject-1], [polkit_authority_get_sync], ac_have_pk_auth_get_sync="1", ac_have_pk_auth_get_sync="0")
   AC_DEFINE_UNQUOTED(HAVE_POLKIT_AUTHORITY_GET_SYNC, $ac_have_pk_auth_get_sync, [Define if you have a polkit with polkit_authority_get_sync()])
+  AC_CHECK_LIB([polkit-gobject-1], [polkit_authorization_result_get_dismissed], ac_have_pk_authorization_result_get_dismissed="1", ac_have_pk_authorization_result_get_dismissed="0")
+  AC_DEFINE_UNQUOTED(HAVE_POLKIT_AUTHORIZATION_RESULT_GET_DISMISSED, $ac_have_pk_authorization_result_get_dismissed, [Define if you have a polkit with polkit_authorization_result_get_dismissed()])
 else
   AM_CONDITIONAL(WITH_POLKIT, false)
 fi

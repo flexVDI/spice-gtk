@@ -161,6 +161,25 @@ static void cleanup()
     g_main_loop_quit(loop);
 }
 
+/* Not available in polkit < 0.101 */
+#if !HAVE_POLKIT_AUTHORIZATION_RESULT_GET_DISMISSED
+static gboolean
+polkit_authorization_result_get_dismissed(PolkitAuthorizationResult *result)
+{
+    gboolean ret;
+    PolkitDetails *details;
+
+    g_return_val_if_fail(POLKIT_IS_AUTHORIZATION_RESULT(result), FALSE);
+
+    ret = FALSE;
+    details = polkit_authorization_result_get_details(result);
+    if (details != NULL && polkit_details_lookup(details, "polkit.dismissed"))
+        ret = TRUE;
+
+    return ret;
+}
+#endif
+
 static void check_authorization_cb(PolkitAuthority *authority,
                                    GAsyncResult *res, gpointer data)
 {
