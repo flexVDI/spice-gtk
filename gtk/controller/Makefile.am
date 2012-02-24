@@ -20,7 +20,7 @@ AM_VALAFLAGS =							\
 	$(NULL)
 
 lib_LTLIBRARIES = libspice-controller.la
-noinst_PROGRAMS = test-controller
+noinst_PROGRAMS = test-controller spice-controller-dump
 
 BUILT_SOURCES = controller.vala.stamp
 
@@ -59,6 +59,9 @@ libspice_controllerinclude_HEADERS =		\
 
 test_controller_SOURCES = test.c
 test_controller_LDADD = libspice-controller.la
+
+spice_controller_dump_SOURCES = dump.c
+spice_controller_dump_LDADD = libspice-controller.la
 
 controller.vala.stamp: $(libspice_controller_la_VALASOURCES) custom.vapi
 	@if test -z "$(VALAC)"; then \
