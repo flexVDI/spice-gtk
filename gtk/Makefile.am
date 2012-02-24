@@ -102,7 +102,6 @@ SPICE_GTK_LIBADD_COMMON =		\
 	$(NULL)
 
 SPICE_GTK_SOURCES_COMMON =		\
-	glib-compat.c			\
 	glib-compat.h			\
 	spice-gtk-session.c		\
 	spice-gtk-session-priv.h	\
