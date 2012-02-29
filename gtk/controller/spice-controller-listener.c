@@ -63,7 +63,7 @@ spice_controller_listener_new (const gchar *address, GError **error)
     if (addr == NULL)
         addr = g_strdup (g_getenv ("SPICE_XPI_NAMEDPIPE"));
     if (addr == NULL)
-        addr = g_strdup_printf ("\\\\.\\pipe\\SpiceController-%lu", GetCurrentProcessId ());
+        addr = g_strdup_printf ("\\\\.\\pipe\\SpiceController-%" G_GUINT64_FORMAT, (guint64)GetCurrentProcessId ());
 #else
     if (addr == NULL)
         addr = g_strdup (g_getenv ("SPICE_XPI_SOCKET"));
@@ -142,8 +142,16 @@ spice_controller_listener_accept_finish (GObject *listener,
     g_return_val_if_fail(G_IS_OBJECT(listener), NULL);
 
 #ifdef G_OS_WIN32
-    spice_named_pipe_listener_accept_finish (SPICE_NAMED_PIPE_LISTENER (listener), result, source_object, error);
+    SpiceNamedPipeConnection *np;
+    np = spice_named_pipe_listener_accept_finish (SPICE_NAMED_PIPE_LISTENER (listener), result, source_object, error);
+    if (np)
+        return G_IO_STREAM (np);
 #else
-    g_socket_listener_accept_finish (G_SOCKET_LISTENER (listener), result, source_object, error);
+    GSocketConnection *socket;
+    socket = g_socket_listener_accept_finish (G_SOCKET_LISTENER (listener), result, source_object, error);
+    if (socket)
+        return G_IO_STREAM (socket);
 #endif
+
+    return NULL;
 }
