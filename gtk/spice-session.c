@@ -1042,11 +1042,14 @@ gboolean spice_session_connect(SpiceSession *session)
 /**
  * spice_session_open_fd:
  * @session:
- * @fd: a file descriptor
+ * @fd: a file descriptor (socket) or -1
  *
  * Open the session using the provided @fd socket file
  * descriptor. This is useful if you create the fd yourself, for
  * example to setup a SSH tunnel.
+ *
+ * If @fd is -1, a valid fd will be requested later via the
+ * SpiceChannel::open-fd signal.
  *
  * Returns:
  **/
@@ -1055,14 +1058,17 @@ gboolean spice_session_open_fd(SpiceSession *session, int fd)
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
 
     g_return_val_if_fail(s != NULL, FALSE);
-    g_return_val_if_fail(fd >= 0, FALSE);
+    g_return_val_if_fail(fd >= -1, FALSE);
 
     spice_session_disconnect(session);
+    s->disconnecting = FALSE;
 
     s->client_provided_sockets = TRUE;
 
     g_warn_if_fail(s->cmain == NULL);
     s->cmain = spice_channel_new(session, SPICE_CHANNEL_MAIN, 0);
+
+    glz_decoder_window_clear(s->glz_window);
     return spice_channel_open_fd(s->cmain, fd);
 }
 

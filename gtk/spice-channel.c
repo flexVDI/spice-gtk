@@ -2302,9 +2302,13 @@ gboolean spice_channel_connect(SpiceChannel *channel)
 /**
  * spice_channel_open_fd:
  * @channel:
- * @fd: a file descriptor (socket)
+ * @fd: a file descriptor (socket) or -1.
+ * request mechanism
  *
  * Connect the channel using @fd socket.
+ *
+ * If @fd is -1, a valid fd will be requested later via the
+ * SpiceChannel::open-fd signal.
  *
  * Returns: %TRUE on success.
  **/
@@ -2313,7 +2317,7 @@ gboolean spice_channel_open_fd(SpiceChannel *channel, int fd)
     SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
 
     g_return_val_if_fail(c != NULL, FALSE);
-    g_return_val_if_fail(fd >= 0, FALSE);
+    g_return_val_if_fail(fd >= -1, FALSE);
 
     c->fd = fd;
 
