@@ -20,6 +20,7 @@
 #include "spice-common.h"
 #include "spice-marshal.h"
 
+#include "spice-util-priv.h"
 #include "spice-channel-priv.h"
 #include "spice-session-priv.h"
 
@@ -161,6 +162,7 @@ static void spice_main_channel_init(SpiceMainChannel *channel)
     c->agent_msg_queue = g_queue_new();
 
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_MAIN_CAP_SEMI_SEAMLESS_MIGRATE);
+    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_MAIN_CAP_NAME_AND_UUID);
 }
 
 static void spice_main_get_property(GObject    *object,
@@ -1143,6 +1145,29 @@ static void main_handle_init(SpiceChannel *channel, SpiceMsgIn *in)
 }
 
 /* coroutine context */
+static void main_handle_name(SpiceChannel *channel, SpiceMsgIn *in)
+{
+    SpiceMsgMainName *name = spice_msg_in_parsed(in);
+    SpiceSession *session = spice_channel_get_session(channel);
+
+    SPICE_DEBUG("server name: %s", name->name);
+    spice_session_set_name(session, (const gchar *)name->name);
+}
+
+/* coroutine context */
+static void main_handle_uuid(SpiceChannel *channel, SpiceMsgIn *in)
+{
+    SpiceMsgMainUuid *uuid = spice_msg_in_parsed(in);
+    SpiceSession *session = spice_channel_get_session(channel);
+    gchar *uuid_str = spice_uuid_to_string(uuid->uuid);
+
+    SPICE_DEBUG("server uuid: %s", uuid_str);
+    spice_session_set_uuid(session, uuid->uuid);
+
+    g_free(uuid_str);
+}
+
+/* coroutine context */
 static void main_handle_mm_time(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceSession *session;
@@ -1669,6 +1694,8 @@ static void main_handle_migrate_cancel(SpiceChannel *channel,
 
 static const spice_msg_handler main_handlers[] = {
     [ SPICE_MSG_MAIN_INIT ]                = main_handle_init,
+    [ SPICE_MSG_MAIN_NAME ]                = main_handle_name,
+    [ SPICE_MSG_MAIN_UUID ]                = main_handle_uuid,
     [ SPICE_MSG_MAIN_CHANNELS_LIST ]       = main_handle_channels_list,
     [ SPICE_MSG_MAIN_MOUSE_MODE ]          = main_handle_mouse_mode,
     [ SPICE_MSG_MAIN_MULTI_MEDIA_TIME ]    = main_handle_mm_time,

@@ -103,6 +103,8 @@ enum {
     PROP_READ_ONLY,
     PROP_CACHE_SIZE,
     PROP_GLZ_WINDOW_SIZE,
+    PROP_UUID,
+    PROP_NAME,
 };
 
 /* signals */
@@ -416,6 +418,12 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_GLZ_WINDOW_SIZE:
         g_value_set_int(value, s->glz_window_size);
         break;
+    case PROP_NAME:
+        g_value_set_string(value, s->name);
+	break;
+    case PROP_UUID:
+        g_value_set_pointer(value, s->uuid);
+	break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -957,6 +965,33 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                           G_PARAM_READWRITE |
                           G_PARAM_STATIC_STRINGS));
 
+    /**
+     * SpiceSession:name:
+     *
+     * Spice server name.
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_NAME,
+         g_param_spec_string("name",
+                             "Name",
+                             "Spice server name",
+                             NULL,
+                             G_PARAM_READABLE |
+                             G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceSession:uuid:
+     *
+     * Spice server uuid.
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_UUID,
+         g_param_spec_pointer("uuid",
+                              "UUID",
+                              "Spice server uuid",
+                              G_PARAM_READABLE |
+                              G_PARAM_STATIC_STRINGS));
+
     g_type_class_add_private(klass, sizeof(SpiceSessionPrivate));
 }
 
@@ -1346,6 +1381,11 @@ void spice_session_disconnect(SpiceSession *session)
     }
 
     s->connection_id = 0;
+
+    g_free(s->name);
+    s->name = NULL;
+    memset(s->uuid, 0, sizeof(s->uuid));
+
     /* we leave disconnecting = TRUE, so that spice_channel_destroy()
        is not called multiple times on channels that are in pending
        destroy state. */
@@ -1739,4 +1779,27 @@ void spice_session_set_caches_hints(SpiceSession *session,
         s->glz_window_size = MIN(MAX_GLZ_WINDOW_SIZE_DEFAULT, pci_ram_size / 2);
         s->glz_window_size = MAX(MIN_GLZ_WINDOW_SIZE_DEFAULT, s->glz_window_size);
     }
+}
+
+G_GNUC_INTERNAL
+void spice_session_set_uuid(SpiceSession *session, guint8 uuid[16])
+{
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_if_fail(s != NULL);
+    memcpy(s->uuid, uuid, sizeof(s->uuid));
+
+    g_object_notify(G_OBJECT(session), "uuid");
+}
+
+G_GNUC_INTERNAL
+void spice_session_set_name(SpiceSession *session, const gchar *name)
+{
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_if_fail(s != NULL);
+    g_free(s->name);
+    s->name = g_strdup(name);
+
+    g_object_notify(G_OBJECT(session), "name");
 }

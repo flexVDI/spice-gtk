@@ -221,6 +221,15 @@ channel MainChannel : BaseChannel {
 
     Empty migrate_end;
 
+    message {
+       uint32 name_len;
+       uint8 name[name_len];
+    } name;
+
+    message {
+       uint8 uuid[16];
+    } uuid;
+
  client:
     message {
 	uint64 cache_size;

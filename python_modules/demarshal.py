@@ -664,7 +664,7 @@ def read_array_len(writer, prefix, array, dest, scope, is_ptr):
         nelements = "%s__array__nelements" % prefix
     else:
         nelements = "%s__nelements" % prefix
-    if dest.is_toplevel():
+    if dest.is_toplevel() and scope.variable_defined(nelements):
         return nelements # Already there for toplevel, need not recalculate
     element_type = array.element_type
     scope.variable_def("uint32_t", nelements)

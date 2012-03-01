@@ -156,6 +156,15 @@ typedef struct SpiceMsgChannels {
     SpiceChannelId channels[0];
 } SpiceMsgChannels;
 
+typedef struct SpiceMsgMainName {
+    uint32_t name_len;
+    uint8_t name[0];
+} SpiceMsgMainName;
+
+typedef struct SpiceMsgMainUuid {
+    uint8_t uuid[16];
+} SpiceMsgMainUuid;
+
 typedef struct SpiceMsgMainMouseMode {
     uint32_t supported_modes;
     uint32_t current_mode;

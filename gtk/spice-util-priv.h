@@ -22,7 +22,10 @@
 
 G_BEGIN_DECLS
 
+#define UUID_FMT "%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
+
 gboolean spice_strv_contains(const GStrv strv, const gchar *str);
+gchar* spice_uuid_to_string(const guint8 uuid[16]);
 
 G_END_DECLS
 
