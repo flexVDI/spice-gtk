@@ -678,26 +678,31 @@ static gboolean spice_channel_idle_wakeup(gpointer user_data)
 G_GNUC_INTERNAL
 void spice_msg_out_send(SpiceMsgOut *out)
 {
+    gboolean was_empty;
+
     g_return_if_fail(out != NULL);
     g_return_if_fail(out->channel != NULL);
 
     g_static_mutex_lock(&out->channel->priv->xmit_queue_lock);
-    if (!out->channel->priv->xmit_queue_blocked) {
-        gboolean was_empty;
-
-        was_empty = g_queue_is_empty(&out->channel->priv->xmit_queue);
-        g_queue_push_tail(&out->channel->priv->xmit_queue, out);
-
-        /* One wakeup is enough to empty the entire queue -> only do a wakeup
-           if the queue was empty, and there isn't one pending already. */
-        if (was_empty && !out->channel->priv->xmit_queue_wakeup_id) {
-            out->channel->priv->xmit_queue_wakeup_id =
-                /* Use g_timeout_add_full so that can specify the priority */
-                g_timeout_add_full(G_PRIORITY_HIGH, 0,
-                                   spice_channel_idle_wakeup,
-                                   out->channel, NULL);
-        }
+    if (out->channel->priv->xmit_queue_blocked) {
+        g_warning("message queue is blocked, dropping message");
+        goto end;
     }
+
+    was_empty = g_queue_is_empty(&out->channel->priv->xmit_queue);
+    g_queue_push_tail(&out->channel->priv->xmit_queue, out);
+
+    /* One wakeup is enough to empty the entire queue -> only do a wakeup
+       if the queue was empty, and there isn't one pending already. */
+    if (was_empty && !out->channel->priv->xmit_queue_wakeup_id) {
+        out->channel->priv->xmit_queue_wakeup_id =
+            /* Use g_timeout_add_full so that can specify the priority */
+            g_timeout_add_full(G_PRIORITY_HIGH, 0,
+                               spice_channel_idle_wakeup,
+                               out->channel, NULL);
+    }
+
+end:
     g_static_mutex_unlock(&out->channel->priv->xmit_queue_lock);
 }
 
