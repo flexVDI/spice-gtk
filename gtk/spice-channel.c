@@ -2578,49 +2578,32 @@ void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap)
     g_return_if_fail(s->session != NULL);
     g_return_if_fail(s->sock != NULL);
 
-    {
-        GSocket *sock = c->sock;
-        SSL_CTX *ctx = c->ctx;
-        SSL *ssl = c->ssl;
-        SpiceOpenSSLVerify *sslverify = c->sslverify;
-        uint64_t in_serial = c->in_serial;
-        uint64_t out_serial = c->out_serial;
-        gboolean use_mini_header = c->use_mini_header;
+#define SWAP(Field) ({                          \
+    typeof (c->Field) Field = c->Field;         \
+    c->Field = s->Field;                        \
+    s->Field = Field;                           \
+})
 
-        c->sock = s->sock;
-        c->ctx = s->ctx;
-        c->ssl = s->ssl;
-        c->sslverify = s->sslverify;
-        c->in_serial = s->in_serial;
-        c->out_serial = s->out_serial;
-        c->use_mini_header = s->use_mini_header;
-
-        s->sock = sock;
-        s->ctx = ctx;
-        s->ssl = ssl;
-        s->sslverify = sslverify;
-        s->in_serial = in_serial;
-        s->out_serial = out_serial;
-        s->use_mini_header = use_mini_header;
-    }
-
+    /* TODO: split channel in 2 objects: a controller and a swappable
+       state object */
+    SWAP(sock);
+    SWAP(ctx);
+    SWAP(ssl);
+    SWAP(sslverify);
+    SWAP(in_serial);
+    SWAP(out_serial);
+    SWAP(use_mini_header);
+    SWAP(xmit_queue);
+    SWAP(xmit_queue_blocked);
+    SWAP(caps);
+    SWAP(common_caps);
+    SWAP(remote_caps);
+    SWAP(remote_common_caps);
 #if HAVE_SASL
-    {
-        sasl_conn_t *sasl_conn = c->sasl_conn;
-        const char *sasl_decoded = c->sasl_decoded;
-        unsigned int sasl_decoded_length = c->sasl_decoded_length;
-        unsigned int sasl_decoded_offset = c->sasl_decoded_offset;
-
-        c->sasl_conn = s->sasl_conn;
-        c->sasl_decoded = s->sasl_decoded;
-        c->sasl_decoded_length = s->sasl_decoded_length;
-        c->sasl_decoded_offset = s->sasl_decoded_offset;
-
-        s->sasl_conn = sasl_conn;
-        s->sasl_decoded = sasl_decoded;
-        s->sasl_decoded_length = sasl_decoded_length;
-        s->sasl_decoded_offset = sasl_decoded_offset;
-    }
+    SWAP(sasl_conn);
+    SWAP(sasl_decoded);
+    SWAP(sasl_decoded_length);
+    SWAP(sasl_decoded_offset);
 #endif
 }
 
