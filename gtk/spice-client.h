@@ -58,6 +58,8 @@ G_BEGIN_DECLS
 typedef enum
 {
     SPICE_CLIENT_ERROR_FAILED,
+    SPICE_CLIENT_USB_DEVICE_REJECTED,
+    SPICE_CLIENT_USB_DEVICE_LOST,
 } SpiceClientError;
 
 GQuark spice_client_error_quark(void);

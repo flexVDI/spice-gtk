@@ -22,6 +22,7 @@
 #include "config.h"
 
 #ifdef USE_USBREDIR
+#include <glib/gi18n.h>
 #include <usbredirhost.h>
 #if USE_POLKIT
 #include "usb-acl-helper.h"
@@ -606,7 +607,7 @@ static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
     priv->read_buf_size = size;
 
     r = usbredirhost_read_guest_data(priv->host);
-    if (r == usbredirhost_read_device_rejected) {
+    if (r != 0) {
         libusb_device *device = priv->device;
         gchar *desc;
         GError *err;
@@ -615,8 +616,25 @@ static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
 
         desc = spice_usb_device_get_description((SpiceUsbDevice *)device,
                                                 NULL);
-        err  = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
-                           "%s rejected by host", desc);
+        switch (r) {
+        case usbredirhost_read_parse_error:
+            err = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                              _("usbredir protocol parse error for %s"), desc);
+            break;
+        case usbredirhost_read_device_rejected:
+            err = g_error_new(SPICE_CLIENT_ERROR,
+                              SPICE_CLIENT_USB_DEVICE_REJECTED,
+                              _("%s rejected by host"), desc);
+            break;
+        case usbredirhost_read_device_lost:
+            err = g_error_new(SPICE_CLIENT_ERROR,
+                              SPICE_CLIENT_USB_DEVICE_LOST,
+                              _("%s disconnected (fatal IO error)"), desc);
+            break;
+        default:
+            err = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                              _("Unknown error (%d) for %s"), r, desc);
+        }
         g_free(desc);
 
         SPICE_DEBUG("%s", err->message);
