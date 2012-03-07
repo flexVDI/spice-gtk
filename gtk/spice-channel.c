@@ -1618,8 +1618,7 @@ complete:
 error:
     if (saslconn)
         sasl_dispose(&saslconn);
-    if (!c->has_error)
-        emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_AUTH);
+    emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_AUTH);
     c->has_error = TRUE; /* force disconnect */
     return FALSE;
 }
