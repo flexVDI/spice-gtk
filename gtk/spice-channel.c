@@ -1437,7 +1437,7 @@ restart:
     /* Need to gather some credentials from the client */
     if (err == SASL_INTERACT) {
         if (!spice_channel_gather_sasl_credentials(channel, interact)) {
-            g_critical("Failed to collect auth credentials");
+            SPICE_DEBUG("Failed to collect auth credentials");
             goto error;
         }
         goto restart;
@@ -1518,7 +1518,7 @@ restart:
         if (err == SASL_INTERACT) {
             if (!spice_channel_gather_sasl_credentials(channel,
                                                        interact)) {
-                g_critical("%s", "Failed to collect auth credentials");
+                SPICE_DEBUG("%s", "Failed to collect auth credentials");
                 goto error;
             }
             goto restep;
