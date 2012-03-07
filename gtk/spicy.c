@@ -776,9 +776,7 @@ static const char *spice_display_properties[] = {
 
 static const char *spice_gtk_session_properties[] = {
     "auto-clipboard",
-#ifdef USE_USBREDIR
     "auto-usbredir",
-#endif
 };
 
 static const GtkToggleActionEntry tentries[] = {
@@ -807,12 +805,10 @@ static const GtkToggleActionEntry tentries[] = {
         .label       = N_("Automagic clipboard sharing between host and guest"),
         .callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
-#ifdef USE_USBREDIR
         .name        = "auto-usbredir",
         .label       = N_("Auto redirect newly plugged in USB devices"),
         .callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
-#endif
         .name        = "Statusbar",
         .label       = N_("Statusbar"),
         .callback    = G_CALLBACK(menu_cb_statusbar),
@@ -858,9 +854,7 @@ static char ui_xml[] =
 "      <menuitem action='scaling'/>\n"
 "      <menuitem action='disable-inputs'/>\n"
 "      <menuitem action='auto-clipboard'/>\n"
-#ifdef USE_USBREDIR
 "      <menuitem action='auto-usbredir'/>\n"
-#endif
 "    </menu>\n"
 "    <menu action='HelpMenu'>\n"
 "      <menuitem action='About'/>\n"
@@ -1281,6 +1275,11 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
         g_signal_connect(G_OBJECT(spice_smartcard_manager_get()), "card-removed",
                          (GCallback)card_removed_cb, win);
     }
+#endif
+
+#ifndef USE_USBREDIR
+    GtkAction *usbredir = gtk_action_group_get_action(win->ag, "auto-usbredir");
+    gtk_action_set_visible(usbredir, FALSE);
 #endif
 
     gtk_widget_grab_focus(win->spice);
