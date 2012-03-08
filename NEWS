@@ -1,3 +1,12 @@
+v0.11
+=====
+
+- Fix semi-seamless migration regression
+- Add Spice session UUID and name support
+- Add foreign menu support to controller library
+- Add a simple controller testing tool spice-controller-dump
+- Build fixes
+
 v0.10
 =====
 

@@ -13,3 +13,4 @@ gtk/spicy.c
 gtk/usb-device-manager.c
 gtk/usb-device-widget.c
 gtk/usbutil.c
+gtk/channel-usbredir.c

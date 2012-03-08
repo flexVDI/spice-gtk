@@ -155,7 +155,7 @@ nodist_libspice_client_gtkinclude_HEADERS =	\
 	$(NULL)
 
 libspice_client_glib_2_0_la_LDFLAGS =	\
-	-version-info 6:0:5		\
+	-version-info 7:0:6		\
 	-no-undefined			\
 	$(VERSION_LDFLAGS)		\
 	$(NULL)
