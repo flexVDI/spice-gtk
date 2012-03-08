@@ -940,6 +940,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
      *
      * Images cache size. If 0, don't set.
      *
+     * Since: 0.9
      **/
     g_object_class_install_property
         (gobject_class, PROP_CACHE_SIZE,
@@ -955,6 +956,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
      *
      * Glz window size. If 0, don't set.
      *
+     * Since: 0.9
      **/
     g_object_class_install_property
         (gobject_class, PROP_GLZ_WINDOW_SIZE,
@@ -969,6 +971,8 @@ static void spice_session_class_init(SpiceSessionClass *klass)
      * SpiceSession:name:
      *
      * Spice server name.
+     *
+     * Since: 0.11
      **/
     g_object_class_install_property
         (gobject_class, PROP_NAME,
@@ -983,6 +987,8 @@ static void spice_session_class_init(SpiceSessionClass *klass)
      * SpiceSession:uuid:
      *
      * Spice server uuid.
+     *
+     * Since: 0.11
      **/
     g_object_class_install_property
         (gobject_class, PROP_UUID,
