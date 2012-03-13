@@ -1629,6 +1629,7 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c;
     int rc, num_caps, i;
+    uint32_t *caps;
 
     g_return_if_fail(channel != NULL);
     g_return_if_fail(channel->priv != NULL);
@@ -1666,7 +1667,7 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
     /* see original spice/client code: */
     /* g_return_if_fail(c->peer_msg + c->peer_msg->caps_offset * sizeof(uint32_t) > c->peer_msg + c->peer_hdr.size); */
 
-    uint32_t *caps = (uint32_t *)((uint8_t *)c->peer_msg + c->peer_msg->caps_offset);
+    caps = (uint32_t *)((uint8_t *)c->peer_msg + c->peer_msg->caps_offset);
 
     g_array_set_size(c->remote_common_caps, c->peer_msg->num_common_caps);
     for (i = 0; i < c->peer_msg->num_common_caps; i++, caps++) {
