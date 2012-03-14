@@ -32,9 +32,8 @@
 #include "coroutine.h"
 #include "gio-coroutine.h"
 
-/* common/ */
-#include "marshallers.h"
-#include "demarshallers.h"
+#include "client_marshallers.h"
+#include "client_demarshallers.h"
 
 #include "ssl_verify.h"
 

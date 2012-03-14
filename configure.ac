@@ -25,6 +25,8 @@ GTK_DOC_CHECK([1.14],[--flavour no-tmpl])
 
 # Define default SPICE_COMMON_SRCDIR
 SPICE_COMMON_SRCDIR='$(top_srcdir)'/common
+# no opengl support yet
+AM_CONDITIONAL(SUPPORT_GL, false)
 
 AC_PROG_CC
 AC_PROG_CC_C99

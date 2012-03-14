@@ -61,8 +61,9 @@ SPICE_COMMON_CPPFLAGS = \
 	-DGTK_DISABLE_DEPRECATED        \
 	-DSW_CANVAS_CACHE		\
 	-DSPICE_GTK_LOCALEDIR=\"${SPICE_GTK_LOCALEDIR}\" \
-	-DPNP_IDS=\""$(PNP_IDS)"\"\
-	-DUSB_IDS=\""$(USB_IDS)"\"\
+	-DPNP_IDS=\""$(PNP_IDS)"\"      \
+	-DUSB_IDS=\""$(USB_IDS)"\"      \
+	-DSPICE_DISABLE_ABORT		\
 	\
 	-I$(COMMON_DIR)			\
 	\
@@ -233,6 +234,8 @@ libspice_client_glib_2_0_la_SOURCES =	\
 	decode-jpeg.c			\
 	decode-zlib.c			\
 	\
+	$(COMMON_DIR)/backtrace.c	\
+	$(COMMON_DIR)/backtrace.h	\
 	$(COMMON_DIR)/mem.c		\
 	$(COMMON_DIR)/mem.h		\
 	$(COMMON_DIR)/marshaller.c	\
@@ -249,6 +252,8 @@ libspice_client_glib_2_0_la_SOURCES =	\
 	$(COMMON_DIR)/rop3.h		\
 	$(COMMON_DIR)/quic.c		\
 	$(COMMON_DIR)/quic.h		\
+	$(COMMON_DIR)/log.c		\
+	$(COMMON_DIR)/log.h		\
 	$(COMMON_DIR)/lz.c		\
 	$(COMMON_DIR)/lz.h		\
 	$(COMMON_DIR)/region.c		\
@@ -503,10 +508,10 @@ generated_demarshallers1.c: $(top_srcdir)/spice1.proto
 	$(AM_V_GEN)$(PYTHON) $(top_srcdir)/spice_codegen.py --generate-demarshallers --client --include messages.h --prefix 1 --ptrsize 8 $< $@ >/dev/null
 
 generated_marshallers.c: $(top_srcdir)/spice.proto
-	$(AM_V_GEN)$(PYTHON) $(top_srcdir)/spice_codegen.py --generate-marshallers -P --include messages.h --include marshallers.h --client $< $@ >/dev/null
+	$(AM_V_GEN)$(PYTHON) $(top_srcdir)/spice_codegen.py --generate-marshallers -P --include messages.h --include client_marshallers.h --client $< $@ >/dev/null
 
 generated_marshallers1.c: $(top_srcdir)/spice1.proto
-	$(AM_V_GEN)$(PYTHON) $(top_srcdir)/spice_codegen.py --generate-marshallers -P --include messages.h --include marshallers.h --client --prefix 1 --ptrsize 8 $< $@ >/dev/null
+	$(AM_V_GEN)$(PYTHON) $(top_srcdir)/spice_codegen.py --generate-marshallers -P --include messages.h --include client_marshallers.h --client --prefix 1 --ptrsize 8 $< $@ >/dev/null
 
 vncdisplaykeymap.c: $(KEYMAPS)
 

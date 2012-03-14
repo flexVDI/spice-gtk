@@ -19,6 +19,7 @@
 # define SPICEGTK_DECODE_H_
 
 #include <glib.h>
+
 #include "canvas_base.h"
 
 G_BEGIN_DECLS
