@@ -22,7 +22,6 @@
 #include "config.h"
 
 #include <glib-object.h>
-#include <glib/gi18n.h>
 
 #include "glib-compat.h"
 
@@ -39,6 +38,8 @@
 #include "spice-client.h"
 #include "spice-marshal.h"
 #include "usb-device-manager-priv.h"
+
+#include <glib/gi18n.h>
 
 /**
  * SECTION:usb-device-manager
