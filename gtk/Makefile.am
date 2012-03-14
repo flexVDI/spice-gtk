@@ -543,7 +543,7 @@ if WITH_PYTHON
 pyexec_LTLIBRARIES = SpiceClientGtk.la
 
 SpiceClientGtk_la_LIBADD = libspice-client-gtk-2.0.la libspice-client-glib-2.0.la $(PYGTK_LIBS)
-SpiceClientGtk_la_CFLAGS = $(GTK_CFLAGS) $(PYTHON_INCLUDES) $(PYGTK_CFLAGS)
+SpiceClientGtk_la_CFLAGS = $(GTK_CFLAGS) $(PYTHON_INCLUDES) $(PYGTK_CFLAGS) $(WARN_PYFLAGS)
 SpiceClientGtk_la_LDFLAGS = -module -avoid-version -fPIC
 SpiceClientGtk_la_SOURCES = spice-client-gtk-module.c
 nodist_SpiceClientGtk_la_SOURCES = spice-client-gtk-module.defs.c
