@@ -45,7 +45,11 @@ typedef struct _SpiceUsbDeviceWidgetPrivate SpiceUsbDeviceWidgetPrivate;
  */
 struct _SpiceUsbDeviceWidget
 {
+#if GTK_CHECK_VERSION(3,0,0)
+    GtkBox parent;
+#else
     GtkVBox parent;
+#endif
 
     /*< private >*/
     SpiceUsbDeviceWidgetPrivate *priv;
@@ -61,7 +65,11 @@ struct _SpiceUsbDeviceWidget
  */
 struct _SpiceUsbDeviceWidgetClass
 {
+#if GTK_CHECK_VERSION(3,0,0)
+    GtkBoxClass parent_class;
+#else
     GtkVBoxClass parent_class;
+#endif
 
     /* signals */
     void (*connect_failed) (SpiceUsbDeviceWidget *widget,

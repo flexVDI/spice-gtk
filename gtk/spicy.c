@@ -1191,7 +1191,11 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
                      G_CALLBACK(grab_keys_pressed_cb), win);
 
     /* status line */
+#if GTK_CHECK_VERSION(3,0,0)
+    win->statusbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+#else
     win->statusbar = gtk_hbox_new(FALSE, 1);
+#endif
 
     win->status = gtk_label_new("status line");
     gtk_misc_set_alignment(GTK_MISC(win->status), 0, 0.5);
@@ -1211,7 +1215,11 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     }
 
     /* Make a vbox and put stuff in */
+#if GTK_CHECK_VERSION(3,0,0)
+    vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
+#else
     vbox = gtk_vbox_new(FALSE, 1);
+#endif
     gtk_container_set_border_width(GTK_CONTAINER(vbox), 0);
     gtk_container_add(GTK_CONTAINER(win->toplevel), vbox);
     gtk_box_pack_start(GTK_BOX(vbox), win->menubar, FALSE, FALSE, 0);

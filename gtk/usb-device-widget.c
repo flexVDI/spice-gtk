@@ -76,7 +76,12 @@ struct _SpiceUsbDeviceWidgetPrivate {
 
 static guint signals[LAST_SIGNAL] = { 0, };
 
+#if GTK_CHECK_VERSION(3,0,0)
+G_DEFINE_TYPE(SpiceUsbDeviceWidget, spice_usb_device_widget, GTK_TYPE_BOX);
+#else
 G_DEFINE_TYPE(SpiceUsbDeviceWidget, spice_usb_device_widget, GTK_TYPE_VBOX);
+#endif
+
 
 static void spice_usb_device_widget_get_property(GObject     *gobject,
                                                  guint        prop_id,
@@ -145,7 +150,11 @@ spice_usb_device_widget_show_info_bar(SpiceUsbDeviceWidget *self,
     gtk_info_bar_set_message_type(GTK_INFO_BAR(info_bar), message_type);
 
     content_area = gtk_info_bar_get_content_area(GTK_INFO_BAR(info_bar));
+#if GTK_CHECK_VERSION(3,0,0)
+    hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
+#else
     hbox = gtk_hbox_new(FALSE, 12);
+#endif
     gtk_container_add(GTK_CONTAINER(content_area), hbox);
 
     widget = gtk_image_new_from_stock(stock_icon_id,
@@ -320,6 +329,7 @@ GtkWidget *spice_usb_device_widget_new(SpiceSession    *session,
                                        const gchar     *device_format_string)
 {
     return g_object_new(SPICE_TYPE_USB_DEVICE_WIDGET,
+                        "orientation", GTK_ORIENTATION_VERTICAL,
                         "session", session,
                         "device-format-string", device_format_string,
                         "spacing", 6,
