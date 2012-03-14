@@ -505,7 +505,12 @@ static int usbredir_write_callback(void *user_data, uint8_t *data, int count)
 }
 
 static void *usbredir_alloc_lock(void) {
-    return g_mutex_new();
+    GMutex *mutex;
+
+    mutex = g_new0(GMutex, 1);
+    g_mutex_init(mutex);
+
+    return mutex;
 }
 
 static void usbredir_lock_lock(void *user_data) {
@@ -523,7 +528,8 @@ static void usbredir_unlock_lock(void *user_data) {
 static void usbredir_free_lock(void *user_data) {
     GMutex *mutex = user_data;
 
-    g_mutex_free(mutex);
+    g_mutex_clear(mutex);
+    g_free(mutex);
 }
 
 /* --------------------------------------------------------------------- */

@@ -1690,7 +1690,9 @@ int main(int argc, char *argv[])
     spice_connection *conn;
     gchar *conf_file, *conf;
 
+#if !GLIB_CHECK_VERSION(2,31,18)
     g_thread_init(NULL);
+#endif
     bindtextdomain(GETTEXT_PACKAGE, SPICE_GTK_LOCALEDIR);
     bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
     textdomain(GETTEXT_PACKAGE);
