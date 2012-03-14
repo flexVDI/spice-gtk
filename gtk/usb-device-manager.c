@@ -62,13 +62,6 @@
  */
 
 /* ------------------------------------------------------------------ */
-/* Prototypes for private functions */
-static void channel_new(SpiceSession *session, SpiceChannel *channel,
-                        gpointer user_data);
-static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
-                            gpointer user_data);
-
-/* ------------------------------------------------------------------ */
 /* gobject glue                                                       */
 
 #define SPICE_USB_DEVICE_MANAGER_GET_PRIVATE(obj)                                  \
@@ -109,6 +102,10 @@ struct _SpiceUsbDeviceManagerPrivate {
 };
 
 #ifdef USE_USBREDIR
+static void channel_new(SpiceSession *session, SpiceChannel *channel,
+                        gpointer user_data);
+static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
+                            gpointer user_data);
 static void spice_usb_device_manager_uevent_cb(GUdevClient     *client,
                                                const gchar     *action,
                                                GUdevDevice     *udevice,
@@ -148,11 +145,11 @@ static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
                                                     GCancellable  *cancellable,
                                                     GError        **err)
 {
-    GList *list;
-    GList *it;
     SpiceUsbDeviceManager *self;
     SpiceUsbDeviceManagerPrivate *priv;
 #ifdef USE_USBREDIR
+    GList *list;
+    GList *it;
     int rc;
     const gchar *const subsystems[] = {"usb", NULL};
 #endif
@@ -175,6 +172,18 @@ static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
         return FALSE;
     }
 
+#ifdef USE_USBREDIR
+    /* Initialize libusb */
+    rc = libusb_init(&priv->context);
+    if (rc < 0) {
+        const char *desc = spice_usbutil_libusb_strerror(rc);
+        g_warning("Error initializing USB support: %s [%i]", desc, rc);
+        g_set_error(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                    "Error initializing USB support: %s [%i]", desc, rc);
+        return FALSE;
+    }
+
+    /* Start listening for usb channels connect/disconnect */
     g_signal_connect(priv->session, "channel-new",
                      G_CALLBACK(channel_new), self);
     g_signal_connect(priv->session, "channel-destroy",
@@ -185,16 +194,7 @@ static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
     }
     g_list_free(list);
 
-#ifdef USE_USBREDIR
-    rc = libusb_init(&priv->context);
-    if (rc < 0) {
-        const char *desc = spice_usbutil_libusb_strerror(rc);
-        g_warning("Error initializing USB support: %s [%i]", desc, rc);
-        g_set_error(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
-                    "Error initializing USB support: %s [%i]", desc, rc);
-        return FALSE;
-    }
-
+    /* Start listening for usb devices plug / unplug */
     priv->udev = g_udev_client_new(subsystems);
     g_signal_connect(G_OBJECT(priv->udev), "uevent",
                      G_CALLBACK(spice_usb_device_manager_uevent_cb), self);
@@ -460,10 +460,11 @@ static void spice_usb_device_manager_class_init(SpiceUsbDeviceManagerClass *klas
     g_type_class_add_private(klass, sizeof(SpiceUsbDeviceManagerPrivate));
 }
 
+#ifdef USE_USBREDIR
+
 /* ------------------------------------------------------------------ */
 /* gudev / libusb Helper functions                                    */
 
-#ifdef USE_USBREDIR
 static gboolean spice_usb_device_manager_get_udev_bus_n_address(
     GUdevDevice *udev, int *bus, int *address)
 {
@@ -480,7 +481,6 @@ static gboolean spice_usb_device_manager_get_udev_bus_n_address(
 
     return *bus && *address;
 }
-#endif
 
 /* ------------------------------------------------------------------ */
 /* callbacks                                                          */
@@ -491,11 +491,9 @@ static void channel_new(SpiceSession *session, SpiceChannel *channel,
     SpiceUsbDeviceManager *self = user_data;
 
     if (SPICE_IS_USBREDIR_CHANNEL(channel)) {
-#ifdef USE_USBREDIR
         spice_usbredir_channel_set_context(SPICE_USBREDIR_CHANNEL(channel),
                                            self->priv->context);
         spice_channel_connect(channel);
-#endif
         g_ptr_array_add(self->priv->channels, channel);
     }
 }
@@ -509,7 +507,6 @@ static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
         g_ptr_array_remove(self->priv->channels, channel);
 }
 
-#ifdef USE_USBREDIR
 static void spice_usb_device_manager_auto_connect_cb(GObject      *gobject,
                                                      GAsyncResult *res,
                                                      gpointer      user_data)
