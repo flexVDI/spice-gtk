@@ -1863,7 +1863,7 @@ const gchar* spice_channel_type_to_string(gint type)
     };
     const char *str = NULL;
 
-    if (type >= 0 && type < sizeof(to_string)) {
+    if (type >= 0 && type < G_N_ELEMENTS(to_string)) {
         str = to_string[type];
     }
 
