@@ -81,9 +81,13 @@ AC_DEFUN([SPICE_COMPILE_WARNINGS],[
     # So we have -W enabled, and then have to explicitly turn off...
     gl_WARN_ADD([-Wno-sign-compare])
     gl_WARN_ADD([-Wno-unused-parameter])
+    gl_WARN_ADD([-Wno-missing-field-initializers])
     # We can't enable this due to horrible spice_usb_device_get_description
     # signature
     gl_WARN_ADD([-Wno-format-nonliteral])
+    # We use some deprecated functions to avoid #ifdef hell while maintaining
+    # compat with older gtk / glib versions
+    gl_WARN_ADD([-Wno-deprecated-declarations])
 
 
 
