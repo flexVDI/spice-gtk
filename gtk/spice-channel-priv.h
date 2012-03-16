@@ -29,6 +29,7 @@
 #include <sasl/sasl.h>
 #endif
 
+#include "spice-util-priv.h"
 #include "coroutine.h"
 #include "gio-coroutine.h"
 
@@ -100,7 +101,7 @@ struct _SpiceChannelPrivate {
 
     GQueue                      xmit_queue;
     gboolean                    xmit_queue_blocked;
-    GMutex                      xmit_queue_lock;
+    STATIC_MUTEX                xmit_queue_lock;
     guint                       xmit_queue_wakeup_id;
 
     char                        name[16];
