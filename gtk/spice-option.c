@@ -39,6 +39,7 @@ static gboolean disable_usbredir = FALSE;
 static gint cache_size = 0;
 static gint glz_window_size = 0;
 
+G_GNUC_NORETURN
 static void option_version(void)
 {
     g_print(PACKAGE_STRING "\n");
