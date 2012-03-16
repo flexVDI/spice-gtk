@@ -34,6 +34,13 @@ if test "x$ac_cv_prog_cc_c99" = xno; then
     AC_MSG_ERROR([C99 compiler is required.])
 fi
 
+
+AC_CHECK_PROG([STOW], [stow], [yes], [no])
+AS_IF([test "x$STOW" = "xyes" && test -d /usr/local/stow], [
+    AC_MSG_NOTICE([*** Found /usr/local/stow: default install prefix set to /usr/local/stow/${PACKAGE_NAME} ***])
+    ac_default_prefix="/usr/local/stow/${PACKAGE_NAME}"
+])
+
 AC_PROG_INSTALL
 AC_CANONICAL_HOST
 AC_PROG_LIBTOOL
