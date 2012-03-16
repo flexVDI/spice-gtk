@@ -838,7 +838,7 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
     for (i = 0; i < SPICE_N_ELEMENTS(c->display); i++) {
         if (!c->display[i].enabled)
             continue;
-        mon->monitors[j].depth  = 32;
+        mon->monitors[j].depth  = c->display_color_depth ? c->display_color_depth : 32;
         mon->monitors[j].width  = c->display[j].width;
         mon->monitors[j].height = c->display[j].height;
         mon->monitors[j].x = c->display[j].x;
