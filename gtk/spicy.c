@@ -40,9 +40,7 @@
 #include "spice-option.h"
 #include "usb-device-widget.h"
 
-/* config */
-static gboolean fullscreen = false;
-static gboolean version = false;
+typedef struct spice_connection spice_connection;
 
 enum {
     STATE_SCROLL_LOCK,
@@ -51,10 +49,18 @@ enum {
     STATE_MAX,
 };
 
-typedef struct spice_window spice_window;
-typedef struct spice_connection spice_connection;
+#define SPICE_TYPE_WINDOW                  (spice_window_get_type ())
+#define SPICE_WINDOW(obj)                  (G_TYPE_CHECK_INSTANCE_CAST ((obj), SPICE_TYPE_WINDOW, SpiceWindow))
+#define SPICE_IS_WINDOW(obj)               (G_TYPE_CHECK_INSTANCE_TYPE ((obj), SPICE_TYPE_WINDOW))
+#define SPICE_WINDOW_CLASS(klass)          (G_TYPE_CHECK_CLASS_CAST ((klass), SPICE_TYPE_WINDOW, SpiceWindowClass))
+#define SPICE_IS_WINDOW_CLASS(klass)       (G_TYPE_CHECK_CLASS_TYPE ((klass), SPICE_TYPE_WINDOW))
+#define SPICE_WINDOW_GET_CLASS(obj)        (G_TYPE_INSTANCE_GET_CLASS ((obj), SPICE_TYPE_WINDOW, SpiceWindowClass))
 
-struct spice_window {
+typedef struct _SpiceWindow SpiceWindow;
+typedef struct _SpiceWindowClass SpiceWindowClass;
+
+struct _SpiceWindow {
+    GObject          object;
     spice_connection *conn;
     int              id;
     GtkWidget        *toplevel, *spice;
@@ -74,10 +80,17 @@ struct spice_window {
     bool             enable_mnemonics_save;
 };
 
+struct _SpiceWindowClass
+{
+  GObjectClass parent_class;
+};
+
+G_DEFINE_TYPE (SpiceWindow, spice_window, G_TYPE_OBJECT);
+
 struct spice_connection {
     SpiceSession     *session;
     SpiceGtkSession  *gtk_session;
-    spice_window     *wins[4];
+    SpiceWindow     *wins[4];
     SpiceAudio       *audio;
     const char       *mouse_state;
     const char       *agent_state;
@@ -86,24 +99,28 @@ struct spice_connection {
     int              disconnecting;
 };
 
+static spice_connection *connection_new(void);
+static void connection_connect(spice_connection *conn);
+static void connection_disconnect(spice_connection *conn);
+static void connection_destroy(spice_connection *conn);
+static void resolution_fullscreen(SpiceWindow *win);
+static void resolution_restore(SpiceWindow *win);
+static void usb_connect_failed(GObject               *object,
+                               SpiceUsbDevice        *device,
+                               GError                *error,
+                               gpointer               data);
+static gboolean is_gtk_session_property(const gchar *property);
+
+/* options */
+static gboolean fullscreen = false;
+static gboolean version = false;
+/* globals */
 static GMainLoop     *mainloop = NULL;
 static int           connections = 0;
 static GKeyFile      *keyfile = NULL;
 static GnomeRRScreen *rrscreen = NULL;
 static GnomeRRConfig *rrsaved = NULL;
 static GnomeRRConfig *rrcurrent = NULL;
-
-static spice_connection *connection_new(void);
-static void connection_connect(spice_connection *conn);
-static void connection_disconnect(spice_connection *conn);
-static void connection_destroy(spice_connection *conn);
-static void resolution_fullscreen(struct spice_window *win);
-static void resolution_restore(struct spice_window *win);
-static void usb_connect_failed(GObject               *object,
-                               SpiceUsbDevice        *device,
-                               GError                *error,
-                               gpointer               data);
-static gboolean is_gtk_session_property(const gchar *property);
 
 /* ------------------------------------------------------------------ */
 
@@ -276,7 +293,7 @@ static int connect_dialog(SpiceSession *session)
 
 /* ------------------------------------------------------------------ */
 
-static void update_status_window(struct spice_window *win)
+static void update_status_window(SpiceWindow *win)
 {
     char status[256];
 
@@ -312,26 +329,26 @@ static void menu_cb_connect(GtkAction *action, void *data)
 
 static void menu_cb_close(GtkAction *action, void *data)
 {
-    struct spice_window *win = data;
+    SpiceWindow *win = data;
 
     connection_disconnect(win->conn);
 }
 
 static void menu_cb_copy(GtkAction *action, void *data)
 {
-    struct spice_window *win = data;
+    SpiceWindow *win = data;
 
     spice_gtk_session_copy_to_guest(win->conn->gtk_session);
 }
 
 static void menu_cb_paste(GtkAction *action, void *data)
 {
-    struct spice_window *win = data;
+    SpiceWindow *win = data;
 
     spice_gtk_session_paste_from_guest(win->conn->gtk_session);
 }
 
-static void window_set_fullscreen(struct spice_window *win, gboolean fs)
+static void window_set_fullscreen(SpiceWindow *win, gboolean fs)
 {
     if (fs) {
 #ifdef WIN32
@@ -348,20 +365,20 @@ static void window_set_fullscreen(struct spice_window *win, gboolean fs)
 
 static void menu_cb_fullscreen(GtkAction *action, void *data)
 {
-    struct spice_window *win = data;
+    SpiceWindow *win = data;
 
     window_set_fullscreen(win, !win->fullscreen);
 }
 
 static void menu_cb_ungrab(GtkAction *action, void *data)
 {
-    struct spice_window *win = data;
+    SpiceWindow *win = data;
 
     spice_display_mouse_ungrab(SPICE_DISPLAY(win->spice));
 }
 
 #ifdef USE_SMARTCARD
-static void enable_smartcard_actions(spice_window *win, VReader *reader,
+static void enable_smartcard_actions(SpiceWindow *win, VReader *reader,
                                      gboolean can_insert, gboolean can_remove)
 {
     GtkAction *action;
@@ -427,7 +444,7 @@ static void remove_cb(GtkContainer *container, GtkWidget *widget, void *data)
 static void menu_cb_select_usb_devices(GtkAction *action, void *data)
 {
     GtkWidget *dialog, *area, *usb_device_widget;
-    struct spice_window *win = data;
+    SpiceWindow *win = data;
 
     /* Create the widgets */
     dialog = gtk_dialog_new_with_buttons(
@@ -461,7 +478,7 @@ static void menu_cb_select_usb_devices(GtkAction *action, void *data)
 
 static void menu_cb_bool_prop(GtkToggleAction *action, gpointer data)
 {
-    struct spice_window *win = data;
+    SpiceWindow *win = data;
     gboolean state = gtk_toggle_action_get_active(action);
     const char *name;
     gpointer object;
@@ -483,7 +500,7 @@ static void menu_cb_conn_bool_prop_changed(GObject    *gobject,
                                            GParamSpec *pspec,
                                            gpointer    user_data)
 {
-    struct spice_window *win = user_data;
+    SpiceWindow *win = user_data;
     const gchar *property = g_param_spec_get_name(pspec);
     GtkAction *toggle;
     gboolean state;
@@ -495,7 +512,7 @@ static void menu_cb_conn_bool_prop_changed(GObject    *gobject,
 
 static void menu_cb_toolbar(GtkToggleAction *action, gpointer data)
 {
-    struct spice_window *win = data;
+    SpiceWindow *win = data;
     gboolean state = gtk_toggle_action_get_active(action);
 
     gtk_widget_set_visible(win->toolbar, state);
@@ -504,7 +521,7 @@ static void menu_cb_toolbar(GtkToggleAction *action, gpointer data)
 
 static void menu_cb_statusbar(GtkToggleAction *action, gpointer data)
 {
-    struct spice_window *win = data;
+    SpiceWindow *win = data;
     gboolean state = gtk_toggle_action_get_active(action);
 
     gtk_widget_set_visible(win->statusbar, state);
@@ -520,7 +537,7 @@ static void menu_cb_about(GtkAction *action, void *data)
     static const char *authors[] = { "Gerd Hoffmann <kraxel@redhat.com>",
                                "Marc-André Lureau <marcandre.lureau@redhat.com>",
                                NULL };
-    struct spice_window *win = data;
+    SpiceWindow *win = data;
 
     gtk_show_about_dialog(GTK_WINDOW(win->toplevel),
                           "authors",         authors,
@@ -535,7 +552,7 @@ static void menu_cb_about(GtkAction *action, void *data)
 
 static gboolean delete_cb(GtkWidget *widget, GdkEvent *event, gpointer data)
 {
-    struct spice_window *win = data;
+    SpiceWindow *win = data;
 
     connection_disconnect(win->conn);
     return true;
@@ -544,7 +561,7 @@ static gboolean delete_cb(GtkWidget *widget, GdkEvent *event, gpointer data)
 static gboolean window_state_cb(GtkWidget *widget, GdkEventWindowState *event,
                                 gpointer data)
 {
-    struct spice_window *win = data;
+    SpiceWindow *win = data;
     if (event->changed_mask & GDK_WINDOW_STATE_FULLSCREEN) {
         win->fullscreen = event->new_window_state & GDK_WINDOW_STATE_FULLSCREEN;
         if (win->fullscreen) {
@@ -570,7 +587,7 @@ static gboolean window_state_cb(GtkWidget *widget, GdkEventWindowState *event,
 
 static void grab_keys_pressed_cb(GtkWidget *widget, gpointer data)
 {
-    struct spice_window *win = data;
+    SpiceWindow *win = data;
 
     /* since mnemonics are disabled, we leave fullscreen when
        ungrabbing mouse. Perhaps we should have a different handling
@@ -580,7 +597,7 @@ static void grab_keys_pressed_cb(GtkWidget *widget, gpointer data)
 
 static void mouse_grab_cb(GtkWidget *widget, gint grabbed, gpointer data)
 {
-    struct spice_window *win = data;
+    SpiceWindow *win = data;
 
     win->mouse_grabbed = grabbed;
     update_status(win->conn);
@@ -588,7 +605,7 @@ static void mouse_grab_cb(GtkWidget *widget, gint grabbed, gpointer data)
 
 static void keyboard_grab_cb(GtkWidget *widget, gint grabbed, gpointer data)
 {
-    struct spice_window *win = data;
+    SpiceWindow *win = data;
     GtkSettings *settings = gtk_widget_get_settings (widget);
 
     if (grabbed) {
@@ -609,7 +626,7 @@ static void keyboard_grab_cb(GtkWidget *widget, gint grabbed, gpointer data)
     }
 }
 
-static void restore_configuration(struct spice_window *win)
+static void restore_configuration(SpiceWindow *win)
 {
     gboolean state;
     gchar *str;
@@ -1016,7 +1033,7 @@ end:
     g_clear_error(&error);
 }
 
-static void resolution_fullscreen(struct spice_window *win)
+static void resolution_fullscreen(SpiceWindow *win)
 {
     GnomeRROutputInfo *output;
     int x, y, width, height;
@@ -1046,7 +1063,7 @@ static void resolution_fullscreen(struct spice_window *win)
 #endif
 }
 
-static void resolution_restore(struct spice_window *win)
+static void resolution_restore(SpiceWindow *win)
 {
     GnomeRROutputInfo *output, *saved;
     int x, y, width, height;
@@ -1097,7 +1114,7 @@ static gboolean configure_event_cb(GtkWidget         *widget,
                                    gpointer           data)
 {
     gboolean resize_guest;
-    struct spice_window *win = data;
+    SpiceWindow *win = data;
 
     g_return_val_if_fail(win != NULL, FALSE);
     g_return_val_if_fail(win->conn != NULL, FALSE);
@@ -1114,10 +1131,20 @@ static gboolean configure_event_cb(GtkWidget         *widget,
     return FALSE;
 }
 
-static spice_window *create_spice_window(spice_connection *conn, int id, SpiceChannel *channel)
+static void
+spice_window_class_init (SpiceWindowClass *klass)
+{
+}
+
+static void
+spice_window_init (SpiceWindow *self)
+{
+}
+
+static SpiceWindow *create_spice_window(spice_connection *conn, int id, SpiceChannel *channel)
 {
     char title[32];
-    struct spice_window *win;
+    SpiceWindow *win;
     GtkAction *toggle;
     gboolean state;
     GtkWidget *vbox, *frame;
@@ -1125,7 +1152,7 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     int i;
     SpiceGrabSequence *seq;
 
-    win = g_new0(struct spice_window, 1);
+    win = g_object_new(SPICE_TYPE_WINDOW, NULL);
     win->id = id;
     win->conn = conn;
     win->display_channel = channel;
@@ -1253,8 +1280,9 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
 
         snprintf(notify, sizeof(notify), "notify::%s",
                  spice_gtk_session_properties[i]);
-        g_signal_connect(win->conn->gtk_session, notify,
-                         G_CALLBACK(menu_cb_conn_bool_prop_changed), win);
+        spice_g_signal_connect_object(win->conn->gtk_session, notify,
+                                      G_CALLBACK(menu_cb_conn_bool_prop_changed),
+                                      win, 0);
     }
 
     toggle = gtk_action_group_get_action(win->ag, "Toolbar");
@@ -1294,13 +1322,13 @@ static spice_window *create_spice_window(spice_connection *conn, int id, SpiceCh
     return win;
 }
 
-static void destroy_spice_window(spice_window *win)
+static void destroy_spice_window(SpiceWindow *win)
 {
     SPICE_DEBUG("destroy window (#%d)", win->id);
     g_object_unref(win->ag);
     g_object_unref(win->ui);
     gtk_widget_destroy(win->toplevel);
-    free(win);
+    g_object_unref(win);
 }
 
 /* ------------------------------------------------------------------ */
@@ -1432,7 +1460,7 @@ static void inputs_modifiers(SpiceChannel *channel, gpointer data)
     }
 }
 
-static void display_mark(SpiceChannel *channel, gint mark, spice_window *win)
+static void display_mark(SpiceChannel *channel, gint mark, SpiceWindow *win)
 {
     g_return_if_fail(win != NULL);
     g_return_if_fail(win->toplevel != NULL);
