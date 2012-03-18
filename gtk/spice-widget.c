@@ -364,6 +364,7 @@ static void spice_display_init(SpiceDisplay *display)
                           GDK_KEY_PRESS_MASK);
     gtk_widget_set_double_buffered(widget, false);
     gtk_widget_set_can_focus(widget, true);
+    gtk_widget_set_has_window(widget, true);
 
     d->keycode_map = vnc_display_keymap_gdk2xtkbd_table(&d->keycode_maplen);
     d->grabseq = spice_grab_sequence_new_from_string("Control_L+Alt_L");
@@ -610,7 +611,6 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
         ClipCursor(&client_rect);
     }
 #endif
-    gtk_grab_add(GTK_WIDGET(display));
 
 #ifdef GDK_WINDOWING_X11
     if (status == GDK_GRAB_SUCCESS) {
