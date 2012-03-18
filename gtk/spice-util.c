@@ -204,3 +204,9 @@ gulong spice_g_signal_connect_object (gpointer instance,
 
     return ctx->handler_id;
 }
+
+G_GNUC_INTERNAL
+const gchar* spice_yes_no(gboolean value)
+{
+    return value ? "yes" : "no";
+}

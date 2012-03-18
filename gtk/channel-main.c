@@ -1057,6 +1057,16 @@ static void agent_clipboard_release(SpiceMainChannel *channel, guint selection)
 }
 
 /* coroutine context  */
+static void set_agent_connected(SpiceMainChannel *channel, gboolean connected)
+{
+    SpiceMainChannelPrivate *c = channel->priv;
+
+    c->agent_connected = connected;
+    SPICE_DEBUG("agent connected: %s", spice_yes_no(connected));
+    g_object_notify_main_context(G_OBJECT(channel), "agent-connected");
+}
+
+/* coroutine context  */
 static void agent_start(SpiceMainChannel *channel)
 {
     SpiceMainChannelPrivate *c = channel->priv;
@@ -1065,7 +1075,7 @@ static void agent_start(SpiceMainChannel *channel)
     };
     SpiceMsgOut *out;
 
-    c->agent_connected = true;
+    set_agent_connected(channel, TRUE);
     c->agent_caps_received = false;
     emit_main_context(channel, SPICE_MAIN_AGENT_UPDATE);
 
@@ -1084,7 +1094,7 @@ static void agent_stopped(SpiceMainChannel *channel)
 {
     SpiceMainChannelPrivate *c = SPICE_MAIN_CHANNEL(channel)->priv;
 
-    c->agent_connected = false;
+    set_agent_connected(channel, FALSE);
     c->agent_caps_received = false;
     c->agent_display_config_sent = false;
     emit_main_context(channel, SPICE_MAIN_AGENT_UPDATE);
