@@ -1951,7 +1951,7 @@ void spice_main_clipboard_selection_request(SpiceMainChannel *channel, guint sel
 /**
  * spice_main_set_display_enabled:
  * @channel: a #SpiceMainChannel
- * @id: display channel ID
+ * @id: display channel ID (if -1: set all displays)
  * @enabled: wether display @id is enabled
  *
  * When sending monitor configuration to agent guest, don't set
@@ -1965,7 +1965,16 @@ void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean 
 {
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
+    g_return_if_fail(id >= -1);
 
     SpiceMainChannelPrivate *c = channel->priv;
-    c->display[id].enabled = enabled;
+
+    if (id == -1) {
+        gint i;
+        for (i = 0; i < G_N_ELEMENTS(c->display); i++)
+            c->display[i].enabled = enabled;
+    } else {
+        g_return_if_fail(id < G_N_ELEMENTS(c->display));
+        c->display[id].enabled = enabled;
+    }
 }
