@@ -103,7 +103,8 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
         }
         cairo_paint(cr);
 
-        if (d->mouse_mode == SPICE_MOUSE_MODE_SERVER) {
+        if (d->mouse_mode == SPICE_MOUSE_MODE_SERVER &&
+            !d->show_cursor) {
             GdkPixbuf *image = d->mouse_pixbuf;
             if (image != NULL) {
                 gdk_cairo_set_source_pixbuf(cr, image,

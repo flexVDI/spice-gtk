@@ -1594,18 +1594,9 @@ static void cursor_set(SpiceCursorChannel *channel,
 {
     SpiceDisplay *display = data;
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    GdkCursor *cursor = NULL;
 
     cursor_invalidate(display);
-
-    if (d->show_cursor) {
-        gdk_cursor_unref(d->show_cursor);
-        d->show_cursor = NULL;
-    }
-
-    if (d->mouse_cursor) {
-        gdk_cursor_unref(d->mouse_cursor);
-        d->mouse_cursor = NULL;
-    }
 
     if (d->mouse_pixbuf) {
         g_object_unref(d->mouse_pixbuf);
@@ -1622,15 +1613,23 @@ static void cursor_set(SpiceCursorChannel *channel,
                                                    (GdkPixbufDestroyNotify)g_free, NULL);
         d->mouse_hotspot.x = hot_x;
         d->mouse_hotspot.y = hot_y;
+        cursor = gdk_cursor_new_from_pixbuf(gtk_widget_get_display(GTK_WIDGET(display)),
+                                            d->mouse_pixbuf, hot_x, hot_y);
+    } else
+        g_warn_if_reached();
 
-        /* gdk_cursor_new_from_pixbuf() will copy pixbuf data on
-           x11/win32/macos. No worries if rgba pointer is freed
-           after. */
-        d->mouse_cursor = gdk_cursor_new_from_pixbuf(gtk_widget_get_display(GTK_WIDGET(display)),
-                                                     d->mouse_pixbuf, hot_x, hot_y);
+    if (d->show_cursor) {
+        /* keep hidden cursor */
+        gdk_cursor_unref(d->show_cursor);
+        d->show_cursor = cursor;
+    } else {
+        gdk_cursor_unref(d->mouse_cursor);
+        d->mouse_cursor = cursor;
     }
 
     update_mouse_pointer(display);
+
+    cursor_invalidate(display);
 }
 
 static void cursor_hide(SpiceCursorChannel *channel, gpointer data)
@@ -1641,6 +1640,7 @@ static void cursor_hide(SpiceCursorChannel *channel, gpointer data)
     if (d->show_cursor != NULL) /* then we are already hidden */
         return;
 
+    cursor_invalidate(display);
     d->show_cursor = d->mouse_cursor;
     d->mouse_cursor = get_blank_cursor();
     update_mouse_pointer(display);
