@@ -2,21 +2,49 @@ NULL =
 
 SUBDIRS = controller
 
-COMMON_DIR=$(SPICE_COMMON_SRCDIR)
-CLIENT_DIR=$(top_srcdir)/client
+COMMON_DIR = $(SPICE_COMMON_SRCDIR)
 
-EXTRA_DIST =					\
-	spice-marshal.txt			\
-	keymap-gen.pl				\
-	keymaps.csv				\
-	decode-glz-tmpl.c			\
-	map-file				\
+# Avoid need for python(pyparsing) by end users
+MARSHALLERS =					\
 	generated_demarshallers.c		\
 	generated_demarshallers1.c		\
 	generated_marshallers.c			\
 	generated_marshallers1.c		\
-	spice-client-gtk.override		\
+	$(NULL)
+
+# Avoid need for perl(Text::CSV) by end users
+KEYMAPS =					\
+	vncdisplaykeymap_xorgevdev2xtkbd.c	\
+	vncdisplaykeymap_xorgkbd2xtkbd.c	\
+	vncdisplaykeymap_xorgxquartz2xtkbd.c	\
+	vncdisplaykeymap_xorgxwin2xtkbd.c	\
+	vncdisplaykeymap_osx2xtkbd.c		\
+	vncdisplaykeymap_win322xtkbd.c		\
+	$(NULL)
+
+# End users build dependencies can be cleaned
+GLIBGENS =					\
+	spice-glib-enums.c			\
+	spice-glib-enums.h			\
+	spice-marshal.c				\
+	spice-marshal.h				\
+	spice-widget-enums.c			\
+	spice-widget-enums.h			\
+	$(NULL)
+
+CLEANFILES = $(GLIBGENS)
+BUILT_SOURCES = $(GLIBGENS) $(KEYMAPS) $(MARSHALLERS)
+
+EXTRA_DIST =					\
+	$(MARSHALLERS)				\
+	$(KEYMAPS)				\
+	decode-glz-tmpl.c			\
+	keymap-gen.pl				\
+	keymaps.csv				\
+	map-file				\
 	spice-client-gtk-manual.defs		\
+	spice-client-gtk.override		\
+	spice-marshal.txt			\
 	$(NULL)
 
 bin_PROGRAMS = spicy snappy spicy-stats
@@ -25,15 +53,12 @@ acldir = $(ACL_HELPER_DIR)
 acl_PROGRAMS = spice-client-glib-usb-acl-helper
 endif
 
-lib_LTLIBRARIES = \
-	libspice-client-glib-2.0.la
+lib_LTLIBRARIES = libspice-client-glib-2.0.la
 
 if HAVE_GTK_2
-lib_LTLIBRARIES += \
-	libspice-client-gtk-2.0.la
+lib_LTLIBRARIES += libspice-client-gtk-2.0.la
 else
-lib_LTLIBRARIES += \
-	libspice-client-gtk-3.0.la
+lib_LTLIBRARIES += libspice-client-gtk-3.0.la
 endif
 
 if HAVE_LD_VERSION_SCRIPT
@@ -43,17 +68,6 @@ VERSION_LDFLAGS = -export-symbols ${srcdir}/sym-file
 endif
 
 KEYMAP_GEN = $(srcdir)/keymap-gen.pl
-
-KEYMAPS = \
-	vncdisplaykeymap_xorgevdev2xtkbd.c \
-	vncdisplaykeymap_xorgkbd2xtkbd.c \
-	vncdisplaykeymap_xorgxquartz2xtkbd.c \
-	vncdisplaykeymap_xorgxwin2xtkbd.c \
-	vncdisplaykeymap_osx2xtkbd.c \
-	vncdisplaykeymap_win322xtkbd.c
-
-# Avoid need for perl(Text::CSV) by end users
-EXTRA_DIST += $(KEYMAPS)
 
 SPICE_COMMON_CPPFLAGS = \
 	-DG_LOG_DOMAIN=\"GSpice\"       \
@@ -263,10 +277,7 @@ libspice_client_glib_2_0_la_SOURCES =	\
 	$(NULL)
 
 nodist_libspice_client_glib_2_0_la_SOURCES =	\
-	generated_demarshallers.c	\
-	generated_demarshallers1.c	\
-	generated_marshallers.c		\
-	generated_marshallers1.c	\
+	$(MARSHALLERS)			\
 	spice-glib-enums.c		\
 	spice-marshal.c			\
 	spice-marshal.h			\
@@ -537,13 +548,6 @@ vncdisplaykeymap_osx2xtkbd.c:
 
 vncdisplaykeymap_win322xtkbd.c:
 	$(AM_V_GEN)$(KEYMAP_GEN) $(srcdir)/keymaps.csv win32 xtkbd > $@ || rm $@
-
-CLEANFILES = spice-marshal.c spice-marshal.h \
-	spice-glib-enums.c spice-glib-enums.h \
-	spice-widget-enums.c spice-widget-enums.h
-MAINTAINERCLEANFILES = $(KEYMAPS)
-
-BUILT_SOURCES = $(CLEANFILES) $(MAINTAINERCLEANFILES)
 
 if WITH_PYTHON
 pyexec_LTLIBRARIES = SpiceClientGtk.la

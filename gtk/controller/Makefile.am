@@ -22,20 +22,29 @@ AM_VALAFLAGS =							\
 lib_LTLIBRARIES = libspice-controller.la
 noinst_PROGRAMS = test-controller spice-controller-dump
 
-BUILT_SOURCES = controller.vala.stamp
-
 libspice_controller_la_VALASOURCES =		\
 	menu.vala				\
 	controller.vala				\
 	foreign-menu.vala			\
 	$(NULL)
-libspice_controller_la_SOURCES =		\
-	custom.h				\
-	spice-controller-listener.c		\
-	spice-controller-listener.h		\
-	spice-foreign-menu-listener.c		\
-	spice-foreign-menu-listener.h		\
-	$(libspice_controller_la_VALASOURCES:.vala=.c) \
+
+libspice_controller_la_BUILT_SOURCES =			\
+	$(libspice_controller_la_VALASOURCES:.vala=.c)	\
+	spice-controller.h				\
+	$(NULL)
+
+BUILT_SOURCES =						\
+	$(libspice_controller_la_BUILT_SOURCES)		\
+	controller.vala.stamp				\
+	$(NULL)
+
+libspice_controller_la_SOURCES =			\
+	$(libspice_controller_la_BUILT_SOURCES)		\
+	custom.h					\
+	spice-controller-listener.c			\
+	spice-controller-listener.h			\
+	spice-foreign-menu-listener.c			\
+	spice-foreign-menu-listener.h			\
 	$(NULL)
 
 if OS_WIN32
@@ -50,7 +59,7 @@ libspice_controller_la_SOURCES +=		\
 endif
 libspice_controller_la_LDFLAGS =		\
 	$(AM_LDFLAGS)				\
-	-version-number 0:0:0			\
+	-version-info 0:0:0			\
 	$(NULL)
 
 libspice_controllerincludedir = $(includedir)/spice-controller
@@ -74,18 +83,13 @@ controller.vala.stamp: $(libspice_controller_la_VALASOURCES) custom.vapi
 	$(VALA_V)$(VALAC) $(VALAFLAGS) $(AM_VALAFLAGS) $(libspice_controller_la_VALASOURCES) -H spice-controller.h
 	@touch $@
 
-spice-controller.h: controller.vala.stamp
-menu.c: controller.vala.stamp
-controller.c: controller.vala.stamp
+$(libspice_controller_la_BUILT_SOURCES): controller.vala.stamp
 
 EXTRA_DIST =					\
 	$(libspice_controller_la_VALASOURCES)	\
 	controller.vala.stamp			\
 	custom.vapi				\
 	gio-windows-2.0.vapi			\
-	spice-controller.h			\
 	$(NULL)
 
-vala-clean:
-	rm -f `find . -name "*.stamp"`
-
+-include $(top_srcdir)/git.mk
