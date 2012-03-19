@@ -28,11 +28,11 @@ DOC_SOURCE_DIR=../../gtk
 SCANGOBJ_OPTIONS=
 
 # Extra options to supply to gtkdoc-scan.
-# e.g. SCAN_OPTIONS=--deprecated-guards="GTK_DISABLE_DEPRECATED"
-SCAN_OPTIONS=
+SCAN_OPTIONS= \
+	--deprecated-guards="SPICE_DISABLE_DEPRECATED" \
+	--ignore-decorators="G_GNUC_INTERNAL"
 
 # Extra options to supply to gtkdoc-mkdb.
-# e.g. MKDB_OPTIONS=--xml-mode --output-format=xml
 MKDB_OPTIONS=--xml-mode --output-format=xml
 
 # Extra options to supply to gtkdoc-mktmpl

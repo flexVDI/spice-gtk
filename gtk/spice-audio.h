@@ -73,10 +73,12 @@ struct _SpiceAudioClass {
 
 GType spice_audio_get_type(void);
 
+SpiceAudio* spice_audio_get(SpiceSession *session, GMainContext *context);
+
+#ifndef SPICE_DISABLE_DEPRECATED
 SPICE_DEPRECATED_FOR(spice_audio_get)
 SpiceAudio* spice_audio_new(SpiceSession *session, GMainContext *context, const char *name);
-
-SpiceAudio* spice_audio_get(SpiceSession *session, GMainContext *context);
+#endif
 
 G_END_DECLS
 

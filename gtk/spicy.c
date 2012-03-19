@@ -1530,10 +1530,8 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     }
 
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
-        if (conn->audio != NULL)
-            return;
         SPICE_DEBUG("new audio channel");
-        conn->audio = spice_audio_new(s, NULL, NULL);
+        conn->audio = spice_audio_get(s, NULL);
     }
 
     if (SPICE_IS_USBREDIR_CHANNEL(channel)) {
@@ -1563,10 +1561,6 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
 
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
         SPICE_DEBUG("zap audio channel");
-        if (conn->audio != NULL) {
-            g_object_unref(conn->audio);
-            conn->audio = NULL;
-        }
     }
 
     if (SPICE_IS_USBREDIR_CHANNEL(channel)) {
