@@ -41,7 +41,6 @@ typedef enum {
 
 /**
  * SpiceInputsChannel:
- * @parent: Parent instance.
  *
  * The #SpiceInputsChannel struct is opaque and should not be accessed directly.
  */

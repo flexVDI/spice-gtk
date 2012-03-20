@@ -37,19 +37,22 @@ typedef struct _SpiceUsbDeviceWidget SpiceUsbDeviceWidget;
 typedef struct _SpiceUsbDeviceWidgetClass SpiceUsbDeviceWidgetClass;
 typedef struct _SpiceUsbDeviceWidgetPrivate SpiceUsbDeviceWidgetPrivate;
 
+#if GTK_CHECK_VERSION(3,0,0)
+typedef GtkBox SpiceGtkBox;
+typedef GtkBoxClass SpiceGtkBoxClass;
+#else
+typedef GtkVBox SpiceGtkBox;
+typedef GtkVBoxClass SpiceGtkBoxClass;
+#endif
+
 /**
  * SpiceUsbDeviceWidget:
- * @parent: Parent instance.
  *
  * The #SpiceUsbDeviceWidget struct is opaque and should not be accessed directly.
  */
 struct _SpiceUsbDeviceWidget
 {
-#if GTK_CHECK_VERSION(3,0,0)
-    GtkBox parent;
-#else
-    GtkVBox parent;
-#endif
+    SpiceGtkBox parent;
 
     /*< private >*/
     SpiceUsbDeviceWidgetPrivate *priv;
@@ -58,18 +61,13 @@ struct _SpiceUsbDeviceWidget
 
 /**
  * SpiceUsbDeviceWidgetClass:
- * @parent_class: Parent class.
  * @connect_failed: Signal class handler for the #SpiceUsbDeviceWidget::connect-failed signal.
  *
  * Class structure for #SpiceUsbDeviceWidget.
  */
 struct _SpiceUsbDeviceWidgetClass
 {
-#if GTK_CHECK_VERSION(3,0,0)
-    GtkBoxClass parent_class;
-#else
-    GtkVBoxClass parent_class;
-#endif
+    SpiceGtkBoxClass parent_class;
 
     /* signals */
     void (*connect_failed) (SpiceUsbDeviceWidget *widget,

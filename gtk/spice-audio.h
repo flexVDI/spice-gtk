@@ -47,7 +47,6 @@ typedef struct _SpiceAudioPrivate SpiceAudioPrivate;
 
 /**
  * SpiceAudio:
- * @parent: Parent instance.
  *
  * The #SpiceAudio struct is opaque and should not be accessed directly.
  */

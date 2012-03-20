@@ -35,7 +35,6 @@ typedef struct _SpicePlaybackChannelPrivate SpicePlaybackChannelPrivate;
 
 /**
  * SpicePlaybackChannel:
- * @parent: Parent instance.
  *
  * The #SpicePlaybackChannel struct is opaque and should not be accessed directly.
  */

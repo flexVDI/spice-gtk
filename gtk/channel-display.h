@@ -35,7 +35,6 @@ typedef struct _SpiceDisplayChannelPrivate SpiceDisplayChannelPrivate;
 
 /**
  * SpiceDisplayChannel:
- * @parent: Parent instance.
  *
  * The #SpiceDisplayChannel struct is opaque and should not be accessed directly.
  */

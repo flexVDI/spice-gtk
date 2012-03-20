@@ -3,6 +3,7 @@
 <TITLE>SpicePlaybackChannel</TITLE>
 SpicePlaybackChannel
 SpicePlaybackChannelClass
+spice_playback_channel_set_delay
 <SUBSECTION Standard>
 SPICE_PLAYBACK_CHANNEL
 SPICE_IS_PLAYBACK_CHANNEL
@@ -25,11 +26,17 @@ spice_session_connect
 spice_session_open_fd
 spice_session_disconnect
 spice_session_get_channels
+spice_session_get_read_only
+spice_session_has_channel_type
 <SUBSECTION>
 SpiceSessionMigration
 SpiceSessionVerify
 spice_get_option_group
 spice_set_session_option
+<SUBSECTION>
+SpiceClientError
+SPICE_CLIENT_ERROR
+spice_client_error_quark
 <SUBSECTION Standard>
 SPICE_SESSION
 SPICE_IS_SESSION
@@ -40,6 +47,10 @@ SPICE_IS_SESSION_CLASS
 SPICE_SESSION_GET_CLASS
 SPICE_TYPE_SESSION_VERIFY
 spice_session_verify_get_type
+SPICE_TYPE_SESSION_MIGRATION
+spice_session_migration_get_type
+<SUBSECTION Private>
+SpiceSessionPrivate
 </SECTION>
 
 <SECTION>
@@ -48,8 +59,9 @@ spice_session_verify_get_type
 SpiceMainChannel
 SpiceMainChannelClass
 <SUBSECTION>
-spice_main_channel
 spice_main_set_display
+spice_main_set_display_enabled
+spice_main_send_monitor_config
 spice_main_agent_test_capability
 spice_main_clipboard_selection_grab
 spice_main_clipboard_selection_notify
@@ -67,13 +79,14 @@ spice_main_channel_get_type
 SPICE_MAIN_CHANNEL_CLASS
 SPICE_IS_MAIN_CHANNEL_CLASS
 SPICE_MAIN_CHANNEL_GET_CLASS
+<SUBSECTION Private>
+SpiceMainChannelPrivate
 </SECTION>
 
 <SECTION>
 <FILE>spice-channel</FILE>
 <TITLE>SpiceChannel</TITLE>
 SpiceChannelEvent
-SpiceChannelVerify
 SpiceChannel
 SpiceChannelClass
 <SUBSECTION>
@@ -83,6 +96,8 @@ spice_channel_connect
 spice_channel_open_fd
 spice_channel_disconnect
 spice_channel_test_capability
+spice_channel_test_common_capability
+spice_channel_type_to_string
 spice_channel_set_capability
 <SUBSECTION Standard>
 SPICE_TYPE_CHANNEL_EVENT
@@ -95,6 +110,9 @@ SPICE_CHANNEL_CLASS
 SPICE_IS_CHANNEL_CLASS
 SPICE_CHANNEL_GET_CLASS
 <SUBSECTION Private>
+SpiceMsgIn
+SpiceMsgOut
+SpiceChannelPrivate
 spice_msg_handler
 spice_msg_in
 spice_msg_out
@@ -106,6 +124,7 @@ spice_msg_out
 SpiceAudio
 SpiceAudioClass
 <SUBSECTION>
+spice_audio_get
 spice_audio_new
 <SUBSECTION Standard>
 SPICE_AUDIO
@@ -115,6 +134,8 @@ spice_audio_get_type
 SPICE_AUDIO_CLASS
 SPICE_IS_AUDIO_CLASS
 SPICE_AUDIO_GET_CLASS
+<SUBSECTION Private>
+SpiceAudioPrivate
 </SECTION>
 
 <SECTION>
@@ -268,10 +289,13 @@ SpiceUsbDeviceManagerClass
 spice_usb_device_manager_get
 spice_usb_device_manager_get_devices
 spice_usb_device_manager_is_device_connected
-spice_usb_device_manager_connect_device
 spice_usb_device_manager_disconnect_device
-spice_usb_device_get_description
+spice_usb_device_manager_can_redirect_device
+spice_usb_device_manager_connect_device_async
+spice_usb_device_manager_connect_device_finish
+<SUBSECTION>
 SpiceUsbDevice
+spice_usb_device_get_description
 <SUBSECTION Standard>
 SPICE_USB_DEVICE_MANAGER
 SPICE_IS_USB_DEVICE_MANAGER
@@ -302,7 +326,7 @@ SPICE_GTK_SESSION_CLASS
 SPICE_IS_GTK_SESSION_CLASS
 SPICE_GTK_SESSION_GET_CLASS
 <SUBSECTION Private>
-SpiceGtkSectionPrivate
+SpiceGtkSessionPrivate
 </SECTION>
 
 <SECTION>
@@ -356,8 +380,11 @@ spice_usb_device_widget_get_type
 SPICE_USB_DEVICE_WIDGET_CLASS
 SPICE_IS_USB_DEVICE_WIDGET_CLASS
 SPICE_USB_DEVICE_WIDGET_GET_CLASS
+SPICE_TYPE_USB_DEVICE_WIDGET
 <SUBSECTION Private>
 SpiceUsbDeviceWidgetPrivate
+SpiceGtkBox
+SpiceGtkBoxClass
 </SECTION>
 
 <SECTION>
@@ -368,5 +395,7 @@ spice_util_get_version_string
 SPICE_DEBUG
 spice_util_get_debug
 SPICE_RESERVED_PADDING
+SPICE_DEPRECATED_FOR
+spice_g_signal_connect_object
 </SECTION>
 

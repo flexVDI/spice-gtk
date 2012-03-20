@@ -2473,7 +2473,7 @@ static gboolean test_capability(GArray *caps, guint32 cap)
 
 /**
  * spice_channel_test_capability:
- * @self:
+ * @channel:
  * @cap:
  *
  * Test availability of remote "channel kind capability".
@@ -2492,7 +2492,7 @@ gboolean spice_channel_test_capability(SpiceChannel *self, guint32 cap)
 
 /**
  * spice_channel_test_common_capability:
- * @self:
+ * @channel:
  * @cap:
  *
  * Test availability of remote "common channel capability".

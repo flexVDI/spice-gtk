@@ -43,7 +43,6 @@ typedef struct _SpiceUsbDevice SpiceUsbDevice;
 
 /**
  * SpiceUsbDeviceManager:
- * @parent: Parent instance.
  *
  * The #SpiceUsbDeviceManager struct is opaque and should not be accessed directly.
  */

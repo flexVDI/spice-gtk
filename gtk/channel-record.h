@@ -35,7 +35,6 @@ typedef struct _SpiceRecordChannelPrivate SpiceRecordChannelPrivate;
 
 /**
  * SpiceRecordChannel:
- * @parent: Parent instance.
  *
  * The #SpiceRecordChannel struct is opaque and should not be accessed directly.
  */
