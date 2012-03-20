@@ -1,7 +1,8 @@
 ACLOCAL_AMFLAGS = -I m4
 NULL =
 
-SUBDIRS = spice-protocol common gtk po python_modules doc data
+SUBDIRS = spice-common gtk po doc data
+
 if HAVE_INTROSPECTION
 if WITH_VALA
 SUBDIRS += vapi
@@ -12,30 +13,31 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA =					\
 	spice-client-glib-2.0.pc			\
 	spice-client-gtk-$(SPICE_GTK_API_VERSION).pc	\
-	spice-controller.pc
+	spice-controller.pc				\
+	$(NULL)
 
-INTLTOOL_FILES = intltool-extract.in		\
-		 intltool-merge.in		\
-		 intltool-update.in		\
-		 $(NULL)
+INTLTOOL_FILES =				\
+	intltool-extract.in			\
+	intltool-merge.in			\
+	intltool-update.in			\
+	$(NULL)
 
-DISTCLEANFILES = $(pkgconfig_DATA)		\
-		 intltool-extract		\
-		 intltool-merge			\
-		 intltool-update		\
-		 gnome-doc-utils.make		\
-		 po/.intltool-merge-cache	\
-		 $(NULL)
+DISTCLEANFILES =				\
+	$(pkgconfig_DATA)			\
+	intltool-extract			\
+	intltool-merge				\
+	intltool-update				\
+	gnome-doc-utils.make			\
+	po/.intltool-merge-cache		\
+	$(NULL)
 
-EXTRA_DIST = spice.proto			\
-	     spice1.proto			\
-	     spice_codegen.py			\
-	     build-aux/git-version-gen		\
-	     gtk-doc.make			\
-	     .version				\
-	     THANKS				\
-	     $(INTLTOOL_FILES)			\
-	     $(NULL)
+EXTRA_DIST =					\
+	build-aux/git-version-gen		\
+	gtk-doc.make				\
+	.version				\
+	THANKS					\
+	$(INTLTOOL_FILES)			\
+	$(NULL)
 
 MAINTAINERCLEANFILES =				\
 	ABOUT-NLS				\
@@ -104,4 +106,3 @@ spicy-for-windows.exe:
 	 /usr/i686-pc-mingw32/sys-root/mingw/lib/gstreamer-0.10/libgstcoreelements.dll
 
 -include $(top_srcdir)/git.mk
-

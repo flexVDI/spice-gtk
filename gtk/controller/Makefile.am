@@ -3,7 +3,7 @@ NULL =
 AM_CPPFLAGS =					\
 	-DG_LOG_DOMAIN=\"GSpiceController\"	\
 	$(GIO_CFLAGS)				\
-	$(PROTOCOL_CFLAGS)			\
+	$(COMMON_CFLAGS)			\
 	$(NULL)
 
 # http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html

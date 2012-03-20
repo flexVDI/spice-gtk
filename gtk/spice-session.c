@@ -17,16 +17,14 @@
 */
 #include <gio/gio.h>
 #include <glib.h>
+
+#include "common/ring.h"
+
 #include "spice-client.h"
 #include "spice-common.h"
 #include "spice-channel-priv.h"
 #include "spice-util-priv.h"
-
 #include "spice-session-priv.h"
-
-/* spice/common */
-#include "ring.h"
-
 #include "gio-coroutine.h"
 #include "glib-compat.h"
 

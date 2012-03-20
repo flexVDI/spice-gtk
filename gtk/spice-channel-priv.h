@@ -33,10 +33,9 @@
 #include "coroutine.h"
 #include "gio-coroutine.h"
 
-#include "client_marshallers.h"
-#include "client_demarshallers.h"
-
-#include "ssl_verify.h"
+#include "common/client_marshallers.h"
+#include "common/client_demarshallers.h"
+#include "common/ssl_verify.h"
 
 G_BEGIN_DECLS
 

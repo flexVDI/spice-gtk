@@ -1,6 +1,3 @@
-[submodule "spice-protocol"]
-	path = spice-protocol
-	url = ../spice-protocol
-[submodule "common"]
-	path = common
+[submodule "spice-common"]
+	path = spice-common
 	url = ../spice-common

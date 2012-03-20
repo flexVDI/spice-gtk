@@ -23,8 +23,6 @@ AC_SUBST(SPICE_GTK_LOCALEDIR)
 
 GTK_DOC_CHECK([1.14],[--flavour no-tmpl])
 
-# Define default SPICE_COMMON_SRCDIR
-SPICE_COMMON_SRCDIR='$(top_srcdir)'/common
 # no opengl support yet
 AM_CONDITIONAL(SUPPORT_GL, false)
 
@@ -71,9 +69,9 @@ AC_CHECK_HEADERS([sys/socket.h netinet/in.h arpa/inet.h])
 AC_CHECK_LIBM
 AC_SUBST(LIBM)
 
-AC_CONFIG_SUBDIRS([spice-protocol])
-PROTOCOL_CFLAGS='-I ${top_srcdir}/spice-protocol'
-AC_SUBST(PROTOCOL_CFLAGS)
+AC_CONFIG_SUBDIRS([spice-common])
+COMMON_CFLAGS='-I ${top_srcdir}/spice-common/ -I ${top_srcdir}/spice-common/spice-protocol/'
+AC_SUBST(COMMON_CFLAGS)
 
 dnl =========================================================================
 dnl Chek optional features
@@ -593,7 +591,6 @@ SPICE_GTK_CFLAGS="$SPICE_GLIB_CFLAGS $GTK_CFLAGS "
 AC_SUBST(SPICE_GLIB_CFLAGS)
 AC_SUBST(SPICE_GTK_CFLAGS)
 
-AC_SUBST(SPICE_COMMON_SRCDIR)
 AC_SUBST(SPICE_GLIB_REQUIRES)
 AC_SUBST(SPICE_GTK_REQUIRES)
 
@@ -605,12 +602,10 @@ spice-client-glib-2.0.pc
 spice-client-gtk-2.0.pc
 spice-client-gtk-3.0.pc
 spice-controller.pc
-common/Makefile
 data/Makefile
 data/spicy.desktop.in
 data/spicy.nsis
 po/Makefile.in
-python_modules/Makefile
 gtk/Makefile
 gtk/controller/Makefile
 doc/Makefile

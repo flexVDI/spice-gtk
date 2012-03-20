@@ -2,16 +2,6 @@ NULL =
 
 SUBDIRS = controller
 
-COMMON_DIR = $(SPICE_COMMON_SRCDIR)
-
-# Avoid need for python(pyparsing) by end users
-MARSHALLERS =					\
-	generated_demarshallers.c		\
-	generated_demarshallers1.c		\
-	generated_marshallers.c			\
-	generated_marshallers1.c		\
-	$(NULL)
-
 # Avoid need for perl(Text::CSV) by end users
 KEYMAPS =					\
 	vncdisplaykeymap_xorgevdev2xtkbd.c	\
@@ -33,10 +23,9 @@ GLIBGENS =					\
 	$(NULL)
 
 CLEANFILES = $(GLIBGENS)
-BUILT_SOURCES = $(GLIBGENS) $(KEYMAPS) $(MARSHALLERS)
+BUILT_SOURCES = $(GLIBGENS) $(KEYMAPS)
 
 EXTRA_DIST =					\
-	$(MARSHALLERS)				\
 	$(KEYMAPS)				\
 	decode-glz-tmpl.c			\
 	keymap-gen.pl				\
@@ -69,37 +58,36 @@ endif
 
 KEYMAP_GEN = $(srcdir)/keymap-gen.pl
 
-SPICE_COMMON_CPPFLAGS = \
-	-DG_LOG_DOMAIN=\"GSpice\"       \
-	-DSPICE_NO_DEPRECATED		\
-	-DGTK_DISABLE_DEPRECATED        \
-	-DSW_CANVAS_CACHE		\
-	-DSPICE_GTK_LOCALEDIR=\"${SPICE_GTK_LOCALEDIR}\" \
-	-DPNP_IDS=\""$(PNP_IDS)"\"      \
-	-DUSB_IDS=\""$(USB_IDS)"\"      \
-	-DSPICE_DISABLE_ABORT		\
-	\
-	-I$(COMMON_DIR)			\
-	\
-	$(PROTOCOL_CFLAGS)		\
-	$(PIXMAN_CFLAGS)		\
-	$(CELT051_CFLAGS)		\
-	$(PULSE_CFLAGS)			\
-	$(GTK_CFLAGS)			\
-	$(CAIRO_CFLAGS)			\
-	$(GLIB2_CFLAGS)			\
-	$(GIO_CFLAGS)			\
-	$(GOBJECT2_CFLAGS)		\
-	$(SSL_CFLAGS)			\
-	$(SASL_CFLAGS)			\
-	$(GST_CFLAGS)			\
-	$(SMARTCARD_CFLAGS)		\
-	$(USBREDIR_CFLAGS)		\
+SPICE_COMMON_CPPFLAGS =						\
+	-DG_LOG_DOMAIN=\"GSpice\"				\
+	-DSPICE_NO_DEPRECATED					\
+	-DGTK_DISABLE_DEPRECATED				\
+	-DSW_CANVAS_CACHE					\
+	-DSPICE_GTK_LOCALEDIR=\"${SPICE_GTK_LOCALEDIR}\"	\
+	-DPNP_IDS=\""$(PNP_IDS)"\"				\
+	-DUSB_IDS=\""$(USB_IDS)"\"				\
+	-DSPICE_DISABLE_ABORT					\
+	-I$(top_srcdir)						\
+	$(COMMON_CFLAGS)					\
+	$(PIXMAN_CFLAGS)					\
+	$(CELT051_CFLAGS)					\
+	$(PULSE_CFLAGS)						\
+	$(GTK_CFLAGS)						\
+	$(CAIRO_CFLAGS)						\
+	$(GLIB2_CFLAGS)						\
+	$(GIO_CFLAGS)						\
+	$(GOBJECT2_CFLAGS)					\
+	$(SSL_CFLAGS)						\
+	$(SASL_CFLAGS)						\
+	$(GST_CFLAGS)						\
+	$(SMARTCARD_CFLAGS)					\
+	$(USBREDIR_CFLAGS)					\
 	$(NULL)
 
-AM_CPPFLAGS = \
-	$(SPICE_COMMON_CPPFLAGS)	\
-	$(SPICE_CFLAGS)
+AM_CPPFLAGS =					\
+	$(SPICE_COMMON_CPPFLAGS)		\
+	$(SPICE_CFLAGS)				\
+	$(NULL)
 
 # http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 SPICE_GTK_LDFLAGS_COMMON =		\
@@ -166,7 +154,7 @@ libspice_client_gtkinclude_HEADERS =	\
 	$(NULL)
 
 nodist_libspice_client_gtkinclude_HEADERS =	\
-	spice-widget-enums.h		\
+	spice-widget-enums.h			\
 	$(NULL)
 
 libspice_client_glib_2_0_la_LDFLAGS =	\
@@ -175,112 +163,90 @@ libspice_client_glib_2_0_la_LDFLAGS =	\
 	$(VERSION_LDFLAGS)		\
 	$(NULL)
 
-libspice_client_glib_2_0_la_LIBADD =	\
-	$(GLIB2_LIBS)			\
-	$(GIO_LIBS)			\
-	$(GOBJECT2_LIBS)		\
-	$(CELT051_LIBS)			\
-	$(JPEG_LIBS)			\
-	$(Z_LIBS)			\
-	$(PIXMAN_LIBS)			\
-	$(SSL_LIBS)			\
-	$(PULSE_LIBS)			\
-	$(GST_LIBS)			\
-	$(SASL_LIBS)			\
-	$(SMARTCARD_LIBS)		\
-	$(USBREDIR_LIBS)		\
+libspice_client_glib_2_0_la_LIBADD =					\
+	$(top_builddir)/spice-common/common/libspice-common.la		\
+	$(top_builddir)/spice-common/common/libspice-common-client.la	\
+	$(GLIB2_LIBS)							\
+	$(GIO_LIBS)							\
+	$(GOBJECT2_LIBS)						\
+	$(CELT051_LIBS)							\
+	$(JPEG_LIBS)							\
+	$(Z_LIBS)							\
+	$(PIXMAN_LIBS)							\
+	$(SSL_LIBS)							\
+	$(PULSE_LIBS)							\
+	$(GST_LIBS)							\
+	$(SASL_LIBS)							\
+	$(SMARTCARD_LIBS)						\
+	$(USBREDIR_LIBS)						\
 	$(NULL)
 
 if WITH_POLKIT
-USB_ACL_HELPER_SRCS = \
-	usb-acl-helper.c		\
-	usb-acl-helper.h
+USB_ACL_HELPER_SRCS =				\
+	usb-acl-helper.c			\
+	usb-acl-helper.h			\
+	$(NULL)
 AM_CPPFLAGS += -DACL_HELPER_PATH="\"$(ACL_HELPER_DIR)\""
 else
 USB_ACL_HELPER_SRCS =
 endif
 
-libspice_client_glib_2_0_la_SOURCES =	\
-	bio-gsocket.c			\
-	bio-gsocket.h			\
-	glib-compat.c			\
-	glib-compat.h			\
-	spice-audio.c			\
-	spice-audio-priv.h		\
-	spice-common.h			\
-	spice-util.c			\
-	spice-util-priv.h		\
-	spice-option.h			\
-	spice-option.c			\
-	\
-	spice-client.c			\
-	spice-session.c			\
-	spice-session-priv.h		\
-	spice-channel.c			\
-	spice-channel-cache.h		\
-	spice-channel-priv.h		\
-	coroutine.h			\
-	gio-coroutine.c			\
-	gio-coroutine.h			\
-	\
-	channel-base.c			\
-	channel-cursor.c		\
-	channel-display.c		\
-	channel-display-priv.h		\
-	channel-display-mjpeg.c		\
-	channel-inputs.c		\
-	channel-main.c			\
-	channel-playback.c		\
-	channel-record.c		\
-	channel-smartcard.c		\
-	channel-usbredir.c		\
-	channel-usbredir-priv.h		\
-	smartcard-manager.c		\
-	smartcard-manager-priv.h	\
-	usb-device-manager.c		\
-	usb-device-manager-priv.h	\
-	usbutil.c			\
-	usbutil.h			\
-	$(USB_ACL_HELPER_SRCS)		\
-	\
-	decode.h			\
-	decode-glz.c			\
-	decode-jpeg.c			\
-	decode-zlib.c			\
-	\
-	$(COMMON_DIR)/backtrace.c	\
-	$(COMMON_DIR)/backtrace.h	\
-	$(COMMON_DIR)/mem.c		\
-	$(COMMON_DIR)/mem.h		\
-	$(COMMON_DIR)/marshaller.c	\
-	$(COMMON_DIR)/marshaller.h	\
-	$(COMMON_DIR)/canvas_utils.c	\
-	$(COMMON_DIR)/canvas_utils.h	\
-	$(COMMON_DIR)/sw_canvas.c	\
-	$(COMMON_DIR)/sw_canvas.h	\
-	$(COMMON_DIR)/pixman_utils.c	\
-	$(COMMON_DIR)/pixman_utils.h	\
-	$(COMMON_DIR)/lines.c		\
-	$(COMMON_DIR)/lines.h		\
-	$(COMMON_DIR)/rop3.c		\
-	$(COMMON_DIR)/rop3.h		\
-	$(COMMON_DIR)/quic.c		\
-	$(COMMON_DIR)/quic.h		\
-	$(COMMON_DIR)/log.c		\
-	$(COMMON_DIR)/log.h		\
-	$(COMMON_DIR)/lz.c		\
-	$(COMMON_DIR)/lz.h		\
-	$(COMMON_DIR)/region.c		\
-	$(COMMON_DIR)/region.h		\
-	$(COMMON_DIR)/ssl_verify.c	\
-	$(COMMON_DIR)/ssl_verify.h	\
+libspice_client_glib_2_0_la_SOURCES =			\
+	bio-gsocket.c					\
+	bio-gsocket.h					\
+	glib-compat.c					\
+	glib-compat.h					\
+	spice-audio.c					\
+	spice-audio-priv.h				\
+	spice-common.h					\
+	spice-util.c					\
+	spice-util-priv.h				\
+	spice-option.h					\
+	spice-option.c					\
+							\
+	spice-client.c					\
+	spice-session.c					\
+	spice-session-priv.h				\
+	spice-channel.c					\
+	spice-channel-cache.h				\
+	spice-channel-priv.h				\
+	coroutine.h					\
+	gio-coroutine.c					\
+	gio-coroutine.h					\
+							\
+	channel-base.c					\
+	channel-cursor.c				\
+	channel-display.c				\
+	channel-display-priv.h				\
+	channel-display-mjpeg.c				\
+	channel-inputs.c				\
+	channel-main.c					\
+	channel-playback.c				\
+	channel-record.c				\
+	channel-smartcard.c				\
+	channel-usbredir.c				\
+	channel-usbredir-priv.h				\
+	smartcard-manager.c				\
+	smartcard-manager-priv.h			\
+	usb-device-manager.c				\
+	usb-device-manager-priv.h			\
+	usbutil.c					\
+	usbutil.h					\
+	$(USB_ACL_HELPER_SRCS)				\
+							\
+	decode.h					\
+	decode-glz.c					\
+	decode-jpeg.c					\
+	decode-zlib.c					\
+							\
+	$(top_srcdir)/spice-common/common/sw_canvas.c	\
+	$(top_srcdir)/spice-common/common/sw_canvas.h	\
 	$(NULL)
 
 nodist_libspice_client_glib_2_0_la_SOURCES =	\
-	$(MARSHALLERS)			\
-	spice-glib-enums.c		\
-	spice-marshal.c			\
-	spice-marshal.h			\
+	spice-glib-enums.c			\
+	spice-marshal.c				\
+	spice-marshal.h				\
 	$(NULL)
 
 libspice_client_glibincludedir = $(includedir)/spice-client-glib-2.0
@@ -305,7 +271,7 @@ libspice_client_glibinclude_HEADERS =	\
 	$(NULL)
 
 nodist_libspice_client_glibinclude_HEADERS =	\
-	spice-glib-enums.h		\
+	spice-glib-enums.h			\
 	$(NULL)
 
 # file for API compatibility, but we don't want warning during our compilation
@@ -340,7 +306,7 @@ libspice_client_glib_2_0_la_SOURCES += coroutine_gthread.c
 libspice_client_glib_2_0_la_LIBADD += $(GTHREAD_LIBS)
 endif
 
-displaysrc = \
+displaysrc =					\
 	glib-compat.h				\
 	display/edid.h				\
 	display/edid-parse.c			\
@@ -370,13 +336,13 @@ spicy_SOURCES =					\
 	$(displaysrc)				\
 	$(NULL)
 
-spicy_LDADD =				\
-	libspice-client-gtk-$(SPICE_GTK_API_VERSION).la		\
-	libspice-client-glib-2.0.la		\
-	$(XRANDR_LIBS)			\
-	$(GTHREAD_LIBS)			\
-	$(GTK_LIBS)			\
-	$(LIBM)				\
+spicy_LDADD =						\
+	libspice-client-gtk-$(SPICE_GTK_API_VERSION).la	\
+	libspice-client-glib-2.0.la			\
+	$(XRANDR_LIBS)					\
+	$(GTHREAD_LIBS)					\
+	$(GTK_LIBS)					\
+	$(LIBM)						\
 	$(NULL)
 
 spicy_CPPFLAGS =			\
@@ -423,9 +389,9 @@ snappy_SOURCES =			\
 	spice-cmdline.c			\
 	$(NULL)
 
-snappy_LDADD =				\
+snappy_LDADD =					\
 	libspice-client-glib-2.0.la		\
-	$(GOBJECT2_LIBS)		\
+	$(GOBJECT2_LIBS)			\
 	$(NULL)
 
 spicy_stats_SOURCES =			\
@@ -436,7 +402,7 @@ spicy_stats_SOURCES =			\
 
 spicy_stats_LDADD =				\
 	libspice-client-glib-2.0.la		\
-	$(GOBJECT2_LIBS)		\
+	$(GOBJECT2_LIBS)			\
 	$(NULL)
 
 
@@ -511,20 +477,6 @@ spice-widget-enums.h: spice-widget.h
 		$< >  $@
 
 
-# Note despite being autogenerated these are not part of CLEANFILES, they are
-# actually a part of EXTRA_DIST, to avoid the need for pyparser by end users
-generated_demarshallers.c: $(top_srcdir)/spice.proto
-	$(AM_V_GEN)$(PYTHON) $(top_srcdir)/spice_codegen.py --generate-demarshallers --client --include messages.h $< $@ >/dev/null
-
-generated_demarshallers1.c: $(top_srcdir)/spice1.proto
-	$(AM_V_GEN)$(PYTHON) $(top_srcdir)/spice_codegen.py --generate-demarshallers --client --include messages.h --prefix 1 --ptrsize 8 $< $@ >/dev/null
-
-generated_marshallers.c: $(top_srcdir)/spice.proto
-	$(AM_V_GEN)$(PYTHON) $(top_srcdir)/spice_codegen.py --generate-marshallers -P --include messages.h --include client_marshallers.h --client $< $@ >/dev/null
-
-generated_marshallers1.c: $(top_srcdir)/spice1.proto
-	$(AM_V_GEN)$(PYTHON) $(top_srcdir)/spice_codegen.py --generate-marshallers -P --include messages.h --include client_marshallers.h --client --prefix 1 --ptrsize 8 $< $@ >/dev/null
-
 vncdisplaykeymap.c: $(KEYMAPS)
 
 $(KEYMAPS): $(KEYMAP_GEN) keymaps.csv
@@ -592,34 +544,34 @@ INTROSPECTION_SCANNER_ARGS = --warn-all --accept-unprefixed --add-include-path=$
 INTROSPECTION_COMPILER_ARGS = --includedir=$(builddir)
 
 if HAVE_INTROSPECTION
-glib_introspection_files =			\
-	$(libspice_client_glibinclude_HEADERS)	\
+glib_introspection_files =				\
+	$(libspice_client_glibinclude_HEADERS)		\
 	$(nodist_libspice_client_glibinclude_HEADERS)	\
-	spice-audio.c				\
-	spice-client.c				\
-	spice-session.c				\
-	spice-channel.c				\
-	spice-glib-enums.c			\
-	spice-option.c				\
-	spice-util.c				\
-	channel-cursor.c			\
-	channel-display.c			\
-	channel-inputs.c			\
-	channel-main.c				\
-	channel-playback.c			\
-	channel-record.c			\
-	channel-smartcard.c			\
-	channel-usbredir.c			\
-	smartcard-manager.c			\
-	usb-device-manager.c            	\
+	spice-audio.c					\
+	spice-client.c					\
+	spice-session.c					\
+	spice-channel.c					\
+	spice-glib-enums.c				\
+	spice-option.c					\
+	spice-util.c					\
+	channel-cursor.c				\
+	channel-display.c				\
+	channel-inputs.c				\
+	channel-main.c					\
+	channel-playback.c				\
+	channel-record.c				\
+	channel-smartcard.c				\
+	channel-usbredir.c				\
+	smartcard-manager.c				\
+	usb-device-manager.c				\
 	$(NULL)
 
-gtk_introspection_files =			\
-	$(libspice_client_gtkinclude_HEADERS)	\
+gtk_introspection_files =				\
+	$(libspice_client_gtkinclude_HEADERS)		\
 	$(nodist_libspice_client_gtkinclude_HEADERS)	\
-	spice-gtk-session.c			\
-	spice-widget.c				\
-	spice-grabsequence.c			\
+	spice-gtk-session.c				\
+	spice-widget.c					\
+	spice-grabsequence.c				\
 	$(NULL)
 
 SpiceClientGLib-2.0.gir: libspice-client-glib-2.0.la

@@ -25,8 +25,7 @@
 #include "spice-util.h"
 #include "decode.h"
 
-/* spice/common */
-#include "canvas_utils.h"
+#include "common/canvas_utils.h"
 
 struct glz_image_hdr {
     uint64_t                id;

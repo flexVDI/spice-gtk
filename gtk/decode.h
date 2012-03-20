@@ -20,7 +20,7 @@
 
 #include <glib.h>
 
-#include "canvas_base.h"
+#include "common/canvas_base.h"
 
 G_BEGIN_DECLS
 

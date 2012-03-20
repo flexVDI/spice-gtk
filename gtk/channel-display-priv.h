@@ -26,13 +26,12 @@
 #endif
 #include <jpeglib.h>
 
-/* spice/common */
-#include "canvas_base.h"
-#include "canvas_utils.h"
-#include "sw_canvas.h"
-#include "ring.h"
-#include "quic.h"
-#include "rop3.h"
+#include "common/canvas_base.h"
+#include "common/canvas_utils.h"
+#include "common/sw_canvas.h"
+#include "common/ring.h"
+#include "common/quic.h"
+#include "common/rop3.h"
 
 G_BEGIN_DECLS
 
