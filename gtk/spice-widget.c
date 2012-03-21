@@ -1618,8 +1618,8 @@ static void cursor_set(SpiceCursorChannel *channel,
     } else
         g_warn_if_reached();
 
-    if (d->show_cursor) {
-        /* keep hidden cursor */
+    if (d->show_cursor && d->mouse_mode == SPICE_MOUSE_MODE_SERVER) {
+        /* keep hidden cursor, will be shown in cursor_move() */
         gdk_cursor_unref(d->show_cursor);
         d->show_cursor = cursor;
     } else {
