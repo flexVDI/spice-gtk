@@ -46,6 +46,8 @@ public class Controller: Object {
 	public signal void show ();
 	public signal void hide ();
 
+	public signal void client_connected ();
+
 	public void menu_item_click_msg (int32 item_id) {
 		var msg = SpiceProtocol.Controller.MsgValue ();
 		msg.base.size = (uint32)sizeof (SpiceProtocol.Controller.MsgValue);
@@ -191,6 +193,8 @@ public class Controller: Object {
 			}
 			excl_connection = c;
 		}
+
+		client_connected ();
 
 		var t = new uint8[sizeof(SpiceProtocol.Controller.Msg)];
 		for (;;) {

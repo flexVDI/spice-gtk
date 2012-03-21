@@ -22,6 +22,8 @@ public class ForeignMenu: Object {
 	public Menu menu { get; private set; }
     public string title { get; private set; }
 
+	public signal void client_connected ();
+
 	private int nclients;
 	private List<IOStream> clients;
 
@@ -152,6 +154,8 @@ public class ForeignMenu: Object {
 		var title = new uint8[title_size + 1];
 		read = yield c.input_stream.read_async (title[0:title_size]);
 		this.title = (string)title;
+
+		client_connected ();
 
 		var t = new uint8[sizeof(SpiceProtocol.ForeignMenu.Msg)];
 		for (;;) {
