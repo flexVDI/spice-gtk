@@ -40,6 +40,7 @@ public class Controller: Object {
 	public string[] disable_channels { private set; get; }
 	public SpiceCtrl.Menu? menu  { private set; get; }
 	public bool enable_smartcard { private set; get; }
+	public bool send_cad { private set; get; }
 
 	public signal void do_connect ();
 	public signal void show ();
@@ -131,7 +132,10 @@ public class Controller: Object {
 			menu = null;
 			break;
 
-		// ignore SEND_CAD
+		case SpiceProtocol.Controller.MsgId.SEND_CAD:
+			send_cad = (bool)v.value;
+			break;
+
 		case SpiceProtocol.Controller.MsgId.HOTKEYS:
 			hotkeys = str;
 			break;
