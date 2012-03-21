@@ -705,6 +705,7 @@ static void destroy_canvas(display_surface *surface)
 #ifdef HAVE_SYS_SHM_H
     else {
         shmdt(surface->data);
+        shmctl(surface->shmid, IPC_RMID, 0);
     }
 #endif
     surface->shmid = -1;
@@ -815,11 +816,6 @@ static void display_handle_mode(SpiceChannel *channel, SpiceMsgIn *in)
     surface->size    = surface->height * surface->stride;
     surface->primary = true;
     create_canvas(channel, surface);
-#ifdef HAVE_SYS_SHM_H
-    if (surface->shmid != -1) {
-        shmctl(surface->shmid, IPC_RMID, 0);
-    }
-#endif
 }
 
 /* coroutine context */
