@@ -476,7 +476,7 @@ static void spice_session_set_property(GObject      *gobject,
     case PROP_PUBKEY:
         if (s->pubkey)
             g_byte_array_unref(s->pubkey);
-        s->pubkey = g_value_get_boxed(value);
+        s->pubkey = g_value_dup_boxed(value);
         if (s->pubkey)
             s->verify = SPICE_SESSION_VERIFY_PUBKEY;
 	break;
