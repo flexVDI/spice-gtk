@@ -518,8 +518,10 @@ static void device_removed_cb(SpiceUsbDeviceManager *manager,
 
 static void set_inactive_by_usb_device(GtkWidget *widget, gpointer user_data)
 {
-    if (get_usb_device(widget) == user_data)
-        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), FALSE);
+    if (get_usb_device(widget) == user_data) {
+        GtkWidget *check = gtk_bin_get_child(GTK_BIN(widget));
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(check), FALSE);
+    }
 }
 
 static void device_error_cb(SpiceUsbDeviceManager *manager,
