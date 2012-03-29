@@ -135,6 +135,7 @@ static gboolean cb_out_watch(GIOChannel    *channel,
             g_simple_async_result_set_error(priv->result,
                         SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                         "Unexpected EOF reading from acl helper stdout");
+            break;
         case G_IO_STATUS_AGAIN:
             return TRUE; /* Wait for more input */
     }
