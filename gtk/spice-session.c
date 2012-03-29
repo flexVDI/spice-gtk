@@ -474,7 +474,8 @@ static void spice_session_set_property(GObject      *gobject,
         s->client_provided_sockets = g_value_get_boolean(value);
         break;
     case PROP_PUBKEY:
-        g_byte_array_unref(s->pubkey);
+        if (s->pubkey)
+            g_byte_array_unref(s->pubkey);
         s->pubkey = g_value_get_boxed(value);
         if (s->pubkey)
             s->verify = SPICE_SESSION_VERIFY_PUBKEY;

@@ -219,12 +219,15 @@ static GObject *spice_usb_device_widget_constructor(
                      G_CALLBACK(device_error_cb), self);
 
     devices = spice_usb_device_manager_get_devices(priv->manager);
+    if (!devices)
+        goto end;
 
     for (i = 0; i < devices->len; i++)
         device_added_cb(NULL, g_ptr_array_index(devices, i), self);
 
     g_ptr_array_unref(devices);
 
+end:
     return obj;
 }
 
