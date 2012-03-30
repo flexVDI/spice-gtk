@@ -1740,6 +1740,7 @@ static void disconnect_display(SpiceDisplay *display)
                                          display);
     g_signal_handlers_disconnect_by_func(d->display, G_CALLBACK(invalidate),
                                          display);
+    primary_destroy(d->display, display);
     d->display = NULL;
 }
 

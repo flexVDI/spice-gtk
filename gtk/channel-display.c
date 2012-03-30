@@ -73,7 +73,6 @@ struct _SpiceDisplayChannelPrivate {
 #ifdef WIN32
     HDC dc;
 #endif
-    gboolean                    migrate_wait_primary;
 };
 
 G_DEFINE_TYPE(SpiceDisplayChannel, spice_display_channel, SPICE_TYPE_CHANNEL)
@@ -99,7 +98,7 @@ static guint signals[SPICE_DISPLAY_LAST_SIGNAL];
 static void spice_display_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg);
 static void spice_display_channel_up(SpiceChannel *channel);
 
-static void clear_surfaces(SpiceChannel *channel);
+static void clear_surfaces(SpiceChannel *channel, gboolean keep_primary);
 static void clear_streams(SpiceChannel *channel);
 static display_surface *find_surface(SpiceDisplayChannelPrivate *c, int surface_id);
 static gboolean display_stream_render(display_stream *st);
@@ -123,11 +122,7 @@ static void spice_display_channel_dispose(GObject *object)
 
 static void spice_display_channel_finalize(GObject *object)
 {
-    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(object)->priv;
-
-    c->migrate_wait_primary = FALSE;
-
-    clear_surfaces(SPICE_CHANNEL(object));
+    clear_surfaces(SPICE_CHANNEL(object), FALSE);
     clear_streams(SPICE_CHANNEL(object));
 
     if (G_OBJECT_CLASS(spice_display_channel_parent_class)->finalize)
@@ -190,13 +185,9 @@ static void spice_display_set_property(GObject      *object,
 /* main or coroutine context */
 static void spice_display_channel_reset(SpiceChannel *channel, gboolean migrating)
 {
-    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
-
     /* palettes, images, and glz_window are cleared in the session */
-
-    c->migrate_wait_primary = migrating;
     clear_streams(channel);
-    clear_surfaces(channel);
+    clear_surfaces(channel, TRUE);
 
     SPICE_CHANNEL_CLASS(spice_display_channel_parent_class)->channel_reset(channel, migrating);
 }
@@ -618,10 +609,8 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
         display_surface *primary = find_surface(c, 0);
 
         if (primary) {
-            if (c->migrate_wait_primary &&
-                primary->width == surface->width &&
+            if (primary->width == surface->width &&
                 primary->height == surface->height) {
-                c->migrate_wait_primary = FALSE;
                 SPICE_DEBUG("Reusing existing primary surface");
                 return 0;
             }
@@ -633,8 +622,6 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
         }
 
         SPICE_DEBUG("display: create primary canvas");
-        c->migrate_wait_primary = FALSE;
-
 #ifdef HAVE_SYS_SHM_H
         surface->shmid = shmget(IPC_PRIVATE, surface->size, IPC_CREAT | 0777);
         if (surface->shmid >= 0) {
@@ -730,7 +717,7 @@ static display_surface *find_surface(SpiceDisplayChannelPrivate *c, int surface_
     return NULL;
 }
 
-static void clear_surfaces(SpiceChannel *channel)
+static void clear_surfaces(SpiceChannel *channel, gboolean keep_primary)
 {
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     display_surface *surface;
@@ -740,8 +727,8 @@ static void clear_surfaces(SpiceChannel *channel)
         surface = SPICE_CONTAINEROF(item, display_surface, link);
         item = ring_next(&c->surfaces, item);
 
-        if (c->migrate_wait_primary && surface->primary) {
-            SPICE_DEBUG("Try to keep exisiting primary surface during migration");
+        if (keep_primary && surface->primary) {
+            SPICE_DEBUG("keeping exisiting primary surface, migration or reset");
             continue;
         }
 
