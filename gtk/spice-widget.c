@@ -346,6 +346,23 @@ static GdkCursor* get_blank_cursor(void)
     return gdk_cursor_new(GDK_BLANK_CURSOR);
 }
 
+static gboolean grab_broken(SpiceDisplay *self, GdkEventGrabBroken *event,
+                            gpointer user_data G_GNUC_UNUSED)
+{
+    SpiceDisplayPrivate *d = self->priv;
+
+    SPICE_DEBUG("%s (%d)", __FUNCTION__, event->implicit);
+    if (event->keyboard) {
+        d->keyboard_grab_active = false;
+        g_signal_emit(self, signals[SPICE_DISPLAY_KEYBOARD_GRAB], 0, false);
+    } else {
+        d->mouse_grab_active = false;
+        g_signal_emit(self, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, false);
+    }
+
+    return false;
+}
+
 static void spice_display_init(SpiceDisplay *display)
 {
     GtkWidget *widget = GTK_WIDGET(display);
@@ -353,6 +370,7 @@ static void spice_display_init(SpiceDisplay *display)
 
     d = display->priv = SPICE_DISPLAY_GET_PRIVATE(display);
 
+    g_signal_connect(display, "grab-broken-event", G_CALLBACK(grab_broken), NULL);
     gtk_widget_add_events(widget,
                           GDK_STRUCTURE_MASK |
                           GDK_POINTER_MOTION_MASK |
@@ -365,7 +383,6 @@ static void spice_display_init(SpiceDisplay *display)
     gtk_widget_set_double_buffered(widget, false);
     gtk_widget_set_can_focus(widget, true);
     gtk_widget_set_has_window(widget, true);
-
     d->keycode_map = vnc_display_keymap_gdk2xtkbd_table(&d->keycode_maplen);
     d->grabseq = spice_grab_sequence_new_from_string("Control_L+Alt_L");
     d->activeseq = g_new0(gboolean, d->grabseq->nkeysyms);
