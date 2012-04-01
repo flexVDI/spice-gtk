@@ -64,6 +64,9 @@ namespace SpiceProtocol {
 
 			//spice client -> external app
 			MENU_ITEM_CLICK,
+
+			COLOR_DEPTH,
+			DISABLE_EFFECTS,
 		}
 
 		[CCode (cname = "unsigned int", cprefix = "CONTROLLER_", has_type_id = false)]

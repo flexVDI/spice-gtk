@@ -41,6 +41,8 @@ public class Controller: Object {
 	public SpiceCtrl.Menu? menu  { private set; get; }
 	public bool enable_smartcard { private set; get; }
 	public bool send_cad { private set; get; }
+	public string[] disable_effects {private set; get; }
+	public uint32 color_depth {private set; get; }
 
 	public signal void do_connect ();
 	public signal void show ();
@@ -140,6 +142,13 @@ public class Controller: Object {
 
 		case SpiceProtocol.Controller.MsgId.HOTKEYS:
 			hotkeys = str;
+			break;
+
+		case SpiceProtocol.Controller.MsgId.COLOR_DEPTH:
+			color_depth = v.value;
+			break;
+		case SpiceProtocol.Controller.MsgId.DISABLE_EFFECTS:
+			disable_effects = str.split(",");
 			break;
 
 		case SpiceProtocol.Controller.MsgId.CONNECT:
