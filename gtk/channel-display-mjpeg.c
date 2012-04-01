@@ -24,10 +24,10 @@
 static void mjpeg_src_init(struct jpeg_decompress_struct *cinfo)
 {
     display_stream *st = SPICE_CONTAINEROF(cinfo->src, display_stream, mjpeg_src);
-    SpiceMsgDisplayStreamData *data = spice_msg_in_parsed(st->msg_data);
+    uint8_t *data;
 
-    cinfo->src->next_input_byte = data->data;
-    cinfo->src->bytes_in_buffer = data->data_size;
+    cinfo->src->bytes_in_buffer = stream_get_current_frame(st, &data);
+    cinfo->src->next_input_byte = data;
 }
 
 static boolean mjpeg_src_fill(struct jpeg_decompress_struct *cinfo)
@@ -64,13 +64,13 @@ void stream_mjpeg_init(display_stream *st)
 G_GNUC_INTERNAL
 void stream_mjpeg_data(display_stream *st)
 {
-    SpiceMsgDisplayStreamCreate *info = spice_msg_in_parsed(st->msg_create);
     gboolean back_compat = st->channel->priv->peer_hdr.major_version == 1;
-    int width = info->stream_width;
-    int height = info->stream_height;
+    int width;
+    int height;
     uint8_t *dest;
     uint8_t *lines[4];
 
+    stream_get_dimensions(st, &width, &height);
     dest = malloc(width * height * 4);
 
     if (st->out_frame) {

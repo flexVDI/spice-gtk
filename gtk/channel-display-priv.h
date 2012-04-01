@@ -73,6 +73,9 @@ typedef struct display_stream {
     SpiceChannel                *channel;
 } display_stream;
 
+void stream_get_dimensions(display_stream *st, int *width, int *height);
+uint32_t stream_get_current_frame(display_stream *st, uint8_t **data);
+
 /* channel-display-mjpeg.c */
 void stream_mjpeg_init(display_stream *st);
 void stream_mjpeg_data(display_stream *st);

@@ -597,6 +597,7 @@ static void spice_display_channel_init(SpiceDisplayChannel *channel)
 #if defined(WIN32)
     c->dc = create_compatible_dc();
 #endif
+    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_SIZED_STREAM);
 }
 
 /* ------------------------------------------------------------------ */
@@ -962,7 +963,7 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
 static gboolean display_stream_schedule(display_stream *st)
 {
     guint32 time, d;
-    SpiceMsgDisplayStreamData *op;
+    SpiceStreamDataHeader *op;
     SpiceMsgIn *in;
 
     if (st->timeout)
@@ -989,6 +990,72 @@ static gboolean display_stream_schedule(display_stream *st)
     return FALSE;
 }
 
+static SpiceRect *stream_get_dest(display_stream *st)
+{
+    if (st->msg_data == NULL ||
+        spice_msg_in_type(st->msg_data) != SPICE_MSG_DISPLAY_STREAM_DATA_SIZED) {
+        SpiceMsgDisplayStreamCreate *info = spice_msg_in_parsed(st->msg_create);
+
+        return &info->dest;
+    } else {
+        SpiceMsgDisplayStreamDataSized *op = spice_msg_in_parsed(st->msg_data);
+
+        return &op->dest;
+   }
+
+}
+
+static uint32_t stream_get_flags(display_stream *st)
+{
+    SpiceMsgDisplayStreamCreate *info = spice_msg_in_parsed(st->msg_create);
+
+    return info->flags;
+}
+
+G_GNUC_INTERNAL
+uint32_t stream_get_current_frame(display_stream *st, uint8_t **data)
+{
+    if (st->msg_data == NULL) {
+        *data = NULL;
+        return 0;
+    }
+
+    if (spice_msg_in_type(st->msg_data) == SPICE_MSG_DISPLAY_STREAM_DATA) {
+        SpiceMsgDisplayStreamData *op = spice_msg_in_parsed(st->msg_data);
+
+        *data = op->data;
+        return op->data_size;
+    } else {
+        SpiceMsgDisplayStreamDataSized *op = spice_msg_in_parsed(st->msg_data);
+
+        g_return_val_if_fail(spice_msg_in_type(st->msg_data) ==
+                             SPICE_MSG_DISPLAY_STREAM_DATA_SIZED, 0);
+        *data = op->data;
+        return op->data_size;
+   }
+
+}
+
+G_GNUC_INTERNAL
+void stream_get_dimensions(display_stream *st, int *width, int *height)
+{
+    g_return_if_fail(width != NULL);
+    g_return_if_fail(height != NULL);
+
+    if (st->msg_data == NULL ||
+        spice_msg_in_type(st->msg_data) != SPICE_MSG_DISPLAY_STREAM_DATA_SIZED) {
+        SpiceMsgDisplayStreamCreate *info = spice_msg_in_parsed(st->msg_create);
+
+        *width = info->stream_width;
+        *height = info->stream_height;
+    } else {
+        SpiceMsgDisplayStreamDataSized *op = spice_msg_in_parsed(st->msg_data);
+
+        *width = op->width;
+        *height = op->height;
+   }
+}
+
 /* main context */
 static gboolean display_stream_render(display_stream *st)
 {
@@ -1008,14 +1075,19 @@ static gboolean display_stream_render(display_stream *st)
         }
 
         if (st->out_frame) {
-            SpiceMsgDisplayStreamCreate *info = spice_msg_in_parsed(st->msg_create);
+            int width;
+            int height;
+            SpiceRect *dest;
             uint8_t *data;
             int stride;
 
+            stream_get_dimensions(st, &width, &height);
+            dest = stream_get_dest(st);
+
             data = st->out_frame;
-            stride = info->stream_width * sizeof(uint32_t);
-            if (!(info->flags & SPICE_STREAM_FLAGS_TOP_DOWN)) {
-                data += stride * (info->src_height - 1);
+            stride = width * sizeof(uint32_t);
+            if (!(stream_get_flags(st) & SPICE_STREAM_FLAGS_TOP_DOWN)) {
+                data += stride * (height - 1);
                 stride = -stride;
             }
 
@@ -1024,15 +1096,15 @@ static gboolean display_stream_render(display_stream *st)
 #ifdef WIN32
                 SPICE_DISPLAY_CHANNEL(st->channel)->priv->dc,
 #endif
-                &info->dest, data,
-                info->src_width, info->src_height, stride,
+                dest, data,
+                width, height, stride,
                 st->have_region ? &st->region : NULL);
 
             if (st->surface->primary)
                 g_signal_emit(st->channel, signals[SPICE_DISPLAY_INVALIDATE], 0,
-                    info->dest.left, info->dest.top,
-                    info->dest.right - info->dest.left,
-                    info->dest.bottom - info->dest.top);
+                    dest->left, dest->top,
+                    dest->right - dest->left,
+                    dest->bottom - dest->top);
         }
 
         st->msg_data = NULL;
@@ -1053,11 +1125,15 @@ static gboolean display_stream_render(display_stream *st)
 static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
-    SpiceMsgDisplayStreamData *op = spice_msg_in_parsed(in);
+    SpiceStreamDataHeader *op = spice_msg_in_parsed(in);
     display_stream *st = c->streams[op->id];
     guint32 mmtime;
 
     mmtime = spice_session_get_mm_time(spice_channel_get_session(channel));
+
+    if (spice_msg_in_type(in) == SPICE_MSG_DISPLAY_STREAM_DATA_SIZED) {
+        SPICE_DEBUG("stream %d contains sized data", op->id);
+    }
 
     if (op->multi_media_time == 0) {
         g_critical("Received frame with invalid 0 timestamp! perhaps wrong graphic driver?");
@@ -1324,6 +1400,7 @@ static const spice_msg_handler display_handlers[] = {
     [ SPICE_MSG_DISPLAY_STREAM_CLIP ]        = display_handle_stream_clip,
     [ SPICE_MSG_DISPLAY_STREAM_DESTROY ]     = display_handle_stream_destroy,
     [ SPICE_MSG_DISPLAY_STREAM_DESTROY_ALL ] = display_handle_stream_destroy_all,
+    [ SPICE_MSG_DISPLAY_STREAM_DATA_SIZED ]  = display_handle_stream_data,
 
     [ SPICE_MSG_DISPLAY_DRAW_FILL ]          = display_handle_draw_fill,
     [ SPICE_MSG_DISPLAY_DRAW_OPAQUE ]        = display_handle_draw_opaque,
