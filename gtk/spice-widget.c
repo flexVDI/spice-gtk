@@ -1160,11 +1160,21 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
         sx = (double)d->width / (double)ww;
         sy = (double)d->height / (double)wh;
 
-        /* Scaling the desktop, so scale the mouse coords by same
-         * ratio - ceil() seems to be more accurate - not sure
-         * though - scaling is more likely reversible.. */
-        motion->x = ceil(motion->x * sx);
-        motion->y = ceil(motion->y * sy);
+        /* Scaling the desktop, so scale the mouse coords by the same.
+         * Ratio for the rounding used:
+         * 1) We should be able to send mouse coords for all 4 corner pixels
+         * 2) The GdkMotion events are double's, so we've X.Xfrac and Y.Yfrac
+         * 3) The X and Y integer values always go from 0 - (ww/wh - 1)
+         * 4) Note that even if Xfrac = .99999, X will still go from 0 - (ww-1)
+         *    so x will go from 0.99999 - (ww-1).99999
+         * 5) Given 4, the only way to be sure we can always generate 0
+         *    coordinates is to first floor the input coordinates
+         * 6) To avoid rounding errors causing us to be unable to generate
+         *    coordinates for the bottom row / left column of pixels we ceil
+         *    the end result
+         */
+        motion->x = ceil(floor(motion->x) * sx);
+        motion->y = ceil(floor(motion->y) * sy);
     } else {
         motion->x -= d->mx;
         motion->y -= d->my;
