@@ -62,6 +62,10 @@ namespace SpiceProtocol {
 
 			ENABLE_SMARTCARD,
 
+			ENABLE_USB,
+			ENABLE_USB_AUTOSHARE,
+			USB_FILTER,
+
 			//spice client -> external app
 			MENU_ITEM_CLICK,
 

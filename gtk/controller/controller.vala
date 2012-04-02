@@ -43,6 +43,9 @@ public class Controller: Object {
 	public bool send_cad { private set; get; }
 	public string[] disable_effects {private set; get; }
 	public uint32 color_depth {private set; get; }
+	public bool enable_usbredir { private set; get; }
+	public bool enable_usb_autoshare { private set; get; }
+	public string usb_filter { private set; get; }
 
 	public signal void do_connect ();
 	public signal void show ();
@@ -159,6 +162,15 @@ public class Controller: Object {
 			break;
 		case SpiceProtocol.Controller.MsgId.HIDE:
 			hide ();
+			break;
+		case SpiceProtocol.Controller.MsgId.ENABLE_USB:
+			enable_usbredir = (bool)v.value;
+			break;
+		case SpiceProtocol.Controller.MsgId.ENABLE_USB_AUTOSHARE:
+			enable_usb_autoshare = (bool)v.value;
+			break;
+		case SpiceProtocol.Controller.MsgId.USB_FILTER:
+			usb_filter = str;
 			break;
 		default:
 			warn_if_reached ();
