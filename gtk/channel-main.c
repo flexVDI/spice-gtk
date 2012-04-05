@@ -771,17 +771,31 @@ static void agent_send_msg_queue(SpiceMainChannel *channel)
 }
 
 /* any context: the message is not flushed immediately,
-   you can wakeup() the channel coroutine or send_msg_queue() */
-static void agent_msg_queue(SpiceMainChannel *channel, int type, int size, void *data)
+   you can wakeup() the channel coroutine or send_msg_queue()
+
+   expected arguments, pair of data/data_size to send terminated with NULL:
+   agent_msg_queue_many(main, VD_AGENT_...,
+                        &foo, sizeof(Foo),
+                        data, data_size, NULL);
+*/
+G_GNUC_NULL_TERMINATED
+static void agent_msg_queue_many(SpiceMainChannel *channel, int type, const void *data, ...)
 {
+    va_list args;
     SpiceMainChannelPrivate *c = channel->priv;
     SpiceMsgOut *out;
     VDAgentMessage msg;
     guint8 *payload;
-    guint32 paysize;
-    guint8 *d = data;
+    gsize paysize, s, mins, size = 0;
+    const guint8 *d;
 
-    g_assert(VD_AGENT_MAX_DATA_SIZE > sizeof(VDAgentMessage)); // could be a static compilation check
+    G_STATIC_ASSERT(VD_AGENT_MAX_DATA_SIZE > sizeof(VDAgentMessage));
+
+    va_start(args, data);
+    for (d = data; d != NULL; d = va_arg(args, void*)) {
+        size += va_arg(args, gsize);
+    }
+    va_end(args);
 
     msg.protocol = VD_AGENT_PROTOCOL;
     msg.type = type;
@@ -792,20 +806,41 @@ static void agent_msg_queue(SpiceMainChannel *channel, int type, int size, void 
     out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_AGENT_DATA);
     payload = spice_marshaller_reserve_space(out->marshaller, paysize);
     memcpy(payload, &msg, sizeof(VDAgentMessage));
-    memcpy(payload + sizeof(VDAgentMessage), d, paysize - sizeof(VDAgentMessage));
-    size -= (paysize - sizeof(VDAgentMessage));
-    d += (paysize - sizeof(VDAgentMessage));
-    g_queue_push_tail(c->agent_msg_queue, out);
-
-    while ((paysize = MIN(VD_AGENT_MAX_DATA_SIZE, size)) > 0) {
-        out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_AGENT_DATA);
-        payload = spice_marshaller_reserve_space(out->marshaller, paysize);
-        memcpy(payload, d, paysize);
+    payload += sizeof(VDAgentMessage);
+    paysize -= sizeof(VDAgentMessage);
+    if (paysize == 0) {
         g_queue_push_tail(c->agent_msg_queue, out);
-        size -= paysize;
-        d += paysize;
+        out = NULL;
     }
+
+    va_start(args, data);
+    for (d = data; size > 0; d = va_arg(args, void*)) {
+        s = va_arg(args, gsize);
+        while (s > 0) {
+            if (out == NULL) {
+                paysize = MIN(VD_AGENT_MAX_DATA_SIZE, size);
+                out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_AGENT_DATA);
+                payload = spice_marshaller_reserve_space(out->marshaller, paysize);
+            }
+            mins = MIN(paysize, s);
+            memcpy(payload, d, mins);
+            d += mins;
+            payload += mins;
+            s -= mins;
+            size -= mins;
+            paysize -= mins;
+            if (paysize == 0) {
+                g_queue_push_tail(c->agent_msg_queue, out);
+                out = NULL;
+            }
+        }
+    }
+    va_end(args);
+    g_warn_if_fail(out == NULL);
 }
+
+#define agent_msg_queue(Channel, Type, Size, Data) \
+    agent_msg_queue_many((Channel), (Type), (Data), (Size), NULL)
 
 /* any context: the message is not flushed immediately,
    you can wakeup() the channel coroutine or send_msg_queue() */
@@ -971,7 +1006,7 @@ static void agent_clipboard_notify(SpiceMainChannel *channel, guint selection,
     g_return_if_fail(VD_AGENT_HAS_CAPABILITY(c->agent_caps,
         sizeof(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
 
-    msgsize = sizeof(VDAgentClipboard) + size;
+    msgsize = sizeof(VDAgentClipboard);
     if (HAS_CLIPBOARD_SELECTION(c))
         msgsize += 4;
     else if (selection != VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD) {
@@ -990,9 +1025,7 @@ static void agent_clipboard_notify(SpiceMainChannel *channel, guint selection,
     }
 
     cb->type = type;
-    memcpy(cb->data, data, size);
-
-    agent_msg_queue(channel, VD_AGENT_CLIPBOARD, msgsize, msg);
+    agent_msg_queue_many(channel, VD_AGENT_CLIPBOARD, msg, msgsize, data, size, NULL);
 }
 
 /* any context: the message is not flushed immediately,
