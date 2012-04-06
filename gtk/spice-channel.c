@@ -2411,10 +2411,10 @@ static void channel_disconnect(SpiceChannel *channel)
 
     c->has_error = TRUE; /* break the loop */
 
-    spice_channel_reset(channel, FALSE);
-
     if (c->state == SPICE_CHANNEL_STATE_READY)
         emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_CLOSED);
+
+    spice_channel_reset(channel, FALSE);
 
     g_return_if_fail(SPICE_IS_CHANNEL(channel));
     c->state = SPICE_CHANNEL_STATE_UNCONNECTED;
