@@ -1645,17 +1645,21 @@ static void cursor_set(SpiceCursorChannel *channel,
     } else
         g_warn_if_reached();
 
-    if (d->show_cursor && d->mouse_mode == SPICE_MOUSE_MODE_SERVER) {
-        /* keep hidden cursor, will be shown in cursor_move() */
+    if (d->show_cursor) {
+        /* unhide */
         gdk_cursor_unref(d->show_cursor);
-        d->show_cursor = cursor;
-    } else {
-        gdk_cursor_unref(d->mouse_cursor);
-        d->mouse_cursor = cursor;
+        d->show_cursor = NULL;
+        if (d->mouse_mode == SPICE_MOUSE_MODE_SERVER) {
+            /* keep a hidden cursor, will be shown in cursor_move() */
+            d->show_cursor = cursor;
+            return;
+        }
     }
 
-    update_mouse_pointer(display);
+    gdk_cursor_unref(d->mouse_cursor);
+    d->mouse_cursor = cursor;
 
+    update_mouse_pointer(display);
     cursor_invalidate(display);
 }
 
