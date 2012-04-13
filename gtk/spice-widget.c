@@ -379,7 +379,8 @@ static void spice_display_init(SpiceDisplay *display)
                           GDK_BUTTON_MOTION_MASK |
                           GDK_ENTER_NOTIFY_MASK |
                           GDK_LEAVE_NOTIFY_MASK |
-                          GDK_KEY_PRESS_MASK);
+                          GDK_KEY_PRESS_MASK |
+                          GDK_SCROLL_MASK);
     gtk_widget_set_double_buffered(widget, false);
     gtk_widget_set_can_focus(widget, true);
     gtk_widget_set_has_window(widget, true);
