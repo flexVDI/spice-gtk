@@ -1122,9 +1122,9 @@ gboolean spice_session_get_client_provided_socket(SpiceSession *session)
 }
 
 G_GNUC_INTERNAL
-void spice_session_switching_disconnect(SpiceSession *session)
+void spice_session_switching_disconnect(SpiceSession *self)
 {
-    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(self);
     struct channel *item;
     RingItem *ring, *next;
 
@@ -1141,6 +1141,10 @@ void spice_session_switching_disconnect(SpiceSession *session)
     }
 
     g_warn_if_fail(!ring_is_empty(&s->channels)); /* ring_get_length() == 1 */
+
+    spice_session_palettes_clear(self);
+    spice_session_images_clear(self);
+    glz_decoder_window_clear(s->glz_window);
 }
 
 G_GNUC_INTERNAL
