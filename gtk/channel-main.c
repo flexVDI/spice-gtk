@@ -1706,8 +1706,8 @@ static void main_handle_migrate_switch_host(SpiceChannel *channel, SpiceMsgIn *i
         g_return_if_fail(subject[mig->cert_subject_size - 1] == '\0');
     }
 
-    SPICE_DEBUG("migrate_switch %s %d %d",
-                host, mig->port, mig->sport);
+    SPICE_DEBUG("migrate_switch %s %d %d %s",
+                host, mig->port, mig->sport, subject);
 
     if (c->switch_host_delayed_id != 0) {
         g_warning("Switching host already in progress, aborting it");
@@ -1717,7 +1717,10 @@ static void main_handle_migrate_switch_host(SpiceChannel *channel, SpiceMsgIn *i
 
     session = spice_channel_get_session(channel);
     spice_session_set_migration_state(session, SPICE_SESSION_MIGRATION_SWITCHING);
-    g_object_set(session, "host", host, NULL);
+    g_object_set(session,
+                 "host", host,
+                 "cert-subject", subject,
+                 NULL);
     spice_session_set_port(session, mig->port, FALSE);
     spice_session_set_port(session, mig->sport, TRUE);
 
