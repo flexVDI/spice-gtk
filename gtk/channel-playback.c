@@ -87,7 +87,8 @@ static void spice_playback_channel_init(SpicePlaybackChannel *channel)
 {
     channel->priv = SPICE_PLAYBACK_CHANNEL_GET_PRIVATE(channel);
 
-    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_PLAYBACK_CAP_CELT_0_5_1);
+    if (!g_getenv("SPICE_DISABLE_CELT"))
+        spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_PLAYBACK_CAP_CELT_0_5_1);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_PLAYBACK_CAP_VOLUME);
 }
 

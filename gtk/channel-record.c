@@ -93,7 +93,8 @@ static void spice_record_channel_init(SpiceRecordChannel *channel)
 {
     channel->priv = SPICE_RECORD_CHANNEL_GET_PRIVATE(channel);
 
-    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_RECORD_CAP_CELT_0_5_1);
+    if (!g_getenv("SPICE_DISABLE_CELT"))
+        spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_RECORD_CAP_CELT_0_5_1);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_RECORD_CAP_VOLUME);
 }
 
@@ -317,7 +318,8 @@ static void channel_up(SpiceChannel *channel)
     SpiceRecordChannelPrivate *rc;
 
     rc = SPICE_RECORD_CHANNEL(channel)->priv;
-    if (spice_channel_test_capability(channel, SPICE_RECORD_CAP_CELT_0_5_1)) {
+    if (!g_getenv("SPICE_DISABLE_CELT") &&
+        spice_channel_test_capability(channel, SPICE_RECORD_CAP_CELT_0_5_1)) {
         rc->mode = SPICE_AUDIO_DATA_MODE_CELT_0_5_1;
     } else {
         rc->mode = SPICE_AUDIO_DATA_MODE_RAW;
