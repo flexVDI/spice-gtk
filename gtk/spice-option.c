@@ -46,9 +46,10 @@ static void option_version(void)
     exit(0);
 }
 
-static void option_debug(void)
+static gboolean option_debug(void)
 {
     spice_util_set_debug(TRUE);
+    return TRUE;
 }
 
 /**
