@@ -222,6 +222,10 @@ spice_session_finalize(GObject *gobject)
         G_OBJECT_CLASS(spice_session_parent_class)->finalize(gobject);
 }
 
+#define URI_SCHEME_SPICE "spice://"
+#define URI_QUERY_START ";?"
+#define URI_QUERY_SEP   ";&"
+
 static int spice_uri_create(SpiceSession *session, char *dest, int len)
 {
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
@@ -242,50 +246,88 @@ static int spice_uri_create(SpiceSession *session, char *dest, int len)
 static int spice_uri_parse(SpiceSession *session, const char *original_uri)
 {
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
-    char host[128], key[32], value[128];
-    char *port = NULL, *tls_port = NULL, *uri = NULL, *password = NULL;
-    char **target_key;
-    int punctuation = 0;
-    int len, pos = 0;
+    gchar key[32], value[128];
+    gchar *host = NULL, *port = NULL, *tls_port = NULL, *uri = NULL, *password = NULL;
+    gchar **target_key;
+    int len;
+    gchar *path = NULL;
+    gchar *authority = NULL;
+    gchar *query = NULL;
 
     g_return_val_if_fail(original_uri != NULL, -1);
 
     uri = g_uri_unescape_string(original_uri, NULL);
     g_return_val_if_fail(uri != NULL, -1);
 
-    if (sscanf(uri, "spice://%127[-.0-9a-zA-Z]%n", host, &len) != 1)
+
+    /* Break up the URI into its various parts, scheme, authority,
+     * path (ignored) and query
+     */
+    if (strncmp(uri, URI_SCHEME_SPICE, strlen(URI_SCHEME_SPICE)) != 0) {
+        g_warning("Expected a URI scheme of '%s' in URI '%s'",
+                  URI_SCHEME_SPICE, uri);
         goto fail;
-    pos += len;
+    }
+    authority = uri + strlen(URI_SCHEME_SPICE);
+    path = strchr(authority, '/');
+    if (path) {
+        path[0] = '\0';
+        path++;
+    }
 
-    if (uri[pos] == '/')
-        pos++;
+    if (path) {
+        size_t prefix = strcspn(path, URI_QUERY_START);
+        if (len)
+            query = path + prefix;
+    } else {
+        size_t prefix = strcspn(authority, URI_QUERY_START);
+        if (len)
+            query = authority + prefix;
+    }
 
-    for (;;) {
-        if (uri[pos] == '?' || uri[pos] == ';' || uri[pos] == '&') {
-            pos++;
-            punctuation++;
-            continue;
+    if (query && query[0]) {
+        query[0] = '\0';
+        query++;
+    }
+
+    /* Now process the individual parts */
+
+    if (authority[0] == '[') {
+        gchar *tmp = strchr(authority, ']');
+        if (!tmp) {
+            g_warning("Missing closing ']' in authority for URI '%s'", uri);
+            goto fail;
         }
-        if (uri[pos] == 0) {
-            break;
+        tmp[0] = '\0';
+        tmp++;
+        host = g_strdup(authority + 1);
+        if (tmp[0] == ':')
+            port = g_strdup(tmp + 1);
+    } else {
+        gchar *tmp = strchr(authority, ':');
+        if (tmp) {
+            *tmp = '\0';
+            tmp++;
+            port = g_strdup(tmp);
         }
-        if (uri[pos] == ':') {
-            if (punctuation++) {
-                g_warning("colon seen after a previous punctuation (?;&:)");
-                goto fail;
-            }
-            pos++;
-            /* port numbers are 16 bit, fits in five decimal figures. */
-            if (sscanf(uri + pos, "%5[0-9]%n", value, &len) != 1)
-                goto fail;
-            port = g_strdup(value);
-            pos += len;
-            continue;
-        } else {
-            if (sscanf(uri + pos, "%31[-a-zA-Z0-9]=%127[^;&]%n", key, value, &len) != 2)
-                goto fail;
+        host = g_strdup(authority);
+    }
+
+    if (path && !(g_str_equal(path, "") ||
+                  g_str_equal(path, "/"))) {
+        g_warning("Unexpected path data '%s' for URI '%s'", path, uri);
+        /* don't fail, just ignore */
+    }
+
+    while (query && query[0] != '\0') {
+        if (sscanf(query, "%31[-a-zA-Z0-9]=%127[^;&]%n", key, value, &len) != 2) {
+            g_warning("Failed to parse URI query '%s'", query);
+            goto fail;
         }
-        pos += len;
+        query += len;
+        if (*query)
+            query++;
+
         target_key = NULL;
         if (g_str_equal(key, "port")) {
             target_key = &port;
@@ -295,12 +337,12 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
             target_key = &password;
             g_warning("password may be visible in process listings");
         } else {
-            g_warning("unknown key in spice URI parsing: %s", key);
+            g_warning("unknown key in spice URI parsing: '%s'", key);
             goto fail;
         }
         if (target_key) {
             if (*target_key) {
-                g_warning("double set of %s", key);
+                g_warning("Double set of '%s' in URI '%s'", key, uri);
                 goto fail;
             }
             *target_key = g_strdup(value);
@@ -308,7 +350,7 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
     }
 
     if (port == NULL && tls_port == NULL) {
-        g_warning("missing port or tls-port in spice URI");
+        g_warning("Missing port or tls-port in spice URI '%s'", uri);
         goto fail;
     }
 
@@ -318,7 +360,7 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
     g_free(s->port);
     g_free(s->tls_port);
     g_free(s->password);
-    s->host = g_strdup(host);
+    s->host = host;
     s->port = port;
     s->tls_port = tls_port;
     s->password = password;
@@ -326,6 +368,7 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
 
 fail:
     g_free(uri);
+    g_free(host);
     g_free(port);
     g_free(tls_port);
     g_free(password);
