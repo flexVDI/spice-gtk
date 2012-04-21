@@ -77,16 +77,6 @@ dnl =========================================================================
 dnl Chek optional features
 
 srcdir="$(dirname $0)"
-if test ! -e "$srcdir/gtk/generated_marshallers.c"; then
-  AC_MSG_CHECKING([for pyparsing python module])
-  echo "import pyparsing" | ${PYTHON} - >/dev/null 2>&1
-  if test $? -ne 0 ; then
-    AC_MSG_RESULT([not found])
-    AC_MSG_ERROR([pyparsing python module is required to compile this package])
-  fi
-  AC_MSG_RESULT([found])
-fi
-
 if test ! -e "$srcdir/gtk/vncdisplaykeymap_osx2xtkbd.c"; then
   AC_MSG_CHECKING([for Text::CSV Perl module])
   perl -MText::CSV -e "" >/dev/null 2>&1

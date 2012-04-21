@@ -55,7 +55,7 @@ gstreamer-devel gstreamer-plugins-base-devel
 
 . If you build from git, you'll also need:
 
-libtool automake pyparsing vala perl-Text-CSV
+libtool automake vala perl-Text-CSV
 
 
 current state
