@@ -1517,7 +1517,7 @@ static void migrate_channel_event_cb(SpiceChannel *channel, SpiceChannelEvent ev
             coroutine_yieldto(mig->from, NULL);
         break;
     default:
-        g_warning("error or unhandled channel event during migration: %d", event);
+        SPICE_DEBUG("error or unhandled channel event during migration: %d", event);
         /* go back to main channel to report error */
         coroutine_yieldto(mig->from, NULL);
     }

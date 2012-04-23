@@ -1258,7 +1258,11 @@ void spice_session_abort_migration(SpiceSession *session)
     struct channel *c;
 
     g_return_if_fail(s != NULL);
-    g_return_if_fail(s->migration != NULL);
+
+    if (s->migration == NULL) {
+        SPICE_DEBUG("no migration in progress");
+        return;
+    }
 
     for (ring = ring_get_head(&s->channels);
          ring != NULL; ring = next) {
