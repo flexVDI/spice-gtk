@@ -1,3 +1,16 @@
+v0.12
+=====
+
+- Fix memory leak when guest is resized
+- Fix color-depth setting
+- Hide/Show cursor correctly when needed
+- Fix blue-tinted video with old Spice servers
+- Correct scroll-event not received with recent Gtk+
+- Fix various migrations issues
+- Allow to disable CELT encoding at runtime with SPICE_DISABLE_CELT
+- Various crash fixes (on pubkey, recording, clipboard)
+- Build changes (common submodule) and fixes
+
 v0.11
 =====
 
