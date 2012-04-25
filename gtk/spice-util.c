@@ -19,6 +19,8 @@
 #ifdef HAVE_CONFIG_H
 # include "config.h"
 #endif
+#include <stdlib.h>
+#include <string.h>
 #include <glib-object.h>
 #include "spice-util-priv.h"
 #include "spice-util.h"
@@ -45,6 +47,18 @@ static gboolean debugFlag = FALSE;
  **/
 void spice_util_set_debug(gboolean enabled)
 {
+#if GLIB_CHECK_VERSION(2, 31, 0)
+    if (enabled) {
+        gchar *doms = getenv("G_MESSAGES_DEBUG");
+        if (!doms) {
+            setenv("G_MESSAGES_DEBUG", G_LOG_DOMAIN, 1);
+        } else if (!strstr(doms, G_LOG_DOMAIN)) {
+            gchar *newdoms = g_strdup_printf("%s %s", doms, G_LOG_DOMAIN);
+            setenv("G_MESSAGES_DEBUG", newdoms, 1);
+            g_free(newdoms);
+        }
+    }
+#endif
     debugFlag = enabled;
 }
 
