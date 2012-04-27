@@ -438,8 +438,8 @@ spice_display_constructor(GType                  gtype,
 
 /**
  * spice_display_set_grab_keys:
- * @display:
- * @seq: key sequence
+ * @display: the display widget
+ * @seq: (transfer none): key sequence
  *
  * Set the key combination to grab/ungrab the keyboard. The default is
  * "Control L + Alt L".
@@ -493,9 +493,9 @@ static LRESULT CALLBACK keyboard_hook_cb(int code, WPARAM wparam, LPARAM lparam)
 
 /**
  * spice_display_get_grab_keys:
- * @display:
+ * @display: the display widget
  *
- * Returns: the current grab key combination.
+ * Returns: (transfer none): the current grab key combination.
  **/
 SpiceGrabSequence *spice_display_get_grab_keys(SpiceDisplay *display)
 {
