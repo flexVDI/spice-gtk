@@ -49,7 +49,7 @@ void spice_util_set_debug(gboolean enabled)
 {
 #if GLIB_CHECK_VERSION(2, 31, 0)
     if (enabled) {
-        gchar *doms = g_getenv("G_MESSAGES_DEBUG");
+        const gchar *doms = g_getenv("G_MESSAGES_DEBUG");
         if (!doms) {
             g_setenv("G_MESSAGES_DEBUG", G_LOG_DOMAIN, 1);
         } else if (!strstr(doms, G_LOG_DOMAIN)) {
