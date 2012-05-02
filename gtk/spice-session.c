@@ -249,7 +249,6 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
     gchar key[32], value[128];
     gchar *host = NULL, *port = NULL, *tls_port = NULL, *uri = NULL, *password = NULL;
     gchar **target_key;
-    int len;
     gchar *path = NULL;
     gchar *authority = NULL;
     gchar *query = NULL;
@@ -277,12 +276,10 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
 
     if (path) {
         size_t prefix = strcspn(path, URI_QUERY_START);
-        if (len)
-            query = path + prefix;
+        query = path + prefix;
     } else {
         size_t prefix = strcspn(authority, URI_QUERY_START);
-        if (len)
-            query = authority + prefix;
+        query = authority + prefix;
     }
 
     if (query && query[0]) {
@@ -320,6 +317,7 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
     }
 
     while (query && query[0] != '\0') {
+        int len;
         if (sscanf(query, "%31[-a-zA-Z0-9]=%127[^;&]%n", key, value, &len) != 2) {
             g_warning("Failed to parse URI query '%s'", query);
             goto fail;
