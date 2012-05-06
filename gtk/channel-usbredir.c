@@ -297,6 +297,9 @@ void spice_usbredir_channel_connect_device_async(
 {
     SpiceUsbredirChannelPrivate *priv = channel->priv;
     GSimpleAsyncResult *result;
+#if ! USE_POLKIT
+    GError *err = NULL;
+#endif
 
     g_return_if_fail(SPICE_IS_USBREDIR_CHANNEL(channel));
     g_return_if_fail(device != NULL);
@@ -335,7 +338,6 @@ void spice_usbredir_channel_connect_device_async(
                                   channel);
     return;
 #else
-    GError *err = NULL;
     if (!spice_usbredir_channel_open_device(channel, &err)) {
         g_simple_async_result_take_error(result, err);
         libusb_unref_device(priv->device);
