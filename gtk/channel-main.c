@@ -154,6 +154,12 @@ static const char *agent_caps[] = {
 
 /* ------------------------------------------------------------------ */
 
+static void spice_main_channel_reset_capabilties(SpiceChannel *channel)
+{
+    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_MAIN_CAP_SEMI_SEAMLESS_MIGRATE);
+    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_MAIN_CAP_NAME_AND_UUID);
+}
+
 static void spice_main_channel_init(SpiceMainChannel *channel)
 {
     SpiceMainChannelPrivate *c;
@@ -161,8 +167,7 @@ static void spice_main_channel_init(SpiceMainChannel *channel)
     c = channel->priv = SPICE_MAIN_CHANNEL_GET_PRIVATE(channel);
     c->agent_msg_queue = g_queue_new();
 
-    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_MAIN_CAP_SEMI_SEAMLESS_MIGRATE);
-    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_MAIN_CAP_NAME_AND_UUID);
+    spice_main_channel_reset_capabilties(SPICE_CHANNEL(channel));
 }
 
 static void spice_main_get_property(GObject    *object,
@@ -309,6 +314,7 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
     channel_class->handle_msg    = spice_main_handle_msg;
     channel_class->iterate_write = spice_channel_iterate_write;
     channel_class->channel_reset = spice_main_channel_reset;
+    channel_class->channel_reset_capabilities = spice_main_channel_reset_capabilties;
 
     /**
      * SpiceMainChannel:mouse-mode:
