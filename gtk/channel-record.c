@@ -89,13 +89,18 @@ static void channel_up(SpiceChannel *channel);
 
 /* ------------------------------------------------------------------ */
 
+static void spice_record_channel_reset_capabilities(SpiceChannel *channel)
+{
+    if (!g_getenv("SPICE_DISABLE_CELT"))
+        spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_RECORD_CAP_CELT_0_5_1);
+    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_RECORD_CAP_VOLUME);
+}
+
 static void spice_record_channel_init(SpiceRecordChannel *channel)
 {
     channel->priv = SPICE_RECORD_CHANNEL_GET_PRIVATE(channel);
 
-    if (!g_getenv("SPICE_DISABLE_CELT"))
-        spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_RECORD_CAP_CELT_0_5_1);
-    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_RECORD_CAP_VOLUME);
+    spice_record_channel_reset_capabilities(SPICE_CHANNEL(channel));
 }
 
 static void spice_record_channel_finalize(GObject *obj)
@@ -195,6 +200,7 @@ static void spice_record_channel_class_init(SpiceRecordChannelClass *klass)
     channel_class->handle_msg   = spice_record_handle_msg;
     channel_class->channel_up   = channel_up;
     channel_class->channel_reset = channel_reset;
+    channel_class->channel_reset_capabilities = spice_record_channel_reset_capabilities;
 
     g_object_class_install_property
         (gobject_class, PROP_NCHANNELS,
