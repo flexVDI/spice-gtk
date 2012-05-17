@@ -980,7 +980,10 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
                 try_mouse_grab(display);
         }
 
-        return true;
+        // that's the last key pressed from the grab sequence
+        // let send it to the remote if it's a modifier key
+        if (!key->is_modifier)
+            return true;
     }
 
     if (!d->inputs)
