@@ -48,6 +48,7 @@ static void spice_channel_write_msg(SpiceChannel *channel, SpiceMsgOut *out);
 static void spice_channel_send_link(SpiceChannel *channel);
 static void channel_disconnect(SpiceChannel *channel);
 static void channel_reset(SpiceChannel *channel, gboolean migrating);
+static void spice_channel_reset_capabilities(SpiceChannel *channel);
 
 /**
  * SECTION:spice-channel
@@ -1147,7 +1148,11 @@ static void spice_channel_send_link(SpiceChannel *channel)
         *(uint32_t *)p = g_array_index(c->caps, uint32_t, i);
         p += sizeof(uint32_t);
     }
-
+    SPICE_DEBUG("channel type %d id %d num common caps %d num caps %d",
+                c->link_msg.channel_type,
+                c->link_msg.channel_id,
+                c->link_msg.num_common_caps,
+                c->link_msg.num_channel_caps);
     spice_channel_write(channel, buffer, p - buffer);
     free(buffer);
 }
@@ -2390,10 +2395,10 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
     g_array_set_size(c->remote_common_caps, 0);
     g_array_set_size(c->remote_caps, 0);
     g_array_set_size(c->common_caps, 0);
-    g_array_set_size(c->caps, 0);
     /* Restore our default capabilities in case the channel gets re-used */
     spice_channel_set_common_capability(channel, SPICE_COMMON_CAP_PROTOCOL_AUTH_SELECTION);
     spice_channel_set_common_capability(channel, SPICE_COMMON_CAP_MINI_HEADER);
+    spice_channel_reset_capabilities(channel);
 }
 
 /* system or coroutine context */
@@ -2631,4 +2636,14 @@ static void spice_channel_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
     g_return_if_fail(base_handlers[type] != NULL);
 
     base_handlers[type](channel, msg);
+}
+
+static void spice_channel_reset_capabilities(SpiceChannel *channel)
+{
+    SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    g_array_set_size(c->caps, 0);
+
+    if (SPICE_CHANNEL_GET_CLASS(channel)->channel_reset_capabilities) {
+        SPICE_CHANNEL_GET_CLASS(channel)->channel_reset_capabilities(channel);
+    }
 }

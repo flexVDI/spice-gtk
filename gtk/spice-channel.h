@@ -78,6 +78,7 @@ struct _SpiceChannelClass
     void (*channel_up)(SpiceChannel *channel);
     void (*iterate_write)(SpiceChannel *channel);
     void (*iterate_read)(SpiceChannel *channel);
+    void (*channel_reset_capabilities)(SpiceChannel *channel);
 
     /*< public >*/
     /* signals, main context */
