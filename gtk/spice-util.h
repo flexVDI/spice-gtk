@@ -37,7 +37,7 @@ gulong spice_g_signal_connect_object(gpointer instance,
             g_debug(G_STRLOC " " fmt, ## __VA_ARGS__);          \
     } while (0)
 
-#define SPICE_RESERVED_PADDING 44
+#define SPICE_RESERVED_PADDING (10 * sizeof(void*))
 
 #ifndef SPICE_NO_DEPRECATED
 #define SPICE_DEPRECATED_FOR(f) \

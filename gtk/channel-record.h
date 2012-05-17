@@ -65,11 +65,7 @@ struct _SpiceRecordChannelClass {
     void (*record_stop)(SpiceRecordChannel *channel);
 
     /*< private >*/
-    /*
-     * If adding fields to this struct, remove corresponding
-     * amount of padding to avoid changing overall struct size
-     */
-    gchar _spice_reserved[SPICE_RESERVED_PADDING];
+    /* Do not add fields to this struct */
 };
 
 GType	        spice_record_channel_get_type(void);

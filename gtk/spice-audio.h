@@ -52,7 +52,8 @@ typedef struct _SpiceAudioPrivate SpiceAudioPrivate;
  */
 struct _SpiceAudio {
     GObject parent;
-    /* FIXME: break ABI!! SpiceAudioPrivate *priv; */
+
+    SpiceAudioPrivate *priv;
 };
 
 /**
@@ -67,7 +68,7 @@ struct _SpiceAudioClass {
     /*< private >*/
     gboolean (*connect_channel)(SpiceAudio *audio, SpiceChannel *channel);
 
-    gchar _spice_reserved[SPICE_RESERVED_PADDING - sizeof(void*)];
+    gchar _spice_reserved[SPICE_RESERVED_PADDING];
 };
 
 GType spice_audio_get_type(void);
