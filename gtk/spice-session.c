@@ -519,13 +519,17 @@ static void spice_session_set_property(GObject      *gobject,
             g_byte_array_unref(s->pubkey);
         s->pubkey = g_value_dup_boxed(value);
         if (s->pubkey)
-            s->verify = SPICE_SESSION_VERIFY_PUBKEY;
+            s->verify |= SPICE_SESSION_VERIFY_PUBKEY;
+        else
+            s->verify &= ~SPICE_SESSION_VERIFY_PUBKEY;
 	break;
     case PROP_CERT_SUBJECT:
         g_free(s->cert_subject);
         s->cert_subject = g_value_dup_string(value);
         if (s->cert_subject)
-            s->verify = SPICE_SESSION_VERIFY_SUBJECT;
+            s->verify |= SPICE_SESSION_VERIFY_SUBJECT;
+        else
+            s->verify &= ~SPICE_SESSION_VERIFY_SUBJECT;
         break;
     case PROP_VERIFY:
         s->verify = g_value_get_flags(value);
