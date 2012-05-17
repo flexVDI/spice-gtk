@@ -83,13 +83,18 @@ static void spice_playback_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg);
 
 /* ------------------------------------------------------------------ */
 
+static void spice_playback_channel_reset_capabilities(SpiceChannel *channel)
+{
+    if (!g_getenv("SPICE_DISABLE_CELT"))
+        spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_PLAYBACK_CAP_CELT_0_5_1);
+    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_PLAYBACK_CAP_VOLUME);
+}
+
 static void spice_playback_channel_init(SpicePlaybackChannel *channel)
 {
     channel->priv = SPICE_PLAYBACK_CHANNEL_GET_PRIVATE(channel);
 
-    if (!g_getenv("SPICE_DISABLE_CELT"))
-        spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_PLAYBACK_CAP_CELT_0_5_1);
-    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_PLAYBACK_CAP_VOLUME);
+    spice_playback_channel_reset_capabilities(SPICE_CHANNEL(channel));
 }
 
 static void spice_playback_channel_finalize(GObject *obj)
@@ -184,6 +189,7 @@ static void spice_playback_channel_class_init(SpicePlaybackChannelClass *klass)
 
     channel_class->handle_msg   = spice_playback_handle_msg;
     channel_class->channel_reset = spice_playback_channel_reset;
+    channel_class->channel_reset_capabilities = spice_playback_channel_reset_capabilities;
 
     g_object_class_install_property
         (gobject_class, PROP_NCHANNELS,
