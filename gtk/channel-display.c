@@ -103,6 +103,7 @@ static void clear_streams(SpiceChannel *channel);
 static display_surface *find_surface(SpiceDisplayChannelPrivate *c, int surface_id);
 static gboolean display_stream_render(display_stream *st);
 static void spice_display_channel_reset(SpiceChannel *channel, gboolean migrating);
+static void spice_display_channel_reset_capabilities(SpiceChannel *channel);
 static void destroy_canvas(display_surface *surface);
 
 /* ------------------------------------------------------------------ */
@@ -206,6 +207,7 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
     channel_class->handle_msg   = spice_display_handle_msg;
     channel_class->channel_up   = spice_display_channel_up;
     channel_class->channel_reset = spice_display_channel_reset;
+    channel_class->channel_reset_capabilities = spice_display_channel_reset_capabilities;
 
     g_object_class_install_property
         (gobject_class, PROP_HEIGHT,
@@ -584,6 +586,11 @@ static HDC create_compatible_dc(void)
 }
 #endif
 
+static void spice_display_channel_reset_capabilities(SpiceChannel *channel)
+{
+    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_SIZED_STREAM);
+}
+
 static void spice_display_channel_init(SpiceDisplayChannel *channel)
 {
     SpiceDisplayChannelPrivate *c;
@@ -597,7 +604,7 @@ static void spice_display_channel_init(SpiceDisplayChannel *channel)
 #if defined(WIN32)
     c->dc = create_compatible_dc();
 #endif
-    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_SIZED_STREAM);
+    spice_display_channel_reset_capabilities(SPICE_CHANNEL(channel));
 }
 
 /* ------------------------------------------------------------------ */
