@@ -941,11 +941,7 @@ static gboolean check_for_grab_key(SpiceDisplay *display, int type, int keyval)
     if (!d->grabseq->nkeysyms)
         return FALSE;
 
-    if (type == GDK_KEY_RELEASE) {
-        /* Any key release resets the whole grab sequence */
-        memset(d->activeseq, 0, sizeof(gboolean) * d->grabseq->nkeysyms);
-        return FALSE;
-    } else {
+    if (type == GDK_KEY_PRESS) {
         /* Record the new key press */
         for (i = 0 ; i < d->grabseq->nkeysyms ; i++)
             if (d->grabseq->keysyms[i] == keyval)
@@ -956,8 +952,17 @@ static gboolean check_for_grab_key(SpiceDisplay *display, int type, int keyval)
             if (d->activeseq[i] == FALSE)
                 return FALSE;
 
+        /* resets the whole grab sequence on success */
+        memset(d->activeseq, 0, sizeof(gboolean) * d->grabseq->nkeysyms);
         return TRUE;
-    }
+    } else if (type == GDK_KEY_RELEASE) {
+        /* Any key release resets the whole grab sequence */
+        memset(d->activeseq, 0, sizeof(gboolean) * d->grabseq->nkeysyms);
+        return FALSE;
+    } else
+        g_warn_if_reached();
+
+    return FALSE;
 }
 
 static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
@@ -999,6 +1004,7 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
         send_key(display, scancode, 0);
         break;
     default:
+        g_warn_if_reached();
         break;
     }
 
