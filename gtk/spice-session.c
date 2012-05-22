@@ -1613,6 +1613,9 @@ void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel)
                      NULL);
         if (s->color_depth != 0)
             g_object_set(channel, "color-depth", s->color_depth, NULL);
+
+        SPICE_DEBUG("new main channel, switching");
+        s->cmain = channel;
     }
 
     g_signal_emit(session, signals[SPICE_SESSION_CHANNEL_NEW], 0, channel);
@@ -1623,7 +1626,7 @@ void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel)
 {
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     struct channel *item = NULL;
-    RingItem *ring, *next;
+    RingItem *ring;
 
     g_return_if_fail(s != NULL);
     g_return_if_fail(channel != NULL);
@@ -1632,22 +1635,23 @@ void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel)
         s->migration_left = g_list_remove(s->migration_left, channel);
 
     for (ring = ring_get_head(&s->channels); ring != NULL;
-         ring = next) {
-        next = ring_next(&s->channels, ring);
+         ring = ring_next(&s->channels, ring)) {
         item = SPICE_CONTAINEROF(ring, struct channel, link);
-        if (item->channel == s->cmain) {
-            SPICE_DEBUG("the session lost the main channel");
-            s->cmain = NULL;
-        }
-        if (item->channel == channel) {
-            ring_remove(&item->link);
-            free(item);
-            g_signal_emit(session, signals[SPICE_SESSION_CHANNEL_DESTROY], 0, channel);
-            return;
-        }
+        if (item->channel == channel)
+            break;
     }
 
-    g_warn_if_reached();
+    g_return_if_fail(ring != NULL);
+
+    if (channel == s->cmain) {
+        SPICE_DEBUG("the session lost the main channel");
+        s->cmain = NULL;
+    }
+
+    ring_remove(&item->link);
+    free(item);
+
+    g_signal_emit(session, signals[SPICE_SESSION_CHANNEL_DESTROY], 0, channel);
 }
 
 G_GNUC_INTERNAL
