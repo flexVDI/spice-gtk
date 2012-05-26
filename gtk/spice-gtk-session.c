@@ -37,7 +37,6 @@ struct _SpiceGtkSessionPrivate {
     gboolean                clip_hasdata[CLIPBOARD_LAST];
     gboolean                clip_grabbed[CLIPBOARD_LAST];
     gboolean                clipboard_by_guest[CLIPBOARD_LAST];
-    gboolean                clipboard_selfgrab_pending[CLIPBOARD_LAST];
     /* auto-usbredir related */
     gboolean                auto_usbredir_enable;
     gboolean                keyboard_focus;
@@ -510,10 +509,9 @@ static void clipboard_owner_change(GtkClipboard        *clipboard,
 
     switch (event->reason) {
     case GDK_OWNER_CHANGE_NEW_OWNER:
-        if (s->clipboard_selfgrab_pending[selection]) {
-            s->clipboard_selfgrab_pending[selection] = FALSE;
+        if (gtk_clipboard_get_owner(clipboard) == G_OBJECT(self))
             break;
-        }
+
         s->clipboard_by_guest[selection] = FALSE;
         s->clip_hasdata[selection] = TRUE;
         if (s->auto_clipboard_enable && !read_only(self))
@@ -664,12 +662,11 @@ static gboolean clipboard_grab(SpiceMainChannel *main, guint selection,
         s->nclip_targets[selection] == 0)
         goto skip_grab_clipboard;
 
-    if (!gtk_clipboard_set_with_data(cb, targets, i, clipboard_get,
-                                     clipboard_clear, self)) {
+    if (!gtk_clipboard_set_with_owner(cb, targets, i,
+                                      clipboard_get, clipboard_clear, G_OBJECT(self))) {
         g_warning("clipboard grab failed");
         return FALSE;
     }
-    s->clipboard_selfgrab_pending[selection] = TRUE;
     s->clipboard_by_guest[selection] = TRUE;
     s->clip_hasdata[selection] = FALSE;
 
@@ -930,14 +927,11 @@ void spice_gtk_session_paste_from_guest(SpiceGtkSession *self)
         return;
     }
 
-    if (!gtk_clipboard_set_with_data(s->clipboard,
-                                     s->clip_targets[selection],
-                                     s->nclip_targets[selection],
-                                     clipboard_get, clipboard_clear, self)) {
+    if (!gtk_clipboard_set_with_owner(s->clipboard, s->clip_targets[selection], s->nclip_targets[selection],
+                                      clipboard_get, clipboard_clear, G_OBJECT(self))) {
         g_warning("Clipboard grab failed");
         return;
     }
-    s->clipboard_selfgrab_pending[selection] = TRUE;
     s->clipboard_by_guest[selection] = TRUE;
     s->clip_hasdata[selection] = FALSE;
 }
