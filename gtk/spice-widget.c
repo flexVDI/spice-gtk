@@ -298,6 +298,8 @@ static void spice_display_dispose(GObject *obj)
                                              display);
         g_signal_handlers_disconnect_by_func(d->session, G_CALLBACK(channel_destroy),
                                              display);
+        g_signal_handlers_disconnect_by_func(d->session, G_CALLBACK(session_inhibit_keyboard_grab_changed),
+                                             display);
         g_object_unref(d->session);
         d->session = NULL;
         d->gtk_session = NULL;
