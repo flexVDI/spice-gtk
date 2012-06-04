@@ -451,7 +451,7 @@ static void menu_cb_select_usb_devices(GtkAction *action, void *data)
                     _("Select USB devices for redirection"),
                     GTK_WINDOW(win->toplevel),
                     GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-                    GTK_STOCK_OK, GTK_RESPONSE_ACCEPT,
+                    GTK_STOCK_CLOSE, GTK_RESPONSE_ACCEPT,
                     NULL);
     gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_ACCEPT);
     gtk_container_set_border_width(GTK_CONTAINER(dialog), 12);
