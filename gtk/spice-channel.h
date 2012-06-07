@@ -108,7 +108,11 @@ gboolean spice_channel_open_fd(SpiceChannel *channel, int fd);
 void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason);
 gboolean spice_channel_test_capability(SpiceChannel *channel, guint32 cap);
 gboolean spice_channel_test_common_capability(SpiceChannel *channel, guint32 cap);
+
+#ifndef SPICE_DISABLE_DEPRECATED
+SPICE_DEPRECATED
 void spice_channel_set_capability(SpiceChannel *channel, guint32 cap);
+#endif
 
 const gchar* spice_channel_type_to_string(gint type);
 

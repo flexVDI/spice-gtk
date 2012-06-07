@@ -2542,9 +2542,9 @@ static void set_capability(GArray *caps, guint32 cap)
  * @cap: a capability
  *
  * Enable specific channel-kind capability.
+ * Deprecated: 0.13: this function has been removed
  **/
 #undef spice_channel_set_capability
-/* FIXME: we may want to make caps read only from outside */
 void spice_channel_set_capability(SpiceChannel *channel, guint32 cap)
 {
     SpiceChannelPrivate *c;
