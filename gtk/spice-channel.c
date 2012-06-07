@@ -2543,6 +2543,7 @@ static void set_capability(GArray *caps, guint32 cap)
  *
  * Enable specific channel-kind capability.
  **/
+#undef spice_channel_set_capability
 /* FIXME: we may want to make caps read only from outside */
 void spice_channel_set_capability(SpiceChannel *channel, guint32 cap)
 {
@@ -2555,14 +2556,15 @@ void spice_channel_set_capability(SpiceChannel *channel, guint32 cap)
 }
 
 G_GNUC_INTERNAL
-void spice_channel_set_common_capability(SpiceChannel *channel, guint32 cap)
+void spice_caps_set(GArray *caps, guint32 cap, const gchar *desc)
 {
-    SpiceChannelPrivate *c;
+    g_return_if_fail(caps != NULL);
+    g_return_if_fail(desc != NULL);
 
-    g_return_if_fail(SPICE_IS_CHANNEL(channel));
+    if (g_strcmp0(g_getenv(desc), "0") == 0)
+        return;
 
-    c = channel->priv;
-    set_capability(c->common_caps, cap);
+    set_capability(caps, cap);
 }
 
 G_GNUC_INTERNAL

@@ -174,10 +174,14 @@ void spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in);
 gint spice_channel_get_channel_id(SpiceChannel *channel);
 gint spice_channel_get_channel_type(SpiceChannel *channel);
 void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap);
-void spice_channel_set_common_capability(SpiceChannel *channel, guint32 cap);
 gboolean spice_channel_get_read_only(SpiceChannel *channel);
-
 void spice_channel_reset(SpiceChannel *channel, gboolean migrating);
+
+void spice_caps_set(GArray *caps, guint32 cap, const gchar *desc);
+#define spice_channel_set_common_capability(channel, cap)               \
+    spice_caps_set(SPICE_CHANNEL(channel)->priv->common_caps, cap, #cap)
+#define spice_channel_set_capability(channel, cap)                      \
+    spice_caps_set(SPICE_CHANNEL(channel)->priv->caps, cap, #cap)
 
 /* coroutine context */
 #define emit_main_context(object, event, args...)                       \
