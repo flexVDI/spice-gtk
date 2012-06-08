@@ -509,7 +509,7 @@ void spice_playback_channel_set_delay(SpicePlaybackChannel *channel, guint32 del
 
     g_return_if_fail(SPICE_IS_PLAYBACK_CHANNEL(channel));
 
-    SPICE_DEBUG("playback set_delay %d ms", delay_ms);
+    SPICE_DEBUG("playback set_delay %u ms", delay_ms);
 
     c = channel->priv;
     spice_session_set_mm_time(spice_channel_get_session(SPICE_CHANNEL(channel)),
