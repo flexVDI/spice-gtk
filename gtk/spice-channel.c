@@ -2144,15 +2144,16 @@ reconnect:
             g_warn_if_fail(ca_file != NULL);
             SPICE_DEBUG("CA file: %s", ca_file);
             rc = SSL_CTX_load_verify_locations(c->ctx, ca_file, NULL);
-            if (rc != 1)
-                g_warning("loading ca certs from %s failed", ca_file);
 
             if (rc != 1) {
+                g_warning("loading ca certs from %s failed", ca_file);
                 if (verify & SPICE_SESSION_VERIFY_PUBKEY) {
                     g_warning("only pubkey active");
                     verify = SPICE_SESSION_VERIFY_PUBKEY;
-                } else
+                } else {
+                    emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_TLS);
                     goto cleanup;
+                }
             }
         }
 
