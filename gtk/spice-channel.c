@@ -2107,7 +2107,7 @@ static void *spice_channel_coroutine(void *data)
         if (!(c->sock = g_socket_new_from_fd(c->fd, NULL))) {
                 SPICE_DEBUG("Failed to open socket from fd %d", c->fd);
                 emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_CONNECT);
-                return FALSE;
+                goto cleanup;
         }
 
         g_socket_set_blocking(c->sock, FALSE);
