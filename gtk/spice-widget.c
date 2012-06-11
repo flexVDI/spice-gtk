@@ -219,7 +219,8 @@ static void spice_display_set_property(GObject      *object,
 
     switch (prop_id) {
     case PROP_SESSION:
-        d->session = g_object_ref(g_value_get_object(value));
+        g_warn_if_fail(d->session == NULL);
+        d->session = g_value_dup_object(value);
         d->gtk_session = spice_gtk_session_get(d->session);
         break;
     case PROP_CHANNEL_ID:
