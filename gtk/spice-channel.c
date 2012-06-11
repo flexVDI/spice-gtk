@@ -2100,11 +2100,13 @@ static void *spice_channel_coroutine(void *data)
     if (spice_session_get_client_provided_socket(c->session)) {
         if (c->fd < 0) {
             g_critical("fd not provided!");
+            emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_CONNECT);
             goto cleanup;
         }
 
         if (!(c->sock = g_socket_new_from_fd(c->fd, NULL))) {
                 SPICE_DEBUG("Failed to open socket from fd %d", c->fd);
+                emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_CONNECT);
                 return FALSE;
         }
 
@@ -2133,6 +2135,7 @@ reconnect:
         c->ctx = SSL_CTX_new(TLSv1_method());
         if (c->ctx == NULL) {
             g_critical("SSL_CTX_new failed");
+            emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_TLS);
             goto cleanup;
         }
 
@@ -2169,6 +2172,7 @@ reconnect:
         c->ssl = SSL_new(c->ctx);
         if (c->ssl == NULL) {
             g_critical("SSL_new failed");
+            emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_TLS);
             goto cleanup;
         }
 
