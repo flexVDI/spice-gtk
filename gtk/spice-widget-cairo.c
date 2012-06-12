@@ -37,16 +37,22 @@ int spicex_image_create(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
+    g_return_val_if_fail(d->ximage == NULL, 1);
+
     if (d->format == SPICE_SURFACE_FMT_16_555 ||
         d->format == SPICE_SURFACE_FMT_16_565) {
         d->convert = TRUE;
-        d->data = g_malloc0(d->height * d->stride); /* pixels are 32 bits */
+        d->data = g_malloc0(d->area.width * d->area.height * 4);
+
+        d->ximage = cairo_image_surface_create_for_data
+            (d->data, CAIRO_FORMAT_RGB24, d->area.width, d->area.height, d->area.width * 4);
+
     } else {
         d->convert = FALSE;
-    }
 
-    d->ximage = cairo_image_surface_create_for_data
-        (d->data, CAIRO_FORMAT_RGB24, d->width, d->height, d->stride);
+        d->ximage = cairo_image_surface_create_for_data
+            (d->data, CAIRO_FORMAT_RGB24, d->width, d->height, d->stride);
+    }
 
     return 0;
 }
@@ -64,13 +70,13 @@ void spicex_image_destroy(SpiceDisplay *display)
         g_free(d->data);
         d->data = NULL;
     }
+    d->convert = FALSE;
 }
 
 G_GNUC_INTERNAL
 void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    int fbw = d->width, fbh = d->height;
     int ww, wh;
 
     gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
@@ -86,8 +92,8 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
            behaviour of drawing the rectangle from right to left
            to cut out the whole */
         if (d->ximage)
-            cairo_rectangle(cr, d->mx + fbw, d->my,
-                            -1 * fbw, fbh);
+            cairo_rectangle(cr, d->mx + d->area.width, d->my,
+                            -d->area.width, d->area.height);
         cairo_fill(cr);
     }
 
@@ -97,9 +103,16 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
             double sx, sy;
             spice_display_get_scaling(display, &sx, &sy);
             cairo_scale(cr, sx, sy);
+            if (!d->convert)
+                cairo_translate(cr, -d->area.x, -d->area.y);
             cairo_set_source_surface(cr, d->ximage, 0, 0);
         } else {
-            cairo_set_source_surface(cr, d->ximage, d->mx, d->my);
+            cairo_translate(cr, d->mx, d->my);
+            cairo_rectangle(cr, 0, 0, d->area.width, d->area.height);
+            cairo_clip(cr);
+            if (!d->convert)
+                cairo_translate(cr, -d->area.x, -d->area.y);
+            cairo_set_source_surface(cr, d->ximage, 0, 0);
         }
         cairo_paint(cr);
 
@@ -108,8 +121,8 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
             GdkPixbuf *image = d->mouse_pixbuf;
             if (image != NULL) {
                 gdk_cairo_set_source_pixbuf(cr, image,
-                                            d->mx + d->mouse_guest_x - d->mouse_hotspot.x,
-                                            d->my + d->mouse_guest_y - d->mouse_hotspot.y);
+                                            d->mouse_guest_x - d->mouse_hotspot.x,
+                                            d->mouse_guest_y - d->mouse_hotspot.y);
                 cairo_paint(cr);
             }
         }
@@ -149,8 +162,8 @@ void spicex_image_invalidate(SpiceDisplay *display,
         double sx, sy;
 
         /* Scale the exposed region */
-        sx = (double)ww / (double)d->width;
-        sy = (double)wh / (double)d->height;
+        sx = (double)ww / (double)d->area.width;
+        sy = (double)wh / (double)d->area.height;
 
         *x *= sx;
         *y *= sy;

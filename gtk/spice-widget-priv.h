@@ -57,6 +57,8 @@ struct _SpiceDisplayPrivate {
     gpointer                data_origin; /* the original display image data */
     gpointer                data; /* converted if necessary to 32 bits */
 
+    GdkRectangle            area;
+    /* window border */
     gint                    ww, wh, mx, my;
 
     bool                    convert;

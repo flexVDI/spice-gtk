@@ -201,8 +201,8 @@ static void update_size_request(SpiceDisplay *display)
         reqwidth = 640;
         reqheight = 480;
     } else {
-        reqwidth = d->width;
-        reqheight = d->height;
+        reqwidth = d->area.width;
+        reqheight = d->area.height;
     }
 
     gtk_widget_set_size_request(GTK_WIDGET(display), reqwidth, reqheight);
@@ -789,15 +789,16 @@ static void recalc_geometry(GtkWidget *widget)
     d->mx = 0;
     d->my = 0;
     if (!spicex_is_scaled(display)) {
-        if (d->ww > d->width)
-            d->mx = (d->ww - d->width) / 2;
-        if (d->wh > d->height)
-            d->my = (d->wh - d->height) / 2;
+        if (d->ww > d->area.width)
+            d->mx = (d->ww - d->area.width) / 2;
+        if (d->wh > d->area.height)
+            d->my = (d->wh - d->area.height) / 2;
     } else
         zoom = (gdouble)d->zoom_level / 100;
 
-    SPICE_DEBUG("monitors: id %d, guest %dx%d, window %dx%d, zoom %g, offset +%d+%d",
-                d->channel_id, d->width, d->height, d->ww, d->wh, zoom, d->mx, d->my);
+    SPICE_DEBUG("monitors: id %d, guest +%d+%d:%dx%d, window %dx%d, zoom %g, offset +%d+%d",
+                d->channel_id, d->area.x, d->area.y, d->area.width, d->area.height,
+                d->ww, d->wh, zoom, d->mx, d->my);
 
     if (d->resize_guest_enable)
         spice_main_set_display(d->main, d->channel_id,
@@ -820,44 +821,36 @@ static void recalc_geometry(GtkWidget *widget)
 
 #define CONVERT_0555_TO_8888(s) (CONVERT_0555_TO_0888(s) | 0xff000000)
 
-static gboolean do_color_convert(SpiceDisplay *display,
-                                 gint x, gint y, gint w, gint h)
+static gboolean do_color_convert(SpiceDisplay *display, GdkRectangle *r)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    int i, j, maxy, maxx, miny, minx;
     guint32 *dest = d->data;
     guint16 *src = d->data_origin;
+    gint x, y;
 
-    if (!d->convert)
-        return true;
-
+    g_return_val_if_fail(r != NULL, false);
     g_return_val_if_fail(d->format == SPICE_SURFACE_FMT_16_555 ||
                          d->format == SPICE_SURFACE_FMT_16_565, false);
 
-    miny = MAX(y, 0);
-    minx = MAX(x, 0);
-    maxy = MIN(y + h, d->height);
-    maxx = MIN(x + w, d->width);
-
-    dest +=  (d->stride / 4) * miny;
-    src += (d->stride / 2) * miny;
+    src += (d->stride / 2) * r->y + r->x;
+    dest += d->area.width * (r->y - d->area.y) + (r->x - d->area.x);
 
     if (d->format == SPICE_SURFACE_FMT_16_555) {
-        for (j = miny; j < maxy; j++) {
-            for (i = minx; i < maxx; i++) {
-                dest[i] = CONVERT_0555_TO_0888(src[i]);
+        for (y = 0; y < r->height; y++) {
+            for (x = 0; x < r->width; x++) {
+                dest[x] = CONVERT_0555_TO_0888(src[x]);
             }
 
-            dest += d->stride / 4;
+            dest += d->area.width;
             src += d->stride / 2;
         }
     } else if (d->format == SPICE_SURFACE_FMT_16_565) {
-        for (j = miny; j < maxy; j++) {
-            for (i = minx; i < maxx; i++) {
-                dest[i] = CONVERT_0565_TO_0888(src[i]);
+        for (y = 0; y < r->height; y++) {
+            for (x = 0; x < r->width; x++) {
+                dest[x] = CONVERT_0565_TO_0888(src[x]);
             }
 
-            dest += d->stride / 4;
+            dest += d->area.width;
             src += d->stride / 2;
         }
     }
@@ -875,10 +868,7 @@ static gboolean draw_event(GtkWidget *widget, cairo_t *cr)
 
     if (d->mark == 0 || d->data == NULL)
         return false;
-
-    if (!d->ximage) {
-        spicex_image_create(display);
-    }
+    g_return_val_if_fail(d->ximage != NULL, false);
 
     spicex_draw_event(display, cr);
     update_mouse_pointer(display);
@@ -894,10 +884,7 @@ static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
 
     if (d->mark == 0 || d->data == NULL)
         return false;
-
-    if (!d->ximage) {
-        spicex_image_create(display);
-    }
+    g_return_val_if_fail(d->ximage != NULL, false);
 
     spicex_expose_event(display, expose);
     update_mouse_pointer(display);
@@ -1181,10 +1168,10 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
         return true;
 
     gdk_drawable_get_size(gtk_widget_get_window(widget), &ww, &wh);
-    if (spicex_is_scaled(display) && (d->width != ww || d->height != wh)) {
+    if (spicex_is_scaled(display) && (d->area.width != ww || d->area.height != wh)) {
         double sx, sy;
-        sx = (double)d->width / (double)ww;
-        sy = (double)d->height / (double)wh;
+        sx = (double)d->area.width / (double)ww;
+        sy = (double)d->area.height / (double)wh;
 
         /* Scaling the desktop, so scale the mouse coords by the same.
          * Ratio for the rounding used:
@@ -1208,10 +1195,10 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
 
     switch (d->mouse_mode) {
     case SPICE_MOUSE_MODE_CLIENT:
-        if (motion->x >= 0 && motion->x < d->width &&
-            motion->y >= 0 && motion->y < d->height) {
+        if (motion->x >= 0 && motion->x < d->area.width &&
+            motion->y >= 0 && motion->y < d->area.height) {
             spice_inputs_position(d->inputs,
-                                  motion->x, motion->y,
+                                  motion->x + d->area.x, motion->y + d->area.y,
                                   d->channel_id,
                                   button_mask_gdk_to_spice(motion->state));
         }
@@ -1285,7 +1272,7 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
         gtk_widget_get_pointer (widget, &x, &y);
         x -= d->mx;
         y -= d->my;
-        if (!(x >= 0 && x < d->width && y >= 0 && y < d->height))
+        if (!(x >= 0 && x < d->area.width && y >= 0 && y < d->area.height))
             return true;
     }
 
@@ -1577,6 +1564,40 @@ static void update_mouse_mode(SpiceChannel *channel, gpointer data)
     cursor_invalidate(display);
 }
 
+static void update_area(SpiceDisplay *display,
+                        gint x, gint y, gint width, gint height)
+{
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    GdkRectangle primary = {
+        .x = 0,
+        .y = 0,
+        .width = d->width,
+        .height = d->height
+    };
+    GdkRectangle area = {
+        .x = x,
+        .y = y,
+        .width = width,
+        .height = height
+    };
+
+    SPICE_DEBUG("update area, primary: %dx%d, area: +%d+%d %dx%d", d->width, d->height, area.x, area.y, area.width, area.height);
+
+    if (!gdk_rectangle_intersect(&primary, &area, &area)) {
+        SPICE_DEBUG("The monitor area is not intersecting primary surface");
+        memset(&d->area, '\0', sizeof(d->area));
+        /* FIXME mark false? */
+        return;
+    }
+
+    spicex_image_destroy(display);
+    d->area = area;
+    spicex_image_create(display);
+    update_size_request(display);
+
+    gtk_widget_queue_draw(GTK_WIDGET(display));
+}
+
 static void primary_create(SpiceChannel *channel, gint format,
                            gint width, gint height, gint stride,
                            gint shmid, gpointer imgdata, gpointer data)
@@ -1586,14 +1607,13 @@ static void primary_create(SpiceChannel *channel, gint format,
 
     d->format = format;
     d->stride = stride;
-    d->shmid  = shmid;
+    d->shmid = shmid;
+    d->width = width;
+    d->height = height;
     d->data_origin = d->data = imgdata;
 
-    if (d->width != width || d->height != height) {
-        d->width  = width;
-        d->height = height;
-        update_size_request(display);
-    }
+    /* by default, display whole surface */
+    update_area(display, 0, 0, width, height);
 }
 
 static void primary_destroy(SpiceChannel *channel, gpointer data)
@@ -1602,25 +1622,39 @@ static void primary_destroy(SpiceChannel *channel, gpointer data)
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     spicex_image_destroy(display);
-    d->format = 0;
     d->width  = 0;
     d->height = 0;
     d->stride = 0;
     d->shmid  = 0;
-    d->data   = 0;
-    d->data_origin = 0;
+    d->data = NULL;
+    d->data_origin = NULL;
 }
 
 static void invalidate(SpiceChannel *channel,
                        gint x, gint y, gint w, gint h, gpointer data)
 {
     SpiceDisplay *display = data;
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    GdkRectangle rect = {
+        .x = x,
+        .y = y,
+        .width = w,
+        .height = h
+    };
 
     if (!gtk_widget_get_window(GTK_WIDGET(display)))
         return;
 
-    if (!do_color_convert(display, x, y, w, h))
+    if (!gdk_rectangle_intersect(&rect, &d->area, &rect))
         return;
+
+    if (d->convert)
+        do_color_convert(display, &rect);
+
+    x = rect.x - d->area.x;
+    y = rect.y - d->area.y;
+    w = rect.width;
+    h = rect.height;
 
     spicex_image_invalidate(display, &x, &y, &w, &h);
     gtk_widget_queue_draw_area(GTK_WIDGET(display),
@@ -1706,7 +1740,7 @@ G_GNUC_INTERNAL
 void spice_display_get_scaling(SpiceDisplay *display, double *sx, double *sy)
 {
     SpiceDisplayPrivate *d = display->priv;
-    int fbw = d->width, fbh = d->height;
+    int fbw = d->area.width, fbh = d->area.height;
     int ww, wh;
 
     if (!spicex_is_scaled(display) || !gtk_widget_get_window(GTK_WIDGET(display))) {
@@ -1732,8 +1766,8 @@ static void cursor_invalidate(SpiceDisplay *display)
     spice_display_get_scaling(display, &sx, &sy);
 
     gtk_widget_queue_draw_area(GTK_WIDGET(display),
-                               (d->mouse_guest_x + d->mx - d->mouse_hotspot.x) * sx,
-                               (d->mouse_guest_y + d->my - d->mouse_hotspot.y) * sy,
+                               (d->mouse_guest_x + d->mx - d->mouse_hotspot.x - d->area.x) * sx,
+                               (d->mouse_guest_y + d->my - d->mouse_hotspot.y - d->area.y) * sy,
                                gdk_pixbuf_get_width(d->mouse_pixbuf) * sx,
                                gdk_pixbuf_get_height(d->mouse_pixbuf) * sy);
 }
@@ -2000,16 +2034,14 @@ GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
 
     g_return_val_if_fail(d != NULL, NULL);
     /* TODO: ensure d->data has been exposed? */
+    g_return_val_if_fail(d->data != NULL, NULL);
 
-    data = g_malloc(d->width * d->height * 3);
+    data = g_malloc(d->area.width * d->area.height * 3);
     src = d->data;
     dest = data;
 
-    if (src == NULL || dest == NULL)
-        return NULL;
-
-    for (y = 0; y < d->height; ++y) {
-        for (x = 0; x < d->width; ++x) {
+    for (y = d->area.y; y < d->area.height; ++y) {
+        for (x = d->area.x; x < d->area.width; ++x) {
           dest[0] = src[x * 4 + 2];
           dest[1] = src[x * 4 + 1];
           dest[2] = src[x * 4 + 0];
@@ -2019,7 +2051,7 @@ GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
     }
 
     pixbuf = gdk_pixbuf_new_from_data(data, GDK_COLORSPACE_RGB, false,
-                                      8, d->width, d->height, d->width * 3,
+                                      8, d->area.width, d->area.height, d->area.width * 3,
                                       (GdkPixbufDestroyNotify)g_free, NULL);
     return pixbuf;
 }

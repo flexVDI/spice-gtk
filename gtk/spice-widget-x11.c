@@ -222,30 +222,30 @@ void spicex_expose_event(SpiceDisplay *display, GdkEventExpose *expose)
 
     if (expose->area.x >= d->mx &&
         expose->area.y >= d->my &&
-        expose->area.x + expose->area.width  <= d->mx + d->width &&
-        expose->area.y + expose->area.height <= d->my + d->height) {
+        expose->area.x + expose->area.width  <= d->mx + d->area.width &&
+        expose->area.y + expose->area.height <= d->my + d->area.height) {
         /* area is completely inside the guest screen -- blit it */
         if (d->have_mitshm && d->shminfo) {
             XShmPutImage(d->dpy, gdk_x11_drawable_get_xid(window),
                          d->gc, d->ximage,
-                         expose->area.x - d->mx, expose->area.y - d->my,
-                         expose->area.x,         expose->area.y,
+                         d->area.x + expose->area.x - d->mx, d->area.y + expose->area.y - d->my,
+                         expose->area.x, expose->area.y,
                          expose->area.width, expose->area.height,
                          true);
         } else {
             XPutImage(d->dpy, gdk_x11_drawable_get_xid(window),
                       d->gc, d->ximage,
-                      expose->area.x - d->mx, expose->area.y - d->my,
-                      expose->area.x,         expose->area.y,
+                      d->area.x + expose->area.x - d->mx, d->area.y + expose->area.y - d->my,
+                      expose->area.x expose->area.y,
                       expose->area.width, expose->area.height);
         }
     } else {
         /* complete window update */
-        if (d->ww > d->width || d->wh > d->height) {
+        if (d->ww > d->area.width || d->wh > d->area.height) {
             int x1 = d->mx;
-            int x2 = d->mx + d->width;
+            int x2 = d->mx + d->area.width;
             int y1 = d->my;
-            int y2 = d->my + d->height;
+            int y2 = d->my + d->area.height;
             XFillRectangle(d->dpy, gdk_x11_drawable_get_xid(window),
                            d->gc, 0, 0, x1, d->wh);
             XFillRectangle(d->dpy, gdk_x11_drawable_get_xid(window),
@@ -258,12 +258,12 @@ void spicex_expose_event(SpiceDisplay *display, GdkEventExpose *expose)
         if (d->have_mitshm && d->shminfo) {
             XShmPutImage(d->dpy, gdk_x11_drawable_get_xid(window),
                          d->gc, d->ximage,
-                         0, 0, d->mx, d->my, d->width, d->height,
+                         d->area.x, d->area.y, d->mx, d->my, d->area.width, d->area.height,
                          true);
         } else {
             XPutImage(d->dpy, gdk_x11_drawable_get_xid(window),
                       d->gc, d->ximage,
-                      0, 0, d->mx, d->my, d->width, d->height);
+                      d->area.x, d->area.y, d->mx, d->my, d->area.width, d->area.height);
         }
     }
 }
