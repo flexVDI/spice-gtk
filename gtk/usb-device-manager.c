@@ -341,6 +341,11 @@ static void spice_usb_device_manager_class_init(SpiceUsbDeviceManagerClass *klas
 
     /**
      * SpiceUsbDeviceManager:auto-connect:
+     *
+     * Set this to TRUE to automatically redirect newly plugged in device.
+     *
+     * Note when #SpiceGtkSession's auto-usbredir property is TRUE, this
+     * property is controlled by #SpiceGtkSession.
      */
     pspec = g_param_spec_boolean("auto-connect", "Auto Connect",
                                  "Auto connect plugged in USB devices",

@@ -235,7 +235,16 @@ static void spice_gtk_session_set_property(GObject      *gobject,
         break;
     case PROP_AUTO_USBREDIR:
         s->auto_usbredir_enable = g_value_get_boolean(value);
-        spice_gtk_session_update_keyboard_focus(self, s->keyboard_focus);
+        if (s->keyboard_focus) {
+            SpiceUsbDeviceManager *manager =
+                spice_usb_device_manager_get(s->session, NULL);
+
+            if (!manager)
+                break;
+
+            g_object_set(manager, "auto-connect", s->auto_usbredir_enable,
+                         NULL);
+        }
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -835,17 +844,17 @@ void spice_gtk_session_update_keyboard_focus(SpiceGtkSession *self,
 
     SpiceGtkSessionPrivate *s = self->priv;
     SpiceUsbDeviceManager *manager;
-    gboolean auto_connect = FALSE;
 
     s->keyboard_focus = state;
 
-    if (s->auto_usbredir_enable && s->keyboard_focus)
-        auto_connect = TRUE;
+    if (!s->auto_usbredir_enable)
+        return;
 
     manager = spice_usb_device_manager_get(s->session, NULL);
-    if (manager) {
-        g_object_set(manager, "auto-connect", auto_connect, NULL);
-    }
+    if (!manager)
+        return;
+
+    g_object_set(manager, "auto-connect", state, NULL);
 }
 
 /* ------------------------------------------------------------------ */
