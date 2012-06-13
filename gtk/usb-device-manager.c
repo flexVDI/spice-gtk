@@ -235,6 +235,9 @@ static void spice_usb_device_manager_finalize(GObject *gobject)
         g_thread_join(priv->event_thread);
 #endif
 
+    g_free(priv->auto_connect_filter);
+    free(priv->auto_conn_filter_rules);
+
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_usb_device_manager_parent_class)->finalize)
         G_OBJECT_CLASS(spice_usb_device_manager_parent_class)->finalize(gobject);

@@ -159,7 +159,7 @@ const guint16 const *vnc_display_keymap_gdk2xtkbd_table(size_t *maplen)
 				if (!keycodes)
 					g_warning("could not lookup keycode name");
 			}
-			XkbFreeClientMap(desc, XkbGBN_AllComponentsMask, True);
+			XkbFreeKeyboard(desc, XkbGBN_AllComponentsMask, True);
 		}
 
 		if (check_for_xwin(dpy)) {

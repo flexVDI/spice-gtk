@@ -59,10 +59,10 @@ static int bio_gsocket_bread(BIO *bio, char *out, int outl)
 
     if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK))
         BIO_set_retry_read(bio);
-    else if (error != NULL) {
+    else if (error != NULL)
         g_warning("%s", error->message);
-        g_clear_error(&error);
-    }
+
+    g_clear_error(&error);
 
     return ret;
 }
