@@ -566,6 +566,26 @@ fi
 
 AM_CONDITIONAL(WITH_PYTHON, [test "$WITH_PYTHON" = "yes"])
 
+
+AC_ARG_ENABLE([dbus],
+  AS_HELP_STRING([--enable-dbus=@<:@auto/yes/no@:>@],
+                 [Enable dbus support for desktop integration (disabling automount) @<:@default=auto@:>@]),
+  [],
+  [enable_dbus="auto"])
+
+if test "x$enable_dbus" != "xno"; then
+  PKG_CHECK_MODULES([DBUS_GLIB], [dbus-glib-1],
+                                 [have_dbus=yes],
+                                 [have_dbus=no])
+  if test "x$enable_dbus" = "xyes" && test "x$have_dbus" = "xno"; then
+    AC_MSG_ERROR([D-Bus support explicitly requested, but some required packages are not available])
+  fi
+
+  if test "x$have_dbus" = "xyes"; then
+    AC_DEFINE(USE_DBUS, [1], [Define if supporting dbus])
+  fi
+fi
+
 dnl ===========================================================================
 dnl check compiler flags
 

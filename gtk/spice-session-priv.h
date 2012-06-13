@@ -20,6 +20,7 @@
 
 #include <glib.h>
 #include <gio/gio.h>
+#include "desktop-integration.h"
 #include "spice-session.h"
 #include "spice-gtk-session.h"
 #include "spice-channel-cache.h"
@@ -97,6 +98,7 @@ struct _SpiceSessionPrivate {
 
     /* associated objects */
     SpiceAudio        *audio_manager;
+    SpiceDesktopIntegration *desktop_integration;
     SpiceGtkSession   *gtk_session;
     SpiceUsbDeviceManager *usb_manager;
 };

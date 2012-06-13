@@ -77,6 +77,7 @@ SPICE_COMMON_CPPFLAGS =						\
 	$(GLIB2_CFLAGS)						\
 	$(GIO_CFLAGS)						\
 	$(GOBJECT2_CFLAGS)					\
+	$(DBUS_GLIB_CFLAGS)					\
 	$(SSL_CFLAGS)						\
 	$(SASL_CFLAGS)						\
 	$(GST_CFLAGS)						\
@@ -100,6 +101,7 @@ SPICE_GTK_LIBADD_COMMON =		\
 	libspice-client-glib-2.0.la	\
 	$(GTK_LIBS)			\
 	$(CAIRO_LIBS)			\
+	$(DBUS_GLIB_LIBS)		\
 	$(XRANDR_LIBS)			\
 	$(LIBM)				\
 	$(NULL)
@@ -114,6 +116,8 @@ SPICE_GTK_SOURCES_COMMON =		\
 	vncdisplaykeymap.h		\
 	spice-grabsequence.c		\
 	spice-grabsequence.h		\
+	desktop-integration.c		\
+	desktop-integration.h		\
 	usb-device-widget.c		\
 	$(NULL)
 

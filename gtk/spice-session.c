@@ -155,6 +155,7 @@ spice_session_dispose(GObject *gobject)
     }
 
     g_clear_object(&s->audio_manager);
+    g_clear_object(&s->desktop_integration);
     g_clear_object(&s->gtk_session);
     g_clear_object(&s->usb_manager);
 
