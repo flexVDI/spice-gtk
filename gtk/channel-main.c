@@ -149,6 +149,7 @@ static const char *agent_caps[] = {
     [ VD_AGENT_CAP_CLIPBOARD           ] = "clipboard (old)",
     [ VD_AGENT_CAP_DISPLAY_CONFIG      ] = "display config",
     [ VD_AGENT_CAP_CLIPBOARD_BY_DEMAND ] = "clipboard",
+    [ VD_AGENT_CAP_CLIPBOARD_SELECTION ] = "clipboard selection",
 };
 #define NAME(_a, _i) ((_i) < SPICE_N_ELEMENTS(_a) ? (_a[(_i)] ?: "?") : "?")
 
