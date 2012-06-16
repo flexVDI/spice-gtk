@@ -101,7 +101,8 @@ enum {
     PROP_AUTO_CLIPBOARD,
     PROP_SCALING,
     PROP_DISABLE_INPUTS,
-    PROP_ZOOM_LEVEL
+    PROP_ZOOM_LEVEL,
+    PROP_MONITOR_ID
 };
 
 /* Signals */
@@ -150,6 +151,9 @@ static void spice_display_get_property(GObject    *object,
         break;
     case PROP_CHANNEL_ID:
         g_value_set_int(value, d->channel_id);
+        break;
+    case PROP_MONITOR_ID:
+        g_value_set_int(value, d->monitor_id);
         break;
     case PROP_KEYBOARD_GRAB:
         g_value_set_boolean(value, d->keyboard_grab_enable);
@@ -241,6 +245,9 @@ static void spice_display_set_property(GObject      *object,
         break;
     case PROP_CHANNEL_ID:
         d->channel_id = g_value_get_int(value);
+        break;
+    case PROP_MONITOR_ID:
+        d->monitor_id = g_value_get_int(value);
         break;
     case PROP_KEYBOARD_GRAB:
         d->keyboard_grab_enable = g_value_get_boolean(value);
@@ -1492,6 +1499,25 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                           G_PARAM_STATIC_STRINGS));
 
     /**
+     * SpiceDisplay:monitor-id:
+     *
+     * Select monitor from #SpiceDisplay to show.
+     * The value -1 means the whole display is shown.
+     * By default, the monitor 0 is selected.
+     *
+     * Since: 0.13
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_MONITOR_ID,
+         g_param_spec_int("monitor-id",
+                          "Monitor ID",
+                          "Select monitor ID",
+                          -1, G_MAXINT, 0,
+                          G_PARAM_READWRITE |
+                          G_PARAM_CONSTRUCT |
+                          G_PARAM_STATIC_STRINGS));
+
+    /**
      * SpiceDisplay::mouse-grab:
      * @display: the #SpiceDisplay that emitted the signal
      * @status: 1 if grabbed, 0 otherwise.
@@ -1969,7 +1995,7 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
 /**
  * spice_display_new:
  * @session: a #SpiceSession
- * @id: the display channel ID to associate with #SpiceDisplay
+ * @channel_id: the display channel ID to associate with #SpiceDisplay
  *
  * Returns: a new #SpiceDisplay widget.
  **/
@@ -1977,6 +2003,24 @@ SpiceDisplay *spice_display_new(SpiceSession *session, int id)
 {
     return g_object_new(SPICE_TYPE_DISPLAY, "session", session,
                         "channel-id", id, NULL);
+}
+
+/**
+ * spice_display_new_with_monitor:
+ * @session: a #SpiceSession
+ * @channel_id: the display channel ID to associate with #SpiceDisplay
+ * @monitor_id: the monitor id within the display channel
+ *
+ * Since: 0.13
+ * Returns: a new #SpiceDisplay widget.
+ **/
+SpiceDisplay* spice_display_new_with_monitor(SpiceSession *session, gint channel_id, gint monitor_id)
+{
+    return g_object_new(SPICE_TYPE_DISPLAY,
+                        "session", session,
+                        "channel-id", channel_id,
+                        "monitor-id", monitor_id,
+                        NULL);
 }
 
 /**

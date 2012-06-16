@@ -43,6 +43,7 @@ G_BEGIN_DECLS
 
 struct _SpiceDisplayPrivate {
     gint                    channel_id;
+    gint                    monitor_id;
 
     /* options */
     bool                    keyboard_grab_enable;

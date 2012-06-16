@@ -70,7 +70,9 @@ typedef enum
 
 GType	        spice_display_get_type(void);
 
-SpiceDisplay* spice_display_new(SpiceSession *session, int id);
+SpiceDisplay* spice_display_new(SpiceSession *session, int channel_id);
+SpiceDisplay* spice_display_new_with_monitor(SpiceSession *session, gint channel_id, gint monitor_id);
+
 void spice_display_mouse_ungrab(SpiceDisplay *display);
 void spice_display_set_grab_keys(SpiceDisplay *display, SpiceGrabSequence *seq);
 SpiceGrabSequence *spice_display_get_grab_keys(SpiceDisplay *display);

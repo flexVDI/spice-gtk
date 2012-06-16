@@ -336,6 +336,7 @@ SpiceDisplay
 SpiceDisplayClass
 SpiceDisplayKeyEvent
 spice_display_new
+spice_display_new_with_monitor
 spice_display_mouse_ungrab
 spice_display_copy_to_guest
 spice_display_paste_from_guest
