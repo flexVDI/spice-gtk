@@ -352,6 +352,43 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
     rop3_init();
 }
 
+/**
+ * spice_display_get_primary:
+ * @channel:
+ * @surface_id:
+ * @primary:
+ *
+ * Retrieve primary display surface @surface_id.
+ *
+ * Returns: %TRUE if the primary surface was found and its details
+ * collected in @primary.
+ */
+gboolean spice_display_get_primary(SpiceChannel *channel, guint32 surface_id,
+                                   SpiceDisplayPrimary *primary)
+{
+    g_return_val_if_fail(SPICE_IS_DISPLAY_CHANNEL(channel), FALSE);
+    g_return_val_if_fail(primary != NULL, FALSE);
+
+    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
+    display_surface *surface = find_surface(c, surface_id);
+
+    if (surface == NULL)
+        return FALSE;
+
+    g_return_val_if_fail(surface->primary, FALSE);
+
+    primary->format = surface->format;
+    primary->width = surface->width;
+    primary->height = surface->height;
+    primary->stride = surface->stride;
+    primary->shmid = surface->shmid;
+    primary->data = surface->data;
+    primary->marked = c->mark;
+    SPICE_DEBUG("get primary %p", primary->data);
+
+    return TRUE;
+}
+
 /* signal trampoline---------------------------------------------------------- */
 
 struct SPICE_DISPLAY_PRIMARY_CREATE {

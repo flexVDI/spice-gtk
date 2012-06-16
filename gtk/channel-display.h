@@ -43,6 +43,17 @@ struct _SpiceDisplayMonitorConfig {
     guint height;
 };
 
+typedef struct _SpiceDisplayPrimary SpiceDisplayPrimary;
+struct _SpiceDisplayPrimary {
+    enum SpiceSurfaceFmt format;
+    gint width;
+    gint height;
+    gint stride;
+    gint shmid;
+    guint8 *data;
+    gboolean marked;
+};
+
 /**
  * SpiceDisplayChannel:
  *
@@ -80,10 +91,11 @@ struct _SpiceDisplayChannelClass {
                          gboolean mark);
 
     /*< private >*/
-    /* Do not add fields to this struct */
 };
 
 GType	        spice_display_channel_get_type(void);
+gboolean        spice_display_get_primary(SpiceChannel *channel, guint32 surface_id,
+                                          SpiceDisplayPrimary *primary);
 
 G_END_DECLS
 
