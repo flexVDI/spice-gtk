@@ -33,6 +33,16 @@ typedef struct _SpiceDisplayChannel SpiceDisplayChannel;
 typedef struct _SpiceDisplayChannelClass SpiceDisplayChannelClass;
 typedef struct _SpiceDisplayChannelPrivate SpiceDisplayChannelPrivate;
 
+typedef struct _SpiceDisplayMonitorConfig SpiceDisplayMonitorConfig;
+struct _SpiceDisplayMonitorConfig {
+    guint id;
+    guint surface_id;
+    guint x;
+    guint y;
+    guint width;
+    guint height;
+};
+
 /**
  * SpiceDisplayChannel:
  *

@@ -27,6 +27,7 @@
 #include <sys/ipc.h>
 #endif
 
+#include "glib-compat.h"
 #include "spice-client.h"
 #include "spice-common.h"
 
@@ -70,6 +71,7 @@ struct _SpiceDisplayChannelPrivate {
     int                         nstreams;
     gboolean                    mark;
     guint                       mark_false_event_id;
+    GArray                      *monitors;
 #ifdef WIN32
     HDC dc;
 #endif
@@ -82,6 +84,7 @@ enum {
     PROP_0,
     PROP_WIDTH,
     PROP_HEIGHT,
+    PROP_MONITORS
 };
 
 enum {
@@ -123,6 +126,9 @@ static void spice_display_channel_dispose(GObject *object)
 
 static void spice_display_channel_finalize(GObject *object)
 {
+    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(object)->priv;
+
+    g_clear_pointer(&c->monitors, g_array_unref);
     clear_surfaces(SPICE_CHANNEL(object), FALSE);
     clear_streams(SPICE_CHANNEL(object));
 
@@ -141,6 +147,8 @@ static void spice_display_channel_constructed(GObject *object)
     g_return_if_fail(c->glz_window != NULL);
     g_return_if_fail(c->images != NULL);
     g_return_if_fail(c->palettes != NULL);
+
+    c->monitors = g_array_new(FALSE, TRUE, sizeof(SpiceDisplayMonitorConfig));
 
     if (G_OBJECT_CLASS(spice_display_channel_parent_class)->constructed)
         G_OBJECT_CLASS(spice_display_channel_parent_class)->constructed(object);
@@ -163,6 +171,10 @@ static void spice_display_get_property(GObject    *object,
     case PROP_HEIGHT: {
         display_surface *surface = find_surface(c, 0);
         g_value_set_uint(value, surface ? surface->height : 0);
+        break;
+    }
+    case PROP_MONITORS: {
+        g_value_set_boxed(value, c->monitors);
         break;
     }
     default:
@@ -226,6 +238,22 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
                            0, G_MAXUINT, 0,
                            G_PARAM_READABLE |
                            G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceDisplayChannel:monitors:
+     *
+     * Current monitors configuration.
+     *
+     * Since: 0.13
+     */
+    g_object_class_install_property
+        (gobject_class, PROP_MONITORS,
+         g_param_spec_boxed("monitors",
+                            "Display monitors",
+                            "The monitors configuration",
+                            G_TYPE_ARRAY,
+                            G_PARAM_READABLE |
+                            G_PARAM_STATIC_STRINGS));
 
     /**
      * SpiceDisplayChannel::display-primary-create:
