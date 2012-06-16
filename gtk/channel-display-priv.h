@@ -38,7 +38,7 @@ G_BEGIN_DECLS
 
 typedef struct display_surface {
     RingItem                    link;
-    int                         surface_id;
+    guint32                     surface_id;
     bool                        primary;
     enum SpiceSurfaceFmt        format;
     int                         width, height, stride, size;

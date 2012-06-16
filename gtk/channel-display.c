@@ -100,7 +100,7 @@ static void spice_display_channel_up(SpiceChannel *channel);
 
 static void clear_surfaces(SpiceChannel *channel, gboolean keep_primary);
 static void clear_streams(SpiceChannel *channel);
-static display_surface *find_surface(SpiceDisplayChannelPrivate *c, int surface_id);
+static display_surface *find_surface(SpiceDisplayChannelPrivate *c, guint32 surface_id);
 static gboolean display_stream_render(display_stream *st);
 static void spice_display_channel_reset(SpiceChannel *channel, gboolean migrating);
 static void spice_display_channel_reset_capabilities(SpiceChannel *channel);
@@ -710,7 +710,7 @@ static void destroy_canvas(display_surface *surface)
     surface->canvas = NULL;
 }
 
-static display_surface *find_surface(SpiceDisplayChannelPrivate *c, int surface_id)
+static display_surface *find_surface(SpiceDisplayChannelPrivate *c, guint32 surface_id)
 {
     display_surface *surface;
     RingItem *item;
