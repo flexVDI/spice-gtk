@@ -654,6 +654,7 @@ static HDC create_compatible_dc(void)
 static void spice_display_channel_reset_capabilities(SpiceChannel *channel)
 {
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_SIZED_STREAM);
+    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_MONITORS_CONFIG);
 }
 
 static void spice_display_channel_init(SpiceDisplayChannel *channel)
