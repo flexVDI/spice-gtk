@@ -849,6 +849,15 @@ static void agent_msg_queue_many(SpiceMainChannel *channel, int type, const void
 #define agent_msg_queue(Channel, Type, Size, Data) \
     agent_msg_queue_many((Channel), (Type), (Data), (Size), NULL)
 
+/**
+ * spice_main_send_monitor_config:
+ * @channel:
+ *
+ * Send monitors configuration previously set with
+ * spice_main_set_display() and spice_main_set_display_enabled()
+ *
+ * Returns: %TRUE on success.
+ **/
 /* any context: the message is not flushed immediately,
    you can wakeup() the channel coroutine or send_msg_queue() */
 gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
