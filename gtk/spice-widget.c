@@ -779,6 +779,19 @@ static void update_mouse_grab(SpiceDisplay *display)
         try_mouse_ungrab(display);
 }
 
+static gint get_display_id(SpiceDisplay *display)
+{
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    /* supported monitor_id only with display channel #0 */
+    if (d->channel_id == 0 && d->monitor_id >= 0)
+        return d->monitor_id;
+
+    g_return_val_if_fail(d->monitor_id <= 0, -1);
+
+    return d->channel_id;
+}
+
 static void recalc_geometry(GtkWidget *widget)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
@@ -800,7 +813,7 @@ static void recalc_geometry(GtkWidget *widget)
                 d->ww, d->wh, zoom, d->mx, d->my);
 
     if (d->resize_guest_enable)
-        spice_main_set_display(d->main, d->channel_id,
+        spice_main_set_display(d->main, get_display_id(display),
                                0, 0, d->ww / zoom, d->wh / zoom);
 }
 
@@ -1687,7 +1700,7 @@ static void mark(SpiceChannel *channel, gint mark, gpointer data)
 
     SPICE_DEBUG("widget mark: %d, channel %d", mark, d->channel_id);
     d->mark = mark;
-    spice_main_set_display_enabled(d->main, d->channel_id, d->mark != 0);
+    spice_main_set_display_enabled(d->main, get_display_id(display), d->mark != 0);
     if (mark != 0 && gtk_widget_get_window(GTK_WIDGET(display)))
         gtk_widget_queue_draw(GTK_WIDGET(display));
 }

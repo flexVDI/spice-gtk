@@ -1829,7 +1829,7 @@ gboolean spice_main_agent_test_capability(SpiceMainChannel *channel, guint32 cap
 /**
  * spice_main_set_display:
  * @channel:
- * @id: display channel ID
+ * @id: display ID
  * @x: x position
  * @y: y position
  * @width: display width
@@ -2013,7 +2013,7 @@ void spice_main_clipboard_selection_request(SpiceMainChannel *channel, guint sel
 /**
  * spice_main_set_display_enabled:
  * @channel: a #SpiceMainChannel
- * @id: display channel ID (if -1: set all displays)
+ * @id: display ID (if -1: set all displays)
  * @enabled: wether display @id is enabled
  *
  * When sending monitor configuration to agent guest, don't set
