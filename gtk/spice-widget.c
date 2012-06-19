@@ -878,7 +878,8 @@ static gboolean draw_event(GtkWidget *widget, cairo_t *cr)
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     g_return_val_if_fail(d != NULL, false);
 
-    if (d->mark == 0 || d->data == NULL)
+    if (d->mark == 0 || d->data == NULL ||
+        d->area.width == 0 || d->area.height == 0)
         return false;
     g_return_val_if_fail(d->ximage != NULL, false);
 
@@ -894,7 +895,8 @@ static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     g_return_val_if_fail(d != NULL, false);
 
-    if (d->mark == 0 || d->data == NULL)
+    if (d->mark == 0 || d->data == NULL ||
+        d->area.width == 0 || d->area.height == 0)
         return false;
     g_return_val_if_fail(d->ximage != NULL, false);
 
