@@ -97,6 +97,7 @@ G_DEFINE_TYPE (SpiceWindow, spice_window, G_TYPE_OBJECT);
 struct spice_connection {
     SpiceSession     *session;
     SpiceGtkSession  *gtk_session;
+    SpiceMainChannel *main;
     SpiceWindow     *wins[CHANNELID_MAX * MONITORID_MAX];
     SpiceAudio       *audio;
     const char       *mouse_state;
@@ -117,6 +118,7 @@ static void usb_connect_failed(GObject               *object,
                                GError                *error,
                                gpointer               data);
 static gboolean is_gtk_session_property(const gchar *property);
+static void del_window(spice_connection *conn, SpiceWindow *win);
 
 /* options */
 static gboolean fullscreen = false;
@@ -561,7 +563,11 @@ static gboolean delete_cb(GtkWidget *widget, GdkEvent *event, gpointer data)
 {
     SpiceWindow *win = data;
 
-    connection_disconnect(win->conn);
+    if (win->monitor_id == 0)
+        connection_disconnect(win->conn);
+    else
+        del_window(win->conn, win);
+
     return true;
 }
 
@@ -1530,6 +1536,12 @@ static void del_window(spice_connection *conn, SpiceWindow *win)
 
     g_debug("del display monitor %d:%d", win->id, win->monitor_id);
     conn->wins[win->id * CHANNELID_MAX + win->monitor_id] = NULL;
+    if (win->id > 0)
+        spice_main_set_display_enabled(conn->main, win->id, FALSE);
+    else
+        spice_main_set_display_enabled(conn->main, win->monitor_id, FALSE);
+    spice_main_send_monitor_config(conn->main);
+
     destroy_spice_window(win);
 }
 
@@ -1576,6 +1588,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
         SPICE_DEBUG("new main channel");
+        conn->main = SPICE_MAIN_CHANNEL(channel);
         g_signal_connect(channel, "channel-event",
                          G_CALLBACK(main_channel_event), conn);
         g_signal_connect(channel, "main-mouse-update",
@@ -1621,6 +1634,7 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
     g_object_get(channel, "channel-id", &id, NULL);
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
         SPICE_DEBUG("zap main channel");
+        conn->main = NULL;
     }
 
     if (SPICE_IS_DISPLAY_CHANNEL(channel)) {
