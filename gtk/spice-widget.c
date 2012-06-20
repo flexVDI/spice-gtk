@@ -441,7 +441,14 @@ spice_display_constructor(GType                  gtype,
                      G_CALLBACK(channel_destroy), display);
     list = spice_session_get_channels(d->session);
     for (it = g_list_first(list); it != NULL; it = g_list_next(it)) {
-        channel_new(d->session, it->data, (gpointer*)display);
+        if (SPICE_IS_MAIN_CHANNEL(it->data)) {
+            channel_new(d->session, it->data, (gpointer*)display);
+            break;
+        }
+    }
+    for (it = g_list_first(list); it != NULL; it = g_list_next(it)) {
+        if (!SPICE_IS_MAIN_CHANNEL(it->data))
+            channel_new(d->session, it->data, (gpointer*)display);
     }
     g_list_free(list);
 
