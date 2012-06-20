@@ -32,6 +32,7 @@
 #include "smartcard-manager.h"
 #endif
 
+#include "glib-compat.h"
 #include "spice-widget.h"
 #include "spice-gtk-session.h"
 #include "spice-audio.h"
@@ -62,7 +63,8 @@ typedef struct _SpiceWindowClass SpiceWindowClass;
 struct _SpiceWindow {
     GObject          object;
     spice_connection *conn;
-    int              id;
+    gint             id;
+    gint             monitor_id;
     GtkWidget        *toplevel, *spice;
     GtkWidget        *menubar, *toolbar;
     GtkWidget        *ritem, *rmenu;
@@ -87,10 +89,15 @@ struct _SpiceWindowClass
 
 G_DEFINE_TYPE (SpiceWindow, spice_window, G_TYPE_OBJECT);
 
+#define CHANNELID_MAX 4
+#define MONITORID_MAX 4
+
+// FIXME: turn this into an object, get rid of fixed wins array, use
+// signals to replace the various callback that iterate over wins array
 struct spice_connection {
     SpiceSession     *session;
     SpiceGtkSession  *gtk_session;
-    SpiceWindow     *wins[4];
+    SpiceWindow     *wins[CHANNELID_MAX * MONITORID_MAX];
     SpiceAudio       *audio;
     const char       *mouse_state;
     const char       *agent_state;
@@ -1141,7 +1148,7 @@ spice_window_init (SpiceWindow *self)
 {
 }
 
-static SpiceWindow *create_spice_window(spice_connection *conn, int id, SpiceChannel *channel)
+static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *channel, int id, gint monitor_id)
 {
     char title[32];
     SpiceWindow *win;
@@ -1154,12 +1161,13 @@ static SpiceWindow *create_spice_window(spice_connection *conn, int id, SpiceCha
 
     win = g_object_new(SPICE_TYPE_WINDOW, NULL);
     win->id = id;
+    win->monitor_id = monitor_id;
     win->conn = conn;
     win->display_channel = channel;
 
     /* toplevel */
     win->toplevel = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    snprintf(title, sizeof(title), _("spice display %d"), id);
+    snprintf(title, sizeof(title), _("spice display %d:%d"), id, monitor_id);
     gtk_window_set_title(GTK_WINDOW(win->toplevel), title);
     g_signal_connect(G_OBJECT(win->toplevel), "window-state-event",
                      G_CALLBACK(window_state_cb), win);
@@ -1204,7 +1212,7 @@ static SpiceWindow *create_spice_window(spice_connection *conn, int id, SpiceCha
 #endif
 
     /* spice display */
-    win->spice = GTK_WIDGET(spice_display_new(conn->session, id));
+    win->spice = GTK_WIDGET(spice_display_new_with_monitor(conn->session, id, monitor_id));
     g_signal_connect(win->spice, "configure-event", G_CALLBACK(configure_event_cb), win);
     seq = spice_grab_sequence_new_from_string("Shift_L+F12");
     spice_display_set_grab_keys(SPICE_DISPLAY(win->spice), seq);
@@ -1324,7 +1332,10 @@ static SpiceWindow *create_spice_window(spice_connection *conn, int id, SpiceCha
 
 static void destroy_spice_window(SpiceWindow *win)
 {
-    SPICE_DEBUG("destroy window (#%d)", win->id);
+    if (win == NULL)
+        return;
+
+    SPICE_DEBUG("destroy window (#%d:%d)", win->id, win->monitor_id);
     g_object_unref(win->ag);
     g_object_unref(win->ui);
     gtk_widget_destroy(win->toplevel);
@@ -1490,6 +1501,70 @@ static void update_auto_usbredir_sensitive(spice_connection *conn)
 #endif
 }
 
+static SpiceWindow* get_window(spice_connection *conn, int channel_id, int monitor_id)
+{
+    g_return_val_if_fail(channel_id < CHANNELID_MAX, NULL);
+    g_return_val_if_fail(monitor_id < MONITORID_MAX, NULL);
+
+    return conn->wins[channel_id * CHANNELID_MAX + monitor_id];
+}
+
+static void add_window(spice_connection *conn, SpiceWindow *win)
+{
+    g_return_if_fail(win != NULL);
+    g_return_if_fail(win->id < CHANNELID_MAX);
+    g_return_if_fail(win->monitor_id < MONITORID_MAX);
+    g_return_if_fail(conn->wins[win->id * CHANNELID_MAX + win->monitor_id] == NULL);
+
+    SPICE_DEBUG("add display monitor %d:%d", win->id, win->monitor_id);
+    conn->wins[win->id * CHANNELID_MAX + win->monitor_id] = win;
+}
+
+static void del_window(spice_connection *conn, SpiceWindow *win)
+{
+    if (win == NULL)
+        return;
+
+    g_return_if_fail(win->id < CHANNELID_MAX);
+    g_return_if_fail(win->monitor_id < MONITORID_MAX);
+
+    g_debug("del display monitor %d:%d", win->id, win->monitor_id);
+    conn->wins[win->id * CHANNELID_MAX + win->monitor_id] = NULL;
+    destroy_spice_window(win);
+}
+
+static void display_monitors(SpiceChannel *display, GParamSpec *pspec,
+                             spice_connection *conn)
+{
+    GArray *monitors = NULL;
+    int id;
+    guint i;
+
+    g_object_get(display,
+                 "channel-id", &id,
+                 "monitors", &monitors,
+                 NULL);
+    g_return_if_fail(monitors != NULL);
+
+    for (i = 0; i < monitors->len; i++) {
+        SpiceWindow *w;
+
+        if (!get_window(conn, id, i)) {
+            w = create_spice_window(conn, display, id, i);
+            add_window(conn, w);
+            spice_g_signal_connect_object(display, "display-mark",
+                                          G_CALLBACK(display_mark), w, 0);
+            gtk_widget_show(w->toplevel);
+            update_auto_usbredir_sensitive(conn);
+        }
+    }
+
+    for (; i < MONITORID_MAX; i++)
+        del_window(conn, get_window(conn, id, i));
+
+    g_clear_pointer(&monitors, g_array_unref);
+}
+
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
     spice_connection *conn = data;
@@ -1517,10 +1592,9 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         if (conn->wins[id] != NULL)
             return;
         SPICE_DEBUG("new display channel (#%d)", id);
-        conn->wins[id] = create_spice_window(conn, id, channel);
-        g_signal_connect(channel, "display-mark",
-                         G_CALLBACK(display_mark), conn->wins[id]);
-        update_auto_usbredir_sensitive(conn);
+        g_signal_connect(channel, "notify::monitors",
+                         G_CALLBACK(display_monitors), conn);
+        spice_channel_connect(channel);
     }
 
     if (SPICE_IS_INPUTS_CHANNEL(channel)) {
@@ -1552,11 +1626,8 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
     if (SPICE_IS_DISPLAY_CHANNEL(channel)) {
         if (id >= SPICE_N_ELEMENTS(conn->wins))
             return;
-        if (conn->wins[id] == NULL)
-            return;
         SPICE_DEBUG("zap display channel (#%d)", id);
-        destroy_spice_window(conn->wins[id]);
-        conn->wins[id] = NULL;
+        /* FIXME destroy widget only */
     }
 
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
