@@ -1458,6 +1458,37 @@ static void display_handle_surface_destroy(SpiceChannel *channel, SpiceMsgIn *in
     free(surface);
 }
 
+/* coroutine context */
+static void display_handle_monitors_config(SpiceChannel *channel, SpiceMsgIn *in)
+{
+    SpiceMsgDisplayMonitorsConfig *config = spice_msg_in_parsed(in);
+    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
+    guint i;
+
+    g_return_if_fail(config != NULL);
+    g_return_if_fail(config->count > 0);
+
+    SPICE_DEBUG("monitors config: n: %d", config->count);
+
+    c->monitors = g_array_set_size(c->monitors, config->count);
+
+    for (i = 0; i < config->count; i++) {
+        SpiceDisplayMonitorConfig *mc = &g_array_index(c->monitors, SpiceDisplayMonitorConfig, i);
+        SpiceHead *head = &config->heads[i];
+        SPICE_DEBUG("monitor id: %u, surface id: %u, +%u+%u-%ux%u",
+                    head->id, head->surface_id,
+                    head->x, head->y, head->width, head->height);
+        mc->id = head->id;
+        mc->surface_id = head->surface_id;
+        mc->x = head->x;
+        mc->y = head->y;
+        mc->width = head->width;
+        mc->height = head->height;
+    }
+
+    g_object_notify_main_context(G_OBJECT(channel), "monitors");
+}
+
 static const spice_msg_handler display_handlers[] = {
     [ SPICE_MSG_DISPLAY_MODE ]               = display_handle_mode,
     [ SPICE_MSG_DISPLAY_MARK ]               = display_handle_mark,
@@ -1490,6 +1521,8 @@ static const spice_msg_handler display_handlers[] = {
 
     [ SPICE_MSG_DISPLAY_SURFACE_CREATE ]     = display_handle_surface_create,
     [ SPICE_MSG_DISPLAY_SURFACE_DESTROY ]    = display_handle_surface_destroy,
+
+    [ SPICE_MSG_DISPLAY_MONITORS_CONFIG ]    = display_handle_monitors_config,
 };
 
 /* coroutine context */
