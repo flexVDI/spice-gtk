@@ -15,6 +15,10 @@
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
+#include <math.h>
+#include <spice/vd_agent.h>
+#include <common/rect.h>
+
 #include "glib-compat.h"
 #include "spice-client.h"
 #include "spice-common.h"
@@ -23,8 +27,6 @@
 #include "spice-util-priv.h"
 #include "spice-channel-priv.h"
 #include "spice-session-priv.h"
-
-#include <spice/vd_agent.h>
 
 /**
  * SECTION:channel-main
@@ -58,6 +60,7 @@ struct _SpiceMainChannelPrivate  {
     gboolean                    display_disable_font_smooth:1;
     gboolean                    display_disable_animation:1;
     gboolean                    disable_display_position:1;
+    gboolean                    disable_display_align:1;
 
     int                         agent_tokens;
     VDAgentMessage              agent_msg; /* partial msg reconstruction */
@@ -102,6 +105,7 @@ enum {
     PROP_DISPLAY_DISABLE_ANIMATION,
     PROP_DISPLAY_COLOR_DEPTH,
     PROP_DISABLE_DISPLAY_POSITION,
+    PROP_DISABLE_DISPLAY_ALIGN,
 };
 
 /* Signals */
@@ -203,6 +207,9 @@ static void spice_main_get_property(GObject    *object,
     case PROP_DISABLE_DISPLAY_POSITION:
         g_value_set_boolean(value, c->disable_display_position);
         break;
+    case PROP_DISABLE_DISPLAY_ALIGN:
+        g_value_set_boolean(value, c->disable_display_align);
+        break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
 	break;
@@ -232,6 +239,9 @@ static void spice_main_set_property(GObject *gobject, guint prop_id,
     }
     case PROP_DISABLE_DISPLAY_POSITION:
         c->disable_display_position = g_value_get_boolean(value);
+        break;
+    case PROP_DISABLE_DISPLAY_ALIGN:
+        c->disable_display_align = g_value_get_boolean(value);
         break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -409,6 +419,23 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                            G_PARAM_READWRITE |
                            G_PARAM_CONSTRUCT |
                            G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceMainChannel:disable-display-align:
+     *
+     * Disable automatic horizontal display position alignment.
+     *
+     * Since: 0.13
+     */
+    g_object_class_install_property
+        (gobject_class, PROP_DISABLE_DISPLAY_ALIGN,
+         g_param_spec_boolean("disable-display-align",
+                              "Disable display align",
+                              "Disable display position alignment",
+                              FALSE,
+                              G_PARAM_READWRITE |
+                              G_PARAM_CONSTRUCT |
+                              G_PARAM_STATIC_STRINGS));
 
     /* TODO use notify instead */
     /**
@@ -846,6 +873,37 @@ static void agent_msg_queue_many(SpiceMainChannel *channel, int type, const void
     g_warn_if_fail(out == NULL);
 }
 
+static int monitors_cmp(const void *p1, const void *p2)
+{
+    const VDAgentMonConfig *m1 = p1;
+    const VDAgentMonConfig *m2 = p2;
+    double d1 = sqrt(m1->x * m1->x + m1->y * m1->y);
+    double d2 = sqrt(m2->x * m2->x + m2->y * m2->y);
+
+    return d1 - d2;
+}
+
+static void monitors_align(VDAgentMonConfig *monitors, int nmonitors)
+{
+    gint i, x = 0;
+
+    if (nmonitors == 0)
+        return;
+
+    /* sort by distance from origin */
+    qsort(monitors, nmonitors, sizeof(VDAgentMonConfig), monitors_cmp);
+
+    /* super-KISS ltr alignment, feel free to improve */
+    for (i = 0; i < nmonitors; i++) {
+        monitors[i].x = x;
+        monitors[i].y = 0;
+        x += monitors[i].width;
+        g_debug("#%d +%d+%d-%dx%d", i, monitors[i].x, monitors[i].y,
+                monitors[i].width, monitors[i].height);
+    }
+}
+
+
 #define agent_msg_queue(Channel, Type, Size, Data) \
     agent_msg_queue_many((Channel), (Type), (Data), (Size), NULL)
 
@@ -882,7 +940,8 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
     mon = spice_malloc0(size);
 
     mon->num_of_monitors = monitors;
-    if (c->disable_display_position == FALSE)
+    if (c->disable_display_position == FALSE ||
+        c->disable_display_align == FALSE)
         mon->flags |= VD_AGENT_CONFIG_MONITORS_FLAG_USE_POS;
 
     j = 0;
@@ -900,6 +959,9 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
                     mon->monitors[j].depth);
         j++;
     }
+
+    if (c->disable_display_align == FALSE)
+        monitors_align(mon->monitors, mon->num_of_monitors);
 
     agent_msg_queue(channel, VD_AGENT_MONITORS_CONFIG, size, mon);
     free(mon);
@@ -1845,6 +1907,10 @@ void spice_main_set_display(SpiceMainChannel *channel, int id,
 
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
+    g_return_if_fail(x >= 0);
+    g_return_if_fail(y >= 0);
+    g_return_if_fail(width >= 0);
+    g_return_if_fail(height >= 0);
 
     c = SPICE_MAIN_CHANNEL(channel)->priv;
 
