@@ -744,10 +744,21 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
     g_return_val_if_fail(surface->canvas != NULL, 0);
     ring_add(&c->surfaces, &surface->link);
 
-    if (surface->primary)
+    if (surface->primary) {
         emit_main_context(channel, SPICE_DISPLAY_PRIMARY_CREATE,
                           surface->format, surface->width, surface->height,
                           surface->stride, surface->shmid, surface->data);
+
+        if (!spice_channel_test_capability(channel, SPICE_DISPLAY_CAP_MONITORS_CONFIG)) {
+            g_array_set_size(c->monitors, 1);
+            SpiceDisplayMonitorConfig *config = &g_array_index(c->monitors, SpiceDisplayMonitorConfig, 0);
+            config->x = config->y = 0;
+            config->width = surface->width;
+            config->height = surface->height;
+            g_object_notify_main_context(G_OBJECT(channel), "monitors");
+        }
+    }
+
     return 0;
 }
 
