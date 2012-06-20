@@ -130,6 +130,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data);
 static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer data);
 static void sync_keyboard_lock_modifiers(SpiceDisplay *display);
 static void cursor_invalidate(SpiceDisplay *display);
+static void update_area(SpiceDisplay *display, gint x, gint y, gint width, gint height);
 
 /* ---------------------------------------------------------------- */
 
@@ -226,6 +227,44 @@ static void update_keyboard_focus(SpiceDisplay *display, gboolean state)
     spice_gtk_session_request_auto_usbredir(d->gtk_session, state);
 }
 
+static void update_monitor_area(SpiceDisplay *display)
+{
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayMonitorConfig *c;
+    GArray *monitors = NULL;
+
+    SPICE_DEBUG("update monitor area %d:%d", d->channel_id, d->monitor_id);
+    if (d->monitor_id < 0)
+        goto whole;
+
+    g_object_get(d->display, "monitors", &monitors, NULL);
+    if (monitors == NULL || d->monitor_id >= monitors->len) {
+        SPICE_DEBUG("update monitor: no monitor %d", d->monitor_id);
+        if (spice_channel_test_capability(d->display, SPICE_DISPLAY_CAP_MONITORS_CONFIG)) {
+            SPICE_DEBUG("waiting until MonitorsConfig is received");
+            return;
+        }
+        /* FIXME: mark false */
+        goto whole;
+    }
+
+    c = &g_array_index(monitors, SpiceDisplayMonitorConfig, d->monitor_id);
+    g_return_if_fail(c != NULL);
+    if (c->surface_id != 0) {
+        g_warning("FIXME: only support monitor config with primary surface 0, "
+                  "but given config surface %d", c->surface_id);
+        goto whole;
+    }
+
+    update_area(display, c->x, c->y, c->width, c->height);
+    g_clear_pointer(&monitors, g_array_unref);
+    return;
+
+whole:
+    /* by display whole surface */
+    update_area(display, 0, 0, d->width, d->height);
+}
+
 static void spice_display_set_property(GObject      *object,
                                        guint         prop_id,
                                        const GValue *value,
@@ -245,6 +284,8 @@ static void spice_display_set_property(GObject      *object,
         break;
     case PROP_MONITOR_ID:
         d->monitor_id = g_value_get_int(value);
+        if (d->display) /* if constructed */
+            update_monitor_area(display);
         break;
     case PROP_KEYBOARD_GRAB:
         d->keyboard_grab_enable = g_value_get_boolean(value);
@@ -808,13 +849,13 @@ static void recalc_geometry(GtkWidget *widget)
     } else
         zoom = (gdouble)d->zoom_level / 100;
 
-    SPICE_DEBUG("monitors: id %d, guest +%d+%d:%dx%d, window %dx%d, zoom %g, offset +%d+%d",
-                d->channel_id, d->area.x, d->area.y, d->area.width, d->area.height,
+    SPICE_DEBUG("recalc geom monitor: %d:%d, guest +%d+%d:%dx%d, window %dx%d, zoom %g, offset +%d+%d",
+                d->channel_id, d->monitor_id, d->area.x, d->area.y, d->area.width, d->area.height,
                 d->ww, d->wh, zoom, d->mx, d->my);
 
     if (d->resize_guest_enable)
         spice_main_set_display(d->main, get_display_id(display),
-                               0, 0, d->ww / zoom, d->wh / zoom);
+                               d->area.x, d->area.y, d->ww / zoom, d->wh / zoom);
 }
 
 /* ---------------------------------------------------------------- */
@@ -1645,8 +1686,7 @@ static void primary_create(SpiceChannel *channel, gint format,
     d->height = height;
     d->data_origin = d->data = imgdata;
 
-    /* by default, display whole surface */
-    update_area(display, 0, 0, width, height);
+    update_monitor_area(display);
 }
 
 static void primary_destroy(SpiceChannel *channel, gpointer data)
@@ -1694,13 +1734,12 @@ static void invalidate(SpiceChannel *channel,
                                x, y, w, h);
 }
 
-static void mark(SpiceChannel *channel, gint mark, gpointer data)
+static void mark(SpiceDisplay *display, gint mark)
 {
-    SpiceDisplay *display = data;
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     g_return_if_fail(d != NULL);
 
-    SPICE_DEBUG("widget mark: %d, channel %d", mark, d->channel_id);
+    SPICE_DEBUG("widget mark: %d, %d:%d %p", mark, d->channel_id, d->monitor_id, display);
     d->mark = mark;
     spice_main_set_display_enabled(d->main, get_display_id(display), d->mark != 0);
     if (mark != 0 && gtk_widget_get_window(GTK_WIDGET(display)))
@@ -1856,6 +1895,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     }
 
     if (SPICE_IS_DISPLAY_CHANNEL(channel)) {
+        SpiceDisplayPrimary primary;
         if (id != d->channel_id)
             return;
         d->display = channel;
@@ -1866,7 +1906,14 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         spice_g_signal_connect_object(channel, "display-invalidate",
                                       G_CALLBACK(invalidate), display, 0);
         spice_g_signal_connect_object(channel, "display-mark",
-                                      G_CALLBACK(mark), display, 0);
+                                      G_CALLBACK(mark), display, G_CONNECT_AFTER | G_CONNECT_SWAPPED);
+        spice_g_signal_connect_object(channel, "notify::monitors",
+                                      G_CALLBACK(update_monitor_area), display, G_CONNECT_AFTER | G_CONNECT_SWAPPED);
+        if (spice_display_get_primary(channel, 0, &primary)) {
+            primary_create(channel, primary.format, primary.width, primary.height,
+                           primary.stride, primary.shmid, primary.data, display);
+            mark(display, primary.marked);
+        }
         spice_channel_connect(channel);
         return;
     }
