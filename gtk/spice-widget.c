@@ -1637,8 +1637,7 @@ static void mark(SpiceChannel *channel, gint mark, gpointer data)
     d->mark = mark;
     spice_main_set_display_enabled(d->main, d->channel_id, d->mark != 0);
     if (mark != 0 && gtk_widget_get_window(GTK_WIDGET(display)))
-        gdk_window_invalidate_rect(gtk_widget_get_window(GTK_WIDGET(display)),
-                                   NULL, FALSE);
+        gtk_widget_queue_draw(GTK_WIDGET(display));
 }
 
 static void cursor_set(SpiceCursorChannel *channel,
