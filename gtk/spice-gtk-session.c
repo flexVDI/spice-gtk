@@ -39,7 +39,7 @@ struct _SpiceGtkSessionPrivate {
     gboolean                clipboard_by_guest[CLIPBOARD_LAST];
     /* auto-usbredir related */
     gboolean                auto_usbredir_enable;
-    gboolean                keyboard_focus;
+    int                     keyboard_focus;
 };
 
 /**
@@ -845,7 +845,16 @@ void spice_gtk_session_update_keyboard_focus(SpiceGtkSession *self,
     SpiceGtkSessionPrivate *s = self->priv;
     SpiceUsbDeviceManager *manager;
 
-    s->keyboard_focus = state;
+    if (state) {
+        s->keyboard_focus++;
+        if (s->keyboard_focus != 1)
+            return;
+    } else {
+        g_return_if_fail(s->keyboard_focus > 0);
+        s->keyboard_focus--;
+        if (s->keyboard_focus != 0)
+            return;
+    }
 
     if (!s->auto_usbredir_enable)
         return;
