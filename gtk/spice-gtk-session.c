@@ -39,7 +39,7 @@ struct _SpiceGtkSessionPrivate {
     gboolean                clipboard_by_guest[CLIPBOARD_LAST];
     /* auto-usbredir related */
     gboolean                auto_usbredir_enable;
-    int                     keyboard_focus;
+    int                     auto_usbredir_reqs;
 };
 
 /**
@@ -235,7 +235,7 @@ static void spice_gtk_session_set_property(GObject      *gobject,
         break;
     case PROP_AUTO_USBREDIR:
         s->auto_usbredir_enable = g_value_get_boolean(value);
-        if (s->keyboard_focus) {
+        if (s->auto_usbredir_reqs) {
             SpiceUsbDeviceManager *manager =
                 spice_usb_device_manager_get(s->session, NULL);
 
@@ -837,7 +837,7 @@ static gboolean read_only(SpiceGtkSession *self)
 /* ---------------------------------------------------------------- */
 /* private functions (usbredir related)                             */
 G_GNUC_INTERNAL
-void spice_gtk_session_update_keyboard_focus(SpiceGtkSession *self,
+void spice_gtk_session_request_auto_usbredir(SpiceGtkSession *self,
                                              gboolean state)
 {
     g_return_if_fail(SPICE_IS_GTK_SESSION(self));
@@ -846,13 +846,13 @@ void spice_gtk_session_update_keyboard_focus(SpiceGtkSession *self,
     SpiceUsbDeviceManager *manager;
 
     if (state) {
-        s->keyboard_focus++;
-        if (s->keyboard_focus != 1)
+        s->auto_usbredir_reqs++;
+        if (s->auto_usbredir_reqs != 1)
             return;
     } else {
-        g_return_if_fail(s->keyboard_focus > 0);
-        s->keyboard_focus--;
-        if (s->keyboard_focus != 0)
+        g_return_if_fail(s->auto_usbredir_reqs > 0);
+        s->auto_usbredir_reqs--;
+        if (s->auto_usbredir_reqs != 0)
             return;
     }
 

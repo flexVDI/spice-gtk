@@ -1097,7 +1097,7 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
     sync_keyboard_lock_modifiers(display);
     d->keyboard_have_focus = true;
     try_keyboard_grab(display);
-    spice_gtk_session_update_keyboard_focus(d->gtk_session,
+    spice_gtk_session_request_auto_usbredir(d->gtk_session,
                                             d->keyboard_have_focus);
 #ifdef WIN32
     focus_window = GDK_WINDOW_HWND(gtk_widget_get_window(widget));
@@ -1122,7 +1122,7 @@ static gboolean focus_out_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_U
 
     release_keys(display);
     d->keyboard_have_focus = false;
-    spice_gtk_session_update_keyboard_focus(d->gtk_session,
+    spice_gtk_session_request_auto_usbredir(d->gtk_session,
                                             d->keyboard_have_focus);
     return true;
 }
