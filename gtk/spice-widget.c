@@ -209,6 +209,22 @@ static void update_size_request(SpiceDisplay *display)
     recalc_geometry(GTK_WIDGET(display));
 }
 
+static void update_keyboard_focus(SpiceDisplay *display, gboolean state)
+{
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    d->keyboard_have_focus = state;
+
+    /* keyboard grab gets inhibited by usb-device-manager when it is
+       in the process of redirecting a usb-device (as this may show a
+       policykit dialog). Making autoredir/automount setting changes while
+       this is happening is not a good idea! */
+    if (d->keyboard_grab_inhibit)
+        return;
+
+    spice_gtk_session_request_auto_usbredir(d->gtk_session, state);
+}
+
 static void spice_display_set_property(GObject      *object,
                                        guint         prop_id,
                                        const GValue *value,
@@ -1095,10 +1111,8 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
 
     release_keys(display);
     sync_keyboard_lock_modifiers(display);
-    d->keyboard_have_focus = true;
+    update_keyboard_focus(display, true);
     try_keyboard_grab(display);
-    spice_gtk_session_request_auto_usbredir(d->gtk_session,
-                                            d->keyboard_have_focus);
 #ifdef WIN32
     focus_window = GDK_WINDOW_HWND(gtk_widget_get_window(widget));
     g_return_val_if_fail(focus_window != NULL, true);
@@ -1121,9 +1135,8 @@ static gboolean focus_out_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_U
         return true;
 
     release_keys(display);
-    d->keyboard_have_focus = false;
-    spice_gtk_session_request_auto_usbredir(d->gtk_session,
-                                            d->keyboard_have_focus);
+    update_keyboard_focus(display, false);
+
     return true;
 }
 
