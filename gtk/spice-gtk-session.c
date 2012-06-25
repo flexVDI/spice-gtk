@@ -18,6 +18,7 @@
 
 #include <gtk/gtk.h>
 #include <spice/vd_agent.h>
+#include "desktop-integration.h"
 #include "spice-common.h"
 #include "spice-gtk-session.h"
 #include "spice-gtk-session-priv.h"
@@ -233,8 +234,14 @@ static void spice_gtk_session_set_property(GObject      *gobject,
     case PROP_AUTO_CLIPBOARD:
         s->auto_clipboard_enable = g_value_get_boolean(value);
         break;
-    case PROP_AUTO_USBREDIR:
+    case PROP_AUTO_USBREDIR: {
+        SpiceDesktopIntegration *desktop_int;
+        gboolean orig_value = s->auto_usbredir_enable;
+
         s->auto_usbredir_enable = g_value_get_boolean(value);
+        if (s->auto_usbredir_enable == orig_value)
+            break;
+
         if (s->auto_usbredir_reqs) {
             SpiceUsbDeviceManager *manager =
                 spice_usb_device_manager_get(s->session, NULL);
@@ -244,8 +251,15 @@ static void spice_gtk_session_set_property(GObject      *gobject,
 
             g_object_set(manager, "auto-connect", s->auto_usbredir_enable,
                          NULL);
+
+            desktop_int = spice_desktop_integration_get(s->session);
+            if (s->auto_usbredir_enable)
+                spice_desktop_integration_inhibit_automount(desktop_int);
+            else
+                spice_desktop_integration_uninhibit_automount(desktop_int);
         }
         break;
+    }
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
         break;
@@ -843,6 +857,7 @@ void spice_gtk_session_request_auto_usbredir(SpiceGtkSession *self,
     g_return_if_fail(SPICE_IS_GTK_SESSION(self));
 
     SpiceGtkSessionPrivate *s = self->priv;
+    SpiceDesktopIntegration *desktop_int;
     SpiceUsbDeviceManager *manager;
 
     if (state) {
@@ -864,6 +879,12 @@ void spice_gtk_session_request_auto_usbredir(SpiceGtkSession *self,
         return;
 
     g_object_set(manager, "auto-connect", state, NULL);
+
+    desktop_int = spice_desktop_integration_get(s->session);
+    if (state)
+        spice_desktop_integration_inhibit_automount(desktop_int);
+    else
+        spice_desktop_integration_uninhibit_automount(desktop_int);
 }
 
 /* ------------------------------------------------------------------ */
