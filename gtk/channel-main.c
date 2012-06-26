@@ -916,8 +916,6 @@ static void monitors_align(VDAgentMonConfig *monitors, int nmonitors)
  *
  * Returns: %TRUE on success.
  **/
-/* any context: the message is not flushed immediately,
-   you can wakeup() the channel coroutine or send_msg_queue() */
 gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
 {
     SpiceMainChannelPrivate *c;
@@ -965,6 +963,12 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
 
     agent_msg_queue(channel, VD_AGENT_MONITORS_CONFIG, size, mon);
     free(mon);
+
+    spice_channel_wakeup(SPICE_CHANNEL(channel), FALSE);
+    if (c->timer_id != 0) {
+        g_source_remove(c->timer_id);
+        c->timer_id = 0;
+    }
 
     return TRUE;
 }
@@ -1862,7 +1866,6 @@ static gboolean timer_set_display(gpointer data)
     c->timer_id = 0;
     if (c->agent_connected)
         spice_main_send_monitor_config(SPICE_MAIN_CHANNEL(channel));
-    spice_channel_wakeup(channel, FALSE);
 
     return false;
 }
