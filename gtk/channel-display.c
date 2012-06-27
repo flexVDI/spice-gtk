@@ -72,6 +72,7 @@ struct _SpiceDisplayChannelPrivate {
     gboolean                    mark;
     guint                       mark_false_event_id;
     GArray                      *monitors;
+    guint                       monitors_max;
 #ifdef WIN32
     HDC dc;
 #endif
@@ -84,7 +85,8 @@ enum {
     PROP_0,
     PROP_WIDTH,
     PROP_HEIGHT,
-    PROP_MONITORS
+    PROP_MONITORS,
+    PROP_MONITORS_MAX
 };
 
 enum {
@@ -177,6 +179,10 @@ static void spice_display_get_property(GObject    *object,
         g_value_set_boxed(value, c->monitors);
         break;
     }
+    case PROP_MONITORS_MAX: {
+        g_value_set_uint(value, c->monitors_max);
+        break;
+    }
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
         break;
@@ -254,6 +260,24 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
                             G_TYPE_ARRAY,
                             G_PARAM_READABLE |
                             G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceDisplayChannel:monitors-max:
+     *
+     * The maximum number of monitors the server or guest supports.
+     * May change during client lifetime, for instance guest may
+     * reboot or dynamically adjust this.
+     *
+     * Since: 0.13
+     */
+    g_object_class_install_property
+        (gobject_class, PROP_MONITORS_MAX,
+         g_param_spec_uint("monitors-max",
+                           "Max display monitors",
+                           "The current maximum number of monitors",
+                           1, G_MAXINT16, 1,
+                           G_PARAM_READABLE |
+                           G_PARAM_STATIC_STRINGS));
 
     /**
      * SpiceDisplayChannel::display-primary-create:
@@ -1479,8 +1503,9 @@ static void display_handle_monitors_config(SpiceChannel *channel, SpiceMsgIn *in
     g_return_if_fail(config != NULL);
     g_return_if_fail(config->count > 0);
 
-    SPICE_DEBUG("monitors config: n: %d", config->count);
+    SPICE_DEBUG("monitors config: n: %d/%d", config->count, config->max_allowed);
 
+    c->monitors_max = config->max_allowed;
     c->monitors = g_array_set_size(c->monitors, config->count);
 
     for (i = 0; i < config->count; i++) {
