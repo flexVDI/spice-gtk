@@ -1464,7 +1464,7 @@ static void main_handle_agent_token(SpiceChannel *channel, SpiceMsgIn *in)
     SpiceMsgMainAgentTokens *tokens = spice_msg_in_parsed(in);
     SpiceMainChannelPrivate *c = SPICE_MAIN_CHANNEL(channel)->priv;
 
-    c->agent_tokens = tokens->num_tokens;
+    c->agent_tokens += tokens->num_tokens;
     agent_send_msg_queue(SPICE_MAIN_CHANNEL(channel));
 }
 
