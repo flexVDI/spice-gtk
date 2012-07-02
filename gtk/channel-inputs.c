@@ -69,6 +69,7 @@ static guint signals[SPICE_INPUTS_LAST_SIGNAL];
 
 static void spice_inputs_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg);
 static void spice_inputs_channel_up(SpiceChannel *channel);
+static void spice_inputs_channel_reset(SpiceChannel *channel, gboolean migrating);
 
 /* ------------------------------------------------------------------ */
 
@@ -109,6 +110,7 @@ static void spice_inputs_channel_class_init(SpiceInputsChannelClass *klass)
     gobject_class->get_property = spice_inputs_get_property;
     channel_class->handle_msg   = spice_inputs_handle_msg;
     channel_class->channel_up   = spice_inputs_channel_up;
+    channel_class->channel_reset = spice_inputs_channel_reset;
 
     g_object_class_install_property
         (gobject_class, PROP_KEY_MODIFIERS,
@@ -582,4 +584,12 @@ static void spice_inputs_channel_up(SpiceChannel *channel)
 
     msg = set_key_locks(SPICE_INPUTS_CHANNEL(channel), c->locks);
     spice_msg_out_send_internal(msg);
+}
+
+static void spice_inputs_channel_reset(SpiceChannel *channel, gboolean migrating)
+{
+    SpiceInputsChannelPrivate *c = SPICE_INPUTS_CHANNEL(channel)->priv;
+    c->motion_count = 0;
+
+    SPICE_CHANNEL_CLASS(spice_inputs_channel_parent_class)->channel_reset(channel, migrating);
 }
