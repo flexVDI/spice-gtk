@@ -16,7 +16,7 @@ AM_VALAFLAGS =							\
 	--pkg gio-2.0						\
 	--pkg spice-protocol --vapidir=$(top_srcdir)/data	\
 	--pkg custom --vapidir=$(srcdir)			\
-	-C -g							\
+	-C 							\
 	$(NULL)
 
 lib_LTLIBRARIES = libspice-controller.la
