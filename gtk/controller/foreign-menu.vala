@@ -70,14 +70,15 @@ public class ForeignMenu: Object {
 		send_msg (p);
 	}
 
-	public async bool send_msg (uint8[] p) throws GLib.Error {
+	public async bool send_msg (owned uint8[] p) throws GLib.Error {
 		// vala FIXME: pass Controller.Msg instead
 		// vala doesn't keep reference on the struct in async methods
 		// it copies only base, which is not enough to transmit the whole
 		// message.
 		try {
-			foreach (var c in clients)
-				yield c.output_stream.write_async (p);
+			foreach (var c in clients) {
+				yield output_stream_write (c.output_stream, p);
+			}
 		} catch (GLib.Error e) {
 			warning (e.message);
 		}
@@ -126,15 +127,11 @@ public class ForeignMenu: Object {
 	}
 
 	private async void handle_client (IOStream c) throws GLib.Error {
-		var header = SpiceProtocol.ForeignMenu.InitHeader ();
-		unowned uint8[] p = null;
-
 		debug ("new socket client, reading init header");
 
-		p = ((uint8[])(&header))[0:sizeof(SpiceProtocol.ForeignMenu.InitHeader)]; // FIXME vala
-		var read = yield c.input_stream.read_async (p);
-		if (warn_if (read != sizeof (SpiceProtocol.ForeignMenu.InitHeader)))
-			return;
+		var p = new uint8[sizeof(SpiceProtocol.ForeignMenu.InitHeader)];
+		var header = (SpiceProtocol.ForeignMenu.InitHeader*)p;
+		yield input_stream_read (c.input_stream, p);
 		if (warn_if (header.magic != SpiceProtocol.ForeignMenu.MAGIC))
 			return;
 		if (warn_if (header.version != SpiceProtocol.ForeignMenu.VERSION))
@@ -142,44 +139,33 @@ public class ForeignMenu: Object {
 		if (warn_if (header.size < sizeof (SpiceProtocol.ForeignMenu.Init)))
 			return;
 
-		uint64 credentials = 0;
-		p = ((uint8[])(&credentials))[0:sizeof(uint64)];
-		read = yield c.input_stream.read_async (p);
-		if (warn_if (read != sizeof(uint64)))
-			return;
+		var cp = new uint8[sizeof(uint64)];
+		yield input_stream_read (c.input_stream, cp);
+		uint64 credentials = *(uint64*)cp;
 		if (warn_if (credentials != 0))
 			return;
 
 		var title_size = header.size - sizeof(SpiceProtocol.ForeignMenu.Init);
 		var title = new uint8[title_size + 1];
-		read = yield c.input_stream.read_async (title[0:title_size]);
+		yield c.input_stream.read_async (title[0:title_size]);
 		this.title = (string)title;
 
 		client_connected ();
 
-		var t = new uint8[sizeof(SpiceProtocol.ForeignMenu.Msg)];
 		for (;;) {
-			read = yield c.input_stream.read_async (t[0:sizeof(SpiceProtocol.ForeignMenu.Msg)]);
-			if (read == 0)
-				break;
-
-			if (warn_if (read != sizeof (SpiceProtocol.ForeignMenu.Msg))) {
-				warning ("read only: " + read.to_string ());
-				break;
-			}
-
+			var t = new uint8[sizeof(SpiceProtocol.ForeignMenu.Msg)];
+			yield input_stream_read (c.input_stream, t);
 			var msg = (SpiceProtocol.ForeignMenu.Msg*)t;
+			debug ("new message " + msg.id.to_string () + "size " + msg.size.to_string ());
+
 			if (warn_if (msg.size < sizeof (SpiceProtocol.ForeignMenu.Msg)))
 				break;
 
 			if (msg.size > sizeof (SpiceProtocol.ForeignMenu.Msg)) {
 				t.resize ((int)msg.size);
 				msg = (SpiceProtocol.ForeignMenu.Msg*)t;
-				read = yield c.input_stream.read_async (t[sizeof(SpiceProtocol.ForeignMenu.Msg):msg.size]);
-				if (read == 0)
-					break;
-				if (warn_if (read != msg.size - sizeof(SpiceProtocol.ForeignMenu.Msg)))
-					break;
+
+				yield input_stream_read (c.input_stream, t[sizeof(SpiceProtocol.ForeignMenu.Msg):msg.size]);
 			}
 
 			handle_message (msg);

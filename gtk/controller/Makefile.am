@@ -26,6 +26,7 @@ libspice_controller_la_VALASOURCES =		\
 	menu.vala				\
 	controller.vala				\
 	foreign-menu.vala			\
+	util.vala				\
 	$(NULL)
 
 libspice_controller_la_BUILT_SOURCES =			\

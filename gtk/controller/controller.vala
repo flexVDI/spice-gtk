@@ -69,10 +69,10 @@ public class Controller: Object {
 		// message.
 		try {
 			if (excl_connection != null) {
-				yield excl_connection.output_stream.write_async (p);
+				yield output_stream_write (excl_connection.output_stream, p);
 			} else {
 				foreach (var c in clients)
-					yield c.output_stream.write_async (p);
+					yield output_stream_write (c.output_stream, p);
 			}
 		} catch (GLib.Error e) {
 			warning (e.message);
@@ -180,26 +180,18 @@ public class Controller: Object {
 	}
 
 	private async void handle_client (IOStream c) throws GLib.Error {
-		var init = SpiceProtocol.Controller.Init ();
 		var excl = false;
-		unowned uint8[] p = null;
 
 		debug ("new socket client, reading init header");
 
-		p = ((uint8[])(&init))[0:sizeof(SpiceProtocol.Controller.InitHeader)]; // FIXME vala
-		var read = yield c.input_stream.read_async (p);
-		if (warn_if (read != sizeof (SpiceProtocol.Controller.InitHeader)))
-			return;
+		var p = new uint8[sizeof(SpiceProtocol.Controller.Init)];
+		var init = (SpiceProtocol.Controller.Init*)p;
+		yield input_stream_read (c.input_stream, p);
 		if (warn_if (init.base.magic != SpiceProtocol.Controller.MAGIC))
 			return;
 		if (warn_if (init.base.version != SpiceProtocol.Controller.VERSION))
 			return;
 		if (warn_if (init.base.size < sizeof (SpiceProtocol.Controller.Init)))
-			return;
-
-		p = ((uint8[])(&init.credentials))[0:init.base.size - sizeof(SpiceProtocol.Controller.InitHeader)];
-		read = yield c.input_stream.read_async (p);
-		if (warn_if (read != (init.base.size - sizeof (SpiceProtocol.Controller.InitHeader))))
 			return;
 		if (warn_if (init.credentials != 0))
 			return;
@@ -217,29 +209,18 @@ public class Controller: Object {
 
 		client_connected ();
 
-		var t = new uint8[sizeof(SpiceProtocol.Controller.Msg)];
 		for (;;) {
-			read = yield c.input_stream.read_async (t[0:sizeof(SpiceProtocol.Controller.Msg)]);
-			if (read == 0)
-				break;
-
-			if (warn_if (read != sizeof (SpiceProtocol.Controller.Msg))) {
-				warning ("read only: " + read.to_string ());
-				break;
-			}
-
+			var t = new uint8[sizeof(SpiceProtocol.Controller.Msg)];
+			yield input_stream_read (c.input_stream, t);
 			var msg = (SpiceProtocol.Controller.Msg*)t;
+			debug ("new message " + msg.id.to_string () + "size " + msg.size.to_string ());
 			if (warn_if (msg.size < sizeof (SpiceProtocol.Controller.Msg)))
 				break;
 
 			if (msg.size > sizeof (SpiceProtocol.Controller.Msg)) {
 				t.resize ((int)msg.size);
 				msg = (SpiceProtocol.Controller.Msg*)t;
-				read = yield c.input_stream.read_async (t[sizeof(SpiceProtocol.Controller.Msg):msg.size]);
-				if (read == 0)
-					break;
-				if (warn_if (read != msg.size - sizeof(SpiceProtocol.Controller.Msg)))
-					break;
+				yield input_stream_read (c.input_stream, t[sizeof(SpiceProtocol.Controller.Msg):msg.size]);
 			}
 
 			handle_message (msg);
