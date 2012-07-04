@@ -372,6 +372,7 @@ static void session_inhibit_keyboard_grab_changed(GObject    *gobject,
     g_object_get(d->session, "inhibit-keyboard-grab",
                  &d->keyboard_grab_inhibit, NULL);
     update_keyboard_grab(display);
+    update_mouse_grab(display);
 }
 
 static void spice_display_dispose(GObject *obj)
@@ -844,7 +845,9 @@ static void update_mouse_grab(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
-    if (d->mouse_grab_enable && !d->disable_inputs)
+    if (d->mouse_grab_enable &&
+        !d->keyboard_grab_inhibit &&
+        !d->disable_inputs)
         try_mouse_grab(display);
     else
         try_mouse_ungrab(display);
