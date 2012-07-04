@@ -1790,7 +1790,6 @@ static void mark(SpiceDisplay *display, gint mark)
 
     SPICE_DEBUG("widget mark: %d, %d:%d %p", mark, d->channel_id, d->monitor_id, display);
     d->mark = mark;
-    spice_main_set_display_enabled(d->main, get_display_id(display), d->mark != 0);
     update_ready(display);
 }
 
@@ -1963,6 +1962,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
             mark(display, primary.marked);
         }
         spice_channel_connect(channel);
+        spice_main_set_display_enabled(d->main, get_display_id(display), TRUE);
         return;
     }
 
