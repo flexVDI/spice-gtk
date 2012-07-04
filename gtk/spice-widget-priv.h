@@ -52,6 +52,8 @@ struct _SpiceDisplayPrivate {
     bool                    resize_guest_enable;
 
     /* state */
+    gboolean                ready;
+    gboolean                monitor_ready;
     enum SpiceSurfaceFmt    format;
     gint                    width, height, stride;
     gint                    shmid;

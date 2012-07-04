@@ -102,7 +102,8 @@ enum {
     PROP_SCALING,
     PROP_DISABLE_INPUTS,
     PROP_ZOOM_LEVEL,
-    PROP_MONITOR_ID
+    PROP_MONITOR_ID,
+    PROP_READY
 };
 
 /* Signals */
@@ -175,6 +176,9 @@ static void spice_display_get_property(GObject    *object,
     case PROP_ZOOM_LEVEL:
         g_value_set_int(value, d->zoom_level);
         break;
+    case PROP_READY:
+        g_value_set_boolean(value, d->ready);
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
         break;
@@ -227,6 +231,31 @@ static void update_keyboard_focus(SpiceDisplay *display, gboolean state)
     spice_gtk_session_request_auto_usbredir(d->gtk_session, state);
 }
 
+static void update_ready(SpiceDisplay *display)
+{
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    gboolean ready;
+
+    ready = d->mark != 0 && d->monitor_ready;
+
+    if (d->ready == ready)
+        return;
+
+    if (ready && gtk_widget_get_window(GTK_WIDGET(display)))
+        gtk_widget_queue_draw(GTK_WIDGET(display));
+
+    d->ready = ready;
+    g_object_notify(G_OBJECT(display), "ready");
+}
+
+static void set_monitor_ready(SpiceDisplay *self, gboolean ready)
+{
+    SpiceDisplayPrivate *d = self->priv;
+
+    d->monitor_ready = ready;
+    update_ready(self);
+}
+
 static void update_monitor_area(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
@@ -240,11 +269,11 @@ static void update_monitor_area(SpiceDisplay *display)
     g_object_get(d->display, "monitors", &monitors, NULL);
     if (monitors == NULL || d->monitor_id >= monitors->len) {
         SPICE_DEBUG("update monitor: no monitor %d", d->monitor_id);
+        set_monitor_ready(display, false);
         if (spice_channel_test_capability(d->display, SPICE_DISPLAY_CAP_MONITORS_CONFIG)) {
             SPICE_DEBUG("waiting until MonitorsConfig is received");
             return;
         }
-        /* FIXME: mark false */
         goto whole;
     }
 
@@ -263,6 +292,7 @@ static void update_monitor_area(SpiceDisplay *display)
 whole:
     /* by display whole surface */
     update_area(display, 0, 0, d->width, d->height);
+    set_monitor_ready(display, true);
 }
 
 static void spice_display_set_property(GObject      *object,
@@ -1477,6 +1507,24 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                               G_PARAM_STATIC_STRINGS));
 
     /**
+     * SpiceDisplay:ready:
+     *
+     * Indicate whether the display is ready to be shown. It takes
+     * into account several conditions, such as the channel display
+     * "mark" state, whether the monitor area is visible..
+     *
+     * Since: 0.13
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_READY,
+         g_param_spec_boolean("ready",
+                              "Ready",
+                              "Ready to display",
+                              FALSE,
+                              G_PARAM_READABLE |
+                              G_PARAM_STATIC_STRINGS));
+
+    /**
      * SpiceDisplay:auto-clipboard:
      *
      * When this is true the clipboard gets automatically shared between host
@@ -1660,7 +1708,7 @@ static void update_area(SpiceDisplay *display,
     if (!gdk_rectangle_intersect(&primary, &area, &area)) {
         SPICE_DEBUG("The monitor area is not intersecting primary surface");
         memset(&d->area, '\0', sizeof(d->area));
-        /* FIXME mark false? */
+        set_monitor_ready(display, false);
         return;
     }
 
@@ -1669,7 +1717,7 @@ static void update_area(SpiceDisplay *display,
     spicex_image_create(display);
     update_size_request(display);
 
-    gtk_widget_queue_draw(GTK_WIDGET(display));
+    set_monitor_ready(display, true);
 }
 
 static void primary_create(SpiceChannel *channel, gint format,
@@ -1701,6 +1749,7 @@ static void primary_destroy(SpiceChannel *channel, gpointer data)
     d->shmid  = 0;
     d->data = NULL;
     d->data_origin = NULL;
+    set_monitor_ready(display, false);
 }
 
 static void invalidate(SpiceChannel *channel,
@@ -1742,8 +1791,7 @@ static void mark(SpiceDisplay *display, gint mark)
     SPICE_DEBUG("widget mark: %d, %d:%d %p", mark, d->channel_id, d->monitor_id, display);
     d->mark = mark;
     spice_main_set_display_enabled(d->main, get_display_id(display), d->mark != 0);
-    if (mark != 0 && gtk_widget_get_window(GTK_WIDGET(display)))
-        gtk_widget_queue_draw(GTK_WIDGET(display));
+    update_ready(display);
 }
 
 static void cursor_set(SpiceCursorChannel *channel,
