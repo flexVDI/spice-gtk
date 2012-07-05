@@ -719,6 +719,16 @@ static void spice_usb_device_manager_remove_dev(SpiceUsbDeviceManager  *self,
         return;
     }
 
+#ifdef G_OS_WIN32
+    const guint8 state = spice_usb_device_get_state(device);
+    if ((state == SPICE_USB_DEVICE_STATE_INSTALLING) ||
+        (state == SPICE_USB_DEVICE_STATE_UNINSTALLING)) {
+        SPICE_DEBUG("skipping device at %d.%d. It is un/installing it's driver",
+                    bus, address);
+        return;
+    }
+#endif
+
     spice_usb_device_manager_disconnect_device(self, device);
 
     SPICE_DEBUG("device removed %p", device);
