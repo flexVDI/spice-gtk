@@ -343,7 +343,7 @@ if test "x$enable_usbredir" = "xno"; then
   have_usbredir="no"
 else
   PKG_CHECK_MODULES([USBREDIR],
-                    [gudev-1.0 libusb-1.0 >= 1.0.9 libusbredirhost >= 0.4.2 libusbredirparser >= 0.4],
+                    [libusb-1.0 >= 1.0.9 libusbredirhost >= 0.4.2 libusbredirparser >= 0.4],
                     [have_usbredir=yes],
                     [have_usbredir=no])
   if test "x$have_usbredir" = "xno" && test "x$enable_usbredir" = "xyes"; then
@@ -351,6 +351,19 @@ else
   fi
   if test "x$have_usbredir" = "xyes"; then
     AC_DEFINE(USE_USBREDIR, [1], [Define if supporting usbredir proxying])
+  fi
+
+  # Require gudev for non-windows
+  if test "x$os_win32" = "xno"; then
+    PKG_CHECK_MODULES([GUDEV],
+                      [gudev-1.0],
+                      [have_gudev=yes],
+                      [have_gudev=no])
+
+    if test "x$have_usbredir" = "xyes" && test "x$have_gudev" = "xno"; then
+      AC_MSG_ERROR([usbredir requested but required gudev is not available])
+    fi
+    AC_DEFINE(USE_GUDEV, [1], [Define if supporting gudev])
   fi
 fi
 AM_CONDITIONAL([WITH_USBREDIR], [test "x$have_usbredir" = "xyes"])

@@ -83,6 +83,7 @@ SPICE_COMMON_CPPFLAGS =						\
 	$(GST_CFLAGS)						\
 	$(SMARTCARD_CFLAGS)					\
 	$(USBREDIR_CFLAGS)					\
+	$(GUDEV_CFLAGS)						\
 	$(NULL)
 
 AM_CPPFLAGS =					\
@@ -183,6 +184,7 @@ libspice_client_glib_2_0_la_LIBADD =					\
 	$(SASL_LIBS)							\
 	$(SMARTCARD_LIBS)						\
 	$(USBREDIR_LIBS)						\
+	$(GUDEV_LIBS)							\
 	$(NULL)
 
 if WITH_POLKIT
