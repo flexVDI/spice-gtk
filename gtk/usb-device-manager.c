@@ -102,6 +102,16 @@ struct _SpiceUsbDeviceManagerPrivate {
 };
 
 #ifdef USE_USBREDIR
+
+typedef struct _SpiceUsbDeviceInfo {
+    guint8  busnum;
+    guint8  devaddr;
+    guint16 vid;
+    guint16 pid;
+    gint    ref;
+} SpiceUsbDeviceInfo;
+
+
 static void channel_new(SpiceSession *session, SpiceChannel *channel,
                         gpointer user_data);
 static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
@@ -113,6 +123,12 @@ static void spice_usb_device_manager_uevent_cb(GUdevClient     *client,
 static void spice_usb_device_manager_add_dev(SpiceUsbDeviceManager  *self,
                                              GUdevDevice            *udev);
 
+static SpiceUsbDeviceInfo *spice_usb_device_new(libusb_device *libdev);
+static SpiceUsbDevice *spice_usb_device_ref(SpiceUsbDevice *device);
+static void spice_usb_device_unref(SpiceUsbDevice *device);
+
+static gboolean spice_usb_device_equal_libdev(SpiceUsbDevice *device,
+                                              libusb_device *libdev);
 G_DEFINE_BOXED_TYPE(SpiceUsbDevice, spice_usb_device,
                     (GBoxedCopyFunc)libusb_ref_device,
                     (GBoxedFreeFunc)libusb_unref_device)
@@ -1087,3 +1103,118 @@ gchar *spice_usb_device_get_description(SpiceUsbDevice *_device, const gchar *fo
     return NULL;
 #endif
 }
+
+
+
+#ifdef USE_USBREDIR
+/*
+ * SpiceUsbDeviceInfo
+ */
+static SpiceUsbDeviceInfo *spice_usb_device_new(libusb_device *libdev)
+{
+    SpiceUsbDeviceInfo *info;
+    struct libusb_device_descriptor desc;
+    int errcode;
+    const gchar *errstr;
+    guint8 bus, addr;
+
+    g_return_val_if_fail(libdev != NULL, NULL);
+
+    bus = libusb_get_bus_number(libdev);
+    addr = libusb_get_device_address(libdev);
+
+    errcode = libusb_get_device_descriptor(libdev, &desc);
+    if (errcode < 0) {
+        errstr = spice_usbutil_libusb_strerror(errcode);
+        g_warning("cannot get device descriptor for (%p) %d.%d -- %s(%d)",
+                  libdev, bus, addr, errstr, errcode);
+        return NULL;
+    }
+
+    info = g_new0(SpiceUsbDeviceInfo, 1);
+
+    info->busnum  = bus;
+    info->devaddr = addr;
+    info->vid = desc.idVendor;
+    info->pid = desc.idProduct;
+    info->ref = 1;
+
+    return info;
+}
+
+guint8 spice_usb_device_get_busnum(SpiceUsbDevice *device)
+{
+    SpiceUsbDeviceInfo *info = (SpiceUsbDeviceInfo *)device;
+
+    g_return_val_if_fail(info != NULL, 0);
+
+    return info->busnum;
+}
+
+guint8 spice_usb_device_get_devaddr(SpiceUsbDevice *device)
+{
+    SpiceUsbDeviceInfo *info = (SpiceUsbDeviceInfo *)device;
+
+    g_return_val_if_fail(info != NULL, 0);
+
+    return info->devaddr;
+}
+
+guint16 spice_usb_device_get_vid(SpiceUsbDevice *device)
+{
+    SpiceUsbDeviceInfo *info = (SpiceUsbDeviceInfo *)device;
+
+    g_return_val_if_fail(info != NULL, 0);
+
+    return info->vid;
+}
+
+guint16 spice_usb_device_get_pid(SpiceUsbDevice *device)
+{
+    SpiceUsbDeviceInfo *info = (SpiceUsbDeviceInfo *)device;
+
+    g_return_val_if_fail(info != NULL, 0);
+
+    return info->pid;
+}
+
+static SpiceUsbDevice *spice_usb_device_ref(SpiceUsbDevice *device)
+{
+    SpiceUsbDeviceInfo *info = (SpiceUsbDeviceInfo *)device;
+
+    g_return_val_if_fail(info != NULL, NULL);
+    g_atomic_int_inc(&info->ref);
+    return device;
+}
+
+static void spice_usb_device_unref(SpiceUsbDevice *device)
+{
+    gboolean ref_count_is_0;
+
+    SpiceUsbDeviceInfo *info = (SpiceUsbDeviceInfo *)device;
+
+    g_return_if_fail(info != NULL);
+
+    ref_count_is_0 = g_atomic_int_dec_and_test(&info->ref);
+    if (ref_count_is_0) {
+        g_free(info);
+    }
+}
+
+static gboolean
+spice_usb_device_equal_libdev(SpiceUsbDevice *device,
+                              libusb_device  *libdev)
+{
+    guint8 addr1, addr2, bus1, bus2;
+
+    if ((device == NULL) || (libdev == NULL))
+        return FALSE;
+
+    bus1  = spice_usb_device_get_busnum(device);
+    addr1 = spice_usb_device_get_devaddr(device);
+    bus2  = libusb_get_bus_number(libdev);
+    addr2 = libusb_get_device_address(libdev);
+
+    return ((bus1 == bus2) && (addr1 == addr2));
+}
+#endif /* USE_USBREDIR */
