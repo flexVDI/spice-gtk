@@ -820,6 +820,8 @@ static void spice_usb_device_manager_drv_install_cb(GObject *gobject,
     g_object_unref(installer);
     spice_usb_device_unref(device);
 
+    spice_usb_device_set_state(device, SPICE_USB_DEVICE_STATE_NONE);
+
     if (err) {
         g_warning("win usb driver %s failed -- %s", opstr, err->message);
         g_error_free(err);
@@ -1091,6 +1093,7 @@ void spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
     SpiceWinUsbDriver *installer;
     UsbInstallCbInfo *cbinfo;
 
+    spice_usb_device_set_state(device, SPICE_USB_DEVICE_STATE_INSTALLING);
     installer = spice_win_usb_driver_new();
     cbinfo = g_new0(UsbInstallCbInfo, 1);
     cbinfo->manager     = self;
@@ -1156,6 +1159,7 @@ void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
 
     g_warn_if_fail(device != NULL);
 
+    spice_usb_device_set_state(device, SPICE_USB_DEVICE_STATE_UNINSTALLING);
     installer = spice_win_usb_driver_new();
     cbinfo = g_new0(UsbInstallCbInfo, 1);
     cbinfo->manager     = self;
