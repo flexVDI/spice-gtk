@@ -536,6 +536,25 @@ static void spice_usb_device_manager_auto_connect_cb(GObject      *gobject,
     libusb_unref_device((libusb_device*)device);
 }
 
+static SpiceUsbDevice*
+spice_usb_device_manager_find_device(SpiceUsbDeviceManager *self,
+                                     guint8 bus, guint8 address)
+{
+    SpiceUsbDeviceManagerPrivate *priv = self->priv;
+    SpiceUsbDevice *curr, *device = NULL;
+    guint i;
+
+    for (i = 0; i < priv->devices->len; i++) {
+        curr = g_ptr_array_index(priv->devices, i);
+        if (libusb_get_bus_number((libusb_device*)curr) == bus &&
+               libusb_get_device_address((libusb_device*)curr) == address) {
+            device = curr;
+            break;
+        }
+    }
+    return device;
+}
+
 static void spice_usb_device_manager_add_dev(SpiceUsbDeviceManager  *self,
                                              GUdevDevice            *udev)
 {
@@ -616,22 +635,13 @@ static void spice_usb_device_manager_remove_dev(SpiceUsbDeviceManager  *self,
                                                 GUdevDevice            *udev)
 {
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
-    SpiceUsbDevice *curr, *device = NULL;
+    SpiceUsbDevice *device = NULL;
     int bus, address;
-    guint i;
 
     if (!spice_usb_device_manager_get_udev_bus_n_address(udev, &bus, &address))
         return;
 
-    for (i = 0; i < priv->devices->len; i++) {
-        curr = g_ptr_array_index(priv->devices, i);
-        if (libusb_get_bus_number((libusb_device*)curr) == bus &&
-               libusb_get_device_address((libusb_device*)curr) == address) {
-            device = curr;
-            break;
-        }
-    }
-
+    device = spice_usb_device_manager_find_device(self, bus, address);
     if (!device) {
         g_warning("Could not find USB device to remove at busnum %d devaddr %d",
                   bus, address);
