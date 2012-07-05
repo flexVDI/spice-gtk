@@ -312,6 +312,19 @@ libspice_client_glib_2_0_la_SOURCES += coroutine_gthread.c
 libspice_client_glib_2_0_la_LIBADD += $(GTHREAD_LIBS)
 endif
 
+
+WIN_USB_FILES= \
+	win-usb-dev.h			\
+	win-usb-dev.c			\
+	$(NULL)
+
+if OS_WIN32
+if WITH_USBREDIR
+libspice_client_glib_2_0_la_SOURCES += \
+	$(WIN_USB_FILES)
+endif
+endif
+
 displaysrc =					\
 	glib-compat.h				\
 	display/edid.h				\

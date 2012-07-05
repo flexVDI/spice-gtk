@@ -28,7 +28,15 @@
 #ifdef USE_USBREDIR
 #include <errno.h>
 #include <libusb.h>
+
+#if defined(USE_GUDEV)
 #include <gudev/gudev.h>
+#elif defined(G_OS_WIN32)
+#include "win-usb-dev.h"
+#else
+#warning "Expecting one of G_OS_WIN32 and USE_GUDEV to be defined"
+#endif
+
 #include "channel-usbredir-priv.h"
 #include "usbredirhost.h"
 #include "usbutil.h"
