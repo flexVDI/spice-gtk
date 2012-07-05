@@ -70,6 +70,12 @@ void spice_win_usb_driver_install(SpiceWinUsbDriver *self,
                                   GAsyncReadyCallback callback,
                                   gpointer user_data);
 
+void spice_win_usb_driver_uninstall(SpiceWinUsbDriver *self,
+                                    SpiceUsbDevice *device,
+                                    GCancellable *cancellable,
+                                    GAsyncReadyCallback callback,
+                                    gpointer user_data);
+
 gint spice_win_usb_driver_install_finish(SpiceWinUsbDriver *self,
                                          GAsyncResult *res, GError **err);
 

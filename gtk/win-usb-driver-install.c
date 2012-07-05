@@ -246,28 +246,18 @@ SpiceWinUsbDriver *spice_win_usb_driver_new(void)
     return SPICE_WIN_USB_DRIVER(obj);
 }
 
-/**
- * spice_win_usb_driver_install:
- * Start libusb driver installation for @device
- *
- * A new NamedPipe is created for each request.
- *
- * Returns: TRUE if a request was sent to usbclerk
- *          FALSE upon failure to send a request.
- */
-G_GNUC_INTERNAL
-void spice_win_usb_driver_install(SpiceWinUsbDriver *self,
-                                  SpiceUsbDevice *device,
-                                  GCancellable *cancellable,
-                                  GAsyncReadyCallback callback,
-                                  gpointer user_data)
+static
+void spice_win_usb_driver_op(SpiceWinUsbDriver *self,
+                             SpiceUsbDevice *device,
+                             guint16 op_type,
+                             GCancellable *cancellable,
+                             GAsyncReadyCallback callback,
+                             gpointer user_data)
 {
     guint16 vid, pid;
     GError *err = NULL;
     GSimpleAsyncResult *result;
     SpiceWinUsbDriverPrivate *priv;
-
-    SPICE_DEBUG("Win usb driver installation started");
 
     g_return_if_fail(SPICE_IS_WIN_USB_DRIVER(self));
     g_return_if_fail(device != NULL);
@@ -277,7 +267,7 @@ void spice_win_usb_driver_install(SpiceWinUsbDriver *self,
     g_return_if_fail(priv->result == NULL);
 
     result = g_simple_async_result_new(G_OBJECT(self), callback, user_data,
-                                       spice_win_usb_driver_install);
+                                       spice_win_usb_driver_op);
 
     vid = spice_usb_device_get_vid(device);
     pid = spice_usb_device_get_pid(device);
@@ -300,7 +290,7 @@ void spice_win_usb_driver_install(SpiceWinUsbDriver *self,
         goto failed_request;
     }
 
-    if (!spice_win_usb_driver_send_request(self, USB_CLERK_DRIVER_INSTALL,
+    if (!spice_win_usb_driver_send_request(self, op_type,
                                            vid, pid, &err)) {
         g_warning("failed to send a request to usbclerk %s", err->message);
         g_simple_async_result_take_error(result, err);
@@ -323,6 +313,43 @@ void spice_win_usb_driver_install(SpiceWinUsbDriver *self,
 }
 
 
+
+/**
+ * spice_win_usb_driver_install:
+ * Start libusb driver installation for @device
+ *
+ * A new NamedPipe is created for each request.
+ *
+ * Returns: TRUE if a request was sent to usbclerk
+ *          FALSE upon failure to send a request.
+ */
+G_GNUC_INTERNAL
+void spice_win_usb_driver_install(SpiceWinUsbDriver *self,
+                                  SpiceUsbDevice *device,
+                                  GCancellable *cancellable,
+                                  GAsyncReadyCallback callback,
+                                  gpointer user_data)
+{
+    SPICE_DEBUG("Win usb driver installation started");
+
+    spice_win_usb_driver_op(self, device, USB_CLERK_DRIVER_INSTALL, cancellable,
+                            callback, user_data);
+}
+
+G_GNUC_INTERNAL
+void spice_win_usb_driver_uninstall(SpiceWinUsbDriver *self,
+                                    SpiceUsbDevice *device,
+                                    GCancellable *cancellable,
+                                    GAsyncReadyCallback callback,
+                                    gpointer user_data)
+{
+    SPICE_DEBUG("Win usb driver uninstall operation started");
+
+    spice_win_usb_driver_op(self, device, USB_CLERK_DRIVER_REMOVE, cancellable,
+                            callback, user_data);
+}
+
+
 /**
  * Returns: currently returns 0 (failure) and 1 (success)
  * possibly later we'll add error-codes
@@ -335,7 +362,7 @@ gint spice_win_usb_driver_install_finish(SpiceWinUsbDriver *self,
 
     g_return_val_if_fail(SPICE_IS_WIN_USB_DRIVER(self), 0);
     g_return_val_if_fail(g_simple_async_result_is_valid(res, G_OBJECT(self),
-                                                        spice_win_usb_driver_install),
+                                                        spice_win_usb_driver_op),
                          FALSE);
     if (g_simple_async_result_propagate_error(result, err))
         return 0;
