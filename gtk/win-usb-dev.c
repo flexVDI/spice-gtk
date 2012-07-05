@@ -94,6 +94,8 @@ static void g_udev_device_print_list(GList *l, const gchar *msg) {}
 #endif
 static void g_udev_device_print(GUdevDevice *udev, const gchar *msg);
 
+static gboolean g_udev_skip_search(GUdevDevice *udev);
+
 GQuark g_udev_client_error_quark(void)
 {
     return g_quark_from_static_string("win-gudev-client-error-quark");
@@ -142,13 +144,17 @@ g_udev_client_list_devices(GUdevClient *self, GList **devs,
         return -4;
     }
 
-    n = rc;
-
+    n = 0;
     for (dev = lusb_list; *dev; dev++) {
         udevinfo = g_new0(GUdevDeviceInfo, 1);
         get_usb_dev_info(*dev, udevinfo);
         udevice = g_udev_device_new(udevinfo);
+        if (g_udev_skip_search(udevice)) {
+            g_object_unref(udevice);
+            continue;
+        }
         *devs = g_list_prepend(*devs, udevice);
+        n++;
     }
     libusb_free_device_list(lusb_list, 1);
 
@@ -507,4 +513,20 @@ static void g_udev_device_print(GUdevDevice *udev, const gchar *msg)
     SPICE_DEBUG("%s: %d.%d 0x%04x:0x%04x class %d", msg,
                 udevinfo->bus, udevinfo->addr,
                 udevinfo->vid, udevinfo->pid, udevinfo->class);
+}
+
+static gboolean g_udev_skip_search(GUdevDevice *udev)
+{
+    GUdevDeviceInfo* udevinfo;
+    gboolean skip;
+
+    g_return_val_if_fail(G_UDEV_DEVICE(udev), FALSE);
+
+    udevinfo = udev->priv->udevinfo;
+    g_return_val_if_fail(udevinfo != NULL, FALSE);
+
+    skip = ((udevinfo->addr == 0xff) ||  /* root hub (HCD) */
+            (udevinfo->class == LIBUSB_CLASS_HUB) || /* hub*/
+            (udevinfo->addr == 0)); /* bad address */
+    return skip;
 }
