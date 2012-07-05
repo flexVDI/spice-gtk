@@ -316,6 +316,9 @@ endif
 WIN_USB_FILES= \
 	win-usb-dev.h			\
 	win-usb-dev.c			\
+	win-usb-clerk.h			\
+	win-usb-driver-install.h	\
+	win-usb-driver-install.c	\
 	$(NULL)
 
 if OS_WIN32

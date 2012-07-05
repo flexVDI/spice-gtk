@@ -33,6 +33,7 @@
 #include <gudev/gudev.h>
 #elif defined(G_OS_WIN32)
 #include "win-usb-dev.h"
+#include "win-usb-driver-install.h"
 #else
 #warning "Expecting one of G_OS_WIN32 and USE_GUDEV to be defined"
 #endif
@@ -144,6 +145,13 @@ static libusb_device *
 spice_usb_device_manager_device_to_libdev(SpiceUsbDeviceManager *self,
                                           SpiceUsbDevice *device);
 
+static void
+_spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
+                                               SpiceUsbDevice *device,
+                                               GCancellable *cancellable,
+                                               GAsyncReadyCallback callback,
+                                               gpointer user_data);
+
 G_DEFINE_BOXED_TYPE(SpiceUsbDevice, spice_usb_device,
                     (GBoxedCopyFunc)spice_usb_device_ref,
                     (GBoxedFreeFunc)spice_usb_device_unref)
@@ -153,6 +161,12 @@ G_DEFINE_BOXED_TYPE(SpiceUsbDevice, spice_usb_device, g_object_ref, g_object_unr
 #endif
 
 static void spice_usb_device_manager_initable_iface_init(GInitableIface *iface);
+
+#ifdef G_OS_WIN32
+static void spice_usb_device_manager_drv_install_cb(GObject *gobject,
+                                                    GAsyncResult *res,
+                                                    gpointer user_data);
+#endif
 
 static guint signals[LAST_SIGNAL] = { 0, };
 
@@ -723,6 +737,87 @@ static void spice_usb_device_manager_channel_connect_cb(
     g_object_unref(result);
 }
 
+#ifdef G_OS_WIN32
+
+typedef struct _UsbInstallCbInfo {
+    SpiceUsbDeviceManager *manager;
+    SpiceUsbDevice        *device;
+    SpiceWinUsbDriver     *installer;
+    GCancellable          *cancellable;
+    GAsyncReadyCallback   callback;
+    gpointer              user_data;
+} UsbInstallCbInfo;
+
+/**
+ * spice_usb_device_manager_drv_install_cb:
+ * @gobject: #SpiceWinUsbDriver in charge of installing the driver
+ * @res: #GAsyncResult of async win usb driver installation
+ * @user_data: #SpiceUsbDeviceManager requested the installation
+ *
+ * Called when an Windows libusb driver installation completed.
+ *
+ * If the driver installation was successful, continue with USB
+ * device redirection
+ *
+ * Always call _spice_usb_device_manager_connect_device_async.
+ * When installation fails, libusb_open fails too, but cleanup would be better.
+ */
+static void spice_usb_device_manager_drv_install_cb(GObject *gobject,
+                                                    GAsyncResult *res,
+                                                    gpointer user_data)
+{
+    SpiceUsbDeviceManager *self;
+    SpiceWinUsbDriver *installer;
+    gint status;
+    GError *err = NULL;
+    SpiceUsbDevice *device;
+    UsbInstallCbInfo *cbinfo;
+    GCancellable *cancellable;
+    GAsyncReadyCallback callback;
+
+    SPICE_DEBUG("Win USB driver Installation finished");
+
+    g_return_if_fail(user_data != NULL);
+
+    cbinfo = user_data;
+    self        = cbinfo->manager;
+    device      = cbinfo->device;
+    installer   = cbinfo->installer;
+    cancellable = cbinfo->cancellable;
+    callback    = cbinfo->callback;
+    user_data   = cbinfo->user_data;
+
+    g_free(cbinfo);
+
+    g_return_if_fail(SPICE_IS_USB_DEVICE_MANAGER(self));
+    g_return_if_fail(SPICE_IS_WIN_USB_DRIVER(installer));
+    g_return_if_fail(device!= NULL);
+
+    status = spice_win_usb_driver_install_finish(installer, res, &err);
+
+    g_object_unref(installer);
+    spice_usb_device_unref(device);
+
+    if (err) {
+        g_warning("win usb driver installation failed -- %s",
+                  err->message);
+        g_error_free(err);
+    }
+
+    if (!status) {
+        g_warning("failed to install win usb driver (status=0)");
+    }
+
+    /* device is already ref'ed */
+    _spice_usb_device_manager_connect_device_async(self,
+                                                   device,
+                                                   cancellable,
+                                                   callback,
+                                                   user_data);
+
+}
+#endif
+
 /* ------------------------------------------------------------------ */
 /* private api                                                        */
 
@@ -903,11 +998,12 @@ gboolean spice_usb_device_manager_is_device_connected(SpiceUsbDeviceManager *sel
  * @callback: a #GAsyncReadyCallback to call when the request is satisfied
  * @user_data: data to pass to callback
  */
-void spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
-                                             SpiceUsbDevice *device,
-                                             GCancellable *cancellable,
-                                             GAsyncReadyCallback callback,
-                                             gpointer user_data)
+static void
+_spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
+                                               SpiceUsbDevice *device,
+                                               GCancellable *cancellable,
+                                               GAsyncReadyCallback callback,
+                                               gpointer user_data)
 {
     GSimpleAsyncResult *result;
 
@@ -956,6 +1052,38 @@ done:
 #endif
     g_simple_async_result_complete_in_idle(result);
     g_object_unref(result);
+}
+
+
+void spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
+                                             SpiceUsbDevice *device,
+                                             GCancellable *cancellable,
+                                             GAsyncReadyCallback callback,
+                                             gpointer user_data)
+{
+
+#if defined(USE_USBREDIR) && defined(G_OS_WIN32)
+    SpiceWinUsbDriver *installer;
+    UsbInstallCbInfo *cbinfo;
+
+    installer = spice_win_usb_driver_new();
+    cbinfo = g_new0(UsbInstallCbInfo, 1);
+    cbinfo->manager     = self;
+    cbinfo->device      = spice_usb_device_ref(device);
+    cbinfo->installer   = installer;
+    cbinfo->cancellable = cancellable;
+    cbinfo->callback    = callback;
+    cbinfo->user_data   = user_data;
+    spice_win_usb_driver_install(installer, device, cancellable,
+                                 spice_usb_device_manager_drv_install_cb,
+                                 cbinfo);
+#else
+    _spice_usb_device_manager_connect_device_async(self,
+                                                   device,
+                                                   cancellable,
+                                                   callback,
+                                                   user_data);
+#endif
 }
 
 gboolean spice_usb_device_manager_connect_device_finish(
