@@ -105,9 +105,11 @@ ssize_t read_from_pipe (void* data, size_t size)
 {
     ssize_t read;
 #ifdef WIN32
-    if (!ReadFile (pipe, data, size, &read, NULL)) {
+    DWORD bytes;
+    if (!ReadFile (pipe, data, size, &bytes, NULL)) {
         printf ("Read from pipe failed %u\n", GetLastError());
     }
+    read = bytes;
 #else
     read = recv (sock, data, size, 0);
     if ((read == -1 || read == 0)) {
