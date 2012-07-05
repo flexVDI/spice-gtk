@@ -460,7 +460,7 @@ static void menu_cb_select_usb_devices(GtkAction *action, void *data)
     area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
 
     usb_device_widget = spice_usb_device_widget_new(win->conn->session,
-                                                    "%s %s");
+                                                    NULL); /* default format */
     g_signal_connect(usb_device_widget, "connect-failed",
                      G_CALLBACK(usb_connect_failed), NULL);
     gtk_box_pack_start(GTK_BOX(area), usb_device_widget, TRUE, TRUE, 0);
