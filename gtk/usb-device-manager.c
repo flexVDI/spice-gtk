@@ -110,6 +110,16 @@ struct _SpiceUsbDeviceManagerPrivate {
     GPtrArray *channels;
 };
 
+enum {
+    SPICE_USB_DEVICE_STATE_NONE = 0, /* this is also DISCONNECTED */
+    SPICE_USB_DEVICE_STATE_CONNECTING,
+    SPICE_USB_DEVICE_STATE_CONNECTED,
+    SPICE_USB_DEVICE_STATE_DISCONNECTING,
+    SPICE_USB_DEVICE_STATE_INSTALLING,
+    SPICE_USB_DEVICE_STATE_UNINSTALLING,
+    SPICE_USB_DEVICE_STATE_MAX
+};
+
 #ifdef USE_USBREDIR
 
 typedef struct _SpiceUsbDeviceInfo {
@@ -117,6 +127,8 @@ typedef struct _SpiceUsbDeviceInfo {
     guint8  devaddr;
     guint16 vid;
     guint16 pid;
+    guint8  state;
+    guint8  reserved;
     gint    ref;
 } SpiceUsbDeviceInfo;
 
@@ -135,6 +147,11 @@ static void spice_usb_device_manager_add_dev(SpiceUsbDeviceManager  *self,
 static SpiceUsbDeviceInfo *spice_usb_device_new(libusb_device *libdev);
 static SpiceUsbDevice *spice_usb_device_ref(SpiceUsbDevice *device);
 static void spice_usb_device_unref(SpiceUsbDevice *device);
+
+#ifdef G_OS_WIN32
+static guint8 spice_usb_device_get_state(SpiceUsbDevice *device);
+static void  spice_usb_device_set_state(SpiceUsbDevice *device, guint8 s);
+#endif
 
 static gboolean spice_usb_device_equal_libdev(SpiceUsbDevice *device,
                                               libusb_device *libdev);
@@ -1363,6 +1380,26 @@ guint16 spice_usb_device_get_pid(SpiceUsbDevice *device)
 
     return info->pid;
 }
+
+#ifdef G_OS_WIN32
+void spice_usb_device_set_state(SpiceUsbDevice *device, guint8 state)
+{
+    SpiceUsbDeviceInfo *info = (SpiceUsbDeviceInfo *)device;
+
+    g_return_if_fail(info != NULL);
+
+    info->state = state;
+}
+
+guint8 spice_usb_device_get_state(SpiceUsbDevice *device)
+{
+    SpiceUsbDeviceInfo *info = (SpiceUsbDeviceInfo *)device;
+
+    g_return_val_if_fail(info != NULL, 0);
+
+    return info->state;
+}
+#endif
 
 static SpiceUsbDevice *spice_usb_device_ref(SpiceUsbDevice *device)
 {
