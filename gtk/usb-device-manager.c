@@ -576,7 +576,7 @@ static void spice_usb_device_manager_add_dev(SpiceUsbDeviceManager  *self,
         libusb_free_device_list(dev_list, 1);
 
     if (!device) {
-        g_warning("Could not find USB device at busnum %d devaddr %d",
+        g_warning("Could not find USB device to add at busnum %d devaddr %d",
                   bus, address);
         return;
     }
@@ -624,8 +624,12 @@ static void spice_usb_device_manager_remove_dev(SpiceUsbDeviceManager  *self,
             break;
         }
     }
-    if (!device)
+
+    if (!device) {
+        g_warning("Could not find USB device to remove at busnum %d devaddr %d",
+                  bus, address);
         return;
+    }
 
     spice_usb_device_manager_disconnect_device(self, (SpiceUsbDevice *)device);
 
