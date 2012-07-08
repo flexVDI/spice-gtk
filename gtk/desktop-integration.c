@@ -172,9 +172,9 @@ static void spice_desktop_integration_init(SpiceDesktopIntegration *self)
 
 static void spice_desktop_integration_dispose(GObject *gobject)
 {
+#ifdef USE_DBUS
     SpiceDesktopIntegration *self = SPICE_DESKTOP_INTEGRATION(gobject);
 
-#ifdef USE_DBUS
     gnome_integration_dispose(self);
 #endif
 
