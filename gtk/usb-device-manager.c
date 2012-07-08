@@ -609,7 +609,7 @@ static void spice_usb_device_manager_remove_dev(SpiceUsbDeviceManager  *self,
                                                 GUdevDevice            *udev)
 {
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
-    libusb_device *curr, *device = NULL;
+    SpiceUsbDevice *curr, *device = NULL;
     int bus, address;
     guint i;
 
@@ -618,8 +618,8 @@ static void spice_usb_device_manager_remove_dev(SpiceUsbDeviceManager  *self,
 
     for (i = 0; i < priv->devices->len; i++) {
         curr = g_ptr_array_index(priv->devices, i);
-        if (libusb_get_bus_number(curr) == bus &&
-               libusb_get_device_address(curr) == address) {
+        if (libusb_get_bus_number((libusb_device*)curr) == bus &&
+               libusb_get_device_address((libusb_device*)curr) == address) {
             device = curr;
             break;
         }
@@ -631,7 +631,7 @@ static void spice_usb_device_manager_remove_dev(SpiceUsbDeviceManager  *self,
         return;
     }
 
-    spice_usb_device_manager_disconnect_device(self, (SpiceUsbDevice *)device);
+    spice_usb_device_manager_disconnect_device(self, device);
 
     SPICE_DEBUG("device removed %p", device);
     g_signal_emit(self, signals[DEVICE_REMOVED], 0, device);
