@@ -20,14 +20,17 @@
 */
 
 #include "config.h"
+
 #include <glib-object.h>
-#include <glib/gi18n.h>
 #ifdef USE_DBUS
 #include <dbus/dbus-glib.h>
 #endif
+
 #include "glib-compat.h"
 #include "spice-session-priv.h"
 #include "desktop-integration.h"
+
+#include <glib/gi18n.h>
 
 #define GNOME_SESSION_INHIBIT_AUTOMOUNT 16
 
