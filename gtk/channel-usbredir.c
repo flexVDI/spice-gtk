@@ -569,7 +569,7 @@ static void do_emit_main_context(GObject *object, int event, gpointer params)
             spice_usb_device_manager_device_error(
                 spice_usb_device_manager_get(
                     spice_channel_get_session(SPICE_CHANNEL(channel)), NULL),
-                (SpiceUsbDevice *)p->device, p->error);
+                p->device, p->error);
         }
         break;
     }

@@ -736,8 +736,9 @@ void spice_usb_device_manager_stop_event_listening(
 }
 
 void spice_usb_device_manager_device_error(
-    SpiceUsbDeviceManager *self, SpiceUsbDevice *device, GError *err)
+    SpiceUsbDeviceManager *self, libusb_device *libdev, GError *err)
 {
+    SpiceUsbDevice *device = (SpiceUsbDevice *)libdev;
     g_signal_emit(self, signals[DEVICE_ERROR], 0, device, err);
 }
 #endif

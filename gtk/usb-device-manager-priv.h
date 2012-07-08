@@ -31,8 +31,11 @@ gboolean spice_usb_device_manager_start_event_listening(
 void spice_usb_device_manager_stop_event_listening(
     SpiceUsbDeviceManager *manager);
 
+#ifdef USE_USBREDIR
+#include <libusb.h>
 void spice_usb_device_manager_device_error(
-    SpiceUsbDeviceManager *manager, SpiceUsbDevice *device, GError *err);
+    SpiceUsbDeviceManager *manager, libusb_device *libdev, GError *err);
+#endif
 
 G_END_DECLS
 
