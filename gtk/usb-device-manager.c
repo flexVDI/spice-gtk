@@ -540,7 +540,8 @@ static void spice_usb_device_manager_add_dev(SpiceUsbDeviceManager  *self,
                                              GUdevDevice            *udev)
 {
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
-    libusb_device *device = NULL, **dev_list = NULL;
+    libusb_device *libdev = NULL, **dev_list = NULL;
+    SpiceUsbDevice *device = NULL;
     const gchar *devtype, *devclass;
     int i, bus, address;
     gboolean auto_ok = FALSE;
@@ -568,16 +569,19 @@ static void spice_usb_device_manager_add_dev(SpiceUsbDeviceManager  *self,
     for (i = 0; dev_list && dev_list[i]; i++) {
         if (libusb_get_bus_number(dev_list[i]) == bus &&
             libusb_get_device_address(dev_list[i]) == address) {
-            device = libusb_ref_device(dev_list[i]);
+            libdev = dev_list[i];
             break;
         }
     }
+
+    if (libdev)
+        device = (SpiceUsbDevice*)libusb_ref_device(libdev);
 
     if (device && priv->auto_connect) {
         auto_ok = usbredirhost_check_device_filter(
                             priv->auto_conn_filter_rules,
                             priv->auto_conn_filter_rules_count,
-                            device, 0) == 0;
+                            libdev, 0) == 0;
     }
 
     if (!priv->coldplug_list)
@@ -595,13 +599,13 @@ static void spice_usb_device_manager_add_dev(SpiceUsbDeviceManager  *self,
         gboolean can_redirect;
 
         can_redirect = spice_usb_device_manager_can_redirect_device(
-                                        self, (SpiceUsbDevice *)device, NULL);
+                                        self, device, NULL);
 
         if (can_redirect && auto_ok)
             spice_usb_device_manager_connect_device_async(self,
-                                   (SpiceUsbDevice *)device, NULL,
+                                   device, NULL,
                                    spice_usb_device_manager_auto_connect_cb,
-                                   libusb_ref_device(device));
+                                   libusb_ref_device(libdev));
     }
 
     SPICE_DEBUG("device added %p", device);
