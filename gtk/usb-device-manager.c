@@ -1031,24 +1031,29 @@ gchar *spice_usb_device_get_description(SpiceUsbDevice *_device, const gchar *fo
 #ifdef USE_USBREDIR
     libusb_device *device = (libusb_device *)_device;
     struct libusb_device_descriptor desc;
-    int bus, address;
+    int bus, address, vid, pid;
     gchar *description, *descriptor, *manufacturer = NULL, *product = NULL;
 
     g_return_val_if_fail(device != NULL, NULL);
 
     bus     = libusb_get_bus_number(device);
     address = libusb_get_device_address(device);
+    vid     = -1;
+    pid     = -1;
 
     if (libusb_get_device_descriptor(device, &desc) == LIBUSB_SUCCESS) {
-        spice_usb_util_get_device_strings(bus, address,
-                                          desc.idVendor, desc.idProduct,
-                                          &manufacturer, &product);
+        vid = desc.idVendor;
+        pid = desc.idProduct;
+    }
+
+    if ((vid > 0) && (pid > 0)) {
         descriptor = g_strdup_printf("[%04x:%04x]", desc.idVendor, desc.idProduct);
     } else {
-        spice_usb_util_get_device_strings(bus, address, -1, -1,
-                                          &manufacturer, &product);
         descriptor = g_strdup("");
     }
+
+    spice_usb_util_get_device_strings(bus, address, vid, pid,
+                                      &manufacturer, &product);
 
     if (!format)
         format = _("%s %s %s at %d-%d");
