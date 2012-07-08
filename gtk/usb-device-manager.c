@@ -543,6 +543,7 @@ static void spice_usb_device_manager_add_dev(SpiceUsbDeviceManager  *self,
     libusb_device *device = NULL, **dev_list = NULL;
     const gchar *devtype, *devclass;
     int i, bus, address;
+    gboolean auto_ok = FALSE;
 
     devtype = g_udev_device_get_property(udev, "DEVTYPE");
     /* Check if this is a usb device (and not an interface) */
@@ -572,6 +573,13 @@ static void spice_usb_device_manager_add_dev(SpiceUsbDeviceManager  *self,
         }
     }
 
+    if (device && priv->auto_connect) {
+        auto_ok = usbredirhost_check_device_filter(
+                            priv->auto_conn_filter_rules,
+                            priv->auto_conn_filter_rules_count,
+                            device, 0) == 0;
+    }
+
     if (!priv->coldplug_list)
         libusb_free_device_list(dev_list, 1);
 
@@ -584,15 +592,10 @@ static void spice_usb_device_manager_add_dev(SpiceUsbDeviceManager  *self,
     g_ptr_array_add(priv->devices, device);
 
     if (priv->auto_connect) {
-        gboolean can_redirect, auto_ok;
+        gboolean can_redirect;
 
         can_redirect = spice_usb_device_manager_can_redirect_device(
                                         self, (SpiceUsbDevice *)device, NULL);
-
-        auto_ok = usbredirhost_check_device_filter(
-                            priv->auto_conn_filter_rules,
-                            priv->auto_conn_filter_rules_count,
-                            device, 0) == 0;
 
         if (can_redirect && auto_ok)
             spice_usb_device_manager_connect_device_async(self,
