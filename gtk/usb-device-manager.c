@@ -746,6 +746,7 @@ typedef struct _UsbInstallCbInfo {
     GCancellable          *cancellable;
     GAsyncReadyCallback   callback;
     gpointer              user_data;
+    gboolean              is_install;
 } UsbInstallCbInfo;
 
 /**
@@ -774,8 +775,8 @@ static void spice_usb_device_manager_drv_install_cb(GObject *gobject,
     UsbInstallCbInfo *cbinfo;
     GCancellable *cancellable;
     GAsyncReadyCallback callback;
-
-    SPICE_DEBUG("Win USB driver Installation finished");
+    gboolean is_install;
+    const gchar *opstr;
 
     g_return_if_fail(user_data != NULL);
 
@@ -786,6 +787,7 @@ static void spice_usb_device_manager_drv_install_cb(GObject *gobject,
     cancellable = cbinfo->cancellable;
     callback    = cbinfo->callback;
     user_data   = cbinfo->user_data;
+    is_install  = cbinfo->is_install;
 
     g_free(cbinfo);
 
@@ -793,19 +795,25 @@ static void spice_usb_device_manager_drv_install_cb(GObject *gobject,
     g_return_if_fail(SPICE_IS_WIN_USB_DRIVER(installer));
     g_return_if_fail(device!= NULL);
 
+    opstr = is_install ? "install" : "uninstall";
+    SPICE_DEBUG("Win USB driver %s finished", opstr);
+
     status = spice_win_usb_driver_install_finish(installer, res, &err);
 
     g_object_unref(installer);
     spice_usb_device_unref(device);
 
     if (err) {
-        g_warning("win usb driver installation failed -- %s",
-                  err->message);
+        g_warning("win usb driver %s failed -- %s", opstr, err->message);
         g_error_free(err);
     }
 
     if (!status) {
-        g_warning("failed to install win usb driver (status=0)");
+        g_warning("failed to %s win usb driver (status=0)", opstr);
+    }
+
+    if (! is_install) {
+        return;
     }
 
     /* device is already ref'ed */
@@ -1074,6 +1082,8 @@ void spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
     cbinfo->cancellable = cancellable;
     cbinfo->callback    = callback;
     cbinfo->user_data   = user_data;
+    cbinfo->is_install  = TRUE;
+
     spice_win_usb_driver_install(installer, device, cancellable,
                                  spice_usb_device_manager_drv_install_cb,
                                  cbinfo);
@@ -1122,6 +1132,28 @@ void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
     channel = spice_usb_device_manager_get_channel_for_dev(self, device);
     if (channel)
         spice_usbredir_channel_disconnect_device(channel);
+
+#ifdef G_OS_WIN32
+    SpiceWinUsbDriver *installer;
+    UsbInstallCbInfo *cbinfo;
+
+    g_warn_if_fail(device != NULL);
+
+    installer = spice_win_usb_driver_new();
+    cbinfo = g_new0(UsbInstallCbInfo, 1);
+    cbinfo->manager     = self;
+    cbinfo->device      = spice_usb_device_ref(device);
+    cbinfo->installer   = installer;
+    cbinfo->cancellable = NULL;
+    cbinfo->callback    = NULL;
+    cbinfo->user_data   = NULL;
+    cbinfo->is_install  = FALSE;
+
+    spice_win_usb_driver_uninstall(installer, device, NULL,
+                                   spice_usb_device_manager_drv_install_cb,
+                                   cbinfo);
+#endif
+
 #endif
 }
 
