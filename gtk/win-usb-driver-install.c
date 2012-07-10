@@ -184,7 +184,7 @@ static
 gboolean spice_win_usb_driver_send_request(SpiceWinUsbDriver *self, guint16 op,
                                            guint16 vid, guint16 pid, GError **err)
 {
-    USBClerkDriverOp req = {0,};
+    USBClerkDriverOp req;
     GOutputStream *ostream;
     SpiceWinUsbDriverPrivate *priv;
     gsize bytes;
@@ -196,6 +196,7 @@ gboolean spice_win_usb_driver_send_request(SpiceWinUsbDriver *self, guint16 op,
     g_return_val_if_fail(SPICE_IS_WIN_USB_DRIVER(self), FALSE);
     priv = self->priv;
 
+    memset(&req, 0, sizeof(req));
     req.hdr.magic   = USB_CLERK_MAGIC;
     req.hdr.version = USB_CLERK_VERSION;
     req.hdr.type    = op;
