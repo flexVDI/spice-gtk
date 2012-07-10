@@ -1,5 +1,7 @@
 data/spice-mime.xml.in
 data/spicy.desktop.in.in
+gtk/channel-usbredir.c
+gtk/desktop-integration.c
 gtk/display/display-name.c
 gtk/display/gnome-rr-config.c
 gtk/display/gnome-rr-generic.c
@@ -13,4 +15,3 @@ gtk/spicy.c
 gtk/usb-device-manager.c
 gtk/usb-device-widget.c
 gtk/usbutil.c
-gtk/channel-usbredir.c
