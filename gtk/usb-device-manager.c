@@ -179,10 +179,12 @@ G_DEFINE_BOXED_TYPE(SpiceUsbDevice, spice_usb_device, g_object_ref, g_object_unr
 
 static void spice_usb_device_manager_initable_iface_init(GInitableIface *iface);
 
+#ifdef USE_USBREDIR
 #ifdef G_OS_WIN32
 static void spice_usb_device_manager_drv_install_cb(GObject *gobject,
                                                     GAsyncResult *res,
                                                     gpointer user_data);
+#endif
 #endif
 
 static guint signals[LAST_SIGNAL] = { 0, };
