@@ -36,8 +36,8 @@
 #include <sys/stat.h>
 #endif
 #include "usbutil.h"
+#include "spice-util-priv.h"
 
-#ifdef WITH_USBIDS
 #define VENDOR_NAME_LEN (122 - sizeof(void *))
 #define PRODUCT_NAME_LEN 126
 
@@ -53,10 +53,9 @@ typedef struct _usb_vendor_info {
     char name[VENDOR_NAME_LEN];
 } usb_vendor_info;
 
-GStaticMutex usbids_parse_mutex = G_STATIC_MUTEX_INIT;
-int usbids_vendor_count;
-usb_vendor_info *usbids_vendor_info;
-#endif
+static GStaticMutex usbids_load_mutex = G_STATIC_MUTEX_INIT;
+static int usbids_vendor_count;
+static usb_vendor_info *usbids_vendor_info;
 
 G_GNUC_INTERNAL
 const char *spice_usbutil_libusb_strerror(enum libusb_error error_code)
@@ -121,21 +120,17 @@ static gchar *spice_usbutil_get_sysfs_attribute(int bus, int address,
 }
 #endif
 
-#ifdef WITH_USBIDS
-static void spice_usbutil_parse_usbids(void)
+static gboolean spice_usbutil_parse_usbids(gchar *path)
 {
     gchar *contents, *line, **lines;
     usb_product_info *product_info;
     int i, j, id, product_count = 0;
 
-    g_static_mutex_lock(&usbids_parse_mutex);
-    if (usbids_vendor_count)
-        goto leave;
-
-    if (!g_file_get_contents(USB_IDS, &contents, NULL, NULL)) {
+    if (!g_file_get_contents(path, &contents, NULL, NULL)) {
         usbids_vendor_count = -1;
-        goto leave;
+        return FALSE;
     }
+
     lines = g_strsplit(contents, "\n", -1);
 
     for (i = 0; lines[i]; i++) {
@@ -165,7 +160,7 @@ static void spice_usbutil_parse_usbids(void)
             continue;
 
         id = strtoul(line, &line, 16);
-        while(isspace(line[0]))
+        while (isspace(line[0]))
             line++;
         usbids_vendor_info[usbids_vendor_count].vendor_id = id;
         snprintf(usbids_vendor_info[usbids_vendor_count].name,
@@ -182,7 +177,7 @@ static void spice_usbutil_parse_usbids(void)
                 continue;
 
             id = strtoul(line + 1, &line, 16);
-            while(isspace(line[0]))
+            while (isspace(line[0]))
                 line++;
             product_info[product_count].product_id = id;
             snprintf(product_info[product_count].name,
@@ -212,20 +207,52 @@ static void spice_usbutil_parse_usbids(void)
         }
     }
 #endif
-leave:
-    g_static_mutex_unlock(&usbids_parse_mutex);
+
+    return TRUE;
 }
+
+static gboolean spice_usbutil_load_usbids(void)
+{
+    gboolean success = FALSE;
+
+    g_static_mutex_lock(&usbids_load_mutex);
+    if (usbids_vendor_count) {
+        success = TRUE;
+        goto leave;
+    }
+
+#ifdef WITH_USBIDS
+    success = spice_usbutil_parse_usbids(USB_IDS);
+#else
+    {
+        const gchar * const *dirs = g_get_system_data_dirs();
+        gchar *path = NULL;
+        int i;
+
+        for (i = 0; dirs[i]; ++i) {
+            path = g_build_filename(dirs[i], "hwdata", "usb.ids", NULL);
+            success = spice_usbutil_parse_usbids(path);
+            SPICE_DEBUG("loading %s success: %s", path, spice_yes_no(success));
+            g_free(path);
+
+            if (success)
+                goto leave;
+        }
+    }
 #endif
+
+leave:
+    g_static_mutex_unlock(&usbids_load_mutex);
+    return success;
+}
 
 G_GNUC_INTERNAL
 void spice_usb_util_get_device_strings(int bus, int address,
                                        int vendor_id, int product_id,
                                        gchar **manufacturer, gchar **product)
 {
-#ifdef WITH_USBIDS
     usb_product_info *product_info;
     int i, j;
-#endif
 
     g_return_if_fail(manufacturer != NULL);
     g_return_if_fail(product != NULL);
@@ -238,9 +265,8 @@ void spice_usb_util_get_device_strings(int bus, int address,
     *product = spice_usbutil_get_sysfs_attribute(bus, address, "product");
 #endif
 
-#ifdef WITH_USBIDS
-    if (!*manufacturer || !*product) {
-        spice_usbutil_parse_usbids();
+    if ((!*manufacturer || !*product) &&
+        spice_usbutil_load_usbids()) {
 
         for (i = 0; i < usbids_vendor_count; i++) {
             if ((int)usbids_vendor_info[i].vendor_id != vendor_id)
@@ -262,7 +288,7 @@ void spice_usb_util_get_device_strings(int bus, int address,
             break;
         }
     }
-#endif
+
     if (!*manufacturer)
         *manufacturer = g_strdup(_("USB"));
     if (!*product)

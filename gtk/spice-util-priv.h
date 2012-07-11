@@ -19,6 +19,7 @@
 #define SPICE_UTIL_PRIV_H
 
 #include <glib.h>
+#include "spice-util.h"
 
 G_BEGIN_DECLS
 
