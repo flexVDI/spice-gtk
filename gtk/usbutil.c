@@ -19,7 +19,9 @@
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "config.h"
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
 
 #include <glib-object.h>
 #include <glib/gi18n.h>
@@ -149,7 +151,7 @@ static gboolean spice_usbutil_parse_usbids(gchar *path)
         usbids_vendor_count++;
     }
 
-    usbids_vendor_info = g_new(usb_vendor_info, usbids_vendor_count);
+    usbids_vendor_info = g_new(usb_vendor_info, usbids_vendor_count + 1);
     product_info = g_new(usb_product_info, product_count);
 
     usbids_vendor_count = 0;
@@ -162,6 +164,7 @@ static gboolean spice_usbutil_parse_usbids(gchar *path)
         id = strtoul(line, &line, 16);
         while (isspace(line[0]))
             line++;
+
         usbids_vendor_info[usbids_vendor_count].vendor_id = id;
         snprintf(usbids_vendor_info[usbids_vendor_count].name,
                  VENDOR_NAME_LEN, "%s", line);
@@ -308,4 +311,14 @@ void spice_usb_util_get_device_strings(int bus, int address,
     }
 }
 
+#endif
+
+#ifdef USBUTIL_TEST
+int main()
+{
+    if (spice_usbutil_load_usbids())
+        exit(0);
+
+    exit(1);
+}
 #endif
