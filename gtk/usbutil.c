@@ -56,8 +56,8 @@ typedef struct _usb_vendor_info {
 } usb_vendor_info;
 
 static GStaticMutex usbids_load_mutex = G_STATIC_MUTEX_INIT;
-static int usbids_vendor_count;
-static usb_vendor_info *usbids_vendor_info;
+static int usbids_vendor_count = 0; /* < 0: failed, 0: empty, > 0: loaded */
+static usb_vendor_info *usbids_vendor_info = NULL;
 
 G_GNUC_INTERNAL
 const char *spice_usbutil_libusb_strerror(enum libusb_error error_code)
@@ -128,6 +128,7 @@ static gboolean spice_usbutil_parse_usbids(gchar *path)
     usb_product_info *product_info;
     int i, j, id, product_count = 0;
 
+    usbids_vendor_count = 0;
     if (!g_file_get_contents(path, &contents, NULL, NULL)) {
         usbids_vendor_count = -1;
         return FALSE;
@@ -151,7 +152,7 @@ static gboolean spice_usbutil_parse_usbids(gchar *path)
         usbids_vendor_count++;
     }
 
-    usbids_vendor_info = g_new(usb_vendor_info, usbids_vendor_count + 1);
+    usbids_vendor_info = g_new(usb_vendor_info, usbids_vendor_count);
     product_info = g_new(usb_product_info, product_count);
 
     usbids_vendor_count = 0;
@@ -220,7 +221,7 @@ static gboolean spice_usbutil_load_usbids(void)
 
     g_static_mutex_lock(&usbids_load_mutex);
     if (usbids_vendor_count) {
-        success = TRUE;
+        success = usbids_vendor_count > 0;
         goto leave;
     }
 
