@@ -1073,6 +1073,13 @@ _spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
             continue; /* Skip already used channels */
 
         libdev = spice_usb_device_manager_device_to_libdev(self, device);
+        if (libdev == NULL) {
+            g_simple_async_result_set_error(result,
+                                            SPICE_CLIENT_ERROR,
+                                            SPICE_CLIENT_ERROR_FAILED,
+                                            _("Device was not found"));
+            goto done;
+        }
         spice_usbredir_channel_connect_device_async(channel,
                                  libdev,
                                  cancellable,
