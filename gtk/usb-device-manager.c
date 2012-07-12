@@ -1074,6 +1074,15 @@ _spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
 
         libdev = spice_usb_device_manager_device_to_libdev(self, device);
         if (libdev == NULL) {
+#ifdef G_OS_WIN32
+            /* Most likely, the device was plugged out at driver installation
+             * time, and its remove-device event was ignored.
+             * So remove the device now
+             */
+            SPICE_DEBUG("libdev does not exist for %p -- removing", device);
+            g_signal_emit(self, signals[DEVICE_REMOVED], 0, device);
+            g_ptr_array_remove(priv->devices, device);
+#endif
             g_simple_async_result_set_error(result,
                                             SPICE_CLIENT_ERROR,
                                             SPICE_CLIENT_ERROR_FAILED,
