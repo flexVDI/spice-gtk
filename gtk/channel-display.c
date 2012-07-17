@@ -59,6 +59,8 @@
 #define SPICE_DISPLAY_CHANNEL_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_DISPLAY_CHANNEL, SpiceDisplayChannelPrivate))
 
+#define MONITORS_MAX 256
+
 struct _SpiceDisplayChannelPrivate {
     Ring                        surfaces;
     display_cache               *images;
@@ -275,7 +277,7 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
          g_param_spec_uint("monitors-max",
                            "Max display monitors",
                            "The current maximum number of monitors",
-                           1, G_MAXINT16, 1,
+                           1, MONITORS_MAX, 1,
                            G_PARAM_READABLE |
                            G_PARAM_STATIC_STRINGS));
 
@@ -1493,6 +1495,8 @@ static void display_handle_surface_destroy(SpiceChannel *channel, SpiceMsgIn *in
     free(surface);
 }
 
+#define CLAMP_CHECK(x, low, high)  (((x) > (high)) ? TRUE : (((x) < (low)) ? TRUE : FALSE))
+
 /* coroutine context */
 static void display_handle_monitors_config(SpiceChannel *channel, SpiceMsgIn *in)
 {
@@ -1506,6 +1510,16 @@ static void display_handle_monitors_config(SpiceChannel *channel, SpiceMsgIn *in
     SPICE_DEBUG("monitors config: n: %d/%d", config->count, config->max_allowed);
 
     c->monitors_max = config->max_allowed;
+    if (CLAMP_CHECK(c->monitors_max, 1, MONITORS_MAX)) {
+        g_warning("MonitorConfig max_allowed is not within permitted range, clamping");
+        c->monitors_max = CLAMP(c->monitors_max, 1, MONITORS_MAX);
+    }
+
+    if (CLAMP_CHECK(config->count, 1, c->monitors_max)) {
+        g_warning("MonitorConfig count is not within permitted range, clamping");
+        config->count = CLAMP(config->count, 1, c->monitors_max);
+    }
+
     c->monitors = g_array_set_size(c->monitors, config->count);
 
     for (i = 0; i < config->count; i++) {
