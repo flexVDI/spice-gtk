@@ -696,6 +696,7 @@ static void spice_display_channel_init(SpiceDisplayChannel *channel)
 #if defined(WIN32)
     c->dc = create_compatible_dc();
 #endif
+    c->monitors_max = 1;
     spice_display_channel_reset_capabilities(SPICE_CHANNEL(channel));
 }
 
