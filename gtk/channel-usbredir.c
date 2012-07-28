@@ -448,8 +448,13 @@ static void usbredir_log(void *user_data, int level, const char *msg)
 
     if (priv->catch_error && level == usbredirparser_error) {
         SPICE_DEBUG("%s", msg);
-        g_set_error_literal(priv->catch_error, SPICE_CLIENT_ERROR,
-                            SPICE_CLIENT_ERROR_FAILED, msg);
+        /* Remove "usbredirhost: " prefix from usbredirhost messages */
+        if (strncmp(msg, "usbredirhost: ", 14) == 0)
+            g_set_error_literal(priv->catch_error, SPICE_CLIENT_ERROR,
+                                SPICE_CLIENT_ERROR_FAILED, msg + 14);
+        else
+            g_set_error_literal(priv->catch_error, SPICE_CLIENT_ERROR,
+                                SPICE_CLIENT_ERROR_FAILED, msg);
         return;
     }
 
