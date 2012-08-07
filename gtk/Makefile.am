@@ -55,9 +55,11 @@ lib_LTLIBRARIES += libspice-client-gtk-3.0.la
 endif
 
 if HAVE_LD_VERSION_SCRIPT
-VERSION_LDFLAGS = -Wl,--version-script=${srcdir}/map-file
+GLIB_VERSION_LDFLAGS = -Wl,--version-script=${srcdir}/map-file
+GTK_VERSION_LD_FLAGS = $(GLIB_VERSION_LDFLAGS)
 else
-VERSION_LDFLAGS = -export-symbols ${srcdir}/sym-file
+GLIB_VERSION_LDFLAGS = -export-symbols ${srcdir}/spice-glib-sym-file
+GTK_VERSION_LDFLAGS = -export-symbols ${srcdir}/spice-gtk-sym-file
 endif
 
 KEYMAP_GEN = $(srcdir)/keymap-gen.pl
@@ -99,7 +101,7 @@ AM_CPPFLAGS =					\
 SPICE_GTK_LDFLAGS_COMMON =		\
 	-version-info 4:0:0		\
 	-no-undefined			\
-	$(VERSION_LDFLAGS)		\
+	$(GTK_VERSION_LDFLAGS)		\
 	$(NULL)
 
 SPICE_GTK_LIBADD_COMMON =		\
@@ -169,7 +171,7 @@ nodist_libspice_client_gtkinclude_HEADERS =	\
 libspice_client_glib_2_0_la_LDFLAGS =	\
 	-version-info 8:0:0		\
 	-no-undefined			\
-	$(VERSION_LDFLAGS)		\
+	$(GLIB_VERSION_LDFLAGS)		\
 	$(NULL)
 
 libspice_client_glib_2_0_la_LIBADD =					\
@@ -637,12 +639,16 @@ typelibs_DATA = $(INTROSPECTION_GIRS:.gir=.typelib)
 CLEANFILES += $(gir_DATA) $(typelibs_DATA)
 endif
 
-update-map-file:
+update-symbol-files:
 	( echo "SPICEGTK_1 {" ; \
 	  echo "global:" ; \
 	  ctags -f - --c-kinds=p $(libspice_client_gtkinclude_HEADERS) $(nodist_libspice_client_gtkinclude_HEADERS) $(libspice_client_glibinclude_HEADERS) $(nodist_libspice_client_glibinclude_HEADERS) | awk '/^spice_/ { print $$1 ";" }' | sort ; \
 	  echo "local:" ;  \
 	  echo "*;" ; \
 	  echo "};" ) > $(srcdir)/map-file
+	( ctags -f - --c-kinds=p $(libspice_client_glibinclude_HEADERS) $(nodist_libspice_client_glibinclude_HEADERS) | awk '/^spice_/ { print $$1 }' | sort ; \
+	) > $(srcdir)/spice-glib-sym-file
+	( ctags -f - --c-kinds=p $(libspice_client_gtkinclude_HEADERS) $(nodist_libspice_client_gtkinclude_HEADERS) | awk '/^spice_/ { print $$1 }' | sort ; \
+	) > $(srcdir)/spice-gtk-sym-file
 
 -include $(top_srcdir)/git.mk
