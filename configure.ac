@@ -513,6 +513,13 @@ PKG_CHECK_EXISTS([GOBJECT_INTROSPECTION],
 GOBJECT_INTROSPECTION_CHECK([0.6.7])
 AM_CONDITIONAL([G_IR_SCANNER_SYMBOL_PREFIX], [test "x$has_symbol_prefix" = "xyes"])
 
+AC_ARG_ENABLE([controller],
+  AS_HELP_STRING([--enable-controller], [Enable controller build @<:@default=yes@:>@]),
+  [],
+  enable_controller="yes")
+
+AM_CONDITIONAL(WITH_CONTROLLER, [test "x$enable_controller" != "xno"])
+
 AC_ARG_ENABLE([vala],
   AS_HELP_STRING([--enable-vala], [Check for vala requirements @<:@default=no@:>@]),
   [],

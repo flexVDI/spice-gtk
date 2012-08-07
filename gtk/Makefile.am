@@ -1,6 +1,10 @@
 NULL =
 
-SUBDIRS = controller
+SUBDIRS =
+
+if WITH_CONTROLLER
+SUBDIRS += controller
+endif
 
 # Avoid need for perl(Text::CSV) by end users
 KEYMAPS =					\
