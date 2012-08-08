@@ -13,8 +13,11 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA =					\
 	spice-client-glib-2.0.pc			\
 	spice-client-gtk-$(SPICE_GTK_API_VERSION).pc	\
-	spice-controller.pc				\
 	$(NULL)
+
+if WITH_CONTROLLER
+pkgconfig_DATA += spice-controller.pc
+endif
 
 INTLTOOL_FILES =				\
 	intltool-extract.in			\
