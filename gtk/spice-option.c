@@ -79,6 +79,29 @@ error:
     return FALSE;
 }
 
+static gboolean parse_disable_effects(const gchar *option_name, const gchar *value,
+                                      gpointer data, GError **error)
+{
+
+    if ((g_strcmp0(value, "wallpaper") != 0)
+        && (g_strcmp0(value, "font-smooth") != 0)
+        && (g_strcmp0(value, "animation") != 0)
+        && (g_strcmp0(value, "all") != 0)) {
+        /* Translators: do not translate 'wallpaper', 'font-smooth',
+         * 'animation', 'all' as the user must use these values with the
+         * --spice-disable-effects command line option
+         */
+        g_set_error(error, G_OPTION_ERROR, G_OPTION_ERROR_FAILED,
+                    _("invalid effect name (%s), must be 'wallpaper', 'font-smooth', 'animation' or 'all'"), value);
+        return FALSE;
+    }
+
+    disable_effects = g_strdup(value);
+
+    return TRUE;
+}
+
+
 /**
  * spice_get_option_group:
  *
@@ -90,7 +113,7 @@ error:
 GOptionGroup* spice_get_option_group(void)
 {
     const GOptionEntry entries[] = {
-        { "spice-disable-effects", '\0', 0, G_OPTION_ARG_STRING, &disable_effects,
+        { "spice-disable-effects", '\0', 0, G_OPTION_ARG_CALLBACK, parse_disable_effects,
           N_("Disable guest display effects"), N_("<wallpaper,font-smooth,animation,all>") },
         { "spice-color-depth", '\0', 0, G_OPTION_ARG_CALLBACK, parse_color_depth,
           N_("Guest display color depth"), N_("<16,32>") },
