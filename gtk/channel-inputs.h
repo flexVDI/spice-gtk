@@ -82,6 +82,7 @@ void spice_inputs_button_release(SpiceInputsChannel *channel, gint button,
 void spice_inputs_key_press(SpiceInputsChannel *channel, guint scancode);
 void spice_inputs_key_release(SpiceInputsChannel *channel, guint scancode);
 void spice_inputs_set_key_locks(SpiceInputsChannel *channel, guint locks);
+void spice_inputs_key_press_and_release(SpiceInputsChannel *channel, guint scancode);
 
 G_END_DECLS
 

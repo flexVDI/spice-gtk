@@ -514,6 +514,43 @@ void spice_inputs_key_release(SpiceInputsChannel *channel, guint scancode)
     spice_msg_out_send(msg);
 }
 
+/**
+ * spice_inputs_key_press_and_release:
+ * @channel:
+ * @scancode: a PC AT key scancode
+ *
+ * Press and release a key event atomically (in the same message).
+ *
+ * Since: 0.13
+ **/
+void spice_inputs_key_press_and_release(SpiceInputsChannel *input_channel, guint scancode)
+{
+    SpiceChannel *channel = SPICE_CHANNEL(input_channel);
+
+    g_return_if_fail(channel != NULL);
+    g_return_if_fail(channel->priv->state != SPICE_CHANNEL_STATE_UNCONNECTED);
+
+    if (channel->priv->state != SPICE_CHANNEL_STATE_READY)
+        return;
+    if (spice_channel_get_read_only(channel))
+        return;
+
+    if (spice_channel_test_capability(channel, SPICE_INPUTS_CAP_KEY_SCANCODE)) {
+        SpiceMsgOut *msg;
+        guint16 *code;
+
+        msg = spice_msg_out_new(channel, SPICE_MSGC_INPUTS_KEY_SCANCODE);
+        code = (guint16*)spice_marshaller_reserve_space(msg->marshaller, 2 * sizeof(guint16));
+        *code++ = spice_make_scancode(scancode, FALSE);
+        *code = spice_make_scancode(scancode, TRUE);
+        spice_msg_out_send(msg);
+    } else {
+        SPICE_DEBUG("The server doesn't support atomic press and release");
+        spice_inputs_key_press(input_channel, scancode);
+        spice_inputs_key_release(input_channel, scancode);
+    }
+}
+
 /* main or coroutine context */
 static SpiceMsgOut* set_key_locks(SpiceInputsChannel *channel, guint locks)
 {

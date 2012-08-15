@@ -203,6 +203,7 @@ spice_inputs_position
 spice_inputs_button_press
 spice_inputs_button_release
 spice_inputs_key_press
+spice_inputs_key_press_and_release
 spice_inputs_key_release
 spice_inputs_set_key_locks
 <SUBSECTION Standard>
