@@ -224,3 +224,24 @@ const gchar* spice_yes_no(gboolean value)
 {
     return value ? "yes" : "no";
 }
+
+G_GNUC_INTERNAL
+guint16 spice_make_scancode(guint scancode, gboolean release)
+{
+    SPICE_DEBUG("%s: %s scancode %d",
+                __FUNCTION__, release ? "release" : "", scancode);
+
+    if (release) {
+        if (scancode < 0x100)
+            return scancode | 0x80;
+        else
+            return 0x80e0 | ((scancode - 0x100) << 8);
+    } else {
+        if (scancode < 0x100)
+            return scancode;
+        else
+            return 0xe0 | ((scancode - 0x100) << 8);
+    }
+
+    g_return_val_if_reached(0);
+}

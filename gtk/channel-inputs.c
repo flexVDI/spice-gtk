@@ -483,15 +483,8 @@ void spice_inputs_key_press(SpiceInputsChannel *channel, guint scancode)
     if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
         return;
 
-    SPICE_DEBUG("%s: scancode %d", __FUNCTION__, scancode);
-    if (scancode < 0x100) {
-        down.code = scancode;
-    } else {
-        down.code = 0xe0 | ((scancode - 0x100) << 8);
-    }
-
-    msg = spice_msg_out_new(SPICE_CHANNEL(channel),
-                            SPICE_MSGC_INPUTS_KEY_DOWN);
+    down.code = spice_make_scancode(scancode, FALSE);
+    msg = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_INPUTS_KEY_DOWN);
     msg->marshallers->msgc_inputs_key_down(msg->marshaller, &down);
     spice_msg_out_send(msg);
 }
@@ -515,15 +508,8 @@ void spice_inputs_key_release(SpiceInputsChannel *channel, guint scancode)
     if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
         return;
 
-    SPICE_DEBUG("%s: scancode %d", __FUNCTION__, scancode);
-    if (scancode < 0x100) {
-        up.code = scancode | 0x80;
-    } else {
-        up.code = 0x80e0 | ((scancode - 0x100) << 8);
-    }
-
-    msg = spice_msg_out_new(SPICE_CHANNEL(channel),
-                            SPICE_MSGC_INPUTS_KEY_UP);
+    up.code = spice_make_scancode(scancode, TRUE);
+    msg = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_INPUTS_KEY_UP);
     msg->marshallers->msgc_inputs_key_up(msg->marshaller, &up);
     spice_msg_out_send(msg);
 }
