@@ -982,8 +982,12 @@ static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
 #endif
 
 /* ---------------------------------------------------------------- */
+typedef enum {
+    SEND_KEY_PRESS,
+    SEND_KEY_RELEASE,
+} SendKeyType;
 
-static void send_key(SpiceDisplay *display, int scancode, int down)
+static void send_key(SpiceDisplay *display, int scancode, SendKeyType type, gboolean press_delayed)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     uint32_t i, b, m;
@@ -999,7 +1003,7 @@ static void send_key(SpiceDisplay *display, int scancode, int down)
     m = (1 << b);
     g_return_if_fail(i < SPICE_N_ELEMENTS(d->key_state));
 
-    if (down) {
+    if (type == SEND_KEY_PRESS) {
         spice_inputs_key_press(d->inputs, scancode);
         d->key_state[i] |= m;
     } else {
@@ -1022,7 +1026,7 @@ static void release_keys(SpiceDisplay *display)
             continue;
         }
         for (b = 0; b < 32; b++) {
-            send_key(display, i * 32 + b, 0);
+            send_key(display, i * 32 + b, SEND_KEY_RELEASE, FALSE);
         }
     }
 }
@@ -1065,9 +1069,10 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     int scancode;
 
-    SPICE_DEBUG("%s %s: keycode: %d  state: %d  group %d",
+
+    SPICE_DEBUG("%s %s: keycode: %d  state: %d  group %d modifier %d",
             __FUNCTION__, key->type == GDK_KEY_PRESS ? "press" : "release",
-            key->hardware_keycode, key->state, key->group);
+            key->hardware_keycode, key->state, key->group, key->is_modifier);
 
     if (check_for_grab_key(display, key->type, key->keyval)) {
         g_signal_emit(widget, signals[SPICE_DISPLAY_GRAB_KEY_PRESSED], 0);
@@ -1092,10 +1097,10 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
                                             key->hardware_keycode);
     switch (key->type) {
     case GDK_KEY_PRESS:
-        send_key(display, scancode, 1);
+        send_key(display, scancode, SEND_KEY_PRESS, !key->is_modifier);
         break;
     case GDK_KEY_RELEASE:
-        send_key(display, scancode, 0);
+        send_key(display, scancode, SEND_KEY_RELEASE, !key->is_modifier);
         break;
     default:
         g_warn_if_reached();
@@ -1134,12 +1139,12 @@ void spice_display_send_keys(SpiceDisplay *display, const guint *keyvals,
 
     if (kind & SPICE_DISPLAY_KEY_EVENT_PRESS) {
         for (i = 0 ; i < nkeyvals ; i++)
-            send_key(display, get_scancode_from_keyval(display, keyvals[i]), 1);
+            send_key(display, get_scancode_from_keyval(display, keyvals[i]), SEND_KEY_PRESS, FALSE);
     }
 
     if (kind & SPICE_DISPLAY_KEY_EVENT_RELEASE) {
         for (i = (nkeyvals-1) ; i >= 0 ; i--)
-            send_key(display, get_scancode_from_keyval(display, keyvals[i]), 0);
+            send_key(display, get_scancode_from_keyval(display, keyvals[i]), SEND_KEY_RELEASE, FALSE);
     }
 }
 
