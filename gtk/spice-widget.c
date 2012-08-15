@@ -103,6 +103,7 @@ enum {
     PROP_DISABLE_INPUTS,
     PROP_ZOOM_LEVEL,
     PROP_MONITOR_ID,
+    PROP_KEYPRESS_DELAY,
     PROP_READY
 };
 
@@ -178,6 +179,9 @@ static void spice_display_get_property(GObject    *object,
         break;
     case PROP_READY:
         g_value_set_boolean(value, d->ready);
+        break;
+    case PROP_KEYPRESS_DELAY:
+        g_value_set_uint(value, d->keypress_delay);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -346,6 +350,9 @@ static void spice_display_set_property(GObject      *object,
     case PROP_ZOOM_LEVEL:
         d->zoom_level = g_value_get_int(value);
         scaling_updated(display);
+        break;
+    case PROP_KEYPRESS_DELAY:
+        d->keypress_delay = g_value_get_uint(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -1559,6 +1566,26 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
                               G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceDisplay:keypress-delay:
+     *
+     * Delay in ms of non-modifiers key press events. If the key is
+     * released before this delay, a single press & release event is
+     * sent to the server. If the key is pressed longer than the
+     * keypress-delay, the server will receive the delayed press
+     * event, and a following release event when the key is released.
+     *
+     * Since: 0.13
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_KEYPRESS_DELAY,
+         g_param_spec_uint("keypress-delay", "Keypress delay",
+                           "Keypress delay",
+                           0, G_MAXUINT, 100,
+                           G_PARAM_READWRITE |
+                           G_PARAM_CONSTRUCT |
+                           G_PARAM_STATIC_STRINGS));
 
     /**
      * SpiceDisplay:disable-inputs:

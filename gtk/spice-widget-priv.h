@@ -112,6 +112,7 @@ struct _SpiceDisplayPrivate {
 #ifdef WIN32
     HHOOK                   keyboard_hook;
 #endif
+    guint                   keypress_delay;
     gint                    zoom_level;
 };
 
