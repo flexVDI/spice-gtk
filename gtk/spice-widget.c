@@ -393,6 +393,11 @@ static void spice_display_dispose(GObject *obj)
     g_clear_object(&d->session);
     d->gtk_session = NULL;
 
+    if (d->key_delayed_id) {
+        g_source_remove(d->key_delayed_id);
+        d->key_delayed_id = 0;
+    }
+
     G_OBJECT_CLASS(spice_display_parent_class)->dispose(obj);
 }
 
@@ -994,6 +999,40 @@ typedef enum {
     SEND_KEY_RELEASE,
 } SendKeyType;
 
+static void key_press_and_release(SpiceDisplay *display)
+{
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    if (d->key_delayed_scancode == 0)
+        return;
+
+    spice_inputs_key_press_and_release(d->inputs, d->key_delayed_scancode);
+    d->key_delayed_scancode = 0;
+
+    if (d->key_delayed_id) {
+        g_source_remove(d->key_delayed_id);
+        d->key_delayed_id = 0;
+    }
+}
+
+static gboolean key_press_delayed(gpointer data)
+{
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(data);
+
+    if (d->key_delayed_scancode == 0)
+        return FALSE;
+
+    spice_inputs_key_press(d->inputs, d->key_delayed_scancode);
+    d->key_delayed_scancode = 0;
+
+    if (d->key_delayed_id) {
+        g_source_remove(d->key_delayed_id);
+        d->key_delayed_id = 0;
+    }
+
+    return FALSE;
+}
+
 static void send_key(SpiceDisplay *display, int scancode, SendKeyType type, gboolean press_delayed)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
@@ -1010,15 +1049,40 @@ static void send_key(SpiceDisplay *display, int scancode, SendKeyType type, gboo
     m = (1 << b);
     g_return_if_fail(i < SPICE_N_ELEMENTS(d->key_state));
 
-    if (type == SEND_KEY_PRESS) {
-        spice_inputs_key_press(d->inputs, scancode);
+    switch (type) {
+    case SEND_KEY_PRESS:
+        /* ensure delayed key is pressed before any new input event */
+        key_press_delayed(display);
+
+        if (press_delayed &&
+            d->keypress_delay != 0 &&
+            !(d->key_state[i] & m)) {
+            g_warn_if_fail(d->key_delayed_id == 0);
+            d->key_delayed_id = g_timeout_add(d->keypress_delay, key_press_delayed, display);
+            d->key_delayed_scancode = scancode;
+        } else
+            spice_inputs_key_press(d->inputs, scancode);
+
         d->key_state[i] |= m;
-    } else {
-        if (!(d->key_state[i] & m)) {
-            return;
+        break;
+
+    case SEND_KEY_RELEASE:
+        if (!(d->key_state[i] & m))
+            break;
+
+        if (d->key_delayed_scancode == scancode)
+            key_press_and_release(display);
+        else {
+            /* ensure delayed key is pressed before other key are released */
+            key_press_delayed(display);
+            spice_inputs_key_release(d->inputs, scancode);
         }
-        spice_inputs_key_release(d->inputs, scancode);
+
         d->key_state[i] &= ~m;
+        break;
+
+    default:
+        g_warn_if_reached();
     }
 }
 

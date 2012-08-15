@@ -106,6 +106,8 @@ struct _SpiceDisplayPrivate {
     const guint16 const     *keycode_map;
     size_t                  keycode_maplen;
     uint32_t                key_state[512 / 32];
+    int                     key_delayed_scancode;
+    guint                   key_delayed_id;
     SpiceGrabSequence         *grabseq; /* the configured key sequence */
     gboolean                *activeseq; /* the currently pressed keys */
     gint                    mark;
