@@ -1428,6 +1428,13 @@ static void display_handle_draw_alpha_blend(SpiceChannel *channel, SpiceMsgIn *i
 }
 
 /* coroutine context */
+static void display_handle_draw_composite(SpiceChannel *channel, SpiceMsgIn *in)
+{
+    SpiceMsgDisplayDrawComposite *op = spice_msg_in_parsed(in);
+    DRAW(composite);
+}
+
+/* coroutine context */
 static void display_handle_surface_create(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
@@ -1569,6 +1576,7 @@ static const spice_msg_handler display_handlers[] = {
     [ SPICE_MSG_DISPLAY_DRAW_TEXT ]          = display_handle_draw_text,
     [ SPICE_MSG_DISPLAY_DRAW_TRANSPARENT ]   = display_handle_draw_transparent,
     [ SPICE_MSG_DISPLAY_DRAW_ALPHA_BLEND ]   = display_handle_draw_alpha_blend,
+    [ SPICE_MSG_DISPLAY_DRAW_COMPOSITE ]     = display_handle_draw_composite,
 
     [ SPICE_MSG_DISPLAY_SURFACE_CREATE ]     = display_handle_surface_create,
     [ SPICE_MSG_DISPLAY_SURFACE_DESTROY ]    = display_handle_surface_destroy,
