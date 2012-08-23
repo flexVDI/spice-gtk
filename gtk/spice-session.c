@@ -28,6 +28,7 @@
 #include "gio-coroutine.h"
 #include "glib-compat.h"
 #include "wocky-http-proxy.h"
+#include "spice-proxy.h"
 
 struct channel {
     SpiceChannel      *channel;
@@ -1573,43 +1574,128 @@ gboolean spice_session_has_channel_type(SpiceSession *session, gint type)
 /* ------------------------------------------------------------------ */
 /* private functions                                                  */
 
-static GSocket *channel_connect_socket(SpiceChannel *channel,
-                                       GSocketAddress *sockaddr,
-                                       GError **error)
+typedef struct spice_open_host spice_open_host;
+
+struct spice_open_host {
+    struct coroutine *from;
+    SpiceSession *session;
+    SpiceChannel *channel;
+    SpiceProxy *proxy;
+    int port;
+    GCancellable *cancellable;
+    GError *error;
+    GSocket *socket;
+};
+
+static void socket_client_connect_ready(GObject *source_object, GAsyncResult *result,
+                                        gpointer data)
 {
-    SpiceChannelPrivate *c = channel->priv;
-    GSocket *sock = g_socket_new(g_socket_address_get_family(sockaddr),
-                                 G_SOCKET_TYPE_STREAM,
-                                 G_SOCKET_PROTOCOL_DEFAULT,
-                                 error);
+    GSocketClient *client = G_SOCKET_CLIENT(source_object);
+    spice_open_host *open_host = data;
+    GSocketConnection *connection = NULL;
 
-    if (!sock)
-        return NULL;
+    SPICE_DEBUG("connect ready");
+    connection = g_socket_client_connect_finish(client, result, &open_host->error);
+    if (connection == NULL)
+        goto end;
 
-    g_socket_set_blocking(sock, FALSE);
-    g_socket_set_keepalive(sock, TRUE);
+    open_host->socket = g_socket_connection_get_socket(connection);
+    g_object_ref(open_host->socket);
 
-    if (!g_socket_connect(sock, sockaddr, NULL, error)) {
-        if (*error && (*error)->code == G_IO_ERROR_PENDING) {
-            g_clear_error(error);
-            CHANNEL_DEBUG(channel, "Socket pending");
-            g_coroutine_socket_wait(&c->coroutine, sock, G_IO_OUT | G_IO_ERR | G_IO_HUP);
+end:
+    g_object_unref(connection);
+    g_object_unref(client);
 
-            if (!g_socket_check_connect_result(sock, error)) {
-                CHANNEL_DEBUG(channel, "Failed to connect %s", (*error)->message);
-                g_object_unref(sock);
-                return NULL;
-            }
-        } else {
-            CHANNEL_DEBUG(channel, "Socket error: %s", *error ? (*error)->message : "unknown");
-            g_object_unref(sock);
-            return NULL;
-        }
+    coroutine_yieldto(open_host->from, NULL);
+}
+
+/* main context */
+static void open_host_connectable_connect(spice_open_host *open_host, GSocketConnectable *connectable)
+{
+    GSocketClient *client;
+
+    SPICE_DEBUG("connecting %p...", open_host);
+    client = g_socket_client_new();
+    g_socket_client_connect_async(client, connectable, open_host->cancellable,
+                                  socket_client_connect_ready, open_host);
+}
+
+#if GLIB_CHECK_VERSION(2,26,0)
+/* main context */
+static void proxy_lookup_ready(GObject *source_object, GAsyncResult *result,
+                               gpointer data)
+{
+    spice_open_host *open_host = data;
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(open_host->session);
+    GList *addresses = NULL, *it;
+    GSocketAddress *address;
+
+    SPICE_DEBUG("proxy lookup ready");
+    addresses = g_resolver_lookup_by_name_finish(G_RESOLVER(source_object),
+                                                 result, &open_host->error);
+    if (addresses == NULL || open_host->error) {
+        coroutine_yieldto(open_host->from, NULL);
+        return;
     }
 
-    CHANNEL_DEBUG(channel, "Finally connected");
+    for (it = addresses; it != NULL; it = it->next) {
+        address = g_proxy_address_new(G_INET_ADDRESS(it->data),
+                                      spice_proxy_get_port(open_host->proxy), "http",
+                                      s->host, open_host->port, NULL, NULL);
+        if (address != NULL)
+            break;
+    }
 
-    return sock;
+    open_host_connectable_connect(open_host, G_SOCKET_CONNECTABLE(address));
+    g_resolver_free_addresses(addresses);
+}
+
+static SpiceProxy* get_proxy(GError **error)
+{
+    SpiceProxy *proxy;
+
+    const gchar *proxy_env = g_getenv("SPICE_PROXY");
+    if (proxy_env == NULL || strlen(proxy_env) == 0)
+        return NULL;
+
+    proxy = spice_proxy_new();
+    if (!spice_proxy_parse(proxy, proxy_env, error))
+        g_clear_object(&proxy);
+
+    return proxy;
+}
+#endif
+
+/* main context */
+static gboolean open_host_idle_cb(gpointer data)
+{
+    spice_open_host *open_host = data;
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(open_host->session);
+
+    g_return_val_if_fail(open_host != NULL, FALSE);
+    g_return_val_if_fail(open_host->socket == NULL, FALSE);
+
+#if GLIB_CHECK_VERSION(2,26,0)
+    open_host->proxy = get_proxy(&open_host->error);
+    if (open_host->proxy) {
+        g_resolver_lookup_by_name_async(g_resolver_get_default(),
+                                        spice_proxy_get_hostname(open_host->proxy),
+                                        open_host->cancellable,
+                                        proxy_lookup_ready, open_host);
+    } else
+#endif
+    if (open_host->error != NULL) {
+        coroutine_yieldto(open_host->from, NULL);
+        return FALSE;
+    } else
+        open_host_connectable_connect(open_host,
+                                      g_network_address_new(s->host, open_host->port));
+
+    SPICE_DEBUG("open host %s:%d", s->host, open_host->port);
+    if (open_host->proxy != NULL)
+        SPICE_DEBUG("(with proxy %p)", open_host->proxy);
+
+    return FALSE;
 }
 
 /* coroutine context */
@@ -1618,41 +1704,33 @@ GSocket* spice_session_channel_open_host(SpiceSession *session, SpiceChannel *ch
                                          gboolean use_tls)
 {
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
-    GSocketConnectable *addr;
-    GSocketAddressEnumerator *enumerator;
-    GSocketAddress *sockaddr;
-    GError *conn_error = NULL;
-    GSocket *sock = NULL;
-    int port;
+    spice_open_host open_host = { 0, };
 
     if ((use_tls && !s->tls_port) || (!use_tls && !s->port))
         return NULL;
 
-    port = atoi(use_tls ? s->tls_port : s->port);
+    open_host.from = coroutine_self();
+    open_host.session = session;
+    open_host.channel = channel;
+    open_host.port = atoi(use_tls ? s->tls_port : s->port);
+    g_idle_add(open_host_idle_cb, &open_host);
 
-    SPICE_DEBUG("Resolving host %s %d", s->host, port);
+    /* switch to main loop and wait for connection */
+    coroutine_yield(NULL);
+    if (open_host.error != NULL) {
+        g_return_val_if_fail(open_host.socket == NULL, NULL);
 
-    addr = g_network_address_new(s->host, port);
+        g_warning("%s", open_host.error->message);
+        g_clear_error(&open_host.error);
+    } else {
+        g_return_val_if_fail(open_host.socket != NULL, NULL);
 
-    enumerator = g_socket_connectable_enumerate (addr);
-    g_object_unref (addr);
-
-    /* Try each sockaddr until we succeed. Record the first
-     * connection error, but not any further ones (since they'll probably
-     * be basically the same as the first).
-     */
-    while (!sock &&
-           (sockaddr = g_socket_address_enumerator_next(enumerator, NULL, &conn_error))) {
-        SPICE_DEBUG("Trying one socket");
-        g_clear_error(&conn_error);
-        sock = channel_connect_socket(channel, sockaddr, &conn_error);
-        if (conn_error != NULL)
-            SPICE_DEBUG("%s", conn_error->message);
-        g_object_unref(sockaddr);
+        g_socket_set_blocking(open_host.socket, FALSE);
+        g_socket_set_keepalive(open_host.socket, TRUE);
     }
-    g_object_unref(enumerator);
-    g_clear_error(&conn_error);
-    return sock;
+
+    g_clear_object(&open_host.proxy);
+    return open_host.socket;
 }
 
 
