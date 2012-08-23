@@ -1326,7 +1326,7 @@ static gboolean spice_channel_perform_auth_sasl(SpiceChannel *channel)
     char *mechlist;
     const char *mechname;
     gboolean ret = FALSE;
-    GSocketAddress *addr;
+    GSocketAddress *addr = NULL;
     guint8 complete;
 
     g_return_val_if_fail(channel != NULL, FALSE);
@@ -1353,6 +1353,7 @@ static gboolean spice_channel_perform_auth_sasl(SpiceChannel *channel)
          g_socket_address_get_family(addr) == G_SOCKET_FAMILY_IPV6) &&
         (localAddr = addr_to_string(addr)) == NULL)
         goto error;
+    g_clear_object(&addr);
 
     /* Get remote address in form  IPADDR:PORT */
     addr = g_socket_get_remote_address(c->sock, NULL);
@@ -1364,6 +1365,7 @@ static gboolean spice_channel_perform_auth_sasl(SpiceChannel *channel)
          g_socket_address_get_family(addr) == G_SOCKET_FAMILY_IPV6) &&
         (remoteAddr = addr_to_string(addr)) == NULL)
         goto error;
+    g_clear_object(&addr);
 
     CHANNEL_DEBUG(channel, "Client SASL new host:'%s' local:'%s' remote:'%s'",
                   spice_session_get_host(c->session), localAddr, remoteAddr);
@@ -1630,6 +1632,7 @@ complete:
     return ret;
 
 error:
+    g_clear_object(&addr);
     if (saslconn)
         sasl_dispose(&saslconn);
     emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_AUTH);
