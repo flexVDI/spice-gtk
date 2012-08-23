@@ -2442,7 +2442,6 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
     }
 
     if (c->sock) {
-        g_socket_close(c->sock, NULL);
         g_object_unref(c->sock);
         c->sock = NULL;
     }
