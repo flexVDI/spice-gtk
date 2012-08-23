@@ -258,6 +258,13 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	$(top_srcdir)/spice-common/common/sw_canvas.h	\
 	$(NULL)
 
+if WITH_GPROXY
+libspice_client_glib_2_0_la_SOURCES +=			\
+	wocky-http-proxy.c				\
+	wocky-http-proxy.h				\
+	$(NULL)
+endif
+
 nodist_libspice_client_glib_2_0_la_SOURCES =	\
 	spice-glib-enums.c			\
 	spice-marshal.c				\

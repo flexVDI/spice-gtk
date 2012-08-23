@@ -259,6 +259,9 @@ PKG_CHECK_MODULES(GIO, gio-2.0 >= 2.10.0 $gio_os)
 AC_SUBST(GIO_CFLAGS)
 AC_SUBST(GIO_LIBS)
 
+PKG_CHECK_EXISTS([gio-2.0 >= 2.26], [have_gproxy=yes])
+AM_CONDITIONAL([WITH_GPROXY], [test "x$have_gproxy" = "xyes"])
+
 PKG_CHECK_MODULES(CAIRO, cairo >= 1.2.0)
 AC_SUBST(CAIRO_CFLAGS)
 AC_SUBST(CAIRO_LIBS)
