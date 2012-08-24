@@ -243,6 +243,8 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	channel-usbredir-priv.h				\
 	smartcard-manager.c				\
 	smartcard-manager-priv.h			\
+	spice-proxy.c					\
+	spice-proxy.h					\
 	usb-device-manager.c				\
 	usb-device-manager-priv.h			\
 	usbutil.c					\
