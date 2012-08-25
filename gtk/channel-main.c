@@ -163,6 +163,7 @@ static void spice_main_channel_reset_capabilties(SpiceChannel *channel)
 {
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_MAIN_CAP_SEMI_SEAMLESS_MIGRATE);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_MAIN_CAP_NAME_AND_UUID);
+    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_MAIN_CAP_AGENT_CONNECTED_TOKENS);
 }
 
 static void spice_main_channel_init(SpiceMainChannel *channel)
@@ -1357,6 +1358,16 @@ static void main_handle_agent_connected(SpiceChannel *channel, SpiceMsgIn *in)
 }
 
 /* coroutine context */
+static void main_handle_agent_connected_tokens(SpiceChannel *channel, SpiceMsgIn *in)
+{
+    SpiceMainChannelPrivate *c = SPICE_MAIN_CHANNEL(channel)->priv;
+    SpiceMsgMainAgentConnectedTokens *msg = spice_msg_in_parsed(in);
+
+    c->agent_tokens = msg->num_tokens;
+    agent_start(SPICE_MAIN_CHANNEL(channel));
+}
+
+/* coroutine context */
 static void main_handle_agent_disconnected(SpiceChannel *channel, SpiceMsgIn *in)
 {
     agent_stopped(SPICE_MAIN_CHANNEL(channel));
@@ -1837,6 +1848,7 @@ static const spice_msg_handler main_handlers[] = {
     [ SPICE_MSG_MAIN_MIGRATE_END ]         = main_handle_migrate_end,
     [ SPICE_MSG_MAIN_MIGRATE_CANCEL ]      = main_handle_migrate_cancel,
     [ SPICE_MSG_MAIN_MIGRATE_SWITCH_HOST ] = main_handle_migrate_switch_host,
+    [ SPICE_MSG_MAIN_AGENT_CONNECTED_TOKENS ] = main_handle_agent_connected_tokens,
 };
 
 /* coroutine context */
