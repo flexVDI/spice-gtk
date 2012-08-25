@@ -1701,6 +1701,7 @@ static gboolean migrate_connect(gpointer data)
 
     session = spice_channel_get_session(mig->src_channel);
     mig->session = spice_session_new_from_session(session);
+    mig->session->priv->migration_copy = true;
 
     if ((c->peer_hdr.major_version == 1) &&
         (c->peer_hdr.minor_version < 1)) {
