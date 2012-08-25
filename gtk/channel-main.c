@@ -86,7 +86,7 @@ typedef struct spice_migrate spice_migrate;
 
 struct spice_migrate {
     struct coroutine *from;
-    SpiceMsgMainMigrationBegin *info;
+    SpiceMigrationDstInfo *info;
     SpiceSession *session;
     guint nchannels;
     SpiceChannel *channel;
@@ -1653,7 +1653,7 @@ static gboolean migrate_connect(gpointer data)
         sport = info->sport;
         host = info->host;
     } else {
-        SpiceMsgMainMigrationBegin *info = mig->info;
+        SpiceMigrationDstInfo *info = mig->info;
         SPICE_DEBUG("migrate_begin %d %s %d %d",
                     info->host_size, info->host_data, info->port, info->sport);
         port = info->port;
@@ -1711,7 +1711,7 @@ static void main_handle_migrate_begin(SpiceChannel *channel, SpiceMsgIn *in)
     int reply_type;
 
     mig.channel = channel;
-    mig.info = msg;
+    mig.info = &msg->dst_info;
     mig.from = coroutine_self();
 
     /* no need to track idle, call is sync for this coroutine */
