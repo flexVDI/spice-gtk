@@ -1215,14 +1215,12 @@ spice_usb_device_manager_can_redirect_device(SpiceUsbDeviceManager  *self,
     const struct usbredirfilter_rule *guest_filter_rules = NULL;
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
     int i, guest_filter_rules_count;
-    gboolean enabled;
 
     g_return_val_if_fail(SPICE_IS_USB_DEVICE_MANAGER(self), FALSE);
     g_return_val_if_fail(device != NULL, FALSE);
     g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
 
-    g_object_get(G_OBJECT(priv->session), "enable-usbredir", &enabled, NULL);
-    if (!enabled) {
+    if (!priv->session->priv->usbredir) {
         g_set_error_literal(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                             _("USB redirection is disabled"));
         return FALSE;

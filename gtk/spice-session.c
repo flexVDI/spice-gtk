@@ -1089,6 +1089,9 @@ SpiceSession *spice_session_new_from_session(SpiceSession *session)
                  "verify", &c->verify,
                  "smartcard-certificates", &c->smartcard_certificates,
                  "smartcard-db", &c->smartcard_db,
+                 "enable-smartcard", &c->smartcard,
+                 "enable-audio", &c->audio,
+                 "enable-usbredir", &c->usbredir,
                  NULL);
 
     c->client_provided_sockets = s->client_provided_sockets;

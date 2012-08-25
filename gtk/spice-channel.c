@@ -1912,9 +1912,7 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
         break;
     case SPICE_CHANNEL_PLAYBACK:
     case SPICE_CHANNEL_RECORD: {
-        gboolean enabled;
-        g_object_get(G_OBJECT(s), "enable-audio", &enabled, NULL);
-        if (!enabled) {
+        if (!s->priv->audio) {
             g_debug("audio channel is disabled, not creating it");
             return NULL;
         }
@@ -1924,9 +1922,7 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
     }
 #ifdef USE_SMARTCARD
     case SPICE_CHANNEL_SMARTCARD: {
-        gboolean enabled;
-        g_object_get(G_OBJECT(s), "enable-smartcard", &enabled, NULL);
-        if (!enabled) {
+        if (!s->priv->smartcard) {
             g_debug("smartcard channel is disabled, not creating it");
             return NULL;
         }
@@ -1936,9 +1932,7 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
 #endif
 #ifdef USE_USBREDIR
     case SPICE_CHANNEL_USBREDIR: {
-        gboolean enabled;
-        g_object_get(G_OBJECT(s), "enable-usbredir", &enabled, NULL);
-        if (!enabled) {
+        if (!s->priv->usbredir) {
             g_debug("usbredir channel is disabled, not creating it");
             return NULL;
         }
