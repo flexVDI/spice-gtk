@@ -120,9 +120,6 @@ void spice_channel_handle_wait_for_channels(SpiceChannel *channel, SpiceMsgIn *i
     SpiceMsgWaitForChannels *wfc = spice_msg_in_parsed(in);
     int i;
 
-    g_return_if_fail(spice_header_get_msg_size(in->header, channel->priv->use_mini_header) >=
-                     sizeof(*wfc) + wfc->wait_count * sizeof(wfc->wait_list[0]));
-
     for (i = 0; i < wfc->wait_count; ++i) {
         WaitForChannelData data = {
             .wait = wfc->wait_list + i,
