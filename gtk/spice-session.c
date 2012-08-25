@@ -1194,7 +1194,9 @@ void spice_session_switching_disconnect(SpiceSession *self)
 }
 
 G_GNUC_INTERNAL
-void spice_session_set_migration(SpiceSession *session, SpiceSession *migration)
+void spice_session_set_migration(SpiceSession *session,
+                                 SpiceSession *migration,
+                                 gboolean full_migration)
 {
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     SpiceSessionPrivate *m = SPICE_SESSION_GET_PRIVATE(migration);
@@ -1202,6 +1204,7 @@ void spice_session_set_migration(SpiceSession *session, SpiceSession *migration)
 
     g_return_if_fail(s != NULL);
 
+    s->full_migration = full_migration;
     spice_session_set_migration_state(session, SPICE_SESSION_MIGRATION_MIGRATING);
 
     g_warn_if_fail(s->migration == NULL);
@@ -1278,7 +1281,8 @@ void spice_session_abort_migration(SpiceSession *session)
         spice_channel_swap(c->channel,
             spice_session_lookup_channel(s->migration,
                                          spice_channel_get_channel_id(c->channel),
-                                         spice_channel_get_channel_type(c->channel)));
+                                         spice_channel_get_channel_type(c->channel)),
+                                         !s->full_migration);
     }
 
     g_list_free(s->migration_left);
@@ -1308,7 +1312,10 @@ void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel)
     c = spice_session_lookup_channel(s->migration, id, type);
     g_return_if_fail(c != NULL);
 
-    spice_channel_swap(channel, c);
+    if (!g_queue_is_empty(&c->priv->xmit_queue) && s->full_migration) {
+        SPICE_DEBUG("mig channel xmit queue is not empty. type %s", c->priv->name);
+    }
+    spice_channel_swap(channel, c, !s->full_migration);
     s->migration_left = g_list_remove(s->migration_left, channel);
 
     if (g_list_length(s->migration_left) == 0) {

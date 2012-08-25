@@ -174,7 +174,7 @@ void spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in);
 
 gint spice_channel_get_channel_id(SpiceChannel *channel);
 gint spice_channel_get_channel_type(SpiceChannel *channel);
-void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap);
+void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap, gboolean swap_msgs);
 gboolean spice_channel_get_read_only(SpiceChannel *channel);
 void spice_channel_reset(SpiceChannel *channel, gboolean migrating);
 

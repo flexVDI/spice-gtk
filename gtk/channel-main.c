@@ -1796,7 +1796,9 @@ static void main_migrate_connect(SpiceChannel *channel,
             SPICE_DEBUG("migration (semi-seamless): connections all ok");
             reply_type = SPICE_MSGC_MAIN_MIGRATE_CONNECTED;
         }
-        spice_session_set_migration(spice_channel_get_session(channel), mig.session);
+        spice_session_set_migration(spice_channel_get_session(channel),
+                                    mig.session,
+                                    mig.do_seamless);
     }
     g_object_unref(mig.session);
 

@@ -82,6 +82,7 @@ struct _SpiceSessionPrivate {
     SpiceSession      *migration;
     GList             *migration_left;
     SpiceSessionMigration migration_state;
+    gboolean          full_migration; /* seamless migration indicator */
     gboolean          disconnecting;
     gboolean          migrate_wait_init;
     guint             after_main_init;
@@ -119,7 +120,9 @@ void spice_session_set_mm_time(SpiceSession *session, guint32 time);
 guint32 spice_session_get_mm_time(SpiceSession *session);
 
 void spice_session_switching_disconnect(SpiceSession *session);
-void spice_session_set_migration(SpiceSession *session, SpiceSession *migration);
+void spice_session_set_migration(SpiceSession *session,
+                                 SpiceSession *migration,
+                                 gboolean full_migration);
 void spice_session_abort_migration(SpiceSession *session);
 void spice_session_set_migration_state(SpiceSession *session, SpiceSessionMigration state);
 

@@ -2591,7 +2591,7 @@ enum spice_channel_state spice_channel_get_state(SpiceChannel *channel)
 }
 
 G_GNUC_INTERNAL
-void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap)
+void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap, gboolean swap_msgs)
 {
     SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
     SpiceChannelPrivate *s = SPICE_CHANNEL_GET_PRIVATE(swap);
@@ -2614,11 +2614,13 @@ void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap)
     SWAP(ctx);
     SWAP(ssl);
     SWAP(sslverify);
-    SWAP(in_serial);
-    SWAP(out_serial);
     SWAP(use_mini_header);
-    SWAP(xmit_queue);
-    SWAP(xmit_queue_blocked);
+    if (swap_msgs) {
+        SWAP(xmit_queue);
+        SWAP(xmit_queue_blocked);
+        SWAP(in_serial);
+        SWAP(out_serial);
+    }
     SWAP(caps);
     SWAP(common_caps);
     SWAP(remote_caps);
