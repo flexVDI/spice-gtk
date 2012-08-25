@@ -157,12 +157,14 @@ void spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in)
 
     SPICE_DEBUG("%s: channel %s flags %u", __FUNCTION__, c->name, mig->flags);
     if (mig->flags & SPICE_MIGRATE_NEED_FLUSH) {
-        /* iterate_write is blocking and flushing all pending write */
-        SPICE_CHANNEL_GET_CLASS(channel)->iterate_write(channel);
-
+        /* if peer version > 1: pushing the mark msg before all other messgages and sending it,
+         * and only it */
+        if (c->peer_hdr.major_version == 1) {
+            /* iterate_write is blocking and flushing all pending write */
+            SPICE_CHANNEL_GET_CLASS(channel)->iterate_write(channel);
+        }
         out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MIGRATE_FLUSH_MARK);
         spice_msg_out_send_internal(out);
-        SPICE_CHANNEL_GET_CLASS(channel)->iterate_write(channel);
     }
     if (mig->flags & SPICE_MIGRATE_NEED_DATA_TRANSFER) {
         spice_channel_recv_msg(channel, get_msg_handler, &data);
@@ -175,8 +177,10 @@ void spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in)
         }
     }
 
+    /* swapping channels sockets */
     spice_session_channel_migrate(c->session, channel);
 
+    /* pushing the MIGRATE_DATA before all other pending messages */
     if ((mig->flags & SPICE_MIGRATE_NEED_DATA_TRANSFER) && (data != NULL)) {
         out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MIGRATE_DATA);
         spice_marshaller_add(out->marshaller, data->data,
