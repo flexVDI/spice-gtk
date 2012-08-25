@@ -49,6 +49,7 @@ static void spice_channel_send_link(SpiceChannel *channel);
 static void channel_disconnect(SpiceChannel *channel);
 static void channel_reset(SpiceChannel *channel, gboolean migrating);
 static void spice_channel_reset_capabilities(SpiceChannel *channel);
+static void spice_channel_send_migration_handshake(SpiceChannel *channel);
 
 /**
  * SECTION:spice-channel
@@ -1080,6 +1081,10 @@ static void spice_channel_recv_auth(SpiceChannel *channel)
 
     emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_OPENED);
 
+    if (c->state == SPICE_CHANNEL_STATE_MIGRATION_HANDSHAKE) {
+        spice_channel_send_migration_handshake(channel);
+    }
+
     if (c->state != SPICE_CHANNEL_STATE_MIGRATING)
         spice_channel_up(channel);
 }
@@ -2002,6 +2007,7 @@ static void spice_channel_iterate_read(SpiceChannel *channel)
         spice_channel_recv_auth(channel);
         break;
     case SPICE_CHANNEL_STATE_READY:
+    case SPICE_CHANNEL_STATE_MIGRATION_HANDSHAKE:
         spice_channel_recv_msg(channel,
             (handler_msg_in)SPICE_CHANNEL_GET_CLASS(channel)->handle_msg, NULL);
         break;
@@ -2652,5 +2658,16 @@ static void spice_channel_reset_capabilities(SpiceChannel *channel)
 
     if (SPICE_CHANNEL_GET_CLASS(channel)->channel_reset_capabilities) {
         SPICE_CHANNEL_GET_CLASS(channel)->channel_reset_capabilities(channel);
+    }
+}
+
+static void spice_channel_send_migration_handshake(SpiceChannel *channel)
+{
+    SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+
+    if (SPICE_CHANNEL_GET_CLASS(channel)->channel_send_migration_handshake) {
+        SPICE_CHANNEL_GET_CLASS(channel)->channel_send_migration_handshake(channel);
+    } else {
+        c->state = SPICE_CHANNEL_STATE_MIGRATING;
     }
 }

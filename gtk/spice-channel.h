@@ -90,11 +90,15 @@ struct _SpiceChannelClass
     void (*channel_reset)(SpiceChannel *channel, gboolean migrating);
     void (*channel_reset_capabilities)(SpiceChannel *channel);
 
+    /*< private >*/
+    /* virtual methods, coroutine context */
+    void (*channel_send_migration_handshake)(SpiceChannel *channel);
+
     /*
      * If adding fields to this struct, remove corresponding
      * amount of padding to avoid changing overall struct size
      */
-    gchar _spice_reserved[SPICE_RESERVED_PADDING];
+    gchar _spice_reserved[SPICE_RESERVED_PADDING - sizeof(void *)];
 };
 
 GType spice_channel_get_type(void);

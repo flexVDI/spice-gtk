@@ -49,6 +49,8 @@
 
 #define MAX_DISPLAY 16
 
+typedef struct spice_migrate spice_migrate;
+
 struct _SpiceMainChannelPrivate  {
     enum SpiceMouseMode         mouse_mode;
     bool                        agent_connected;
@@ -80,16 +82,22 @@ struct _SpiceMainChannelPrivate  {
 
     guint                       switch_host_delayed_id;
     guint                       migrate_delayed_id;
+    spice_migrate               *migrate_data;
 };
-
-typedef struct spice_migrate spice_migrate;
 
 struct spice_migrate {
     struct coroutine *from;
     SpiceMigrationDstInfo *info;
     SpiceSession *session;
     guint nchannels;
-    SpiceChannel *channel;
+    SpiceChannel *src_channel;
+    SpiceChannel *dst_channel;
+    bool do_seamless; /* used as input and output for the seamless migration handshake.
+                         input: whether to send to the dest SPICE_MSGC_MAIN_MIGRATE_DST_DO_SEAMLESS
+                         output: whether the dest approved seamless migration
+                         (SPICE_MSG_MAIN_MIGRATE_DST_SEAMLESS_ACK/NACK)
+                       */
+    uint32_t src_mig_version;
 };
 
 G_DEFINE_TYPE(SpiceMainChannel, spice_main_channel, SPICE_TYPE_CHANNEL)
@@ -131,6 +139,8 @@ static void agent_send_msg_queue(SpiceMainChannel *channel);
 static void agent_free_msg_queue(SpiceMainChannel *channel);
 static void migrate_channel_event_cb(SpiceChannel *channel, SpiceChannelEvent event,
                                      gpointer data);
+static gboolean main_migrate_handshake_done(gpointer data);
+static void spice_main_channel_send_migration_handshake(SpiceChannel *channel);
 
 /* ------------------------------------------------------------------ */
 
@@ -164,6 +174,7 @@ static void spice_main_channel_reset_capabilties(SpiceChannel *channel)
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_MAIN_CAP_SEMI_SEAMLESS_MIGRATE);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_MAIN_CAP_NAME_AND_UUID);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_MAIN_CAP_AGENT_CONNECTED_TOKENS);
+    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_MAIN_CAP_SEAMLESS_MIGRATE);
 }
 
 static void spice_main_channel_init(SpiceMainChannel *channel)
@@ -327,6 +338,7 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
     channel_class->iterate_write = spice_channel_iterate_write;
     channel_class->channel_reset = spice_main_channel_reset;
     channel_class->channel_reset_capabilities = spice_main_channel_reset_capabilties;
+    channel_class->channel_send_migration_handshake = spice_main_channel_send_migration_handshake;
 
     /**
      * SpiceMainChannel:mouse-mode:
@@ -657,7 +669,6 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                      G_TYPE_NONE,
                      1,
                      G_TYPE_OBJECT);
-
 
     g_type_class_add_private(klass, sizeof(SpiceMainChannelPrivate));
 }
@@ -1573,6 +1584,26 @@ static SpiceChannel* migrate_channel_connect(spice_migrate *mig, int type, int i
     return newc;
 }
 
+/* coroutine context */
+static void spice_main_channel_send_migration_handshake(SpiceChannel *channel)
+{
+    SpiceMainChannelPrivate *c = SPICE_MAIN_CHANNEL(channel)->priv;
+
+    if (!spice_channel_test_capability(channel, SPICE_MAIN_CAP_SEAMLESS_MIGRATE)) {
+        c->migrate_data->do_seamless = false;
+        g_idle_add(main_migrate_handshake_done, c->migrate_data);
+    } else {
+        SpiceMsgcMainMigrateDstDoSeamless msg_data;
+        SpiceMsgOut *msg_out;
+
+        msg_data.src_version = c->migrate_data->src_mig_version;
+
+        msg_out = spice_msg_out_new(channel, SPICE_MSGC_MAIN_MIGRATE_DST_DO_SEAMLESS);
+        msg_out->marshallers->msgc_main_migrate_dst_do_seamless(msg_out->marshaller, &msg_data);
+        spice_msg_out_send_internal(msg_out);
+    }
+}
+
 /* main context */
 static void migrate_channel_event_cb(SpiceChannel *channel, SpiceChannelEvent event,
                                      gpointer data)
@@ -1584,13 +1615,22 @@ static void migrate_channel_event_cb(SpiceChannel *channel, SpiceChannelEvent ev
     g_return_if_fail(mig->nchannels > 0);
     g_signal_handlers_disconnect_by_func(channel, migrate_channel_event_cb, data);
 
-    session = spice_channel_get_session(mig->channel);
+    session = spice_channel_get_session(mig->src_channel);
 
     switch (event) {
     case SPICE_CHANNEL_OPENED:
-        c->state = SPICE_CHANNEL_STATE_MIGRATING;
 
         if (c->channel_type == SPICE_CHANNEL_MAIN) {
+            if (mig->do_seamless) {
+                SpiceMainChannelPrivate *main_priv = SPICE_MAIN_CHANNEL(channel)->priv;
+
+                c->state = SPICE_CHANNEL_STATE_MIGRATION_HANDSHAKE;
+                mig->dst_channel = channel;
+                main_priv->migrate_data = mig;
+            } else {
+                c->state = SPICE_CHANNEL_STATE_MIGRATING;
+                mig->nchannels--;
+            }
             /* now connect the rest of the channels */
             GList *channels, *l;
             l = channels = spice_session_get_channels(session);
@@ -1602,9 +1642,11 @@ static void migrate_channel_event_cb(SpiceChannel *channel, SpiceChannelEvent ev
                 migrate_channel_connect(mig, curc->channel_type, curc->channel_id);
             }
             g_list_free(channels);
+        } else {
+            c->state = SPICE_CHANNEL_STATE_MIGRATING;
+            mig->nchannels--;
         }
 
-        mig->nchannels--;
         SPICE_DEBUG("migration: channel opened chan:%p, left %d", channel, mig->nchannels);
         if (mig->nchannels == 0)
             coroutine_yieldto(mig->from, NULL);
@@ -1614,6 +1656,22 @@ static void migrate_channel_event_cb(SpiceChannel *channel, SpiceChannelEvent ev
         /* go back to main channel to report error */
         coroutine_yieldto(mig->from, NULL);
     }
+}
+
+/* main context */
+static gboolean main_migrate_handshake_done(gpointer data)
+{
+    spice_migrate *mig = data;
+    SpiceChannelPrivate  *c = SPICE_CHANNEL(mig->dst_channel)->priv;
+
+    g_return_val_if_fail(c->channel_type == SPICE_CHANNEL_MAIN, FALSE);
+    g_return_val_if_fail(c->state == SPICE_CHANNEL_STATE_MIGRATION_HANDSHAKE, FALSE);
+
+    c->state = SPICE_CHANNEL_STATE_MIGRATING;
+    mig->nchannels--;
+    if (mig->nchannels == 0)
+        coroutine_yieldto(mig->from, NULL);
+    return FALSE;
 }
 
 #ifdef __GNUC__
@@ -1638,10 +1696,10 @@ static gboolean migrate_connect(gpointer data)
     g_return_val_if_fail(mig != NULL, FALSE);
     g_return_val_if_fail(mig->info != NULL, FALSE);
     g_return_val_if_fail(mig->nchannels == 0, FALSE);
-    c = SPICE_CHANNEL(mig->channel)->priv;
+    c = SPICE_CHANNEL(mig->src_channel)->priv;
     g_return_val_if_fail(c != NULL, FALSE);
 
-    session = spice_channel_get_session(mig->channel);
+    session = spice_channel_get_session(mig->src_channel);
     mig->session = spice_session_new_from_session(session);
 
     if ((c->peer_hdr.major_version == 1) &&
@@ -1692,7 +1750,7 @@ static gboolean migrate_connect(gpointer data)
     g_signal_connect(mig->session, "channel-new",
                      G_CALLBACK(migrate_channel_new_cb), mig);
 
-    g_signal_emit(mig->channel, signals[SPICE_MIGRATION_STARTED], 0,
+    g_signal_emit(mig->src_channel, signals[SPICE_MIGRATION_STARTED], 0,
                   mig->session);
 
     /* the migration process is in 2 steps, first the main channel and
@@ -1703,16 +1761,22 @@ static gboolean migrate_connect(gpointer data)
 }
 
 /* coroutine context */
-static void main_handle_migrate_begin(SpiceChannel *channel, SpiceMsgIn *in)
+static void main_migrate_connect(SpiceChannel *channel,
+                                 SpiceMigrationDstInfo *dst_info, bool do_seamless,
+                                 uint32_t src_mig_version)
 {
-    SpiceMsgMainMigrationBegin *msg = spice_msg_in_parsed(in);
+    SpiceMainChannelPrivate *main_priv = SPICE_MAIN_CHANNEL(channel)->priv;
     spice_migrate mig = { 0, };
     SpiceMsgOut *out;
     int reply_type;
 
-    mig.channel = channel;
-    mig.info = &msg->dst_info;
+    mig.src_channel = channel;
+    mig.info = dst_info;
     mig.from = coroutine_self();
+    mig.do_seamless = do_seamless;
+    mig.src_mig_version = src_mig_version;
+
+    main_priv->migrate_data = &mig;
 
     /* no need to track idle, call is sync for this coroutine */
     g_idle_add(migrate_connect, &mig);
@@ -1725,14 +1789,55 @@ static void main_handle_migrate_begin(SpiceChannel *channel, SpiceMsgIn *in)
         reply_type = SPICE_MSGC_MAIN_MIGRATE_CONNECT_ERROR;
         spice_session_disconnect(mig.session);
     } else {
-        SPICE_DEBUG("migration: connections all ok");
-        reply_type = SPICE_MSGC_MAIN_MIGRATE_CONNECTED;
+        if (mig.do_seamless) {
+            SPICE_DEBUG("migration (seamless): connections all ok");
+            reply_type = SPICE_MSGC_MAIN_MIGRATE_CONNECTED_SEAMLESS;
+        } else {
+            SPICE_DEBUG("migration (semi-seamless): connections all ok");
+            reply_type = SPICE_MSGC_MAIN_MIGRATE_CONNECTED;
+        }
         spice_session_set_migration(spice_channel_get_session(channel), mig.session);
     }
     g_object_unref(mig.session);
 
     out = spice_msg_out_new(SPICE_CHANNEL(channel), reply_type);
     spice_msg_out_send(out);
+}
+
+/* coroutine context */
+static void main_handle_migrate_begin(SpiceChannel *channel, SpiceMsgIn *in)
+{
+    SpiceMsgMainMigrationBegin *msg = spice_msg_in_parsed(in);
+
+    main_migrate_connect(channel, &msg->dst_info, false, 0);
+}
+
+/* coroutine context */
+static void main_handle_migrate_begin_seamless(SpiceChannel *channel, SpiceMsgIn *in)
+{
+    SpiceMsgMainMigrateBeginSeamless *msg = spice_msg_in_parsed(in);
+
+    main_migrate_connect(channel, &msg->dst_info, true, msg->src_mig_version);
+}
+
+static void main_handle_migrate_dst_seamless_ack(SpiceChannel *channel, SpiceMsgIn *in)
+{
+    SpiceChannelPrivate  *c = SPICE_CHANNEL(channel)->priv;
+    SpiceMainChannelPrivate *main_priv = SPICE_MAIN_CHANNEL(channel)->priv;
+
+    g_return_if_fail(c->state == SPICE_CHANNEL_STATE_MIGRATION_HANDSHAKE);
+    main_priv->migrate_data->do_seamless = true;
+    g_idle_add(main_migrate_handshake_done, main_priv->migrate_data);
+}
+
+static void main_handle_migrate_dst_seamless_nack(SpiceChannel *channel, SpiceMsgIn *in)
+{
+    SpiceChannelPrivate  *c = SPICE_CHANNEL(channel)->priv;
+    SpiceMainChannelPrivate *main_priv = SPICE_MAIN_CHANNEL(channel)->priv;
+
+    g_return_if_fail(c->state == SPICE_CHANNEL_STATE_MIGRATION_HANDSHAKE);
+    main_priv->migrate_data->do_seamless = false;
+    g_idle_add(main_migrate_handshake_done, main_priv->migrate_data);
 }
 
 /* main context */
@@ -1848,7 +1953,10 @@ static const spice_msg_handler main_handlers[] = {
     [ SPICE_MSG_MAIN_MIGRATE_END ]         = main_handle_migrate_end,
     [ SPICE_MSG_MAIN_MIGRATE_CANCEL ]      = main_handle_migrate_cancel,
     [ SPICE_MSG_MAIN_MIGRATE_SWITCH_HOST ] = main_handle_migrate_switch_host,
-    [ SPICE_MSG_MAIN_AGENT_CONNECTED_TOKENS ] = main_handle_agent_connected_tokens,
+    [ SPICE_MSG_MAIN_AGENT_CONNECTED_TOKENS ]   = main_handle_agent_connected_tokens,
+    [ SPICE_MSG_MAIN_MIGRATE_BEGIN_SEAMLESS ]   = main_handle_migrate_begin_seamless,
+    [ SPICE_MSG_MAIN_MIGRATE_DST_SEAMLESS_ACK]  = main_handle_migrate_dst_seamless_ack,
+    [ SPICE_MSG_MAIN_MIGRATE_DST_SEAMLESS_NACK] = main_handle_migrate_dst_seamless_nack,
 };
 
 /* coroutine context */
@@ -1856,10 +1964,20 @@ static void spice_main_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
 {
     int type = spice_msg_in_type(msg);
     SpiceChannelClass *parent_class;
+    SpiceChannelPrivate *c = SPICE_CHANNEL(channel)->priv;
 
     g_return_if_fail(type < SPICE_N_ELEMENTS(main_handlers));
 
     parent_class = SPICE_CHANNEL_CLASS(spice_main_channel_parent_class);
+
+    if (c->state == SPICE_CHANNEL_STATE_MIGRATION_HANDSHAKE) {
+        if (type != SPICE_MSG_MAIN_MIGRATE_DST_SEAMLESS_ACK &&
+            type != SPICE_MSG_MAIN_MIGRATE_DST_SEAMLESS_NACK) {
+            g_critical("unexpected msg (%d)."
+                       "Only MIGRATE_DST_SEAMLESS_ACK/NACK are allowed", type);
+            return;
+        }
+    }
 
     if (main_handlers[type] != NULL)
         main_handlers[type](channel, msg);
