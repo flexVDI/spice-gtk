@@ -1804,6 +1804,7 @@ int main(int argc, char *argv[])
     GOptionContext *context;
     spice_connection *conn;
     gchar *conf_file, *conf;
+    char *host = NULL, *port = NULL, *tls_port = NULL;
 
 #if !GLIB_CHECK_VERSION(2,31,18)
     g_thread_init(NULL);
@@ -1869,8 +1870,25 @@ int main(int argc, char *argv[])
     conn = connection_new();
     spice_set_session_option(conn->session);
     spice_cmdline_session_setup(conn->session);
-    connection_connect(conn);
 
+    g_object_get(conn->session,
+                 "host", &host,
+                 "port", &port,
+                 "tls-port", &tls_port,
+                 NULL);
+    /* If user doesn't provide hostname and port, show the dialog window
+       instead of connecting to server automatically */
+    if (host == NULL || (port == NULL && tls_port == NULL)) {
+        int ret = connect_dialog(conn->session);
+        if (ret != 0) {
+            exit(0);
+        }
+    }
+    g_free(host);
+    g_free(port);
+    g_free(tls_port);
+
+    connection_connect(conn);
     if (connections > 0)
         g_main_loop_run(mainloop);
     g_main_loop_unref(mainloop);
