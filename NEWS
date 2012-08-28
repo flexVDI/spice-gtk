@@ -1,3 +1,15 @@
+v0.13
+=====
+
+- ABI break! SONAME has been bumped, all programs and libraries
+  linking to spice-gtk need to be recompiled against this version
+- Add support for USB device redirection on Windows
+- Add monitors config support (multiple monitors in same display)
+- Inhibit automount on GNOME desktop, to ease USB redirection
+- Better video support (reduce some glitches)
+- Misc migration fixes
+- Various bug fixes and improvements
+
 v0.12
 =====
 
