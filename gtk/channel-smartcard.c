@@ -133,12 +133,14 @@ static void spice_smartcard_channel_init(SpiceSmartcardChannel *channel)
 static void spice_smartcard_channel_constructed(GObject *object)
 {
     SpiceSession *s = spice_channel_get_session(SPICE_CHANNEL(object));
-    SpiceSmartcardChannel *channel = SPICE_SMARTCARD_CHANNEL(object);
-    SpiceSmartcardManager *manager = spice_smartcard_manager_get();
-
 
     g_return_if_fail(s != NULL);
+
+#ifdef USE_SMARTCARD
     if (!s->priv->migration_copy) {
+        SpiceSmartcardChannel *channel = SPICE_SMARTCARD_CHANNEL(object);
+        SpiceSmartcardManager *manager = spice_smartcard_manager_get();
+
         g_signal_connect(G_OBJECT(manager), "reader-added",
                          (GCallback)reader_added_cb, channel);
         g_signal_connect(G_OBJECT(manager), "reader-removed",
@@ -148,6 +150,7 @@ static void spice_smartcard_channel_constructed(GObject *object)
         g_signal_connect(G_OBJECT(manager), "card-removed",
                          (GCallback)card_removed_cb, channel);
     }
+#endif
 
     if (G_OBJECT_CLASS(spice_smartcard_channel_parent_class)->constructed)
         G_OBJECT_CLASS(spice_smartcard_channel_parent_class)->constructed(object);
