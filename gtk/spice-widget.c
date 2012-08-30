@@ -196,9 +196,7 @@ static void scaling_updated(SpiceDisplay *display)
 
     recalc_geometry(GTK_WIDGET(display));
     if (d->ximage && window) { /* if not yet shown */
-        int ww, wh;
-        gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
-        gtk_widget_queue_draw_area(GTK_WIDGET(display), 0, 0, ww, wh);
+        gtk_widget_queue_draw(GTK_WIDGET(display));
     }
 }
 
@@ -884,19 +882,12 @@ static void recalc_geometry(GtkWidget *widget)
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     gdouble zoom = 1.0;
 
-    d->mx = 0;
-    d->my = 0;
-    if (!spicex_is_scaled(display)) {
-        if (d->ww > d->area.width)
-            d->mx = (d->ww - d->area.width) / 2;
-        if (d->wh > d->area.height)
-            d->my = (d->wh - d->area.height) / 2;
-    } else
+    if (spicex_is_scaled(display))
         zoom = (gdouble)d->zoom_level / 100;
 
-    SPICE_DEBUG("recalc geom monitor: %d:%d, guest +%d+%d:%dx%d, window %dx%d, zoom %g, offset +%d+%d",
+    SPICE_DEBUG("recalc geom monitor: %d:%d, guest +%d+%d:%dx%d, window %dx%d, zoom %g",
                 d->channel_id, d->monitor_id, d->area.x, d->area.y, d->area.width, d->area.height,
-                d->ww, d->wh, zoom, d->mx, d->my);
+                d->ww, d->wh, zoom);
 
     if (d->resize_guest_enable)
         spice_main_set_display(d->main, get_display_id(display),
@@ -1320,63 +1311,76 @@ static int button_mask_gdk_to_spice(int gdk)
     return spice;
 }
 
+G_GNUC_INTERNAL
+void spicex_transform_input (SpiceDisplay *display,
+                             double window_x, double window_y,
+                             int *input_x, int *input_y)
+{
+    SpiceDisplayPrivate *d = display->priv;
+    int display_x, display_y, display_w, display_h;
+    double is;
+
+    spice_display_get_scaling(display, NULL,
+                              &display_x, &display_y,
+                              &display_w, &display_h);
+
+    /* For input we need a different scaling factor in order to
+       be able to reach the full width of a display. For instance, consider
+       a display of 100 pixels showing in a window 10 pixels wide. The normal
+       scaling factor here would be 100/10==10, but if you then take the largest
+       possible window coordinate, i.e. 9 and multiply by 10 you get 90, not 99,
+       which is the max display coord.
+
+       If you want to be able to reach the last pixel in the window you need
+       max_window_x * input_scale == max_display_x, which is
+       (window_width - 1) * input_scale == (display_width - 1)
+
+       Note, this is the inverse of s (i.e. s ~= 1/is) as we're converting the
+       coordinates in the inverse direction (window -> display) as the fb size
+       (display -> window).
+    */
+    is = (double)(d->area.width-1) / (double)(display_w-1);
+
+    window_x -= display_x;
+    window_y -= display_y;
+
+    *input_x = floor (window_x * is);
+    *input_y = floor (window_y * is);
+}
+
 static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    int ww, wh;
+    int x, y;
 
     if (!d->inputs)
         return true;
     if (d->disable_inputs)
         return true;
 
-    gdk_drawable_get_size(gtk_widget_get_window(widget), &ww, &wh);
-    if (spicex_is_scaled(display) && (d->area.width != ww || d->area.height != wh)) {
-        double sx, sy;
-        sx = (double)d->area.width / (double)ww;
-        sy = (double)d->area.height / (double)wh;
-
-        /* Scaling the desktop, so scale the mouse coords by the same.
-         * Ratio for the rounding used:
-         * 1) We should be able to send mouse coords for all 4 corner pixels
-         * 2) The GdkMotion events are double's, so we've X.Xfrac and Y.Yfrac
-         * 3) The X and Y integer values always go from 0 - (ww/wh - 1)
-         * 4) Note that even if Xfrac = .99999, X will still go from 0 - (ww-1)
-         *    so x will go from 0.99999 - (ww-1).99999
-         * 5) Given 4, the only way to be sure we can always generate 0
-         *    coordinates is to first floor the input coordinates
-         * 6) To avoid rounding errors causing us to be unable to generate
-         *    coordinates for the bottom row / left column of pixels we ceil
-         *    the end result
-         */
-        motion->x = ceil(floor(motion->x) * sx);
-        motion->y = ceil(floor(motion->y) * sy);
-    } else {
-        motion->x -= d->mx;
-        motion->y -= d->my;
-    }
+    spicex_transform_input (display, motion->x, motion->y, &x, &y);
 
     switch (d->mouse_mode) {
     case SPICE_MOUSE_MODE_CLIENT:
-        if (motion->x >= 0 && motion->x < d->area.width &&
-            motion->y >= 0 && motion->y < d->area.height) {
+        if (x >= 0 && x < d->area.width &&
+            y >= 0 && y < d->area.height) {
             spice_inputs_position(d->inputs,
-                                  motion->x + d->area.x, motion->y + d->area.y,
+                                  x + d->area.x, y + d->area.y,
                                   d->channel_id,
                                   button_mask_gdk_to_spice(motion->state));
         }
         break;
     case SPICE_MOUSE_MODE_SERVER:
         if (d->mouse_grab_active) {
-            gint dx = d->mouse_last_x != -1 ? motion->x - d->mouse_last_x : 0;
-            gint dy = d->mouse_last_y != -1 ? motion->y - d->mouse_last_y : 0;
+            gint dx = d->mouse_last_x != -1 ? x - d->mouse_last_x : 0;
+            gint dy = d->mouse_last_y != -1 ? y - d->mouse_last_y : 0;
 
             spice_inputs_motion(d->inputs, dx, dy,
                                 button_mask_gdk_to_spice(motion->state));
 
-            d->mouse_last_x = motion->x;
-            d->mouse_last_y = motion->y;
+            d->mouse_last_x = x;
+            d->mouse_last_y = y;
             mouse_wrap(display, motion);
         }
         break;
@@ -1420,6 +1424,7 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    int x, y;
 
     SPICE_DEBUG("%s %s: button %d, state 0x%x", __FUNCTION__,
             button->type == GDK_BUTTON_PRESS ? "press" : "release",
@@ -1428,16 +1433,12 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
     if (d->disable_inputs)
         return true;
 
-    if (!spicex_is_scaled(display)
-        && d->mouse_mode == SPICE_MOUSE_MODE_CLIENT) {
-        gint x, y;
-
+    spicex_transform_input (display, button->x, button->y, &x, &y);
+    if ((x < 0 || x >= d->area.width ||
+         y < 0 || y >= d->area.height) &&
+        d->mouse_mode == SPICE_MOUSE_MODE_CLIENT) {
         /* rule out clicks in outside region */
-        gtk_widget_get_pointer (widget, &x, &y);
-        x -= d->mx;
-        y -= d->my;
-        if (!(x >= 0 && x < d->area.width && y >= 0 && y < d->area.height))
-            return true;
+        return true;
     }
 
     gtk_widget_grab_focus(widget);
@@ -1856,6 +1857,9 @@ static void invalidate(SpiceChannel *channel,
 {
     SpiceDisplay *display = data;
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    int display_x, display_y;
+    int x1, y1, x2, y2;
+    double s;
     GdkRectangle rect = {
         .x = x,
         .y = y,
@@ -1872,14 +1876,18 @@ static void invalidate(SpiceChannel *channel,
     if (d->convert)
         do_color_convert(display, &rect);
 
-    x = rect.x - d->area.x;
-    y = rect.y - d->area.y;
-    w = rect.width;
-    h = rect.height;
+    spice_display_get_scaling(display, &s,
+                              &display_x, &display_y,
+                              NULL, NULL);
 
-    spicex_image_invalidate(display, &x, &y, &w, &h);
+    x1 = floor ((rect.x - d->area.x) * s);
+    y1 = floor ((rect.y - d->area.y) * s);
+    x2 = ceil ((rect.x - d->area.x + rect.width) * s);
+    y2 = ceil ((rect.y - d->area.y + rect.height) * s);
+
     gtk_widget_queue_draw_area(GTK_WIDGET(display),
-                               x, y, w, h);
+                               display_x + x1, display_y + y1,
+                               x2 - x1, y2-y1);
 }
 
 static void mark(SpiceDisplay *display, gint mark)
@@ -1955,39 +1963,74 @@ static void cursor_hide(SpiceCursorChannel *channel, gpointer data)
 }
 
 G_GNUC_INTERNAL
-void spice_display_get_scaling(SpiceDisplay *display, double *sx, double *sy)
+void spice_display_get_scaling(SpiceDisplay *display,
+                               double *s_out,
+                               int *x_out, int *y_out,
+                               int *w_out, int *h_out)
 {
     SpiceDisplayPrivate *d = display->priv;
     int fbw = d->area.width, fbh = d->area.height;
     int ww, wh;
+    int x, y, w, h;
+    double s;
 
-    if (!spicex_is_scaled(display) || !gtk_widget_get_window(GTK_WIDGET(display))) {
-        *sx = 1.0;
-        *sy = 1.0;
-        return;
+    if (gtk_widget_get_realized (GTK_WIDGET(display)))
+        gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
+    else {
+        ww = fbw;
+        wh = fbh;
     }
 
-    gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
+    if (!spicex_is_scaled(display)) {
+        s = 1.0;
+        x = 0;
+        y = 0;
+        if (ww > d->area.width)
+            x = (ww - d->area.width) / 2;
+        if (wh > d->area.height)
+            y = (wh - d->area.height) / 2;
+        w = fbw;
+        h = fbh;
+    } else {
+        s = MIN ((double)ww / (double)fbw, (double)wh / (double)fbh);
 
-    *sx = (double)ww / (double)fbw;
-    *sy = (double)wh / (double)fbh;
+        /* Round to int size */
+        w = floor (fbw * s + 0.5);
+        h = floor (fbh * s + 0.5);
+
+        /* Center the display */
+        x = (ww - w) / 2;
+        y = (wh - h) / 2;
+    }
+
+    if (s_out)
+        *s_out = s;
+    if (w_out)
+        *w_out = w;
+    if (h_out)
+        *h_out = h;
+    if (x_out)
+        *x_out = x;
+    if (y_out)
+        *y_out = y;
 }
 
 static void cursor_invalidate(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
-    double sx, sy;
+    double s;
+    int x, y;
 
     if (d->mouse_pixbuf == NULL)
         return;
 
-    spice_display_get_scaling(display, &sx, &sy);
+    spice_display_get_scaling(display, &s, &x, &y, NULL, NULL);
 
     gtk_widget_queue_draw_area(GTK_WIDGET(display),
-                               (d->mouse_guest_x + d->mx - d->mouse_hotspot.x - d->area.x) * sx,
-                               (d->mouse_guest_y + d->my - d->mouse_hotspot.y - d->area.y) * sy,
-                               gdk_pixbuf_get_width(d->mouse_pixbuf) * sx,
-                               gdk_pixbuf_get_height(d->mouse_pixbuf) * sy);
+                               floor ((d->mouse_guest_x - d->mouse_hotspot.x - d->area.x) * s) + x,
+                               floor ((d->mouse_guest_y - d->mouse_hotspot.y - d->area.y) * s) + y,
+                               ceil (gdk_pixbuf_get_width(d->mouse_pixbuf) * s),
+                               ceil (gdk_pixbuf_get_height(d->mouse_pixbuf) * s));
 }
 
 static void cursor_move(SpiceCursorChannel *channel, gint x, gint y, gpointer data)

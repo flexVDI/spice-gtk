@@ -77,44 +77,42 @@ G_GNUC_INTERNAL
 void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    double s;
+    int x, y;
     int ww, wh;
+    int w, h;
+
+    spice_display_get_scaling(display, &s, &x, &y, &w, &h);
 
     gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
 
-    /* If we don't have a pixmap, or we're not scaling, then
-       we need to fill with background color */
-    if (!d->ximage ||
-        !d->allow_scaling) {
-        cairo_rectangle(cr, 0, 0, ww, wh);
-        /* Optionally cut out the inner area where the pixmap
-           will be drawn. This avoids 'flashing' since we're
-           not double-buffering. Note we're using the undocumented
-           behaviour of drawing the rectangle from right to left
-           to cut out the whole */
-        if (d->ximage)
-            cairo_rectangle(cr, d->mx + d->area.width, d->my,
-                            -d->area.width, d->area.height);
-        cairo_fill(cr);
-    }
+    /* We need to paint the bg color around the image */
+    cairo_rectangle(cr, 0, 0, ww, wh);
+
+    /* Optionally cut out the inner area where the pixmap
+       will be drawn. This avoids 'flashing' since we're
+       not double-buffering. Note we're using the undocumented
+       behaviour of drawing the rectangle from right to left
+       to cut out the whole */
+    if (d->ximage)
+        cairo_rectangle(cr, x + w, y,
+                        -w, h);
+
+    /* Need to set a real solid color, because the default is usually
+       transparent these days, and non-double buffered windows can't
+       render transparently */
+    cairo_set_source_rgb (cr, 0, 0, 0);
+    cairo_fill(cr);
 
     /* Draw the display */
     if (d->ximage) {
-        if (d->allow_scaling) {
-            double sx, sy;
-            spice_display_get_scaling(display, &sx, &sy);
-            cairo_scale(cr, sx, sy);
-            if (!d->convert)
-                cairo_translate(cr, -d->area.x, -d->area.y);
-            cairo_set_source_surface(cr, d->ximage, 0, 0);
-        } else {
-            cairo_translate(cr, d->mx, d->my);
-            cairo_rectangle(cr, 0, 0, d->area.width, d->area.height);
-            cairo_clip(cr);
-            if (!d->convert)
-                cairo_translate(cr, -d->area.x, -d->area.y);
-            cairo_set_source_surface(cr, d->ximage, 0, 0);
-        }
-        cairo_paint(cr);
+        cairo_translate(cr, x, y);
+        cairo_rectangle(cr, 0, 0, w, h);
+        cairo_scale(cr, s, s);
+        if (!d->convert)
+            cairo_translate(cr, -d->area.x, -d->area.y);
+        cairo_set_source_surface(cr, d->ximage, 0, 0);
+        cairo_fill(cr);
 
         if (d->mouse_mode == SPICE_MOUSE_MODE_SERVER &&
             !d->show_cursor) {
@@ -148,43 +146,6 @@ void spicex_expose_event(SpiceDisplay *display, GdkEventExpose *expose)
     cairo_destroy(cr);
 }
 #endif
-
-G_GNUC_INTERNAL
-void spicex_image_invalidate(SpiceDisplay *display,
-                             gint *x, gint *y, gint *w, gint *h)
-{
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    int ww, wh;
-
-    gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
-
-    if (d->allow_scaling) {
-        double sx, sy;
-
-        /* Scale the exposed region */
-        sx = (double)ww / (double)d->area.width;
-        sy = (double)wh / (double)d->area.height;
-
-        *x *= sx;
-        *y *= sy;
-        *w *= sx;
-        *h *= sy;
-
-        /* FIXME: same hack as gtk-vnc */
-        /* Without this, we get horizontal & vertical line artifacts
-         * when drawing. This "fix" is somewhat dubious though. The
-         * true mistake & fix almost certainly lies elsewhere.
-         */
-        *x -= 2;
-        *y -= 2;
-        *w += 4;
-        *h += 4;
-    } else {
-        /* Offset the Spice region to produce expose region */
-        *x += d->mx;
-        *y += d->my;
-    }
-}
 
 G_GNUC_INTERNAL
 gboolean spicex_is_scaled(SpiceDisplay *display)
