@@ -1640,10 +1640,17 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                               G_PARAM_CONSTRUCT |
                               G_PARAM_STATIC_STRINGS));
 
+    /**
+     * SpiceDisplay:only-downscale:
+     *
+     * If scaling, only scale down, never up.
+     *
+     * Since: 0.14
+     **/
     g_object_class_install_property
         (gobject_class, PROP_ONLY_DOWNSCALE,
          g_param_spec_boolean("only-downscale", "Only Downscale",
-                              "If scaling, only scale down, never up. Since: 0.14",
+                              "If scaling, only scale down, never up",
                               FALSE,
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
