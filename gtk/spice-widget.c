@@ -1503,6 +1503,21 @@ static gboolean configure_event(GtkWidget *widget, GdkEventConfigure *conf)
     return true;
 }
 
+static void realize(GtkWidget *widget)
+{
+    GTK_WIDGET_CLASS(spice_display_parent_class)->realize(widget);
+
+    spicex_image_create(SPICE_DISPLAY(widget));
+}
+
+static void unrealize(GtkWidget *widget)
+{
+    spicex_image_destroy(SPICE_DISPLAY(widget));
+
+    GTK_WIDGET_CLASS(spice_display_parent_class)->unrealize(widget);
+}
+
+
 /* ---------------------------------------------------------------- */
 
 static void spice_display_class_init(SpiceDisplayClass *klass)
@@ -1526,6 +1541,8 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
     gtkwidget_class->button_release_event = button_event;
     gtkwidget_class->configure_event = configure_event;
     gtkwidget_class->scroll_event = scroll_event;
+    gtkwidget_class->realize = realize;
+    gtkwidget_class->unrealize = unrealize;
 
     gobject_class->constructor = spice_display_constructor;
     gobject_class->dispose = spice_display_dispose;
@@ -1838,7 +1855,8 @@ static void update_area(SpiceDisplay *display,
 
     spicex_image_destroy(display);
     d->area = area;
-    spicex_image_create(display);
+    if (gtk_widget_get_realized(GTK_WIDGET(display)))
+        spicex_image_create(display);
     update_size_request(display);
 
     set_monitor_ready(display, true);

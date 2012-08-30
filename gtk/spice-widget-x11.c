@@ -122,6 +122,10 @@ G_GNUC_INTERNAL
 int spicex_image_create(SpiceDisplay *display)
 {
     SpiceDisplayPrivate   *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    if (d->ximage != NULL)
+        return 0;
+
     GdkDrawable     *window = gtk_widget_get_window(GTK_WIDGET(display));
     GdkDisplay      *gtkdpy = gdk_drawable_get_display(window);
     void            *old_handler = NULL;

@@ -37,7 +37,8 @@ int spicex_image_create(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
-    g_return_val_if_fail(d->ximage == NULL, 1);
+    if (d->ximage != NULL)
+        return 0;
 
     if (d->format == SPICE_SURFACE_FMT_16_555 ||
         d->format == SPICE_SURFACE_FMT_16_565) {
