@@ -100,6 +100,7 @@ enum {
     PROP_RESIZE_GUEST,
     PROP_AUTO_CLIPBOARD,
     PROP_SCALING,
+    PROP_ONLY_DOWNSCALE,
     PROP_DISABLE_INPUTS,
     PROP_ZOOM_LEVEL,
     PROP_MONITOR_ID,
@@ -170,10 +171,13 @@ static void spice_display_get_property(GObject    *object,
         break;
     case PROP_SCALING:
         g_value_set_boolean(value, d->allow_scaling);
-	break;
+        break;
+    case PROP_ONLY_DOWNSCALE:
+        g_value_set_boolean(value, d->only_downscale);
+        break;
     case PROP_DISABLE_INPUTS:
         g_value_set_boolean(value, d->disable_inputs);
-	break;
+        break;
     case PROP_ZOOM_LEVEL:
         g_value_set_int(value, d->zoom_level);
         break;
@@ -333,6 +337,10 @@ static void spice_display_set_property(GObject      *object,
         break;
     case PROP_SCALING:
         d->allow_scaling = g_value_get_boolean(value);
+        scaling_updated(display);
+        break;
+    case PROP_ONLY_DOWNSCALE:
+        d->only_downscale = g_value_get_boolean(value);
         scaling_updated(display);
         break;
     case PROP_AUTO_CLIPBOARD:
@@ -1627,6 +1635,15 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
         (gobject_class, PROP_SCALING,
          g_param_spec_boolean("scaling", "Scaling",
                               "Whether we should use scaling",
+                              TRUE,
+                              G_PARAM_READWRITE |
+                              G_PARAM_CONSTRUCT |
+                              G_PARAM_STATIC_STRINGS));
+
+    g_object_class_install_property
+        (gobject_class, PROP_ONLY_DOWNSCALE,
+         g_param_spec_boolean("only-downscale", "Only Downscale",
+                              "If scaling, only scale down, never up. Since: 0.14",
                               FALSE,
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
@@ -1993,6 +2010,9 @@ void spice_display_get_scaling(SpiceDisplay *display,
         h = fbh;
     } else {
         s = MIN ((double)ww / (double)fbw, (double)wh / (double)fbh);
+
+        if (d->only_downscale && s >= 1.0)
+            s = 1.0;
 
         /* Round to int size */
         w = floor (fbw * s + 0.5);
