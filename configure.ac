@@ -8,10 +8,9 @@ AM_CONFIG_HEADER([config.h])
 AC_CONFIG_AUX_DIR([build-aux])
 
 AM_INIT_AUTOMAKE([foreign dist-bzip2 -Wall -Werror])
+m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 LT_INIT
 AM_MAINTAINER_MODE
-
-m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 
 IT_PROG_INTLTOOL([0.40.0])
 GETTEXT_PACKAGE=spice-gtk
