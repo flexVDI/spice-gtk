@@ -77,6 +77,8 @@ G_GNUC_INTERNAL
 void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    cairo_rectangle_int_t rect;
+    cairo_region_t *region;
     double s;
     int x, y;
     int ww, wh;
@@ -87,16 +89,25 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
     gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
 
     /* We need to paint the bg color around the image */
-    cairo_rectangle(cr, 0, 0, ww, wh);
+    rect.x = 0;
+    rect.y = 0;
+    rect.width = ww;
+    rect.height = wh;
+    region = cairo_region_create_rectangle(&rect);
 
     /* Optionally cut out the inner area where the pixmap
        will be drawn. This avoids 'flashing' since we're
-       not double-buffering. Note we're using the undocumented
-       behaviour of drawing the rectangle from right to left
-       to cut out the whole */
-    if (d->ximage)
-        cairo_rectangle(cr, x + w, y,
-                        -w, h);
+       not double-buffering. */
+    if (d->ximage) {
+        rect.x = x;
+        rect.y = y;
+        rect.width = w;
+        rect.height = h;
+        cairo_region_subtract_rectangle(region, &rect);
+    }
+
+    gdk_cairo_region (cr, region);
+    cairo_region_destroy (region);
 
     /* Need to set a real solid color, because the default is usually
        transparent these days, and non-double buffered windows can't
