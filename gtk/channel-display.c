@@ -681,6 +681,7 @@ static void spice_display_channel_reset_capabilities(SpiceChannel *channel)
 {
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_SIZED_STREAM);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_MONITORS_CONFIG);
+    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_COMPOSITE);
 }
 
 static void spice_display_channel_init(SpiceDisplayChannel *channel)
