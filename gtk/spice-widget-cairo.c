@@ -78,7 +78,7 @@ void spicex_image_destroy(SpiceDisplay *display)
 #define cairo_rectangle_int_t GdkRectangle
 #define cairo_region_t GdkRegion
 #define cairo_region_create_rectangle gdk_region_rectangle
-#define cairo_region_subtract_rectangle(_dest,_rect) { GdkRegion *_region = gdk_region_rectangle (_rect); gdk_region_subtract (_dest, _region); }
+#define cairo_region_subtract_rectangle(_dest,_rect) { GdkRegion *_region = gdk_region_rectangle (_rect); gdk_region_subtract (_dest, _region); gdk_region_destroy (_region); }
 #define cairo_region_destroy gdk_region_destroy
 #endif
 
