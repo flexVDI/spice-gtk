@@ -123,6 +123,7 @@ static void del_window(spice_connection *conn, SpiceWindow *win);
 /* options */
 static gboolean fullscreen = false;
 static gboolean version = false;
+static char *spicy_title = NULL;
 /* globals */
 static GMainLoop     *mainloop = NULL;
 static int           connections = 0;
@@ -1173,7 +1174,12 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
 
     /* toplevel */
     win->toplevel = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    snprintf(title, sizeof(title), _("spice display %d:%d"), id, monitor_id);
+    if (spicy_title == NULL) {
+        snprintf(title, sizeof(title), _("spice display %d:%d"), id, monitor_id);
+    } else {
+        snprintf(title, sizeof(title), "%s", spicy_title);
+    }
+
     gtk_window_set_title(GTK_WINDOW(win->toplevel), title);
     g_signal_connect(G_OBJECT(win->toplevel), "window-state-event",
                      G_CALLBACK(window_state_cb), win);
@@ -1741,6 +1747,12 @@ static GOptionEntry cmd_entries[] = {
         .arg_data         = &version,
         .description      = N_("Display version and quit"),
     },{
+        .long_name        = "title",
+        .arg              = G_OPTION_ARG_STRING,
+        .arg_data         = &spicy_title,
+        .description      = N_("Set the window title"),
+        .arg_description  = N_("<title>"),
+    },{
         /* end of list */
     }
 };
@@ -1906,6 +1918,8 @@ int main(int argc, char *argv[])
     g_free(conf_file);
     g_free(conf);
     g_key_file_free(keyfile);
+
+    g_free(spicy_title);
 
     return 0;
 }
