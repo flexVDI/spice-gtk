@@ -35,6 +35,8 @@ EXTRA_DIST =					\
 	keymap-gen.pl				\
 	keymaps.csv				\
 	map-file				\
+	spice-glib-sym-file			\
+	spice-gtk-sym-file			\
 	spice-client-gtk-manual.defs		\
 	spice-client-gtk.override		\
 	spice-marshal.txt			\
