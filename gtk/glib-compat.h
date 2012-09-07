@@ -67,13 +67,6 @@ type_name##_get_type (void) \
 #define G_TYPE_ERROR (spice_error_get_type ())
 GType spice_error_get_type (void) G_GNUC_CONST;
 
-#if    __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 5)
-#define G_GNUC_DEPRECATED_FOR(f)                        \
-  __attribute__((deprecated("Use " #f " instead")))
-#else
-#define G_GNUC_DEPRECATED_FOR(f)        G_GNUC_DEPRECATED
-#endif /* __GNUC__ */
-
 #define G_PARAM_DEPRECATED  (1 << 31)
 #endif /* glib 2.26 */
 
@@ -124,15 +117,6 @@ GType spice_main_context_get_type (void) G_GNUC_CONST;
     if (_p)                                                                    \
       _destroy (_p);                                                           \
   } G_STMT_END
-#endif
-
-#ifndef G_GNUC_DEPRECATED_FOR
-#if    __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 5)
-#define G_GNUC_DEPRECATED_FOR(f)                        \
-  __attribute__((deprecated("Use " #f " instead")))
-#else
-#define G_GNUC_DEPRECATED_FOR(f)        G_GNUC_DEPRECATED
-#endif /* __GNUC__ */
 #endif
 
 #endif /* GLIB_COMPAT_H */
