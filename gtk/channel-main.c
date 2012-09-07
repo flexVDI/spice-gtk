@@ -1041,7 +1041,7 @@ static void agent_announce_caps(SpiceMainChannel *channel)
 }
 
 #define HAS_CLIPBOARD_SELECTION(c) \
-    VD_AGENT_HAS_CAPABILITY((c)->agent_caps, sizeof((c)->agent_caps), VD_AGENT_CAP_CLIPBOARD_SELECTION)
+    VD_AGENT_HAS_CAPABILITY((c)->agent_caps, G_N_ELEMENTS((c)->agent_caps), VD_AGENT_CAP_CLIPBOARD_SELECTION)
 
 /* any context: the message is not flushed immediately,
    you can wakeup() the channel coroutine or send_msg_queue() */
@@ -1058,7 +1058,7 @@ static void agent_clipboard_grab(SpiceMainChannel *channel, guint selection,
         return;
 
     g_return_if_fail(VD_AGENT_HAS_CAPABILITY(c->agent_caps,
-        sizeof(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
+        G_N_ELEMENTS(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
 
     size = sizeof(VDAgentClipboardGrab) + sizeof(uint32_t) * ntypes;
     if (HAS_CLIPBOARD_SELECTION(c))
@@ -1098,7 +1098,7 @@ static void agent_clipboard_notify(SpiceMainChannel *channel, guint selection,
     g_return_if_fail(c->agent_connected);
 
     g_return_if_fail(VD_AGENT_HAS_CAPABILITY(c->agent_caps,
-        sizeof(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
+        G_N_ELEMENTS(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
 
     msgsize = sizeof(VDAgentClipboard);
     if (HAS_CLIPBOARD_SELECTION(c))
@@ -1134,7 +1134,7 @@ static void agent_clipboard_request(SpiceMainChannel *channel, guint selection, 
     g_return_if_fail(c->agent_connected);
 
     g_return_if_fail(VD_AGENT_HAS_CAPABILITY(c->agent_caps,
-        sizeof(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
+        G_N_ELEMENTS(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
 
     msgsize = sizeof(VDAgentClipboardRequest);
     if (HAS_CLIPBOARD_SELECTION(c))
@@ -1170,7 +1170,7 @@ static void agent_clipboard_release(SpiceMainChannel *channel, guint selection)
     g_return_if_fail(c->agent_connected);
 
     g_return_if_fail(VD_AGENT_HAS_CAPABILITY(c->agent_caps,
-        sizeof(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
+        G_N_ELEMENTS(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
 
     if (HAS_CLIPBOARD_SELECTION(c)) {
         msg[0] = selection;
@@ -1398,7 +1398,7 @@ static void main_agent_handle_msg(SpiceChannel *channel,
     case VD_AGENT_CLIPBOARD_REQUEST:
     case VD_AGENT_CLIPBOARD_GRAB:
     case VD_AGENT_CLIPBOARD:
-        if (VD_AGENT_HAS_CAPABILITY(c->agent_caps, sizeof(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_SELECTION)) {
+        if (VD_AGENT_HAS_CAPABILITY(c->agent_caps, G_N_ELEMENTS(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_SELECTION)) {
             selection = *((guint8*)payload);
             payload = ((guint8*)payload) + 4;
             msg->size -= 4;
@@ -1431,7 +1431,7 @@ static void main_agent_handle_msg(SpiceChannel *channel,
         if (caps->request)
             agent_announce_caps(SPICE_MAIN_CHANNEL(channel));
 
-        if (VD_AGENT_HAS_CAPABILITY(caps->caps, sizeof(c->agent_caps), VD_AGENT_CAP_DISPLAY_CONFIG) &&
+        if (VD_AGENT_HAS_CAPABILITY(caps->caps, G_N_ELEMENTS(c->agent_caps), VD_AGENT_CAP_DISPLAY_CONFIG) &&
             !c->agent_display_config_sent) {
             agent_display_config(SPICE_MAIN_CHANNEL(channel));
             agent_send_msg_queue(SPICE_MAIN_CHANNEL(channel));
@@ -2021,7 +2021,7 @@ gboolean spice_main_agent_test_capability(SpiceMainChannel *channel, guint32 cap
     if (!c->agent_caps_received)
         return FALSE;
 
-    return VD_AGENT_HAS_CAPABILITY(c->agent_caps, sizeof(c->agent_caps), cap);
+    return VD_AGENT_HAS_CAPABILITY(c->agent_caps, G_N_ELEMENTS(c->agent_caps), cap);
 }
 
 /**
