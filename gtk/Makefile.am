@@ -58,7 +58,7 @@ endif
 
 if HAVE_LD_VERSION_SCRIPT
 GLIB_VERSION_LDFLAGS = -Wl,--version-script=${srcdir}/map-file
-GTK_VERSION_LD_FLAGS = $(GLIB_VERSION_LDFLAGS)
+GTK_VERSION_LDFLAGS = $(GLIB_VERSION_LDFLAGS)
 else
 GLIB_VERSION_LDFLAGS = -export-symbols ${srcdir}/spice-glib-sym-file
 GTK_VERSION_LDFLAGS = -export-symbols ${srcdir}/spice-gtk-sym-file
