@@ -41,6 +41,9 @@ G_BEGIN_DECLS
 
 #define MAX_SPICE_DATA_HEADER_SIZE sizeof(SpiceDataHeader)
 
+#define CHANNEL_DEBUG(channel, fmt, ...) \
+    SPICE_DEBUG("%s: " fmt, SPICE_CHANNEL(channel)->priv->name, ## __VA_ARGS__)
+
 struct _SpiceMsgOut {
     int                   refcount;
     SpiceChannel          *channel;

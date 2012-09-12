@@ -963,10 +963,10 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
         mon->monitors[j].height = c->display[j].height;
         mon->monitors[j].x = c->display[j].x;
         mon->monitors[j].y = c->display[j].y;
-        SPICE_DEBUG("monitor config: #%d %dx%d+%d+%d @ %d bpp", j,
-                    mon->monitors[j].width, mon->monitors[j].height,
-                    mon->monitors[j].x, mon->monitors[j].y,
-                    mon->monitors[j].depth);
+        CHANNEL_DEBUG(channel, "monitor config: #%d %dx%d+%d+%d @ %d bpp", j,
+                      mon->monitors[j].width, mon->monitors[j].height,
+                      mon->monitors[j].x, mon->monitors[j].y,
+                      mon->monitors[j].depth);
         j++;
     }
 
@@ -1009,7 +1009,7 @@ static void agent_display_config(SpiceMainChannel *channel)
         config.depth = c->display_color_depth;
     }
 
-    SPICE_DEBUG("display_config: flags: %u, depth: %u", config.flags, config.depth);
+    CHANNEL_DEBUG(channel, "display_config: flags: %u, depth: %u", config.flags, config.depth);
 
     agent_msg_queue(channel, VD_AGENT_DISPLAY_CONFIG, sizeof(VDAgentDisplayConfig), &config);
 }
@@ -1064,7 +1064,7 @@ static void agent_clipboard_grab(SpiceMainChannel *channel, guint selection,
     if (HAS_CLIPBOARD_SELECTION(c))
         size += 4;
     else if (selection != VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD) {
-        SPICE_DEBUG("Ignoring clipboard grab");
+        CHANNEL_DEBUG(channel, "Ignoring clipboard grab");
         return;
     }
 
@@ -1104,7 +1104,7 @@ static void agent_clipboard_notify(SpiceMainChannel *channel, guint selection,
     if (HAS_CLIPBOARD_SELECTION(c))
         msgsize += 4;
     else if (selection != VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD) {
-        SPICE_DEBUG("Ignoring clipboard notify");
+        CHANNEL_DEBUG(channel, "Ignoring clipboard notify");
         return;
     }
 

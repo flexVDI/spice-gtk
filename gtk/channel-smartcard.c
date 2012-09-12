@@ -327,8 +327,8 @@ static void smartcard_message_send(SpiceSmartcardChannel *channel,
     if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
         return;
 
-    SPICE_DEBUG("smartcard: send message %d, %s",
-                msg_type, queue ? "queued" : "now");
+    CHANNEL_DEBUG(channel, "send message %d, %s",
+                  msg_type, queue ? "queued" : "now");
     if (!queue) {
         spice_msg_out_send(msg_out);
         return;
@@ -501,11 +501,11 @@ static void handle_smartcard_msg(SpiceChannel *channel, SpiceMsgIn *in)
     VReader *reader;
 
     priv = SPICE_SMARTCARD_CHANNEL_GET_PRIVATE(channel);
-    SPICE_DEBUG("smartcard: handle msg %d", msg->type);
+    CHANNEL_DEBUG(channel, "handle msg %d", msg->type);
     switch (msg->type) {
         case VSC_Error:
             g_return_if_fail(priv->in_flight_message != NULL);
-            SPICE_DEBUG("smartcard: in flight %d", priv->in_flight_message->message_type);
+            CHANNEL_DEBUG(channel, "in flight %d", priv->in_flight_message->message_type);
             switch (priv->in_flight_message->message_type) {
                 case VSC_ReaderAdd:
                     g_return_if_fail(priv->pending_reader_additions != NULL);

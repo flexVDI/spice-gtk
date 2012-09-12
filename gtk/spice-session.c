@@ -1310,19 +1310,19 @@ void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel)
 
     id = spice_channel_get_channel_id(channel);
     type = spice_channel_get_channel_type(channel);
-    SPICE_DEBUG("migrating channel id:%d type:%d", id, type);
+    CHANNEL_DEBUG(channel, "migrating channel id:%d type:%d", id, type);
 
     c = spice_session_lookup_channel(s->migration, id, type);
     g_return_if_fail(c != NULL);
 
     if (!g_queue_is_empty(&c->priv->xmit_queue) && s->full_migration) {
-        SPICE_DEBUG("mig channel xmit queue is not empty. type %s", c->priv->name);
+        CHANNEL_DEBUG(channel, "mig channel xmit queue is not empty. type %s", c->priv->name);
     }
     spice_channel_swap(channel, c, !s->full_migration);
     s->migration_left = g_list_remove(s->migration_left, channel);
 
     if (g_list_length(s->migration_left) == 0) {
-        SPICE_DEBUG("all channel migrated");
+        CHANNEL_DEBUG(channel, "all channel migrated");
         spice_session_disconnect(s->migration);
         g_object_unref(s->migration);
         s->migration = NULL;
@@ -1537,22 +1537,22 @@ static GSocket *channel_connect_socket(SpiceChannel *channel,
     if (!g_socket_connect(sock, sockaddr, NULL, error)) {
         if (*error && (*error)->code == G_IO_ERROR_PENDING) {
             g_clear_error(error);
-            SPICE_DEBUG("Socket pending");
+            CHANNEL_DEBUG(channel, "Socket pending");
             g_coroutine_socket_wait(&c->coroutine, sock, G_IO_OUT | G_IO_ERR | G_IO_HUP);
 
             if (!g_socket_check_connect_result(sock, error)) {
-                SPICE_DEBUG("Failed to connect %s", (*error)->message);
+                CHANNEL_DEBUG(channel, "Failed to connect %s", (*error)->message);
                 g_object_unref(sock);
                 return NULL;
             }
         } else {
-            SPICE_DEBUG("Socket error: %s", *error ? (*error)->message : "unknown");
+            CHANNEL_DEBUG(channel, "Socket error: %s", *error ? (*error)->message : "unknown");
             g_object_unref(sock);
             return NULL;
         }
     }
 
-    SPICE_DEBUG("Finally connected");
+    CHANNEL_DEBUG(channel, "Finally connected");
 
     return sock;
 }
@@ -1625,7 +1625,7 @@ void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel)
         if (s->color_depth != 0)
             g_object_set(channel, "color-depth", s->color_depth, NULL);
 
-        SPICE_DEBUG("new main channel, switching");
+        CHANNEL_DEBUG(channel, "new main channel, switching");
         s->cmain = channel;
     }
 
@@ -1655,7 +1655,7 @@ void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel)
     g_return_if_fail(ring != NULL);
 
     if (channel == s->cmain) {
-        SPICE_DEBUG("the session lost the main channel");
+        CHANNEL_DEBUG(channel, "the session lost the main channel");
         s->cmain = NULL;
     }
 

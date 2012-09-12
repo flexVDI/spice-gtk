@@ -197,7 +197,7 @@ static SpiceMsgOut* mouse_position(SpiceInputsChannel *channel)
     if (c->dpy == -1)
         return NULL;
 
-    /* SPICE_DEBUG("%s: +%d+%d", __FUNCTION__, c->x, c->y); */
+    /* CHANNEL_DEBUG(channel, "%s: +%d+%d", __FUNCTION__, c->x, c->y); */
     position.buttons_state = c->bs;
     position.x             = c->x;
     position.y             = c->y;
@@ -366,7 +366,7 @@ void spice_inputs_position(SpiceInputsChannel *channel, gint x, gint y,
     if (c->motion_count < SPICE_INPUT_MOTION_ACK_BUNCH * 2) {
         send_position(channel);
     } else {
-        SPICE_DEBUG("over SPICE_INPUT_MOTION_ACK_BUNCH * 2, dropping");
+        CHANNEL_DEBUG(channel, "over SPICE_INPUT_MOTION_ACK_BUNCH * 2, dropping");
     }
 }
 
@@ -545,7 +545,7 @@ void spice_inputs_key_press_and_release(SpiceInputsChannel *input_channel, guint
         *code = spice_make_scancode(scancode, TRUE);
         spice_msg_out_send(msg);
     } else {
-        SPICE_DEBUG("The server doesn't support atomic press and release");
+        CHANNEL_DEBUG(channel, "The server doesn't support atomic press and release");
         spice_inputs_key_press(input_channel, scancode);
         spice_inputs_key_release(input_channel, scancode);
     }

@@ -410,7 +410,7 @@ gboolean spice_display_get_primary(SpiceChannel *channel, guint32 surface_id,
     primary->shmid = surface->shmid;
     primary->data = surface->data;
     primary->marked = c->mark;
-    SPICE_DEBUG("get primary %p", primary->data);
+    CHANNEL_DEBUG(channel, "get primary %p", primary->data);
 
     return TRUE;
 }
@@ -714,7 +714,7 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
         if (primary) {
             if (primary->width == surface->width &&
                 primary->height == surface->height) {
-                SPICE_DEBUG("Reusing existing primary surface");
+                CHANNEL_DEBUG(channel, "Reusing existing primary surface");
                 return 0;
             }
 
@@ -724,7 +724,7 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
             free(primary);
         }
 
-        SPICE_DEBUG("display: create primary canvas");
+        CHANNEL_DEBUG(channel, "Create primary canvas");
 #ifdef HAVE_SYS_SHM_H
         surface->shmid = shmget(IPC_PRIVATE, surface->size, IPC_CREAT | 0777);
         if (surface->shmid >= 0) {
@@ -842,7 +842,7 @@ static void clear_surfaces(SpiceChannel *channel, gboolean keep_primary)
         item = ring_next(&c->surfaces, item);
 
         if (keep_primary && surface->primary) {
-            SPICE_DEBUG("keeping exisiting primary surface, migration or reset");
+            CHANNEL_DEBUG(channel, "keeping exisiting primary surface, migration or reset");
             continue;
         }
 
@@ -876,8 +876,8 @@ static void spice_display_channel_up(SpiceChannel *channel)
                  "cache-size", &cache_size,
                  "glz-window-size", &glz_window_size,
                  NULL);
-    SPICE_DEBUG("%s: cache_size %d, glz_window_size %d (bytes)", __FUNCTION__,
-                cache_size, glz_window_size);
+    CHANNEL_DEBUG(channel, "%s: cache_size %d, glz_window_size %d (bytes)", __FUNCTION__,
+                  cache_size, glz_window_size);
     init.pixmap_cache_id = 1;
     init.glz_dictionary_id = 1;
     init.pixmap_cache_size = cache_size / 4; /* pixels */
@@ -925,7 +925,7 @@ static void display_handle_mark(SpiceChannel *channel, SpiceMsgIn *in)
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     display_surface *surface = find_surface(c, 0);
 
-    SPICE_DEBUG("%s", __FUNCTION__);
+    CHANNEL_DEBUG(channel, "%s", __FUNCTION__);
     g_return_if_fail(surface != NULL);
 #ifdef EXTRA_CHECKS
     g_warn_if_fail(c->mark == FALSE);
@@ -941,7 +941,7 @@ static void display_handle_reset(SpiceChannel *channel, SpiceMsgIn *in)
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     display_surface *surface = find_surface(c, 0);
 
-    SPICE_DEBUG("%s: TODO detach_from_screen", __FUNCTION__);
+    CHANNEL_DEBUG(channel, "%s: TODO detach_from_screen", __FUNCTION__);
 
     if (surface != NULL)
         surface->canvas->ops->clear(surface->canvas);
@@ -1037,7 +1037,7 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
     SpiceMsgDisplayStreamCreate *op = spice_msg_in_parsed(in);
     display_stream *st;
 
-    SPICE_DEBUG("%s: id %d", __FUNCTION__, op->id);
+    CHANNEL_DEBUG(channel, "%s: id %d", __FUNCTION__, op->id);
 
     if (op->id >= c->nstreams) {
         int n = c->nstreams;
@@ -1245,7 +1245,7 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
     mmtime = spice_session_get_mm_time(spice_channel_get_session(channel));
 
     if (spice_msg_in_type(in) == SPICE_MSG_DISPLAY_STREAM_DATA_SIZED) {
-        SPICE_DEBUG("stream %d contains sized data", op->id);
+        CHANNEL_DEBUG(channel, "stream %d contains sized data", op->id);
     }
 
     if (op->multi_media_time == 0) {
@@ -1254,8 +1254,8 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
     }
 
     if (op->multi_media_time < mmtime) {
-        SPICE_DEBUG("stream data too late by %u ms (ts: %u, mmtime: %u), dropin",
-                    mmtime - op->multi_media_time, op->multi_media_time, mmtime);
+        CHANNEL_DEBUG(channel, "stream data too late by %u ms (ts: %u, mmtime: %u), dropin",
+                      mmtime - op->multi_media_time, op->multi_media_time, mmtime);
         return;
     }
 
@@ -1334,7 +1334,7 @@ static void display_handle_stream_destroy(SpiceChannel *channel, SpiceMsgIn *in)
     SpiceMsgDisplayStreamDestroy *op = spice_msg_in_parsed(in);
 
     g_return_if_fail(op != NULL);
-    SPICE_DEBUG("%s: id %d", __FUNCTION__, op->id);
+    CHANNEL_DEBUG(channel, "%s: id %d", __FUNCTION__, op->id);
     destroy_stream(channel, op->id);
 }
 
@@ -1492,7 +1492,7 @@ static void display_handle_surface_destroy(SpiceChannel *channel, SpiceMsgIn *in
     }
     if (surface->primary) {
         int id = spice_channel_get_channel_id(channel);
-        SPICE_DEBUG("%d: FIXME primary destroy, but is display really disabled?", id);
+        CHANNEL_DEBUG(channel, "%d: FIXME primary destroy, but is display really disabled?", id);
         /* this is done with a timeout in spicec as well, it's *ugly* */
         if (id != 0 && c->mark_false_event_id == 0) {
             c->mark_false_event_id = g_timeout_add_seconds(1, display_mark_false, channel);
@@ -1517,7 +1517,7 @@ static void display_handle_monitors_config(SpiceChannel *channel, SpiceMsgIn *in
     g_return_if_fail(config != NULL);
     g_return_if_fail(config->count > 0);
 
-    SPICE_DEBUG("monitors config: n: %d/%d", config->count, config->max_allowed);
+    CHANNEL_DEBUG(channel, "monitors config: n: %d/%d", config->count, config->max_allowed);
 
     c->monitors_max = config->max_allowed;
     if (CLAMP_CHECK(c->monitors_max, 1, MONITORS_MAX)) {
@@ -1535,7 +1535,7 @@ static void display_handle_monitors_config(SpiceChannel *channel, SpiceMsgIn *in
     for (i = 0; i < config->count; i++) {
         SpiceDisplayMonitorConfig *mc = &g_array_index(c->monitors, SpiceDisplayMonitorConfig, i);
         SpiceHead *head = &config->heads[i];
-        SPICE_DEBUG("monitor id: %u, surface id: %u, +%u+%u-%ux%u",
+        CHANNEL_DEBUG(channel, "monitor id: %u, surface id: %u, +%u+%u-%ux%u",
                     head->id, head->surface_id,
                     head->x, head->y, head->width, head->height);
         mc->id = head->id;
