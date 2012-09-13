@@ -337,12 +337,14 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
     guint8 *rgba;
     guint8 val;
 
-    CHANNEL_DEBUG(channel, "%s: type %d, %" PRIx64 ", %dx%d, flags %d, size %d",
-            __FUNCTION__, hdr->type, hdr->unique, hdr->width, hdr->height,
-            scursor->flags, scursor->data_size);
+    CHANNEL_DEBUG(channel, "%s: flags %d, size %d", __FUNCTION__,
+                  scursor->flags, scursor->data_size);
 
     if (scursor->flags & SPICE_CURSOR_FLAGS_NONE)
         return NULL;
+
+    CHANNEL_DEBUG(channel, "%s: type %d, %" PRIx64 ", %dx%d", __FUNCTION__,
+                  hdr->type, hdr->unique, hdr->width, hdr->height);
 
     if (scursor->flags & SPICE_CURSOR_FLAGS_FROM_CACHE) {
         item = cache_find(&c->cursors, hdr->unique);
