@@ -158,7 +158,8 @@ static void cleanup(void)
     if (state == STATE_WAITING_FOR_STDIN_EOF)
         set_facl(path, getuid(), 0);
 
-    g_main_loop_quit(loop);
+    if (loop)
+        g_main_loop_quit(loop);
 }
 
 /* Not available in polkit < 0.101 */
@@ -311,10 +312,31 @@ polkit_authority_get_sync (GCancellable *cancellable, GError **error)
 }
 #endif
 
+#ifndef HAVE_CLEARENV
+extern char **environ;
+
+static int
+clearenv (void)
+{
+        if (environ != NULL)
+                environ[0] = NULL;
+        return 0;
+}
+#endif
+
 int main(void)
 {
     pid_t parent_pid;
     GInputStream *stdin_unix_stream;
+
+  /* Nuke the environment to get a well-known and sanitized
+   * environment to avoid attacks via e.g. the DBUS_SYSTEM_BUS_ADDRESS
+   * environment variable and similar.
+   */
+    if (clearenv () != 0) {
+        FATAL_ERROR("Error clearing environment: %s\n", g_strerror (errno));
+        return 1;
+    }
 
     g_type_init();
 

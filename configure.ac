@@ -244,6 +244,8 @@ else
         EXTERNAL_PNP_IDS="$with_pnp_ids_path"
 fi
 
+AC_CHECK_FUNCS(clearenv)
+
 PKG_CHECK_MODULES(GLIB2, glib-2.0 >= 2.22)
 AC_SUBST(GLIB2_CFLAGS)
 AC_SUBST(GLIB2_LIBS)
