@@ -247,18 +247,15 @@ static int spice_uri_create(SpiceSession *session, char *dest, int len)
 static int spice_uri_parse(SpiceSession *session, const char *original_uri)
 {
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
-    gchar key[32], value[128];
     gchar *host = NULL, *port = NULL, *tls_port = NULL, *uri = NULL, *password = NULL;
-    gchar **target_key;
     gchar *path = NULL;
+    gchar *unescaped_path = NULL;
     gchar *authority = NULL;
     gchar *query = NULL;
 
     g_return_val_if_fail(original_uri != NULL, -1);
 
-    uri = g_uri_unescape_string(original_uri, NULL);
-    g_return_val_if_fail(uri != NULL, -1);
-
+    uri = g_strdup(original_uri);
 
     /* Break up the URI into its various parts, scheme, authority,
      * path (ignored) and query
@@ -308,7 +305,7 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
             tmp++;
             port = g_strdup(tmp);
         }
-        host = g_strdup(authority);
+        host = g_uri_unescape_string(authority, NULL);
     }
 
     if (path && !(g_str_equal(path, "") ||
@@ -316,8 +313,12 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
         g_warning("Unexpected path data '%s' for URI '%s'", path, uri);
         /* don't fail, just ignore */
     }
+    unescaped_path = g_uri_unescape_string(path, NULL);
 
     while (query && query[0] != '\0') {
+        gchar key[32], value[128];
+        gchar **target_key;
+
         int len;
         if (sscanf(query, "%31[-a-zA-Z0-9]=%127[^;&]%n", key, value, &len) != 2) {
             g_warning("Failed to parse URI query '%s'", query);
@@ -344,7 +345,7 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
                 g_warning("Double set of '%s' in URI '%s'", key, uri);
                 goto fail;
             }
-            *target_key = g_strdup(value);
+            *target_key = g_uri_unescape_string(value, NULL);
         }
     }
 
@@ -355,6 +356,7 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
 
     /* parsed ok -> apply */
     g_free(uri);
+    g_free(unescaped_path);
     g_free(s->host);
     g_free(s->port);
     g_free(s->tls_port);
@@ -367,6 +369,7 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
 
 fail:
     g_free(uri);
+    g_free(unescaped_path);
     g_free(host);
     g_free(port);
     g_free(tls_port);
