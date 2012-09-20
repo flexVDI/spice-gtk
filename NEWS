@@ -1,3 +1,16 @@
+v0.14
+=====
+
+- Support for seamless migration
+- Improve scaling handling, add downscale-only property to give more
+  control over scaling
+- Better handle key press/release events in high-latency situations,
+  this should avoid unwanted key repetitions
+- Improve unescaping in URI parsing
+- Fix symbol versioning which was broken in 0.13
+- Fix for CVE-2012-4425
+- Various bug fixes and improvements
+
 v0.13
 =====
 
