@@ -915,7 +915,7 @@ static gpointer spice_usb_device_manager_usb_ev_thread(gpointer user_data)
 
     while (priv->event_thread_run) {
         rc = libusb_handle_events(priv->context);
-        if (rc) {
+        if (rc && rc != LIBUSB_ERROR_INTERRUPTED) {
             const char *desc = spice_usbutil_libusb_strerror(rc);
             g_warning("Error handling USB events: %s [%i]", desc, rc);
         }
