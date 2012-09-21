@@ -249,17 +249,6 @@ static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
         return FALSE;
     }
 
-    /* Start listening for usb channels connect/disconnect */
-    g_signal_connect(priv->session, "channel-new",
-                     G_CALLBACK(channel_new), self);
-    g_signal_connect(priv->session, "channel-destroy",
-                     G_CALLBACK(channel_destroy), self);
-    list = spice_session_get_channels(priv->session);
-    for (it = g_list_first(list); it != NULL; it = g_list_next(it)) {
-        channel_new(priv->session, it->data, (gpointer*)self);
-    }
-    g_list_free(list);
-
     /* Start listening for usb devices plug / unplug */
     priv->udev = g_udev_client_new(subsystems);
     g_signal_connect(G_OBJECT(priv->udev), "uevent",
@@ -275,6 +264,17 @@ static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
     g_list_free(list);
     libusb_free_device_list(priv->coldplug_list, 1);
     priv->coldplug_list = NULL;
+
+    /* Start listening for usb channels connect/disconnect */
+    g_signal_connect(priv->session, "channel-new",
+                     G_CALLBACK(channel_new), self);
+    g_signal_connect(priv->session, "channel-destroy",
+                     G_CALLBACK(channel_destroy), self);
+    list = spice_session_get_channels(priv->session);
+    for (it = g_list_first(list); it != NULL; it = g_list_next(it)) {
+        channel_new(priv->session, it->data, (gpointer*)self);
+    }
+    g_list_free(list);
 
     return TRUE;
 #else
