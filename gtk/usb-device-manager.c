@@ -81,6 +81,7 @@ enum {
     PROP_SESSION,
     PROP_AUTO_CONNECT,
     PROP_AUTO_CONNECT_FILTER,
+    PROP_REDIRECT_ON_CONNECT,
 };
 
 enum
@@ -96,6 +97,7 @@ struct _SpiceUsbDeviceManagerPrivate {
     SpiceSession *session;
     gboolean auto_connect;
     gchar *auto_connect_filter;
+    gchar *redirect_on_connect;
 #ifdef USE_USBREDIR
     libusb_context *context;
     GUdevClient *udev;
@@ -104,7 +106,9 @@ struct _SpiceUsbDeviceManagerPrivate {
     gboolean event_thread_run;
     libusb_device **coldplug_list; /* Avoid needless reprobing during init */
     struct usbredirfilter_rule *auto_conn_filter_rules;
+    struct usbredirfilter_rule *redirect_on_connect_rules;
     int auto_conn_filter_rules_count;
+    int redirect_on_connect_rules_count;
 #endif
     GPtrArray *devices;
     GPtrArray *channels;
@@ -328,6 +332,9 @@ static void spice_usb_device_manager_get_property(GObject     *gobject,
     case PROP_AUTO_CONNECT_FILTER:
         g_value_set_string(value, priv->auto_connect_filter);
         break;
+    case PROP_REDIRECT_ON_CONNECT:
+        g_value_set_string(value, priv->redirect_on_connect);
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
         break;
@@ -369,6 +376,30 @@ static void spice_usb_device_manager_set_property(GObject       *gobject,
 #endif
         g_free(priv->auto_connect_filter);
         priv->auto_connect_filter = g_strdup(filter);
+        break;
+    }
+    case PROP_REDIRECT_ON_CONNECT: {
+        const gchar *filter = g_value_get_string(value);
+#ifdef USE_USBREDIR
+        struct usbredirfilter_rule *rules = NULL;
+        int r = 0, count = 0;
+
+        if (filter)
+            r = usbredirfilter_string_to_rules(filter, ",", "|",
+                                               &rules, &count);
+        if (r) {
+            if (r == -ENOMEM)
+                g_error("Failed to allocate memory for redirect-on-connect");
+            g_warning("Error parsing redirect-on-connect string, keeping old filter\n");
+            break;
+        }
+
+        free(priv->redirect_on_connect_rules);
+        priv->redirect_on_connect_rules = rules;
+        priv->redirect_on_connect_rules_count = count;
+#endif
+        g_free(priv->redirect_on_connect);
+        priv->redirect_on_connect = g_strdup(filter);
         break;
     }
     default:
@@ -443,6 +474,21 @@ static void spice_usb_device_manager_class_init(SpiceUsbDeviceManagerClass *klas
                "0x03,-1,-1,-1,0|-1,-1,-1,-1,1",
                G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_STATIC_STRINGS);
     g_object_class_install_property(gobject_class, PROP_AUTO_CONNECT_FILTER,
+                                    pspec);
+
+    /**
+     * SpiceUsbDeviceManager:redirect-on-connect:
+     *
+     * Set a string specifying a filter selecting USB devices to automatically
+     * redirect after a Spice connection has been established.
+     *
+     * See SpiceUsbDeviceManager:auto-connect-filter: for the filter string
+     * format.
+     */
+    pspec = g_param_spec_string("redirect-on-connect", "Redirect on connect",
+               "Filter selecting USB devices to redirect on connect", NULL,
+               G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+    g_object_class_install_property(gobject_class, PROP_REDIRECT_ON_CONNECT,
                                     pspec);
 
     /**
