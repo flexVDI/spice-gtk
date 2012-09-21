@@ -147,6 +147,8 @@ static void spice_usb_device_manager_uevent_cb(GUdevClient     *client,
                                                gpointer         user_data);
 static void spice_usb_device_manager_add_dev(SpiceUsbDeviceManager  *self,
                                              GUdevDevice            *udev);
+static void spice_usb_device_manager_check_redir_on_connect(
+    SpiceUsbDeviceManager *self, SpiceChannel *channel);
 
 static SpiceUsbDeviceInfo *spice_usb_device_new(libusb_device *libdev);
 static SpiceUsbDevice *spice_usb_device_ref(SpiceUsbDevice *device);
@@ -611,6 +613,8 @@ static void channel_new(SpiceSession *session, SpiceChannel *channel,
                                            self->priv->context);
         spice_channel_connect(channel);
         g_ptr_array_add(self->priv->channels, channel);
+
+        spice_usb_device_manager_check_redir_on_connect(self, channel);
     }
 }
 
@@ -960,6 +964,49 @@ void spice_usb_device_manager_stop_event_listening(
     priv->event_listeners--;
     if (priv->event_listeners == 0)
         priv->event_thread_run = FALSE;
+}
+
+static void spice_usb_device_manager_check_redir_on_connect(
+    SpiceUsbDeviceManager *self, SpiceChannel *channel)
+{
+    SpiceUsbDeviceManagerPrivate *priv = self->priv;
+    GSimpleAsyncResult *result;
+    SpiceUsbDevice *device;
+    libusb_device *libdev;
+    guint i;
+
+    if (priv->redirect_on_connect == NULL)
+        return;
+
+    for (i = 0; i < priv->devices->len; i++) {
+        device = g_ptr_array_index(priv->devices, i);
+
+        if (spice_usb_device_manager_is_device_connected(self, device))
+            continue;
+
+        libdev = spice_usb_device_manager_device_to_libdev(self, device);
+
+        if (usbredirhost_check_device_filter(
+                            priv->redirect_on_connect_rules,
+                            priv->redirect_on_connect_rules_count,
+                            libdev, 0) == 0) {
+            /* Note: re-uses spice_usb_device_manager_connect_device_async's
+               completion handling code! */
+            result = g_simple_async_result_new(G_OBJECT(self),
+                               spice_usb_device_manager_auto_connect_cb,
+                               spice_usb_device_ref(device),
+                               spice_usb_device_manager_connect_device_async);
+            spice_usbredir_channel_connect_device_async(
+                               SPICE_USBREDIR_CHANNEL(channel),
+                               libdev, device, NULL,
+                               spice_usb_device_manager_channel_connect_cb,
+                               result);
+            libusb_unref_device(libdev);
+            return; /* We've taken the channel! */
+        }
+
+        libusb_unref_device(libdev);
+    }
 }
 
 void spice_usb_device_manager_device_error(
