@@ -329,6 +329,41 @@ static void update_status(struct spice_connection *conn)
     }
 }
 
+static const char *spice_edit_properties[] = {
+    "CopyToGuest",
+    "PasteFromGuest",
+};
+
+static void update_edit_menu_window(SpiceWindow *win)
+{
+    int i;
+    GtkAction *toggle;
+
+    if (win == NULL) {
+        return;
+    }
+
+    /* Make "CopyToGuest" and "PasteFromGuest" insensitive if spice
+     * agent is not connected */
+    for (i = 0; i < G_N_ELEMENTS(spice_edit_properties); i++) {
+        toggle = gtk_action_group_get_action(win->ag, spice_edit_properties[i]);
+        if (toggle) {
+            gtk_action_set_sensitive(toggle, win->conn->agent_connected);
+        }
+    }
+}
+
+static void update_edit_menu(struct spice_connection *conn)
+{
+    int i;
+
+    for (i = 0; i < SPICE_N_ELEMENTS(conn->wins); i++) {
+        if (conn->wins[i]) {
+            update_edit_menu_window(conn->wins[i]);
+        }
+    }
+}
+
 static void menu_cb_connect(GtkAction *action, void *data)
 {
     struct spice_connection *conn;
@@ -1305,6 +1340,8 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
                                       win, 0);
     }
 
+    update_edit_menu_window(win);
+
     toggle = gtk_action_group_get_action(win->ag, "Toolbar");
     state = gtk_widget_get_visible(win->toolbar);
     gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(toggle), state);
@@ -1462,6 +1499,7 @@ static void main_agent_update(SpiceChannel *channel, gpointer data)
     g_object_get(channel, "agent-connected", &conn->agent_connected, NULL);
     conn->agent_state = conn->agent_connected ? _("yes") : _("no");
     update_status(conn);
+    update_edit_menu(conn);
 }
 
 static void inputs_modifiers(SpiceChannel *channel, gpointer data)
