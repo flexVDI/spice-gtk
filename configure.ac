@@ -349,10 +349,17 @@ AC_ARG_ENABLE([usbredir],
 if test "x$enable_usbredir" = "xno"; then
   have_usbredir="no"
 else
-  PKG_CHECK_MODULES([USBREDIR],
-                    [libusb-1.0 >= 1.0.9 libusbredirhost >= 0.4.2 libusbredirparser >= 0.4],
-                    [have_usbredir=yes],
-                    [have_usbredir=no])
+  if ${PKG_CONFIG} libusbredirparser-0.5; then
+    PKG_CHECK_MODULES([USBREDIR],
+                      [libusb-1.0 >= 1.0.9 libusbredirhost libusbredirparser-0.5],
+                      [have_usbredir=yes],
+                      [have_usbredir=no])
+  else
+    PKG_CHECK_MODULES([USBREDIR],
+                      [libusb-1.0 >= 1.0.9 libusbredirhost >= 0.4.2 libusbredirparser >= 0.4],
+                      [have_usbredir=yes],
+                      [have_usbredir=no])
+  fi
   if test "x$have_usbredir" = "xno" && test "x$enable_usbredir" = "xyes"; then
     AC_MSG_ERROR([usbredir support explicitly requested, but some required packages are not available])
   fi
