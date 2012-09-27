@@ -1388,15 +1388,17 @@ void spice_session_migrate_end(SpiceSession *self)
         SpiceChannel *channel = l->data;
         l = l->next;
 
+        if (!SPICE_IS_MAIN_CHANNEL(channel)) {
+            /* freeze other channels */
+            channel->priv->state = SPICE_CHANNEL_STATE_MIGRATING;
+        }
+
         /* reset for migration, disconnect */
         spice_channel_reset(channel, TRUE);
 
         if (SPICE_IS_MAIN_CHANNEL(channel)) {
             /* migrate main to target, so we can start talking */
             spice_session_channel_migrate(self, channel);
-        } else {
-            /* freeze other channels */
-            channel->priv->state = SPICE_CHANNEL_STATE_MIGRATING;
         }
     }
 
