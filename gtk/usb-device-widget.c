@@ -47,6 +47,7 @@ static void device_removed_cb(SpiceUsbDeviceManager *manager,
     SpiceUsbDevice *device, gpointer user_data);
 static void device_error_cb(SpiceUsbDeviceManager *manager,
     SpiceUsbDevice *device, GError *err, gpointer user_data);
+static gboolean spice_usb_device_widget_update_status(gpointer user_data);
 
 /* ------------------------------------------------------------------ */
 /* gobject glue                                                       */
@@ -72,6 +73,7 @@ struct _SpiceUsbDeviceWidgetPrivate {
     SpiceUsbDeviceManager *manager;
     GtkWidget *info_bar;
     gchar *err_msg;
+    gsize device_count;
 };
 
 static guint signals[LAST_SIGNAL] = { 0, };
@@ -228,6 +230,8 @@ static GObject *spice_usb_device_widget_constructor(
     g_ptr_array_unref(devices);
 
 end:
+    spice_usb_device_widget_update_status(self);
+
     return obj;
 }
 
@@ -363,6 +367,7 @@ static void check_can_redirect(GtkWidget *widget, gpointer user_data)
     if (!device)
         return; /* Non device widget, ie the info_bar */
 
+    priv->device_count++;
     can_redirect = spice_usb_device_manager_can_redirect_device(priv->manager,
                                                                 device, &err);
     gtk_widget_set_sensitive(widget, can_redirect);
@@ -391,6 +396,7 @@ static gboolean spice_usb_device_widget_update_status(gpointer user_data)
     SpiceUsbDeviceWidget *self = SPICE_USB_DEVICE_WIDGET(user_data);
     SpiceUsbDeviceWidgetPrivate *priv = self->priv;
 
+    priv->device_count = 0;
     gtk_container_foreach(GTK_CONTAINER(self), check_can_redirect, self);
 
     if (priv->err_msg) {
@@ -402,6 +408,11 @@ static gboolean spice_usb_device_widget_update_status(gpointer user_data)
     } else {
         spice_usb_device_widget_hide_info_bar(self);
     }
+
+    if (priv->device_count == 0)
+        spice_usb_device_widget_show_info_bar(self, _("No USB devices detected"),
+                                              GTK_MESSAGE_INFO,
+                                              GTK_STOCK_DIALOG_INFO);
     return FALSE;
 }
 
