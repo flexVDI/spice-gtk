@@ -66,6 +66,7 @@ enum SpiceUsbredirChannelState {
 
 struct _SpiceUsbredirChannelPrivate {
     libusb_device *device;
+    libusb_context *context;
     struct usbredirhost *host;
     /* To catch usbredirhost error messages and report them as a GError */
     GError **catch_error;
@@ -109,9 +110,20 @@ static void spice_usbredir_channel_init(SpiceUsbredirChannel *channel)
 }
 
 #ifdef USE_USBREDIR
-static void spice_usbredir_channel_reset(SpiceChannel *channel, gboolean migrating)
+static void spice_usbredir_channel_reset(SpiceChannel *c, gboolean migrating)
 {
-    SPICE_CHANNEL_CLASS(spice_usbredir_channel_parent_class)->channel_reset(channel, migrating);
+    SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(c);
+    SpiceUsbredirChannelPrivate *priv = channel->priv;
+
+    if (priv->host) {
+        if (priv->state == STATE_CONNECTED)
+            spice_usbredir_channel_disconnect_device(channel);
+        usbredirhost_close(priv->host);
+        priv->host = NULL;
+        /* Call set_context to re-create the host */
+        spice_usbredir_channel_set_context(channel, priv->context);
+    }
+    SPICE_CHANNEL_CLASS(spice_usbredir_channel_parent_class)->channel_reset(c, migrating);
 }
 #endif
 
@@ -190,6 +202,7 @@ void spice_usbredir_channel_set_context(SpiceUsbredirChannel *channel,
 
     g_return_if_fail(priv->host == NULL);
 
+    priv->context = context;
     priv->host = usbredirhost_open_full(
                                    context, NULL,
                                    usbredir_log,
