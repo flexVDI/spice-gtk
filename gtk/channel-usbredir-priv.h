@@ -38,6 +38,7 @@ void spice_usbredir_channel_set_context(SpiceUsbredirChannel *channel,
 void spice_usbredir_channel_connect_device_async(
                                         SpiceUsbredirChannel *channel,
                                         libusb_device        *device,
+                                        SpiceUsbDevice       *spice_device,
                                         GCancellable         *cancellable,
                                         GAsyncReadyCallback   callback,
                                         gpointer              user_data);

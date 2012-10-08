@@ -34,7 +34,7 @@ void spice_usb_device_manager_stop_event_listening(
 #ifdef USE_USBREDIR
 #include <libusb.h>
 void spice_usb_device_manager_device_error(
-    SpiceUsbDeviceManager *manager, libusb_device *libdev, GError *err);
+    SpiceUsbDeviceManager *manager, SpiceUsbDevice *device, GError *err);
 
 guint8 spice_usb_device_get_busnum(SpiceUsbDevice *device);
 guint8 spice_usb_device_get_devaddr(SpiceUsbDevice *device);

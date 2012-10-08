@@ -155,9 +155,6 @@ static void  spice_usb_device_set_state(SpiceUsbDevice *device, guint8 s);
 
 static gboolean spice_usb_device_equal_libdev(SpiceUsbDevice *device,
                                               libusb_device *libdev);
-static SpiceUsbDevice *
-spice_usb_device_manager_libdev_to_device(SpiceUsbDeviceManager *self,
-                                          libusb_device *libdev);
 static libusb_device *
 spice_usb_device_manager_device_to_libdev(SpiceUsbDeviceManager *self,
                                           SpiceUsbDevice *device);
@@ -920,14 +917,10 @@ void spice_usb_device_manager_stop_event_listening(
 }
 
 void spice_usb_device_manager_device_error(
-    SpiceUsbDeviceManager *self, libusb_device *libdev, GError *err)
+    SpiceUsbDeviceManager *self, SpiceUsbDevice *device, GError *err)
 {
-    SpiceUsbDevice *device;
-
     g_return_if_fail(SPICE_IS_USB_DEVICE_MANAGER(self));
-    g_return_if_fail(libdev != 0);
-
-    device = spice_usb_device_manager_libdev_to_device(self, libdev);
+    g_return_if_fail(device != NULL);
 
     g_signal_emit(self, signals[DEVICE_ERROR], 0, device, err);
 }
@@ -1091,6 +1084,7 @@ _spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
         }
         spice_usbredir_channel_connect_device_async(channel,
                                  libdev,
+                                 device,
                                  cancellable,
                                  spice_usb_device_manager_channel_connect_cb,
                                  result);
@@ -1469,18 +1463,6 @@ spice_usb_device_equal_libdev(SpiceUsbDevice *device,
     addr2 = libusb_get_device_address(libdev);
 
     return ((bus1 == bus2) && (addr1 == addr2));
-}
-
-static SpiceUsbDevice *
-spice_usb_device_manager_libdev_to_device(SpiceUsbDeviceManager *self,
-                                          libusb_device *libdev)
-{
-    guint8 bus, addr;
-
-    bus  = libusb_get_bus_number(libdev);
-    addr = libusb_get_device_address(libdev);
-
-    return spice_usb_device_manager_find_device(self, bus, addr);
 }
 
 /*

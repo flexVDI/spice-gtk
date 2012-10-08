@@ -66,6 +66,7 @@ enum SpiceUsbredirChannelState {
 
 struct _SpiceUsbredirChannelPrivate {
     libusb_device *device;
+    SpiceUsbDevice *spice_device;
     libusb_context *context;
     struct usbredirhost *host;
     /* To catch usbredirhost error messages and report them as a GError */
@@ -287,6 +288,8 @@ static void spice_usbredir_channel_open_acl_cb(
         g_simple_async_result_take_error(priv->result, err);
         libusb_unref_device(priv->device);
         priv->device = NULL;
+        g_boxed_free(spice_usb_device_get_type(), priv->spice_device);
+        priv->spice_device = NULL;
         priv->state  = STATE_DISCONNECTED;
     }
 
@@ -304,6 +307,7 @@ G_GNUC_INTERNAL
 void spice_usbredir_channel_connect_device_async(
                                           SpiceUsbredirChannel *channel,
                                           libusb_device        *device,
+                                          SpiceUsbDevice       *spice_device,
                                           GCancellable         *cancellable,
                                           GAsyncReadyCallback   callback,
                                           gpointer              user_data)
@@ -337,6 +341,8 @@ void spice_usbredir_channel_connect_device_async(
     }
 
     priv->device = libusb_ref_device(device);
+    priv->spice_device = g_boxed_copy(spice_usb_device_get_type(),
+                                      spice_device);
 #if USE_POLKIT
     priv->result = result;
     priv->state  = STATE_WAITING_FOR_ACL_HELPER;
@@ -355,6 +361,8 @@ void spice_usbredir_channel_connect_device_async(
         g_simple_async_result_take_error(result, err);
         libusb_unref_device(priv->device);
         priv->device = NULL;
+        g_boxed_free(spice_usb_device_get_type(), priv->spice_device);
+        priv->spice_device = NULL;
     }
 #endif
 
@@ -413,6 +421,8 @@ void spice_usbredir_channel_disconnect_device(SpiceUsbredirChannel *channel)
         usbredirhost_set_device(priv->host, NULL);
         libusb_unref_device(priv->device);
         priv->device = NULL;
+        g_boxed_free(spice_usb_device_get_type(), priv->spice_device);
+        priv->spice_device = NULL;
         priv->state  = STATE_DISCONNECTED;
         break;
     }
@@ -568,7 +578,7 @@ enum {
 };
 
 struct DEVICE_ERROR {
-    libusb_device *device;
+    SpiceUsbDevice *spice_device;
     GError *error;
 };
 
@@ -582,12 +592,12 @@ static void do_emit_main_context(GObject *object, int event, gpointer params)
     case DEVICE_ERROR: {
         struct DEVICE_ERROR *p = params;
         /* Check that the device has not changed before we manage to run */
-        if (p->device == priv->device) {
+        if (p->spice_device == priv->spice_device) {
             spice_usbredir_channel_disconnect_device(channel);
             spice_usb_device_manager_device_error(
                 spice_usb_device_manager_get(
                     spice_channel_get_session(SPICE_CHANNEL(channel)), NULL),
-                p->device, p->error);
+                p->spice_device, p->error);
         }
         break;
     }
@@ -642,14 +652,13 @@ static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
 
     r = usbredirhost_read_guest_data(priv->host);
     if (r != 0) {
-        libusb_device *device = priv->device;
+        SpiceUsbDevice *spice_device = priv->spice_device;
         gchar *desc;
         GError *err;
 
-        g_return_if_fail(device != NULL);
+        g_return_if_fail(spice_device != NULL);
 
-        desc = spice_usb_device_get_description((SpiceUsbDevice *)device,
-                                                NULL);
+        desc = spice_usb_device_get_description(spice_device, NULL);
         switch (r) {
         case usbredirhost_read_parse_error:
             err = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
@@ -673,9 +682,9 @@ static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
 
         CHANNEL_DEBUG(c, "%s", err->message);
 
-        g_boxed_copy(spice_usb_device_get_type(), device);
-        emit_main_context(channel, DEVICE_ERROR, device, err);
-        g_boxed_free(spice_usb_device_get_type(), device);
+        spice_device = g_boxed_copy(spice_usb_device_get_type(), spice_device);
+        emit_main_context(channel, DEVICE_ERROR, spice_device, err);
+        g_boxed_free(spice_usb_device_get_type(), spice_device);
 
         g_error_free(err);
     }
