@@ -288,7 +288,7 @@ AS_IF([test "x$have_phodav" = "xyes"],
        AC_DEFINE([USE_PHODAV], [1], [Define if supporting phodav]))
 
 AC_ARG_WITH([audio],
-  AS_HELP_STRING([--with-audio=@<:@gstreamer/pulse/auto/no@:>@], [Select audio backend @<:@default=auto@:>@]),
+  AS_HELP_STRING([--with-audio=@<:@gstreamer/gstreamer1/pulse/auto/no@:>@], [Select audio backend @<:@default=auto@:>@]),
   [],
   [with_audio="auto"])
 
@@ -297,7 +297,7 @@ AS_IF([test "x$with_audio" = "xauto"], [
 ])
 
 case "$with_audio" in
-  gstreamer|pulse|no*)
+  gstreamer|gstreamer1|pulse|no*)
     ;;
   *) AC_MSG_ERROR(Unsupported audio backend)
 esac
@@ -326,7 +326,18 @@ AS_IF([test "x$have_gst" = "xyes"],
              [AC_MSG_ERROR([GStreamer requested but not found])
       ])
 ])
-AM_CONDITIONAL([WITH_GSTAUDIO], [test "x$have_gst" = "xyes"])
+
+AS_IF([test "x$with_audio" = "xgstreamer1"],
+      [PKG_CHECK_MODULES(GST, gstreamer-1.0 gstreamer-base-1.0 gstreamer-app-1.0 gstreamer-audio-1.0, [have_gst1=yes], [have_gst1=no])],
+      [have_gst1=no])
+
+AS_IF([test "x$have_gst1" = "xyes"],
+      [AC_DEFINE([WITH_GST1AUDIO], 1, [Have GStreamer 1.0?])],
+      [AS_IF([test "x$with_audio" = "xgstreamer1"],
+             [AC_MSG_ERROR([GStreamer 1.0 requested but not found])
+      ])
+])
+AM_CONDITIONAL([WITH_GSTAUDIO], [test "x$have_gst" = "xyes" -o "x$have_gst1" = "xyes"])
 AC_SUBST(GST_CFLAGS)
 AC_SUBST(GST_LIBS)
 
