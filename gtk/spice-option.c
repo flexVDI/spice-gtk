@@ -102,6 +102,17 @@ static gboolean parse_disable_effects(const gchar *option_name, const gchar *val
     return TRUE;
 }
 
+static gboolean parse_usbredir_filter(const gchar *option_name,
+                                      const gchar *value,
+                                      gpointer data, GError **error)
+
+{
+    g_warning("--spice-usbredir-filter is deprecated, please use --spice-usbredir-auto-redirect-filter instead");
+    g_free(usbredir_auto_redirect_filter);
+    usbredir_auto_redirect_filter = g_strdup(value);
+    return TRUE;
+}
+
 
 /**
  * spice_get_option_group:
@@ -132,6 +143,9 @@ GOptionGroup* spice_get_option_group(void)
           N_("Path to the local certificate database to use for software smartcard certificates"), N_("<certificate-db>") },
         { "spice-disable-usbredir", '\0', 0, G_OPTION_ARG_NONE, &disable_usbredir,
           N_("Disable USB redirection support"), NULL },
+        /* Backward compats version of spice-usbredir-auto-redirect-filter */
+        { "spice-usbredir-filter", '\0', G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_CALLBACK, parse_usbredir_filter,
+          NULL, NULL },
         { "spice-usbredir-auto-redirect-filter", '\0', 0, G_OPTION_ARG_STRING, &usbredir_auto_redirect_filter,
           N_("Filter selecting USB devices to be auto-redirected when plugged in"), N_("<filter-string>") },
         { "spice-usbredir-redirect-on-connect", '\0', 0, G_OPTION_ARG_STRING, &usbredir_redirect_on_connect,
