@@ -1037,6 +1037,8 @@ static void send_key(SpiceDisplay *display, int scancode, SendKeyType type, gboo
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     uint32_t i, b, m;
 
+    g_return_if_fail(scancode != 0);
+
     if (!d->inputs)
         return;
 
@@ -1139,7 +1141,11 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     int scancode;
 
-
+#ifdef WIN32
+    /* on windows, we ought to ignore the reserved key event? */
+    if (key->hardware_keycode == 0xff)
+        return false;
+#endif
     SPICE_DEBUG("%s %s: keycode: %d  state: %d  group %d modifier %d",
             __FUNCTION__, key->type == GDK_KEY_PRESS ? "press" : "release",
             key->hardware_keycode, key->state, key->group, key->is_modifier);
