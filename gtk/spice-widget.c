@@ -2468,6 +2468,41 @@ static void spice_set_keyboard_lock_modifiers(SpiceDisplay *display, uint32_t mo
     set_keyboard_led(x_display, NUM_LOCK_LED, !!(modifiers & SPICE_INPUTS_NUM_LOCK));
     set_keyboard_led(x_display, SCROLL_LOCK_LED, !!(modifiers & SPICE_INPUTS_SCROLL_LOCK));
 }
+#elif defined (WIN32)
+static guint32 get_keyboard_lock_modifiers(void)
+{
+    guint32 modifiers = 0;
+
+    if (GetKeyState(VK_CAPITAL) & 1) {
+        modifiers |= SPICE_INPUTS_CAPS_LOCK;
+    }
+    if (GetKeyState(VK_NUMLOCK) & 1) {
+        modifiers |= SPICE_INPUTS_NUM_LOCK;
+    }
+    if (GetKeyState(VK_SCROLL) & 1) {
+        modifiers |= SPICE_INPUTS_SCROLL_LOCK;
+    }
+
+    return modifiers;
+}
+
+static void sync_keyboard_lock_modifiers(SpiceDisplay *display)
+{
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    guint32 modifiers;
+    GdkWindow *w;
+
+    if (d->disable_inputs)
+        return;
+
+    w = gtk_widget_get_parent_window(GTK_WIDGET(display));
+    if (w == NULL) /* it can happen if the display is not yet shown */
+        return;
+
+    modifiers = get_keyboard_lock_modifiers();
+    if (d->inputs)
+        spice_inputs_set_key_locks(d->inputs, modifiers);
+}
 #else
 static void sync_keyboard_lock_modifiers(SpiceDisplay *display)
 {
