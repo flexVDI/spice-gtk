@@ -1192,6 +1192,9 @@ static guint get_scancode_from_keyval(SpiceDisplay *display, guint keyval)
         /* FIXME what about levels? */
         keycode = keys[0].keycode;
         g_free(keys);
+    } else {
+        g_warning("could not lookup keyval %u, please report a bug", keyval);
+        return 0;
     }
 
     return vnc_display_keymap_gdk2xtkbd(d->keycode_map, d->keycode_maplen, keycode);
