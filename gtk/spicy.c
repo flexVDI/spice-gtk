@@ -305,17 +305,23 @@ static int connect_dialog(SpiceSession *session)
 
 static void update_status_window(SpiceWindow *win)
 {
-    char status[256];
+    gchar *status;
 
     if (win == NULL)
         return;
+
     if (win->mouse_grabbed) {
-        snprintf(status, sizeof(status), _("Use Shift+F12 to ungrab mouse."));
+        SpiceGrabSequence *sequence = spice_display_get_grab_keys(SPICE_DISPLAY(win->spice));
+        gchar *seq = spice_grab_sequence_as_string(sequence);
+        status = g_strdup_printf(_("Use %s to ungrab mouse."), seq);
+        g_free(seq);
     } else {
-        snprintf(status, sizeof(status), _("mouse: %s, agent: %s"),
+        status = g_strdup_printf(_("mouse: %s, agent: %s"),
                  win->conn->mouse_state, win->conn->agent_state);
     }
+
     gtk_label_set_text(GTK_LABEL(win->status), status);
+    g_free(status);
 }
 
 static void update_status(struct spice_connection *conn)
@@ -413,13 +419,6 @@ static void menu_cb_fullscreen(GtkAction *action, void *data)
     SpiceWindow *win = data;
 
     window_set_fullscreen(win, !win->fullscreen);
-}
-
-static void menu_cb_ungrab(GtkAction *action, void *data)
-{
-    SpiceWindow *win = data;
-
-    spice_display_mouse_ungrab(SPICE_DISPLAY(win->spice));
 }
 
 #ifdef USE_SMARTCARD
@@ -795,13 +794,6 @@ static const GtkActionEntry entries[] = {
         .callback    = G_CALLBACK(menu_cb_fullscreen),
         .accelerator = "<shift>F11",
     },{
-
-        /* Input menu */
-        .name        = "UngrabMouse",
-        .label       = N_("_Ungrab mouse"),
-        .callback    = G_CALLBACK(menu_cb_ungrab),
-        .accelerator = "<shift>F12",
-    },{
 #ifdef USE_SMARTCARD
 	.name        = "InsertSmartcard",
 	.label       = N_("_Insert Smartcard"),
@@ -903,7 +895,6 @@ static char ui_xml[] =
 "      <menuitem action='Statusbar'/>\n"
 "    </menu>\n"
 "    <menu action='InputMenu'>\n"
-"      <menuitem action='UngrabMouse'/>\n"
 #ifdef USE_SMARTCARD
 "      <menuitem action='InsertSmartcard'/>\n"
 "      <menuitem action='RemoveSmartcard'/>\n"
