@@ -1512,11 +1512,22 @@ static gboolean configure_event(GtkWidget *widget, GdkEventConfigure *conf)
     return true;
 }
 
+static void update_image(SpiceDisplay *display)
+{
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    spicex_image_create(display);
+    if (d->convert)
+        do_color_convert(display, &d->area);
+}
+
 static void realize(GtkWidget *widget)
 {
+    SpiceDisplay *display = SPICE_DISPLAY(widget);
+
     GTK_WIDGET_CLASS(spice_display_parent_class)->realize(widget);
 
-    spicex_image_create(SPICE_DISPLAY(widget));
+    update_image(display);
 }
 
 static void unrealize(GtkWidget *widget)
@@ -1865,7 +1876,8 @@ static void update_area(SpiceDisplay *display,
     spicex_image_destroy(display);
     d->area = area;
     if (gtk_widget_get_realized(GTK_WIDGET(display)))
-        spicex_image_create(display);
+        update_image(display);
+
     update_size_request(display);
 
     set_monitor_ready(display, true);
