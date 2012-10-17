@@ -93,86 +93,111 @@ public class Controller: Object {
 		switch (msg.id) {
 		case SpiceProtocol.Controller.MsgId.HOST:
 			host = str;
+			debug ("got HOST: %s".printf (str));
 			break;
 		case SpiceProtocol.Controller.MsgId.PORT:
 			port = v.value;
+			debug ("got PORT: %u".printf (port));
 			break;
 		case SpiceProtocol.Controller.MsgId.SPORT:
 			sport = v.value;
+			debug ("got SPORT: %u".printf (sport));
 			break;
 		case SpiceProtocol.Controller.MsgId.PASSWORD:
 			password = str;
+			debug ("got PASSWORD");
 			break;
 
 		case SpiceProtocol.Controller.MsgId.SECURE_CHANNELS:
 			secure_channels = str.split(",");
+			debug ("got SECURE_CHANNELS %s".printf (str));
 			break;
 
 		case SpiceProtocol.Controller.MsgId.DISABLE_CHANNELS:
 			disable_channels = str.split(",");
+			debug ("got DISABLE_CHANNELS %s".printf (str));
 			break;
 
 		case SpiceProtocol.Controller.MsgId.TLS_CIPHERS:
 			tls_ciphers = str;
+			debug ("got TLS_CIPHERS %s".printf (str));
 			break;
 		case SpiceProtocol.Controller.MsgId.CA_FILE:
 			ca_file = str;
+			debug ("got CA_FILE %s".printf (str));
 			break;
 		case SpiceProtocol.Controller.MsgId.HOST_SUBJECT:
 			host_subject = str;
+			debug ("got HOST_SUBJECT %s".printf (str));
 			break;
 
 		case SpiceProtocol.Controller.MsgId.FULL_SCREEN:
 			display_flags = (SpiceProtocol.Controller.Display)v.value;
+			debug ("got FULL_SCREEN 0x%x".printf (v.value));
 			break;
 		case SpiceProtocol.Controller.MsgId.SET_TITLE:
 			title = str;
+			debug ("got TITLE %s".printf (str));
 			break;
 		case SpiceProtocol.Controller.MsgId.ENABLE_SMARTCARD:
 			enable_smartcard = (bool)v.value;
+			debug ("got ENABLE_SMARTCARD 0x%x".printf (v.value));
 			break;
 
 		case SpiceProtocol.Controller.MsgId.CREATE_MENU:
 			menu = new SpiceCtrl.Menu.from_string (str);
+			debug ("got CREATE_MENU %s".printf (str));
 			break;
 		case SpiceProtocol.Controller.MsgId.DELETE_MENU:
 			menu = null;
+			debug ("got DELETE_MENU request");
 			break;
 
 		case SpiceProtocol.Controller.MsgId.SEND_CAD:
 			send_cad = (bool)v.value;
+			debug ("got SEND_CAD %u".printf (v.value));
 			break;
 
 		case SpiceProtocol.Controller.MsgId.HOTKEYS:
 			hotkeys = str;
+			debug ("got HOTKEYS %s".printf (str));
 			break;
 
 		case SpiceProtocol.Controller.MsgId.COLOR_DEPTH:
 			color_depth = v.value;
+			debug ("got COLOR_DEPTH %u".printf (v.value));
 			break;
 		case SpiceProtocol.Controller.MsgId.DISABLE_EFFECTS:
 			disable_effects = str.split(",");
+			debug ("got DISABLE_EFFECTS %s".printf (str));
 			break;
 
 		case SpiceProtocol.Controller.MsgId.CONNECT:
 			do_connect ();
+			debug ("got CONNECT request");
 			break;
 		case SpiceProtocol.Controller.MsgId.SHOW:
 			show ();
+			debug ("got SHOW request");
 			break;
 		case SpiceProtocol.Controller.MsgId.HIDE:
 			hide ();
+			debug ("got HIDE request");
 			break;
 		case SpiceProtocol.Controller.MsgId.ENABLE_USB:
 			enable_usbredir = (bool)v.value;
+			debug ("got ENABLE_USB %u".printf (v.value));
 			break;
 		case SpiceProtocol.Controller.MsgId.ENABLE_USB_AUTOSHARE:
 			enable_usb_autoshare = (bool)v.value;
+			debug ("got ENABLE_USB_AUTOSHARE %u".printf (v.value));
 			break;
 		case SpiceProtocol.Controller.MsgId.USB_FILTER:
 			usb_filter = str;
+			debug ("got USB_FILTER %s".printf (str));
 			break;
 		default:
+			debug ("got unknown msg.id %u".printf (msg.id));
 			warn_if_reached ();
 			return false;
 		}
