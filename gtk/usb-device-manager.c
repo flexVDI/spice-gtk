@@ -109,6 +109,9 @@ struct _SpiceUsbDeviceManagerPrivate {
     struct usbredirfilter_rule *redirect_on_connect_rules;
     int auto_conn_filter_rules_count;
     int redirect_on_connect_rules_count;
+#ifdef G_OS_WIN32
+    SpiceWinUsbDriver     *installer;
+#endif
 #endif
     GPtrArray *devices;
     GPtrArray *channels;
@@ -302,6 +305,10 @@ static void spice_usb_device_manager_finalize(GObject *gobject)
     if (priv->event_thread)
         g_thread_join(priv->event_thread);
     free(priv->auto_conn_filter_rules);
+#ifdef G_OS_WIN32
+    if (priv->installer)
+        g_object_unref(priv->installer);
+#endif
 #endif
 
     g_free(priv->auto_connect_filter);
@@ -876,7 +883,6 @@ static void spice_usb_device_manager_drv_install_cb(GObject *gobject,
 
     status = spice_win_usb_driver_install_finish(installer, res, &err);
 
-    g_object_unref(installer);
     spice_usb_device_unref(device);
 
     spice_usb_device_set_state(device, SPICE_USB_DEVICE_STATE_NONE);
@@ -1209,7 +1215,10 @@ void spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
     UsbInstallCbInfo *cbinfo;
 
     spice_usb_device_set_state(device, SPICE_USB_DEVICE_STATE_INSTALLING);
-    installer = spice_win_usb_driver_new();
+    if (! self->priv->installer) {
+        self->priv->installer = spice_win_usb_driver_new();
+    }
+    installer = self->priv->installer;
     cbinfo = g_new0(UsbInstallCbInfo, 1);
     cbinfo->manager     = self;
     cbinfo->device      = spice_usb_device_ref(device);
@@ -1273,9 +1282,13 @@ void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
     UsbInstallCbInfo *cbinfo;
 
     g_warn_if_fail(device != NULL);
+    g_warn_if_fail(self->priv->installer != NULL);
 
     spice_usb_device_set_state(device, SPICE_USB_DEVICE_STATE_UNINSTALLING);
-    installer = spice_win_usb_driver_new();
+    if (! self->priv->installer) {
+        self->priv->installer = spice_win_usb_driver_new();
+    }
+    installer = self->priv->installer;
     cbinfo = g_new0(UsbInstallCbInfo, 1);
     cbinfo->manager     = self;
     cbinfo->device      = spice_usb_device_ref(device);

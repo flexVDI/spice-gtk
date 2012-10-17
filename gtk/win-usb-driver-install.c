@@ -113,7 +113,6 @@ void win_usb_driver_handle_reply_cb(GObject *gobject,
 
     g_warn_if_fail(g_input_stream_close(istream, NULL, NULL));
     g_clear_object(&istream);
-    spice_win_usb_driver_close(self);
 
     if (err) {
         g_warning("failed to read reply from usbclerk (%s)", err->message);
@@ -149,7 +148,10 @@ void win_usb_driver_handle_reply_cb(GObject *gobject,
     if (priv->reply.hdr.version != USB_CLERK_VERSION) {
         g_warning("usbclerk version mismatch: mine=0x%04x  server=0x%04x",
                   USB_CLERK_VERSION, priv->reply.hdr.version);
-        /* For now just warn, do not fail */
+        g_simple_async_result_set_error(priv->result,
+                                        SPICE_WIN_USB_DRIVER_ERROR,
+                                        SPICE_WIN_USB_DRIVER_ERROR_MESSAGE,
+                                        "usbclerk version mismatch");
     }
 
     if (priv->reply.hdr.type != USB_CLERK_REPLY) {
@@ -265,30 +267,39 @@ void spice_win_usb_driver_op(SpiceWinUsbDriver *self,
 
     priv = self->priv;
 
-    g_return_if_fail(priv->result == NULL);
-
     result = g_simple_async_result_new(G_OBJECT(self), callback, user_data,
                                        spice_win_usb_driver_op);
+
+    if (priv->result) { /* allow one install/uninstall request at a time */
+        g_warning("Another request exists -- try later");
+        g_simple_async_result_set_error(result,
+                  SPICE_WIN_USB_DRIVER_ERROR, SPICE_WIN_USB_DRIVER_ERROR_FAILED,
+                  "Another request exists -- try later");
+        goto failed_request;
+    }
+
 
     vid = spice_usb_device_get_vid(device);
     pid = spice_usb_device_get_pid(device);
 
-    SPICE_DEBUG("win-usb-driver-install: connecting to usbclerk named pipe");
-    priv->handle = CreateFile(USB_CLERK_PIPE_NAME,
-                              GENERIC_READ | GENERIC_WRITE,
-                              0, NULL,
-                              OPEN_EXISTING,
-                              FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED,
-                              NULL);
-    if (priv->handle == INVALID_HANDLE_VALUE) {
-        DWORD errval  = GetLastError();
-        gchar *errstr = g_win32_error_message(errval);
-        g_warning("failed to create a named pipe to usbclerk (%ld) %s",
-                  errval,errstr);
-        g_simple_async_result_set_error(result,
-                  G_IO_ERROR, G_IO_ERROR_FAILED,
-                  "Failed to create named pipe (%ld) %s", errval, errstr);
-        goto failed_request;
+    if (! priv->handle ) {
+        SPICE_DEBUG("win-usb-driver-install: connecting to usbclerk named pipe");
+        priv->handle = CreateFile(USB_CLERK_PIPE_NAME,
+                                  GENERIC_READ | GENERIC_WRITE,
+                                  0, NULL,
+                                  OPEN_EXISTING,
+                                  FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED,
+                                  NULL);
+        if (priv->handle == INVALID_HANDLE_VALUE) {
+            DWORD errval  = GetLastError();
+            gchar *errstr = g_win32_error_message(errval);
+            g_warning("failed to create a named pipe to usbclerk (%ld) %s",
+                      errval,errstr);
+            g_simple_async_result_set_error(result,
+                      G_IO_ERROR, G_IO_ERROR_FAILED,
+                      "Failed to create named pipe (%ld) %s", errval, errstr);
+            goto failed_request;
+        }
     }
 
     if (!spice_win_usb_driver_send_request(self, op_type,
@@ -308,7 +319,6 @@ void spice_win_usb_driver_op(SpiceWinUsbDriver *self,
     return;
 
  failed_request:
-    spice_win_usb_driver_close(self);
     g_simple_async_result_complete_in_idle(result);
     g_clear_object(&result);
 }
@@ -333,8 +343,8 @@ void spice_win_usb_driver_install(SpiceWinUsbDriver *self,
 {
     SPICE_DEBUG("Win usb driver installation started");
 
-    spice_win_usb_driver_op(self, device, USB_CLERK_DRIVER_INSTALL, cancellable,
-                            callback, user_data);
+    spice_win_usb_driver_op(self, device, USB_CLERK_DRIVER_SESSION_INSTALL,
+                            cancellable, callback, user_data);
 }
 
 G_GNUC_INTERNAL
