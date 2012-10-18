@@ -118,9 +118,27 @@ static guint signals[SPICE_SESSION_LAST_SIGNAL];
 static void spice_session_init(SpiceSession *session)
 {
     SpiceSessionPrivate *s;
+    gchar *channels;
 
     SPICE_DEBUG("New session (compiled from package " PACKAGE_STRING ")");
     s = session->priv = SPICE_SESSION_GET_PRIVATE(session);
+
+    channels = g_strjoin(", ",
+                         spice_channel_type_to_string(SPICE_CHANNEL_MAIN),
+                         spice_channel_type_to_string(SPICE_CHANNEL_DISPLAY),
+                         spice_channel_type_to_string(SPICE_CHANNEL_INPUTS),
+                         spice_channel_type_to_string(SPICE_CHANNEL_CURSOR),
+                         spice_channel_type_to_string(SPICE_CHANNEL_PLAYBACK),
+                         spice_channel_type_to_string(SPICE_CHANNEL_RECORD),
+#ifdef USE_SMARTCARD
+                         spice_channel_type_to_string(SPICE_CHANNEL_SMARTCARD),
+#endif
+#ifdef USE_USBREDIR
+                         spice_channel_type_to_string(SPICE_CHANNEL_USBREDIR),
+#endif
+                         NULL);
+    SPICE_DEBUG("Supported channels: %s", channels);
+    g_free(channels);
 
     ring_init(&s->channels);
     cache_init(&s->images, "image");
