@@ -537,12 +537,23 @@ void spice_inputs_key_press_and_release(SpiceInputsChannel *input_channel, guint
 
     if (spice_channel_test_capability(channel, SPICE_INPUTS_CAP_KEY_SCANCODE)) {
         SpiceMsgOut *msg;
-        guint16 *code;
+        guint16 code;
+        guint8 *buf;
 
         msg = spice_msg_out_new(channel, SPICE_MSGC_INPUTS_KEY_SCANCODE);
-        code = (guint16*)spice_marshaller_reserve_space(msg->marshaller, 2 * sizeof(guint16));
-        *code++ = spice_make_scancode(scancode, FALSE);
-        *code = spice_make_scancode(scancode, TRUE);
+        if (scancode < 0x100) {
+            buf = (guint8*)spice_marshaller_reserve_space(msg->marshaller, 2);
+            buf[0] = spice_make_scancode(scancode, FALSE);
+            buf[1] = spice_make_scancode(scancode, TRUE);
+        } else {
+            buf = (guint8*)spice_marshaller_reserve_space(msg->marshaller, 4);
+            code = spice_make_scancode(scancode, FALSE);
+            buf[0] = code & 0xff;
+            buf[1] = code >> 8;
+            code = spice_make_scancode(scancode, TRUE);
+            buf[2] = code & 0xff;
+            buf[3] = code >> 8;
+        }
         spice_msg_out_send(msg);
     } else {
         CHANNEL_DEBUG(channel, "The server doesn't support atomic press and release");
