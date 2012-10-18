@@ -1729,6 +1729,10 @@ static gboolean migrate_connect(gpointer data)
                          "verify", SPICE_SESSION_VERIFY_PUBKEY,
                          NULL);
             g_byte_array_unref(pubkey);
+        } else if (info->cert_subject_size == 0 ||
+                   strlen((const char*)info->cert_subject_data) == 0) {
+            /* only verify hostname if no cert subject */
+            g_object_set(mig->session, "verify", SPICE_SESSION_VERIFY_HOSTNAME, NULL);
         } else {
             gchar *subject = g_alloca(info->cert_subject_size + 1);
             strncpy(subject, (const char*)info->cert_subject_data, info->cert_subject_size);
