@@ -689,6 +689,31 @@ static void update_keyboard_grab(SpiceDisplay *display)
         try_keyboard_ungrab(display);
 }
 
+static void set_mouse_accel(SpiceDisplay *display, gboolean enabled)
+{
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+#if defined GDK_WINDOWING_X11
+    GdkWindow *w = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
+    Display *x_display = GDK_WINDOW_XDISPLAY(w);
+
+    if (enabled) {
+        /* restore mouse acceleration */
+        XChangePointerControl(x_display, True, True,
+                              d->x11_accel_numerator, d->x11_accel_denominator, d->x11_threshold);
+    } else {
+        XGetPointerControl(x_display,
+                           &d->x11_accel_numerator, &d->x11_accel_denominator, &d->x11_threshold);
+        /* set mouse acceleration to default */
+        XChangePointerControl(x_display, True, True, -1, -1, -1);
+        SPICE_DEBUG("disabled X11 mouse motion %d %d %d",
+                    d->x11_accel_numerator, d->x11_accel_denominator, d->x11_threshold);
+    }
+#else
+    g_warning("Mouse acceleration code missing for your platform");
+#endif
+}
+
 static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
@@ -738,19 +763,8 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
     }
 #endif
 
-#ifdef GDK_WINDOWING_X11
-    if (status == GDK_GRAB_SUCCESS) {
-        GdkWindow *w = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
-        Display *x_display = GDK_WINDOW_XDISPLAY(w);
-
-        XGetPointerControl(x_display,
-                           &d->x11_accel_numerator, &d->x11_accel_denominator, &d->x11_threshold);
-        /* set mouse acceleration to default */
-        XChangePointerControl(x_display, True, True, -1, -1, -1);
-        SPICE_DEBUG("updated mouse motion %d %d %d",
-                    d->x11_accel_numerator, d->x11_accel_denominator, d->x11_threshold);
-    }
-#endif
+    if (status == GDK_GRAB_SUCCESS)
+        set_mouse_accel(display, FALSE);
 
     gdk_cursor_unref(blank);
     return status;
@@ -838,16 +852,7 @@ static void try_mouse_ungrab(SpiceDisplay *display)
 #ifdef WIN32
     ClipCursor(NULL);
 #endif
-#ifdef GDK_WINDOWING_X11
-    {
-        GdkWindow *w = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
-        Display *x_display = GDK_WINDOW_XDISPLAY(w);
-
-        /* restore mouse acceleration */
-        XChangePointerControl(x_display, True, True,
-                              d->x11_accel_numerator, d->x11_accel_denominator, d->x11_threshold);
-    }
-#endif
+    set_mouse_accel(display, TRUE);
 
     d->mouse_grab_active = false;
 
