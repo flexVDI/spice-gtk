@@ -740,16 +740,15 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
 
 #ifdef GDK_WINDOWING_X11
     if (status == GDK_GRAB_SUCCESS) {
-        int accel_numerator;
-        int accel_denominator;
-        int threshold;
         GdkWindow *w = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
         Display *x_display = GDK_WINDOW_XDISPLAY(w);
 
-        XGetPointerControl(x_display, &accel_numerator, &accel_denominator,
-                           &threshold);
-        XChangePointerControl(x_display, False, False, accel_numerator,
-                              accel_denominator, threshold);
+        XGetPointerControl(x_display,
+                           &d->x11_accel_numerator, &d->x11_accel_denominator, &d->x11_threshold);
+        /* set mouse acceleration to default */
+        XChangePointerControl(x_display, True, True, -1, -1, -1);
+        SPICE_DEBUG("updated mouse motion %d %d %d",
+                    d->x11_accel_numerator, d->x11_accel_denominator, d->x11_threshold);
     }
 #endif
 
@@ -841,16 +840,12 @@ static void try_mouse_ungrab(SpiceDisplay *display)
 #endif
 #ifdef GDK_WINDOWING_X11
     {
-        int accel_numerator;
-        int accel_denominator;
-        int threshold;
         GdkWindow *w = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
         Display *x_display = GDK_WINDOW_XDISPLAY(w);
 
-        XGetPointerControl(x_display, &accel_numerator, &accel_denominator,
-                           &threshold);
-        XChangePointerControl(x_display, True, True, accel_numerator,
-                              accel_denominator, threshold);
+        /* restore mouse acceleration */
+        XChangePointerControl(x_display, True, True,
+                              d->x11_accel_numerator, d->x11_accel_denominator, d->x11_threshold);
     }
 #endif
 

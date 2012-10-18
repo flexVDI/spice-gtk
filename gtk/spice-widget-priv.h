@@ -117,6 +117,11 @@ struct _SpiceDisplayPrivate {
 #endif
     guint                   keypress_delay;
     gint                    zoom_level;
+#ifdef GDK_WINDOWING_X11
+    int                     x11_accel_numerator;
+    int                     x11_accel_denominator;
+    int                     x11_threshold;
+#endif
 };
 
 int      spicex_image_create                 (SpiceDisplay *display);
