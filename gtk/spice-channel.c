@@ -2119,7 +2119,7 @@ reconnect:
     c->sock = spice_session_channel_open_host(c->session, channel, c->tls);
     if (c->sock == NULL) {
         if (!c->tls) {
-            CHANNEL_DEBUG(channel, "connection failed, trying with TLS port");
+            CHANNEL_DEBUG(channel, "trying with TLS port");
             c->tls = true; /* FIXME: does that really work with provided fd */
             goto reconnect;
         } else {
