@@ -114,6 +114,8 @@ struct _SpiceDisplayPrivate {
     gint                    mark;
 #ifdef WIN32
     HHOOK                   keyboard_hook;
+    int                     win_mouse[3];
+    int                     win_mouse_speed;
 #endif
     guint                   keypress_delay;
     gint                    zoom_level;

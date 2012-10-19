@@ -709,6 +709,17 @@ static void set_mouse_accel(SpiceDisplay *display, gboolean enabled)
         SPICE_DEBUG("disabled X11 mouse motion %d %d %d",
                     d->x11_accel_numerator, d->x11_accel_denominator, d->x11_threshold);
     }
+#elif defined GDK_WINDOWING_WIN32
+    if (enabled) {
+        g_return_if_fail(SystemParametersInfo(SPI_SETMOUSE, 0, &d->win_mouse, 0));
+        g_return_if_fail(SystemParametersInfo(SPI_SETMOUSESPEED, 0, (PVOID)d->win_mouse_speed, 0));
+    } else {
+        int accel[3] = { 0, 0, 0 }; // disabled
+        g_return_if_fail(SystemParametersInfo(SPI_GETMOUSE, 0, &d->win_mouse, 0));
+        g_return_if_fail(SystemParametersInfo(SPI_GETMOUSESPEED, 0, &d->win_mouse_speed, 0));
+        g_return_if_fail(SystemParametersInfo(SPI_SETMOUSE, 0, &accel, SPIF_SENDCHANGE));
+        g_return_if_fail(SystemParametersInfo(SPI_SETMOUSESPEED, 0, (PVOID)10, SPIF_SENDCHANGE)); // default
+    }
 #else
     g_warning("Mouse acceleration code missing for your platform");
 #endif
