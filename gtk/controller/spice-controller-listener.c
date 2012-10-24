@@ -25,6 +25,7 @@
 #include <windows.h>
 #include "namedpipe.h"
 #include "namedpipelistener.h"
+#include "win32-util.h"
 #endif
 
 #ifdef G_OS_UNIX
@@ -89,7 +90,7 @@ spice_controller_listener_new (const gchar *address, GError **error)
 
         listener = G_OBJECT (spice_named_pipe_listener_new ());
 
-        np = spice_named_pipe_new (addr, error);
+        np = spice_win32_user_pipe_new (addr, error);
         if (!np) {
             g_object_unref (listener);
             listener = NULL;

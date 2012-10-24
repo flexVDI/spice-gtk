@@ -56,6 +56,8 @@ libspice_controller_la_SOURCES +=		\
 	namedpipeconnection.h			\
 	namedpipelistener.c			\
 	namedpipelistener.h			\
+	win32-util.c                            \
+	win32-util.h                            \
 	$(NULL)
 endif
 libspice_controller_la_LDFLAGS =		\
