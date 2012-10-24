@@ -64,16 +64,62 @@ end:
 
     return success;
 }
+
+static gboolean
+get_user_security_attributes (SECURITY_ATTRIBUTES* psa, SECURITY_DESCRIPTOR* psd, PACL* ppdacl)
+{
+    EXPLICIT_ACCESS ea;
+    TRUSTEE trst;
+    DWORD ret = 0;
+
+    ZeroMemory (psa, sizeof (*psa));
+    ZeroMemory (psd, sizeof (*psd));
+    psa->nLength = sizeof (*psa);
+    psa->bInheritHandle = FALSE;
+    psa->lpSecurityDescriptor = psd;
+
+    ZeroMemory (&trst, sizeof (trst));
+    trst.pMultipleTrustee = NULL;
+    trst.MultipleTrusteeOperation = NO_MULTIPLE_TRUSTEE;
+    trst.TrusteeForm = TRUSTEE_IS_NAME;
+    trst.TrusteeType = TRUSTEE_IS_USER;
+    trst.ptstrName = "CURRENT_USER";
+
+    ZeroMemory (&ea, sizeof (ea));
+    ea.grfAccessPermissions = GENERIC_WRITE | GENERIC_READ;
+    ea.grfAccessMode = SET_ACCESS;
+    ea.grfInheritance = NO_INHERITANCE;
+    ea.Trustee = trst;
+
+    ret = SetEntriesInAcl (1, &ea, NULL, ppdacl);
+    if (ret != ERROR_SUCCESS)
+        return FALSE;
+
+   if (!InitializeSecurityDescriptor (psd, SECURITY_DESCRIPTOR_REVISION))
+       return FALSE;
+
+   if (!SetSecurityDescriptorDacl (psd, TRUE, *ppdacl, FALSE))
+       return FALSE;
+
+   return TRUE;
+}
+
 #define DEFAULT_PIPE_BUF_SIZE 4096
 
 SpiceNamedPipe*
 spice_win32_user_pipe_new (gchar *name, GError **error)
 {
+    SECURITY_ATTRIBUTES sa;
+    SECURITY_DESCRIPTOR sd;
+    PACL dacl = NULL;
     HANDLE pipe;
     SpiceNamedPipe *np = NULL;
 
     g_return_val_if_fail (name != NULL, NULL);
     g_return_val_if_fail (error != NULL, NULL);
+
+    if (!get_user_security_attributes (&sa, &sd, &dacl))
+        return NULL;
 
     pipe = CreateNamedPipe (name,
         PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED |
@@ -84,7 +130,7 @@ spice_win32_user_pipe_new (gchar *name, GError **error)
         PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
         PIPE_UNLIMITED_INSTANCES,
         DEFAULT_PIPE_BUF_SIZE, DEFAULT_PIPE_BUF_SIZE,
-        0, NULL);
+        0, &sa);
 
     if (pipe == INVALID_HANDLE_VALUE) {
         int errsv = GetLastError ();
@@ -110,5 +156,7 @@ spice_win32_user_pipe_new (gchar *name, GError **error)
                                            NULL, error, "handle", pipe, NULL));
 
 end:
+    LocalFree (dacl);
+
     return np;
 }
