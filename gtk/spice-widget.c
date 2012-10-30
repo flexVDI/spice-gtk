@@ -1240,6 +1240,12 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
 
     scancode = vnc_display_keymap_gdk2xtkbd(d->keycode_map, d->keycode_maplen,
                                             key->hardware_keycode);
+#ifdef WIN32
+    /* MapVirtualKey doesn't return scancode with needed higher byte */
+    scancode = MapVirtualKey(key->hardware_keycode, MAPVK_VK_TO_VSC) |
+        (scancode & 0xff00);
+#endif
+
     switch (key->type) {
     case GDK_KEY_PRESS:
         send_key(display, scancode, SEND_KEY_PRESS, !key->is_modifier);
