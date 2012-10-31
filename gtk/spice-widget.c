@@ -119,7 +119,7 @@ enum {
 static guint signals[SPICE_DISPLAY_LAST_SIGNAL];
 
 #ifdef WIN32
-static HWND focus_window = NULL;
+static HWND win32_window = NULL;
 #endif
 
 static void update_keyboard_grab(SpiceDisplay *display);
@@ -571,13 +571,13 @@ void spice_display_set_grab_keys(SpiceDisplay *display, SpiceGrabSequence *seq)
 #ifdef WIN32
 static LRESULT CALLBACK keyboard_hook_cb(int code, WPARAM wparam, LPARAM lparam)
 {
-    if  (focus_window && code == HC_ACTION) {
+    if  (win32_window && code == HC_ACTION) {
         KBDLLHOOKSTRUCT *hooked = (KBDLLHOOKSTRUCT*)lparam;
         DWORD dwmsg = (hooked->flags << 24) | (hooked->scanCode << 16) | 1;
 
         if (hooked->vkCode == VK_NUMLOCK || hooked->vkCode == VK_RSHIFT) {
             dwmsg &= ~(1 << 24);
-            SendMessage(focus_window, wparam, hooked->vkCode, dwmsg);
+            SendMessage(win32_window, wparam, hooked->vkCode, dwmsg);
         }
         switch (hooked->vkCode) {
         case VK_CAPITAL:
@@ -591,7 +591,7 @@ static LRESULT CALLBACK keyboard_hook_cb(int code, WPARAM wparam, LPARAM lparam)
         case VK_RMENU:
             break;
         default:
-            SendMessage(focus_window, wparam, hooked->vkCode, dwmsg);
+            SendMessage(win32_window, wparam, hooked->vkCode, dwmsg);
             return 1;
         }
     }
@@ -1197,6 +1197,13 @@ static gboolean check_for_grab_key(SpiceDisplay *display, int type, int keyval)
     return FALSE;
 }
 
+static void update_display(SpiceDisplay *display)
+{
+#ifdef WIN32
+    win32_window = display ? GDK_WINDOW_HWND(gtk_widget_get_window(GTK_WIDGET(display))) : NULL;
+#endif
+}
+
 static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
@@ -1295,8 +1302,11 @@ static gboolean enter_event(GtkWidget *widget, GdkEventCrossing *crossing G_GNUC
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     SPICE_DEBUG("%s", __FUNCTION__);
+
     d->mouse_have_pointer = true;
     try_keyboard_grab(display);
+    update_display(display);
+
     return true;
 }
 
@@ -1334,10 +1344,8 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
     sync_keyboard_lock_modifiers(display);
     update_keyboard_focus(display, true);
     try_keyboard_grab(display);
-#ifdef WIN32
-    focus_window = GDK_WINDOW_HWND(gtk_widget_get_window(widget));
-    g_return_val_if_fail(focus_window != NULL, true);
-#endif
+    update_display(display);
+
     return true;
 }
 
@@ -1347,6 +1355,7 @@ static gboolean focus_out_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_U
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     SPICE_DEBUG("%s", __FUNCTION__);
+    update_display(NULL);
 
     /*
      * Ignore focus out after a keyboard grab
