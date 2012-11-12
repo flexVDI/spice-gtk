@@ -1849,13 +1849,14 @@ static void update_mouse_mode(SpiceChannel *channel, gpointer data)
         break;
     case SPICE_MOUSE_MODE_SERVER:
         try_mouse_grab(display);
+        d->mouse_guest_x = -1;
+        d->mouse_guest_y = -1;
         break;
     default:
         g_warn_if_reached();
     }
 
     update_mouse_pointer(display);
-    cursor_invalidate(display);
 }
 
 static void update_area(SpiceDisplay *display,

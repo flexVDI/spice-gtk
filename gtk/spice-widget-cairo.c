@@ -135,6 +135,7 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
         cairo_fill(cr);
 
         if (d->mouse_mode == SPICE_MOUSE_MODE_SERVER &&
+            d->mouse_guest_x != -1 && d->mouse_guest_y != -1 &&
             !d->show_cursor) {
             GdkPixbuf *image = d->mouse_pixbuf;
             if (image != NULL) {
