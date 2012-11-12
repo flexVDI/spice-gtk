@@ -1520,6 +1520,10 @@ static gboolean configure_event(GtkWidget *widget, GdkEventConfigure *conf)
         d->wh = conf->height;
         recalc_geometry(widget);
     }
+
+    try_mouse_ungrab(display);
+    try_mouse_grab(display);
+
     return true;
 }
 
