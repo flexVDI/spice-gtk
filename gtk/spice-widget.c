@@ -725,17 +725,66 @@ static void set_mouse_accel(SpiceDisplay *display, gboolean enabled)
 #endif
 }
 
+#ifdef WIN32
+static gboolean win32_clip_cursor(void)
+{
+    RECT window, workarea, rect;
+    HMONITOR monitor;
+    MONITORINFO mi = { 0, };
+
+    g_return_val_if_fail(win32_window != NULL, FALSE);
+
+    if (!GetWindowRect(win32_window, &window))
+        goto error;
+
+    monitor = MonitorFromRect(&window, MONITOR_DEFAULTTONEAREST);
+    g_return_val_if_fail(monitor != NULL, false);
+
+    mi.cbSize = sizeof(mi);
+    if (!GetMonitorInfo(monitor, &mi))
+        goto error;
+    workarea = mi.rcWork;
+
+    if (!IntersectRect(&rect, &window, &workarea)) {
+        g_critical("error clipping cursor");
+        return false;
+    }
+
+    SPICE_DEBUG("clip rect %ld %ld %ld %ld\n",
+                rect.left, rect.right, rect.top, rect.bottom);
+
+    if (!ClipCursor(&rect))
+        goto error;
+
+    return true;
+
+error:
+    {
+        DWORD errval  = GetLastError();
+        gchar *errstr = g_win32_error_message(errval);
+        g_warning("failed to clip cursor (%ld) %s", errval, errstr);
+    }
+
+    return false;
+}
+#endif
+
 static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     GdkWindow *window = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
-    GdkGrabStatus status;
+    GdkGrabStatus status = GDK_GRAB_BROKEN;
     GdkCursor *blank = get_blank_cursor();
 
     if (!gtk_widget_get_realized(GTK_WIDGET(display)))
-        return GDK_GRAB_BROKEN;
-    try_keyboard_grab(display);
+        goto end;
 
+#ifdef WIN32
+    if (!win32_clip_cursor())
+        goto end;
+#endif
+
+    try_keyboard_grab(display);
     /*
      * from gtk-vnc:
      * For relative mouse to work correctly when grabbed we need to
@@ -761,22 +810,11 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
         d->mouse_grab_active = true;
         g_signal_emit(display, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, true);
     }
-#ifdef WIN32
-    {
-        RECT client_rect;
-        POINT origin;
-
-        origin.x = origin.y = 0;
-        ClientToScreen(focus_window, &origin);
-        GetClientRect(focus_window, &client_rect);
-        OffsetRect(&client_rect, origin.x, origin.y);
-        ClipCursor(&client_rect);
-    }
-#endif
 
     if (status == GDK_GRAB_SUCCESS)
         set_mouse_accel(display, FALSE);
 
+end:
     gdk_cursor_unref(blank);
     return status;
 }
@@ -835,10 +873,21 @@ static void try_mouse_grab(SpiceDisplay *display)
 static void mouse_wrap(SpiceDisplay *display, GdkEventMotion *motion)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    GdkScreen *screen = gtk_widget_get_screen(GTK_WIDGET(display));
+    gint xr, yr;
 
-    gint xr = gdk_screen_get_width(screen) / 2;
-    gint yr = gdk_screen_get_height(screen) / 2;
+#ifdef WIN32
+    RECT clip;
+    g_return_if_fail(GetClipCursor(&clip));
+    xr = clip.left + (clip.right - clip.left) / 2;
+    yr = clip.top + (clip.bottom - clip.top) / 2;
+    /* the clip rectangle has no offset, so we can't use gdk_wrap_pointer */
+    SetCursorPos(xr, yr);
+    d->mouse_last_x = -1;
+    d->mouse_last_y = -1;
+#else
+    GdkScreen *screen = gtk_widget_get_screen(GTK_WIDGET(display));
+    xr = gdk_screen_get_width(screen) / 2;
+    yr = gdk_screen_get_height(screen) / 2;
 
     if (xr != (gint)motion->x_root || yr != (gint)motion->y_root) {
         /* FIXME: we try our best to ignore that next pointer move event.. */
@@ -849,6 +898,8 @@ static void mouse_wrap(SpiceDisplay *display, GdkEventMotion *motion)
         d->mouse_last_x = -1;
         d->mouse_last_y = -1;
     }
+#endif
+
 }
 
 static void try_mouse_ungrab(SpiceDisplay *display)
@@ -1409,7 +1460,8 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
 
             d->mouse_last_x = x;
             d->mouse_last_y = y;
-            mouse_wrap(display, motion);
+            if (dx != 0 || dy != 0)
+                mouse_wrap(display, motion);
         }
         break;
     default:
