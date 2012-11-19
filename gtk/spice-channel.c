@@ -2087,6 +2087,64 @@ static gboolean spice_channel_delayed_unref(gpointer data)
     return FALSE;
 }
 
+static X509_LOOKUP_METHOD spice_x509_mem_lookup = {
+    "spice_x509_mem_lookup",
+    0
+};
+
+static int spice_channel_load_ca(SpiceChannel *channel)
+{
+    SpiceChannelPrivate *c = channel->priv;
+    STACK_OF(X509_INFO) *inf;
+    X509_INFO *itmp;
+    X509_LOOKUP *lookup;
+    BIO *in;
+    int i, count = 0;
+    guint8 *ca;
+    guint size;
+    const gchar *ca_file;
+
+    g_return_val_if_fail(c->ctx != NULL, 0);
+
+    lookup = X509_STORE_add_lookup(c->ctx->cert_store, &spice_x509_mem_lookup);
+    ca_file = spice_session_get_ca_file(c->session);
+    spice_session_get_ca(c->session, &ca, &size);
+
+    CHANNEL_DEBUG(channel, "Load CA, file: %s, data: %p", ca_file, ca);
+    g_warn_if_fail(ca_file || ca);
+
+    if (ca != NULL) {
+        in = BIO_new_mem_buf(ca, size);
+        inf = PEM_X509_INFO_read_bio(in, NULL, NULL, NULL);
+        BIO_free(in);
+
+        for (i = 0; i < sk_X509_INFO_num(inf); i++) {
+            itmp = sk_X509_INFO_value(inf, i);
+            if (itmp->x509) {
+                X509_STORE_add_cert(lookup->store_ctx, itmp->x509);
+                count++;
+            }
+            if (itmp->crl) {
+                X509_STORE_add_crl(lookup->store_ctx, itmp->crl);
+                count++;
+            }
+        }
+
+        sk_X509_INFO_pop_free(inf, X509_INFO_free);
+    }
+
+    if (ca_file != NULL) {
+        int rc = SSL_CTX_load_verify_locations(c->ctx, ca_file, NULL);
+        if (rc != 1)
+            g_warning("loading ca certs from %s failed", ca_file);
+        else
+            count++;
+    }
+
+    return count;
+}
+
+
 /* coroutine context */
 static void *spice_channel_coroutine(void *data)
 {
@@ -2142,14 +2200,9 @@ reconnect:
         verify = spice_session_get_verify(c->session);
         if (verify &
             (SPICE_SESSION_VERIFY_SUBJECT | SPICE_SESSION_VERIFY_HOSTNAME)) {
-            const gchar *ca_file = spice_session_get_ca_file (c->session);
-
-            g_warn_if_fail(ca_file != NULL);
-            CHANNEL_DEBUG(channel, "CA file: %s", ca_file);
-            rc = SSL_CTX_load_verify_locations(c->ctx, ca_file, NULL);
-
-            if (rc != 1) {
-                g_warning("loading ca certs from %s failed", ca_file);
+            rc = spice_channel_load_ca(channel);
+            if (rc == 0) {
+                g_warning("no cert loaded");
                 if (verify & SPICE_SESSION_VERIFY_PUBKEY) {
                     g_warning("only pubkey active");
                     verify = SPICE_SESSION_VERIFY_PUBKEY;
