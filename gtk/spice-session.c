@@ -103,6 +103,7 @@ enum {
     PROP_GLZ_WINDOW_SIZE,
     PROP_UUID,
     PROP_NAME,
+    PROP_CA,
 };
 
 /* signals */
@@ -233,8 +234,8 @@ spice_session_finalize(GObject *gobject)
     spice_session_images_clear(session);
     glz_decoder_window_destroy(s->glz_window);
 
-    if (s->pubkey)
-        g_byte_array_unref(s->pubkey);
+    g_clear_pointer(&s->pubkey, g_byte_array_unref);
+    g_clear_pointer(&s->ca, g_byte_array_unref);
 
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_session_parent_class)->finalize)
@@ -437,6 +438,9 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_PUBKEY:
         g_value_set_boxed(value, s->pubkey);
 	break;
+    case PROP_CA:
+        g_value_set_boxed(value, s->ca);
+	break;
     case PROP_CERT_SUBJECT:
         g_value_set_string(value, s->cert_subject);
 	break;
@@ -595,6 +599,10 @@ static void spice_session_set_property(GObject      *gobject,
         break;
     case PROP_GLZ_WINDOW_SIZE:
         s->glz_window_size = g_value_get_int(value);
+        break;
+    case PROP_CA:
+        g_clear_pointer(&s->ca, g_byte_array_unref);
+        s->ca = g_value_dup_boxed(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -948,6 +956,27 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                         "Request that SpiceDisplays don't grab the keyboard",
                         FALSE,
                         G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceSession:ca:
+     *
+     * CA certificates in PEM format. The text data can contain
+     * several CA certificates identified by:
+     *
+     *  -----BEGIN CERTIFICATE-----
+     *  ... (CA certificate in base64 encoding) ...
+     *  -----END CERTIFICATE-----
+     *
+     * Since: 0.15
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_CA,
+         g_param_spec_boxed("ca",
+                            "CA",
+                            "The CA certificates data",
+                            G_TYPE_BYTE_ARRAY,
+                            G_PARAM_READWRITE |
+                            G_PARAM_STATIC_STRINGS));
 
     /**
      * SpiceSession::channel-new:
@@ -1769,6 +1798,19 @@ void spice_session_get_pubkey(SpiceSession *session, guint8 **pubkey, guint *siz
 
     *pubkey = s->pubkey ? s->pubkey->data : NULL;
     *size = s->pubkey ? s->pubkey->len : 0;
+}
+
+G_GNUC_INTERNAL
+void spice_session_get_ca(SpiceSession *session, guint8 **ca, guint *size)
+{
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_if_fail(s != NULL);
+    g_return_if_fail(ca != NULL);
+    g_return_if_fail(size != NULL);
+
+    *ca = s->ca ? s->ca->data : NULL;
+    *size = s->ca ? s->ca->len : 0;
 }
 
 G_GNUC_INTERNAL

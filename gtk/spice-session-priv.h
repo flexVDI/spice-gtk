@@ -40,6 +40,7 @@ struct _SpiceSessionPrivate {
     char              *ca_file;
     char              *ciphers;
     GByteArray        *pubkey;
+    GByteArray        *ca;
     char              *cert_subject;
     guint             verify;
     gboolean          read_only;
@@ -135,6 +136,7 @@ const gchar* spice_session_get_host(SpiceSession *session);
 const gchar* spice_session_get_cert_subject(SpiceSession *session);
 const gchar* spice_session_get_ciphers(SpiceSession *session);
 const gchar* spice_session_get_ca_file(SpiceSession *session);
+void spice_session_get_ca(SpiceSession *session, guint8 **ca, guint *size);
 
 void spice_session_set_caches_hints(SpiceSession *session,
                                     uint32_t pci_ram_size,
