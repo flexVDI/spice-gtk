@@ -1165,6 +1165,15 @@ static void spice_channel_send_link(SpiceChannel *channel)
     free(buffer);
 }
 
+static void spice_channel_switch_protocol(SpiceChannel *channel, gint version)
+{
+    SpiceChannelPrivate *c = channel->priv;
+
+    g_object_set(c->session, "protocol", version, NULL);
+    SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
+    spice_channel_connect(channel);
+}
+
 /* coroutine context */
 static void spice_channel_recv_link_hdr(SpiceChannel *channel)
 {
@@ -1173,39 +1182,40 @@ static void spice_channel_recv_link_hdr(SpiceChannel *channel)
 
     rc = spice_channel_read(channel, &c->peer_hdr, sizeof(c->peer_hdr));
     if (rc != sizeof(c->peer_hdr)) {
-        g_critical("incomplete link header (%d/%" G_GSIZE_FORMAT ")",
-                   rc, sizeof(c->peer_hdr));
+        g_warning("incomplete link header (%d/%" G_GSIZE_FORMAT ")",
+                  rc, sizeof(c->peer_hdr));
         goto error;
     }
     if (c->peer_hdr.magic != SPICE_MAGIC) {
-        g_critical("invalid SPICE_MAGIC!");
+        g_warning("invalid SPICE_MAGIC!");
         goto error;
     }
 
     CHANNEL_DEBUG(channel, "Peer version: %d:%d", c->peer_hdr.major_version, c->peer_hdr.minor_version);
     if (c->peer_hdr.major_version != c->link_hdr.major_version) {
-        if (c->peer_hdr.major_version == 1) {
-            /* enter spice 0.4 mode */
-            g_object_set(c->session, "protocol", 1, NULL);
-            CHANNEL_DEBUG(channel, "switching to protocol 1 (spice 0.4)");
-            SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
-            spice_channel_connect(channel);
-            return;
-        }
-        g_critical("major mismatch (got %d, expected %d)",
-                   c->peer_hdr.major_version, c->link_hdr.major_version);
+        g_warning("major mismatch (got %d, expected %d)",
+                  c->peer_hdr.major_version, c->link_hdr.major_version);
         goto error;
     }
 
     c->peer_msg = spice_malloc(c->peer_hdr.size);
     if (c->peer_msg == NULL) {
-        g_critical("invalid peer header size: %u", c->peer_hdr.size);
+        g_warning("invalid peer header size: %u", c->peer_hdr.size);
         goto error;
     }
 
     return;
 
 error:
+    /* Windows socket seems to give early CONNRESET errors. The server
+       does not linger when closing the socket if the protocol is
+       incompatible. Try with the oldest protocol in this case: */
+    if (c->link_hdr.major_version != 1) {
+        SPICE_DEBUG("%s: error, switching to protocol 1 (spice 0.4)", c->name);
+        spice_channel_switch_protocol(channel, 1);
+        return;
+    }
+
     emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_LINK);
 }
 
@@ -2060,22 +2070,25 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
 #endif
     } while (ret == 0); /* ret == 0 means no IO condition, but woken up */
 
-    if (ret & (G_IO_ERR|G_IO_HUP)) {
-        CHANNEL_DEBUG(channel, "got socket error before read(): %d", ret);
+    if (ret & G_IO_IN) {
+        do
+            SPICE_CHANNEL_GET_CLASS(channel)->iterate_read(channel);
+#if HAVE_SASL
+        while (c->sasl_decoded != NULL);
+#else
+        while (FALSE);
+#endif
+    }
+
+    if (c->state > SPICE_CHANNEL_STATE_CONNECTING &&
+        ret & (G_IO_ERR|G_IO_HUP)) {
+        SPICE_DEBUG("got socket error: %d", ret);
         emit_main_context(channel, SPICE_CHANNEL_EVENT,
                           c->state == SPICE_CHANNEL_STATE_READY ?
                           SPICE_CHANNEL_ERROR_IO : SPICE_CHANNEL_ERROR_LINK);
         c->has_error = TRUE;
         return FALSE;
     }
-
-    do
-        SPICE_CHANNEL_GET_CLASS(channel)->iterate_read(channel);
-#if HAVE_SASL
-    while (c->sasl_decoded != NULL);
-#else
-    while (FALSE);
-#endif
 
     return TRUE;
 }
