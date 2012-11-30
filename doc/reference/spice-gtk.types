@@ -42,3 +42,4 @@ spice_usbredir_channel_get_type
 spice_usb_device_get_type
 spice_usb_device_manager_get_type
 spice_usb_device_widget_get_type
+spice_port_channel_get_type

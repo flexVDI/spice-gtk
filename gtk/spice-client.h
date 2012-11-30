@@ -40,6 +40,7 @@
 #include "channel-record.h"
 #include "channel-smartcard.h"
 #include "channel-usbredir.h"
+#include "channel-port.h"
 
 #include "smartcard-manager.h"
 #include "usb-device-manager.h"

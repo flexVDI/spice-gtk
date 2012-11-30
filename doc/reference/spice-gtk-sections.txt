@@ -403,3 +403,24 @@ SPICE_DEPRECATED_FOR
 spice_g_signal_connect_object
 </SECTION>
 
+<SECTION>
+<FILE>channel-port</FILE>
+<TITLE>SpicePortChannel</TITLE>
+SpicePortChannel
+SpicePortChannelClass
+<SUBSECTION>
+spice_port_event
+spice_port_write_async
+spice_port_write_finish
+<SUBSECTION Standard>
+SPICE_PORT_CHANNEL
+SPICE_IS_PORT_CHANNEL
+SPICE_TYPE_PORT_CHANNEL
+spice_port_channel_get_type
+SPICE_PORT_CHANNEL_CLASS
+SPICE_IS_PORT_CHANNEL_CLASS
+SPICE_PORT_CHANNEL_GET_CLASS
+<SUBSECTION Private>
+SpicePortChannelPrivate
+</SECTION>
+

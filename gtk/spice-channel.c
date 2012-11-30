@@ -1872,6 +1872,7 @@ const gchar* spice_channel_type_to_string(gint type)
         [ SPICE_CHANNEL_TUNNEL ] = "tunnel",
         [ SPICE_CHANNEL_SMARTCARD ] = "smartcard",
         [ SPICE_CHANNEL_USBREDIR ] = "usbredir",
+        [ SPICE_CHANNEL_PORT ] = "port",
     };
     const char *str = NULL;
 
@@ -1942,6 +1943,9 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
         break;
     }
 #endif
+    case SPICE_CHANNEL_PORT:
+        gtype = SPICE_TYPE_PORT_CHANNEL;
+        break;
     default:
         g_debug("unsupported channel kind: %s: %d",
                 spice_channel_type_to_string(type), type);

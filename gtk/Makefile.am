@@ -236,6 +236,7 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	channel-inputs.c				\
 	channel-main.c					\
 	channel-playback.c				\
+	channel-port.c					\
 	channel-record.c				\
 	channel-smartcard.c				\
 	channel-usbredir.c				\
@@ -277,6 +278,7 @@ libspice_client_glibinclude_HEADERS =	\
 	channel-inputs.h		\
 	channel-main.h			\
 	channel-playback.h		\
+	channel-port.h			\
 	channel-record.h		\
 	channel-smartcard.h		\
 	channel-usbredir.h		\
@@ -589,6 +591,7 @@ glib_introspection_files =				\
 	channel-inputs.c				\
 	channel-main.c					\
 	channel-playback.c				\
+	channel-port.c					\
 	channel-record.c				\
 	channel-smartcard.c				\
 	channel-usbredir.c				\
