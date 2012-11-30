@@ -22,6 +22,9 @@
 #include <glib/gi18n.h>
 
 #include <sys/stat.h>
+#ifdef HAVE_TERMIOS_H
+#include <termios.h>
+#endif
 
 #define GNOME_DESKTOP_USE_UNSTABLE_API 2
 #include "display/gnome-rr.h"
@@ -128,6 +131,7 @@ static char *spicy_title = NULL;
 static GMainLoop     *mainloop = NULL;
 static int           connections = 0;
 static GKeyFile      *keyfile = NULL;
+static SpicePortChannel*stdin_port = NULL;
 static GnomeRRScreen *rrscreen = NULL;
 static GnomeRRConfig *rrsaved = NULL;
 static GnomeRRConfig *rrcurrent = NULL;
@@ -1612,6 +1616,101 @@ static void display_monitors(SpiceChannel *display, GParamSpec *pspec,
     g_clear_pointer(&monitors, g_array_unref);
 }
 
+static void port_write_cb(GObject *source_object,
+                          GAsyncResult *res,
+                          gpointer user_data)
+{
+    SpicePortChannel *port = SPICE_PORT_CHANNEL(source_object);
+    GError *error = NULL;
+
+    spice_port_write_finish(port, res, &error);
+    if (error != NULL)
+        g_warning("%s", error->message);
+    g_clear_error(&error);
+}
+
+static void port_flushed_cb(GObject *source_object,
+                            GAsyncResult *res,
+                            gpointer user_data)
+{
+    SpiceChannel *channel = SPICE_CHANNEL(source_object);
+    GError *error = NULL;
+
+    spice_channel_flush_finish(channel, res, &error);
+    if (error != NULL)
+        g_warning("%s", error->message);
+    g_clear_error(&error);
+
+    spice_channel_disconnect(channel, SPICE_CHANNEL_CLOSED);
+}
+
+static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
+{
+    char buf[4096];
+    gsize bytes_read;
+    GIOStatus status;
+
+    if (!(condition & G_IO_IN))
+        return FALSE;
+
+    status = g_io_channel_read_chars(gin, buf, sizeof(buf), &bytes_read, NULL);
+    if (status != G_IO_STATUS_NORMAL)
+        return FALSE;
+
+    if (stdin_port != NULL)
+        spice_port_write_async(stdin_port, buf, bytes_read, NULL, port_write_cb, NULL);
+
+    return TRUE;
+}
+
+static void port_opened(SpiceChannel *channel, GParamSpec *pspec,
+                        spice_connection *conn)
+{
+    SpicePortChannel *port = SPICE_PORT_CHANNEL(channel);
+    gchar *name = NULL;
+    gboolean opened = FALSE;
+
+    g_object_get(channel,
+                 "port-name", &name,
+                 "port-opened", &opened,
+                 NULL);
+
+    g_printerr("port %p %s: %s\n", channel, name, opened ? "opened" : "closed");
+
+    if (opened) {
+        /* only send a break event and disconnect */
+        if (g_strcmp0(name, "org.spice.spicy.break") == 0) {
+            spice_port_event(port, SPICE_PORT_EVENT_BREAK);
+        }
+
+        /* handle the first spicy port and connect it to stdin/out */
+        if (g_strcmp0(name, "org.spice.spicy") == 0 && stdin_port == NULL) {
+            stdin_port = port;
+            goto end;
+        }
+
+        if (port == stdin_port)
+            goto end;
+
+        spice_channel_flush_async(channel, NULL, port_flushed_cb, conn);
+    } else {
+        if (port == stdin_port)
+            stdin_port = NULL;
+    }
+
+end:
+    g_free(name);
+}
+
+static void port_data(SpicePortChannel *port,
+                      gpointer data, int size, spice_connection *conn)
+{
+    if (port != stdin_port)
+        return;
+
+    write(fileno(stdout), data, size);
+}
+
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
     spice_connection *conn = data;
@@ -1659,6 +1758,14 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     if (SPICE_IS_USBREDIR_CHANNEL(channel)) {
         update_auto_usbredir_sensitive(conn);
     }
+
+    if (SPICE_IS_PORT_CHANNEL(channel)) {
+        g_signal_connect(channel, "notify::port-opened",
+                         G_CALLBACK(port_opened), conn);
+        g_signal_connect(channel, "port-data",
+                         G_CALLBACK(port_data), conn);
+        spice_channel_connect(channel);
+    }
 }
 
 static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer data)
@@ -1685,6 +1792,11 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
 
     if (SPICE_IS_USBREDIR_CHANNEL(channel)) {
         update_auto_usbredir_sensitive(conn);
+    }
+
+    if (SPICE_IS_PORT_CHANNEL(channel)) {
+        if (SPICE_PORT_CHANNEL(channel) == stdin_port)
+            stdin_port = NULL;
     }
 
     conn->channels--;
@@ -1839,6 +1951,40 @@ static void usb_connect_failed(GObject               *object,
     gtk_widget_destroy(dialog);
 }
 
+static void setup_terminal(gboolean reset)
+{
+    int stdinfd = fileno(stdin);
+
+    if (!isatty(stdinfd))
+        return;
+
+#ifdef HAVE_TERMIOS_H
+    static struct termios saved_tios;
+    struct termios tios;
+
+    if (reset)
+        tios = saved_tios;
+    else {
+        tcgetattr(stdinfd, &tios);
+        saved_tios = tios;
+        tios.c_lflag &= ~(ICANON | ECHO);
+    }
+
+    tcsetattr(stdinfd, TCSANOW, &tios);
+#endif
+}
+
+static void watch_stdin(void)
+{
+    int stdinfd = fileno(stdin);
+    GIOChannel *gin;
+
+    setup_terminal(false);
+    gin = g_io_channel_unix_new(stdinfd);
+    g_io_channel_set_flags(gin, G_IO_FLAG_NONBLOCK, NULL);
+    g_io_add_watch(gin, G_IO_IN|G_IO_ERR|G_IO_HUP|G_IO_NVAL, input_cb, NULL);
+}
+
 int main(int argc, char *argv[])
 {
     GError *error = NULL;
@@ -1929,6 +2075,8 @@ int main(int argc, char *argv[])
     g_free(port);
     g_free(tls_port);
 
+    watch_stdin();
+
     connection_connect(conn);
     if (connections > 0)
         g_main_loop_run(mainloop);
@@ -1950,5 +2098,6 @@ int main(int argc, char *argv[])
 
     g_free(spicy_title);
 
+    setup_terminal(true);
     return 0;
 }

@@ -66,6 +66,7 @@ AM_CONDITIONAL([OS_WIN32],[test "$os_win32" = "yes"])
 
 AC_CHECK_HEADERS([sys/ipc.h sys/shm.h])
 AC_CHECK_HEADERS([sys/socket.h netinet/in.h arpa/inet.h])
+AC_CHECK_HEADERS([termios.h])
 
 AC_CHECK_LIBM
 AC_SUBST(LIBM)
