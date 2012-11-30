@@ -1202,7 +1202,6 @@ static void spice_channel_recv_link_hdr(SpiceChannel *channel)
         goto error;
     }
 
-    c->state = SPICE_CHANNEL_STATE_LINK_MSG;
     return;
 
 error:
@@ -1695,7 +1694,6 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
         CHANNEL_DEBUG(channel, "got channel caps %u:0x%X", i, *caps);
     }
 
-    c->state = SPICE_CHANNEL_STATE_AUTH;
     if (!spice_channel_test_common_capability(channel,
             SPICE_COMMON_CAP_PROTOCOL_AUTH_SELECTION)) {
         CHANNEL_DEBUG(channel, "Server supports spice ticket auth only");
@@ -2012,28 +2010,10 @@ static void spice_channel_iterate_write(SpiceChannel *channel)
 static void spice_channel_iterate_read(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
+    g_return_if_fail(c->state != SPICE_CHANNEL_STATE_MIGRATING);
 
-    /* TODO: get rid of state, and use coroutine state */
-    switch (c->state) {
-    case SPICE_CHANNEL_STATE_LINK_HDR:
-        spice_channel_recv_link_hdr(channel);
-        break;
-    case SPICE_CHANNEL_STATE_LINK_MSG:
-        spice_channel_recv_link_msg(channel);
-        break;
-    case SPICE_CHANNEL_STATE_AUTH:
-        spice_channel_recv_auth(channel);
-        break;
-    case SPICE_CHANNEL_STATE_READY:
-    case SPICE_CHANNEL_STATE_MIGRATION_HANDSHAKE:
-        spice_channel_recv_msg(channel,
-            (handler_msg_in)SPICE_CHANNEL_GET_CLASS(channel)->handle_msg, NULL);
-        break;
-    case SPICE_CHANNEL_STATE_MIGRATING:
-        return;
-    default:
-        g_critical("unknown state %d", c->state);
-    }
+    spice_channel_recv_msg(channel,
+        (handler_msg_in)SPICE_CHANNEL_GET_CLASS(channel)->handle_msg, NULL);
 }
 
 static gboolean wait_migration(gpointer data)
@@ -2066,7 +2046,9 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
         }
 
         SPICE_CHANNEL_GET_CLASS(channel)->iterate_write(channel);
-        ret = g_coroutine_socket_wait(&c->coroutine, c->sock, G_IO_IN);
+
+        ret = g_coroutine_socket_wait(&c->coroutine, c->sock,
+            c->state != SPICE_CHANNEL_STATE_MIGRATING ? G_IO_IN : 0);
 
 #ifdef WIN32
         /* FIXME: windows gsocket is buggy, it doesn't return correct condition... */
@@ -2296,8 +2278,10 @@ connected:
                   strerror(errno));
     }
 
-    c->state = SPICE_CHANNEL_STATE_LINK_HDR;
     spice_channel_send_link(channel);
+    spice_channel_recv_link_hdr(channel);
+    spice_channel_recv_link_msg(channel);
+    spice_channel_recv_auth(channel);
 
     while (spice_channel_iterate(channel))
         ;
