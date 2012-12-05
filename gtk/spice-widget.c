@@ -482,7 +482,11 @@ static void spice_display_init(SpiceDisplay *display)
                           GDK_LEAVE_NOTIFY_MASK |
                           GDK_KEY_PRESS_MASK |
                           GDK_SCROLL_MASK);
+#ifdef WITH_X11
+    gtk_widget_set_double_buffered(widget, false);
+#else
     gtk_widget_set_double_buffered(widget, true);
+#endif
     gtk_widget_set_can_focus(widget, true);
     gtk_widget_set_has_window(widget, true);
     d->keycode_map = vnc_display_keymap_gdk2xtkbd_table(&d->keycode_maplen);
