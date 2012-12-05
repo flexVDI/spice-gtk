@@ -88,6 +88,11 @@ GType spice_error_get_type (void) G_GNUC_CONST;
 void
 g_simple_async_result_take_error(GSimpleAsyncResult *simple,
                                  GError             *error);
+
+void
+g_slist_free_full(GSList         *list,
+                  GDestroyNotify free_func);
+
 #endif /* glib 2.28 */
 
 #if !GLIB_CHECK_VERSION(2,30,0)

@@ -41,6 +41,33 @@ g_simple_async_result_take_error (GSimpleAsyncResult *simple,
     g_simple_async_result_set_from_error (simple, error);
     g_error_free (error);
 }
+
+
+/**
+ * g_slist_free_full: (skip)
+ * @list: a #GSList
+ * @free_func: a #GDestroyNotify
+ *
+ * Convenience method, which frees all the memory used by a #GSList,
+ * and calls the specified destroy function on every element's data
+ *
+ * Since: 2.28
+ **/
+G_GNUC_INTERNAL void
+g_slist_free_full(GSList         *list,
+                  GDestroyNotify free_func)
+{
+    GSList *el;
+
+    if (free_func) {
+        for (el = list; el ; el = g_slist_next(el)) {
+            free_func(el);
+        }
+    }
+
+    g_slist_free(list);
+}
+
 #endif
 
 #if !GLIB_CHECK_VERSION(2,30,0)
