@@ -19,6 +19,7 @@
 #include "spice-common.h"
 #include "spice-channel-priv.h"
 #include "spice-marshal.h"
+#include "glib-compat.h"
 
 /**
  * SECTION:channel-port
