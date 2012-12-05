@@ -1239,9 +1239,14 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     SpiceStreamDataHeader *op = spice_msg_in_parsed(in);
-    display_stream *st = c->streams[op->id];
+    display_stream *st;
     guint32 mmtime;
 
+    g_return_if_fail(c != NULL);
+    g_return_if_fail(c->streams != NULL);
+    g_return_if_fail(c->nstreams > op->id);
+
+    st =  c->streams[op->id];
     mmtime = spice_session_get_mm_time(spice_channel_get_session(channel));
 
     if (spice_msg_in_type(in) == SPICE_MSG_DISPLAY_STREAM_DATA_SIZED) {
@@ -1269,7 +1274,13 @@ static void display_handle_stream_clip(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     SpiceMsgDisplayStreamClip *op = spice_msg_in_parsed(in);
-    display_stream *st = c->streams[op->id];
+    display_stream *st;
+
+    g_return_if_fail(c != NULL);
+    g_return_if_fail(c->streams != NULL);
+    g_return_if_fail(c->nstreams > op->id);
+
+    st = c->streams[op->id];
 
     if (st->msg_clip) {
         spice_msg_in_unref(st->msg_clip);
@@ -1292,6 +1303,7 @@ static void destroy_stream(SpiceChannel *channel, int id)
 
     g_return_if_fail(c != NULL);
     g_return_if_fail(c->streams != NULL);
+    g_return_if_fail(c->nstreams > id);
 
     st = c->streams[id];
     if (!st)
