@@ -41,7 +41,7 @@ public class ForeignMenu: Object {
 		msg.action = SpiceProtocol.ForeignMenu.EventType.CLICK;
 
 		unowned uint8[] p = ((uint8[])(&msg))[0:msg.base.size];
-		send_msg (p);
+		send_msg.begin (p);
 	}
 
 	public void menu_item_checked_msg (int32 item_id, bool checked = true) {
@@ -56,7 +56,7 @@ public class ForeignMenu: Object {
 			SpiceProtocol.ForeignMenu.EventType.UNCHECKED;
 
 		unowned uint8[] p = ((uint8[])(&msg))[0:msg.base.size];
-		send_msg (p);
+		send_msg.begin (p);
 	}
 
 	public void app_activated_msg (bool activated = true) {
@@ -67,7 +67,7 @@ public class ForeignMenu: Object {
 			SpiceProtocol.ForeignMenu.MsgId.APP_DEACTIVATED;
 
 		unowned uint8[] p = ((uint8[])(&msg))[0:msg.size];
-		send_msg (p);
+		send_msg.begin (p);
 	}
 
 	public async bool send_msg (owned uint8[] p) throws GLib.Error {

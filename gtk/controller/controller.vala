@@ -59,7 +59,7 @@ public class Controller: Object {
 		msg.base.id = SpiceProtocol.Controller.MsgId.MENU_ITEM_CLICK;
 		msg.value = item_id;
 		unowned uint8[] p = ((uint8[])(&msg))[0:msg.base.size];
-		send_msg (p);
+		send_msg.begin (p);
 	}
 
 	public async bool send_msg (uint8[] p) throws GLib.Error {
