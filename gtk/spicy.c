@@ -1705,10 +1705,15 @@ end:
 static void port_data(SpicePortChannel *port,
                       gpointer data, int size, spice_connection *conn)
 {
+    int r;
+
     if (port != stdin_port)
         return;
 
-    write(fileno(stdout), data, size);
+    r = write(fileno(stdout), data, size);
+    if (r != size) {
+        g_warning("port write failed result %d/%d errno %d", r, size, errno);
+    }
 }
 
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
