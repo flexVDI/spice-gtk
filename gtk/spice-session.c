@@ -1603,8 +1603,8 @@ static void socket_client_connect_ready(GObject *source_object, GAsyncResult *re
     g_object_ref(open_host->socket);
 
 end:
-    g_object_unref(connection);
-    g_object_unref(client);
+    g_clear_object(&connection);
+    g_clear_object(&client);
 
     coroutine_yieldto(open_host->from, NULL);
 }
