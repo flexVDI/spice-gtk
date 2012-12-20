@@ -1585,6 +1585,7 @@ struct spice_open_host {
     GCancellable *cancellable;
     GError *error;
     GSocket *socket;
+    GSocketClient *client;
 };
 
 static void socket_client_connect_ready(GObject *source_object, GAsyncResult *result,
@@ -1604,19 +1605,16 @@ static void socket_client_connect_ready(GObject *source_object, GAsyncResult *re
 
 end:
     g_clear_object(&connection);
-    g_clear_object(&client);
-
     coroutine_yieldto(open_host->from, NULL);
 }
 
 /* main context */
 static void open_host_connectable_connect(spice_open_host *open_host, GSocketConnectable *connectable)
 {
-    GSocketClient *client;
-
     SPICE_DEBUG("connecting %p...", open_host);
-    client = g_socket_client_new();
-    g_socket_client_connect_async(client, connectable, open_host->cancellable,
+
+    g_socket_client_connect_async(open_host->client, connectable,
+                                  open_host->cancellable,
                                   socket_client_connect_ready, open_host);
 }
 
@@ -1709,10 +1707,12 @@ GSocket* spice_session_channel_open_host(SpiceSession *session, SpiceChannel *ch
     if ((use_tls && !s->tls_port) || (!use_tls && !s->port))
         return NULL;
 
+    // FIXME: make open_host() cancellable
     open_host.from = coroutine_self();
     open_host.session = session;
     open_host.channel = channel;
     open_host.port = atoi(use_tls ? s->tls_port : s->port);
+    open_host.client = g_socket_client_new();
     g_idle_add(open_host_idle_cb, &open_host);
 
     /* switch to main loop and wait for connection */
@@ -1729,6 +1729,7 @@ GSocket* spice_session_channel_open_host(SpiceSession *session, SpiceChannel *ch
         g_socket_set_keepalive(open_host.socket, TRUE);
     }
 
+    g_clear_object(&open_host.client);
     g_clear_object(&open_host.proxy);
     return open_host.socket;
 }
