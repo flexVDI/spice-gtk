@@ -1,3 +1,15 @@
+v0.15
+=====
+
+- Add HTTP Proxy support (only with glib >= 2.26)
+- Add "port" channel support, to allow arbitrary communication on top
+  of spice connection
+- usb-redir: fix migration support
+- win32: various keyboard & mouse fixes
+- Add info message when USB dialog is empty
+- Fix initial black screen on some 16bits guest
+- Various bug fixes and improvements
+
 v0.14
 =====
 
