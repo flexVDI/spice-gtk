@@ -345,6 +345,7 @@ if WITH_USBREDIR
 libspice_client_glib_2_0_la_SOURCES += \
 	$(WIN_USB_FILES)
 endif
+libspice_client_glib_2_0_la_LIBADD += -lws2_32 -lgdi32
 endif
 
 displaysrc =					\
