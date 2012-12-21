@@ -5,6 +5,8 @@ spice_channel_connect
 spice_channel_destroy
 spice_channel_disconnect
 spice_channel_event_get_type
+spice_channel_flush_async
+spice_channel_flush_finish
 spice_channel_get_type
 spice_channel_new
 spice_channel_open_fd
@@ -16,8 +18,8 @@ spice_client_error_quark
 spice_cursor_channel_get_type
 spice_display_channel_get_type
 spice_display_get_primary
-spice_get_option_group
 spice_g_signal_connect_object
+spice_get_option_group
 spice_inputs_button_press
 spice_inputs_button_release
 spice_inputs_channel_get_type
@@ -43,6 +45,10 @@ spice_main_set_display
 spice_main_set_display_enabled
 spice_playback_channel_get_type
 spice_playback_channel_set_delay
+spice_port_channel_get_type
+spice_port_event
+spice_port_write_async
+spice_port_write_finish
 spice_record_channel_get_type
 spice_record_send_data
 spice_session_connect
