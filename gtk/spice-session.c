@@ -1713,18 +1713,16 @@ GSocket* spice_session_channel_open_host(SpiceSession *session, SpiceChannel *ch
     open_host.channel = channel;
     open_host.port = atoi(use_tls ? s->tls_port : s->port);
     open_host.client = g_socket_client_new();
-    g_idle_add(open_host_idle_cb, &open_host);
 
+    guint id = g_idle_add(open_host_idle_cb, &open_host);
     /* switch to main loop and wait for connection */
     coroutine_yield(NULL);
-    if (open_host.error != NULL) {
-        g_return_val_if_fail(open_host.socket == NULL, NULL);
+    g_source_remove (id);
 
+    if (open_host.error != NULL) {
         g_warning("%s", open_host.error->message);
         g_clear_error(&open_host.error);
-    } else {
-        g_return_val_if_fail(open_host.socket != NULL, NULL);
-
+    } else if (open_host.socket != NULL) {
         g_socket_set_blocking(open_host.socket, FALSE);
         g_socket_set_keepalive(open_host.socket, TRUE);
     }
