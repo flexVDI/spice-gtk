@@ -1652,7 +1652,7 @@ error:
 #endif /* HAVE_SASL */
 
 /* coroutine context */
-static void spice_channel_recv_link_msg(SpiceChannel *channel)
+static void spice_channel_recv_link_msg(SpiceChannel *channel, gboolean *switch_tls)
 {
     SpiceChannelPrivate *c;
     int rc, num_caps, i;
@@ -1677,10 +1677,8 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel)
         /* nothing */
         break;
     case SPICE_LINK_ERR_NEED_SECURED:
-        c->tls = true;
+        *switch_tls = true;
         CHANNEL_DEBUG(channel, "switching to tls");
-        SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
-        spice_channel_connect(channel);
         return;
     default:
         g_warning("%s: %s: unhandled error %d",
@@ -2175,6 +2173,7 @@ static void *spice_channel_coroutine(void *data)
     SpiceChannelPrivate *c = channel->priv;
     guint verify;
     int rc, delay_val = 1;
+    gboolean switch_tls = FALSE;
 
     CHANNEL_DEBUG(channel, "Started background coroutine %p", &c->coroutine);
 
@@ -2297,28 +2296,26 @@ connected:
 
     spice_channel_send_link(channel);
     spice_channel_recv_link_hdr(channel);
-    spice_channel_recv_link_msg(channel);
+    spice_channel_recv_link_msg(channel, &switch_tls);
+    if (switch_tls)
+        goto cleanup;
     spice_channel_recv_auth(channel);
 
     while (spice_channel_iterate(channel))
         ;
-
-    /* TODO: improve it, this is a bit hairy, c->coroutine will be
-       overwritten on (re)connect, so we skip the normal cleanup
-       path. Ideally, we shouldn't use the same channel structure? */
-    if (c->state == SPICE_CHANNEL_STATE_CONNECTING) {
-        g_object_unref(channel);
-        goto end;
-    }
 
 cleanup:
     CHANNEL_DEBUG(channel, "Coroutine exit %s", c->name);
 
     SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
 
-    g_idle_add(spice_channel_delayed_unref, data);
+    if (switch_tls) {
+        c->tls = true;
+        spice_channel_connect(channel);
+        g_object_unref(channel);
+    } else
+        g_idle_add(spice_channel_delayed_unref, data);
 
-end:
     /* Co-routine exits now - the SpiceChannel object may no longer exist,
        so don't do anything else now unless you like SEGVs */
     return NULL;
