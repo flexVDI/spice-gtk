@@ -2245,4 +2245,9 @@ void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean 
         g_return_if_fail(id < G_N_ELEMENTS(c->display));
         c->display[id].enabled = enabled;
     }
+
+    if (c->timer_id) {
+        g_source_remove(c->timer_id);
+    }
+    c->timer_id = g_timeout_add_seconds(1, timer_set_display, channel);
 }
