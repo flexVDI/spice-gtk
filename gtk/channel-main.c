@@ -2721,9 +2721,13 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
                                 GAsyncReadyCallback callback,
                                 gpointer user_data)
 {
+    SpiceMainChannelPrivate *c = channel->priv;
+
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
     g_return_if_fail(sources != NULL && sources[0] != NULL);
+
+    g_return_if_fail(c->agent_connected);
 
     /* At the moment, the copy() method is limited to a single file,
        support for copying multi-files will be implemented later. */
