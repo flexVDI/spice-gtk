@@ -464,14 +464,60 @@ static gboolean grab_broken(SpiceDisplay *self, GdkEventGrabBroken *event,
     return false;
 }
 
+static void drag_data_received_callback(SpiceDisplay *self,
+                                        GdkDragContext *drag_context,
+                                        gint x,
+                                        gint y,
+                                        GtkSelectionData *data,
+                                        guint info,
+                                        guint time,
+                                        gpointer *user_data)
+{
+    int len;
+    char *buf;
+    gchar **file_urls;
+    int n_files;
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(self);
+    int i = 0;
+    GFile **files;
+
+    /* We get a buf like:
+     * file:///root/a.txt\r\nfile:///root/b.txt\r\n
+     */
+    SPICE_DEBUG("%s: drag a file", __FUNCTION__);
+    buf = (char *)gtk_selection_data_get_data_with_length(data, &len);
+    g_return_if_fail(buf != NULL);
+
+    file_urls = g_uri_list_extract_uris(buf);
+    n_files = g_strv_length(file_urls);
+    files = g_malloc0(sizeof(GFile *) * (n_files + 1));
+    for (i = 0; i < n_files; i++) {
+        files[i] = g_file_new_for_uri(file_urls[i]);
+    }
+    g_strfreev(file_urls);
+
+    spice_main_file_copy_async(d->main, files, 0, NULL, NULL,
+                               NULL, NULL, NULL);
+    for (i = 0; i < n_files; i++) {
+        g_object_unref(files[i]);
+    }
+    g_free(files);
+
+    gtk_drag_finish(drag_context, TRUE, FALSE, time);
+}
+
 static void spice_display_init(SpiceDisplay *display)
 {
     GtkWidget *widget = GTK_WIDGET(display);
     SpiceDisplayPrivate *d;
+    GtkTargetEntry targets = {"text/plain", 0, 0};
 
     d = display->priv = SPICE_DISPLAY_GET_PRIVATE(display);
 
     g_signal_connect(display, "grab-broken-event", G_CALLBACK(grab_broken), NULL);
+    gtk_drag_dest_set(widget, GTK_DEST_DEFAULT_ALL, &targets, 1, GDK_ACTION_COPY);
+    g_signal_connect(display, "drag-data-received",
+                     G_CALLBACK(drag_data_received_callback), NULL);
     gtk_widget_add_events(widget,
                           GDK_STRUCTURE_MASK |
                           GDK_POINTER_MOTION_MASK |
