@@ -78,6 +78,18 @@ void spice_main_clipboard_selection_notify(SpiceMainChannel *channel, guint sele
 void spice_main_clipboard_selection_request(SpiceMainChannel *channel, guint selection, guint32 type);
 
 gboolean spice_main_agent_test_capability(SpiceMainChannel *channel, guint32 cap);
+void spice_main_file_copy_async(SpiceMainChannel *channel,
+                                GFile **sources,
+                                GFileCopyFlags flags,
+                                GCancellable *cancellable,
+                                GFileProgressCallback progress_callback,
+                                gpointer progress_callback_data,
+                                GAsyncReadyCallback callback,
+                                gpointer user_data);
+
+gboolean spice_main_file_copy_finish(SpiceMainChannel *channel,
+                                     GAsyncResult *result,
+                                     GError **error);
 
 #ifndef SPICE_DISABLE_DEPRECATED
 SPICE_DEPRECATED_FOR(spice_main_clipboard_selection_grab)

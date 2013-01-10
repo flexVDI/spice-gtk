@@ -31,6 +31,8 @@ spice_inputs_motion
 spice_inputs_position
 spice_inputs_set_key_locks
 spice_main_agent_test_capability
+spice_main_file_copy_async
+spice_main_file_copy_finish
 spice_main_channel_get_type
 spice_main_clipboard_grab
 spice_main_clipboard_notify
