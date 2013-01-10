@@ -1019,11 +1019,15 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
     c = channel->priv;
     g_return_val_if_fail(c->agent_connected, FALSE);
 
-    monitors = 0;
-    /* FIXME: fix MonitorConfig to be per display */
-    for (i = 0; i < SPICE_N_ELEMENTS(c->display); i++) {
-        if (c->display[i].enabled)
-            monitors += 1;
+    if (spice_main_agent_test_capability(channel,
+                                     VD_AGENT_CAP_SPARSE_MONITORS_CONFIG)) {
+        monitors = SPICE_N_ELEMENTS(c->display);
+    } else {
+        monitors = 0;
+        for (i = 0; i < SPICE_N_ELEMENTS(c->display); i++) {
+            if (c->display[i].enabled)
+                monitors += 1;
+        }
     }
 
     size = sizeof(VDAgentMonitorsConfig) + sizeof(VDAgentMonConfig) * monitors;
@@ -1036,8 +1040,12 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
 
     j = 0;
     for (i = 0; i < SPICE_N_ELEMENTS(c->display); i++) {
-        if (!c->display[i].enabled)
+        if (!c->display[i].enabled) {
+            if (spice_main_agent_test_capability(channel,
+                                     VD_AGENT_CAP_SPARSE_MONITORS_CONFIG))
+                j++;
             continue;
+        }
         mon->monitors[j].depth  = c->display_color_depth ? c->display_color_depth : 32;
         mon->monitors[j].width  = c->display[j].width;
         mon->monitors[j].height = c->display[j].height;
