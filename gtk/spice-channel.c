@@ -2770,7 +2770,7 @@ void spice_channel_flush_async(SpiceChannel *self, GCancellable *cancellable,
     g_return_if_fail(SPICE_IS_CHANNEL(self));
     c = self->priv;
 
-    if (!c->state == SPICE_CHANNEL_STATE_READY) {
+    if (c->state != SPICE_CHANNEL_STATE_READY) {
         g_simple_async_report_error_in_idle(G_OBJECT(self), callback, user_data,
             SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
             "The channel is not ready yet");
