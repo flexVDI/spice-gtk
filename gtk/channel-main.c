@@ -1492,61 +1492,14 @@ static void report_progress(SpiceFileXferTask *task)
 }
 
 static void
-file_close_cb(GObject      *object,
-              GAsyncResult *close_res,
-              gpointer      user_data);
-
-static void data_flushed_cb(GObject *source_object,
-                            GAsyncResult *res,
-                            gpointer user_data)
-{
-    SpiceFileXferTask *task = user_data;
-    SpiceMainChannel *channel = (SpiceMainChannel *)source_object;
-    GError *error = NULL;
-
-    file_xfer_flush_finish(channel, res, &error);
-
-    if (error != NULL) {
-        g_warning("failed to flush xfer queue: %s", error->message);
-        task->error = error;
-        g_input_stream_close_async(G_INPUT_STREAM(task->file_stream),
-                                   G_PRIORITY_DEFAULT,
-                                   task->cancellable,
-                                   file_close_cb,
-                                   task);
-        return;
-    }
-
-    /* Report progress */
-    report_progress(task);
-
-    /* Read more data */
-    file_xfer_continue_read(task);
-}
-
-static void
-file_xfer_queue(SpiceFileXferTask *task, int data_size)
-{
-    VDAgentFileXferDataMessage msg;
-    SpiceMainChannel *channel = SPICE_MAIN_CHANNEL(task->channel);
-
-    msg.id = task->id;
-    msg.size = data_size;
-    agent_msg_queue_many(channel, VD_AGENT_FILE_XFER_DATA,
-                         &msg, sizeof(msg),
-                         task->buffer, data_size, NULL);
-    spice_channel_wakeup(SPICE_CHANNEL(channel), FALSE);
-}
-
-static void file_xfer_task_free(SpiceFileXferTask *task)
+file_xfer_task_free(SpiceFileXferTask *task)
 {
     SpiceMainChannelPrivate *c;
 
     g_return_if_fail(task != NULL);
 
     c = task->channel->priv;
-    c->file_xfer_task_list = g_list_remove(c->file_xfer_task_list,
-                                           task);
+    c->file_xfer_task_list = g_list_remove(c->file_xfer_task_list, task);
 
     g_clear_object(&task->file);
     g_clear_object(&task->file_stream);
@@ -1590,6 +1543,48 @@ file_close_cb(GObject      *object,
     g_object_unref(res);
 
     file_xfer_task_free(task);
+}
+
+static void data_flushed_cb(GObject *source_object,
+                            GAsyncResult *res,
+                            gpointer user_data)
+{
+    SpiceFileXferTask *task = user_data;
+    SpiceMainChannel *channel = (SpiceMainChannel *)source_object;
+    GError *error = NULL;
+
+    file_xfer_flush_finish(channel, res, &error);
+
+    if (error != NULL) {
+        g_warning("failed to flush xfer queue: %s", error->message);
+        task->error = error;
+        g_input_stream_close_async(G_INPUT_STREAM(task->file_stream),
+                                   G_PRIORITY_DEFAULT,
+                                   task->cancellable,
+                                   file_close_cb,
+                                   task);
+        return;
+    }
+
+    /* Report progress */
+    report_progress(task);
+
+    /* Read more data */
+    file_xfer_continue_read(task);
+}
+
+static void
+file_xfer_queue(SpiceFileXferTask *task, int data_size)
+{
+    VDAgentFileXferDataMessage msg;
+    SpiceMainChannel *channel = SPICE_MAIN_CHANNEL(task->channel);
+
+    msg.id = task->id;
+    msg.size = data_size;
+    agent_msg_queue_many(channel, VD_AGENT_FILE_XFER_DATA,
+                         &msg, sizeof(msg),
+                         task->buffer, data_size, NULL);
+    spice_channel_wakeup(SPICE_CHANNEL(channel), FALSE);
 }
 
 /* main context */
