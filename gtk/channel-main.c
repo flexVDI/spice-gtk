@@ -1527,15 +1527,14 @@ static void data_flushed_cb(GObject *source_object,
 static void
 file_xfer_queue(SpiceFileXferTask *task, int data_size)
 {
-    VDAgentFileXferDataMessage *msg;
+    VDAgentFileXferDataMessage msg;
     SpiceMainChannel *channel = SPICE_MAIN_CHANNEL(task->channel);
 
-    msg = g_alloca(sizeof(VDAgentFileXferDataMessage));
-    msg->id = task->id;
-    msg->size = data_size;
-    agent_msg_queue_many(channel, VD_AGENT_FILE_XFER_DATA, msg,
-                         sizeof(VDAgentFileXferDataMessage), task->buffer,
-                         data_size, NULL);
+    msg.id = task->id;
+    msg.size = data_size;
+    agent_msg_queue_many(channel, VD_AGENT_FILE_XFER_DATA,
+                         &msg, sizeof(msg),
+                         task->buffer, data_size, NULL);
     spice_channel_wakeup(SPICE_CHANNEL(channel), FALSE);
 }
 
@@ -2559,7 +2558,7 @@ file_info_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
     GError *error = NULL;
     GKeyFile *keyfile = NULL;
     gchar *basename = NULL;
-    VDAgentFileXferStartMessage *msg;
+    VDAgentFileXferStartMessage msg;
     gsize /*msg_size*/ data_len;
     gchar *string;
     SpiceFileXferTask *task = (SpiceFileXferTask *)data;
@@ -2603,16 +2602,13 @@ file_info_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
     }
 
     /* Create file-xfer start message */
-    msg = g_alloca(sizeof(VDAgentFileXferStartMessage));
-    msg->id = task->id;
-
-    CHANNEL_DEBUG(task->channel, "Insert a xfer task:%d to task list",
-                  task->id);
+    CHANNEL_DEBUG(task->channel, "Insert a xfer task:%d to task list", task->id);
     c->file_xfer_task_list = g_list_append(c->file_xfer_task_list, task);
 
-    agent_msg_queue_many(task->channel, VD_AGENT_FILE_XFER_START, msg,
-                         sizeof(VDAgentFileXferStartMessage), string,
-                         data_len + 1, NULL);
+    msg.id = task->id;
+    agent_msg_queue_many(task->channel, VD_AGENT_FILE_XFER_START,
+                         &msg, sizeof(msg),
+                         string, data_len + 1, NULL);
     g_free(string);
     spice_channel_wakeup(SPICE_CHANNEL(task->channel), FALSE);
     return ;
