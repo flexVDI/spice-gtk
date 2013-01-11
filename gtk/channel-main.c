@@ -162,6 +162,7 @@ static void migrate_channel_event_cb(SpiceChannel *channel, SpiceChannelEvent ev
                                      gpointer data);
 static gboolean main_migrate_handshake_done(gpointer data);
 static void spice_main_channel_send_migration_handshake(SpiceChannel *channel);
+static void file_xfer_continue_read(SpiceFileXferTask *task);
 
 /* ------------------------------------------------------------------ */
 
@@ -824,8 +825,7 @@ static void agent_free_msg_queue(SpiceMainChannel *channel)
 }
 
 /* Here, flushing algorithm is stolen from spice-channel.c */
-static void
-file_xfer_flushed(SpiceMainChannel *channel, gboolean success)
+static void file_xfer_flushed(SpiceMainChannel *channel, gboolean success)
 {
     SpiceMainChannelPrivate *c = channel->priv;
     GSList *l;
@@ -840,9 +840,8 @@ file_xfer_flushed(SpiceMainChannel *channel, gboolean success)
     c->flushing = NULL;
 }
 
-static void
-file_xfer_flush_async(SpiceMainChannel *channel, GCancellable *cancellable,
-                      GAsyncReadyCallback callback, gpointer user_data)
+static void file_xfer_flush_async(SpiceMainChannel *channel, GCancellable *cancellable,
+                                  GAsyncReadyCallback callback, gpointer user_data)
 {
     GSimpleAsyncResult *simple;
     SpiceMainChannelPrivate *c = channel->priv;
@@ -862,9 +861,8 @@ file_xfer_flush_async(SpiceMainChannel *channel, GCancellable *cancellable,
     c->flushing = g_slist_append(c->flushing, simple);
 }
 
-static gboolean
-file_xfer_flush_finish(SpiceMainChannel *channel, GAsyncResult *result,
-                       GError **error)
+static gboolean file_xfer_flush_finish(SpiceMainChannel *channel, GAsyncResult *result,
+                                       GError **error)
 {
     GSimpleAsyncResult *simple;
 
@@ -1478,21 +1476,7 @@ static gint file_xfer_task_find(gconstpointer a, gconstpointer b)
     return 1;
 }
 
-static void file_read_cb(GObject *source_object,
-                         GAsyncResult *res,
-                         gpointer user_data);
-static void file_xfer_continue_read(SpiceFileXferTask *task);
-
-static void report_progress(SpiceFileXferTask *task)
-{
-    if (task->progress_callback) {
-        task->progress_callback(task->read_bytes, task->file_size,
-                                task->progress_callback_data);
-    }
-}
-
-static void
-file_xfer_task_free(SpiceFileXferTask *task)
+static void file_xfer_task_free(SpiceFileXferTask *task)
 {
     SpiceMainChannelPrivate *c;
 
@@ -1507,10 +1491,9 @@ file_xfer_task_free(SpiceFileXferTask *task)
 }
 
 /* main context */
-static void
-file_close_cb(GObject      *object,
-              GAsyncResult *close_res,
-              gpointer      user_data)
+static void file_xfer_close_cb(GObject      *object,
+                               GAsyncResult *close_res,
+                               gpointer      user_data)
 {
     GSimpleAsyncResult *res;
     SpiceFileXferTask *task;
@@ -1545,9 +1528,9 @@ file_close_cb(GObject      *object,
     file_xfer_task_free(task);
 }
 
-static void data_flushed_cb(GObject *source_object,
-                            GAsyncResult *res,
-                            gpointer user_data)
+static void file_xfer_data_flushed_cb(GObject *source_object,
+                                      GAsyncResult *res,
+                                      gpointer user_data)
 {
     SpiceFileXferTask *task = user_data;
     SpiceMainChannel *channel = (SpiceMainChannel *)source_object;
@@ -1561,20 +1544,20 @@ static void data_flushed_cb(GObject *source_object,
         g_input_stream_close_async(G_INPUT_STREAM(task->file_stream),
                                    G_PRIORITY_DEFAULT,
                                    task->cancellable,
-                                   file_close_cb,
+                                   file_xfer_close_cb,
                                    task);
         return;
     }
 
-    /* Report progress */
-    report_progress(task);
+    if (task->progress_callback)
+        task->progress_callback(task->read_bytes, task->file_size,
+                                task->progress_callback_data);
 
     /* Read more data */
     file_xfer_continue_read(task);
 }
 
-static void
-file_xfer_queue(SpiceFileXferTask *task, int data_size)
+static void file_xfer_queue(SpiceFileXferTask *task, int data_size)
 {
     VDAgentFileXferDataMessage msg;
     SpiceMainChannel *channel = SPICE_MAIN_CHANNEL(task->channel);
@@ -1588,9 +1571,9 @@ file_xfer_queue(SpiceFileXferTask *task, int data_size)
 }
 
 /* main context */
-static void file_read_cb(GObject *source_object,
-                         GAsyncResult *res,
-                         gpointer user_data)
+static void file_xfer_read_cb(GObject *source_object,
+                              GAsyncResult *res,
+                              gpointer user_data)
 {
     SpiceFileXferTask *task = user_data;
     SpiceMainChannel *channel = task->channel;
@@ -1603,7 +1586,7 @@ static void file_read_cb(GObject *source_object,
         task->read_bytes += count;
         file_xfer_queue(task, count);
         file_xfer_flush_async(channel, task->cancellable,
-                              data_flushed_cb, task);
+                              file_xfer_data_flushed_cb, task);
     } else {
         /* Error or EOF, close the file */
         if (count == -1) {
@@ -1612,7 +1595,7 @@ static void file_read_cb(GObject *source_object,
         g_input_stream_close_async(G_INPUT_STREAM(task->file_stream),
                                    G_PRIORITY_DEFAULT,
                                    task->cancellable,
-                                   file_close_cb,
+                                   file_xfer_close_cb,
                                    task);
     }
 }
@@ -1625,7 +1608,7 @@ static void file_xfer_continue_read(SpiceFileXferTask *task)
                               FILE_XFER_CHUNK_SIZE,
                               G_PRIORITY_DEFAULT,
                               task->cancellable,
-                              file_read_cb,
+                              file_xfer_read_cb,
                               task);
 }
 
@@ -1669,7 +1652,7 @@ static void file_xfer_handle_status(SpiceMainChannel *channel,
     g_input_stream_close_async(G_INPUT_STREAM(task->file_stream),
                                G_PRIORITY_DEFAULT,
                                task->cancellable,
-                               file_close_cb,
+                               file_xfer_close_cb,
                                task);
 }
 
@@ -2545,8 +2528,7 @@ void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean 
     c->timer_id = g_timeout_add_seconds(1, timer_set_display, channel);
 }
 
-static void
-file_xfer_failed(SpiceFileXferTask *task, GError *error)
+static void file_xfer_failed(SpiceFileXferTask *task, GError *error)
 {
     SPICE_DEBUG("File %s xfer failed: %s",
                 g_file_get_path(task->file), error->message);
@@ -2555,12 +2537,11 @@ file_xfer_failed(SpiceFileXferTask *task, GError *error)
     g_input_stream_close_async(G_INPUT_STREAM(task->file_stream),
                                G_PRIORITY_DEFAULT,
                                task->cancellable,
-                               file_close_cb,
+                               file_xfer_close_cb,
                                task);
 }
 
-static void
-file_info_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
+static void file_xfer_info_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
 {
     GFileInfo *info;
     GFile *file = G_FILE(obj);
@@ -2611,8 +2592,7 @@ failed:
     file_xfer_failed(task, error);
 }
 
-static void
-read_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
+static void file_xfer_read_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
 {
     GFile *file = G_FILE(obj);
     SpiceFileXferTask *task = (SpiceFileXferTask *)data;
@@ -2629,19 +2609,18 @@ read_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
                             G_FILE_QUERY_INFO_NONE,
                             G_PRIORITY_DEFAULT,
                             task->cancellable,
-                            file_info_async_cb,
+                            file_xfer_info_async_cb,
                             task);
 }
 
-static void
-file_xfer_send_start_msg_async(SpiceMainChannel *channel,
-                               GFile *file,
-                               GFileCopyFlags flags,
-                               GCancellable *cancellable,
-                               GFileProgressCallback progress_callback,
-                               gpointer progress_callback_data,
-                               GAsyncReadyCallback callback,
-                               gpointer user_data)
+static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
+                                           GFile *file,
+                                           GFileCopyFlags flags,
+                                           GCancellable *cancellable,
+                                           GFileProgressCallback progress_callback,
+                                           gpointer progress_callback_data,
+                                           GAsyncReadyCallback callback,
+                                           gpointer user_data)
 {
     SpiceFileXferTask *task;
     static uint32_t xfer_id;    /* Used to identify task id */
@@ -2662,7 +2641,7 @@ file_xfer_send_start_msg_async(SpiceMainChannel *channel,
     g_file_read_async(file,
                       G_PRIORITY_DEFAULT,
                       cancellable,
-                      read_async_cb,
+                      file_xfer_read_async_cb,
                       task);
 
 }
