@@ -2551,6 +2551,20 @@ void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean 
 }
 
 static void
+file_xfer_failed(SpiceFileXferTask *task, GError *error)
+{
+    SPICE_DEBUG("File %s xfer failed: %s",
+                g_file_get_path(task->file), error->message);
+
+    task->error = error;
+    g_input_stream_close_async(G_INPUT_STREAM(task->file_stream),
+                               G_PRIORITY_DEFAULT,
+                               task->cancellable,
+                               file_close_cb,
+                               task);
+}
+
+static void
 file_info_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
 {
     GFileInfo *info;
@@ -2565,41 +2579,26 @@ file_info_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
     SpiceMainChannelPrivate *c = task->channel->priv;
 
     info = g_file_query_info_finish(file, res, &error);
-    if (error) {
-        SPICE_DEBUG("couldn't get size of file %s: %s",
-                    g_file_get_path(file),
-                    error->message);
+    if (error)
         goto failed;
-    }
-    task->file_size = g_file_info_get_attribute_uint64(info,
-                                        G_FILE_ATTRIBUTE_STANDARD_SIZE);
 
+    task->file_size =
+        g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
     keyfile = g_key_file_new();
-    if (keyfile == NULL) {
-        SPICE_DEBUG("failed to create key file: %s", error->message);
-        goto failed;
-    }
 
     /* File name */
     basename = g_file_get_basename(file);
-    if (basename == NULL) {
-        SPICE_DEBUG("failed to get file basename: %s", error->message);
-        goto failed;
-    }
     g_key_file_set_string(keyfile, "vdagent-file-xfer", "name", basename);
     g_free(basename);
-
     /* File size */
-    g_key_file_set_uint64(keyfile, "vdagent-file-xfer", "size",
-                          task->file_size);
+    g_key_file_set_uint64(keyfile, "vdagent-file-xfer", "size", task->file_size);
 
     /* Save keyfile content to memory. TODO: more file attributions
        need to be sent to guest */
     string = g_key_file_to_data(keyfile, &data_len, &error);
     g_key_file_free(keyfile);
-    if (error) {
+    if (error)
         goto failed;
-    }
 
     /* Create file-xfer start message */
     CHANNEL_DEBUG(task->channel, "Insert a xfer task:%d to task list", task->id);
@@ -2611,11 +2610,10 @@ file_info_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
                          string, data_len + 1, NULL);
     g_free(string);
     spice_channel_wakeup(SPICE_CHANNEL(task->channel), FALSE);
-    return ;
+    return;
 
 failed:
-    g_clear_error(&error);
-    file_xfer_task_free(task);
+    file_xfer_failed(task, error);
 }
 
 static void
@@ -2626,25 +2624,18 @@ read_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
     GError *error = NULL;
 
     task->file_stream = g_file_read_finish(file, res, &error);
-
-    if (task->file_stream) {
-        g_file_query_info_async(task->file,
-                                G_FILE_ATTRIBUTE_STANDARD_SIZE,
-                                G_FILE_QUERY_INFO_NONE,
-                                G_PRIORITY_DEFAULT,
-                                task->cancellable,
-                                file_info_async_cb,
-                                task);
-    } else {
-        SPICE_DEBUG("create file stream for %s error: %s",
-                    g_file_get_path(file), error->message);
-        task->error = error;
-        g_input_stream_close_async(G_INPUT_STREAM(task->file_stream),
-                                   G_PRIORITY_DEFAULT,
-                                   task->cancellable,
-                                   file_close_cb,
-                                   task);
+    if (error) {
+        file_xfer_failed (task, error);
+        return;
     }
+
+    g_file_query_info_async(task->file,
+                            G_FILE_ATTRIBUTE_STANDARD_SIZE,
+                            G_FILE_QUERY_INFO_NONE,
+                            G_PRIORITY_DEFAULT,
+                            task->cancellable,
+                            file_info_async_cb,
+                            task);
 }
 
 static void
