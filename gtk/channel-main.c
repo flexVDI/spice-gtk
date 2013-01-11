@@ -2723,11 +2723,19 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
     g_return_if_fail(sources != NULL && sources[0] != NULL);
 
-    g_return_if_fail(c->agent_connected);
-
     /* At the moment, the copy() method is limited to a single file,
        support for copying multi-files will be implemented later. */
     g_return_if_fail(sources[1] == NULL);
+
+    if (!c->agent_connected) {
+        g_simple_async_report_error_in_idle(G_OBJECT(channel),
+                                            callback,
+                                            user_data,
+                                            SPICE_CLIENT_ERROR,
+                                            SPICE_CLIENT_ERROR_FAILED,
+                                            "The agent is not connected");
+        return;
+    }
 
     file_xfer_send_start_msg_async(channel,
                                    sources[0],
