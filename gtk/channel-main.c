@@ -1589,7 +1589,7 @@ static void file_xfer_read_cb(GObject *source_object,
                               file_xfer_data_flushed_cb, task);
     } else {
         /* Error or EOF, close the file */
-        if (count == -1) {
+        if (error) {
             task->error = error;
         }
         g_input_stream_close_async(G_INPUT_STREAM(task->file_stream),
