@@ -2786,6 +2786,7 @@ void spice_channel_flush_async(SpiceChannel *self, GCancellable *cancellable,
     if (was_empty) {
         g_simple_async_result_set_op_res_gboolean(simple, TRUE);
         g_simple_async_result_complete_in_idle(simple);
+        g_object_unref(simple);
         return;
     }
 
