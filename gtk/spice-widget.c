@@ -473,8 +473,7 @@ static void drag_data_received_callback(SpiceDisplay *self,
                                         guint time,
                                         gpointer *user_data)
 {
-    int len;
-    char *buf;
+    const guchar *buf;
     gchar **file_urls;
     int n_files;
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(self);
@@ -485,12 +484,12 @@ static void drag_data_received_callback(SpiceDisplay *self,
      * file:///root/a.txt\r\nfile:///root/b.txt\r\n
      */
     SPICE_DEBUG("%s: drag a file", __FUNCTION__);
-    buf = (char *)gtk_selection_data_get_data_with_length(data, &len);
+    buf = gtk_selection_data_get_data(data);
     g_return_if_fail(buf != NULL);
 
-    file_urls = g_uri_list_extract_uris(buf);
+    file_urls = g_uri_list_extract_uris((const gchar*)buf);
     n_files = g_strv_length(file_urls);
-    files = g_malloc0(sizeof(GFile *) * (n_files + 1));
+    files = g_new0(GFile*, n_files + 1);
     for (i = 0; i < n_files; i++) {
         files[i] = g_file_new_for_uri(file_urls[i]);
     }
