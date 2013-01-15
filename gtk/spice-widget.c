@@ -1330,6 +1330,17 @@ static guint get_scancode_from_keyval(SpiceDisplay *display, guint keyval)
     return vnc_display_keymap_gdk2xtkbd(d->keycode_map, d->keycode_maplen, keycode);
 }
 
+
+/**
+ * spice_display_send_keys:
+ * @display: The #SpiceDisplay
+ * @keyvals: (array length=nkeyvals): Keyval array
+ * @nkeyvals: Length of keyvals
+ * @kind: #SpiceDisplayKeyEvent action
+ *
+ * Send keyval press/release events to the display.
+ *
+ **/
 void spice_display_send_keys(SpiceDisplay *display, const guint *keyvals,
                              int nkeyvals, SpiceDisplayKeyEvent kind)
 {
