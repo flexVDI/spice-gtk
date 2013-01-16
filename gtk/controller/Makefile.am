@@ -76,14 +76,16 @@ spice_controller_dump_SOURCES = dump.c
 spice_controller_dump_LDADD = libspice-controller.la
 
 controller.vala.stamp: $(libspice_controller_la_VALASOURCES) custom.vapi
-	@if test -z "$(VALAC)"; then \
-		echo "" ; \
-		echo "  *** Error: missing valac!" ; \
+	@if test -z "$(VALAC)"; then						  \
+		echo "" ;							  \
+		echo "  *** Error: missing valac!" ;				  \
 		echo "  *** You must run autogen.sh or configure --enable-vala" ; \
-		echo "" ; \
-		exit 1 ; \
+		echo "" ;							  \
+		exit 1 ;							  \
 	fi
-	$(VALA_V)$(VALAC) $(VALAFLAGS) $(AM_VALAFLAGS) $(libspice_controller_la_VALASOURCES) -H spice-controller.h
+	$(VALA_V)$(VALAC) $(VALAFLAGS) $(AM_VALAFLAGS)			\
+	  $(addprefix $(srcdir)/,$(libspice_controller_la_VALASOURCES))	\
+	  -H spice-controller.h
 	@touch $@
 
 $(libspice_controller_la_BUILT_SOURCES): controller.vala.stamp
