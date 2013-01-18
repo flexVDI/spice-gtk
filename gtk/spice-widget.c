@@ -302,6 +302,7 @@ static void update_monitor_area(SpiceDisplay *display)
     return;
 
 whole:
+    g_clear_pointer(&monitors, g_array_unref);
     /* by display whole surface */
     update_area(display, 0, 0, d->width, d->height);
     set_monitor_ready(display, true);
