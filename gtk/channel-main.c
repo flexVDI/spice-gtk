@@ -48,7 +48,7 @@
 #define SPICE_MAIN_CHANNEL_GET_PRIVATE(obj)                             \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_MAIN_CHANNEL, SpiceMainChannelPrivate))
 
-#define MAX_DISPLAY 16
+#define MAX_DISPLAY 16 /* Note must fit in a guint32, see monitors_align */
 
 typedef struct spice_migrate spice_migrate;
 
@@ -977,22 +977,37 @@ static int monitors_cmp(const void *p1, const void *p2)
 
 static void monitors_align(VDAgentMonConfig *monitors, int nmonitors)
 {
-    gint i, x = 0;
+    gint i, j, x = 0;
+    guint32 used = 0;
+    VDAgentMonConfig *sorted_monitors;
 
     if (nmonitors == 0)
         return;
 
     /* sort by distance from origin */
-    qsort(monitors, nmonitors, sizeof(VDAgentMonConfig), monitors_cmp);
+    sorted_monitors = g_memdup(monitors, nmonitors * sizeof(VDAgentMonConfig));
+    qsort(sorted_monitors, nmonitors, sizeof(VDAgentMonConfig), monitors_cmp);
 
     /* super-KISS ltr alignment, feel free to improve */
     for (i = 0; i < nmonitors; i++) {
-        monitors[i].x = x;
-        monitors[i].y = 0;
-        x += monitors[i].width;
-        g_debug("#%d +%d+%d-%dx%d", i, monitors[i].x, monitors[i].y,
-                monitors[i].width, monitors[i].height);
+        /* Find where this monitor is in the sorted order */
+        for (j = 0; j < nmonitors; j++) {
+            /* Avoid using the same entry twice, this happens with older
+               virt-viewer versions which always set x and y to 0 */
+            if (used & (1 << j))
+                continue;
+            if (memcmp(&monitors[j], &sorted_monitors[i],
+                       sizeof(VDAgentMonConfig)) == 0)
+                break;
+        }
+        used |= 1 << j;
+        monitors[j].x = x;
+        monitors[j].y = 0;
+        x += monitors[j].width;
+        g_debug("#%d +%d+%d-%dx%d", j, monitors[j].x, monitors[j].y,
+                monitors[j].width, monitors[j].height);
     }
+    g_free(sorted_monitors);
 }
 
 
