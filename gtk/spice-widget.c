@@ -265,15 +265,23 @@ static void set_monitor_ready(SpiceDisplay *self, gboolean ready)
 static void update_monitor_area(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    SpiceDisplayMonitorConfig *c;
+    SpiceDisplayMonitorConfig *cfg, *c = NULL;
     GArray *monitors = NULL;
+    int i;
 
     SPICE_DEBUG("update monitor area %d:%d", d->channel_id, d->monitor_id);
     if (d->monitor_id < 0)
         goto whole;
 
     g_object_get(d->display, "monitors", &monitors, NULL);
-    if (monitors == NULL || d->monitor_id >= monitors->len) {
+    for (i = 0; monitors != NULL && i < monitors->len; i++) {
+        cfg = &g_array_index(monitors, SpiceDisplayMonitorConfig, i);
+        if (cfg->id == d->monitor_id) {
+           c = cfg;
+           break;
+        }
+    }
+    if (c == NULL) {
         SPICE_DEBUG("update monitor: no monitor %d", d->monitor_id);
         set_monitor_ready(display, false);
         if (spice_channel_test_capability(d->display, SPICE_DISPLAY_CAP_MONITORS_CONFIG)) {
@@ -283,8 +291,6 @@ static void update_monitor_area(SpiceDisplay *display)
         goto whole;
     }
 
-    c = &g_array_index(monitors, SpiceDisplayMonitorConfig, d->monitor_id);
-    g_return_if_fail(c != NULL);
     if (c->surface_id != 0) {
         g_warning("FIXME: only support monitor config with primary surface 0, "
                   "but given config surface %d", c->surface_id);
