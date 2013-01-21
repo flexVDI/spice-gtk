@@ -24,7 +24,9 @@
 #include <windows.h>
 #else
 #include <sys/socket.h>
+#ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
+#endif
 #include <sys/un.h>
 #include <stdlib.h>
 #include <unistd.h>
