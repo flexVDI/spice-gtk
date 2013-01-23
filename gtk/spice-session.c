@@ -118,6 +118,26 @@ enum {
 static guint signals[SPICE_SESSION_LAST_SIGNAL];
 
 
+static SpiceProxy* get_proxy(void)
+{
+    GError *error = NULL;
+    SpiceProxy *proxy;
+
+    const gchar *proxy_env = g_getenv("SPICE_PROXY");
+    if (proxy_env == NULL || strlen(proxy_env) == 0)
+        return NULL;
+
+    proxy = spice_proxy_new();
+    if (!spice_proxy_parse(proxy, proxy_env, &error))
+        g_clear_object(&proxy);
+    if (error) {
+        g_warning ("%s", error->message);
+        g_clear_error (&error);
+    }
+
+    return proxy;
+}
+
 static void spice_session_init(SpiceSession *session)
 {
     SpiceSessionPrivate *s;
@@ -147,6 +167,7 @@ static void spice_session_init(SpiceSession *session)
     cache_init(&s->images, "image");
     cache_init(&s->palettes, "palette");
     s->glz_window = glz_decoder_window_new();
+    s->proxy = get_proxy();
 }
 
 static void
@@ -179,6 +200,7 @@ spice_session_dispose(GObject *gobject)
     g_clear_object(&s->desktop_integration);
     g_clear_object(&s->gtk_session);
     g_clear_object(&s->usb_manager);
+    g_clear_object(&s->proxy);
 
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_session_parent_class)->dispose)
@@ -1647,21 +1669,6 @@ static void proxy_lookup_ready(GObject *source_object, GAsyncResult *result,
     open_host_connectable_connect(open_host, G_SOCKET_CONNECTABLE(address));
     g_resolver_free_addresses(addresses);
 }
-
-static SpiceProxy* get_proxy(GError **error)
-{
-    SpiceProxy *proxy;
-
-    const gchar *proxy_env = g_getenv("SPICE_PROXY");
-    if (proxy_env == NULL || strlen(proxy_env) == 0)
-        return NULL;
-
-    proxy = spice_proxy_new();
-    if (!spice_proxy_parse(proxy, proxy_env, error))
-        g_clear_object(&proxy);
-
-    return proxy;
-}
 #endif
 
 /* main context */
@@ -1674,7 +1681,7 @@ static gboolean open_host_idle_cb(gpointer data)
     g_return_val_if_fail(open_host->socket == NULL, FALSE);
 
 #if GLIB_CHECK_VERSION(2,26,0)
-    open_host->proxy = get_proxy(&open_host->error);
+    open_host->proxy = s->proxy;
     if (open_host->error != NULL) {
         coroutine_yieldto(open_host->from, NULL);
         return FALSE;
@@ -1729,7 +1736,6 @@ GSocket* spice_session_channel_open_host(SpiceSession *session, SpiceChannel *ch
     }
 
     g_clear_object(&open_host.client);
-    g_clear_object(&open_host.proxy);
     return open_host.socket;
 }
 
