@@ -1675,17 +1675,18 @@ static gboolean open_host_idle_cb(gpointer data)
 
 #if GLIB_CHECK_VERSION(2,26,0)
     open_host->proxy = get_proxy(&open_host->error);
-    if (open_host->proxy) {
+    if (open_host->error != NULL) {
+        coroutine_yieldto(open_host->from, NULL);
+        return FALSE;
+    }
+
+    if (open_host->proxy)
         g_resolver_lookup_by_name_async(g_resolver_get_default(),
                                         spice_proxy_get_hostname(open_host->proxy),
                                         open_host->cancellable,
                                         proxy_lookup_ready, open_host);
-    } else
+    else
 #endif
-    if (open_host->error != NULL) {
-        coroutine_yieldto(open_host->from, NULL);
-        return FALSE;
-    } else
         open_host_connectable_connect(open_host,
                                       g_network_address_new(s->host, open_host->port));
 
