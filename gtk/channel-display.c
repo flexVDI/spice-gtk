@@ -1070,6 +1070,7 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
     st->surface = find_surface(c, op->surface_id);
     st->msgq = g_queue_new();
     st->channel = channel;
+    st->drops_seqs_stats_arr = g_array_new(FALSE, FALSE, sizeof(drops_sequence_stats));
 
     region_init(&st->region);
     display_update_stream_region(st);
@@ -1087,12 +1088,10 @@ static gboolean display_stream_schedule(display_stream *st)
     guint32 time, d;
     SpiceStreamDataHeader *op;
     SpiceMsgIn *in;
-
     if (st->timeout)
         return TRUE;
 
     time = spice_session_get_mm_time(spice_channel_get_session(st->channel));
-
     in = g_queue_peek_head(st->msgq);
     g_return_val_if_fail(in != NULL, TRUE);
 
@@ -1105,6 +1104,7 @@ static gboolean display_stream_schedule(display_stream *st)
     } else {
         in = g_queue_pop_head(st->msgq);
         spice_msg_in_unref(in);
+        st->num_drops_on_playback++;
         if (g_queue_get_length(st->msgq) == 0)
             return TRUE;
     }
@@ -1267,15 +1267,32 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
         op->multi_media_time = mmtime + 100; /* workaround... */
     }
 
+    if (!st->num_input_frames) {
+        st->first_frame_mm_time = op->multi_media_time;
+    }
+    st->num_input_frames++;
     if (op->multi_media_time < mmtime) {
         CHANNEL_DEBUG(channel, "stream data too late by %u ms (ts: %u, mmtime: %u), dropin",
                       mmtime - op->multi_media_time, op->multi_media_time, mmtime);
+        st->arrive_late_time += mmtime - op->multi_media_time;
+        st->num_drops_on_arive++;
+        if (!st->cur_drops_seq_stats.len) {
+            st->cur_drops_seq_stats.start_mm_time = op->multi_media_time;
+        }
+        st->cur_drops_seq_stats.len++;
         return;
     }
 
     spice_msg_in_ref(in);
     g_queue_push_tail(st->msgq, in);
     display_stream_schedule(st);
+    if (st->cur_drops_seq_stats.len) {
+        st->cur_drops_seq_stats.duration = op->multi_media_time -
+                                           st->cur_drops_seq_stats.start_mm_time;
+        g_array_append_val(st->drops_seqs_stats_arr, st->cur_drops_seq_stats);
+        memset(&st->cur_drops_seq_stats, 0, sizeof(st->cur_drops_seq_stats));
+        st->num_drops_seqs++;
+    }
 }
 
 /* coroutine context */
@@ -1309,6 +1326,8 @@ static void destroy_stream(SpiceChannel *channel, int id)
 {
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     display_stream *st;
+    uint64_t drops_duration_total = 0;
+    int i;
 
     g_return_if_fail(c != NULL);
     g_return_if_fail(c->streams != NULL);
@@ -1317,6 +1336,33 @@ static void destroy_stream(SpiceChannel *channel, int id)
     st = c->streams[id];
     if (!st)
         return;
+
+    CHANNEL_DEBUG(channel, "%s: id %d #frames-in %d #drops-on-arive %d (%.2f) avg-late-time %.2f"
+        " #drops-on-playback %d (%.2f)", __FUNCTION__,
+        id,
+        st->num_input_frames,
+        st->num_drops_on_arive, st->num_drops_on_arive / ((double)st->num_input_frames),
+        st->num_drops_on_arive ? st->arrive_late_time / ((double)st->num_drops_on_arive): 0,
+        st->num_drops_on_playback,
+        st->num_drops_on_playback / ((double)st->num_input_frames));
+    if (st->num_drops_seqs) {
+        CHANNEL_DEBUG(channel, "%s: #drops sequences %u ==>", __FUNCTION__, st->num_drops_seqs);
+    }
+    for (i = 0; i < st->num_drops_seqs; i++) {
+            drops_sequence_stats *stats = &g_array_index(st->drops_seqs_stats_arr,
+                                                         drops_sequence_stats,
+                                                         i);
+            drops_duration_total += stats->duration;
+            CHANNEL_DEBUG(channel, "%s: \t len %u start-ms %u duration-ms %u", __FUNCTION__,
+                                   stats->len,
+                                   stats->start_mm_time - st->first_frame_mm_time,
+                                   stats->duration);
+    }
+    if (st->num_drops_seqs) {
+        CHANNEL_DEBUG(channel, "%s: drops total duration %lu ==>", __FUNCTION__, drops_duration_total);
+    }
+
+    g_array_free(st->drops_seqs_stats_arr, TRUE);
 
     switch (st->codec) {
     case SPICE_VIDEO_CODEC_TYPE_MJPEG:

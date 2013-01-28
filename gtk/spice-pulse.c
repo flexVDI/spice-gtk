@@ -34,6 +34,7 @@ struct stream {
     pa_operation            *uncork_op;
     pa_operation            *cork_op;
     gboolean                started;
+    guint                   num_underflow;
 };
 
 struct _SpicePulsePrivate {
@@ -251,8 +252,13 @@ static void stream_state_callback(pa_stream *s, void *userdata)
 
 static void stream_underflow_cb(pa_stream *s, void *userdata)
 {
+    SpicePulsePrivate *p;
+
     SPICE_DEBUG("PA stream underflow!!");
 
+    p = SPICE_PULSE_GET_PRIVATE(userdata);
+    g_return_if_fail(p != NULL);
+    p->playback.num_underflow++;
 #ifdef PULSE_ADJUST_LATENCY
     const pa_buffer_attr *buffer_attr;
     pa_buffer_attr new_buffer_attr;
@@ -310,6 +316,7 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
     g_return_if_fail(p != NULL);
 
     p->playback.started = TRUE;
+    p->playback.num_underflow = 0;
 
     if (p->playback.stream &&
         (p->playback.spec.rate != frequency ||
@@ -383,7 +390,7 @@ static void playback_stop(SpicePlaybackChannel *channel, gpointer data)
     SpicePulse *pulse = data;
     SpicePulsePrivate *p = pulse->priv;
 
-    SPICE_DEBUG("%s", __FUNCTION__);
+    SPICE_DEBUG("%s: #underflow %u", __FUNCTION__, p->playback.num_underflow);
 
     p->playback.started = FALSE;
     if (!p->playback.stream)

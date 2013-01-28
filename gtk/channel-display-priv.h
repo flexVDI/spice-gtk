@@ -50,6 +50,12 @@ typedef struct display_surface {
     SpiceJpegDecoder            *jpeg_decoder;
 } display_surface;
 
+typedef struct drops_sequence_stats {
+    uint32_t len;
+    uint32_t start_mm_time;
+    uint32_t duration;
+} drops_sequence_stats;
+
 typedef struct display_stream {
     SpiceMsgIn                  *msg_create;
     SpiceMsgIn                  *msg_clip;
@@ -71,6 +77,17 @@ typedef struct display_stream {
     GQueue                      *msgq;
     guint                       timeout;
     SpiceChannel                *channel;
+
+    /* stats */
+    uint32_t             first_frame_mm_time;
+    uint32_t             num_drops_on_arive;
+    uint64_t             arrive_late_time;
+    uint32_t             num_drops_on_playback;
+    uint32_t             num_input_frames;
+    drops_sequence_stats cur_drops_seq_stats;
+    GArray               *drops_seqs_stats_arr;
+    uint32_t             num_drops_seqs;
+
 } display_stream;
 
 void stream_get_dimensions(display_stream *st, int *width, int *height);
