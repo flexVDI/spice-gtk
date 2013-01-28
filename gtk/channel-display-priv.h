@@ -88,6 +88,16 @@ typedef struct display_stream {
     GArray               *drops_seqs_stats_arr;
     uint32_t             num_drops_seqs;
 
+    /* playback quality report to server */
+    gboolean report_is_active;
+    uint32_t report_id;
+    uint32_t report_max_window;
+    uint32_t report_timeout;
+    uint64_t report_start_time;
+    uint32_t report_start_frame_time;
+    uint32_t report_num_frames;
+    uint32_t report_num_drops;
+    uint32_t report_drops_seq_len;
 } display_stream;
 
 void stream_get_dimensions(display_stream *st, int *width, int *height);
