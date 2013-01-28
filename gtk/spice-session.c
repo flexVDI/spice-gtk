@@ -106,6 +106,7 @@ enum {
     PROP_UUID,
     PROP_NAME,
     PROP_CA,
+    PROP_PROXY
 };
 
 /* signals */
@@ -118,24 +119,29 @@ enum {
 static guint signals[SPICE_SESSION_LAST_SIGNAL];
 
 
-static SpiceProxy* get_proxy(void)
+static void update_proxy(SpiceSession *self, const gchar *str)
 {
+    SpiceSessionPrivate *s = self->priv;
+    SpiceProxy *proxy = NULL;
     GError *error = NULL;
-    SpiceProxy *proxy;
 
-    const gchar *proxy_env = g_getenv("SPICE_PROXY");
-    if (proxy_env == NULL || strlen(proxy_env) == 0)
-        return NULL;
+    if (str == NULL)
+        str = g_getenv("SPICE_PROXY");
+    if (str == NULL || *str == 0)
+        return;
 
     proxy = spice_proxy_new();
-    if (!spice_proxy_parse(proxy, proxy_env, &error))
+    if (!spice_proxy_parse(proxy, str, &error))
         g_clear_object(&proxy);
     if (error) {
         g_warning ("%s", error->message);
         g_clear_error (&error);
     }
 
-    return proxy;
+    if (proxy != NULL) {
+        g_clear_object(&s->proxy);
+        s->proxy = proxy;
+    }
 }
 
 static void spice_session_init(SpiceSession *session)
@@ -167,7 +173,7 @@ static void spice_session_init(SpiceSession *session)
     cache_init(&s->images, "image");
     cache_init(&s->palettes, "palette");
     s->glz_window = glz_decoder_window_new();
-    s->proxy = get_proxy();
+    update_proxy(session, NULL);
 }
 
 static void
@@ -513,6 +519,9 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_UUID:
         g_value_set_pointer(value, s->uuid);
 	break;
+    case PROP_PROXY:
+        g_value_take_string(value, spice_proxy_to_string(s->proxy));
+	break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -627,6 +636,9 @@ static void spice_session_set_property(GObject      *gobject,
     case PROP_CA:
         g_clear_pointer(&s->ca, g_byte_array_unref);
         s->ca = g_value_dup_boxed(value);
+        break;
+    case PROP_PROXY:
+        update_proxy(session, g_value_get_string(value));
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -1118,6 +1130,23 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                               "Spice server uuid",
                               G_PARAM_READABLE |
                               G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceSession:proxy:
+     *
+     * URI to the proxy server to use when doing network connection.
+     * of the form <![CDATA[ [protocol://]<host>[:port] ]]>
+     *
+     * Since: 0.17
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_PROXY,
+         g_param_spec_string("proxy",
+                             "Proxy",
+                             "The proxy server",
+                             NULL,
+                             G_PARAM_READWRITE |
+                             G_PARAM_STATIC_STRINGS));
 
     g_type_class_add_private(klass, sizeof(SpiceSessionPrivate));
 }
@@ -1698,8 +1727,11 @@ static gboolean open_host_idle_cb(gpointer data)
                                       g_network_address_new(s->host, open_host->port));
 
     SPICE_DEBUG("open host %s:%d", s->host, open_host->port);
-    if (open_host->proxy != NULL)
-        SPICE_DEBUG("(with proxy %p)", open_host->proxy);
+    if (open_host->proxy != NULL) {
+        gchar *str = spice_proxy_to_string(open_host->proxy);
+        SPICE_DEBUG("(with proxy %s)", str);
+        g_free(str);
+    }
 
     return FALSE;
 }

@@ -234,3 +234,16 @@ static void spice_proxy_class_init(SpiceProxyClass *klass)
                                                        G_PARAM_STATIC_STRINGS |
                                                        G_PARAM_READWRITE));
 }
+
+gchar* spice_proxy_to_string(SpiceProxy* self)
+{
+    SpiceProxyPrivate *p;
+
+    g_return_val_if_fail(SPICE_IS_PROXY(self), NULL);
+    p = self->priv;
+
+    if (p->protocol == NULL || p->hostname == NULL)
+        return NULL;
+
+    return g_strdup_printf("%s://%s:%u", p->protocol, p->hostname, p->port);
+}

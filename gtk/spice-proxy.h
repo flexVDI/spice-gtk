@@ -53,6 +53,7 @@ const gchar* spice_proxy_get_hostname(SpiceProxy* self);
 void spice_proxy_set_hostname(SpiceProxy* self, const gchar* value);
 guint spice_proxy_get_port(SpiceProxy* self);
 void spice_proxy_set_port(SpiceProxy* self, guint port);
+gchar *spice_proxy_to_string(SpiceProxy* self);
 
 G_END_DECLS
 
