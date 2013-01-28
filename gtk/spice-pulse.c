@@ -275,6 +275,30 @@ static void stream_underflow_cb(pa_stream *s, void *userdata)
 #endif
 }
 
+static void stream_update_latency_callback(pa_stream *s, void *userdata)
+{
+    pa_usec_t usec;
+    int negative = 0;
+    SpicePulsePrivate *p;
+
+    p = SPICE_PULSE_GET_PRIVATE(userdata);
+
+    g_return_if_fail(s != NULL);
+    g_return_if_fail(p != NULL);
+
+    if (!p->playback.stream || !p->playback.started)
+        return;
+
+    if (pa_stream_get_latency(s, &usec, &negative) < 0) {
+        g_warning("Failed to get latency: %s", pa_strerror(pa_context_errno(p->context)));
+        return;
+    }
+
+    g_return_if_fail(negative == FALSE);
+
+    spice_playback_channel_set_delay(SPICE_PLAYBACK_CHANNEL(p->pchannel), usec / 1000);
+}
+
 static void create_playback(SpicePulse *pulse)
 {
     SpicePulsePrivate *p = SPICE_PULSE_GET_PRIVATE(pulse);
@@ -291,13 +315,14 @@ static void create_playback(SpicePulse *pulse)
                                        &p->playback.spec, NULL);
     pa_stream_set_state_callback(p->playback.stream, stream_state_callback, pulse);
     pa_stream_set_underflow_callback(p->playback.stream, stream_underflow_cb, pulse);
+    pa_stream_set_latency_update_callback(p->playback.stream, stream_update_latency_callback, pulse);
 
     /* FIXME: we might want customizable latency */
     buffer_attr.maxlength = -1;
     buffer_attr.tlength = pa_usec_to_bytes(100 * PA_USEC_PER_MSEC, &p->playback.spec);
     buffer_attr.prebuf = -1;
     buffer_attr.minreq = -1;
-    flags = PA_STREAM_ADJUST_LATENCY;
+    flags = PA_STREAM_ADJUST_LATENCY | PA_STREAM_AUTO_TIMING_UPDATE;
 
     if (pa_stream_connect_playback(p->playback.stream,
                                    NULL, &buffer_attr, flags, NULL, NULL) < 0) {
@@ -397,46 +422,6 @@ static void playback_stop(SpicePlaybackChannel *channel, gpointer data)
         return;
 
     stream_cork(pulse, &p->playback);
-}
-
-static void stream_update_timing_callback(pa_stream *s, int success, void *userdata)
-{
-    pa_usec_t usec;
-    int negative = 0;
-    SpicePulsePrivate *p;
-
-    p = SPICE_PULSE_GET_PRIVATE(userdata);
-
-    g_return_if_fail(s != NULL);
-    g_return_if_fail(p != NULL);
-
-    if (!p->playback.stream || !p->playback.started)
-        return;
-
-    if (!success ||
-        pa_stream_get_latency(s, &usec, &negative) < 0) {
-        g_warning("Failed to get latency: %s", pa_strerror(pa_context_errno(p->context)));
-        return;
-    }
-
-    g_return_if_fail(negative == FALSE);
-
-    spice_playback_channel_set_delay(SPICE_PLAYBACK_CHANNEL(p->pchannel), usec / 1000);
-}
-
-static void playback_get_delay(SpicePlaybackChannel *channel, gpointer data)
-{
-    SpicePulse *pulse = data;
-    SpicePulsePrivate *p = pulse->priv;
-
-    if (p->playback.stream && pa_stream_get_state(p->playback.stream) == PA_STREAM_READY) {
-        pa_operation *o;
-        if (!(o = pa_stream_update_timing_info(p->playback.stream, stream_update_timing_callback, data)))
-            g_warning("pa_stream_update_timing_info() failed: %s",
-                      pa_strerror(pa_context_errno(p->context)));
-        else
-            pa_operation_unref(o);
-    }
 }
 
 static void stream_read_callback(pa_stream *s, size_t length, void *data)
@@ -716,8 +701,6 @@ static gboolean connect_channel(SpiceAudio *audio, SpiceChannel *channel)
         p->pchannel = g_object_ref(channel);
         spice_g_signal_connect_object(channel, "playback-start",
                                       G_CALLBACK(playback_start), pulse, 0);
-        spice_g_signal_connect_object(channel, "playback-get-delay",
-                                      G_CALLBACK(playback_get_delay), pulse, 0);
         spice_g_signal_connect_object(channel, "playback-data",
                                       G_CALLBACK(playback_data), pulse, 0);
         spice_g_signal_connect_object(channel, "playback-stop",
