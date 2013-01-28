@@ -241,7 +241,7 @@ static SpiceSmartcardManager *spice_smartcard_manager_new(void)
 /* public api                                                         */
 
 /**
- * spice_smartcard_manager_get
+ * spice_smartcard_manager_get:
  *
  * #SpiceSmartcardManager is a singleton, use this function to get a pointer
  * to it. A new SpiceSmartcardManager instance will be created the first
@@ -397,7 +397,7 @@ static guint smartcard_monitor_add(SmartcardSourceFunc callback,
 #define SPICE_SOFTWARE_READER_NAME "Spice Software Smartcard"
 
 /**
- * spice_smartcard_reader_is_software
+ * spice_smartcard_reader_is_software:
  * @reader: a #SpiceSmartcardReader
  *
  * Tests if @reader is a software (emulated) smartcard reader.
@@ -528,7 +528,7 @@ gboolean spice_smartcard_manager_init_finish(SpiceSession *session,
 }
 
 /**
- * spice_smartcard_manager_insert_card
+ * spice_smartcard_manager_insert_card:
  * @manager: a #SpiceSmartcardManager
  *
  * Simulates the insertion of a smartcard in the guest. Valid certificates
@@ -552,7 +552,7 @@ gboolean spice_smartcard_manager_insert_card(SpiceSmartcardManager *manager)
 }
 
 /**
- * spice_smartcard_manager_remove_card
+ * spice_smartcard_manager_remove_card:
  * @manager: a #SpiceSmartcardManager
  *
  * Simulates the removal of a smartcard in the guest. At the moment, only

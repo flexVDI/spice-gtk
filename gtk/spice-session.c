@@ -894,7 +894,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
      * hardware smartcard reader. If it's set to a NULL-terminated string
      * array containing the names of 3 valid certificates, these will be
      * used to simulate a smartcard in the guest
-     * @see_also: spice_smartcard_manager_insert_card()
+     * See also spice_smartcard_manager_insert_card()
      *
      * Since: 0.7
      **/
@@ -944,7 +944,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                           G_PARAM_STATIC_STRINGS));
 
     /**
-     * SpiceSession::inhibit-keyboard-grab
+     * SpiceSession::inhibit-keyboard-grab:
      *
      * This boolean is set by the usbredir channel to indicate to #SpiceDisplay
      * that the keyboard grab should be temporarily released, because it is

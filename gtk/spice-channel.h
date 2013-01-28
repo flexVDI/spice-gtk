@@ -37,7 +37,6 @@ typedef struct _SpiceMsgOut SpiceMsgOut;
 
 /**
  * SpiceChannelEvent:
- *
  * @SPICE_CHANNEL_NONE: no event, or ignored event
  * @SPICE_CHANNEL_OPENED: connection is authentified and ready
  * @SPICE_CHANNEL_CLOSED: connection is closed normally (sent if channel was ready)

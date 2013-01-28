@@ -115,7 +115,7 @@ static gboolean parse_usbredir_filter(const gchar *option_name,
 
 
 /**
- * spice_get_option_group:
+ * spice_get_option_group: (skip)
  *
  * Returns: (transfer full): a #GOptionGroup for the commandline
  * arguments specific to Spice.  You have to call
