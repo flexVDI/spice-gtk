@@ -127,15 +127,17 @@ static void update_proxy(SpiceSession *self, const gchar *str)
 
     if (str == NULL)
         str = g_getenv("SPICE_PROXY");
-    if (str == NULL || *str == 0)
+    if (str == NULL || *str == 0) {
+        g_clear_object(&s->proxy);
         return;
+    }
 
     proxy = spice_proxy_new();
     if (!spice_proxy_parse(proxy, str, &error))
         g_clear_object(&proxy);
     if (error) {
-        g_warning ("%s", error->message);
-        g_clear_error (&error);
+        g_warning("%s", error->message);
+        g_clear_error(&error);
     }
 
     if (proxy != NULL) {
