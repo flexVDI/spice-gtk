@@ -66,6 +66,8 @@ namespace SpiceProtocol {
 			ENABLE_USB_AUTOSHARE,
 			USB_FILTER,
 
+			PROXY,
+
 			//spice client -> external app
 			MENU_ITEM_CLICK,
 

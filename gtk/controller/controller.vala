@@ -46,6 +46,7 @@ public class Controller: Object {
 	public bool enable_usbredir { private set; get; }
 	public bool enable_usb_autoshare { private set; get; }
 	public string usb_filter { private set; get; }
+	public string proxy { private set; get; }
 
 	public signal void do_connect ();
 	public signal void show ();
@@ -195,6 +196,10 @@ public class Controller: Object {
 		case SpiceProtocol.Controller.MsgId.USB_FILTER:
 			usb_filter = str;
 			debug ("got USB_FILTER %s".printf (str));
+			break;
+		case SpiceProtocol.Controller.MsgId.PROXY:
+			proxy = str;
+			debug ("got PROXY %s".printf (str));
 			break;
 		default:
 			debug ("got unknown msg.id %u".printf (msg.id));
