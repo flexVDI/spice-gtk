@@ -1526,9 +1526,7 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
     case SPICE_MOUSE_MODE_CLIENT:
         if (x >= 0 && x < d->area.width &&
             y >= 0 && y < d->area.height) {
-            spice_inputs_position(d->inputs,
-                                  x + d->area.x, y + d->area.y,
-                                  d->channel_id,
+            spice_inputs_position(d->inputs, x, y, get_display_id(display),
                                   button_mask_gdk_to_spice(motion->state));
         }
         break;
