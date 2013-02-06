@@ -265,6 +265,19 @@ static void set_monitor_ready(SpiceDisplay *self, gboolean ready)
     update_ready(self);
 }
 
+static gint get_display_id(SpiceDisplay *display)
+{
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    /* supported monitor_id only with display channel #0 */
+    if (d->channel_id == 0 && d->monitor_id >= 0)
+        return d->monitor_id;
+
+    g_return_val_if_fail(d->monitor_id <= 0, -1);
+
+    return d->channel_id;
+}
+
 static void update_monitor_area(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
@@ -299,6 +312,10 @@ static void update_monitor_area(SpiceDisplay *display)
                   "but given config surface %d", c->surface_id);
         goto whole;
     }
+
+    if (!d->resize_guest_enable)
+        spice_main_set_display(d->main, get_display_id(display),
+                               c->x, c->y, c->width, c->height);
 
     update_area(display, c->x, c->y, c->width, c->height);
     g_clear_pointer(&monitors, g_array_unref);
@@ -990,19 +1007,6 @@ static void update_mouse_grab(SpiceDisplay *display)
         try_mouse_grab(display);
     else
         try_mouse_ungrab(display);
-}
-
-static gint get_display_id(SpiceDisplay *display)
-{
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-
-    /* supported monitor_id only with display channel #0 */
-    if (d->channel_id == 0 && d->monitor_id >= 0)
-        return d->monitor_id;
-
-    g_return_val_if_fail(d->monitor_id <= 0, -1);
-
-    return d->channel_id;
 }
 
 static void recalc_geometry(GtkWidget *widget)
