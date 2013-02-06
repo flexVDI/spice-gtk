@@ -32,6 +32,9 @@
 #ifdef WIN32
 #include <windows.h>
 #include <gdk/gdkwin32.h>
+#ifndef MAPVK_VK_TO_VSC /* may be undefined in older mingw-headers */
+#define MAPVK_VK_TO_VSC 0
+#endif
 #endif
 
 #include "spice-widget.h"
