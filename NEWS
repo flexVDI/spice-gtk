@@ -1,3 +1,16 @@
+v0.17
+=====
+
+- Update spice-common with fedora 875348, 826036 fixes
+- Multi-monitor fixes (avoid monitor order shuffling, fix mouse offset
+  if monitor 0 is not at +0+0 and let agent do monitor offset)
+- Add support for VD_AGENT_CAP_SPARSE_MONITORS_CONFIG
+- Add controller & session "proxy" properties
+- Add drag and drop file copy support to send file to guest, you will
+  need capable agent to use that feature. Adds spice_main_file_copy_async()
+- Introspection fixes
+- Build fixes
+
 v0.16
 =====
 
