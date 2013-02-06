@@ -39,6 +39,7 @@ enum  {
     SPICE_PROXY_PORT
 };
 
+G_GNUC_INTERNAL
 SpiceProxy* spice_proxy_new(void)
 {
     SpiceProxy * self = NULL;
@@ -46,6 +47,7 @@ SpiceProxy* spice_proxy_new(void)
     return self;
 }
 
+G_GNUC_INTERNAL
 gboolean spice_proxy_parse(SpiceProxy *self, const gchar *uri, GError **error)
 {
     gboolean success = FALSE;
@@ -92,12 +94,14 @@ end:
     return success;
 }
 
+G_GNUC_INTERNAL
 const gchar* spice_proxy_get_protocol(SpiceProxy *self)
 {
     g_return_val_if_fail(SPICE_IS_PROXY(self), NULL);
     return self->priv->protocol;
 }
 
+G_GNUC_INTERNAL
 void spice_proxy_set_protocol(SpiceProxy *self, const gchar *value)
 {
     g_return_if_fail(SPICE_IS_PROXY(self));
@@ -107,6 +111,7 @@ void spice_proxy_set_protocol(SpiceProxy *self, const gchar *value)
     g_object_notify((GObject *)self, "protocol");
 }
 
+G_GNUC_INTERNAL
 const gchar* spice_proxy_get_hostname(SpiceProxy *self)
 {
     g_return_val_if_fail(SPICE_IS_PROXY(self), NULL);
@@ -114,6 +119,7 @@ const gchar* spice_proxy_get_hostname(SpiceProxy *self)
 }
 
 
+G_GNUC_INTERNAL
 void spice_proxy_set_hostname(SpiceProxy *self, const gchar *value)
 {
     g_return_if_fail(SPICE_IS_PROXY(self));
@@ -123,12 +129,14 @@ void spice_proxy_set_hostname(SpiceProxy *self, const gchar *value)
     g_object_notify((GObject *)self, "hostname");
 }
 
+G_GNUC_INTERNAL
 guint spice_proxy_get_port(SpiceProxy *self)
 {
     g_return_val_if_fail(SPICE_IS_PROXY(self), 0);
     return self->priv->port;
 }
 
+G_GNUC_INTERNAL
 void spice_proxy_set_port(SpiceProxy *self, guint port)
 {
     g_return_if_fail(SPICE_IS_PROXY(self));
@@ -235,6 +243,7 @@ static void spice_proxy_class_init(SpiceProxyClass *klass)
                                                        G_PARAM_READWRITE));
 }
 
+G_GNUC_INTERNAL
 gchar* spice_proxy_to_string(SpiceProxy* self)
 {
     SpiceProxyPrivate *p;
