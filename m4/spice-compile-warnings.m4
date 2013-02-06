@@ -1,7 +1,8 @@
-dnl
-dnl Enable all known GCC compiler warnings, except for those
-dnl we can't yet cope with
-dnl
+# SPICE_COMPILE_WARNINGS(DONTWARN)
+# --------------------------------------------------------
+# Enable all known GCC compiler warnings, except for those
+# we can't yet cope with
+#
 AC_DEFUN([SPICE_COMPILE_WARNINGS],[
     dnl ******************************
     dnl More compiler warnings
@@ -18,6 +19,8 @@ AC_DEFUN([SPICE_COMPILE_WARNINGS],[
                    fi])
 
     # List of warnings that are not relevant / wanted
+
+    dontwarn=$1
 
     # Don't care about C++ compiler compat
     dontwarn="$dontwarn -Wc++-compat"
@@ -58,11 +61,6 @@ AC_DEFUN([SPICE_COMPILE_WARNINGS],[
     dontwarn="$dontwarn -Winline"
     dontwarn="$dontwarn -Wbad-function-cast"
     dontwarn="$dontwarn -Wshadow"
-
-    # We want to enable thse, but need to sort out the
-    # decl mess with  gtk/generated_*.c
-    dontwarn="$dontwarn -Wmissing-prototypes"
-    dontwarn="$dontwarn -Wmissing-declarations"
 
     # Get all possible GCC warnings
     gl_MANYWARN_ALL_GCC([maybewarn])
