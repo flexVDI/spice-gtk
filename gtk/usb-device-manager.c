@@ -699,13 +699,11 @@ static void spice_usb_device_manager_add_dev(SpiceUsbDeviceManager  *self,
         return;
     }
 
-#ifdef G_OS_WIN32
     device = spice_usb_device_manager_find_device(self, bus, address);
     if (device) {
         SPICE_DEBUG("USB device at %d.%d already exists, ignored", bus, address);
         return;
     }
-#endif
 
     if (priv->coldplug_list)
         dev_list = priv->coldplug_list;
