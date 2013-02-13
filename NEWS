@@ -1,3 +1,11 @@
+v0.18
+=====
+
+- Build fix with Gtk+ unstable.
+- MinGW build fixes with old headers
+- Fix USB coldplug race
+- Fixes rhbz#908057
+
 v0.17
 =====
 
