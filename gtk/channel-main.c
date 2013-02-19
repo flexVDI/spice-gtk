@@ -967,7 +967,7 @@ static void agent_msg_queue_many(SpiceMainChannel *channel, int type, const void
     g_warn_if_fail(out == NULL);
 }
 
-static int monitors_cmp(const void *p1, const void *p2)
+static int monitors_cmp(const void *p1, const void *p2, gpointer user_data)
 {
     const VDAgentMonConfig *m1 = p1;
     const VDAgentMonConfig *m2 = p2;
@@ -988,7 +988,7 @@ static void monitors_align(VDAgentMonConfig *monitors, int nmonitors)
 
     /* sort by distance from origin */
     sorted_monitors = g_memdup(monitors, nmonitors * sizeof(VDAgentMonConfig));
-    qsort(sorted_monitors, nmonitors, sizeof(VDAgentMonConfig), monitors_cmp);
+    g_qsort_with_data(sorted_monitors, nmonitors, sizeof(VDAgentMonConfig), monitors_cmp, NULL);
 
     /* super-KISS ltr alignment, feel free to improve */
     for (i = 0; i < nmonitors; i++) {
