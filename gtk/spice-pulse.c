@@ -46,6 +46,8 @@ struct _SpicePulsePrivate {
     int                     state;
     struct stream           playback;
     struct stream           record;
+    guint                   last_delay;
+    guint                   target_delay;
 };
 
 G_DEFINE_TYPE(SpicePulse, spice_pulse, SPICE_TYPE_AUDIO)
@@ -185,7 +187,7 @@ static void pulse_flush_cb(pa_stream *pastream, int success, void *data)
     s->cork_op = NULL;
 }
 
-static void pulse_cork_cb(pa_stream *pastream, int success, void *data)
+static void pulse_cork_flush_cb(pa_stream *pastream, int success, void *data)
 {
     struct stream *s = data;
 
@@ -199,7 +201,19 @@ static void pulse_cork_cb(pa_stream *pastream, int success, void *data)
     }
 }
 
-static void stream_cork(SpicePulse *pulse, struct stream *s)
+static void pulse_cork_cb(pa_stream *pastream, int success, void *data)
+{
+    struct stream *s = data;
+
+    SPICE_DEBUG("%s: cork started", __FUNCTION__);
+    if (!success)
+        g_warning("pulseaudio cork operation failed");
+
+    pa_operation_unref(s->cork_op);
+    s->cork_op = NULL;
+}
+
+static void stream_cork(SpicePulse *pulse, struct stream *s, gboolean with_flush)
 {
     SpicePulsePrivate *p = SPICE_PULSE_GET_PRIVATE(pulse);
     pa_operation *o = NULL;
@@ -211,7 +225,10 @@ static void stream_cork(SpicePulse *pulse, struct stream *s)
     }
 
     if (!pa_stream_is_corked(s->stream) && !s->cork_op) {
-        if (!(o = pa_stream_cork(s->stream, 1, pulse_cork_cb, s))) {
+        if (!(o = pa_stream_cork(s->stream, 1,
+                                 with_flush ? pulse_cork_flush_cb :
+                                              pulse_cork_cb,
+                                 s))) {
             g_warning("pa_stream_cork() failed: %s",
                       pa_strerror(pa_context_errno(p->context)));
         }
@@ -277,11 +294,12 @@ static void stream_underflow_cb(pa_stream *s, void *userdata)
 
 static void stream_update_latency_callback(pa_stream *s, void *userdata)
 {
+    SpicePulse *pulse = userdata;
     pa_usec_t usec;
     int negative = 0;
     SpicePulsePrivate *p;
 
-    p = SPICE_PULSE_GET_PRIVATE(userdata);
+    p = SPICE_PULSE_GET_PRIVATE(pulse);
 
     g_return_if_fail(s != NULL);
     g_return_if_fail(p != NULL);
@@ -295,8 +313,16 @@ static void stream_update_latency_callback(pa_stream *s, void *userdata)
     }
 
     g_return_if_fail(negative == FALSE);
-
+    p->last_delay = usec / PA_USEC_PER_MSEC;
     spice_playback_channel_set_delay(SPICE_PLAYBACK_CHANNEL(p->pchannel), usec / 1000);
+    if (pa_stream_is_corked(p->playback.stream)) {
+        if (p->last_delay >= p->target_delay) {
+            SPICE_DEBUG("%s: uncork playback. delay %u target %u",  __FUNCTION__, p->last_delay, p->target_delay);
+            stream_uncork(pulse, &p->playback);
+        } else {
+            SPICE_DEBUG("%s: still corked. delay %u target %u",  __FUNCTION__, p->last_delay, p->target_delay);
+        }
+    }
 }
 
 static void create_playback(SpicePulse *pulse)
@@ -317,9 +343,8 @@ static void create_playback(SpicePulse *pulse)
     pa_stream_set_underflow_callback(p->playback.stream, stream_underflow_cb, pulse);
     pa_stream_set_latency_update_callback(p->playback.stream, stream_update_latency_callback, pulse);
 
-    /* FIXME: we might want customizable latency */
     buffer_attr.maxlength = -1;
-    buffer_attr.tlength = pa_usec_to_bytes(100 * PA_USEC_PER_MSEC, &p->playback.spec);
+    buffer_attr.tlength = pa_usec_to_bytes(p->target_delay * PA_USEC_PER_MSEC, &p->playback.spec);
     buffer_attr.prebuf = -1;
     buffer_attr.minreq = -1;
     flags = PA_STREAM_ADJUST_LATENCY | PA_STREAM_AUTO_TIMING_UPDATE;
@@ -337,15 +362,18 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
     SpicePulse *pulse = data;
     SpicePulsePrivate *p = SPICE_PULSE_GET_PRIVATE(pulse);
     pa_context_state_t state;
+    guint latency;
 
     g_return_if_fail(p != NULL);
 
     p->playback.started = TRUE;
     p->playback.num_underflow = 0;
+    g_object_get(p->pchannel, "min-latency", &latency, NULL);
 
     if (p->playback.stream &&
         (p->playback.spec.rate != frequency ||
-         p->playback.spec.channels != channels)) {
+         p->playback.spec.channels != channels ||
+         p->target_delay != latency)) {
         stream_stop(pulse, &p->playback);
     }
 
@@ -353,6 +381,8 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
     p->playback.spec.format   = PA_SAMPLE_S16LE;
     p->playback.spec.rate     = frequency;
     p->playback.spec.channels = channels;
+    p->target_delay = latency;
+    p->last_delay = 0;
 
     state = pa_context_get_state(p->context);
     switch (state) {
@@ -421,7 +451,7 @@ static void playback_stop(SpicePlaybackChannel *channel, gpointer data)
     if (!p->playback.stream)
         return;
 
-    stream_cork(pulse, &p->playback);
+    stream_cork(pulse, &p->playback, TRUE);
 }
 
 static void stream_read_callback(pa_stream *s, size_t length, void *data)
@@ -629,6 +659,24 @@ static void playback_mute_changed(GObject *object, GParamSpec *pspec, gpointer d
         pa_operation_unref(op);
 }
 
+static void playback_min_latency_changed(GObject *object, GParamSpec *pspec, gpointer data)
+{
+
+    SpicePulse *pulse = data;
+    SpicePulsePrivate *p = pulse->priv;
+    guint min_latency;
+
+    g_object_get(object, "min-latency", &min_latency, NULL);
+    p->target_delay = min_latency;
+
+    if (p->last_delay < p->target_delay) {
+        spice_debug("%s: corking", __FUNCTION__);
+        stream_cork(pulse, &p->playback, FALSE);
+    } else {
+        spice_debug("%s: not corking. The current delay satisfies the requirement", __FUNCTION__);
+    }
+}
+
 static void record_mute_changed(GObject *object, GParamSpec *pspec, gpointer data)
 {
     SpicePulse *pulse = data;
@@ -711,6 +759,8 @@ static gboolean connect_channel(SpiceAudio *audio, SpiceChannel *channel)
                                       G_CALLBACK(playback_volume_changed), pulse, 0);
         spice_g_signal_connect_object(channel, "notify::mute",
                                       G_CALLBACK(playback_mute_changed), pulse, 0);
+        spice_g_signal_connect_object(channel, "notify::min-latency",
+                                      G_CALLBACK(playback_min_latency_changed), pulse, 0);
 
         return TRUE;
     }
