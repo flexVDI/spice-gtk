@@ -88,6 +88,8 @@ typedef struct display_stream {
     GArray               *drops_seqs_stats_arr;
     uint32_t             num_drops_seqs;
 
+    uint32_t             playback_sync_drops_seq_len;
+
     /* playback quality report to server */
     gboolean report_is_active;
     uint32_t report_id;

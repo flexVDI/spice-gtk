@@ -1303,6 +1303,7 @@ static void display_update_stream_report(SpiceDisplayChannel *channel, uint32_t 
     }
 }
 
+#define STREAM_PLAYBACK_SYNC_DROP_SEQ_LEN_LIMIT 5
 /* coroutine context */
 static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
 {
@@ -1339,11 +1340,14 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
                       mmtime - op->multi_media_time, op->multi_media_time, mmtime);
         st->arrive_late_time += mmtime - op->multi_media_time;
         st->num_drops_on_arive++;
+
         if (!st->cur_drops_seq_stats.len) {
             st->cur_drops_seq_stats.start_mm_time = op->multi_media_time;
         }
         st->cur_drops_seq_stats.len++;
+        st->playback_sync_drops_seq_len++;
     } else {
+        CHANNEL_DEBUG(channel, "video latency: %d", latency);
         spice_msg_in_ref(in);
         g_queue_push_tail(st->msgq, in);
         display_stream_schedule(st);
@@ -1354,9 +1358,14 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
             memset(&st->cur_drops_seq_stats, 0, sizeof(st->cur_drops_seq_stats));
             st->num_drops_seqs++;
         }
+        st->playback_sync_drops_seq_len = 0;
     }
     display_update_stream_report(SPICE_DISPLAY_CHANNEL(channel), op->id,
                                  op->multi_media_time, latency);
+    if (st->playback_sync_drops_seq_len >= STREAM_PLAYBACK_SYNC_DROP_SEQ_LEN_LIMIT) {
+        spice_session_sync_playback_latency(spice_channel_get_session(channel));
+        st->playback_sync_drops_seq_len = 0;
+    }
 }
 
 /* coroutine context */
