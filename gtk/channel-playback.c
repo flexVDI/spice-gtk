@@ -55,6 +55,8 @@ struct _SpicePlaybackChannelPrivate {
     guint8                      nchannels;
     guint16                     *volume;
     guint8                      mute;
+    gboolean                    is_active;
+    guint32                     latency;
 };
 
 G_DEFINE_TYPE(SpicePlaybackChannel, spice_playback_channel, SPICE_TYPE_CHANNEL)
@@ -416,6 +418,7 @@ static void playback_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
 
     c->frame_count = 0;
     c->last_time = start->time;
+    c->is_active = TRUE;
 
     switch (c->mode) {
     case SPICE_AUDIO_DATA_MODE_RAW:
@@ -450,7 +453,10 @@ static void playback_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
 /* coroutine context */
 static void playback_handle_stop(SpiceChannel *channel, SpiceMsgIn *in)
 {
+    SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
+
     emit_main_context(channel, SPICE_PLAYBACK_STOP);
+    c->is_active = FALSE;
 }
 
 /* coroutine context */
@@ -517,6 +523,24 @@ void spice_playback_channel_set_delay(SpicePlaybackChannel *channel, guint32 del
     CHANNEL_DEBUG(channel, "playback set_delay %u ms", delay_ms);
 
     c = channel->priv;
+    c->latency = delay_ms;
     spice_session_set_mm_time(spice_channel_get_session(SPICE_CHANNEL(channel)),
                               c->last_time - delay_ms);
+}
+
+G_GNUC_INTERNAL
+gboolean spice_playback_channel_is_active(SpicePlaybackChannel *channel)
+{
+    g_return_val_if_fail(SPICE_IS_PLAYBACK_CHANNEL(channel), FALSE);
+    return channel->priv->is_active;
+}
+
+G_GNUC_INTERNAL
+guint32 spice_playback_channel_get_latency(SpicePlaybackChannel *channel)
+{
+    g_return_val_if_fail(SPICE_IS_PLAYBACK_CHANNEL(channel), 0);
+    if (!channel->priv->is_active) {
+        return 0;
+    }
+    return channel->priv->latency;
 }

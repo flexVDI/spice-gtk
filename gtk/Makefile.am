@@ -235,6 +235,7 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	channel-inputs.c				\
 	channel-main.c					\
 	channel-playback.c				\
+	channel-playback-priv.h				\
 	channel-port.c					\
 	channel-record.c				\
 	channel-smartcard.c				\

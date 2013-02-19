@@ -29,6 +29,7 @@
 #include "glib-compat.h"
 #include "wocky-http-proxy.h"
 #include "spice-proxy.h"
+#include "channel-playback-priv.h"
 
 struct channel {
     SpiceChannel      *channel;
@@ -1836,6 +1837,9 @@ void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel)
 
         CHANNEL_DEBUG(channel, "new main channel, switching");
         s->cmain = channel;
+    } else if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
+        g_warn_if_fail(s->playback_channel == NULL);
+        s->playback_channel = SPICE_PLAYBACK_CHANNEL(channel);
     }
 
     g_signal_emit(session, signals[SPICE_SESSION_CHANNEL_NEW], 0, channel);
@@ -2097,4 +2101,31 @@ void spice_session_set_name(SpiceSession *session, const gchar *name)
     s->name = g_strdup(name);
 
     g_object_notify(G_OBJECT(session), "name");
+}
+
+G_GNUC_INTERNAL
+gboolean spice_session_is_playback_active(SpiceSession *session)
+{
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_val_if_fail(s != NULL, FALSE);
+
+    return (s->playback_channel &&
+        spice_playback_channel_is_active(s->playback_channel));
+}
+
+G_GNUC_INTERNAL
+guint32 spice_session_get_playback_latency(SpiceSession *session)
+{
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_val_if_fail(s != NULL, 0);
+
+    if (s->playback_channel &&
+        spice_playback_channel_is_active(s->playback_channel)) {
+        return spice_playback_channel_get_latency(s->playback_channel);
+    } else {
+        SPICE_DEBUG("%s: not implemented when there isn't audio playback", __FUNCTION__);
+        return 0;
+    }
 }
