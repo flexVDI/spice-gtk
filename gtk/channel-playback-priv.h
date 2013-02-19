@@ -20,4 +20,5 @@
 
 gboolean spice_playback_channel_is_active(SpicePlaybackChannel *channel);
 guint32 spice_playback_channel_get_latency(SpicePlaybackChannel *channel);
+void spice_playback_channel_sync_latency(SpicePlaybackChannel *channel);
 #endif

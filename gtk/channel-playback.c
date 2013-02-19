@@ -575,3 +575,12 @@ guint32 spice_playback_channel_get_latency(SpicePlaybackChannel *channel)
     }
     return channel->priv->latency;
 }
+
+G_GNUC_INTERNAL
+void spice_playback_channel_sync_latency(SpicePlaybackChannel *channel)
+{
+    g_return_if_fail(SPICE_IS_PLAYBACK_CHANNEL(channel));
+    g_return_if_fail(channel->priv->is_active);
+    SPICE_DEBUG("%s: notify latency update %u", __FUNCTION__, channel->priv->min_latency);
+    g_object_notify_main_context(G_OBJECT(SPICE_CHANNEL(channel)), "min-latency");
+}

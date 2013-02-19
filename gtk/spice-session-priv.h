@@ -158,6 +158,7 @@ void spice_session_set_uuid(SpiceSession *session, guint8 uuid[16]);
 void spice_session_set_name(SpiceSession *session, const gchar *name);
 gboolean spice_session_is_playback_active(SpiceSession *session);
 guint32 spice_session_get_playback_latency(SpiceSession *session);
+void spice_session_sync_playback_latency(SpiceSession *session);
 
 G_END_DECLS
 

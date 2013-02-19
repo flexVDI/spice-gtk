@@ -2104,6 +2104,21 @@ void spice_session_set_name(SpiceSession *session, const gchar *name)
 }
 
 G_GNUC_INTERNAL
+void spice_session_sync_playback_latency(SpiceSession *session)
+{
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_if_fail(s != NULL);
+
+    if (s->playback_channel &&
+        spice_playback_channel_is_active(s->playback_channel)) {
+        spice_playback_channel_sync_latency(s->playback_channel);
+    } else {
+        SPICE_DEBUG("%s: not implemented when there isn't audio playback", __FUNCTION__);
+    }
+}
+
+G_GNUC_INTERNAL
 gboolean spice_session_is_playback_active(SpiceSession *session)
 {
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
