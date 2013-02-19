@@ -973,8 +973,9 @@ static int monitors_cmp(const void *p1, const void *p2, gpointer user_data)
     const VDAgentMonConfig *m2 = p2;
     double d1 = sqrt(m1->x * m1->x + m1->y * m1->y);
     double d2 = sqrt(m2->x * m2->x + m2->y * m2->y);
+    int diff = d1 - d2;
 
-    return d1 - d2;
+    return diff == 0 ? (char*)p1 - (char*)p2 : diff;
 }
 
 static void monitors_align(VDAgentMonConfig *monitors, int nmonitors)
