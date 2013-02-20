@@ -1745,15 +1745,23 @@ GSocket* spice_session_channel_open_host(SpiceSession *session, SpiceChannel *ch
 {
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     spice_open_host open_host = { 0, };
-
-    if ((use_tls && !s->tls_port) || (!use_tls && !s->port))
-        return NULL;
+    gchar *port, *endptr;
 
     // FIXME: make open_host() cancellable
     open_host.from = coroutine_self();
     open_host.session = session;
     open_host.channel = channel;
-    open_host.port = atoi(use_tls ? s->tls_port : s->port);
+    port = use_tls ? s->tls_port : s->port;
+    if (port == NULL)
+        return NULL;
+
+    open_host.port = strtol(port, &endptr, 10);
+    if (*port == '\0' || *endptr != '\0' ||
+        open_host.port <= 0 || open_host.port > G_MAXUINT16) {
+        g_warning("Invalid port value %s", port);
+        return NULL;
+    }
+
     open_host.client = g_socket_client_new();
 
     guint id = g_idle_add(open_host_idle_cb, &open_host);
