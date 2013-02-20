@@ -2684,6 +2684,7 @@ void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap, gboolean swap
     SWAP(ctx);
     SWAP(ssl);
     SWAP(sslverify);
+    SWAP(tls);
     SWAP(use_mini_header);
     if (swap_msgs) {
         SWAP(xmit_queue);
