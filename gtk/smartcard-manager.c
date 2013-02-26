@@ -512,17 +512,17 @@ gboolean spice_smartcard_manager_init_finish(SpiceSession *session,
                                              GAsyncResult *result,
                                              GError **err)
 {
+    GSimpleAsyncResult *simple;
+
     g_return_val_if_fail(SPICE_IS_SESSION(session), FALSE);
-    g_return_val_if_fail(G_IS_ASYNC_RESULT(result), FALSE);
+    g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(result), FALSE);
 
     SPICE_DEBUG("smartcard_manager_finish");
 
-    if (G_IS_SIMPLE_ASYNC_RESULT(result)) {
-        GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT(result);
-        g_warn_if_fail(g_simple_async_result_get_source_tag(simple) == spice_smartcard_manager_init);
-        if (g_simple_async_result_propagate_error(simple, err))
-            return FALSE;
-    }
+    simple = G_SIMPLE_ASYNC_RESULT(result);
+    g_return_val_if_fail(g_simple_async_result_get_source_tag(simple) == spice_smartcard_manager_init, FALSE);
+    if (g_simple_async_result_propagate_error(simple, err))
+        return FALSE;
 
     return TRUE;
 }

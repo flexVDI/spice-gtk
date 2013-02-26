@@ -482,15 +482,10 @@ static void spice_smartcard_channel_up_cb(GObject *source_object,
 
 static void spice_smartcard_channel_up(SpiceChannel *channel)
 {
-    SpiceSession *session;
-    GCancellable *cancellable = g_cancellable_new();
-
-    g_object_get(channel, "spice-session", &session, NULL);
-    spice_smartcard_manager_init_async(session,
-                                       cancellable,
+    spice_smartcard_manager_init_async(spice_channel_get_session(channel),
+                                       g_cancellable_new(),
                                        spice_smartcard_channel_up_cb,
                                        channel);
-    g_object_unref(session);
 }
 
 static void handle_smartcard_msg(SpiceChannel *channel, SpiceMsgIn *in)

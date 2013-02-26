@@ -327,7 +327,7 @@ AC_CHECK_LIB(z, deflate, Z_LIBS='-lz', AC_MSG_ERROR([zlib not found]))
 AC_SUBST(Z_LIBS)
 
 AC_ARG_ENABLE([smartcard],
-  AS_HELP_STRING([--enable-smartcard=@<:@yes/no@:>@],
+  AS_HELP_STRING([--enable-smartcard=@<:@auto/yes/no@:>@],
                  [Enable smartcard support @<:@default=auto@:>@]),
   [],
   [enable_smartcard="auto"])
