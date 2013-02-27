@@ -68,6 +68,11 @@ type_name##_get_type (void) \
 GType spice_error_get_type (void) G_GNUC_CONST;
 
 #define G_PARAM_DEPRECATED  (1 << 31)
+
+void      g_key_file_set_uint64             (GKeyFile             *key_file,
+					     const gchar          *group_name,
+					     const gchar          *key,
+					     guint64               value);
 #endif /* glib 2.26 */
 
 #if !GLIB_CHECK_VERSION(2,28,0)

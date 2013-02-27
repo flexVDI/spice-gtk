@@ -18,6 +18,33 @@
 
 #if !GLIB_CHECK_VERSION(2,26,0)
 G_DEFINE_BOXED_TYPE (GError, spice_error, g_error_copy, g_error_free)
+
+/**
+ * g_key_file_set_uint64:
+ * @key_file: a #GKeyFile
+ * @group_name: a group name
+ * @key: a key
+ * @value: an integer value
+ *
+ * Associates a new integer value with @key under @group_name.
+ * If @key cannot be found then it is created.
+ *
+ * Since: 2.26
+ **/
+void
+g_key_file_set_uint64 (GKeyFile    *key_file,
+                       const gchar *group_name,
+                       const gchar *key,
+                       guint64      value)
+{
+  gchar *result;
+
+  g_return_if_fail (key_file != NULL);
+
+  result = g_strdup_printf ("%" G_GUINT64_FORMAT, value);
+  g_key_file_set_value (key_file, group_name, key, result);
+  g_free (result);
+}
 #endif
 
 #if !GLIB_CHECK_VERSION(2,28,0)
