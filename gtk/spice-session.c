@@ -652,7 +652,9 @@ static void spice_session_class_init(SpiceSessionClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 
+#if GLIB_CHECK_VERSION(2, 26, 0)
     _wocky_http_proxy_get_type();
+#endif
 
     gobject_class->dispose      = spice_session_dispose;
     gobject_class->finalize     = spice_session_finalize;
