@@ -1517,17 +1517,31 @@ static void file_xfer_task_free(SpiceFileXferTask *task)
 }
 
 /* main context */
+static void file_xfer_remove_flush(gpointer data, gpointer user_data)
+{
+    GAsyncResult *res = G_ASYNC_RESULT(data);
+    SpiceFileXferTask *task = user_data;
+    SpiceMainChannelPrivate *c = task->channel->priv;
+
+    if (g_async_result_get_user_data(res) == task) {
+        c->flushing = g_slist_remove(c->flushing, res);
+        g_object_unref(res);
+    }
+}
+
 static void file_xfer_close_cb(GObject      *object,
                                GAsyncResult *close_res,
                                gpointer      user_data)
 {
     GSimpleAsyncResult *res;
     SpiceFileXferTask *task;
+    SpiceMainChannelPrivate *c;
     GInputStream *stream = G_INPUT_STREAM(object);
     GError *error = NULL;
 
     stream = G_INPUT_STREAM(object);
     task = user_data;
+    c = task->channel->priv;
 
     g_input_stream_close_finish(stream, close_res, &error);
     if (error) {
@@ -1550,6 +1564,9 @@ static void file_xfer_close_cb(GObject      *object,
     }
     g_simple_async_result_complete_in_idle(res);
     g_object_unref(res);
+
+    /* On agent cancel there may be pending flushes referencing this task */
+    g_slist_foreach(c->flushing, file_xfer_remove_flush, task);
 
     file_xfer_task_free(task);
 }
