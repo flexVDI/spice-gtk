@@ -1633,6 +1633,13 @@ static void file_xfer_read_cb(GObject *source_object,
     } else {
         /* Error or EOF, close the file */
         if (error) {
+            VDAgentFileXferStatusMessage msg = {
+                .id = task->id,
+                .result = VD_AGENT_FILE_XFER_STATUS_ERROR,
+            };
+            agent_msg_queue_many(task->channel, VD_AGENT_FILE_XFER_STATUS,
+                                 &msg, sizeof(msg), NULL);
+            spice_channel_wakeup(SPICE_CHANNEL(task->channel), FALSE);
             task->error = error;
         }
         g_input_stream_close_async(G_INPUT_STREAM(task->file_stream),
