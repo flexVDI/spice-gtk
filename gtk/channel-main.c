@@ -1630,24 +1630,22 @@ static void file_xfer_read_cb(GObject *source_object,
         file_xfer_queue(task, count);
         file_xfer_flush_async(channel, task->cancellable,
                               file_xfer_data_flushed_cb, task);
-    } else {
-        /* Error or EOF, close the file */
-        if (error) {
-            VDAgentFileXferStatusMessage msg = {
-                .id = task->id,
-                .result = VD_AGENT_FILE_XFER_STATUS_ERROR,
-            };
-            agent_msg_queue_many(task->channel, VD_AGENT_FILE_XFER_STATUS,
-                                 &msg, sizeof(msg), NULL);
-            spice_channel_wakeup(SPICE_CHANNEL(task->channel), FALSE);
-            task->error = error;
-        }
+    } else if (error) {
+        VDAgentFileXferStatusMessage msg = {
+            .id = task->id,
+            .result = VD_AGENT_FILE_XFER_STATUS_ERROR,
+        };
+        agent_msg_queue_many(task->channel, VD_AGENT_FILE_XFER_STATUS,
+                             &msg, sizeof(msg), NULL);
+        spice_channel_wakeup(SPICE_CHANNEL(task->channel), FALSE);
+        task->error = error;
         g_input_stream_close_async(G_INPUT_STREAM(task->file_stream),
                                    G_PRIORITY_DEFAULT,
                                    task->cancellable,
                                    file_xfer_close_cb,
                                    task);
     }
+    /* else EOF, do nothing (wait for VD_AGENT_FILE_XFER_STATUS from agent) */
 }
 
 /* coroutine context */
@@ -1691,6 +1689,8 @@ static void file_xfer_handle_status(SpiceMainChannel *channel,
     case VD_AGENT_FILE_XFER_STATUS_ERROR:
         task->error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                                   "some errors occurred in the spice agent");
+        break;
+    case VD_AGENT_FILE_XFER_STATUS_SUCCESS:
         break;
     default:
         g_warn_if_reached();
