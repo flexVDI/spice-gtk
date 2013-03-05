@@ -786,8 +786,10 @@ static void spice_usb_device_manager_remove_dev(SpiceUsbDeviceManager  *self,
     spice_usb_device_manager_disconnect_device(self, device);
 
     SPICE_DEBUG("device removed %p", device);
-    g_signal_emit(self, signals[DEVICE_REMOVED], 0, device);
+    spice_usb_device_ref(device);
     g_ptr_array_remove(priv->devices, device);
+    g_signal_emit(self, signals[DEVICE_REMOVED], 0, device);
+    spice_usb_device_unref(device);
 }
 
 static void spice_usb_device_manager_uevent_cb(GUdevClient     *client,
@@ -1170,8 +1172,10 @@ _spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
              * So remove the device now
              */
             SPICE_DEBUG("libdev does not exist for %p -- removing", device);
-            g_signal_emit(self, signals[DEVICE_REMOVED], 0, device);
+            spice_usb_device_ref(device);
             g_ptr_array_remove(priv->devices, device);
+            g_signal_emit(self, signals[DEVICE_REMOVED], 0, device);
+            spice_usb_device_unref(device);
 #endif
             g_simple_async_result_set_error(result,
                                             SPICE_CLIENT_ERROR,
