@@ -1562,17 +1562,18 @@ static void file_xfer_close_cb(GObject      *object,
 {
     GSimpleAsyncResult *res;
     SpiceFileXferTask *task;
-    GInputStream *stream = G_INPUT_STREAM(object);
     GError *error = NULL;
 
-    stream = G_INPUT_STREAM(object);
     task = user_data;
 
-    g_input_stream_close_finish(stream, close_res, &error);
-    if (error) {
-        /* This error dont need to report to user, just print a log */
-        SPICE_DEBUG("close file error: %s", error->message);
-        g_clear_error(&error);
+    if (object) {
+        GInputStream *stream = G_INPUT_STREAM(object);
+        g_input_stream_close_finish(stream, close_res, &error);
+        if (error) {
+            /* This error dont need to report to user, just print a log */
+            SPICE_DEBUG("close file error: %s", error->message);
+            g_clear_error(&error);
+        }
     }
 
     /* Notify to user that files have been transferred or something error
