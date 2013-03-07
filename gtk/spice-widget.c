@@ -537,7 +537,7 @@ static void spice_display_init(SpiceDisplay *display)
 {
     GtkWidget *widget = GTK_WIDGET(display);
     SpiceDisplayPrivate *d;
-    GtkTargetEntry targets = {"text/plain", 0, 0};
+    GtkTargetEntry targets = { "text/uri-list", 0, 0 };
 
     d = display->priv = SPICE_DISPLAY_GET_PRIVATE(display);
 
