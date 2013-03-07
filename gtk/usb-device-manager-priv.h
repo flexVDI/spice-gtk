@@ -36,10 +36,10 @@ void spice_usb_device_manager_stop_event_listening(
 void spice_usb_device_manager_device_error(
     SpiceUsbDeviceManager *manager, SpiceUsbDevice *device, GError *err);
 
-guint8 spice_usb_device_get_busnum(SpiceUsbDevice *device);
-guint8 spice_usb_device_get_devaddr(SpiceUsbDevice *device);
-guint16 spice_usb_device_get_vid(SpiceUsbDevice *device);
-guint16 spice_usb_device_get_pid(SpiceUsbDevice *device);
+guint8 spice_usb_device_get_busnum(const SpiceUsbDevice *device);
+guint8 spice_usb_device_get_devaddr(const SpiceUsbDevice *device);
+guint16 spice_usb_device_get_vid(const SpiceUsbDevice *device);
+guint16 spice_usb_device_get_pid(const SpiceUsbDevice *device);
 
 #endif
 

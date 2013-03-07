@@ -1477,36 +1477,36 @@ static SpiceUsbDeviceInfo *spice_usb_device_new(libusb_device *libdev)
     return info;
 }
 
-guint8 spice_usb_device_get_busnum(SpiceUsbDevice *device)
+guint8 spice_usb_device_get_busnum(const SpiceUsbDevice *device)
 {
-    SpiceUsbDeviceInfo *info = (SpiceUsbDeviceInfo *)device;
+    const SpiceUsbDeviceInfo *info = (const SpiceUsbDeviceInfo *)device;
 
     g_return_val_if_fail(info != NULL, 0);
 
     return info->busnum;
 }
 
-guint8 spice_usb_device_get_devaddr(SpiceUsbDevice *device)
+guint8 spice_usb_device_get_devaddr(const SpiceUsbDevice *device)
 {
-    SpiceUsbDeviceInfo *info = (SpiceUsbDeviceInfo *)device;
+    const SpiceUsbDeviceInfo *info = (const SpiceUsbDeviceInfo *)device;
 
     g_return_val_if_fail(info != NULL, 0);
 
     return info->devaddr;
 }
 
-guint16 spice_usb_device_get_vid(SpiceUsbDevice *device)
+guint16 spice_usb_device_get_vid(const SpiceUsbDevice *device)
 {
-    SpiceUsbDeviceInfo *info = (SpiceUsbDeviceInfo *)device;
+    const SpiceUsbDeviceInfo *info = (const SpiceUsbDeviceInfo *)device;
 
     g_return_val_if_fail(info != NULL, 0);
 
     return info->vid;
 }
 
-guint16 spice_usb_device_get_pid(SpiceUsbDevice *device)
+guint16 spice_usb_device_get_pid(const SpiceUsbDevice *device)
 {
-    SpiceUsbDeviceInfo *info = (SpiceUsbDeviceInfo *)device;
+    const SpiceUsbDeviceInfo *info = (const SpiceUsbDeviceInfo *)device;
 
     g_return_val_if_fail(info != NULL, 0);
 
