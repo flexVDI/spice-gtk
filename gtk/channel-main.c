@@ -1547,6 +1547,7 @@ static void file_xfer_task_free(SpiceFileXferTask *task)
     c = task->channel->priv;
     c->file_xfer_task_list = g_list_remove(c->file_xfer_task_list, task);
 
+    g_clear_object(&task->channel);
     g_clear_object(&task->file);
     g_clear_object(&task->file_stream);
     g_free(task);
@@ -2679,7 +2680,7 @@ static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
 
     task = spice_malloc0(sizeof(SpiceFileXferTask));
     task->id = ++xfer_id;
-    task->channel = channel;
+    task->channel = g_object_ref(channel);
     task->file = g_object_ref(file);
     task->flags = flags;
     task->cancellable = cancellable;
