@@ -2668,8 +2668,6 @@ static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
     SpiceFileXferTask *task;
     static uint32_t xfer_id;    /* Used to identify task id */
 
-    xfer_id = (xfer_id > UINT32_MAX) ? 0 : xfer_id;
-
     task = spice_malloc0(sizeof(SpiceFileXferTask));
     task->id = ++xfer_id;
     task->channel = channel;
