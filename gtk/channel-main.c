@@ -163,6 +163,7 @@ static void migrate_channel_event_cb(SpiceChannel *channel, SpiceChannelEvent ev
 static gboolean main_migrate_handshake_done(gpointer data);
 static void spice_main_channel_send_migration_handshake(SpiceChannel *channel);
 static void file_xfer_continue_read(SpiceFileXferTask *task);
+static void file_xfer_completed(SpiceFileXferTask *task, GError *error);
 
 /* ------------------------------------------------------------------ */
 
@@ -1602,13 +1603,7 @@ static void file_xfer_data_flushed_cb(GObject *source_object,
     file_xfer_flush_finish(channel, res, &error);
 
     if (error != NULL) {
-        g_warning("failed to flush xfer queue: %s", error->message);
-        task->error = error;
-        g_input_stream_close_async(G_INPUT_STREAM(task->file_stream),
-                                   G_PRIORITY_DEFAULT,
-                                   task->cancellable,
-                                   file_xfer_close_cb,
-                                   task);
+        file_xfer_completed(task, error);
         return;
     }
 
@@ -1658,12 +1653,7 @@ static void file_xfer_read_cb(GObject *source_object,
         agent_msg_queue_many(task->channel, VD_AGENT_FILE_XFER_STATUS,
                              &msg, sizeof(msg), NULL);
         spice_channel_wakeup(SPICE_CHANNEL(task->channel), FALSE);
-        task->error = error;
-        g_input_stream_close_async(G_INPUT_STREAM(task->file_stream),
-                                   G_PRIORITY_DEFAULT,
-                                   task->cancellable,
-                                   file_xfer_close_cb,
-                                   task);
+        file_xfer_completed(task, error);
     }
     /* else EOF, do nothing (wait for VD_AGENT_FILE_XFER_STATUS from agent) */
 }
@@ -1687,6 +1677,7 @@ static void file_xfer_handle_status(SpiceMainChannel *channel,
     SpiceMainChannelPrivate *c = channel->priv;
     GList *l;
     SpiceFileXferTask *task;
+    GError *error = NULL;
 
     l = g_list_find_custom(c->file_xfer_task_list, &msg->id,
                            file_xfer_task_find);
@@ -1701,29 +1692,23 @@ static void file_xfer_handle_status(SpiceMainChannel *channel,
         file_xfer_continue_read(task);
         return;
     case VD_AGENT_FILE_XFER_STATUS_CANCELLED:
-        SPICE_DEBUG("user removed task %d, result: %d", msg->id,
-                    msg->result);
-        task->error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
-                                  "transfer is cancelled by spice agent");
+        error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                            "transfer is cancelled by spice agent");
         break;
     case VD_AGENT_FILE_XFER_STATUS_ERROR:
-        task->error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
-                                  "some errors occurred in the spice agent");
+        error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                            "some errors occurred in the spice agent");
         break;
     case VD_AGENT_FILE_XFER_STATUS_SUCCESS:
         break;
     default:
         g_warn_if_reached();
-        task->error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
-                                  "unhandled status type: %u", msg->result);
+        error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                            "unhandled status type: %u", msg->result);
         break;
     }
 
-    g_input_stream_close_async(G_INPUT_STREAM(task->file_stream),
-                               G_PRIORITY_DEFAULT,
-                               task->cancellable,
-                               file_xfer_close_cb,
-                               task);
+    file_xfer_completed(task, error);
 }
 
 /* coroutine context */
