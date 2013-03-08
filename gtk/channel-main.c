@@ -327,21 +327,33 @@ static void spice_channel_iterate_write(SpiceChannel *channel)
 }
 
 /* main or coroutine context */
-static void spice_main_channel_reset(SpiceChannel *channel, gboolean migrating)
+static void spice_main_channel_reset_agent(SpiceMainChannel *channel)
 {
-    SpiceMainChannelPrivate *c = SPICE_MAIN_CHANNEL(channel)->priv;
+    SpiceMainChannelPrivate *c = channel->priv;
 
     c->agent_connected = FALSE;
     c->agent_caps_received = FALSE;
     c->agent_display_config_sent = FALSE;
-    c->agent_tokens = 0;
     c->agent_msg_pos = 0;
     g_free(c->agent_msg_data);
     c->agent_msg_data = NULL;
     c->agent_msg_size = 0;
+}
 
+/* main or coroutine context */
+static void spice_main_channel_reset(SpiceChannel *channel, gboolean migrating)
+{
+    SpiceMainChannelPrivate *c = SPICE_MAIN_CHANNEL(channel)->priv;
+
+    /* This is not part of reset_agent, since the spice-server expects any
+       pending multi-chunk messages to be completed by the client, even after
+       it has send an agent-disconnected msg as that is what the original
+       spicec did. Also see the TODO in server/reds.c reds_reset_vdp() */
+    c->agent_tokens = 0;
     agent_free_msg_queue(SPICE_MAIN_CHANNEL(channel));
     c->agent_msg_queue = g_queue_new();
+
+    spice_main_channel_reset_agent(SPICE_MAIN_CHANNEL(channel));
 
     SPICE_CHANNEL_CLASS(spice_main_channel_parent_class)->channel_reset(channel, migrating);
 }
