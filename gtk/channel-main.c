@@ -2581,12 +2581,13 @@ void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean 
     update_display_timer(channel, 1);
 }
 
-static void file_xfer_failed(SpiceFileXferTask *task, GError *error)
+static void file_xfer_completed(SpiceFileXferTask *task, GError *error)
 {
-    SPICE_DEBUG("File %s xfer failed: %s",
-                g_file_get_path(task->file), error->message);
-
-    task->error = error;
+    if (error) {
+        SPICE_DEBUG("File %s xfer failed: %s",
+                    g_file_get_path(task->file), error->message);
+        task->error = error;
+    }
     g_input_stream_close_async(G_INPUT_STREAM(task->file_stream),
                                G_PRIORITY_DEFAULT,
                                task->cancellable,
@@ -2642,7 +2643,7 @@ static void file_xfer_info_async_cb(GObject *obj, GAsyncResult *res, gpointer da
     return;
 
 failed:
-    file_xfer_failed(task, error);
+    file_xfer_completed(task, error);
 }
 
 static void file_xfer_read_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
@@ -2653,7 +2654,7 @@ static void file_xfer_read_async_cb(GObject *obj, GAsyncResult *res, gpointer da
 
     task->file_stream = g_file_read_finish(file, res, &error);
     if (error) {
-        file_xfer_failed (task, error);
+        file_xfer_completed(task, error);
         return;
     }
 
