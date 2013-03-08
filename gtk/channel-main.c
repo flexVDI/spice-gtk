@@ -866,16 +866,14 @@ static void file_xfer_flush_async(SpiceMainChannel *channel, GCancellable *cance
 static gboolean file_xfer_flush_finish(SpiceMainChannel *channel, GAsyncResult *result,
                                        GError **error)
 {
-    GSimpleAsyncResult *simple;
+    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
 
-    simple = (GSimpleAsyncResult *)result;
+    g_return_val_if_fail(g_simple_async_result_is_valid(result,
+        G_OBJECT(channel), file_xfer_flush_async), FALSE);
 
     if (g_simple_async_result_propagate_error(simple, error)) {
         return FALSE;
     }
-
-    g_return_val_if_fail(g_simple_async_result_is_valid(result,
-        G_OBJECT(channel), file_xfer_flush_async), FALSE);
 
     CHANNEL_DEBUG(channel, "flushed finished!");
     return g_simple_async_result_get_op_res_gboolean(simple);
