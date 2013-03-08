@@ -1362,11 +1362,8 @@ static void agent_start(SpiceMainChannel *channel)
 /* coroutine context  */
 static void agent_stopped(SpiceMainChannel *channel)
 {
-    SpiceMainChannelPrivate *c = SPICE_MAIN_CHANNEL(channel)->priv;
-
-    set_agent_connected(channel, FALSE);
-    c->agent_caps_received = false;
-    c->agent_display_config_sent = false;
+    spice_main_channel_reset_agent(channel);
+    set_agent_connected(channel, FALSE); /* For notify */
     emit_main_context(channel, SPICE_MAIN_AGENT_UPDATE);
 }
 
