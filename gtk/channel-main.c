@@ -165,6 +165,7 @@ static gboolean main_migrate_handshake_done(gpointer data);
 static void spice_main_channel_send_migration_handshake(SpiceChannel *channel);
 static void file_xfer_continue_read(SpiceFileXferTask *task);
 static void file_xfer_completed(SpiceFileXferTask *task, GError *error);
+static void file_xfer_flushed(SpiceMainChannel *channel, gboolean success);
 
 /* ------------------------------------------------------------------ */
 
@@ -332,6 +333,8 @@ static void spice_channel_iterate_write(SpiceChannel *channel)
 static void spice_main_channel_reset_agent(SpiceMainChannel *channel)
 {
     SpiceMainChannelPrivate *c = channel->priv;
+    GError *error;
+    GList *l;
 
     c->agent_connected = FALSE;
     c->agent_caps_received = FALSE;
@@ -340,6 +343,15 @@ static void spice_main_channel_reset_agent(SpiceMainChannel *channel)
     g_free(c->agent_msg_data);
     c->agent_msg_data = NULL;
     c->agent_msg_size = 0;
+
+    for (l = c->file_xfer_task_list; l != NULL; l = l->next) {
+        SpiceFileXferTask *task = (SpiceFileXferTask *)l->data;
+
+        error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                            "Agent connection closed");
+        file_xfer_completed(task, error);
+    }
+    file_xfer_flushed(channel, FALSE);
 }
 
 /* main or coroutine context */
