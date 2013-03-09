@@ -1568,7 +1568,7 @@ static void file_xfer_close_cb(GObject      *object,
     res = g_simple_async_result_new(G_OBJECT(task->channel),
                                     task->callback,
                                     task->user_data,
-                                    file_xfer_continue_read);
+                                    spice_main_file_copy_async);
     if (task->error) {
         g_simple_async_result_take_error(res, task->error);
         g_simple_async_result_set_op_res_gboolean(res, FALSE);
@@ -2772,7 +2772,8 @@ gboolean spice_main_file_copy_finish(SpiceMainChannel *channel,
     GSimpleAsyncResult *simple;
 
     g_return_val_if_fail(SPICE_IS_MAIN_CHANNEL(channel), FALSE);
-    g_return_val_if_fail(result != NULL, FALSE);
+    g_return_val_if_fail(g_simple_async_result_is_valid(result,
+        G_OBJECT(channel), spice_main_file_copy_async), FALSE);
 
     simple = (GSimpleAsyncResult *)result;
 
