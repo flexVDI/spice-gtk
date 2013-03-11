@@ -1175,7 +1175,7 @@ static void spice_channel_switch_protocol(SpiceChannel *channel, gint version)
 }
 
 /* coroutine context */
-static void spice_channel_recv_link_hdr(SpiceChannel *channel)
+static gboolean spice_channel_recv_link_hdr(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
     int rc;
@@ -1204,19 +1204,20 @@ static void spice_channel_recv_link_hdr(SpiceChannel *channel)
         goto error;
     }
 
-    return;
+    return TRUE;
 
 error:
     /* Windows socket seems to give early CONNRESET errors. The server
        does not linger when closing the socket if the protocol is
        incompatible. Try with the oldest protocol in this case: */
-    if (c->link_hdr.major_version != 1) {
+    if (c->peer_msg != NULL && c->link_hdr.major_version != 1) {
         SPICE_DEBUG("%s: error, switching to protocol 1 (spice 0.4)", c->name);
         spice_channel_switch_protocol(channel, 1);
-        return;
+        return TRUE;
     }
 
     emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_LINK);
+    return FALSE;
 }
 
 #if HAVE_SASL
@@ -2295,7 +2296,8 @@ connected:
     }
 
     spice_channel_send_link(channel);
-    spice_channel_recv_link_hdr(channel);
+    if (spice_channel_recv_link_hdr(channel) == FALSE)
+        goto cleanup;
     spice_channel_recv_link_msg(channel, &switch_tls);
     if (switch_tls)
         goto cleanup;
