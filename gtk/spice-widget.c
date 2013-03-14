@@ -1668,10 +1668,12 @@ static gboolean configure_event(GtkWidget *widget, GdkEventConfigure *conf)
     d->mx = conf->x;
     d->my = conf->y;
 
+#ifdef WIN32
     if (d->mouse_grab_active) {
         try_mouse_ungrab(display);
         try_mouse_grab(display);
     }
+#endif
 
     return true;
 }
