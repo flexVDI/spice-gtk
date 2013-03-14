@@ -1668,8 +1668,10 @@ static gboolean configure_event(GtkWidget *widget, GdkEventConfigure *conf)
     d->mx = conf->x;
     d->my = conf->y;
 
-    try_mouse_ungrab(display);
-    try_mouse_grab(display);
+    if (d->mouse_grab_active) {
+        try_mouse_ungrab(display);
+        try_mouse_grab(display);
+    }
 
     return true;
 }
