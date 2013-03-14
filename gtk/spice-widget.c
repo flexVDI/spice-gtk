@@ -1654,11 +1654,19 @@ static gboolean configure_event(GtkWidget *widget, GdkEventConfigure *conf)
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
+    if (conf->width == d->ww && conf->height == d->wh &&
+            conf->x == d->mx && conf->y == d->my) {
+        return true;
+    }
+
     if (conf->width != d->ww  || conf->height != d->wh) {
         d->ww = conf->width;
         d->wh = conf->height;
         recalc_geometry(widget);
     }
+
+    d->mx = conf->x;
+    d->my = conf->y;
 
     try_mouse_ungrab(display);
     try_mouse_grab(display);
