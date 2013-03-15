@@ -889,6 +889,11 @@ static void spice_display_channel_up(SpiceChannel *channel)
     out = spice_msg_out_new(channel, SPICE_MSGC_DISPLAY_INIT);
     out->marshallers->msgc_display_init(out->marshaller, &init);
     spice_msg_out_send_internal(out);
+
+    /* if we are not using monitors config, notify of existence of
+       this monitor */
+    if (channel->priv->channel_id != 0)
+        g_object_notify_main_context(G_OBJECT(channel), "monitors");
 }
 
 #define DRAW(type) {                                                    \
