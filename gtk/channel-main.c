@@ -1289,6 +1289,30 @@ static void agent_clipboard_release(SpiceMainChannel *channel, guint selection)
     agent_msg_queue(channel, VD_AGENT_CLIPBOARD_RELEASE, msgsize, msg);
 }
 
+/* main context*/
+static gboolean timer_set_display(gpointer data)
+{
+    SpiceMainChannel *channel = data;
+    SpiceMainChannelPrivate *c = channel->priv;
+
+    c->timer_id = 0;
+    if (c->agent_connected)
+        spice_main_send_monitor_config(channel);
+
+    return FALSE;
+}
+
+/* any context  */
+static void update_display_timer(SpiceMainChannel *channel, guint seconds)
+{
+    SpiceMainChannelPrivate *c = channel->priv;
+
+    if (c->timer_id)
+        g_source_remove(c->timer_id);
+
+    c->timer_id = g_timeout_add_seconds(seconds, timer_set_display, channel);
+}
+
 /* coroutine context  */
 static void set_agent_connected(SpiceMainChannel *channel, gboolean connected)
 {
@@ -1297,6 +1321,8 @@ static void set_agent_connected(SpiceMainChannel *channel, gboolean connected)
     c->agent_connected = connected;
     SPICE_DEBUG("agent connected: %s", spice_yes_no(connected));
     g_object_notify_main_context(G_OBJECT(channel), "agent-connected");
+
+    update_display_timer(channel, 0);
 }
 
 /* coroutine context  */
@@ -2320,19 +2346,6 @@ static void spice_main_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
         g_return_if_reached();
 }
 
-/* system context*/
-static gboolean timer_set_display(gpointer data)
-{
-    SpiceChannel *channel = data;
-    SpiceMainChannelPrivate *c = SPICE_MAIN_CHANNEL(channel)->priv;
-
-    c->timer_id = 0;
-    if (c->agent_connected)
-        spice_main_send_monitor_config(SPICE_MAIN_CHANNEL(channel));
-
-    return false;
-}
-
 /**
  * spice_main_agent_test_capability:
  * @channel:
@@ -2387,10 +2400,7 @@ void spice_main_set_display(SpiceMainChannel *channel, int id,
     c->display[id].width  = width;
     c->display[id].height = height;
 
-    if (c->timer_id) {
-        g_source_remove(c->timer_id);
-    }
-    c->timer_id = g_timeout_add_seconds(1, timer_set_display, channel);
+    update_display_timer(channel, 1);
 }
 
 /**
@@ -2572,10 +2582,7 @@ void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean 
         c->display[id].enabled = enabled;
     }
 
-    if (c->timer_id) {
-        g_source_remove(c->timer_id);
-    }
-    c->timer_id = g_timeout_add_seconds(1, timer_set_display, channel);
+    update_display_timer(channel, 1);
 }
 
 static void file_xfer_failed(SpiceFileXferTask *task, GError *error)
