@@ -147,8 +147,7 @@ spice_win32_user_pipe_new (gchar *name, GError **error)
     }
 
     /* lower integrity on Vista/Win7+ */
-    if ((LOBYTE (g_win32_get_windows_version()) > 0x05
-         || LOWORD (g_win32_get_windows_version()) > 0x0105) &&
+    if ((LOBYTE (g_win32_get_windows_version()) > 0x05) &&
         !spice_win32_set_low_integrity (pipe, error))
         goto end;
 
