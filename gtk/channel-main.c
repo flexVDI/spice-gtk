@@ -1889,6 +1889,8 @@ static void main_handle_agent_data(SpiceChannel *channel, SpiceMsgIn *in)
     guint8 *data;
     int len;
 
+    g_warn_if_fail(c->agent_connected);
+
     /* shortcut to avoid extra message allocation & copy if possible */
     if (c->agent_msg_pos == 0) {
         VDAgentMessage *msg;
