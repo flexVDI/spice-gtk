@@ -1318,9 +1318,11 @@ static void set_agent_connected(SpiceMainChannel *channel, gboolean connected)
 {
     SpiceMainChannelPrivate *c = channel->priv;
 
-    c->agent_connected = connected;
     SPICE_DEBUG("agent connected: %s", spice_yes_no(connected));
-    g_object_notify_main_context(G_OBJECT(channel), "agent-connected");
+    if (connected != c->agent_connected) {
+        c->agent_connected = connected;
+        g_object_notify_main_context(G_OBJECT(channel), "agent-connected");
+    }
 
     update_display_timer(channel, 0);
 }
