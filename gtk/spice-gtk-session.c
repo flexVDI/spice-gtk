@@ -552,7 +552,6 @@ typedef struct
     GMainLoop *loop;
     GtkSelectionData *selection_data;
     guint info;
-    gulong timeout_handler;
     guint selection;
 } RunInfo;
 
@@ -574,16 +573,12 @@ static void clipboard_got_from_guest(SpiceMainChannel *main, guint selection,
         g_main_loop_quit (ri->loop);
 }
 
-static gboolean clipboard_timeout(gpointer user_data)
+static void clipboard_agent_connected(RunInfo *ri)
 {
-    RunInfo *ri = user_data;
+    g_warning("agent status changed, cancel clipboard request");
 
-    g_warning("clipboard get timed out");
-    if (g_main_loop_is_running (ri->loop))
-        g_main_loop_quit (ri->loop);
-
-    ri->timeout_handler = 0;
-    return FALSE;
+    if (g_main_loop_is_running(ri->loop))
+        g_main_loop_quit(ri->loop);
 }
 
 static void clipboard_get(GtkClipboard *clipboard,
@@ -596,6 +591,7 @@ static void clipboard_get(GtkClipboard *clipboard,
     SpiceGtkSession *self = user_data;
     SpiceGtkSessionPrivate *s = self->priv;
     gulong clipboard_handler;
+    gulong agent_handler;
     int selection;
 
     SPICE_DEBUG("clipboard get");
@@ -613,7 +609,10 @@ static void clipboard_get(GtkClipboard *clipboard,
     clipboard_handler = g_signal_connect(s->main, "main-clipboard-selection",
                                          G_CALLBACK(clipboard_got_from_guest),
                                          &ri);
-    ri.timeout_handler = g_timeout_add_seconds(7, clipboard_timeout, &ri);
+    agent_handler = g_signal_connect(s->main, "notify::agent-connected",
+                                     G_CALLBACK(clipboard_agent_connected),
+                                     &ri);
+
     spice_main_clipboard_selection_request(s->main, selection,
                                            atom2agent[info].vdagent);
 
@@ -626,8 +625,7 @@ static void clipboard_get(GtkClipboard *clipboard,
     g_main_loop_unref(ri.loop);
     ri.loop = NULL;
     g_signal_handler_disconnect(s->main, clipboard_handler);
-    if (ri.timeout_handler != 0)
-        g_source_remove(ri.timeout_handler);
+    g_signal_handler_disconnect(s->main, agent_handler);
 }
 
 static void clipboard_clear(GtkClipboard *clipboard, gpointer user_data)
