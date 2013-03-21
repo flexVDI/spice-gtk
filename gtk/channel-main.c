@@ -2591,6 +2591,11 @@ static void file_xfer_completed(SpiceFileXferTask *task, GError *error)
     if (task->pending)
         return;
 
+    if (!task->file_stream) {
+        file_xfer_close_cb(NULL, NULL, task);
+        return;
+    }
+
     g_input_stream_close_async(G_INPUT_STREAM(task->file_stream),
                                G_PRIORITY_DEFAULT,
                                task->cancellable,
