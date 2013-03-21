@@ -1700,6 +1700,11 @@ static void file_xfer_handle_status(SpiceMainChannel *channel,
 
     switch (msg->result) {
     case VD_AGENT_FILE_XFER_STATUS_CAN_SEND_DATA:
+        if (task->pending) {
+            error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                           "transfer received CAN_SEND_DATA in pending state");
+            break;
+        }
         file_xfer_continue_read(task);
         return;
     case VD_AGENT_FILE_XFER_STATUS_CANCELLED:
@@ -1711,6 +1716,9 @@ static void file_xfer_handle_status(SpiceMainChannel *channel,
                             "some errors occurred in the spice agent");
         break;
     case VD_AGENT_FILE_XFER_STATUS_SUCCESS:
+        if (task->pending)
+            error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                                "transfer received success in pending state");
         break;
     default:
         g_warn_if_reached();
