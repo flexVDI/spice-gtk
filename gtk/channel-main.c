@@ -55,6 +55,7 @@ typedef struct spice_migrate spice_migrate;
 #define FILE_XFER_CHUNK_SIZE (VD_AGENT_MAX_DATA_SIZE * 32)
 typedef struct SpiceFileXferTask {
     uint32_t                       id;
+    gboolean                       pending;
     GFile                          *file;
     SpiceMainChannel               *channel;
     GFileInputStream               *file_stream;
@@ -1600,9 +1601,9 @@ static void file_xfer_data_flushed_cb(GObject *source_object,
     SpiceMainChannel *channel = (SpiceMainChannel *)source_object;
     GError *error = NULL;
 
+    task->pending = FALSE;
     file_xfer_flush_finish(channel, res, &error);
-
-    if (error != NULL) {
+    if (error || task->error) {
         file_xfer_completed(task, error);
         return;
     }
@@ -1638,13 +1639,21 @@ static void file_xfer_read_cb(GObject *source_object,
     gssize count;
     GError *error = NULL;
 
+    task->pending = FALSE;
     count = g_input_stream_read_finish(G_INPUT_STREAM(task->file_stream),
                                        res, &error);
+    /* Check for pending earlier errors */
+    if (task->error) {
+        file_xfer_completed(task, error);
+        return;
+    }
+
     if (count > 0) {
         task->read_bytes += count;
         file_xfer_queue(task, count);
         file_xfer_flush_async(channel, task->cancellable,
                               file_xfer_data_flushed_cb, task);
+        task->pending = TRUE;
     } else if (error) {
         VDAgentFileXferStatusMessage msg = {
             .id = task->id,
@@ -1668,6 +1677,7 @@ static void file_xfer_continue_read(SpiceFileXferTask *task)
                               task->cancellable,
                               file_xfer_read_cb,
                               task);
+    task->pending = TRUE;
 }
 
 /* coroutine context */
@@ -2568,16 +2578,24 @@ void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean 
 
 static void file_xfer_completed(SpiceFileXferTask *task, GError *error)
 {
+    /* In case of multiple errors we only report the first error */
+    if (task->error)
+        g_clear_error(&error);
     if (error) {
         SPICE_DEBUG("File %s xfer failed: %s",
                     g_file_get_path(task->file), error->message);
         task->error = error;
     }
+
+    if (task->pending)
+        return;
+
     g_input_stream_close_async(G_INPUT_STREAM(task->file_stream),
                                G_PRIORITY_DEFAULT,
                                task->cancellable,
                                file_xfer_close_cb,
                                task);
+    task->pending = TRUE;
 }
 
 static void file_xfer_info_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
@@ -2591,10 +2609,10 @@ static void file_xfer_info_async_cb(GObject *obj, GAsyncResult *res, gpointer da
     gsize /*msg_size*/ data_len;
     gchar *string;
     SpiceFileXferTask *task = (SpiceFileXferTask *)data;
-    SpiceMainChannelPrivate *c = task->channel->priv;
 
+    task->pending = FALSE;
     info = g_file_query_info_finish(file, res, &error);
-    if (error)
+    if (error || task->error)
         goto failed;
 
     task->file_size =
@@ -2616,9 +2634,6 @@ static void file_xfer_info_async_cb(GObject *obj, GAsyncResult *res, gpointer da
         goto failed;
 
     /* Create file-xfer start message */
-    CHANNEL_DEBUG(task->channel, "Insert a xfer task:%d to task list", task->id);
-    c->file_xfer_task_list = g_list_append(c->file_xfer_task_list, task);
-
     msg.id = task->id;
     agent_msg_queue_many(task->channel, VD_AGENT_FILE_XFER_START,
                          &msg, sizeof(msg),
@@ -2637,8 +2652,9 @@ static void file_xfer_read_async_cb(GObject *obj, GAsyncResult *res, gpointer da
     SpiceFileXferTask *task = (SpiceFileXferTask *)data;
     GError *error = NULL;
 
+    task->pending = FALSE;
     task->file_stream = g_file_read_finish(file, res, &error);
-    if (error) {
+    if (error || task->error) {
         file_xfer_completed(task, error);
         return;
     }
@@ -2650,6 +2666,7 @@ static void file_xfer_read_async_cb(GObject *obj, GAsyncResult *res, gpointer da
                             task->cancellable,
                             file_xfer_info_async_cb,
                             task);
+    task->pending = TRUE;
 }
 
 static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
@@ -2661,6 +2678,7 @@ static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
                                            GAsyncReadyCallback callback,
                                            gpointer user_data)
 {
+    SpiceMainChannelPrivate *c = channel->priv;
     SpiceFileXferTask *task;
     static uint32_t xfer_id;    /* Used to identify task id */
 
@@ -2675,12 +2693,15 @@ static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
     task->callback = callback;
     task->user_data = user_data;
 
+    CHANNEL_DEBUG(task->channel, "Insert a xfer task:%d to task list", task->id);
+    c->file_xfer_task_list = g_list_append(c->file_xfer_task_list, task);
+
     g_file_read_async(file,
                       G_PRIORITY_DEFAULT,
                       cancellable,
                       file_xfer_read_async_cb,
                       task);
-
+    task->pending = TRUE;
 }
 
 /**
