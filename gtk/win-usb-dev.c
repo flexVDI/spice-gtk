@@ -320,20 +320,20 @@ static gboolean get_usb_dev_info(libusb_device *dev, GUdevDeviceInfo *udevinfo)
     return TRUE;
 }
 
-/* Only bus,addr are compared */
+/* Only vid:pid are compared */
 static gboolean gudev_devices_are_equal(GUdevDevice *a, GUdevDevice *b)
 {
     GUdevDeviceInfo *ai, *bi;
-    gboolean same_bus;
-    gboolean same_addr;
+    gboolean same_vid;
+    gboolean same_pid;
 
     ai = a->priv->udevinfo;
     bi = b->priv->udevinfo;
 
-    same_bus  = (ai->bus  == bi->bus);
-    same_addr = (ai->addr == bi->addr);
+    same_vid  = (ai->vid == bi->vid);
+    same_pid  = (ai->pid == bi->pid);
 
-    return (same_bus && same_addr);
+    return (same_pid && same_vid);
 }
 
 
