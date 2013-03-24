@@ -1608,6 +1608,7 @@ static void spice_usb_device_unref(SpiceUsbDevice *device)
     }
 }
 
+#ifndef G_OS_WIN32 /* Linux -- compare bus.addr */
 static gboolean
 spice_usb_device_equal_libdev(SpiceUsbDevice *device,
                               libusb_device  *libdev)
@@ -1624,6 +1625,26 @@ spice_usb_device_equal_libdev(SpiceUsbDevice *device,
 
     return ((bus1 == bus2) && (addr1 == addr2));
 }
+#else /* Windows -- compare vid:pid of device and libdev */
+static gboolean
+spice_usb_device_equal_libdev(SpiceUsbDevice *device,
+                              libusb_device  *libdev)
+{
+    int vid1, vid2, pid1, pid2;
+
+    if ((device == NULL) || (libdev == NULL))
+        return FALSE;
+
+    vid1 = spice_usb_device_get_vid(device);
+    pid1 = spice_usb_device_get_pid(device);
+
+    if (!spice_usb_device_manager_get_libdev_vid_pid(libdev, &vid2, &pid2)) {
+        return FALSE;
+    }
+
+    return ((vid1 == vid2) && (pid1 == pid2));
+}
+#endif
 
 /*
  * Caller must libusb_unref_device the libusb_device returned by this function.
