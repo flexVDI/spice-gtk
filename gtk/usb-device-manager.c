@@ -50,6 +50,12 @@
 
 #include <glib/gi18n.h>
 
+#ifndef G_OS_WIN32 /* Linux -- device id is bus.addr */
+#define DEV_ID_FMT "at %d.%d"
+#else /* Windows -- device id is vid:pid */
+#define DEV_ID_FMT "0x%04x:0x%04x"
+#endif
+
 /**
  * SECTION:usb-device-manager
  * @short_description: USB device management
@@ -788,7 +794,11 @@ static void spice_usb_device_manager_add_dev(SpiceUsbDeviceManager  *self,
 
     device = spice_usb_device_manager_find_device(self, bus, address);
     if (device) {
-        SPICE_DEBUG("USB device at %d.%d already exists, ignored", bus, address);
+        SPICE_DEBUG("USB device 0x%04x:0x%04x at %d.%d already exists, ignored",
+                    spice_usb_device_get_vid(device),
+                    spice_usb_device_get_pid(device),
+                    spice_usb_device_get_busnum(device),
+                    spice_usb_device_get_devaddr(device));
         return;
     }
 
@@ -818,7 +828,7 @@ static void spice_usb_device_manager_add_dev(SpiceUsbDeviceManager  *self,
         libusb_free_device_list(dev_list, 1);
 
     if (!device) {
-        g_warning("Could not find USB device to add at busnum %d devaddr %d",
+        g_warning("Could not find USB device to add " DEV_ID_FMT,
                   bus, address);
         return;
     }
@@ -854,7 +864,7 @@ static void spice_usb_device_manager_remove_dev(SpiceUsbDeviceManager  *self,
 
     device = spice_usb_device_manager_find_device(self, bus, address);
     if (!device) {
-        g_warning("Could not find USB device to remove at busnum %d devaddr %d",
+        g_warning("Could not find USB device to remove " DEV_ID_FMT,
                   bus, address);
         return;
     }
@@ -863,7 +873,7 @@ static void spice_usb_device_manager_remove_dev(SpiceUsbDeviceManager  *self,
     const guint8 state = spice_usb_device_get_state(device);
     if ((state == SPICE_USB_DEVICE_STATE_INSTALLING) ||
         (state == SPICE_USB_DEVICE_STATE_UNINSTALLING)) {
-        SPICE_DEBUG("skipping device at %d.%d. It is un/installing it's driver",
+        SPICE_DEBUG("skipping " DEV_ID_FMT ". It is un/installing its driver",
                     bus, address);
         return;
     }
