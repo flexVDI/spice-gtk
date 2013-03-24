@@ -607,6 +607,50 @@ static gboolean spice_usb_device_manager_get_udev_bus_n_address(
     return *bus && *address;
 }
 
+static gboolean spice_usb_device_manager_get_device_descriptor(
+    libusb_device *libdev,
+    struct libusb_device_descriptor *desc)
+{
+    int errcode;
+    const gchar *errstr;
+
+    g_return_val_if_fail(libdev != NULL, FALSE);
+    g_return_val_if_fail(desc   != NULL, FALSE);
+
+    errcode = libusb_get_device_descriptor(libdev, desc);
+    if (errcode < 0) {
+        int bus, addr;
+
+        bus = libusb_get_bus_number(libdev);
+        addr = libusb_get_device_address(libdev);
+        errstr = spice_usbutil_libusb_strerror(errcode);
+        g_warning("cannot get device descriptor for (%p) %d.%d -- %s(%d)",
+                  libdev, bus, addr, errstr, errcode);
+        return FALSE;
+    }
+    return TRUE;
+}
+
+static gboolean spice_usb_device_manager_get_libdev_vid_pid(
+    libusb_device *libdev, int *vid, int *pid)
+{
+    struct libusb_device_descriptor desc;
+
+    g_return_val_if_fail(libdev != NULL, FALSE);
+    g_return_val_if_fail(vid != NULL, FALSE);
+    g_return_val_if_fail(pid != NULL, FALSE);
+
+    *vid = *pid = 0;
+
+    if (!spice_usb_device_manager_get_device_descriptor(libdev, &desc)) {
+        return FALSE;
+    }
+    *vid = desc.idVendor;
+    *pid = desc.idProduct;
+
+    return TRUE;
+}
+
 /* ------------------------------------------------------------------ */
 /* callbacks                                                          */
 
@@ -1462,9 +1506,7 @@ gchar *spice_usb_device_get_description(SpiceUsbDevice *device, const gchar *for
 static SpiceUsbDeviceInfo *spice_usb_device_new(libusb_device *libdev)
 {
     SpiceUsbDeviceInfo *info;
-    struct libusb_device_descriptor desc;
-    int errcode;
-    const gchar *errstr;
+    int vid, pid;
     guint8 bus, addr;
 
     g_return_val_if_fail(libdev != NULL, NULL);
@@ -1472,11 +1514,7 @@ static SpiceUsbDeviceInfo *spice_usb_device_new(libusb_device *libdev)
     bus = libusb_get_bus_number(libdev);
     addr = libusb_get_device_address(libdev);
 
-    errcode = libusb_get_device_descriptor(libdev, &desc);
-    if (errcode < 0) {
-        errstr = spice_usbutil_libusb_strerror(errcode);
-        g_warning("cannot get device descriptor for (%p) %d.%d -- %s(%d)",
-                  libdev, bus, addr, errstr, errcode);
+    if (!spice_usb_device_manager_get_libdev_vid_pid(libdev, &vid, &pid)) {
         return NULL;
     }
 
@@ -1484,8 +1522,8 @@ static SpiceUsbDeviceInfo *spice_usb_device_new(libusb_device *libdev)
 
     info->busnum  = bus;
     info->devaddr = addr;
-    info->vid = desc.idVendor;
-    info->pid = desc.idProduct;
+    info->vid = vid;
+    info->pid = pid;
     info->ref = 1;
 
     return info;
