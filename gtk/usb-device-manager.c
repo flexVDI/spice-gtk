@@ -655,9 +655,17 @@ static void spice_usb_device_manager_auto_connect_cb(GObject      *gobject,
     spice_usb_device_unref(device);
 }
 
+static gboolean
+spice_usb_device_manager_device_match(SpiceUsbDevice *device,
+                                      const int bus, const int address)
+{
+    return (spice_usb_device_get_busnum(device) == bus &&
+            spice_usb_device_get_devaddr(device) == address);
+}
+
 static SpiceUsbDevice*
 spice_usb_device_manager_find_device(SpiceUsbDeviceManager *self,
-                                     guint8 bus, guint8 address)
+                                     const int bus, const int address)
 {
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
     SpiceUsbDevice *curr, *device = NULL;
@@ -665,8 +673,7 @@ spice_usb_device_manager_find_device(SpiceUsbDeviceManager *self,
 
     for (i = 0; i < priv->devices->len; i++) {
         curr = g_ptr_array_index(priv->devices, i);
-        if (spice_usb_device_get_busnum(curr) == bus &&
-               spice_usb_device_get_devaddr(curr) == address) {
+        if (spice_usb_device_manager_device_match(curr, bus, address)) {
             device = curr;
             break;
         }
