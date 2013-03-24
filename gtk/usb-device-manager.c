@@ -663,6 +663,14 @@ spice_usb_device_manager_device_match(SpiceUsbDevice *device,
             spice_usb_device_get_devaddr(device) == address);
 }
 
+static gboolean
+spice_usb_device_manager_libdev_match(libusb_device *libdev,
+                                      const int bus, const int address)
+{
+    return (libusb_get_bus_number(libdev) == bus &&
+            libusb_get_device_address(libdev) == address);
+}
+
 static SpiceUsbDevice*
 spice_usb_device_manager_find_device(SpiceUsbDeviceManager *self,
                                      const int bus, const int address)
@@ -718,8 +726,7 @@ static void spice_usb_device_manager_add_dev(SpiceUsbDeviceManager  *self,
         libusb_get_device_list(priv->context, &dev_list);
 
     for (i = 0; dev_list && dev_list[i]; i++) {
-        if (libusb_get_bus_number(dev_list[i]) == bus &&
-            libusb_get_device_address(dev_list[i]) == address) {
+        if (spice_usb_device_manager_libdev_match(dev_list[i], bus, address)) {
             libdev = dev_list[i];
             break;
         }
@@ -1589,7 +1596,7 @@ spice_usb_device_manager_device_to_libdev(SpiceUsbDeviceManager *self,
                                           SpiceUsbDevice *device)
 {
     libusb_device *d, **devlist;
-    guint8 bus, addr;
+    int bus, addr;
     int i;
 
     g_return_val_if_fail(SPICE_IS_USB_DEVICE_MANAGER(self), NULL);
@@ -1605,8 +1612,7 @@ spice_usb_device_manager_device_to_libdev(SpiceUsbDeviceManager *self,
         return NULL;
 
     for (i = 0; (d = devlist[i]) != NULL; i++) {
-        if ((libusb_get_bus_number(d) == bus) &&
-            (libusb_get_device_address(d) == addr)) {
+        if (spice_usb_device_manager_libdev_match(d, bus, addr)) {
             libusb_ref_device(d);
             break;
         }
