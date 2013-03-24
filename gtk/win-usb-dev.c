@@ -60,6 +60,8 @@ struct _GUdevDeviceInfo {
     gchar sclass[4];
     gchar sbus[4];
     gchar saddr[4];
+    gchar svid[8];
+    gchar spid[8];
 };
 
 struct _GUdevDevicePrivate
@@ -313,6 +315,8 @@ static gboolean get_usb_dev_info(libusb_device *dev, GUdevDeviceInfo *udevinfo)
     snprintf(udevinfo->sclass, sizeof(udevinfo->sclass), "%d", udevinfo->class);
     snprintf(udevinfo->sbus,   sizeof(udevinfo->sbus),   "%d", udevinfo->bus);
     snprintf(udevinfo->saddr,  sizeof(udevinfo->saddr),  "%d", udevinfo->addr);
+    snprintf(udevinfo->svid,   sizeof(udevinfo->svid),   "%d", udevinfo->vid);
+    snprintf(udevinfo->spid,   sizeof(udevinfo->spid),   "%d", udevinfo->pid);
     return TRUE;
 }
 
@@ -466,6 +470,10 @@ const gchar *g_udev_device_get_property(GUdevDevice *udev, const gchar *property
         return udevinfo->saddr;
     } else if (g_strcmp0(property, "DEVTYPE") == 0) {
         return "usb_device";
+    } else if (g_strcmp0(property, "VID") == 0) {
+        return udevinfo->svid;
+    } else if (g_strcmp0(property, "PID") == 0) {
+        return udevinfo->spid;
     }
 
     g_warn_if_reached();
