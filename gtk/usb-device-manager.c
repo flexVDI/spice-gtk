@@ -597,8 +597,13 @@ static gboolean spice_usb_device_manager_get_udev_bus_n_address(
 
     *bus = *address = 0;
 
+#ifndef G_OS_WIN32
     bus_str = g_udev_device_get_property(udev, "BUSNUM");
     address_str = g_udev_device_get_property(udev, "DEVNUM");
+#else /* Windows -- request vid:pid instead */
+    bus_str = g_udev_device_get_property(udev, "VID");
+    address_str = g_udev_device_get_property(udev, "PID");
+#endif
     if (bus_str)
         *bus = atoi(bus_str);
     if (address_str)
@@ -699,6 +704,7 @@ static void spice_usb_device_manager_auto_connect_cb(GObject      *gobject,
     spice_usb_device_unref(device);
 }
 
+#ifndef G_OS_WIN32 /* match functions for Linux -- match by bus.addr */
 static gboolean
 spice_usb_device_manager_device_match(SpiceUsbDevice *device,
                                       const int bus, const int address)
@@ -714,6 +720,28 @@ spice_usb_device_manager_libdev_match(libusb_device *libdev,
     return (libusb_get_bus_number(libdev) == bus &&
             libusb_get_device_address(libdev) == address);
 }
+
+#else /* Win32 -- match functions for Windows -- match by vid:pid */
+static gboolean
+spice_usb_device_manager_device_match(SpiceUsbDevice *device,
+                                      const int vid, const int pid)
+{
+    return (spice_usb_device_get_vid(device) == vid &&
+            spice_usb_device_get_pid(device) == pid);
+}
+
+static gboolean
+spice_usb_device_manager_libdev_match(libusb_device *libdev,
+                                      const int vid, const int pid)
+{
+    int vid2, pid2;
+
+    if (!spice_usb_device_manager_get_libdev_vid_pid(libdev, &vid2, &pid2)) {
+        return FALSE;
+    }
+    return (vid == vid2 && pid == pid2);
+}
+#endif /* of Win32 -- match functions */
 
 static SpiceUsbDevice*
 spice_usb_device_manager_find_device(SpiceUsbDeviceManager *self,
@@ -1663,8 +1691,13 @@ spice_usb_device_manager_device_to_libdev(SpiceUsbDeviceManager *self,
     g_return_val_if_fail(self->priv != NULL, NULL);
     g_return_val_if_fail(self->priv->context != NULL, NULL);
 
+#ifndef G_OS_WIN32
     bus  = spice_usb_device_get_busnum(device);
     addr = spice_usb_device_get_devaddr(device);
+#else
+    bus  = spice_usb_device_get_vid(device);
+    addr = spice_usb_device_get_pid(device);
+#endif
 
     libusb_get_device_list(self->priv->context, &devlist);
     if (!devlist)
