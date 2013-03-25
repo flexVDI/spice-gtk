@@ -1179,13 +1179,17 @@ SpiceSession *spice_session_new_from_session(SpiceSession *session)
                                                     NULL));
     SpiceSessionPrivate *c = copy->priv, *s = session->priv;
 
-    g_warn_if_fail (c->host == NULL);
-    g_warn_if_fail (c->tls_port == NULL);
-    g_warn_if_fail (c->password == NULL);
-    g_warn_if_fail (c->ca_file == NULL);
-    g_warn_if_fail (c->ciphers == NULL);
-    g_warn_if_fail (c->cert_subject == NULL);
-    g_warn_if_fail (c->pubkey == NULL);
+    g_clear_object(&c->proxy);
+
+    g_warn_if_fail(c->host == NULL);
+    g_warn_if_fail(c->tls_port == NULL);
+    g_warn_if_fail(c->password == NULL);
+    g_warn_if_fail(c->ca_file == NULL);
+    g_warn_if_fail(c->ciphers == NULL);
+    g_warn_if_fail(c->cert_subject == NULL);
+    g_warn_if_fail(c->pubkey == NULL);
+    g_warn_if_fail(c->pubkey == NULL);
+    g_warn_if_fail(c->proxy == NULL);
 
     g_object_get(session,
                  "host", &c->host,
@@ -1206,6 +1210,8 @@ SpiceSession *spice_session_new_from_session(SpiceSession *session)
     c->client_provided_sockets = s->client_provided_sockets;
     c->protocol = s->protocol;
     c->connection_id = s->connection_id;
+    if (s->proxy)
+        c->proxy = g_object_ref(s->proxy);
 
     return copy;
 }
