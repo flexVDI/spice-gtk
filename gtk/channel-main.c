@@ -1704,8 +1704,10 @@ static void file_xfer_handle_status(SpiceMainChannel *channel,
 
     l = g_list_find_custom(c->file_xfer_task_list, &msg->id,
                            file_xfer_task_find);
-
-    g_return_if_fail(l != NULL);
+    if (l == NULL) {
+        SPICE_DEBUG("cannot find task %d", msg->id);
+        return;
+    }
     task = l->data;
 
     SPICE_DEBUG("task %d received response %d", msg->id, msg->result);
