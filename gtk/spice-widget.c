@@ -477,16 +477,17 @@ static GdkCursor* get_blank_cursor(void)
 static gboolean grab_broken(SpiceDisplay *self, GdkEventGrabBroken *event,
                             gpointer user_data G_GNUC_UNUSED)
 {
-    SpiceDisplayPrivate *d = self->priv;
+    SPICE_DEBUG("%s (implicit: %d, keyboard: %d)", __FUNCTION__,
+                event->implicit, event->keyboard);
 
-    SPICE_DEBUG("%s (%d)", __FUNCTION__, event->implicit);
     if (event->keyboard) {
-        d->keyboard_grab_active = false;
-        g_signal_emit(self, signals[SPICE_DISPLAY_KEYBOARD_GRAB], 0, false);
-    } else {
-        d->mouse_grab_active = false;
-        g_signal_emit(self, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, false);
+        try_keyboard_ungrab(self);
     }
+
+    /* always release mouse when grab broken, this could be more
+       generally placed in keyboard_ungrab(), but one might worry of
+       breaking someone else code. */
+    try_mouse_ungrab(self);
 
     return false;
 }
