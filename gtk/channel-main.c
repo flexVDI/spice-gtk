@@ -1007,8 +1007,9 @@ static void monitors_align(VDAgentMonConfig *monitors, int nmonitors)
         monitors[j].x = x;
         monitors[j].y = 0;
         x += monitors[j].width;
-        g_debug("#%d +%d+%d-%dx%d", j, monitors[j].x, monitors[j].y,
-                monitors[j].width, monitors[j].height);
+        if (monitors[j].width || monitors[j].height)
+            SPICE_DEBUG("#%d +%d+%d-%dx%d", j, monitors[j].x, monitors[j].y,
+                        monitors[j].width, monitors[j].height);
     }
     g_free(sorted_monitors);
 }
