@@ -80,6 +80,7 @@ struct _SpiceChannelPrivate {
     SSL                         *ssl;
     SpiceOpenSSLVerify          *sslverify;
     GSocket                     *sock;
+    GSocketConnection           *conn;
 
 #if HAVE_SASL
     sasl_conn_t                 *sasl_conn;

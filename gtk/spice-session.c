@@ -1645,7 +1645,7 @@ struct spice_open_host {
     int port;
     GCancellable *cancellable;
     GError *error;
-    GSocket *socket;
+    GSocketConnection *connection;
     GSocketClient *client;
 };
 
@@ -1661,11 +1661,9 @@ static void socket_client_connect_ready(GObject *source_object, GAsyncResult *re
     if (connection == NULL)
         goto end;
 
-    open_host->socket = g_socket_connection_get_socket(connection);
-    g_object_ref(open_host->socket);
+    open_host->connection = connection;
 
 end:
-    g_clear_object(&connection);
     coroutine_yieldto(open_host->from, NULL);
 }
 
@@ -1717,7 +1715,7 @@ static gboolean open_host_idle_cb(gpointer data)
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(open_host->session);
 
     g_return_val_if_fail(open_host != NULL, FALSE);
-    g_return_val_if_fail(open_host->socket == NULL, FALSE);
+    g_return_val_if_fail(open_host->connection == NULL, FALSE);
 
 #if GLIB_CHECK_VERSION(2,26,0)
     open_host->proxy = s->proxy;
@@ -1748,8 +1746,8 @@ static gboolean open_host_idle_cb(gpointer data)
 
 /* coroutine context */
 G_GNUC_INTERNAL
-GSocket* spice_session_channel_open_host(SpiceSession *session, SpiceChannel *channel,
-                                         gboolean use_tls)
+GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceChannel *channel,
+                                                   gboolean use_tls)
 {
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     spice_open_host open_host = { 0, };
@@ -1780,13 +1778,15 @@ GSocket* spice_session_channel_open_host(SpiceSession *session, SpiceChannel *ch
     if (open_host.error != NULL) {
         g_warning("%s", open_host.error->message);
         g_clear_error(&open_host.error);
-    } else if (open_host.socket != NULL) {
-        g_socket_set_blocking(open_host.socket, FALSE);
-        g_socket_set_keepalive(open_host.socket, TRUE);
+    } else if (open_host.connection != NULL) {
+        GSocket *socket;
+        socket = g_socket_connection_get_socket(open_host.connection);
+        g_socket_set_blocking(socket, FALSE);
+        g_socket_set_keepalive(socket, TRUE);
     }
 
     g_clear_object(&open_host.client);
-    return open_host.socket;
+    return open_host.connection;
 }
 
 

@@ -2197,8 +2197,8 @@ static void *spice_channel_coroutine(void *data)
     }
 
 reconnect:
-    c->sock = spice_session_channel_open_host(c->session, channel, c->tls);
-    if (c->sock == NULL) {
+    c->conn = spice_session_channel_open_host(c->session, channel, c->tls);
+    if (c->conn == NULL) {
         if (!c->tls) {
             CHANNEL_DEBUG(channel, "trying with TLS port");
             c->tls = true; /* FIXME: does that really work with provided fd */
@@ -2209,6 +2209,7 @@ reconnect:
             goto cleanup;
         }
     }
+    c->sock = g_object_ref(g_socket_connection_get_socket(c->conn));
 
     c->has_error = FALSE;
 
@@ -2453,6 +2454,10 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
         c->ctx = NULL;
     }
 
+    if (c->conn) {
+        g_object_unref(c->conn);
+        c->conn = NULL;
+    }
     if (c->sock) {
         g_object_unref(c->sock);
         c->sock = NULL;
