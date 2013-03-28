@@ -1066,10 +1066,10 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
             continue;
         }
         mon->monitors[j].depth  = c->display_color_depth ? c->display_color_depth : 32;
-        mon->monitors[j].width  = c->display[j].width;
-        mon->monitors[j].height = c->display[j].height;
-        mon->monitors[j].x = c->display[j].x;
-        mon->monitors[j].y = c->display[j].y;
+        mon->monitors[j].width  = c->display[i].width;
+        mon->monitors[j].height = c->display[i].height;
+        mon->monitors[j].x = c->display[i].x;
+        mon->monitors[j].y = c->display[i].y;
         CHANNEL_DEBUG(channel, "monitor config: #%d %dx%d+%d+%d @ %d bpp", j,
                       mon->monitors[j].width, mon->monitors[j].height,
                       mon->monitors[j].x, mon->monitors[j].y,
