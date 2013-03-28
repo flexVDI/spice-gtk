@@ -1324,8 +1324,6 @@ static void set_agent_connected(SpiceMainChannel *channel, gboolean connected)
         c->agent_connected = connected;
         g_object_notify_main_context(G_OBJECT(channel), "agent-connected");
     }
-
-    update_display_timer(channel, 0);
 }
 
 /* coroutine context  */
@@ -1501,6 +1499,7 @@ static void main_handle_mouse_mode(SpiceChannel *channel, SpiceMsgIn *in)
 static void main_handle_agent_connected(SpiceChannel *channel, SpiceMsgIn *in)
 {
     agent_start(SPICE_MAIN_CHANNEL(channel));
+    update_display_timer(SPICE_MAIN_CHANNEL(channel), 0);
 }
 
 /* coroutine context */
@@ -1511,6 +1510,7 @@ static void main_handle_agent_connected_tokens(SpiceChannel *channel, SpiceMsgIn
 
     c->agent_tokens = msg->num_tokens;
     agent_start(SPICE_MAIN_CHANNEL(channel));
+    update_display_timer(SPICE_MAIN_CHANNEL(channel), 0);
 }
 
 /* coroutine context */
