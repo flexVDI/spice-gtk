@@ -459,6 +459,11 @@ static void playback_handle_set_volume(SpiceChannel *channel, SpiceMsgIn *in)
     SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgAudioVolume *vol = spice_msg_in_parsed(in);
 
+    if (vol->nchannels == 0) {
+        g_warning("spice-server send audio-volume-msg with 0 channels");
+        return;
+    }
+
     g_free(c->volume);
     c->nchannels = vol->nchannels;
     c->volume = g_new(guint16, c->nchannels);
