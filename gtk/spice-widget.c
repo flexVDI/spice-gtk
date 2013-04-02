@@ -1278,6 +1278,14 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
     /* on windows, we ought to ignore the reserved key event? */
     if (key->hardware_keycode == 0xff)
         return false;
+
+    if (!d->keyboard_grab_active) {
+        if (key->hardware_keycode == VK_LWIN ||
+            key->hardware_keycode == VK_RWIN ||
+            key->hardware_keycode == VK_APPS)
+            return false;
+    }
+
 #endif
     SPICE_DEBUG("%s %s: keycode: %d  state: %d  group %d modifier %d",
             __FUNCTION__, key->type == GDK_KEY_PRESS ? "press" : "release",
