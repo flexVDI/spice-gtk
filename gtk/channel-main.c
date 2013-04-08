@@ -2382,19 +2382,25 @@ gboolean spice_main_agent_test_capability(SpiceMainChannel *channel, guint32 cap
 }
 
 /**
- * spice_main_set_display:
+ * spice_main_update_display:
  * @channel:
  * @id: display ID
  * @x: x position
  * @y: y position
  * @width: display width
  * @height: display height
+ * @update: if %TRUE, update guest resolution after 1sec.
  *
- * Notify the guest of screen resolution change. The notification is
- * sent 1 second later, if no further changes happen.
+ * Update the display @id resolution.
+ *
+ * If @update is %TRUE, the remote configuration will be updated too
+ * after 1 second without further changes. You can send when you want
+ * without delay the new configuration to the remote with
+ * spice_main_send_monitor_config()
  **/
-void spice_main_set_display(SpiceMainChannel *channel, int id,
-                            int x, int y, int width, int height)
+void spice_main_update_display(SpiceMainChannel *channel, int id,
+                               int x, int y, int width, int height,
+                               gboolean update)
 {
     SpiceMainChannelPrivate *c;
 
@@ -2414,7 +2420,26 @@ void spice_main_set_display(SpiceMainChannel *channel, int id,
     c->display[id].width  = width;
     c->display[id].height = height;
 
-    update_display_timer(channel, 1);
+    if (update)
+        update_display_timer(channel, 1);
+}
+
+/**
+ * spice_main_set_display:
+ * @channel:
+ * @id: display ID
+ * @x: x position
+ * @y: y position
+ * @width: display width
+ * @height: display height
+ *
+ * Notify the guest of screen resolution change. The notification is
+ * sent 1 second later, if no further changes happen.
+ **/
+void spice_main_set_display(SpiceMainChannel *channel, int id,
+                            int x, int y, int width, int height)
+{
+    spice_main_update_display(channel, id, x, y, width, height, TRUE);
 }
 
 /**
