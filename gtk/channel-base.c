@@ -168,11 +168,13 @@ void spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in)
     if (mig->flags & SPICE_MIGRATE_NEED_DATA_TRANSFER) {
         spice_channel_recv_msg(channel, get_msg_handler, &data);
         if (!data) {
-            g_warning("expected SPICE_MSG_MIGRATE_DATA, got empty message");
+            g_critical("expected SPICE_MSG_MIGRATE_DATA, got empty message");
+            return;
         } else if (spice_header_get_msg_type(data->header, c->use_mini_header) !=
                    SPICE_MSG_MIGRATE_DATA) {
-            g_warning("expected SPICE_MSG_MIGRATE_DATA, got %d",
+            g_critical("expected SPICE_MSG_MIGRATE_DATA, got %d",
                       spice_header_get_msg_type(data->header, c->use_mini_header));
+            return;
         }
     }
 
