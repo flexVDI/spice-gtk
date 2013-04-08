@@ -314,8 +314,8 @@ static void update_monitor_area(SpiceDisplay *display)
     }
 
     if (!d->resize_guest_enable)
-        spice_main_set_display(d->main, get_display_id(display),
-                               c->x, c->y, c->width, c->height);
+        spice_main_update_display(d->main, get_display_id(display),
+                                  c->x, c->y, c->width, c->height, FALSE);
 
     update_area(display, c->x, c->y, c->width, c->height);
     g_clear_pointer(&monitors, g_array_unref);
