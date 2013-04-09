@@ -1,3 +1,13 @@
+v0.19
+=====
+
+This is a bugfix only release, except the snappy name change
+- snappy has been renamed to spicy-screenshot
+- Several file-xfer fixes and improvements
+- Many win32 and USB redirection related fixes
+- Compile and work again with RHEL6 and older glib releases
+- misc fixes and improvements
+
 v0.18
 =====
 
