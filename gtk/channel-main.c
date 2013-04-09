@@ -99,7 +99,7 @@ struct _SpiceMainChannelPrivate  {
     } display[MAX_DISPLAY];
     gint                        timer_id;
     GQueue                      *agent_msg_queue;
-    GList                       *file_xfer_task_list;
+    GHashTable                  *file_xfer_tasks;
     GSList                      *flushing;
 
     guint                       switch_host_delayed_id;
@@ -208,6 +208,7 @@ static void spice_main_channel_init(SpiceMainChannel *channel)
 
     c = channel->priv = SPICE_MAIN_CHANNEL_GET_PRIVATE(channel);
     c->agent_msg_queue = g_queue_new();
+    c->file_xfer_tasks = g_hash_table_new(g_direct_hash, g_direct_equal);
 
     spice_main_channel_reset_capabilties(SPICE_CHANNEL(channel));
 }
@@ -315,6 +316,8 @@ static void spice_main_channel_finalize(GObject *obj)
 
     g_free(c->agent_msg_data);
     agent_free_msg_queue(SPICE_MAIN_CHANNEL(obj));
+    if (c->file_xfer_tasks)
+        g_hash_table_unref(c->file_xfer_tasks);
 
     if (G_OBJECT_CLASS(spice_main_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_main_channel_parent_class)->finalize(obj);
@@ -334,6 +337,7 @@ static void spice_main_channel_reset_agent(SpiceMainChannel *channel)
 {
     SpiceMainChannelPrivate *c = channel->priv;
     GError *error;
+    GList *tasks;
     GList *l;
 
     c->agent_connected = FALSE;
@@ -344,13 +348,15 @@ static void spice_main_channel_reset_agent(SpiceMainChannel *channel)
     c->agent_msg_data = NULL;
     c->agent_msg_size = 0;
 
-    for (l = c->file_xfer_task_list; l != NULL; l = l->next) {
+    tasks = g_hash_table_get_values(c->file_xfer_tasks);
+    for (l = tasks; l != NULL; l = l->next) {
         SpiceFileXferTask *task = (SpiceFileXferTask *)l->data;
 
         error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                             "Agent connection closed");
         file_xfer_completed(task, error);
     }
+    g_list_free(tasks);
     file_xfer_flushed(channel, FALSE);
 }
 
@@ -1540,18 +1546,6 @@ static void main_handle_agent_disconnected(SpiceChannel *channel, SpiceMsgIn *in
     agent_stopped(SPICE_MAIN_CHANNEL(channel));
 }
 
-static gint file_xfer_task_find(gconstpointer a, gconstpointer b)
-{
-    SpiceFileXferTask *task = (SpiceFileXferTask *)a;
-    uint32_t id = *(uint32_t *)b;
-
-    if (task->id == id) {
-        return 0;
-    }
-
-    return 1;
-}
-
 static void file_xfer_task_free(SpiceFileXferTask *task)
 {
     SpiceMainChannelPrivate *c;
@@ -1559,7 +1553,7 @@ static void file_xfer_task_free(SpiceFileXferTask *task)
     g_return_if_fail(task != NULL);
 
     c = task->channel->priv;
-    c->file_xfer_task_list = g_list_remove(c->file_xfer_task_list, task);
+    g_hash_table_remove(c->file_xfer_tasks, GUINT_TO_POINTER(task->id));
 
     g_clear_object(&task->channel);
     g_clear_object(&task->file);
@@ -1698,17 +1692,15 @@ static void file_xfer_handle_status(SpiceMainChannel *channel,
                                     VDAgentFileXferStatusMessage *msg)
 {
     SpiceMainChannelPrivate *c = channel->priv;
-    GList *l;
     SpiceFileXferTask *task;
     GError *error = NULL;
 
-    l = g_list_find_custom(c->file_xfer_task_list, &msg->id,
-                           file_xfer_task_find);
-    if (l == NULL) {
+
+    task = g_hash_table_lookup(c->file_xfer_tasks, GUINT_TO_POINTER(msg->id));
+    if (task == NULL) {
         SPICE_DEBUG("cannot find task %d", msg->id);
         return;
     }
-    task = l->data;
 
     SPICE_DEBUG("task %d received response %d", msg->id, msg->result);
 
@@ -2747,7 +2739,7 @@ static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
     task->user_data = user_data;
 
     CHANNEL_DEBUG(task->channel, "Insert a xfer task:%d to task list", task->id);
-    c->file_xfer_task_list = g_list_append(c->file_xfer_task_list, task);
+    g_hash_table_insert(c->file_xfer_tasks, GUINT_TO_POINTER(task->id), task);
 
     g_file_read_async(file,
                       G_PRIORITY_DEFAULT,
