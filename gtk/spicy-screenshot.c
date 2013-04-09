@@ -25,7 +25,7 @@
 #include "spice-cmdline.h"
 
 /* config */
-static const char *outf      = "snappy.ppm";
+static const char *outf      = "spicy-screenshot.ppm";
 static gboolean version = FALSE;
 
 /* state */
@@ -58,7 +58,7 @@ static int write_ppm_32(void)
 
     fp = fopen(outf,"w");
     if (NULL == fp) {
-	fprintf(stderr, _("snappy: can't open %s: %s\n"), outf, strerror(errno));
+	fprintf(stderr, _("%s: can't open %s: %s\n"), g_get_prgname(), outf, strerror(errno));
 	return -1;
     }
     fprintf(fp, "P6\n%d %d\n255\n",
@@ -121,7 +121,7 @@ static GOptionEntry app_entries[] = {
         .short_name       = 'o',
         .arg              = G_OPTION_ARG_FILENAME,
         .arg_data         = &outf,
-        .description      = N_("Output file name (default snappy.ppm)"),
+        .description      = N_("Output file name (default spicy-screenshot.ppm)"),
         .arg_description  = N_("<filename>"),
     },
     {
@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
     }
 
     if (version) {
-        g_print("snappy " PACKAGE_VERSION "\n");
+        g_print("%s " PACKAGE_VERSION "\n", g_get_prgname());
         exit(0);
     }
 

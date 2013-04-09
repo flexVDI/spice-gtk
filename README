@@ -23,7 +23,7 @@ spicy
    gtk based spice client app.  Command line options are simliar
    to the spicec ones.
 
-snappy
+spicy-screenshot
    Command line tool, connects to spice server and writes out a
    screen shot.
 

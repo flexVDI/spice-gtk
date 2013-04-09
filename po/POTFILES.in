@@ -7,9 +7,9 @@ gtk/display/gnome-rr-config.c
 gtk/display/gnome-rr-generic.c
 gtk/display/gnome-rr-windows.c
 gtk/display/gnome-rr-x11.c
-gtk/snappy.c
 gtk/spice-cmdline.c
 gtk/spice-option.c
+gtk/spicy-screenshot.c
 gtk/spicy-stats.c
 gtk/spicy.c
 gtk/usb-device-manager.c

@@ -42,7 +42,7 @@ EXTRA_DIST =					\
 	spice-marshal.txt			\
 	$(NULL)
 
-bin_PROGRAMS = spicy snappy spicy-stats
+bin_PROGRAMS = spicy spicy-stats spicy-screenshot
 if WITH_POLKIT
 acldir = $(ACL_HELPER_DIR)
 acl_PROGRAMS = spice-client-glib-usb-acl-helper
@@ -424,13 +424,13 @@ install-data-hook:
 endif
 
 
-snappy_SOURCES =			\
-	snappy.c			\
-	spice-cmdline.h			\
-	spice-cmdline.c			\
+spicy_screenshot_SOURCES =			\
+	spicy-screenshot.c			\
+	spice-cmdline.h				\
+	spice-cmdline.c				\
 	$(NULL)
 
-snappy_LDADD =					\
+spicy_screenshot_LDADD =			\
 	libspice-client-glib-2.0.la		\
 	$(GOBJECT2_LIBS)			\
 	$(NULL)
