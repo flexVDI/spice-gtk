@@ -5,8 +5,8 @@ A Gtk client and libraries for SPICE remote desktop servers.
 
 Please report bugs at: spice-devel@lists.freedesktop.org
 
-What you can find here
-----------------------
+Project content
+---------------
 
 libspice-client-glib-2.0
    provides glib objects for spice protocol decoding and surface rendering.
@@ -20,8 +20,8 @@ libspice-client-gtk-{2.0,3.0}
       * SpiceDisplay (see spice-widget.h)
 
 spicy
-   gtk based spice client app.  Command line options are simliar
-   to the spicec ones.
+   a gtk test client. The recommended client for end user is
+   virt-viewer (http://git.fedorahosted.org/cgit/virt-viewer.git/)
 
 spicy-screenshot
    Command line tool, connects to spice server and writes out a
@@ -56,25 +56,3 @@ gstreamer-devel gstreamer-plugins-base-devel
 . If you build from git, you'll also need:
 
 libtool automake vala perl-Text-CSV
-
-
-current state
--------------
-
-There are some known bugs, check the TODO list and
-bugzilla.freedesktop.org.
-
-Copyright 2009-2011 Red Hat, Inc. and/or its affiliates.
-
-This program and libraries is free software; you can redistribute it
-and/or modify it under the terms of the GNU Lesser General Public
-License as published by the Free Software Foundation; either
-version 2.1 of the License, or (at your option) any later version.
-
-This library is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-Lesser General Public License for more details.
-
-You should have received a copy of the GNU Lesser General Public
-License along with this library; if not, see <http://www.gnu.org/licenses/>.

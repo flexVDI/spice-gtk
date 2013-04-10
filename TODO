@@ -1,6 +1,8 @@
-* Pointer/cursor issues if no agent:
-** https://bugs.freedesktop.org/show_bug.cgi?id=36323
-** https://bugs.freedesktop.org/show_bug.cgi?id=38008
-** https://bugs.freedesktop.org/show_bug.cgi?id=38024
-* TunnelChannel
 * create a ChannelBaseAudio
+* missing TunnelChannel implementation
+* revive the win32 GDI backend
+
+See also list of bugs open:
+
+https://bugs.freedesktop.org/buglist.cgi?product=Spice&component=gtk-client&resolution=---&list_id=281013
+
