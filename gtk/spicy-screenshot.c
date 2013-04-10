@@ -95,9 +95,27 @@ static void invalidate(SpiceChannel *channel,
     g_main_loop_quit(mainloop);
 }
 
+static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
+                               gpointer data)
+{
+    switch (event) {
+    case SPICE_CHANNEL_OPENED:
+        break;
+    default:
+        g_warning("main channel event: %d", event);
+        g_main_loop_quit(mainloop);
+    }
+}
+
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer *data)
 {
     int id;
+
+    if (SPICE_IS_MAIN_CHANNEL(channel)) {
+        g_signal_connect(channel, "channel-event",
+                         G_CALLBACK(main_channel_event), data);
+        return;
+    }
 
     if (!SPICE_IS_DISPLAY_CHANNEL(channel))
         return;
