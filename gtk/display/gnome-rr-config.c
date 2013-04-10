@@ -1894,6 +1894,53 @@ fail:
     return NULL;
 }
 
+#ifdef HAVE_X11
+/*
+ * get_dpi_from_x_server copied from
+ * https://bugzilla.novell.com/show_bug.cgi?id=217790#c20
+ */
+#define DPI_FALLBACK 96
+#define DPI_LOW_REASONABLE_VALUE 50
+#define DPI_HIGH_REASONABLE_VALUE 500
+static double
+get_dpi_from_x_server (void)
+{
+  GdkScreen *screen;
+  double dpi;
+
+  screen = gdk_screen_get_default ();
+  if (screen)
+    {
+      int width_pixels, width_mm;
+      int height_pixels, height_mm;
+      double width_dpi, height_dpi;
+
+      width_pixels = gdk_screen_get_width (screen);
+      width_mm = gdk_screen_get_width_mm (screen);
+
+      height_pixels = gdk_screen_get_height (screen);
+      height_mm = gdk_screen_get_height_mm (screen);
+
+      width_dpi = width_pixels / (width_mm / 25.4);
+      height_dpi = height_pixels / (height_mm / 25.4);
+
+      if (width_dpi < DPI_LOW_REASONABLE_VALUE || width_dpi > DPI_HIGH_REASONABLE_VALUE
+	  || height_dpi < DPI_LOW_REASONABLE_VALUE || height_dpi > DPI_HIGH_REASONABLE_VALUE)
+	dpi = DPI_FALLBACK;
+      else
+	dpi = (width_dpi + height_dpi) / 2.0;
+    }
+  else
+    {
+      /* Huh!?  No screen? */
+
+      dpi = DPI_FALLBACK;
+    }
+
+  return dpi;
+}
+#endif
+
 static gboolean
 crtc_assignment_apply (CrtcAssignment *assign, guint32 timestamp, GError **error)
 {
@@ -1970,8 +2017,12 @@ crtc_assignment_apply (CrtcAssignment *assign, guint32 timestamp, GError **error
      *
      * Firefox and Evince apparently believe what X tells them.
      */
-    width_mm = (width / 96.0) * 25.4 + 0.5;
-    height_mm = (height / 96.0) * 25.4 + 0.5;
+    double dpi = 96.0;
+#ifdef HAVE_X11
+    dpi = get_dpi_from_x_server();
+#endif
+    width_mm = (width / dpi) * 25.4 + 0.5;
+    height_mm = (height / dpi) * 25.4 + 0.5;
 
     if (success)
     {
