@@ -106,7 +106,8 @@ enum {
     PROP_UUID,
     PROP_NAME,
     PROP_CA,
-    PROP_PROXY
+    PROP_PROXY,
+    PROP_SECURE_CHANNELS
 };
 
 /* signals */
@@ -261,6 +262,7 @@ spice_session_finalize(GObject *gobject)
     g_strfreev(s->smartcard_certificates);
     g_free(s->smartcard_db);
     g_strfreev(s->disable_effects);
+    g_strfreev(s->secure_channels);
 
     spice_session_palettes_clear(session);
     spice_session_images_clear(session);
@@ -500,6 +502,9 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_DISABLE_EFFECTS:
         g_value_set_boxed(value, s->disable_effects);
         break;
+    case PROP_SECURE_CHANNELS:
+        g_value_set_boxed(value, s->secure_channels);
+        break;
     case PROP_COLOR_DEPTH:
         g_value_set_int(value, s->color_depth);
         break;
@@ -618,6 +623,10 @@ static void spice_session_set_property(GObject      *gobject,
     case PROP_DISABLE_EFFECTS:
         g_strfreev(s->disable_effects);
         s->disable_effects = g_value_dup_boxed(value);
+        break;
+    case PROP_SECURE_CHANNELS:
+        g_strfreev(s->secure_channels);
+        s->secure_channels = g_value_dup_boxed(value);
         break;
     case PROP_COLOR_DEPTH:
         s->color_depth = g_value_get_int(value);
@@ -1019,6 +1028,23 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                             G_TYPE_BYTE_ARRAY,
                             G_PARAM_READWRITE |
                             G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceSession:secure-channels:
+     *
+     * A string array of channel types to be secured.
+     *
+     * Since: 0.20
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_SECURE_CHANNELS,
+         g_param_spec_boxed ("secure-channels",
+                             "Secure channels",
+                             "Array of channel type to secure",
+                             G_TYPE_STRV,
+                             G_PARAM_READWRITE |
+                             G_PARAM_STATIC_STRINGS));
+
 
     /**
      * SpiceSession::channel-new:

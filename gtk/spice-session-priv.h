@@ -73,6 +73,7 @@ struct _SpiceSessionPrivate {
     gboolean          inhibit_keyboard_grab;
 
     GStrv             disable_effects;
+    GStrv             secure_channels;
     gint              color_depth;
 
     int               connection_id;
