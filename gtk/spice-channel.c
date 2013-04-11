@@ -2312,7 +2312,7 @@ cleanup:
 
     SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
 
-    if (switch_tls) {
+    if (switch_tls && !c->tls) {
         c->tls = true;
         spice_channel_connect(channel);
         g_object_unref(channel);
