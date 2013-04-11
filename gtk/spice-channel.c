@@ -2231,7 +2231,7 @@ static void *spice_channel_coroutine(void *data)
     }
 
 reconnect:
-    c->conn = spice_session_channel_open_host(c->session, channel, c->tls);
+    c->conn = spice_session_channel_open_host(c->session, channel, &c->tls);
     if (c->conn == NULL) {
         if (!c->tls) {
             CHANNEL_DEBUG(channel, "trying with TLS port");

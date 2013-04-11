@@ -1760,9 +1760,10 @@ static gboolean open_host_idle_cb(gpointer data)
 /* coroutine context */
 G_GNUC_INTERNAL
 GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceChannel *channel,
-                                                   gboolean use_tls)
+                                                   gboolean *use_tls)
 {
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
+    SpiceChannelPrivate *c = channel->priv;
     spice_open_host open_host = { 0, };
     gchar *port, *endptr;
 
@@ -1770,7 +1771,13 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
     open_host.from = coroutine_self();
     open_host.session = session;
     open_host.channel = channel;
-    port = use_tls ? s->tls_port : s->port;
+
+    const char *name = spice_channel_type_to_string(c->channel_type);
+    if (spice_strv_contains(s->secure_channels, "all") ||
+        spice_strv_contains(s->secure_channels, name))
+        *use_tls = TRUE;
+
+    port = *use_tls ? s->tls_port : s->port;
     if (port == NULL)
         return NULL;
 
