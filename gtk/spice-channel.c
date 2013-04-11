@@ -1870,21 +1870,22 @@ end:
     spice_msg_in_unref(in);
 }
 
+static const char *to_string[] = {
+    NULL,
+    [ SPICE_CHANNEL_MAIN ] = "main",
+    [ SPICE_CHANNEL_DISPLAY ] = "display",
+    [ SPICE_CHANNEL_INPUTS ] = "inputs",
+    [ SPICE_CHANNEL_CURSOR ] = "cursor",
+    [ SPICE_CHANNEL_PLAYBACK ] = "playback",
+    [ SPICE_CHANNEL_RECORD ] = "record",
+    [ SPICE_CHANNEL_TUNNEL ] = "tunnel",
+    [ SPICE_CHANNEL_SMARTCARD ] = "smartcard",
+    [ SPICE_CHANNEL_USBREDIR ] = "usbredir",
+    [ SPICE_CHANNEL_PORT ] = "port",
+};
+
 const gchar* spice_channel_type_to_string(gint type)
 {
-    static const char *to_string[] = {
-        NULL,
-        [ SPICE_CHANNEL_MAIN ] = "main",
-        [ SPICE_CHANNEL_DISPLAY ] = "display",
-        [ SPICE_CHANNEL_INPUTS ] = "inputs",
-        [ SPICE_CHANNEL_CURSOR ] = "cursor",
-        [ SPICE_CHANNEL_PLAYBACK ] = "playback",
-        [ SPICE_CHANNEL_RECORD ] = "record",
-        [ SPICE_CHANNEL_TUNNEL ] = "tunnel",
-        [ SPICE_CHANNEL_SMARTCARD ] = "smartcard",
-        [ SPICE_CHANNEL_USBREDIR ] = "usbredir",
-        [ SPICE_CHANNEL_PORT ] = "port",
-    };
     const char *str = NULL;
 
     if (type >= 0 && type < G_N_ELEMENTS(to_string)) {
@@ -1892,6 +1893,19 @@ const gchar* spice_channel_type_to_string(gint type)
     }
 
     return str ? str : "unknown channel type";
+}
+
+gint spice_channel_string_to_type(const gchar *str)
+{
+    int i;
+
+    g_return_val_if_fail(str != NULL, -1);
+
+    for (i = 0; i < G_N_ELEMENTS(to_string); i++)
+        if (g_strcmp0(str, to_string[i]) == 0)
+            return i;
+
+    return -1;
 }
 
 G_GNUC_INTERNAL
