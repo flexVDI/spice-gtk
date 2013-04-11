@@ -859,7 +859,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
     /**
      * SpiceSession:disable-effects:
      *
-     * A comma-separated list of effects to disable. The settings will
+     * A string array of effects to disable. The settings will
      * be applied on new display channels. The following effets can be
      * disabled "wallpaper", "font-smooth", "animation", and "all",
      * which will disable all the effects. If NULL, don't apply changes.

@@ -188,11 +188,11 @@ void spice_set_session_option(SpiceSession *session)
     }
 
     if (disable_effects) {
-            GStrv effects;
-            effects = g_strsplit(disable_effects, ",", -1);
-            if (effects)
-                g_object_set(session, "disable-effects", effects, NULL);
-            g_strfreev(effects);
+        GStrv effects;
+        effects = g_strsplit(disable_effects, ",", -1);
+        if (effects)
+            g_object_set(session, "disable-effects", effects, NULL);
+        g_strfreev(effects);
     }
     if (color_depth)
         g_object_set(session, "color-depth", color_depth, NULL);
