@@ -1894,6 +1894,26 @@ const gchar* spice_channel_type_to_string(gint type)
     return str ? str : "unknown channel type";
 }
 
+G_GNUC_INTERNAL
+gchar *spice_channel_supported_string(void)
+{
+    return g_strjoin(", ",
+                     spice_channel_type_to_string(SPICE_CHANNEL_MAIN),
+                     spice_channel_type_to_string(SPICE_CHANNEL_DISPLAY),
+                     spice_channel_type_to_string(SPICE_CHANNEL_INPUTS),
+                     spice_channel_type_to_string(SPICE_CHANNEL_CURSOR),
+                     spice_channel_type_to_string(SPICE_CHANNEL_PLAYBACK),
+                     spice_channel_type_to_string(SPICE_CHANNEL_RECORD),
+#ifdef USE_SMARTCARD
+                     spice_channel_type_to_string(SPICE_CHANNEL_SMARTCARD),
+#endif
+#ifdef USE_USBREDIR
+                     spice_channel_type_to_string(SPICE_CHANNEL_USBREDIR),
+#endif
+                     NULL);
+}
+
+
 /**
  * spice_channel_new:
  * @s: the @SpiceSession the channel is linked to

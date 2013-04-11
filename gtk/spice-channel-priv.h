@@ -29,6 +29,7 @@
 #include <sasl/sasl.h>
 #endif
 
+#include "spice-channel.h"
 #include "spice-util-priv.h"
 #include "coroutine.h"
 #include "gio-coroutine.h"
@@ -193,6 +194,7 @@ void spice_caps_set(GArray *caps, guint32 cap, const gchar *desc);
                                    event, &((struct event) { args }), G_STRLOC); \
     } G_STMT_END
 
+gchar *spice_channel_supported_string(void);
 
 G_END_DECLS
 
