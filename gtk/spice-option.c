@@ -24,6 +24,7 @@
 #include <glib/gi18n.h>
 #include "spice-session.h"
 #include "spice-util.h"
+#include "spice-channel-priv.h"
 #include "usb-device-manager.h"
 
 static gchar *disable_effects = NULL;
@@ -39,6 +40,7 @@ static gboolean disable_audio = FALSE;
 static gboolean disable_usbredir = FALSE;
 static gint cache_size = 0;
 static gint glz_window_size = 0;
+static gchar *secure_channels = NULL;
 
 G_GNUC_NORETURN
 static void option_version(void)
@@ -102,6 +104,36 @@ static gboolean parse_disable_effects(const gchar *option_name, const gchar *val
     return TRUE;
 }
 
+static gboolean parse_secure_channels(const gchar *option_name, const gchar *value,
+                                      gpointer data, GError **error)
+{
+    gint i;
+    gchar **channels = g_strsplit(value, ",", -1);
+
+    g_return_val_if_fail(channels != NULL, FALSE);
+
+    for (i = 0; channels[i]; i++) {
+        if (g_strcmp0(channels[i], "all") == 0)
+            continue;
+
+        if (spice_channel_string_to_type(channels[i]) == -1) {
+            gchar *supported = spice_channel_supported_string();
+            g_set_error(error, G_OPTION_ERROR, G_OPTION_ERROR_FAILED,
+                        _("invalid channel name (%s), valid names: all, %s"),
+                        channels[i], supported);
+            g_free(supported);
+            return FALSE;
+        }
+    }
+
+    g_strfreev(channels);
+
+    secure_channels = g_strdup(value);
+
+    return TRUE;
+}
+
+
 static gboolean parse_usbredir_filter(const gchar *option_name,
                                       const gchar *value,
                                       gpointer data, GError **error)
@@ -125,10 +157,12 @@ static gboolean parse_usbredir_filter(const gchar *option_name,
 GOptionGroup* spice_get_option_group(void)
 {
     const GOptionEntry entries[] = {
+        { "spice-secure-channels", '\0', 0, G_OPTION_ARG_CALLBACK, parse_secure_channels,
+          N_("Force the specified channels to be secured"), "<main,display,inputs,...,all>" },
         { "spice-disable-effects", '\0', 0, G_OPTION_ARG_CALLBACK, parse_disable_effects,
-          N_("Disable guest display effects"), N_("<wallpaper,font-smooth,animation,all>") },
+          N_("Disable guest display effects"), "<wallpaper,font-smooth,animation,all>" },
         { "spice-color-depth", '\0', 0, G_OPTION_ARG_CALLBACK, parse_color_depth,
-          N_("Guest display color depth"), N_("<16,32>") },
+          N_("Guest display color depth"), "<16,32>" },
         { "spice-ca-file", '\0', 0, G_OPTION_ARG_FILENAME, &ca_file,
           N_("Truststore file for secure connections"), N_("<file>") },
         { "spice-host-subject", '\0', 0, G_OPTION_ARG_STRING, &host_subject,
@@ -194,6 +228,15 @@ void spice_set_session_option(SpiceSession *session)
             g_object_set(session, "disable-effects", effects, NULL);
         g_strfreev(effects);
     }
+
+    if (secure_channels) {
+        GStrv channels;
+        channels = g_strsplit(secure_channels, ",", -1);
+        if (channels)
+            g_object_set(session, "secure-channels", channels, NULL);
+        g_strfreev(channels);
+    }
+
     if (color_depth)
         g_object_set(session, "color-depth", color_depth, NULL);
     if (ca_file)
