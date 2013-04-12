@@ -1,4 +1,3 @@
 [submodule "spice-common"]
 	path = spice-common
 	url = ../spice-common
-	branch = master
