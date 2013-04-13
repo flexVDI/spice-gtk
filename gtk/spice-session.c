@@ -1745,8 +1745,13 @@ static gboolean open_host_idle_cb(gpointer data)
                                         proxy_lookup_ready, open_host);
     else
 #endif
-        open_host_connectable_connect(open_host,
-                                      g_network_address_new(s->host, open_host->port));
+    {
+        GSocketConnectable *address;
+
+        address = g_network_address_new(s->host, open_host->port);
+        open_host_connectable_connect(open_host, address);
+        g_object_unref(address);
+    }
 
     SPICE_DEBUG("open host %s:%d", s->host, open_host->port);
     if (open_host->proxy != NULL) {
