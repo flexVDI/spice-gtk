@@ -1090,7 +1090,10 @@ static void spice_usb_device_manager_check_redir_on_connect(
             continue;
 
         libdev = spice_usb_device_manager_device_to_libdev(self, device);
-
+#ifdef G_OS_WIN32
+        if (libdev == NULL)
+            continue;
+#endif
         if (usbredirhost_check_device_filter(
                             priv->redirect_on_connect_rules,
                             priv->redirect_on_connect_rules_count,
@@ -1448,7 +1451,13 @@ spice_usb_device_manager_can_redirect_device(SpiceUsbDeviceManager  *self,
         libusb_device *libdev;
 
         libdev = spice_usb_device_manager_device_to_libdev(self, device);
-        g_return_val_if_fail(libdev != NULL, FALSE);
+#ifdef G_OS_WIN32
+        if (libdev == NULL) {
+            g_set_error_literal(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                                _("Some USB devices were not found"));
+            return FALSE;
+        }
+#endif
         filter_ok = (usbredirhost_check_device_filter(
                             guest_filter_rules, guest_filter_rules_count,
                             libdev, 0) == 0);
