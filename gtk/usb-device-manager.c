@@ -500,7 +500,7 @@ static void spice_usb_device_manager_class_init(SpiceUsbDeviceManagerClass *klas
      * Set a string specifying a filter selecting USB devices to automatically
      * redirect after a Spice connection has been established.
      *
-     * See SpiceUsbDeviceManager:auto-connect-filter: for the filter string
+     * See #SpiceUsbDeviceManager:auto-connect-filter for the filter string
      * format.
      */
     pspec = g_param_spec_string("redirect-on-connect", "Redirect on connect",
@@ -1181,12 +1181,15 @@ SpiceUsbDeviceManager *spice_usb_device_manager_get(SpiceSession *session,
 }
 
 /**
- * spice_usb_device_manager_get_devices:
+ * spice_usb_device_manager_get_devices_with_filter:
  * @manager: the #SpiceUsbDeviceManager manager
+ * @filter: filter string for selecting which devices to return, see
+ *      #SpiceUsbDeviceManager:auto-connect-filter for the filter string format
  *
  * Returns: (element-type SpiceUsbDevice) (transfer full): a %GPtrArray array of %SpiceUsbDevice
  */
-GPtrArray* spice_usb_device_manager_get_devices(SpiceUsbDeviceManager *self)
+GPtrArray* spice_usb_device_manager_get_devices_with_filter(
+    SpiceUsbDeviceManager *self, const gchar *filter)
 {
     GPtrArray *devices_copy = NULL;
 
@@ -1194,17 +1197,54 @@ GPtrArray* spice_usb_device_manager_get_devices(SpiceUsbDeviceManager *self)
 
 #ifdef USE_USBREDIR
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
+    struct usbredirfilter_rule *rules = NULL;;
+    int r, count = 0;
     guint i;
+
+    if (filter) {
+        r = usbredirfilter_string_to_rules(filter, ",", "|", &rules, &count);
+        if (r) {
+            if (r == -ENOMEM)
+                g_error("Failed to allocate memory for filter");
+            g_warning("Error parsing filter, ignoring");
+            rules = NULL;
+            count = 0;
+        }
+    }
 
     devices_copy = g_ptr_array_new_with_free_func((GDestroyNotify)
                                                   spice_usb_device_unref);
     for (i = 0; i < priv->devices->len; i++) {
         SpiceUsbDevice *device = g_ptr_array_index(priv->devices, i);
+
+        if (rules) {
+            libusb_device *libdev =
+                spice_usb_device_manager_device_to_libdev(self, device);
+#ifdef G_OS_WIN32
+            if (libdev == NULL)
+                continue;
+#endif
+            if (usbredirhost_check_device_filter(rules, count, libdev, 0) != 0)
+                continue;
+        }
         g_ptr_array_add(devices_copy, spice_usb_device_ref(device));
     }
+
+    free(rules);
 #endif
 
     return devices_copy;
+}
+
+/**
+ * spice_usb_device_manager_get_devices:
+ * @manager: the #SpiceUsbDeviceManager manager
+ *
+ * Returns: (element-type SpiceUsbDevice) (transfer full): a %GPtrArray array of %SpiceUsbDevice
+ */
+GPtrArray* spice_usb_device_manager_get_devices(SpiceUsbDeviceManager *self)
+{
+    return spice_usb_device_manager_get_devices_with_filter(self, NULL);
 }
 
 /**
