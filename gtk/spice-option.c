@@ -27,7 +27,7 @@
 #include "spice-channel-priv.h"
 #include "usb-device-manager.h"
 
-static gchar *disable_effects = NULL;
+static GStrv disable_effects = NULL;
 static gint color_depth = 0;
 static char *ca_file = NULL;
 static char *host_subject = NULL;
@@ -85,21 +85,25 @@ error:
 static gboolean parse_disable_effects(const gchar *option_name, const gchar *value,
                                       gpointer data, GError **error)
 {
+    GStrv it;
 
-    if ((g_strcmp0(value, "wallpaper") != 0)
-        && (g_strcmp0(value, "font-smooth") != 0)
-        && (g_strcmp0(value, "animation") != 0)
-        && (g_strcmp0(value, "all") != 0)) {
-        /* Translators: do not translate 'wallpaper', 'font-smooth',
-         * 'animation', 'all' as the user must use these values with the
-         * --spice-disable-effects command line option
-         */
-        g_set_error(error, G_OPTION_ERROR, G_OPTION_ERROR_FAILED,
-                    _("invalid effect name (%s), must be 'wallpaper', 'font-smooth', 'animation' or 'all'"), value);
-        return FALSE;
+    disable_effects = g_strsplit(value, ",", -1);
+    for (it = disable_effects; *it != NULL; it++) {
+        if ((g_strcmp0(*it, "wallpaper") != 0)
+             && (g_strcmp0(*it, "font-smooth") != 0)
+             && (g_strcmp0(*it, "animation") != 0)
+             && (g_strcmp0(*it, "all") != 0)) {
+            /* Translators: do not translate 'wallpaper', 'font-smooth',
+             * 'animation', 'all' as the user must use these values with the
+             * --spice-disable-effects command line option
+             */
+            g_set_error(error, G_OPTION_ERROR, G_OPTION_ERROR_FAILED,
+                    _("invalid effect name (%s), must be 'wallpaper', 'font-smooth', 'animation' or 'all'"), *it);
+            g_strfreev(disable_effects);
+            disable_effects = NULL;
+            return FALSE;
+        }
     }
-
-    disable_effects = g_strdup(value);
 
     return TRUE;
 }
@@ -222,11 +226,7 @@ void spice_set_session_option(SpiceSession *session)
     }
 
     if (disable_effects) {
-        GStrv effects;
-        effects = g_strsplit(disable_effects, ",", -1);
-        if (effects)
-            g_object_set(session, "disable-effects", effects, NULL);
-        g_strfreev(effects);
+        g_object_set(session, "disable-effects", disable_effects, NULL);
     }
 
     if (secure_channels) {
