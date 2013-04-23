@@ -2610,6 +2610,8 @@ void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean 
             c->display[i].enabled = enabled;
     } else {
         g_return_if_fail(id < G_N_ELEMENTS(c->display));
+        if (c->display[id].enabled == enabled)
+            return;
         c->display[id].enabled = enabled;
     }
 
