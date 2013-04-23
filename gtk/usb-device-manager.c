@@ -385,7 +385,7 @@ static void spice_usb_device_manager_set_property(GObject       *gobject,
         if (r) {
             if (r == -ENOMEM)
                 g_error("Failed to allocate memory for auto-connect-filter");
-            g_warning("Error parsing auto-connect-filter string, keeping old filter\n");
+            g_warning("Error parsing auto-connect-filter string, keeping old filter");
             break;
         }
 
@@ -409,7 +409,7 @@ static void spice_usb_device_manager_set_property(GObject       *gobject,
         if (r) {
             if (r == -ENOMEM)
                 g_error("Failed to allocate memory for redirect-on-connect");
-            g_warning("Error parsing redirect-on-connect string, keeping old filter\n");
+            g_warning("Error parsing redirect-on-connect string, keeping old filter");
             break;
         }
 
