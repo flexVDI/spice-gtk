@@ -140,8 +140,11 @@ typedef struct _SpiceUsbDeviceInfo {
     guint8  devaddr;
     guint16 vid;
     guint16 pid;
+#ifdef G_OS_WIN32
     guint8  state;
-    guint8  reserved;
+#else
+    libusb_device *libdev;
+#endif
     gint    ref;
 } SpiceUsbDeviceInfo;
 
@@ -1261,8 +1264,8 @@ _spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
             continue; /* Skip already used channels */
 
         libdev = spice_usb_device_manager_device_to_libdev(self, device);
-        if (libdev == NULL) {
 #ifdef G_OS_WIN32
+        if (libdev == NULL) {
             /* Most likely, the device was plugged out at driver installation
              * time, and its remove-device event was ignored.
              * So remove the device now
@@ -1272,13 +1275,13 @@ _spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
             g_ptr_array_remove(priv->devices, device);
             g_signal_emit(self, signals[DEVICE_REMOVED], 0, device);
             spice_usb_device_unref(device);
-#endif
             g_simple_async_result_set_error(result,
                                             SPICE_CLIENT_ERROR,
                                             SPICE_CLIENT_ERROR_FAILED,
                                             _("Device was not found"));
             goto done;
         }
+#endif
         spice_usbredir_channel_connect_device_async(channel,
                                  libdev,
                                  device,
@@ -1563,6 +1566,9 @@ static SpiceUsbDeviceInfo *spice_usb_device_new(libusb_device *libdev)
     info->vid = vid;
     info->pid = pid;
     info->ref = 1;
+#ifndef G_OS_WIN32
+    info->libdev = libusb_ref_device(libdev);
+#endif
 
     return info;
 }
@@ -1642,26 +1648,24 @@ static void spice_usb_device_unref(SpiceUsbDevice *device)
 
     ref_count_is_0 = g_atomic_int_dec_and_test(&info->ref);
     if (ref_count_is_0) {
+#ifndef G_OS_WIN32
+        libusb_unref_device(info->libdev);
+#endif
         g_free(info);
     }
 }
 
-#ifndef G_OS_WIN32 /* Linux -- compare bus.addr */
+#ifndef G_OS_WIN32 /* Linux -- directly compare libdev */
 static gboolean
 spice_usb_device_equal_libdev(SpiceUsbDevice *device,
                               libusb_device  *libdev)
 {
-    guint8 addr1, addr2, bus1, bus2;
+    SpiceUsbDeviceInfo *info = (SpiceUsbDeviceInfo *)device;
 
     if ((device == NULL) || (libdev == NULL))
         return FALSE;
 
-    bus1  = spice_usb_device_get_busnum(device);
-    addr1 = spice_usb_device_get_devaddr(device);
-    bus2  = libusb_get_bus_number(libdev);
-    addr2 = libusb_get_device_address(libdev);
-
-    return ((bus1 == bus2) && (addr1 == addr2));
+    return info->libdev == libdev;
 }
 #else /* Windows -- compare vid:pid of device and libdev */
 static gboolean
@@ -1692,6 +1696,14 @@ static libusb_device *
 spice_usb_device_manager_device_to_libdev(SpiceUsbDeviceManager *self,
                                           SpiceUsbDevice *device)
 {
+#ifdef G_OS_WIN32
+    /*
+     * On win32 we need to do this the hard and slow way, by asking libusb to
+     * re-enumerate all devices and then finding a matching device.
+     * We cannot cache the libusb_device like we do under Linux since the
+     * driver swap we do under windows invalidates the cached libdev.
+     */
+
     libusb_device *d, **devlist;
     int bus, addr;
     int i;
@@ -1701,13 +1713,9 @@ spice_usb_device_manager_device_to_libdev(SpiceUsbDeviceManager *self,
     g_return_val_if_fail(self->priv != NULL, NULL);
     g_return_val_if_fail(self->priv->context != NULL, NULL);
 
-#ifndef G_OS_WIN32
-    bus  = spice_usb_device_get_busnum(device);
-    addr = spice_usb_device_get_devaddr(device);
-#else
+    /* On windows we match by vid / pid, since the address may change */
     bus  = spice_usb_device_get_vid(device);
     addr = spice_usb_device_get_pid(device);
-#endif
 
     libusb_get_device_list(self->priv->context, &devlist);
     if (!devlist)
@@ -1723,5 +1731,12 @@ spice_usb_device_manager_device_to_libdev(SpiceUsbDeviceManager *self,
     libusb_free_device_list(devlist, 1);
 
     return d;
+
+#else
+    /* Simply return a ref to the cached libdev */
+    SpiceUsbDeviceInfo *info = (SpiceUsbDeviceInfo *)device;
+
+    return libusb_ref_device(info->libdev);
+#endif
 }
 #endif /* USE_USBREDIR */
