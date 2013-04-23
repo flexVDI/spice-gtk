@@ -314,6 +314,7 @@ static void spice_usb_device_manager_finalize(GObject *gobject)
     if (priv->event_thread)
         g_thread_join(priv->event_thread);
     free(priv->auto_conn_filter_rules);
+    free(priv->redirect_on_connect_rules);
 #ifdef G_OS_WIN32
     if (priv->installer)
         g_object_unref(priv->installer);
