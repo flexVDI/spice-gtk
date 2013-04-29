@@ -1999,10 +1999,14 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
 
 /* ---------------------------------------------------------------- */
 
+#define SPICE_GDK_BUTTONS_MASK \
+    (GDK_BUTTON1_MASK|GDK_BUTTON2_MASK|GDK_BUTTON3_MASK|GDK_BUTTON4_MASK|GDK_BUTTON5_MASK)
+
 static void update_mouse_mode(SpiceChannel *channel, gpointer data)
 {
     SpiceDisplay *display = data;
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(display));
 
     g_object_get(channel, "mouse-mode", &d->mouse_mode, NULL);
     SPICE_DEBUG("mouse mode %d", d->mouse_mode);
@@ -2012,9 +2016,16 @@ static void update_mouse_mode(SpiceChannel *channel, gpointer data)
         try_mouse_ungrab(display);
         break;
     case SPICE_MOUSE_MODE_SERVER:
-        try_mouse_grab(display);
         d->mouse_guest_x = -1;
         d->mouse_guest_y = -1;
+
+        if (window != NULL) {
+            GdkModifierType modifiers;
+            gdk_window_get_pointer(window, NULL, NULL, &modifiers);
+
+            if (modifiers & SPICE_GDK_BUTTONS_MASK)
+                try_mouse_grab(display);
+        }
         break;
     default:
         g_warn_if_reached();
