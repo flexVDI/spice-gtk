@@ -137,6 +137,7 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
 static void sync_keyboard_lock_modifiers(SpiceDisplay *display);
 static void cursor_invalidate(SpiceDisplay *display);
 static void update_area(SpiceDisplay *display, gint x, gint y, gint width, gint height);
+static void release_keys(SpiceDisplay *display);
 
 /* ---------------------------------------------------------------- */
 
@@ -533,6 +534,14 @@ static void drag_data_received_callback(SpiceDisplay *self,
     gtk_drag_finish(drag_context, TRUE, FALSE, time);
 }
 
+static void grab_notify(SpiceDisplay *display, gboolean was_grabbed)
+{
+    SPICE_DEBUG("grab notify %d", was_grabbed);
+
+    if (was_grabbed == FALSE)
+        release_keys(display);
+}
+
 static void spice_display_init(SpiceDisplay *display)
 {
     GtkWidget *widget = GTK_WIDGET(display);
@@ -542,9 +551,12 @@ static void spice_display_init(SpiceDisplay *display)
     d = display->priv = SPICE_DISPLAY_GET_PRIVATE(display);
 
     g_signal_connect(display, "grab-broken-event", G_CALLBACK(grab_broken), NULL);
+    g_signal_connect(display, "grab-notify", G_CALLBACK(grab_notify), NULL);
+
     gtk_drag_dest_set(widget, GTK_DEST_DEFAULT_ALL, &targets, 1, GDK_ACTION_COPY);
     g_signal_connect(display, "drag-data-received",
                      G_CALLBACK(drag_data_received_callback), NULL);
+
     gtk_widget_add_events(widget,
                           GDK_STRUCTURE_MASK |
                           GDK_POINTER_MOTION_MASK |
