@@ -75,8 +75,8 @@ static unsigned int ref_count_for_untranslated_keys = 0;
 #include "vncdisplaykeymap_xorgxwin2xtkbd.c"
 
 /* Gtk2 compat */
-#ifndef GDK_IS_X11_DISPLAY
-#define GDK_IS_X11_DISPLAY(dpy) (dpy == dpy)
+#ifndef GDK_IS_X11_WINDOW
+#define GDK_IS_X11_WINDOW(win) (win == win)
 #endif
 #endif
 
@@ -85,8 +85,8 @@ static unsigned int ref_count_for_untranslated_keys = 0;
 #include "vncdisplaykeymap_win322xtkbd.c"
 
 /* Gtk2 compat */
-#ifndef GDK_IS_WIN32_DISPLAY
-#define GDK_IS_WIN32_DISPLAY(dpy) (dpy == dpy)
+#ifndef GDK_IS_WIN32_WINDOW
+#define GDK_IS_WIN32_WINDOW(win) (win == win)
 #endif
 #endif
 
@@ -95,8 +95,8 @@ static unsigned int ref_count_for_untranslated_keys = 0;
 #include "vncdisplaykeymap_osx2xtkbd.c"
 
 /* Gtk2 compat */
-#ifndef GDK_IS_QUARTZ_DISPLAY
-#define GDK_IS_QUARTZ_DISPLAY(dpy) (dpy == dpy)
+#ifndef GDK_IS_QUARTZ_WINDOW
+#define GDK_IS_QUARTZ_WINDOW(win) (win == win)
 #endif
 #endif
 
