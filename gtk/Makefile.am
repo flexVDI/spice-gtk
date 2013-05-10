@@ -14,6 +14,7 @@ KEYMAPS =					\
 	vncdisplaykeymap_xorgxwin2xtkbd.c	\
 	vncdisplaykeymap_osx2xtkbd.c		\
 	vncdisplaykeymap_win322xtkbd.c		\
+	vncdisplaykeymap_x112xtkbd.c		\
 	$(NULL)
 
 # End users build dependencies can be cleaned
@@ -519,6 +520,9 @@ vncdisplaykeymap_osx2xtkbd.c:
 
 vncdisplaykeymap_win322xtkbd.c:
 	$(AM_V_GEN)$(KEYMAP_GEN) $(srcdir)/keymaps.csv win32 xtkbd > $@ || rm $@
+
+vncdisplaykeymap_x112xtkbd.c:
+	$(AM_V_GEN)$(KEYMAP_GEN) $(srcdir)/keymaps.csv x11 xtkbd > $@ || rm $@
 
 if WITH_PYTHON
 pyexec_LTLIBRARIES = SpiceClientGtk.la
