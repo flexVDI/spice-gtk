@@ -59,6 +59,10 @@ static struct {
 
 static unsigned int ref_count_for_untranslated_keys = 0;
 
+#ifdef GDK_WINDOWING_BROADWAY
+#include <gdk/gdkbroadway.h>
+#endif
+
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
 #include <X11/XKBlib.h>
@@ -98,6 +102,17 @@ static unsigned int ref_count_for_untranslated_keys = 0;
 #ifndef GDK_IS_QUARTZ_WINDOW
 #define GDK_IS_QUARTZ_WINDOW(win) (win == win)
 #endif
+#endif
+
+#ifdef GDK_WINDOWING_BROADWAY
+/* X11 keysyms */
+#include "vncdisplaykeymap_x112xtkbd.c"
+
+/* Gtk2 compat */
+#ifndef GDK_IS_BROADWAY_WINDOW
+#define GDK_IS_BROADWAY_WINDOW(win) (win == win)
+#endif
+
 #endif
 
 #ifdef GDK_WINDOWING_X11
@@ -208,6 +223,15 @@ const guint16 const *vnc_display_keymap_gdk2xtkbd_table(GdkWindow *window,
 		*maplen = G_N_ELEMENTS(keymap_osx2xtkbd);
 		return keymap_osx2xtkbd;
 	}
+#endif
+
+#ifdef GDK_WINDOWING_BROADWAY
+	if (GDK_IS_BROADWAY_WINDOW(window)) {
+                g_warning("experimental: using broadway, x11 virtual keysym mapping - with very limited support. See also https://bugzilla.gnome.org/show_bug.cgi?id=700105");
+
+			*maplen = G_N_ELEMENTS(keymap_x112xtkbd);
+			return keymap_x112xtkbd;
+        }
 #endif
 
 	g_warning("Unsupported GDK Windowing platform.\n"
