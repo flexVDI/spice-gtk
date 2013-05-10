@@ -2606,67 +2606,6 @@ static void sync_keyboard_lock_modifiers(SpiceDisplay *display)
         spice_inputs_set_key_locks(d->inputs, modifiers);
 }
 
-typedef enum SpiceLed {
-    CAPS_LOCK_LED = 1,
-    NUM_LOCK_LED,
-    SCROLL_LOCK_LED,
-} SpiceLed;
-
-static guint get_modifier_mask(Display *x_display, KeySym modifier)
-{
-    int mask = 0;
-    int i;
-
-    XModifierKeymap* map = XGetModifierMapping(x_display);
-    KeyCode keycode = XKeysymToKeycode(x_display, modifier);
-    if (keycode == NoSymbol) {
-        return 0;
-    }
-
-    for (i = 0; i < 8; i++) {
-        if (map->modifiermap[map->max_keypermod * i] == keycode) {
-            mask = 1 << i;
-        }
-    }
-    XFreeModifiermap(map);
-    return mask;
-}
-
-static void set_keyboard_led(Display *x_display, SpiceLed led, int set)
-{
-    guint mask;
-    XKeyboardControl keyboard_control;
-
-    switch (led) {
-    case CAPS_LOCK_LED:
-        if ((mask = get_modifier_mask(x_display, XK_Caps_Lock)) != 0) {
-            XkbLockModifiers(x_display, XkbUseCoreKbd, mask, set ? mask : 0);
-        }
-        return;
-    case NUM_LOCK_LED:
-        if ((mask = get_modifier_mask(x_display, XK_Num_Lock)) != 0) {
-            XkbLockModifiers(x_display, XkbUseCoreKbd, mask, set ? mask : 0);
-        }
-        return;
-    case SCROLL_LOCK_LED:
-        keyboard_control.led_mode = set ? LedModeOn : LedModeOff;
-        keyboard_control.led = led;
-        XChangeKeyboardControl(x_display, KBLed | KBLedMode, &keyboard_control);
-        return;
-    }
-}
-
-G_GNUC_UNUSED
-static void spice_set_keyboard_lock_modifiers(SpiceDisplay *display, uint32_t modifiers)
-{
-    Display *x_display;
-
-    x_display = GDK_WINDOW_XDISPLAY(gtk_widget_get_parent_window(GTK_WIDGET(display)));
-
-    set_keyboard_led(x_display, CAPS_LOCK_LED, !!(modifiers & SPICE_INPUTS_CAPS_LOCK));
-    set_keyboard_led(x_display, NUM_LOCK_LED, !!(modifiers & SPICE_INPUTS_NUM_LOCK));
-    set_keyboard_led(x_display, SCROLL_LOCK_LED, !!(modifiers & SPICE_INPUTS_SCROLL_LOCK));
-}
 #elif defined (WIN32)
 static guint32 get_keyboard_lock_modifiers(void)
 {
