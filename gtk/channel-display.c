@@ -116,6 +116,8 @@ static gboolean display_stream_render(display_stream *st);
 static void spice_display_channel_reset(SpiceChannel *channel, gboolean migrating);
 static void spice_display_channel_reset_capabilities(SpiceChannel *channel);
 static void destroy_canvas(display_surface *surface);
+static void _msg_in_unref_func(gpointer data, gpointer user_data);
+static void display_session_mm_time_reset_cb(SpiceSession *session, gpointer data);
 
 /* ------------------------------------------------------------------ */
 
@@ -157,6 +159,10 @@ static void spice_display_channel_constructed(GObject *object)
     g_return_if_fail(c->palettes != NULL);
 
     c->monitors = g_array_new(FALSE, TRUE, sizeof(SpiceDisplayMonitorConfig));
+    spice_g_signal_connect_object(s, "mm-time-reset",
+                                  G_CALLBACK(display_session_mm_time_reset_cb),
+                                  SPICE_CHANNEL(object), 0);
+
 
     if (G_OBJECT_CLASS(spice_display_channel_parent_class)->constructed)
         G_OBJECT_CLASS(spice_display_channel_parent_class)->constructed(object);
@@ -1089,12 +1095,17 @@ static gboolean display_stream_schedule(display_stream *st)
     guint32 time, d;
     SpiceStreamDataHeader *op;
     SpiceMsgIn *in;
+
+    SPICE_DEBUG("%s", __FUNCTION__);
     if (st->timeout)
         return TRUE;
 
     time = spice_session_get_mm_time(spice_channel_get_session(st->channel));
     in = g_queue_peek_head(st->msgq);
-    g_return_val_if_fail(in != NULL, TRUE);
+
+    if (in == NULL) {
+        return TRUE;
+    }
 
     op = spice_msg_in_parsed(in);
     if (time < op->multi_media_time) {
@@ -1103,6 +1114,9 @@ static gboolean display_stream_schedule(display_stream *st)
         st->timeout = g_timeout_add(d, (GSourceFunc)display_stream_render, st);
         return TRUE;
     } else {
+        SPICE_DEBUG("%s: rendering too late by %u ms (ts: %u, mmtime: %u), dropping ",
+                    __FUNCTION__, time - op->multi_media_time,
+                    op->multi_media_time, time);
         in = g_queue_pop_head(st->msgq);
         spice_msg_in_unref(in);
         st->num_drops_on_playback++;
@@ -1303,7 +1317,102 @@ static void display_update_stream_report(SpiceDisplayChannel *channel, uint32_t 
     }
 }
 
+static void display_stream_reset_rendering_timer(display_stream *st)
+{
+    SPICE_DEBUG("%s", __FUNCTION__);
+    if (st->timeout != 0) {
+        g_source_remove(st->timeout);
+        st->timeout = 0;
+    }
+    while (!display_stream_schedule(st)) {
+    }
+}
+
+/*
+ * Migration can occur between 2 spice-servers with different mm-times.
+ * Then, the following cases can happen after migration completes:
+ * (We refer to src/dst-time as the mm-times on the src/dst servers):
+ *
+ * (case 1) Frames with time ~= dst-time arrive to the client before the
+ *          playback-channel updates the session's mm-time (i.e., the mm_time
+ *          of the session is still based on the src-time).
+ *     (a) If src-time < dst-time:
+ *         display_stream_schedule schedules the next rendering to
+ *         ~(dst-time - src-time) milliseconds from now.
+ *         Since we assume monotonic mm_time, display_stream_schedule,
+ *         returns immediately when a rendering timeout
+ *         has already been set, and doesn't update the timeout,
+ *         even after the mm_time is updated.
+ *         When src-time << dst-time, a significant video frames loss will occur.
+ *     (b) If src-time > dst-time
+ *         Frames will be dropped till the mm-time will be updated.
+ * (case 2) mm-time is synced with dst-time, but frames that were in the command
+ *         ring during migration still arrive (such frames hold src-time).
+ *    (a) If src-time < dst-time
+ *        The frames that hold src-time will be dropped, since their
+ *        mm_time < session-mm_time. But all the new frames that are generated in
+ *        the driver after migration, will be rendered appropriately.
+ *    (b) If src-time > dst-time
+ *        Similar consequences as in 1 (a)
+ * case 2 is less likely, since at takes at least 20 frames till the dst-server re-identifies
+ * the video stream and starts sending stream data
+ *
+ * display_session_mm_time_reset_cb handles case 1.a, and
+ * display_stream_test_frames_mm_time_reset handles case 2.b
+ */
+
+/* main context */
+static void display_session_mm_time_reset_cb(SpiceSession *session, gpointer data)
+{
+    SpiceChannel *channel = data;
+    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
+    guint i;
+
+    CHANNEL_DEBUG(channel, "%s", __FUNCTION__);
+
+    for (i = 0; i < c->nstreams; i++) {
+        display_stream *st;
+
+        if (c->streams[i] == NULL) {
+            continue;
+        }
+        SPICE_DEBUG("%s: stream-id %d", __FUNCTION__, i);
+        st = c->streams[i];
+        display_stream_reset_rendering_timer(st);
+    }
+}
+
+/* coroutine context */
+static void display_stream_test_frames_mm_time_reset(display_stream *st,
+                                                     SpiceMsgIn *new_frame_msg,
+                                                     guint32 mm_time)
+{
+    SpiceStreamDataHeader *tail_op, *new_op;
+    SpiceMsgIn *tail_msg;
+
+    SPICE_DEBUG("%s", __FUNCTION__);
+    g_return_if_fail(new_frame_msg != NULL);
+    tail_msg = g_queue_peek_tail(st->msgq);
+    if (!tail_msg) {
+        return;
+    }
+    tail_op = spice_msg_in_parsed(tail_msg);
+    new_op = spice_msg_in_parsed(new_frame_msg);
+
+    if (new_op->multi_media_time < tail_op->multi_media_time) {
+        SPICE_DEBUG("new-frame-time < tail-frame-time (%u < %u):"
+                    " reseting stream, id %d",
+                    new_op->multi_media_time,
+                    tail_op->multi_media_time,
+                    new_op->id);
+        g_queue_foreach(st->msgq, _msg_in_unref_func, NULL);
+        g_queue_clear(st->msgq);
+        display_stream_reset_rendering_timer(st);
+    }
+}
+
 #define STREAM_PLAYBACK_SYNC_DROP_SEQ_LEN_LIMIT 5
+
 /* coroutine context */
 static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
 {
@@ -1349,8 +1458,10 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
     } else {
         CHANNEL_DEBUG(channel, "video latency: %d", latency);
         spice_msg_in_ref(in);
+        display_stream_test_frames_mm_time_reset(st, in, mmtime);
         g_queue_push_tail(st->msgq, in);
-        display_stream_schedule(st);
+        while (!display_stream_schedule(st)) {
+        }
         if (st->cur_drops_seq_stats.len) {
             st->cur_drops_seq_stats.duration = op->multi_media_time -
                                                st->cur_drops_seq_stats.start_mm_time;
