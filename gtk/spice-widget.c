@@ -784,8 +784,13 @@ static void set_mouse_accel(SpiceDisplay *display, gboolean enabled)
 
 #if defined GDK_WINDOWING_X11
     GdkWindow *w = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
-    Display *x_display = GDK_WINDOW_XDISPLAY(w);
 
+    if (!GDK_IS_X11_DISPLAY(gdk_window_get_display(w))) {
+        SPICE_DEBUG("FIXME: gtk backend is not X11");
+        return;
+    }
+
+    Display *x_display = GDK_WINDOW_XDISPLAY(w);
     if (enabled) {
         /* restore mouse acceleration */
         XChangePointerControl(x_display, True, True,
@@ -2599,6 +2604,11 @@ static void sync_keyboard_lock_modifiers(SpiceDisplay *display)
     w = gtk_widget_get_parent_window(GTK_WIDGET(display));
     if (w == NULL) /* it can happen if the display is not yet shown */
         return;
+
+    if (!GDK_IS_X11_DISPLAY(gdk_window_get_display(w))) {
+        SPICE_DEBUG("FIXME: gtk backend is not X11");
+        return;
+    }
 
     x_display = GDK_WINDOW_XDISPLAY(w);
     modifiers = get_keyboard_lock_modifiers(x_display);
