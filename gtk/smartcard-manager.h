@@ -21,7 +21,6 @@
 G_BEGIN_DECLS
 
 #include "spice-types.h"
-#include "spice-glib-enums.h"
 #include "spice-util.h"
 
 #define SPICE_TYPE_SMARTCARD_MANAGER            (spice_smartcard_manager_get_type ())

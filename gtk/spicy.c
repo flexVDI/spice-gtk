@@ -26,10 +26,6 @@
 #include <termios.h>
 #endif
 
-#define GNOME_DESKTOP_USE_UNSTABLE_API 2
-#include "display/gnome-rr.h"
-#include "display/gnome-rr-config.h"
-
 #ifdef USE_SMARTCARD
 #include <vreader.h>
 #include "smartcard-manager.h"
@@ -114,8 +110,6 @@ static spice_connection *connection_new(void);
 static void connection_connect(spice_connection *conn);
 static void connection_disconnect(spice_connection *conn);
 static void connection_destroy(spice_connection *conn);
-static void resolution_fullscreen(SpiceWindow *win);
-static void resolution_restore(SpiceWindow *win);
 static void usb_connect_failed(GObject               *object,
                                SpiceUsbDevice        *device,
                                GError                *error,
@@ -132,9 +126,6 @@ static GMainLoop     *mainloop = NULL;
 static int           connections = 0;
 static GKeyFile      *keyfile = NULL;
 static SpicePortChannel*stdin_port = NULL;
-static GnomeRRScreen *rrscreen = NULL;
-static GnomeRRConfig *rrsaved = NULL;
-static GnomeRRConfig *rrcurrent = NULL;
 
 /* ------------------------------------------------------------------ */
 
@@ -961,198 +952,6 @@ static void recent_item_activated_cb(GtkRecentChooser *chooser, gpointer data)
 }
 #endif
 
-static GnomeRROutputInfo *
-get_nearest_output (GnomeRRConfig *configuration, int x, int y)
-{
-  int i;
-  int nearest_index;
-  int nearest_dist;
-  GnomeRROutputInfo **outputs;
-
-  nearest_index = -1;
-  nearest_dist = G_MAXINT;
-
-  outputs = gnome_rr_config_get_outputs (configuration);
-  for (i = 0; outputs[i] != NULL; i++)
-    {
-      int dist_x, dist_y;
-      int output_x, output_y, output_width, output_height;
-
-      if (!(gnome_rr_output_info_is_connected (outputs[i]) && gnome_rr_output_info_is_active (outputs[i])))
-        continue;
-
-      gnome_rr_output_info_get_geometry (outputs[i], &output_x, &output_y, &output_width, &output_height);
-
-      if (x < output_x)
-        dist_x = output_x - x;
-      else if (x >= output_x + output_width)
-        dist_x = x - (output_x + output_width) + 1;
-      else
-        dist_x = 0;
-
-      if (y < output_y)
-        dist_y = output_y - y;
-      else if (y >= output_y + output_height)
-        dist_y = y - (output_y + output_height) + 1;
-      else
-        dist_y = 0;
-
-      if (MIN (dist_x, dist_y) < nearest_dist)
-        {
-          nearest_dist = MIN (dist_x, dist_y);
-          nearest_index = i;
-        }
-    }
-
-  if (nearest_index != -1)
-    return outputs[nearest_index];
-  else
-    return NULL;
-}
-
-#if !GTK_CHECK_VERSION (2, 91, 0)
-#define gdk_window_get_geometry(win,x,y,w,h) gdk_window_get_geometry(win,x,y,w,h,NULL)
-#endif
-
-static GnomeRROutputInfo *
-get_output_for_window(GnomeRRConfig *configuration, GdkWindow *window)
-{
-  GdkRectangle win_rect;
-  int i;
-  int largest_area;
-  int largest_index;
-  GnomeRROutputInfo **outputs;
-
-  gdk_window_get_geometry (window, &win_rect.x, &win_rect.y, &win_rect.width, &win_rect.height);
-  gdk_window_get_origin (window, &win_rect.x, &win_rect.y);
-
-  largest_area = 0;
-  largest_index = -1;
-
-  outputs = gnome_rr_config_get_outputs (configuration);
-  for (i = 0; outputs[i] != NULL; i++)
-    {
-      GdkRectangle output_rect, intersection;
-
-      gnome_rr_output_info_get_geometry (outputs[i], &output_rect.x, &output_rect.y, &output_rect.width, &output_rect.height);
-
-      if (gnome_rr_output_info_is_connected (outputs[i]) && gdk_rectangle_intersect (&win_rect, &output_rect, &intersection))
-        {
-          int area;
-
-          area = intersection.width * intersection.height;
-          if (area > largest_area)
-            {
-              largest_area = area;
-              largest_index = i;
-            }
-        }
-    }
-
-  if (largest_index != -1)
-    return outputs[largest_index];
-  else
-    return get_nearest_output (configuration,
-                               win_rect.x + win_rect.width / 2,
-                               win_rect.y + win_rect.height / 2);
-}
-
-static void
-on_screen_changed(GnomeRRScreen *scr, gpointer data)
-{
-    GError *error = NULL;
-    GnomeRRConfig *current;
-
-    current = gnome_rr_config_new_current(rrscreen, &error);
-    if (!current) {
-        g_warning("Can't get current display config: %s", error->message);
-        goto end;
-    }
-
-    if (rrcurrent)
-        g_object_unref(rrcurrent);
-    rrcurrent = current;
-
-end:
-    g_clear_error(&error);
-}
-
-static void resolution_fullscreen(SpiceWindow *win)
-{
-    GnomeRROutputInfo *output;
-    int x, y, width, height;
-    GError *error = NULL;;
-
-    if (!rrsaved) {
-        rrsaved = gnome_rr_config_new_current(rrscreen, &error);
-        g_clear_error(&error);
-    }
-
-    output = get_output_for_window(rrcurrent, gtk_widget_get_window(win->spice));
-    g_return_if_fail(output != NULL);
-
-    gnome_rr_output_info_get_geometry (output, &x, &y, &width, &height);
-    g_object_get(win->display_channel, "width", &width, "height", &height, NULL);
-    gnome_rr_output_info_set_geometry (output, x, y, width, height);
-
-    if (!gnome_rr_config_apply_with_time(rrcurrent, rrscreen,
-                                         gtk_get_current_event_time (), &error)) {
-        g_warning("Can't set display config: %s", error->message);
-    }
-    g_clear_error(&error);
-
-#ifdef WIN32
-    /* recenter the window on Windows */
-    gtk_window_fullscreen(GTK_WINDOW(win->toplevel));
-#endif
-}
-
-static void resolution_restore(SpiceWindow *win)
-{
-    GnomeRROutputInfo *output, *saved;
-    int x, y, width, height;
-    GError *error = NULL;;
-
-    if (rrsaved == NULL)
-        return;
-
-    output = get_output_for_window(rrcurrent, gtk_widget_get_window(win->spice));
-    g_return_if_fail(output != NULL);
-    saved = get_output_for_window(rrsaved, gtk_widget_get_window(win->spice));
-    g_return_if_fail(saved != NULL);
-
-    gnome_rr_output_info_get_geometry (saved, &x, &y, &width, &height);
-    gnome_rr_output_info_set_geometry (output, x, y, width, height);
-
-    if (!gnome_rr_config_apply_with_time(rrcurrent, rrscreen,
-                                         gtk_get_current_event_time (), &error)) {
-        g_warning("Can't set display config: %s", error->message);
-    }
-    g_clear_error(&error);
-
-#ifdef WIN32
-    /* recenter the window on Windows */
-    gtk_window_unfullscreen(GTK_WINDOW(win->toplevel));
-#endif
-}
-
-static void resolution_restore_all(void)
-{
-    GError *error = NULL;;
-
-    if (!rrsaved)
-        return;
-
-    if (!gnome_rr_config_apply_with_time(rrsaved, rrscreen,
-                                         gtk_get_current_event_time (), &error)) {
-        g_warning("Can't restore display config: %s", error->message);
-    }
-    g_clear_error(&error);
-
-    g_object_unref(rrsaved);
-    rrsaved = NULL;
-}
-
 static gboolean configure_event_cb(GtkWidget         *widget,
                                    GdkEventConfigure *event,
                                    gpointer           data)
@@ -1166,11 +965,6 @@ static gboolean configure_event_cb(GtkWidget         *widget,
     g_object_get(win->spice, "resize-guest", &resize_guest, NULL);
     if (resize_guest && win->conn->agent_connected)
         return FALSE;
-
-    if (win->fullscreen)
-        resolution_fullscreen(win);
-    else
-        resolution_restore(win);
 
     return FALSE;
 }
@@ -2053,11 +1847,6 @@ int main(int argc, char *argv[])
 
     g_type_init();
     mainloop = g_main_loop_new(NULL, false);
-    rrscreen = gnome_rr_screen_new(gdk_screen_get_default (), &error);
-    g_warn_if_fail(rrscreen != NULL);
-    if (rrscreen)
-        g_signal_connect(rrscreen, "changed", G_CALLBACK(on_screen_changed), NULL);
-    on_screen_changed(rrscreen, NULL);
 
     conn = connection_new();
     spice_set_session_option(conn->session);
@@ -2094,9 +1883,6 @@ int main(int argc, char *argv[])
         error = NULL;
     }
 
-    resolution_restore_all();
-
-    g_object_unref(rrscreen);
     g_free(conf_file);
     g_free(conf);
     g_key_file_free(keyfile);

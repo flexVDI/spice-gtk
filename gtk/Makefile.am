@@ -348,34 +348,10 @@ endif
 libspice_client_glib_2_0_la_LIBADD += -lws2_32 -lgdi32
 endif
 
-displaysrc =					\
-	glib-compat.h				\
-	display/edid.h				\
-	display/edid-parse.c			\
-	display/display-name.c			\
-	display/gnome-rr-config.c		\
-	display/gnome-rr-config.h		\
-	display/gnome-rr-output-info.c		\
-	display/gnome-rr-private.h		\
-	display/gnome-rr.c			\
-	display/gnome-rr.h			\
-	$(NULL)
-
-if WITH_DISPLAY_X11
-  displaysrc += display/gnome-rr-x11.c display/gnome-rr-x11.h
-else
-if WITH_DISPLAY_WINDOWS
-    displaysrc += display/gnome-rr-windows.c display/gnome-rr-windows.h
-else
-    displaysrc += display/gnome-rr-generic.c display/gnome-rr-generic.h
-endif
-endif
-
 spicy_SOURCES =					\
 	spicy.c					\
 	spice-cmdline.h				\
 	spice-cmdline.c				\
-	$(displaysrc)				\
 	$(NULL)
 
 spicy_LDADD =						\
