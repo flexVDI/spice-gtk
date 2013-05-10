@@ -115,11 +115,26 @@ enum {
 enum {
     SPICE_SESSION_CHANNEL_NEW,
     SPICE_SESSION_CHANNEL_DESTROY,
+    SPICE_SESSION_MM_TIME_RESET,
     SPICE_SESSION_LAST_SIGNAL,
 };
 
 static guint signals[SPICE_SESSION_LAST_SIGNAL];
 
+struct SPICE_SESSION_MM_TIME_RESET {
+};
+
+/* main context */
+static void do_emit_main_context(GObject *object, int signum, gpointer params)
+{
+    switch (signum) {
+    case SPICE_SESSION_MM_TIME_RESET:
+        g_signal_emit(object, signals[signum], 0);
+        break;
+    default:
+        g_warn_if_reached();
+    }
+}
 
 static void update_proxy(SpiceSession *self, const gchar *str)
 {
@@ -1071,6 +1086,23 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                      SPICE_TYPE_CHANNEL);
 
     /**
+     * SpiceSession::mm-time-reset:
+     * @session: the session that emitted the signal
+     *
+     * The #SpiceSession::mm-time-reset is emitted when we identify discontinuity in mm-time
+     *
+     * Since 0.20
+     **/
+    signals[SPICE_SESSION_MM_TIME_RESET] =
+        g_signal_new("mm-time-reset",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_FIRST,
+                     0, NULL, NULL,
+                     g_cclosure_marshal_VOID__VOID,
+                     G_TYPE_NONE,
+                     0);
+
+    /**
      * SpiceSession:read-only:
      *
      * Whether this connection is read-only mode.
@@ -1927,16 +1959,26 @@ guint32 spice_session_get_mm_time(SpiceSession *session)
     return s->mm_time + (g_get_monotonic_time() - s->mm_time_at_clock) / 1000;
 }
 
+#define MM_TIME_DIFF_RESET_THRESH 500 // 0.5 sec
+
 G_GNUC_INTERNAL
 void spice_session_set_mm_time(SpiceSession *session, guint32 time)
 {
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
+    guint32 old_time;
 
     g_return_if_fail(s != NULL);
+
+    old_time = spice_session_get_mm_time(session);
 
     s->mm_time = time;
     s->mm_time_at_clock = g_get_monotonic_time();
     SPICE_DEBUG("set mm time: %u", spice_session_get_mm_time(session));
+    if (time > old_time + MM_TIME_DIFF_RESET_THRESH ||
+        time < old_time) {
+        SPICE_DEBUG("%s: mm-time-reset, old %u, new %u", __FUNCTION__, old_time, s->mm_time);
+        emit_main_context(session, SPICE_SESSION_MM_TIME_RESET);
+    }
 }
 
 G_GNUC_INTERNAL
