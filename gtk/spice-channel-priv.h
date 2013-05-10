@@ -188,10 +188,14 @@ void spice_caps_set(GArray *caps, guint32 cap, const gchar *desc);
     spice_caps_set(SPICE_CHANNEL(channel)->priv->caps, cap, #cap)
 
 /* coroutine context */
-#define emit_main_context(object, event, args...)                       \
-    G_STMT_START {                                                      \
-        g_signal_emit_main_context(G_OBJECT(object), do_emit_main_context, \
-                                   event, &((struct event) { args }), G_STRLOC); \
+#define emit_main_context(object, event, args...)                                      \
+    G_STMT_START {                                                                     \
+        if (IN_MAIN_CONTEXT) {                                                         \
+            do_emit_main_context(G_OBJECT(object), event, &((struct event) { args })); \
+        } else {                                                                       \
+            g_signal_emit_main_context(G_OBJECT(object), do_emit_main_context,         \
+                                       event, &((struct event) { args }), G_STRLOC);   \
+        }                                                                              \
     } G_STMT_END
 
 gchar *spice_channel_supported_string(void);
