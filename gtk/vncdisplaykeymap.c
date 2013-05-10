@@ -133,14 +133,14 @@ static gboolean check_for_xquartz(GdkDisplay *dpy)
 }
 #endif
 
-const guint16 const *vnc_display_keymap_gdk2xtkbd_table(size_t *maplen)
+const guint16 const *vnc_display_keymap_gdk2xtkbd_table(GdkWindow *window,
+                                                        size_t *maplen)
 {
-	GdkDisplay *dpy = gdk_display_get_default();
-
 #ifdef GDK_WINDOWING_X11
-	if (GDK_IS_X11_DISPLAY(dpy)) {
+	if (GDK_IS_X11_WINDOW(window)) {
 		XkbDescPtr desc;
 		const gchar *keycodes = NULL;
+                GdkDisplay *dpy = gdk_window_get_display(window);
 
 		/* There is no easy way to determine what X11 server
 		 * and platform & keyboard driver is in use. Thus we
@@ -195,7 +195,7 @@ const guint16 const *vnc_display_keymap_gdk2xtkbd_table(size_t *maplen)
 #endif
 
 #ifdef GDK_WINDOWING_WIN32
-	if (GDK_IS_WIN32_DISPLAY(dpy)) {
+	if (GDK_IS_WIN32_WINDOW(window)) {
 		VNC_DEBUG("Using Win32 virtual keycode mapping");
 		*maplen = G_N_ELEMENTS(keymap_win322xtkbd);
 		return keymap_win322xtkbd;
@@ -203,7 +203,7 @@ const guint16 const *vnc_display_keymap_gdk2xtkbd_table(size_t *maplen)
 #endif
 
 #ifdef GDK_WINDOWING_QUARTZ
-	if (GDK_IS_QUARTZ_DISPLAY(dpy)) {
+	if (GDK_IS_QUARTZ_WINDOW(window)) {
 		VNC_DEBUG("Using OS-X virtual keycode mapping");
 		*maplen = G_N_ELEMENTS(keymap_osx2xtkbd);
 		return keymap_osx2xtkbd;

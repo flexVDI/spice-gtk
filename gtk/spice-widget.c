@@ -574,7 +574,6 @@ static void spice_display_init(SpiceDisplay *display)
 #endif
     gtk_widget_set_can_focus(widget, true);
     gtk_widget_set_has_window(widget, true);
-    d->keycode_map = vnc_display_keymap_gdk2xtkbd_table(&d->keycode_maplen);
     d->grabseq = spice_grab_sequence_new_from_string("Control_L+Alt_L");
     d->activeseq = g_new0(gboolean, d->grabseq->nkeysyms);
 
@@ -1716,9 +1715,13 @@ static void update_image(SpiceDisplay *display)
 static void realize(GtkWidget *widget)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
+    SpiceDisplayPrivate *d = display->priv;
 
     GTK_WIDGET_CLASS(spice_display_parent_class)->realize(widget);
 
+    d->keycode_map =
+        vnc_display_keymap_gdk2xtkbd_table(gtk_widget_get_window(widget),
+                                           &d->keycode_maplen);
     update_image(display);
 }
 
