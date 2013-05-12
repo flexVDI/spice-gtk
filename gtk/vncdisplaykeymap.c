@@ -59,8 +59,17 @@ static struct {
 
 static unsigned int ref_count_for_untranslated_keys = 0;
 
+#ifdef GDK_WINDOWING_WAYLAND
+#include <gdk/gdkwayland.h>
+#endif
+
 #ifdef GDK_WINDOWING_BROADWAY
 #include <gdk/gdkbroadway.h>
+#endif
+
+#if defined(GDK_WINDOWING_X11) || defined(GDK_WINDOWING_WAYLAND)
+/* Xorg Linux + evdev (offset evdev keycodes) */
+#include "vncdisplaykeymap_xorgevdev2xtkbd.c"
 #endif
 
 #ifdef GDK_WINDOWING_X11
@@ -223,6 +232,14 @@ const guint16 const *vnc_display_keymap_gdk2xtkbd_table(GdkWindow *window,
 		*maplen = G_N_ELEMENTS(keymap_osx2xtkbd);
 		return keymap_osx2xtkbd;
 	}
+#endif
+
+#ifdef GDK_WINDOWING_WAYLAND
+	if (GDK_IS_WAYLAND_WINDOW(window)) {
+		VNC_DEBUG("Using Wayland Xorg/evdev virtual keycode mapping");
+		*maplen = G_N_ELEMENTS(keymap_xorgevdev2xtkbd);
+		return keymap_xorgevdev2xtkbd;
+        }
 #endif
 
 #ifdef GDK_WINDOWING_BROADWAY
