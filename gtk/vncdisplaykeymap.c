@@ -80,8 +80,6 @@ static unsigned int ref_count_for_untranslated_keys = 0;
 
 /* Xorg Linux + kbd (offset + mangled XT keycodes) */
 #include "vncdisplaykeymap_xorgkbd2xtkbd.c"
-/* Xorg Linux + evdev (offset evdev keycodes) */
-#include "vncdisplaykeymap_xorgevdev2xtkbd.c"
 /* Xorg OS-X aka XQuartz (offset OS-X keycodes) */
 #include "vncdisplaykeymap_xorgxquartz2xtkbd.c"
 /* Xorg Cygwin aka XWin (offset + mangled XT keycodes) */
