@@ -1693,6 +1693,9 @@ struct spice_open_host {
     GError *error;
     GSocketConnection *connection;
     GSocketClient *client;
+#if !GLIB_CHECK_VERSION(2,26,0)
+    guint timeout_id;
+#endif
 };
 
 static void socket_client_connect_ready(GObject *source_object, GAsyncResult *result,
@@ -1795,6 +1798,20 @@ static gboolean open_host_idle_cb(gpointer data)
     return FALSE;
 }
 
+#define SOCKET_TIMEOUT 10
+
+#if !GLIB_CHECK_VERSION(2,26,0)
+static gboolean connect_timeout(gpointer data)
+{
+    spice_open_host *open_host = data;
+
+    open_host->timeout_id = 0;
+    coroutine_yieldto(open_host->from, NULL);
+
+    return FALSE;
+}
+#endif
+
 /* coroutine context */
 G_GNUC_INTERNAL
 GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceChannel *channel,
@@ -1827,11 +1844,25 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
     }
 
     open_host.client = g_socket_client_new();
+#if GLIB_CHECK_VERSION(2,26,0)
+    g_socket_client_set_timeout(open_host.client, SOCKET_TIMEOUT);
+#else
+    open_host.timeout_id =
+        g_timeout_add_seconds(SOCKET_TIMEOUT, connect_timeout, &open_host);
+#endif
 
     guint id = g_idle_add(open_host_idle_cb, &open_host);
     /* switch to main loop and wait for connection */
     coroutine_yield(NULL);
-    g_source_remove (id);
+    g_source_remove(id);
+
+#if !GLIB_CHECK_VERSION(2,26,0)
+    if (open_host.timeout_id == 0)
+        open_host.error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                                      "connect timed out");
+    else
+        g_source_remove(open_host.timeout_id);
+#endif
 
     if (open_host.error != NULL) {
         g_warning("%s", open_host.error->message);
@@ -1839,6 +1870,9 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
     } else if (open_host.connection != NULL) {
         GSocket *socket;
         socket = g_socket_connection_get_socket(open_host.connection);
+#if GLIB_CHECK_VERSION(2,26,0)
+        g_socket_set_timeout(socket, 0);
+#endif
         g_socket_set_blocking(socket, FALSE);
         g_socket_set_keepalive(socket, TRUE);
     }
