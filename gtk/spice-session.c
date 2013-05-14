@@ -1969,18 +1969,6 @@ int spice_session_get_connection_id(SpiceSession *session)
     return s->connection_id;
 }
 
-#if !GLIB_CHECK_VERSION(2,27,2)
-static guint64 g_get_monotonic_time(void)
-{
-    GTimeVal tv;
-
-    /* TODO: support real monotonic clock? */
-    g_get_current_time(&tv);
-
-    return (((gint64) tv.tv_sec) * 1000000) + tv.tv_usec;
-}
-#endif
-
 G_GNUC_INTERNAL
 guint32 spice_session_get_mm_time(SpiceSession *session)
 {

@@ -101,3 +101,14 @@ g_slist_free_full(GSList         *list,
 G_DEFINE_BOXED_TYPE (GMainContext, spice_main_context, g_main_context_ref, g_main_context_unref)
 #endif
 
+#if !GLIB_CHECK_VERSION(2,27,2)
+guint64 g_get_monotonic_time(void)
+{
+    GTimeVal tv;
+
+    /* TODO: support real monotonic clock? */
+    g_get_current_time(&tv);
+
+    return (((gint64) tv.tv_sec) * 1000000) + tv.tv_usec;
+}
+#endif
