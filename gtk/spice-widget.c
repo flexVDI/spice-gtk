@@ -46,17 +46,16 @@
 
 /* Some compatibility defines to let us build on both Gtk2 and Gtk3 */
 #if GTK_CHECK_VERSION (2, 91, 0)
-
 static inline void gdk_drawable_get_size(GdkWindow *w, gint *ww, gint *wh)
 {
     *ww = gdk_window_get_width(w);
     *wh = gdk_window_get_height(w);
 }
+#endif
 
-#define GtkObject GtkWidget
-#define GtkObjectClass GtkWidgetClass
-#define GTK_OBJECT_CLASS(c) GTK_WIDGET_CLASS(c)
-
+#if !GTK_CHECK_VERSION (2, 91, 0)
+#define GDK_IS_X11_DISPLAY(D) TRUE
+#define gdk_window_get_display(W) gdk_drawable_get_display(GDK_DRAWABLE(W))
 #endif
 
 #if !GTK_CHECK_VERSION(2, 20, 0)

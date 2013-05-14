@@ -48,6 +48,11 @@
 #define GDK_Tab GDK_KEY_Tab
 #endif
 
+#if !GLIB_CHECK_VERSION(3,0,0)
+#define gdk_window_get_display(W) gdk_drawable_get_display(GDK_DRAWABLE(W))
+#endif
+
+
 /* keycode translation for sending ISO_Left_Send
  * to vncserver
  */
