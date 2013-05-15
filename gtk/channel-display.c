@@ -1510,7 +1510,7 @@ static void destroy_stream(SpiceChannel *channel, int id)
 {
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     display_stream *st;
-    uint64_t drops_duration_total = 0;
+    guint64 drops_duration_total = 0;
     int i;
 
     g_return_if_fail(c != NULL);
@@ -1543,7 +1543,7 @@ static void destroy_stream(SpiceChannel *channel, int id)
                                    stats->duration);
     }
     if (st->num_drops_seqs) {
-        CHANNEL_DEBUG(channel, "%s: drops total duration %lu ==>", __FUNCTION__, drops_duration_total);
+        CHANNEL_DEBUG(channel, "%s: drops total duration %"G_GUINT64_FORMAT" ==>", __FUNCTION__, drops_duration_total);
     }
 
     g_array_free(st->drops_seqs_stats_arr, TRUE);
