@@ -672,10 +672,16 @@ static LRESULT CALLBACK keyboard_hook_cb(int code, WPARAM wparam, LPARAM lparam)
         case VK_NUMLOCK:
         case VK_LSHIFT:
         case VK_RSHIFT:
-        case VK_LCONTROL:
         case VK_RCONTROL:
         case VK_LMENU:
         case VK_RMENU:
+            break;
+        case VK_LCONTROL:
+            /* When pressing AltGr, an extra VK_LCONTROL with a special
+             * scancode with bit 9 set is sent. Let's ignore the extra
+             * VK_LCONTROL, as that will make AltGr misbehave. */
+            if (hooked->scanCode & 0x200)
+                return 1;
             break;
         default:
             SendMessage(win32_window, wparam, hooked->vkCode, dwmsg);
