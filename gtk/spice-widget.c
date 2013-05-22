@@ -482,6 +482,7 @@ static gboolean grab_broken(SpiceDisplay *self, GdkEventGrabBroken *event,
 
     if (event->keyboard) {
         try_keyboard_ungrab(self);
+        release_keys(self);
     }
 
     /* always release mouse when grab broken, this could be more
