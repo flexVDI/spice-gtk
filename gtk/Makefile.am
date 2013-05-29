@@ -455,9 +455,12 @@ spice-glib-enums.c: spice-channel.h channel-inputs.h spice-session.h
 			--vprod "  { @VALUENAME@, \"@VALUENAME@\", \"@valuenick@\" }," \
 			--vtail "  { 0, NULL, NULL }\n};\n\n" \
 			--vtail "GType\n@enum_name@_get_type (void)\n{\n" \
-			--vtail "  static GType type = 0;\n\n" \
-			--vtail "  if (!type)\n" \
-			--vtail "    type = g_@type@_register_static (\"@EnumName@\", _@enum_name@_values);\n\n" \
+			--vtail "  static GType type = 0;\n" \
+			--vtail "  static volatile gsize type_volatile = 0;\n\n" \
+			--vtail "  if (g_once_init_enter(&type_volatile)) {\n" \
+			--vtail "    type = g_@type@_register_static (\"@EnumName@\", _@enum_name@_values);\n" \
+			--vtail "    g_once_init_leave(&type_volatile, type);\n" \
+			--vtail "  }\n\n" \
 			--vtail "  return type;\n}\n\n" \
 		$^ > $@
 
@@ -479,9 +482,12 @@ spice-widget-enums.c: spice-widget.h
 			--vprod "  { @VALUENAME@, \"@VALUENAME@\", \"@valuenick@\" }," \
 			--vtail "  { 0, NULL, NULL }\n};\n\n" \
 			--vtail "GType\n@enum_name@_get_type (void)\n{\n" \
-			--vtail "  static GType type = 0;\n\n" \
-			--vtail "  if (!type)\n" \
-			--vtail "    type = g_@type@_register_static (\"@EnumName@\", _@enum_name@_values);\n\n" \
+			--vtail "  static GType type = 0;\n" \
+			--vtail "  static volatile gsize type_volatile = 0;\n\n" \
+			--vtail "  if (g_once_init_enter(&type_volatile)) {\n" \
+			--vtail "    type = g_@type@_register_static (\"@EnumName@\", _@enum_name@_values);\n" \
+			--vtail "    g_once_init_leave(&type_volatile, type);\n" \
+			--vtail "  }\n\n" \
 			--vtail "  return type;\n}\n\n" \
 		$< > $@
 
