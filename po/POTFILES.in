@@ -2,11 +2,6 @@ data/spice-mime.xml.in
 data/spicy.desktop.in.in
 gtk/channel-usbredir.c
 gtk/desktop-integration.c
-gtk/display/display-name.c
-gtk/display/gnome-rr-config.c
-gtk/display/gnome-rr-generic.c
-gtk/display/gnome-rr-windows.c
-gtk/display/gnome-rr-x11.c
 gtk/spice-cmdline.c
 gtk/spice-option.c
 gtk/spicy-screenshot.c
