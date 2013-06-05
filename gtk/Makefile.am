@@ -255,6 +255,8 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	usbutil.c					\
 	usbutil.h					\
 	$(USB_ACL_HELPER_SRCS)				\
+	vmcstream.c					\
+	vmcstream.h					\
 							\
 	decode.h					\
 	decode-glz.c					\
