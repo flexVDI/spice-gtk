@@ -536,6 +536,50 @@ gboolean spice_smartcard_manager_init_finish(SpiceSession *session,
 }
 
 /**
+ * spice_smartcard_reader_insert_card:
+ * @reader: a #SpiceSmartcardReader
+ *
+ * Simulates insertion of a smartcard in the software smartcard reader
+ * @reader. If @reader is not a software smartcard reader, FALSE will be
+ * returned.
+ *
+ * Returns: TRUE if insertion of a card was successfully simulated, FALSE
+ * otherwise
+ */
+gboolean spice_smartcard_reader_insert_card(SpiceSmartcardReader *reader)
+{
+    VCardEmulError status;
+
+    g_return_val_if_fail(spice_smartcard_reader_is_software(reader), FALSE);
+
+    status = vcard_emul_force_card_insert((VReader *)reader);
+
+    return (status == VCARD_EMUL_OK);
+}
+
+/**
+ * spice_smartcard_reader_remove_card:
+ * @reader: a #SpiceSmartcardReader
+ *
+ * Simulates removal of a smartcard from the software smartcard reader
+ * @reader. If @reader is not a software smartcard reader, FALSE will be
+ * returned.
+ *
+ * Returns: TRUE if removal of a card was successfully simulated, FALSE
+ * otherwise
+ */
+gboolean spice_smartcard_reader_remove_card(SpiceSmartcardReader *reader)
+{
+    VCardEmulError status;
+
+    g_return_val_if_fail(spice_smartcard_reader_is_software(reader), FALSE);
+
+    status = vcard_emul_force_card_remove((VReader *)reader);
+
+    return (status == VCARD_EMUL_OK);
+}
+
+/**
  * spice_smartcard_manager_insert_card:
  * @manager: a #SpiceSmartcardManager
  *
@@ -550,14 +594,13 @@ gboolean spice_smartcard_manager_init_finish(SpiceSession *session,
  */
 gboolean spice_smartcard_manager_insert_card(SpiceSmartcardManager *manager)
 {
-    VCardEmulError status;
+    SpiceSmartcardReader *reader;
 
-    if (manager->priv->software_reader != NULL)
-        return FALSE;
+    g_return_val_if_fail (manager->priv->software_reader != NULL, FALSE);
 
-    status = vcard_emul_force_card_insert(manager->priv->software_reader);
+    reader = (SpiceSmartcardReader *)manager->priv->software_reader;
 
-    return (status == VCARD_EMUL_OK);
+    return spice_smartcard_reader_insert_card(reader);
 }
 
 /**
@@ -573,14 +616,13 @@ gboolean spice_smartcard_manager_insert_card(SpiceSmartcardManager *manager)
  */
 gboolean spice_smartcard_manager_remove_card(SpiceSmartcardManager *manager)
 {
-    VCardEmulError status;
+    SpiceSmartcardReader *reader;
 
-    if (manager->priv->software_reader != NULL)
-        return FALSE;
+    g_return_val_if_fail (manager->priv->software_reader != NULL, FALSE);
 
-    status = vcard_emul_force_card_remove(manager->priv->software_reader);
+    reader = (SpiceSmartcardReader *)manager->priv->software_reader;
 
-    return (status == VCARD_EMUL_OK);
+    return spice_smartcard_reader_remove_card(reader);
 }
 #else
 gboolean spice_smartcard_reader_is_software(SpiceSmartcardReader *reader)
@@ -616,4 +658,15 @@ gboolean spice_smartcard_manager_remove_card(SpiceSmartcardManager *manager)
 {
     return FALSE;
 }
+
+gboolean spice_smartcard_reader_insert_card(SpiceSmartcardReader *reader)
+{
+    return FALSE;
+}
+
+gboolean spice_smartcard_reader_remove_card(SpiceSmartcardReader *reader)
+{
+    return FALSE;
+}
+
 #endif /* USE_SMARTCARD */

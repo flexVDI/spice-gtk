@@ -71,6 +71,8 @@ SpiceSmartcardManager *spice_smartcard_manager_get(void);
 gboolean spice_smartcard_manager_insert_card(SpiceSmartcardManager *manager);
 gboolean spice_smartcard_manager_remove_card(SpiceSmartcardManager *manager);
 gboolean spice_smartcard_reader_is_software(SpiceSmartcardReader *reader);
+gboolean spice_smartcard_reader_insert_card(SpiceSmartcardReader *reader);
+gboolean spice_smartcard_reader_remove_card(SpiceSmartcardReader *reader);
 
 G_END_DECLS
 
