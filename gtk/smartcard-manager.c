@@ -552,7 +552,8 @@ gboolean spice_smartcard_manager_insert_card(SpiceSmartcardManager *manager)
 {
     VCardEmulError status;
 
-    g_return_val_if_fail(manager->priv->software_reader != NULL, FALSE);
+    if (manager->priv->software_reader != NULL)
+        return FALSE;
 
     status = vcard_emul_force_card_insert(manager->priv->software_reader);
 
@@ -574,7 +575,8 @@ gboolean spice_smartcard_manager_remove_card(SpiceSmartcardManager *manager)
 {
     VCardEmulError status;
 
-    g_return_val_if_fail(manager->priv->software_reader != NULL, FALSE);
+    if (manager->priv->software_reader != NULL)
+        return FALSE;
 
     status = vcard_emul_force_card_remove(manager->priv->software_reader);
 
