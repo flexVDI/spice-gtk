@@ -91,6 +91,7 @@ spice_session_verify_get_type;
 spice_set_session_option;
 spice_smartcard_channel_get_type;
 spice_smartcard_manager_get;
+spice_smartcard_manager_get_readers;
 spice_smartcard_manager_get_type;
 spice_smartcard_manager_insert_card;
 spice_smartcard_manager_remove_card;

@@ -580,6 +580,45 @@ gboolean spice_smartcard_reader_remove_card(SpiceSmartcardReader *reader)
 }
 
 /**
+ * spice_smartcard_manager_get_readers:
+ *
+ * manager: a #SpiceSmartcardManager
+ *
+ * Gets the list of smartcard readers that are currently available, they
+ * can be either software (emulated) readers, or hardware ones.
+ *
+ * Returns: (element-type SpiceSmartcardReader) (transfer full): a newly
+ * allocated list of SpiceSmartcardReader instances, or NULL if none were
+ * found. When no longer needed, the list must be freed after unreferencing
+ * its elements with g_boxed_free()
+ */
+GList *spice_smartcard_manager_get_readers(SpiceSmartcardManager *manager)
+{
+
+    GList *readers = NULL;
+    VReaderList *vreader_list;
+    VReaderListEntry *entry;
+
+    vreader_list = vreader_get_reader_list();
+
+    if (vreader_list == NULL)
+        return NULL;
+
+    for (entry = vreader_list_get_first(vreader_list);
+         entry != NULL;
+         entry = vreader_list_get_next(entry)) {
+        VReader *reader;
+
+        reader = vreader_list_get_reader(entry);
+        g_warn_if_fail(reader != NULL);
+        readers = g_list_prepend(readers, vreader_reference(reader));
+    }
+    vreader_list_delete(vreader_list);
+
+    return g_list_reverse(readers);
+}
+
+/**
  * spice_smartcard_manager_insert_card:
  * @manager: a #SpiceSmartcardManager
  *
@@ -667,6 +706,11 @@ gboolean spice_smartcard_reader_insert_card(SpiceSmartcardReader *reader)
 gboolean spice_smartcard_reader_remove_card(SpiceSmartcardReader *reader)
 {
     return FALSE;
+}
+
+GList *spice_smartcard_manager_get_readers(SpiceSmartcardManager *manager)
+{
+    return NULL;
 }
 
 #endif /* USE_SMARTCARD */
