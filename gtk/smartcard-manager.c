@@ -402,21 +402,6 @@ spice_smartcard_manager_update_monitor(void)
 
 #define SPICE_SOFTWARE_READER_NAME "Spice Software Smartcard"
 
-/**
- * spice_smartcard_reader_is_software:
- * @reader: a #SpiceSmartcardReader
- *
- * Tests if @reader is a software (emulated) smartcard reader.
- *
- * Returns: TRUE if @reader is a software (emulated) smartcard reader,
- * FALSE otherwise
- */
-gboolean spice_smartcard_reader_is_software(SpiceSmartcardReader *reader)
-{
-    g_return_val_if_fail(reader != NULL, FALSE);
-    return (strcmp(vreader_get_name((VReader*)reader), SPICE_SOFTWARE_READER_NAME) == 0);
-}
-
 static gboolean smartcard_manager_init(SpiceSession *session,
                                        GCancellable *cancellable,
                                        GError **err)
@@ -533,6 +518,21 @@ gboolean spice_smartcard_manager_init_finish(SpiceSession *session,
     spice_smartcard_manager_update_monitor();
 
     return TRUE;
+}
+
+/**
+ * spice_smartcard_reader_is_software:
+ * @reader: a #SpiceSmartcardReader
+ *
+ * Tests if @reader is a software (emulated) smartcard reader.
+ *
+ * Returns: TRUE if @reader is a software (emulated) smartcard reader,
+ * FALSE otherwise
+ */
+gboolean spice_smartcard_reader_is_software(SpiceSmartcardReader *reader)
+{
+    g_return_val_if_fail(reader != NULL, FALSE);
+    return (strcmp(vreader_get_name((VReader*)reader), SPICE_SOFTWARE_READER_NAME) == 0);
 }
 
 /**
