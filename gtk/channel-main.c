@@ -1181,6 +1181,24 @@ static void agent_announce_caps(SpiceMainChannel *channel)
 #define HAS_CLIPBOARD_SELECTION(c) \
     VD_AGENT_HAS_CAPABILITY((c)->agent_caps, G_N_ELEMENTS((c)->agent_caps), VD_AGENT_CAP_CLIPBOARD_SELECTION)
 
+#define GUEST_LINEEND_LF(c) \
+    VD_AGENT_HAS_CAPABILITY((c)->agent_caps, G_N_ELEMENTS((c)->agent_caps), VD_AGENT_CAP_GUEST_LINEEND_LF)
+
+#define GUEST_LINEEND_CRLF(c) \
+    VD_AGENT_HAS_CAPABILITY((c)->agent_caps, G_N_ELEMENTS((c)->agent_caps), VD_AGENT_CAP_GUEST_LINEEND_CRLF)
+
+#ifdef G_OS_UNIX
+#define CLIENT_LINEEND_LF 1
+#else
+#define CLIENT_LINEEND_LF 0
+#endif
+
+#ifdef G_OS_WIN32
+#define CLIENT_LINEEND_CRLF 1
+#else
+#define CLIENT_LINEEND_CRLF 0
+#endif
+
 /* any context: the message is not flushed immediately,
    you can wakeup() the channel coroutine or send_msg_queue() */
 static void agent_clipboard_grab(SpiceMainChannel *channel, guint selection,
@@ -1751,6 +1769,29 @@ static void file_xfer_handle_status(SpiceMainChannel *channel,
     file_xfer_completed(task, error);
 }
 
+/* any context */
+static guchar *convert_lineend(const guchar *in, gsize *size,
+                               const gchar *from, const gchar *to)
+{
+    gchar *nul_terminated, **split, *out;
+
+    /* Nul-terminate */
+    nul_terminated = g_malloc(*size + 1);
+    memcpy(nul_terminated, in, *size);
+    nul_terminated[*size] = 0;
+
+    /* Convert */
+    split = g_strsplit(nul_terminated, from, -1);
+    out = g_strjoinv(to, split);
+    *size = strlen(out);
+
+    /* Clean-up */
+    g_strfreev(split);
+    g_free(nul_terminated);
+
+    return (guchar *)out;
+}
+
 /* coroutine context */
 static void main_agent_handle_msg(SpiceChannel *channel,
                                   VDAgentMessage *msg, gpointer payload)
@@ -1809,12 +1850,22 @@ static void main_agent_handle_msg(SpiceChannel *channel,
     case VD_AGENT_CLIPBOARD:
     {
         VDAgentClipboard *cb = payload;
+        guchar *data = cb->data;
+        gsize size = msg->size - sizeof(VDAgentClipboard);
+        if (cb->type == VD_AGENT_CLIPBOARD_UTF8_TEXT) {
+            if (GUEST_LINEEND_LF(c) && CLIENT_LINEEND_CRLF)
+                data = convert_lineend(data, &size, "\n", "\r\n");
+            if (GUEST_LINEEND_CRLF(c) && CLIENT_LINEEND_LF)
+                data = convert_lineend(data, &size, "\r\n", "\n");
+        }
         emit_main_context(channel, SPICE_MAIN_CLIPBOARD_SELECTION, selection,
-                          cb->type, cb->data, msg->size - sizeof(VDAgentClipboard));
+                          cb->type, data, size);
 
-       if (selection == VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD)
+        if (selection == VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD)
             emit_main_context(channel, SPICE_MAIN_CLIPBOARD,
-                              cb->type, cb->data, msg->size - sizeof(VDAgentClipboard));
+                              cb->type, data, size);
+        if (data != cb->data)
+            g_free(data);
         break;
     }
     case VD_AGENT_CLIPBOARD_GRAB:
@@ -2554,13 +2605,27 @@ void spice_main_clipboard_notify(SpiceMainChannel *channel,
  * Since: 0.6
  **/
 void spice_main_clipboard_selection_notify(SpiceMainChannel *channel, guint selection,
-                                           guint32 type, const guchar *data, size_t size)
+                                           guint32 type, const guchar *_data, size_t _size)
 {
+    const guchar *data = _data;
+    gsize size = _size;
+
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
+    SpiceMainChannelPrivate *c = channel->priv;
+
+    if (type == VD_AGENT_CLIPBOARD_UTF8_TEXT) {
+        if (CLIENT_LINEEND_CRLF && GUEST_LINEEND_LF(c))
+            data = convert_lineend(data, &size, "\r\n", "\n");
+        if (CLIENT_LINEEND_LF && GUEST_LINEEND_CRLF(c))
+            data = convert_lineend(data, &size, "\n", "\r\n");
+    }
     agent_clipboard_notify(channel, selection, type, data, size);
     spice_channel_wakeup(SPICE_CHANNEL(channel), FALSE);
+
+    if (data != _data)
+        g_free((guchar *)data);
 }
 
 /**
