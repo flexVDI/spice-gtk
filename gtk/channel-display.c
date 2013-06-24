@@ -79,6 +79,7 @@ struct _SpiceDisplayChannelPrivate {
     guint                       mark_false_event_id;
     GArray                      *monitors;
     guint                       monitors_max;
+    gboolean                    enable_adaptive_streaming;
 #ifdef WIN32
     HDC dc;
 #endif
@@ -693,7 +694,9 @@ static void spice_display_channel_reset_capabilities(SpiceChannel *channel)
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_MONITORS_CONFIG);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_COMPOSITE);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_A8_SURFACE);
-    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_STREAM_REPORT);
+    if (SPICE_DISPLAY_CHANNEL(channel)->priv->enable_adaptive_streaming) {
+        spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_STREAM_REPORT);
+    }
 }
 
 static void spice_display_channel_init(SpiceDisplayChannel *channel)
@@ -710,6 +713,13 @@ static void spice_display_channel_init(SpiceDisplayChannel *channel)
     c->dc = create_compatible_dc();
 #endif
     c->monitors_max = 1;
+
+    if (g_getenv("SPICE_DISABLE_ADAPTIVE_STREAMING")) {
+        SPICE_DEBUG("adaptive video disabled");
+        c->enable_adaptive_streaming = FALSE;
+    } else {
+        c->enable_adaptive_streaming = TRUE;
+    }
     spice_display_channel_reset_capabilities(SPICE_CHANNEL(channel));
 }
 
@@ -1471,11 +1481,13 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
         }
         st->playback_sync_drops_seq_len = 0;
     }
-    display_update_stream_report(SPICE_DISPLAY_CHANNEL(channel), op->id,
-                                 op->multi_media_time, latency);
-    if (st->playback_sync_drops_seq_len >= STREAM_PLAYBACK_SYNC_DROP_SEQ_LEN_LIMIT) {
-        spice_session_sync_playback_latency(spice_channel_get_session(channel));
-        st->playback_sync_drops_seq_len = 0;
+    if (c->enable_adaptive_streaming) {
+        display_update_stream_report(SPICE_DISPLAY_CHANNEL(channel), op->id,
+                                     op->multi_media_time, latency);
+        if (st->playback_sync_drops_seq_len >= STREAM_PLAYBACK_SYNC_DROP_SEQ_LEN_LIMIT) {
+            spice_session_sync_playback_latency(spice_channel_get_session(channel));
+            st->playback_sync_drops_seq_len = 0;
+        }
     }
 }
 
