@@ -1511,6 +1511,7 @@ static void destroy_stream(SpiceChannel *channel, int id)
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     display_stream *st;
     guint64 drops_duration_total = 0;
+    guint32 num_out_frames;
     int i;
 
     g_return_if_fail(c != NULL);
@@ -1521,29 +1522,31 @@ static void destroy_stream(SpiceChannel *channel, int id)
     if (!st)
         return;
 
-    CHANNEL_DEBUG(channel, "%s: id %d #frames-in %d #drops-on-arive %d (%.2f) avg-late-time %.2f"
-        " #drops-on-playback %d (%.2f)", __FUNCTION__,
+    num_out_frames = st->num_input_frames - st->num_drops_on_arive - st->num_drops_on_playback;
+    CHANNEL_DEBUG(channel, "%s: id=%d #in-frames=%d out/in=%.2f "
+        "#drops-on-arrive=%d avg-late-time(ms)=%.2f "
+        "#drops-on-playback=%d", __FUNCTION__,
         id,
         st->num_input_frames,
-        st->num_drops_on_arive, st->num_drops_on_arive / ((double)st->num_input_frames),
+        num_out_frames / (double)st->num_input_frames,
+        st->num_drops_on_arive,
         st->num_drops_on_arive ? st->arrive_late_time / ((double)st->num_drops_on_arive): 0,
-        st->num_drops_on_playback,
-        st->num_drops_on_playback / ((double)st->num_input_frames));
+        st->num_drops_on_playback);
     if (st->num_drops_seqs) {
-        CHANNEL_DEBUG(channel, "%s: #drops sequences %u ==>", __FUNCTION__, st->num_drops_seqs);
+        CHANNEL_DEBUG(channel, "%s: #drops-sequences=%u ==>", __FUNCTION__, st->num_drops_seqs);
     }
     for (i = 0; i < st->num_drops_seqs; i++) {
             drops_sequence_stats *stats = &g_array_index(st->drops_seqs_stats_arr,
                                                          drops_sequence_stats,
                                                          i);
             drops_duration_total += stats->duration;
-            CHANNEL_DEBUG(channel, "%s: \t len %u start-ms %u duration-ms %u", __FUNCTION__,
+            CHANNEL_DEBUG(channel, "%s: \t len=%u start-ms=%u duration-ms=%u", __FUNCTION__,
                                    stats->len,
                                    stats->start_mm_time - st->first_frame_mm_time,
                                    stats->duration);
     }
     if (st->num_drops_seqs) {
-        CHANNEL_DEBUG(channel, "%s: drops total duration %"G_GUINT64_FORMAT" ==>", __FUNCTION__, drops_duration_total);
+        CHANNEL_DEBUG(channel, "%s: drops-total-duration=%"G_GUINT64_FORMAT" ==>", __FUNCTION__, drops_duration_total);
     }
 
     g_array_free(st->drops_seqs_stats_arr, TRUE);
