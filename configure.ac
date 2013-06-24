@@ -7,7 +7,7 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_AUX_DIR([build-aux])
 
-AM_INIT_AUTOMAKE([foreign dist-bzip2 -Wall -Werror])
+AM_INIT_AUTOMAKE([foreign dist-bzip2 -Wall -Werror -Wno-portability])
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 LT_INIT
 AM_MAINTAINER_MODE
