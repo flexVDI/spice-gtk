@@ -1188,7 +1188,10 @@ SpiceUsbDeviceManager *spice_usb_device_manager_get(SpiceSession *session,
  * @filter: filter string for selecting which devices to return, see
  *      #SpiceUsbDeviceManager:auto-connect-filter for the filter string format
  *
- * Returns: (element-type SpiceUsbDevice) (transfer full): a %GPtrArray array of %SpiceUsbDevice
+ * Returns: (element-type SpiceUsbDevice) (transfer full): a
+ * %GPtrArray array of %SpiceUsbDevice
+ *
+ * Since: 0.20
  */
 GPtrArray* spice_usb_device_manager_get_devices_with_filter(
     SpiceUsbDeviceManager *self, const gchar *filter)

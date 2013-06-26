@@ -591,6 +591,8 @@ gboolean spice_smartcard_reader_remove_card(SpiceSmartcardReader *reader)
  * allocated list of SpiceSmartcardReader instances, or NULL if none were
  * found. When no longer needed, the list must be freed after unreferencing
  * its elements with g_boxed_free()
+ *
+ * Since: 0.20
  */
 GList *spice_smartcard_manager_get_readers(SpiceSmartcardManager *manager)
 {
@@ -630,6 +632,8 @@ GList *spice_smartcard_manager_get_readers(SpiceSmartcardManager *manager)
  *
  * Returns: TRUE if smartcard insertion was successfully simulated, FALSE
  * if this failed, or if software smartcard support isn't enabled.
+ *
+ * Since: 0.20
  */
 gboolean spice_smartcard_manager_insert_card(SpiceSmartcardManager *manager)
 {
@@ -652,6 +656,8 @@ gboolean spice_smartcard_manager_insert_card(SpiceSmartcardManager *manager)
  *
  * Returns: TRUE if smartcard removal was successfully simulated, FALSE
  * if this failed, or if software smartcard support isn't enabled.
+ *
+ * Since: 0.20
  */
 gboolean spice_smartcard_manager_remove_card(SpiceSmartcardManager *manager)
 {
