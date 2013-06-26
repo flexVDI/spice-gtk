@@ -98,6 +98,7 @@ spice_channel_disconnect
 spice_channel_test_capability
 spice_channel_test_common_capability
 spice_channel_type_to_string
+spice_channel_string_to_type
 spice_channel_set_capability
 spice_channel_flush_async
 spice_channel_flush_finish

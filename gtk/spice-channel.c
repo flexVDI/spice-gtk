@@ -1884,6 +1884,15 @@ static const char *to_string[] = {
     [ SPICE_CHANNEL_PORT ] = "port",
 };
 
+/**
+ * spice_channel_type_to_string:
+ * @type: a channel-type property value
+ *
+ * Convert a channel-type property value to a string.
+ *
+ * Returns: string representation of @type.
+ * Since: 0.20
+ **/
 const gchar* spice_channel_type_to_string(gint type)
 {
     const char *str = NULL;
@@ -1895,6 +1904,15 @@ const gchar* spice_channel_type_to_string(gint type)
     return str ? str : "unknown channel type";
 }
 
+/**
+ * spice_channel_string_to_type:
+ * @str: a string representation of the channel-type property
+ *
+ * Convert a channel-type property value to a string.
+ *
+ * Returns: the channel-type property value for a @str channel
+ * Since: 0.21
+ **/
 gint spice_channel_string_to_type(const gchar *str)
 {
     int i;
