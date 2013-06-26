@@ -1,3 +1,13 @@
+v0.20
+=====
+
+- adaptive video streaming support (sync with PulseAudio backend only)
+- add spice_usb_device_manager_get_devices_with_filter()
+- add --spice-secure-channels to explicitely specify secure channels
+- multi-monitor, win32, USB redir fixes
+- add basic gtk+ wayland and broadway backend support
+- removed the GnomeRR code
+
 v0.19
 =====
 
