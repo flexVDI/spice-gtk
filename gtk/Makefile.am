@@ -606,6 +606,7 @@ gtk_introspection_files =				\
 	spice-gtk-session.c				\
 	spice-widget.c					\
 	spice-grabsequence.c				\
+	usb-device-widget.c				\
 	$(NULL)
 
 SpiceClientGLib-2.0.gir: libspice-client-glib-2.0.la
