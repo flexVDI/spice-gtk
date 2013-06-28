@@ -328,7 +328,8 @@ static void spice_usb_device_widget_init(SpiceUsbDeviceWidget *self)
 /**
  * spice_usb_device_widget_new:
  * @session: #SpiceSession for which to widget will control USB redirection
- * @device_format_string: String passed to spice_usb_device_get_description()
+ * @device_format_string: (allow-none): String passed to
+ * spice_usb_device_get_description()
  *
  * Returns: a new #SpiceUsbDeviceWidget instance
  */

@@ -1305,8 +1305,9 @@ SpiceUsbDeviceManager *spice_usb_device_manager_get(SpiceSession *session,
 /**
  * spice_usb_device_manager_get_devices_with_filter:
  * @manager: the #SpiceUsbDeviceManager manager
- * @filter: filter string for selecting which devices to return, see
- *      #SpiceUsbDeviceManager:auto-connect-filter for the filter string format
+ * @filter: (allow-none): filter string for selecting which devices to return,
+ *      see #SpiceUsbDeviceManager:auto-connect-filter for the f ilter
+ *      string format
  *
  * Returns: (element-type SpiceUsbDevice) (transfer full): a
  * %GPtrArray array of %SpiceUsbDevice
@@ -1658,7 +1659,8 @@ spice_usb_device_manager_can_redirect_device(SpiceUsbDeviceManager  *self,
 /**
  * spice_usb_device_get_description:
  * @device: #SpiceUsbDevice to get the description of
- * @format: an optionnal printf() format string with positional parameters
+ * @format: (allow-none): an optional printf() format string with
+ * positional parameters
  *
  * Get a string describing the device which is suitable as a description of
  * the device for the end user. The returned string should be freed with
