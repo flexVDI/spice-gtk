@@ -367,21 +367,34 @@ else
   if test "x$have_usbredir" = "xno" && test "x$enable_usbredir" = "xyes"; then
     AC_MSG_ERROR([usbredir support explicitly requested, but some required packages are not available])
   fi
-  if test "x$have_usbredir" = "xyes"; then
-    AC_DEFINE(USE_USBREDIR, [1], [Define if supporting usbredir proxying])
+
+  # On non windows we need either libusb hotplug support or gudev
+  if test "x$have_usbredir" = "xyes" && test "x$os_win32" = "xno"; then
+    PKG_CHECK_MODULES([LIBUSB_HOTPLUG], [libusb-1.0 >= 1.0.16],
+                      [have_libusb_hotplug=yes], [have_libusb_hotplug=no])
+    if test "x$have_libusb_hotplug" = "xyes"; then
+      AC_DEFINE(USE_LIBUSB_HOTPLUG, [1], [Define if libusb has hotplug support])
+      with_usbredir_hotplug="with libusb hotplug"
+    else
+      PKG_CHECK_MODULES([GUDEV],
+                        [gudev-1.0],
+                        [have_gudev=yes],
+                        [have_gudev=no])
+
+      if test "x$have_gudev" = "xno" && test "x$enable_usbredir" = "xyes"; then
+        AC_MSG_ERROR([usbredir requested but required gudev is not available])
+      fi
+      if test "x$have_gudev" = "xyes"; then
+        AC_DEFINE(USE_GUDEV, [1], [Define if supporting gudev])
+        with_usbredir_hotplug="with gudev hotplug"
+      else
+        have_usbredir=no
+      fi
+    fi
   fi
 
-  # Require gudev for non-windows
-  if test "x$os_win32" = "xno"; then
-    PKG_CHECK_MODULES([GUDEV],
-                      [gudev-1.0],
-                      [have_gudev=yes],
-                      [have_gudev=no])
-
-    if test "x$have_usbredir" = "xyes" && test "x$have_gudev" = "xno"; then
-      AC_MSG_ERROR([usbredir requested but required gudev is not available])
-    fi
-    AC_DEFINE(USE_GUDEV, [1], [Define if supporting gudev])
+  if test "x$have_usbredir" = "xyes"; then
+    AC_DEFINE(USE_USBREDIR, [1], [Define if supporting usbredir proxying])
   fi
 fi
 AM_CONDITIONAL([WITH_USBREDIR], [test "x$have_usbredir" = "xyes"])
@@ -686,7 +699,7 @@ AC_MSG_NOTICE([
         Target:                   ${red_target}
         SASL support:             ${enable_sasl}
         Smartcard support:        ${have_smartcard}
-        USB redirection support:  ${have_usbredir}
+        USB redirection support:  ${have_usbredir} ${with_usbredir_hotplug}
         Gtk:                      $GTK_API_VERSION
 
         Now type 'make' to build $PACKAGE
