@@ -533,7 +533,7 @@ static void spice_usb_device_manager_class_init(SpiceUsbDeviceManagerClass *klas
      *
      * Use -1 for @class/@vendor/@product/@version to accept any value.
      *
-     * And the rules are themselves are concatonated like this:
+     * And the rules themselves are concatenated like this:
      *
      * @rule1|@rule2|@rule3
      *
