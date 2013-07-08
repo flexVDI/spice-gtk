@@ -101,6 +101,9 @@ static void spice_gstaudio_dispose(GObject *obj)
         g_object_unref(p->rchannel);
         p->rchannel = NULL;
     }
+
+    if (G_OBJECT_CLASS(spice_gstaudio_parent_class)->dispose)
+        G_OBJECT_CLASS(spice_gstaudio_parent_class)->dispose(obj);
 }
 
 static void spice_gstaudio_init(SpiceGstaudio *pulse)
