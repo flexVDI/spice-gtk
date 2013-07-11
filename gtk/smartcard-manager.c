@@ -408,6 +408,7 @@ static gboolean smartcard_manager_init(SpiceSession *session,
 {
     gchar *emul_args = NULL;
     VCardEmulOptions *options = NULL;
+    VCardEmulError emul_init_status;
     gchar *dbname = NULL;
     GStrv certificates = NULL;
     gboolean retval = FALSE;
@@ -448,7 +449,9 @@ static gboolean smartcard_manager_init(SpiceSession *session,
 
 init:
     SPICE_DEBUG("vcard_emul_init");
-    if (vcard_emul_init(options) != VCARD_EMUL_OK) {
+    emul_init_status = vcard_emul_init(options);
+    if ((emul_init_status != VCARD_EMUL_OK)
+            && (emul_init_status != VCARD_EMUL_INIT_ALREADY_INITED)) {
         *err = g_error_new(SPICE_CLIENT_ERROR,
                            SPICE_CLIENT_ERROR_FAILED,
                            "Failed to initialize smartcard");
