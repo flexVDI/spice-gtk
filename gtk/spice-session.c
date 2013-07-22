@@ -1251,6 +1251,7 @@ SpiceSession *spice_session_new_from_session(SpiceSession *session)
                  "enable-smartcard", &c->smartcard,
                  "enable-audio", &c->audio,
                  "enable-usbredir", &c->usbredir,
+                 "ca", &c->ca,
                  NULL);
 
     c->client_provided_sockets = s->client_provided_sockets;
