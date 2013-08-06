@@ -329,10 +329,10 @@ static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
 
 static void spice_usb_device_manager_dispose(GObject *gobject)
 {
+#ifdef USE_USBREDIR
     SpiceUsbDeviceManager *self = SPICE_USB_DEVICE_MANAGER(gobject);
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
 
-#ifdef USE_USBREDIR
 #ifdef USE_LIBUSB_HOTPLUG
     if (priv->hp_handle) {
         spice_usb_device_manager_stop_event_listening(self);
