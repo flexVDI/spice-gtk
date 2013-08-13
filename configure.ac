@@ -537,11 +537,13 @@ AM_CONDITIONAL(WITH_WINFIBER, [test "x$WITH_WINFIBER" = "x1"])
 AC_DEFINE_UNQUOTED(WITH_GTHREAD,[$WITH_GTHREAD], [Whether to use gthread coroutine impl])
 AM_CONDITIONAL(WITH_GTHREAD, [test "x$WITH_GTHREAD" = "x1"])
 
-AM_CONDITIONAL([HAVE_INTROSPECTION], [test "0" != "1"])
-PKG_CHECK_EXISTS([GOBJECT_INTROSPECTION],
-        [gobject-introspection-1.0 >= 0.9.4],
-        [has_symbol_prefix=yes], [:])
-GOBJECT_INTROSPECTION_CHECK([0.6.7])
+AM_CONDITIONAL([HAVE_INTROSPECTION], [test "0" = "1"])
+m4_ifdef([GOBJECT_INTROSPECTION_CHECK],[
+    PKG_CHECK_EXISTS([GOBJECT_INTROSPECTION],
+            [gobject-introspection-1.0 >= 0.9.4],
+            [has_symbol_prefix=yes], [:])
+    GOBJECT_INTROSPECTION_CHECK([0.6.7])
+])
 AM_CONDITIONAL([G_IR_SCANNER_SYMBOL_PREFIX], [test "x$has_symbol_prefix" = "xyes"])
 
 AC_ARG_ENABLE([controller],
