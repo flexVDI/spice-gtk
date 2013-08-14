@@ -135,6 +135,7 @@ enum {
     SPICE_USB_DEVICE_STATE_DISCONNECTING,
     SPICE_USB_DEVICE_STATE_INSTALLING,
     SPICE_USB_DEVICE_STATE_UNINSTALLING,
+    SPICE_USB_DEVICE_STATE_INSTALLED,
     SPICE_USB_DEVICE_STATE_MAX
 };
 
@@ -1106,7 +1107,11 @@ static void spice_usb_device_manager_drv_install_cb(GObject *gobject,
 
     spice_usb_device_unref(device);
 
-    spice_usb_device_set_state(device, SPICE_USB_DEVICE_STATE_NONE);
+    if (is_install) {
+        spice_usb_device_set_state(device, SPICE_USB_DEVICE_STATE_INSTALLED);
+    } else {
+        spice_usb_device_set_state(device, SPICE_USB_DEVICE_STATE_NONE);
+    }
 
     if (err) {
         g_warning("win usb driver %s failed -- %s", opstr, err->message);
@@ -1550,9 +1555,16 @@ void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
 #ifdef G_OS_WIN32
     SpiceWinUsbDriver *installer;
     UsbInstallCbInfo *cbinfo;
+    guint8 state;
 
     g_warn_if_fail(device != NULL);
     g_warn_if_fail(self->priv->installer != NULL);
+
+    state = spice_usb_device_get_state(device);
+    if ((state != SPICE_USB_DEVICE_STATE_INSTALLED) &&
+        (state != SPICE_USB_DEVICE_STATE_CONNECTED)) {
+        return;
+    }
 
     spice_usb_device_set_state(device, SPICE_USB_DEVICE_STATE_UNINSTALLING);
     if (! self->priv->installer) {
