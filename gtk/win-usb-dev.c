@@ -534,6 +534,9 @@ static gboolean g_udev_skip_search(GUdevDevice *udev)
     g_return_val_if_fail(udevinfo != NULL, FALSE);
 
     skip = ((udevinfo->addr == 0xff) ||  /* root hub (HCD) */
+#if defined(LIBUSBX_API_VERSION) && (LIBUSBX_API_VERSION >= 0x010000FF)
+            (udevinfo->addr == 1) || /* root hub addr for libusbx >= 1.0.13 */
+#endif
             (udevinfo->class == LIBUSB_CLASS_HUB) || /* hub*/
             (udevinfo->addr == 0)); /* bad address */
     return skip;
