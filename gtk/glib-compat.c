@@ -88,7 +88,7 @@ g_slist_free_full(GSList         *list,
 
     if (free_func) {
         for (el = list; el ; el = g_slist_next(el)) {
-            free_func(el);
+            free_func(el->data);
         }
     }
 
