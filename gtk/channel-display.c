@@ -700,13 +700,21 @@ static void spice_display_channel_reset_capabilities(SpiceChannel *channel)
     }
 }
 
+static void destroy_surface(gpointer data)
+{
+    display_surface *surface = data;
+
+    destroy_canvas(surface);
+    free(surface);
+}
+
 static void spice_display_channel_init(SpiceDisplayChannel *channel)
 {
     SpiceDisplayChannelPrivate *c;
 
     c = channel->priv = SPICE_DISPLAY_CHANNEL_GET_PRIVATE(channel);
 
-    c->surfaces = g_hash_table_new(NULL, NULL);
+    c->surfaces = g_hash_table_new_full(NULL, NULL, NULL, destroy_surface);
     c->image_cache.ops = &image_cache_ops;
     c->palette_cache.ops = &palette_cache_ops;
     c->image_surfaces.ops = &image_surfaces_ops;
@@ -743,8 +751,6 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
             emit_main_context(channel, SPICE_DISPLAY_PRIMARY_DESTROY);
 
             g_hash_table_remove(c->surfaces, GINT_TO_POINTER(0));
-            destroy_canvas(primary);
-            free(primary);
         }
 
         CHANNEL_DEBUG(channel, "Create primary canvas");
@@ -859,8 +865,6 @@ static void clear_surfaces(SpiceChannel *channel, gboolean keep_primary)
         }
 
         g_hash_table_iter_remove(&iter);
-        destroy_canvas(surface);
-        free(surface);
     }
 }
 
@@ -1784,8 +1788,6 @@ static void display_handle_surface_destroy(SpiceChannel *channel, SpiceMsgIn *in
     }
 
     g_hash_table_remove(c->surfaces, GINT_TO_POINTER(surface->surface_id));
-    destroy_canvas(surface);
-    free(surface);
 }
 
 #define CLAMP_CHECK(x, low, high)  (((x) > (high)) ? TRUE : (((x) < (low)) ? TRUE : FALSE))
