@@ -134,6 +134,8 @@ struct _SpiceChannelPrivate {
     gsize                       total_read_bytes;
     uint64_t                    last_message_serial;
     GSList                      *flushing;
+
+    gboolean                    disable_channel_msg;
 };
 
 SpiceMsgIn *spice_msg_in_new(SpiceChannel *channel);

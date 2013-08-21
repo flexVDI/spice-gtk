@@ -126,6 +126,10 @@ static void spice_channel_constructed(GObject *gobject)
              desc ? desc : "unknown", c->channel_type, c->channel_id);
     CHANNEL_DEBUG(channel, "%s", __FUNCTION__);
 
+    const char *disabled  = g_getenv("SPICE_DISABLE_CHANNELS");
+    if (disabled && strstr(disabled, desc))
+        c->disable_channel_msg = TRUE;
+
     c->connection_id = spice_session_get_connection_id(c->session);
     spice_session_channel_new(c->session, channel);
 
@@ -2075,6 +2079,7 @@ static void spice_channel_iterate_write(SpiceChannel *channel)
 static void spice_channel_iterate_read(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
+
     g_return_if_fail(c->state != SPICE_CHANNEL_STATE_MIGRATING);
 
     spice_channel_recv_msg(channel,
@@ -2771,6 +2776,8 @@ static void spice_channel_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
     spice_msg_handler handler;
 
     g_return_if_fail(type < klass->handlers->len);
+    if (type > SPICE_MSG_BASE_LAST && channel->priv->disable_channel_msg)
+        return;
 
     handler = g_array_index(klass->handlers, spice_msg_handler, type);
     g_return_if_fail(handler != NULL);
