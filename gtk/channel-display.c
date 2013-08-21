@@ -67,6 +67,7 @@
 
 struct _SpiceDisplayChannelPrivate {
     GHashTable                  *surfaces;
+    display_surface             *primary;
     display_cache               *images;
     display_cache               *palettes;
     SpiceImageCache             image_cache;
@@ -180,13 +181,11 @@ static void spice_display_get_property(GObject    *object,
 
     switch (prop_id) {
     case PROP_WIDTH: {
-        display_surface *surface = find_surface(c, 0);
-        g_value_set_uint(value, surface ? surface->width : 0);
+        g_value_set_uint(value, c->primary ? c->primary->width : 0);
         break;
     }
     case PROP_HEIGHT: {
-        display_surface *surface = find_surface(c, 0);
-        g_value_set_uint(value, surface ? surface->height : 0);
+        g_value_set_uint(value, c->primary ? c->primary->height : 0);
         break;
     }
     case PROP_MONITORS: {
@@ -739,18 +738,16 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
 
     if (surface->primary) {
-        display_surface *primary = find_surface(c, 0);
-
-        if (primary) {
-            if (primary->width == surface->width &&
-                primary->height == surface->height) {
+        if (c->primary) {
+            if (c->primary->width == surface->width &&
+                c->primary->height == surface->height) {
                 CHANNEL_DEBUG(channel, "Reusing existing primary surface");
                 return 0;
             }
 
             emit_main_context(channel, SPICE_DISPLAY_PRIMARY_DESTROY);
 
-            g_hash_table_remove(c->surfaces, GINT_TO_POINTER(0));
+            g_hash_table_remove(c->surfaces, GINT_TO_POINTER(c->primary->surface_id));
         }
 
         CHANNEL_DEBUG(channel, "Create primary canvas");
@@ -803,6 +800,8 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
     g_hash_table_insert(c->surfaces, GINT_TO_POINTER(surface->surface_id), surface);
 
     if (surface->primary) {
+        g_warn_if_fail(c->primary == NULL);
+        c->primary = surface;
         emit_main_context(channel, SPICE_DISPLAY_PRIMARY_CREATE,
                           surface->format, surface->width, surface->height,
                           surface->stride, surface->shmid, surface->data);
@@ -847,6 +846,9 @@ static void destroy_canvas(display_surface *surface)
 
 static display_surface *find_surface(SpiceDisplayChannelPrivate *c, guint32 surface_id)
 {
+    if (c->primary && c->primary->surface_id == surface_id)
+        return c->primary;
+
     return g_hash_table_lookup(c->surfaces, GINT_TO_POINTER(surface_id));
 }
 
@@ -944,10 +946,9 @@ static void display_handle_mode(SpiceChannel *channel, SpiceMsgIn *in)
 static void display_handle_mark(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
-    display_surface *surface = find_surface(c, 0);
 
     CHANNEL_DEBUG(channel, "%s", __FUNCTION__);
-    g_return_if_fail(surface != NULL);
+    g_return_if_fail(c->primary != NULL);
 #ifdef EXTRA_CHECKS
     g_warn_if_fail(c->mark == FALSE);
 #endif
@@ -960,7 +961,7 @@ static void display_handle_mark(SpiceChannel *channel, SpiceMsgIn *in)
 static void display_handle_reset(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
-    display_surface *surface = find_surface(c, 0);
+    display_surface *surface = c->primary;
 
     CHANNEL_DEBUG(channel, "%s: TODO detach_from_screen", __FUNCTION__);
 
@@ -1784,6 +1785,7 @@ static void display_handle_surface_destroy(SpiceChannel *channel, SpiceMsgIn *in
         if (id != 0 && c->mark_false_event_id == 0) {
             c->mark_false_event_id = g_timeout_add_seconds(1, display_mark_false, channel);
         }
+        c->primary = NULL;
         emit_main_context(channel, SPICE_DISPLAY_PRIMARY_DESTROY);
     }
 
