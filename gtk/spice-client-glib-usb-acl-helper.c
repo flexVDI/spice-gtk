@@ -348,7 +348,8 @@ int main(void)
             FATAL_ERROR("Parent process was reaped by init(1)\n");
             return 1;
     }
-    subject = polkit_unix_process_new(parent_pid);
+    /* Do what pkexec does */
+    subject = polkit_unix_process_new_for_owner(parent_pid, 0, getuid ());
 
     stdin_unix_stream = g_unix_input_stream_new(STDIN_FILENO, 0);
     stdin_stream = g_data_input_stream_new(stdin_unix_stream);
