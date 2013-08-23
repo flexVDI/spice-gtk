@@ -367,7 +367,6 @@ static gint get_selection_from_clipboard(SpiceGtkSessionPrivate *s,
 static const struct {
     const char  *xatom;
     uint32_t    vdagent;
-    uint32_t    flags;
 } atom2agent[] = {
     {
         .vdagent = VD_AGENT_CLIPBOARD_UTF8_TEXT,
@@ -660,7 +659,6 @@ static gboolean clipboard_grab(SpiceMainChannel *main, guint selection,
                 found = TRUE;
                 g_return_val_if_fail(i < SPICE_N_ELEMENTS(atom2agent), FALSE);
                 targets[i].target = (gchar*)atom2agent[m].xatom;
-                targets[i].flags = 0;
                 targets[i].info = m;
                 target_selected[m] = TRUE;
                 i += 1;
