@@ -23,6 +23,7 @@
 #include "spice-gtk-session.h"
 #include "spice-gtk-session-priv.h"
 #include "spice-session-priv.h"
+#include "spice-util-priv.h"
 
 #define CLIPBOARD_LAST (VD_AGENT_CLIPBOARD_SELECTION_SECONDARY + 1)
 
@@ -548,6 +549,7 @@ static void clipboard_owner_change(GtkClipboard        *clipboard,
 
 typedef struct
 {
+    SpiceGtkSession *self;
     GMainLoop *loop;
     GtkSelectionData *selection_data;
     guint info;
@@ -555,21 +557,45 @@ typedef struct
 } RunInfo;
 
 static void clipboard_got_from_guest(SpiceMainChannel *main, guint selection,
-                                     guint type, guchar *data, guint size,
+                                     guint type, const guchar *data, guint size,
                                      gpointer user_data)
 {
     RunInfo *ri = user_data;
+    SpiceGtkSessionPrivate *s = ri->self->priv;
+    gchar *conv = NULL;
 
     g_return_if_fail(selection == ri->selection);
 
     SPICE_DEBUG("clipboard got data");
 
-    gtk_selection_data_set(ri->selection_data,
-        gdk_atom_intern_static_string(atom2agent[ri->info].xatom),
-        8, data, size);
+    if (atom2agent[ri->info].vdagent == VD_AGENT_CLIPBOARD_UTF8_TEXT) {
+        /* on windows, gtk+ would already convert to LF endings, but
+           not on unix */
+        if (spice_main_agent_test_capability(s->main, VD_AGENT_CAP_GUEST_LINEEND_CRLF)) {
+            GError *err = NULL;
 
+            conv = spice_dos2unix((gchar*)data, size, &err);
+            if (err) {
+                g_warning("Failed to convert text line ending: %s", err->message);
+                g_clear_error(&err);
+                goto end;
+            }
+
+            size = strlen(conv);
+        }
+
+        gtk_selection_data_set_text(ri->selection_data, conv ?: (gchar*)data, size);
+    } else {
+        gtk_selection_data_set(ri->selection_data,
+            gdk_atom_intern_static_string(atom2agent[ri->info].xatom),
+            8, data, size);
+    }
+
+end:
     if (g_main_loop_is_running (ri->loop))
         g_main_loop_quit (ri->loop);
+
+    g_free(conv);
 }
 
 static void clipboard_agent_connected(RunInfo *ri)
@@ -604,6 +630,7 @@ static void clipboard_get(GtkClipboard *clipboard,
     ri.info = info;
     ri.loop = g_main_loop_new(NULL, FALSE);
     ri.selection = selection;
+    ri.self = self;
 
     clipboard_handler = g_signal_connect(s->main, "main-clipboard-selection",
                                          G_CALLBACK(clipboard_got_from_guest),
@@ -740,8 +767,27 @@ static void clipboard_received_cb(GtkClipboard *clipboard,
         g_free(name);
     }
 
+    const guchar *data = gtk_selection_data_get_data(selection_data);
+    gpointer conv = NULL;
+
+    /* gtk+ internal utf8 newline is always LF, even on windows */
+    if (type == VD_AGENT_CLIPBOARD_UTF8_TEXT &&
+        spice_main_agent_test_capability(s->main, VD_AGENT_CAP_GUEST_LINEEND_CRLF)) {
+        GError *err = NULL;
+
+        conv = spice_unix2dos((gchar*)data, len, &err);
+        if (err) {
+            g_warning("Failed to convert text line ending: %s", err->message);
+            g_clear_error(&err);
+            return;
+        }
+
+        len = strlen(conv);
+    }
+
     spice_main_clipboard_selection_notify(s->main, selection, type,
-        gtk_selection_data_get_data(selection_data), len);
+                                          conv ?: data, len);
+    g_free(conv);
 }
 
 static gboolean clipboard_request(SpiceMainChannel *main, guint selection,
