@@ -29,6 +29,8 @@ gboolean spice_strv_contains(const GStrv strv, const gchar *str);
 gchar* spice_uuid_to_string(const guint8 uuid[16]);
 const gchar* spice_yes_no(gboolean value);
 guint16 spice_make_scancode(guint scancode, gboolean release);
+gchar* spice_unix2dos(const gchar *str, gssize len, GError **error);
+gchar* spice_dos2unix(const gchar *str, gssize len, GError **error);
 
 #if GLIB_CHECK_VERSION(2,32,0)
 #define STATIC_MUTEX            GMutex

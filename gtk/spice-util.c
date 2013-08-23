@@ -19,6 +19,7 @@
 #ifdef HAVE_CONFIG_H
 # include "config.h"
 #endif
+
 #include <stdlib.h>
 #include <string.h>
 #include <glib-object.h>
@@ -244,4 +245,105 @@ guint16 spice_make_scancode(guint scancode, gboolean release)
     }
 
     g_return_val_if_reached(0);
+}
+
+typedef enum {
+    NEWLINE_TYPE_LF,
+    NEWLINE_TYPE_CR_LF
+} NewlineType;
+
+static gssize get_line(const gchar *str, gsize len,
+                       NewlineType type, gsize *nl_len,
+                       GError **error)
+{
+    const gchar *p, *endl;
+    gsize nl = 0;
+
+    endl = (type == NEWLINE_TYPE_CR_LF) ? "\r\n" : "\n";
+    p = g_strstr_len(str, len, endl);
+    if (p) {
+        len = p - str;
+        nl = strlen(endl);
+    }
+
+    *nl_len = nl;
+    return len;
+}
+
+
+static gchar* spice_convert_newlines(const gchar *str, gssize len,
+                                     NewlineType from,
+                                     NewlineType to,
+                                     GError **error)
+{
+    GError *err = NULL;
+    gssize length;
+    gsize nl;
+    GString *output;
+    gboolean free_segment = FALSE;
+    gint i;
+
+    g_return_val_if_fail(str != NULL, NULL);
+    g_return_val_if_fail(len >= -1, NULL);
+    g_return_val_if_fail(error == NULL || *error == NULL, NULL);
+    /* only 2 supported combinations */
+    g_return_val_if_fail((from == NEWLINE_TYPE_LF &&
+                          to == NEWLINE_TYPE_CR_LF) ||
+                         (from == NEWLINE_TYPE_CR_LF &&
+                          to == NEWLINE_TYPE_LF), NULL);
+
+    if (len == -1)
+        len = strlen(str);
+    /* sometime we get \0 terminated strings, skip that, or it fails
+       to utf8 validate line with \0 end */
+    else if (len > 0 && str[len-1] == 0)
+        len -= 1;
+
+    /* allocate worst case, if it's small enough, we don't care much,
+     * if it's big, malloc will put us in mmap'd region, and we can
+     * over allocate.
+     */
+    output = g_string_sized_new(len * 2 + 1);
+
+    for (i = 0; i < len; i += length + nl) {
+        length = get_line(str + i, len - i, from, &nl, error);
+        if (length < 0)
+            break;
+
+        g_string_append_len(output, str + i, length);
+
+        if (nl) {
+            /* let's not double \r if it's already in the line */
+            if (to == NEWLINE_TYPE_CR_LF &&
+                output->str[output->len - 1] != '\r')
+                g_string_append_c(output, '\r');
+
+            g_string_append_c(output, '\n');
+        }
+    }
+
+    if (err) {
+        g_propagate_error(error, err);
+        free_segment = TRUE;
+    }
+
+    return g_string_free(output, free_segment);
+}
+
+G_GNUC_INTERNAL
+gchar* spice_dos2unix(const gchar *str, gssize len, GError **error)
+{
+    return spice_convert_newlines(str, len,
+                                  NEWLINE_TYPE_CR_LF,
+                                  NEWLINE_TYPE_LF,
+                                  error);
+}
+
+G_GNUC_INTERNAL
+gchar* spice_unix2dos(const gchar *str, gssize len, GError **error)
+{
+    return spice_convert_newlines(str, len,
+                                  NEWLINE_TYPE_LF,
+                                  NEWLINE_TYPE_CR_LF,
+                                  error);
 }
