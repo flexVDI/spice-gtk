@@ -685,6 +685,7 @@ gtk/controller/Makefile
 doc/Makefile
 doc/reference/Makefile
 vapi/Makefile
+tests/Makefile
 ])
 
 dnl ==========================================================================

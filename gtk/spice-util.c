@@ -22,6 +22,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <glib.h>
 #include <glib-object.h>
 #include "spice-util-priv.h"
 #include "spice-util.h"

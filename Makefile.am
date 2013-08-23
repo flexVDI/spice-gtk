@@ -1,7 +1,7 @@
 ACLOCAL_AMFLAGS = -I m4
 NULL =
 
-SUBDIRS = spice-common gtk po doc data
+SUBDIRS = spice-common gtk po doc data tests
 
 if HAVE_INTROSPECTION
 if WITH_VALA
