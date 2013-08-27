@@ -2585,7 +2585,7 @@ void spice_main_clipboard_request(SpiceMainChannel *channel, guint32 type)
  * @type: a #VD_AGENT_CLIPBOARD type
  *
  * Request clipboard data of @type from the guest. The reply is sent
- * through the #SpiceMainChannel::main-clipboard signal.
+ * through the #SpiceMainChannel::main-clipboard-selection signal.
  *
  * Since: 0.6
  **/
