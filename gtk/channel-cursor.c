@@ -325,6 +325,23 @@ static void display_cursor_unref(display_cursor *cursor)
         g_free(cursor);
 }
 
+static const char *cursor_type_to_string(int type)
+{
+    switch (type) {
+    case SPICE_CURSOR_TYPE_MONO:
+        return "mono";
+    case SPICE_CURSOR_TYPE_ALPHA:
+        return "alpha";
+    case SPICE_CURSOR_TYPE_COLOR32:
+        return "color32";
+    case SPICE_CURSOR_TYPE_COLOR16:
+        return "color16";
+    case SPICE_CURSOR_TYPE_COLOR4:
+        return "color4";
+    }
+    return "unknown";
+}
+
 static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
 {
     SpiceCursorChannelPrivate *c = SPICE_CURSOR_CHANNEL(channel)->priv;
@@ -343,8 +360,9 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
     if (scursor->flags & SPICE_CURSOR_FLAGS_NONE)
         return NULL;
 
-    CHANNEL_DEBUG(channel, "%s: type %d, %" PRIx64 ", %dx%d", __FUNCTION__,
-                  hdr->type, hdr->unique, hdr->width, hdr->height);
+    CHANNEL_DEBUG(channel, "%s: type %s(%d), %" PRIx64 ", %dx%d", __FUNCTION__,
+                  cursor_type_to_string(hdr->type), hdr->type, hdr->unique,
+                  hdr->width, hdr->height);
 
     if (scursor->flags & SPICE_CURSOR_FLAGS_FROM_CACHE) {
         item = cache_find(&c->cursors, hdr->unique);
