@@ -145,17 +145,6 @@ get_msg_handler(SpiceChannel *channel, SpiceMsgIn *in, gpointer data)
     *msg = in;
 }
 
-static int64_t checksum(uint8_t *message, uint32_t size)
-{
-    uint64_t sum = 0;
-    for (; size; --size, ++message) {
-        printf("%x ", *message);
-        sum += *message;
-    }
-    printf("\n");
-    return sum;
-}
-
 /* coroutine context */
 G_GNUC_INTERNAL
 void spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in)
@@ -187,10 +176,6 @@ void spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in)
                       spice_header_get_msg_type(data->header, c->use_mini_header));
             return;
         }
-        g_debug("migrate data messagte, len=%d (psize=%zd), checksum=%ld",
-                spice_header_get_msg_size(data->header, c->use_mini_header),
-                data->psize,
-                checksum(data->data, spice_header_get_msg_size(data->header, c->use_mini_header)));
     }
 
     /* swapping channels sockets */
