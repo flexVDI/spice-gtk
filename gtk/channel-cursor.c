@@ -259,11 +259,24 @@ static void mono_cursor(display_cursor *cursor, const guint8 *data)
         for (x = 0; x < cursor->hdr.width; x++, dest += 4) {
             if (and[x/8] & bit) {
                 if (xor[x/8] & bit) {
-                    /* flip -> hmm? */
-                    dest[0] = 0x00;
-                    dest[1] = 0x00;
-                    dest[2] = 0x00;
-                    dest[3] = 0x80;
+                    /*
+                     * flip -> unsupported by x11, since XCreatePixmapCursor has
+                     * no invert functionality, only a mask, shape, background and
+                     * foreground colors. Use this checkerboard hack to get some
+                     * contrast for cursors in the guest that relied on invert for
+                     * the same contrast.
+                     */
+                    if ((x ^ y) & 1) {
+                        dest[0] = 0x30;
+                        dest[1] = 0x30;
+                        dest[2] = 0x30;
+                        dest[3] = 0xc0;
+                    } else {
+                        dest[0] = 0x50;
+                        dest[1] = 0x50;
+                        dest[2] = 0x50;
+                        dest[3] = 0x30;
+                    }
                 } else {
                     /* unchanged -> transparent */
                     dest[0] = 0x00;
