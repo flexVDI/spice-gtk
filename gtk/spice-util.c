@@ -39,7 +39,7 @@
  * Various functions for debugging and informational purposes.
  */
 
-static gboolean debugFlag = FALSE;
+static GOnce debug_once = G_ONCE_INIT;
 
 /**
  * spice_util_set_debug:
@@ -61,12 +61,19 @@ void spice_util_set_debug(gboolean enabled)
         }
     }
 #endif
-    debugFlag = enabled;
+    debug_once.retval = GINT_TO_POINTER(enabled);
+}
+
+static gpointer getenv_debug(gpointer data)
+{
+    return GINT_TO_POINTER(g_getenv("SPICE_DEBUG") != NULL);
 }
 
 gboolean spice_util_get_debug(void)
 {
-    return debugFlag || g_getenv("SPICE_DEBUG") != NULL;
+    g_once(&debug_once, getenv_debug, NULL);
+
+    return GPOINTER_TO_INT(debug_once.retval);
 }
 
 /**
