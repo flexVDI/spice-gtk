@@ -2080,10 +2080,24 @@ static void spice_channel_iterate_read(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
 
-    g_return_if_fail(c->state != SPICE_CHANNEL_STATE_MIGRATING);
+    g_coroutine_socket_wait(&c->coroutine, c->sock, G_IO_IN);
 
-    spice_channel_recv_msg(channel,
-        (handler_msg_in)SPICE_CHANNEL_GET_CLASS(channel)->handle_msg, NULL);
+    /* treat all incoming data (block on message completion) */
+    while (!c->has_error &&
+           c->state != SPICE_CHANNEL_STATE_MIGRATING &&
+           g_socket_condition_check(c->sock, G_IO_IN) & G_IO_IN) {
+
+        do
+            spice_channel_recv_msg(channel,
+                                   (handler_msg_in)SPICE_CHANNEL_GET_CLASS(channel)->handle_msg, NULL);
+#if HAVE_SASL
+            /* flush the sasl buffer too */
+        while (c->sasl_decoded != NULL);
+#else
+        while (FALSE);
+#endif
+    }
+
 }
 
 static gboolean wait_migration(gpointer data)
@@ -2105,37 +2119,20 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
     SpiceChannelPrivate *c = channel->priv;
     GIOCondition ret;
 
-    do {
-        if (c->state == SPICE_CHANNEL_STATE_MIGRATING &&
-            !g_coroutine_condition_wait(&c->coroutine, wait_migration, channel))
-                CHANNEL_DEBUG(channel, "migration wait cancelled");
+    if (c->state == SPICE_CHANNEL_STATE_MIGRATING &&
+        !g_coroutine_condition_wait(&c->coroutine, wait_migration, channel))
+        CHANNEL_DEBUG(channel, "migration wait cancelled");
 
-        if (c->has_error) {
-            CHANNEL_DEBUG(channel, "channel has error, breaking loop");
-            return FALSE;
-        }
-
-        SPICE_CHANNEL_GET_CLASS(channel)->iterate_write(channel);
-
-        ret = g_coroutine_socket_wait(&c->coroutine, c->sock,
-            c->state != SPICE_CHANNEL_STATE_MIGRATING ? G_IO_IN : 0);
-
-#ifdef WIN32
-        /* FIXME: windows gsocket is buggy, it doesn't return correct condition... */
-        ret = g_socket_condition_check(c->sock, G_IO_IN);
-#endif
-    } while (ret == 0); /* ret == 0 means no IO condition, but woken up */
-
-    if (ret & G_IO_IN) {
-        do
-            SPICE_CHANNEL_GET_CLASS(channel)->iterate_read(channel);
-#if HAVE_SASL
-        while (c->sasl_decoded != NULL);
-#else
-        while (FALSE);
-#endif
+    if (c->has_error) {
+        CHANNEL_DEBUG(channel, "channel has error, breaking loop");
+        return FALSE;
     }
 
+    /* flush any pending write and read */
+    SPICE_CHANNEL_GET_CLASS(channel)->iterate_write(channel);
+    SPICE_CHANNEL_GET_CLASS(channel)->iterate_read(channel);
+
+    ret = g_socket_condition_check(c->sock, G_IO_IN | G_IO_ERR | G_IO_HUP);
     if (c->state > SPICE_CHANNEL_STATE_CONNECTING &&
         ret & (G_IO_ERR|G_IO_HUP)) {
         SPICE_DEBUG("got socket error: %d", ret);
