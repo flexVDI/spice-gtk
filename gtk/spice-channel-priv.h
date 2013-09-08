@@ -59,7 +59,7 @@ struct _SpiceMsgIn {
     SpiceChannel          *channel;
     uint8_t               header[MAX_SPICE_DATA_HEADER_SIZE];
     uint8_t               *data;
-    int                   hpos,dpos;
+    int                   dpos;
     uint8_t               *parsed;
     size_t                psize;
     message_destructor_t  pfree;
@@ -122,7 +122,6 @@ struct _SpiceChannelPrivate {
     SpiceLinkReply*             peer_msg;
     int                         peer_pos;
 
-    SpiceMsgIn                  *msg_in;
     int                         message_ack_window;
     int                         message_ack_count;
 

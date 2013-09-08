@@ -1770,43 +1770,26 @@ void spice_channel_recv_msg(SpiceChannel *channel,
 {
     SpiceChannelPrivate *c = channel->priv;
     SpiceMsgIn *in;
-    int header_size;
     int msg_size;
     int msg_type;
     int sub_list_offset = 0;
-    int rc;
 
-    if (!c->msg_in) {
-        c->msg_in = spice_msg_in_new(channel);
-    }
-    in = c->msg_in;
-    header_size = spice_header_get_header_size(c->use_mini_header);
+    in = spice_msg_in_new(channel);
 
     /* receive message */
-    if (in->hpos < header_size) {
-        rc = spice_channel_read(channel, in->header + in->hpos,
-                                header_size - in->hpos);
-        if (rc < 0) {
-            g_critical("recv hdr: %s", strerror(errno));
-            return;
-        }
-        in->hpos += rc;
-        if (in->hpos < header_size)
-            return;
-        in->data = spice_malloc(spice_header_get_msg_size(in->header, c->use_mini_header));
-    }
+    spice_channel_read(channel, in->header,
+                       spice_header_get_header_size(c->use_mini_header));
+    if (c->has_error)
+        goto end;
+
     msg_size = spice_header_get_msg_size(in->header, c->use_mini_header);
-    if (in->dpos < msg_size) {
-        rc = spice_channel_read(channel, in->data + in->dpos,
-                                msg_size - in->dpos);
-        if (rc < 0) {
-            g_critical("recv msg: %s", strerror(errno));
-            return;
-        }
-        in->dpos += rc;
-        if (in->dpos < msg_size)
-            return;
-    }
+    /* FIXME: do not allow others to take ref on in, and use realloc here?
+     * this would avoid malloc/free on each message?
+     */
+    in->data = spice_malloc(msg_size);
+    spice_channel_read(channel, in->data, msg_size);
+    if (c->has_error)
+        goto end;
 
     msg_type = spice_header_get_msg_type(in->header, c->use_mini_header);
     sub_list_offset = spice_header_get_msg_sub_list(in->header, c->use_mini_header);
@@ -1829,7 +1812,7 @@ void spice_channel_recv_msg(SpiceChannel *channel,
             if (sub_in->parsed == NULL) {
                 g_critical("failed to parse sub-message: %s type %d",
                            c->name, spice_header_get_msg_type(sub_in->header, c->use_mini_header));
-                return;
+                goto end;
             }
             msg_handler(channel, sub_in, data);
             spice_msg_in_unref(sub_in);
@@ -1851,7 +1834,7 @@ void spice_channel_recv_msg(SpiceChannel *channel,
     }
 
     /* parse message */
-    in->parsed = c->parser(in->data, in->data + in->dpos, msg_type,
+    in->parsed = c->parser(in->data, in->data + msg_size, msg_type,
                            c->peer_hdr.minor_version, &in->psize, &in->pfree);
     if (in->parsed == NULL) {
         g_critical("failed to parse message: %s type %d",
@@ -1860,7 +1843,6 @@ void spice_channel_recv_msg(SpiceChannel *channel,
     }
 
     /* process message */
-    c->msg_in = NULL; /* the function is reentrant, reset state */
     /* spice_msg_in_hexdump(in); */
     msg_handler(channel, in, data);
 
@@ -1869,8 +1851,6 @@ end:
      * to c->in_serial (the server can sometimes skip serials) */
     c->last_message_serial = spice_header_get_in_msg_serial(in);
     c->in_serial++;
-    /* release message */
-    c->msg_in = NULL;
     spice_msg_in_unref(in);
 }
 

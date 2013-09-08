@@ -187,6 +187,7 @@ void spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in)
         spice_marshaller_add(out->marshaller, data->data,
                              spice_header_get_msg_size(data->header, c->use_mini_header));
         spice_msg_out_send_internal(out);
+        /* FIXME: who unref in? */
     }
 }
 
