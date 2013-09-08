@@ -176,8 +176,8 @@ static void spice_session_init(SpiceSession *session)
     g_free(channels);
 
     ring_init(&s->channels);
-    cache_init(&s->images, "image");
-    cache_init(&s->palettes, "palette");
+    s->images = cache_new((GDestroyNotify)pixman_image_unref);
+    s->palettes = cache_new(g_free);
     s->glz_window = glz_decoder_window_new();
     update_proxy(session, NULL);
 }
@@ -219,35 +219,6 @@ spice_session_dispose(GObject *gobject)
         G_OBJECT_CLASS(spice_session_parent_class)->dispose(gobject);
 }
 
-G_GNUC_INTERNAL
-void spice_session_palettes_clear(SpiceSession *session)
-{
-    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
-    g_return_if_fail(s != NULL);
-
-    for (;;) {
-        display_cache_item *item = cache_get_lru(&s->palettes);
-        if (item == NULL)
-            break;
-        cache_del(&s->palettes, item);
-    }
-}
-
-G_GNUC_INTERNAL
-void spice_session_images_clear(SpiceSession *session)
-{
-    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
-    g_return_if_fail(s != NULL);
-
-    for (;;) {
-        display_cache_item *item = cache_get_lru(&s->images);
-        if (item == NULL)
-            break;
-        pixman_image_unref(item->ptr);
-        cache_del(&s->images, item);
-    }
-}
-
 static void
 spice_session_finalize(GObject *gobject)
 {
@@ -267,8 +238,8 @@ spice_session_finalize(GObject *gobject)
     g_strfreev(s->disable_effects);
     g_strfreev(s->secure_channels);
 
-    spice_session_palettes_clear(session);
-    spice_session_images_clear(session);
+    g_clear_pointer(&s->images, cache_unref);
+    g_clear_pointer(&s->palettes, cache_unref);
     glz_decoder_window_destroy(s->glz_window);
 
     g_clear_pointer(&s->pubkey, g_byte_array_unref);
@@ -1332,6 +1303,15 @@ gboolean spice_session_get_client_provided_socket(SpiceSession *session)
     return s->client_provided_sockets;
 }
 
+static void cache_clear_all(SpiceSession *self)
+{
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(self);
+
+    cache_clear(s->images);
+    cache_clear(s->palettes);
+    glz_decoder_window_clear(s->glz_window);
+}
+
 G_GNUC_INTERNAL
 void spice_session_switching_disconnect(SpiceSession *self)
 {
@@ -1353,9 +1333,7 @@ void spice_session_switching_disconnect(SpiceSession *self)
 
     g_warn_if_fail(!ring_is_empty(&s->channels)); /* ring_get_length() == 1 */
 
-    spice_session_palettes_clear(self);
-    spice_session_images_clear(self);
-    glz_decoder_window_clear(s->glz_window);
+    cache_clear_all(self);
 }
 
 G_GNUC_INTERNAL
@@ -1561,9 +1539,7 @@ void spice_session_migrate_end(SpiceSession *self)
         }
     }
 
-    spice_session_palettes_clear(self);
-    spice_session_images_clear(self);
-    glz_decoder_window_clear(s->glz_window);
+    cache_clear_all(self);
 
     /* send MIGRATE_END to target */
     out = spice_msg_out_new(s->cmain, SPICE_MSGC_MAIN_MIGRATE_END);
@@ -2119,9 +2095,9 @@ void spice_session_get_caches(SpiceSession *session,
     g_return_if_fail(s != NULL);
 
     if (images)
-        *images = &s->images;
+        *images = s->images;
     if (palettes)
-        *palettes = &s->palettes;
+        *palettes = s->palettes;
     if (glz_window)
         *glz_window = s->glz_window;
 }

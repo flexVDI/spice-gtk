@@ -486,16 +486,8 @@ static void image_put(SpiceImageCache *cache, uint64_t id, pixman_image_t *image
 {
     SpiceDisplayChannelPrivate *c =
         SPICE_CONTAINEROF(cache, SpiceDisplayChannelPrivate, image_cache);
-    display_cache_item *item;
 
-    item = cache_find(c->images, id);
-    if (item) {
-        cache_ref(item);
-        return;
-    }
-
-    item = cache_add(c->images, id);
-    item->ptr = pixman_image_ref(image);
+    cache_add(c->images, id, pixman_image_ref(image));
 }
 
 typedef struct _WaitImageData
@@ -508,18 +500,16 @@ typedef struct _WaitImageData
 
 static gboolean wait_image(gpointer data)
 {
-    display_cache_item *item;
+    gboolean lossy;
     WaitImageData *wait = data;
     SpiceDisplayChannelPrivate *c =
         SPICE_CONTAINEROF(wait->cache, SpiceDisplayChannelPrivate, image_cache);
+    pixman_image_t *image = cache_find_lossy(c->images, wait->id, &lossy);
 
-    item = cache_find(c->images, wait->id);
-    if (item == NULL ||
-        (item->lossy && !wait->lossy))
+    if (!image || (lossy && !wait->lossy))
         return FALSE;
 
-    cache_used(c->images, item);
-    wait->image = pixman_image_ref(item->ptr);
+    wait->image = pixman_image_ref(image);
 
     return TRUE;
 }
@@ -538,58 +528,33 @@ static pixman_image_t *image_get(SpiceImageCache *cache, uint64_t id)
     return wait.image;
 }
 
-static void image_remove(SpiceImageCache *cache, uint64_t id)
-{
-    SpiceDisplayChannelPrivate *c =
-        SPICE_CONTAINEROF(cache, SpiceDisplayChannelPrivate, image_cache);
-    display_cache_item *item;
-
-    item = cache_find(c->images, id);
-    g_return_if_fail(item != NULL);
-    if (cache_unref(item)) {
-        pixman_image_unref(item->ptr);
-        cache_del(c->images, item);
-    }
-}
-
 static void palette_put(SpicePaletteCache *cache, SpicePalette *palette)
 {
     SpiceDisplayChannelPrivate *c =
         SPICE_CONTAINEROF(cache, SpiceDisplayChannelPrivate, palette_cache);
-    display_cache_item *item;
 
-    item = cache_add(c->palettes, palette->unique);
-    item->ptr = g_memdup(palette, sizeof(SpicePalette) +
-                         palette->num_ents * sizeof(palette->ents[0]));
+    cache_add(c->palettes, palette->unique,
+              g_memdup(palette, sizeof(SpicePalette) +
+                       palette->num_ents * sizeof(palette->ents[0])));
 }
 
 static SpicePalette *palette_get(SpicePaletteCache *cache, uint64_t id)
 {
     SpiceDisplayChannelPrivate *c =
         SPICE_CONTAINEROF(cache, SpiceDisplayChannelPrivate, palette_cache);
-    display_cache_item *item;
 
-    item = cache_find(c->palettes, id);
-    if (item) {
-        cache_ref(item);
-        return item->ptr;
-    }
-    return NULL;
+    /* here the returned pointer is weak, no ref given to caller.  it
+     * seems spice canvas usage is exclusively temporary, so it's ok
+     * (for now) */
+    return cache_find(c->palettes, id);
 }
 
 static void palette_remove(SpicePaletteCache *cache, uint32_t id)
 {
     SpiceDisplayChannelPrivate *c =
         SPICE_CONTAINEROF(cache, SpiceDisplayChannelPrivate, palette_cache);
-    display_cache_item *item;
 
-    item = cache_find(c->palettes, id);
-    if (item) {
-        if (cache_unref(item)) {
-            g_free(item->ptr);
-            cache_del(c->palettes, item);
-        }
-    }
+    cache_remove(c->palettes, id);
 }
 
 static void palette_release(SpicePaletteCache *cache, SpicePalette *palette)
@@ -603,30 +568,18 @@ static void image_put_lossy(SpiceImageCache *cache, uint64_t id,
 {
     SpiceDisplayChannelPrivate *c =
         SPICE_CONTAINEROF(cache, SpiceDisplayChannelPrivate, image_cache);
-    display_cache_item *item;
 
 #ifndef NDEBUG
     g_warn_if_fail(cache_find(c->images, id) == NULL);
 #endif
 
-    item = cache_add(c->images, id);
-    item->ptr = pixman_image_ref(surface);
-    item->lossy = TRUE;
+    cache_add_lossy(c->images, id, pixman_image_ref(surface), TRUE);
 }
 
 static void image_replace_lossy(SpiceImageCache *cache, uint64_t id,
                                 pixman_image_t *surface)
 {
-    SpiceDisplayChannelPrivate *c =
-        SPICE_CONTAINEROF(cache, SpiceDisplayChannelPrivate, image_cache);
-    display_cache_item *item;
-
-    item = cache_find(c->images, id);
-    g_return_if_fail(item != NULL);
-
-    pixman_image_unref(item->ptr);
-    item->ptr = pixman_image_ref(surface);
-    item->lossy = FALSE;
+    image_put(cache, id, surface);
 }
 
 static pixman_image_t* image_get_lossless(SpiceImageCache *cache, uint64_t id)
@@ -968,7 +921,7 @@ static void display_handle_reset(SpiceChannel *channel, SpiceMsgIn *in)
     if (surface != NULL)
         surface->canvas->ops->clear(surface->canvas);
 
-    spice_session_palettes_clear(spice_channel_get_session(channel));
+    cache_clear(c->palettes);
 
     c->mark = FALSE;
     emit_main_context(channel, SPICE_DISPLAY_MARK, FALSE);
@@ -997,9 +950,12 @@ static void display_handle_inv_list(SpiceChannel *channel, SpiceMsgIn *in)
     int i;
 
     for (i = 0; i < list->count; i++) {
+        guint64 id = list->resources[i].id;
+
         switch (list->resources[i].type) {
         case SPICE_RES_TYPE_PIXMAP:
-            image_remove(&c->image_cache, list->resources[i].id);
+            if (!cache_remove(c->images, id))
+                SPICE_DEBUG("fail to remove image %" G_GUINT64_FORMAT, id);
             break;
         default:
             g_return_if_reached();
@@ -1011,9 +967,10 @@ static void display_handle_inv_list(SpiceChannel *channel, SpiceMsgIn *in)
 /* coroutine context */
 static void display_handle_inv_pixmap_all(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    spice_channel_handle_wait_for_channels(channel, in);
+    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
 
-    spice_session_images_clear(spice_channel_get_session(channel));
+    spice_channel_handle_wait_for_channels(channel, in);
+    cache_clear(c->images);
 }
 
 /* coroutine context */
@@ -1028,7 +985,9 @@ static void display_handle_inv_palette(SpiceChannel *channel, SpiceMsgIn *in)
 /* coroutine context */
 static void display_handle_inv_palette_all(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    spice_session_palettes_clear(spice_channel_get_session(channel));
+    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
+
+    cache_clear(c->palettes);
 }
 
 /* ------------------------------------------------------------------ */

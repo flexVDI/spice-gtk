@@ -51,7 +51,7 @@ struct display_cursor {
 };
 
 struct _SpiceCursorChannelPrivate {
-    display_cache               cursors;
+    display_cache               *cursors;
     gboolean                    init_done;
 };
 
@@ -66,7 +66,6 @@ enum {
 
 static guint signals[SPICE_CURSOR_LAST_SIGNAL];
 
-static void delete_cursor_all(SpiceChannel *channel);
 static display_cursor * display_cursor_ref(display_cursor *cursor);
 static void display_cursor_unref(display_cursor *cursor);
 static void channel_set_handlers(SpiceChannelClass *klass);
@@ -81,12 +80,14 @@ static void spice_cursor_channel_init(SpiceCursorChannel *channel)
 
     c = channel->priv = SPICE_CURSOR_CHANNEL_GET_PRIVATE(channel);
 
-    cache_init(&c->cursors, "cursor");
+    c->cursors = cache_new((GDestroyNotify)display_cursor_unref);
 }
 
 static void spice_cursor_channel_finalize(GObject *obj)
 {
-    delete_cursor_all(SPICE_CHANNEL(obj));
+    SpiceCursorChannelPrivate *c = SPICE_CURSOR_CHANNEL_GET_PRIVATE(obj);
+
+    g_clear_pointer(&c->cursors, cache_unref);
 
     if (G_OBJECT_CLASS(spice_cursor_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_cursor_channel_parent_class)->finalize(obj);
@@ -97,7 +98,7 @@ static void spice_cursor_channel_reset(SpiceChannel *channel, gboolean migrating
 {
     SpiceCursorChannelPrivate *c = SPICE_CURSOR_CHANNEL(channel)->priv;
 
-    delete_cursor_all(channel);
+    cache_clear(c->cursors);
     c->init_done = FALSE;
 
     SPICE_CHANNEL_CLASS(spice_cursor_channel_parent_class)->channel_reset(channel, migrating);
@@ -359,7 +360,6 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
 {
     SpiceCursorChannelPrivate *c = SPICE_CURSOR_CHANNEL(channel)->priv;
     SpiceCursorHeader *hdr = &scursor->header;
-    display_cache_item *item;
     display_cursor *cursor;
     size_t size;
     gint i, pix_mask, pix;
@@ -378,9 +378,9 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
                   hdr->width, hdr->height);
 
     if (scursor->flags & SPICE_CURSOR_FLAGS_FROM_CACHE) {
-        item = cache_find(&c->cursors, hdr->unique);
-        g_return_val_if_fail(item != NULL, NULL);
-        return display_cursor_ref(item->ptr);
+        cursor = cache_find(c->cursors, hdr->unique);
+        g_return_val_if_fail(cursor != NULL, NULL);
+        return display_cursor_ref(cursor);
     }
 
     g_return_val_if_fail(scursor->data_size != 0, NULL);
@@ -453,34 +453,10 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
 
 cache_add:
     if (cursor && (scursor->flags & SPICE_CURSOR_FLAGS_CACHE_ME)) {
-        display_cursor_ref(cursor);
-        item = cache_add(&c->cursors, hdr->unique);
-        item->ptr = cursor;
+        cache_add(c->cursors, hdr->unique, display_cursor_ref(cursor));
     }
 
     return cursor;
-}
-
-static void delete_cursor_one(SpiceChannel *channel, display_cache_item *item)
-{
-    SpiceCursorChannelPrivate *c = SPICE_CURSOR_CHANNEL(channel)->priv;
-
-    display_cursor_unref((display_cursor*)item->ptr);
-    cache_del(&c->cursors, item);
-}
-
-static void delete_cursor_all(SpiceChannel *channel)
-{
-    SpiceCursorChannelPrivate *c = SPICE_CURSOR_CHANNEL(channel)->priv;
-    display_cache_item *item;
-
-    for (;;) {
-        item = cache_get_lru(&c->cursors);
-        if (item == NULL) {
-            return;
-        }
-        delete_cursor_one(channel, item);
-    }
 }
 
 /* coroutine context */
@@ -502,7 +478,7 @@ static void cursor_handle_init(SpiceChannel *channel, SpiceMsgIn *in)
 
     g_return_if_fail(c->init_done == FALSE);
 
-    delete_cursor_all(channel);
+    cache_clear(c->cursors);
     cursor = set_cursor(channel, &init->cursor);
     c->init_done = TRUE;
     if (cursor)
@@ -520,7 +496,7 @@ static void cursor_handle_reset(SpiceChannel *channel, SpiceMsgIn *in)
 
     CHANNEL_DEBUG(channel, "%s, init_done: %d", __FUNCTION__, c->init_done);
 
-    delete_cursor_all(channel);
+    cache_clear(c->cursors);
     emit_main_context(channel, SPICE_CURSOR_RESET);
     c->init_done = FALSE;
 }
@@ -584,18 +560,18 @@ static void cursor_handle_inval_one(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceCursorChannelPrivate *c = SPICE_CURSOR_CHANNEL(channel)->priv;
     SpiceMsgDisplayInvalOne *zap = spice_msg_in_parsed(in);
-    display_cache_item *item;
 
     g_return_if_fail(c->init_done == TRUE);
 
-    item = cache_find(&c->cursors, zap->id);
-    delete_cursor_one(channel, item);
+    cache_remove(c->cursors, zap->id);
 }
 
 /* coroutine context */
 static void cursor_handle_inval_all(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    delete_cursor_all(channel);
+    SpiceCursorChannelPrivate *c = SPICE_CURSOR_CHANNEL(channel)->priv;
+
+    cache_clear(c->cursors);
 }
 
 static void channel_set_handlers(SpiceChannelClass *klass)
