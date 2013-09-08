@@ -657,7 +657,7 @@ static void destroy_surface(gpointer data)
     display_surface *surface = data;
 
     destroy_canvas(surface);
-    free(surface);
+    g_slice_free(display_surface, surface);
 }
 
 static void spice_display_channel_init(SpiceDisplayChannel *channel)
@@ -1687,7 +1687,7 @@ static void display_handle_surface_create(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     SpiceMsgSurfaceCreate *create = spice_msg_in_parsed(in);
-    display_surface *surface = spice_new0(display_surface, 1);
+    display_surface *surface = g_slice_new0(display_surface);
 
     surface->surface_id = create->surface_id;
     surface->format = create->format;
