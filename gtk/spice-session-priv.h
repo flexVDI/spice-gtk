@@ -147,7 +147,6 @@ void spice_session_set_caches_hints(SpiceSession *session,
                                     uint32_t display_channels_count);
 void spice_session_get_caches(SpiceSession *session,
                               display_cache **images,
-                              display_cache **palettes,
                               SpiceGlzDecoderWindow **glz_window);
 void spice_session_palettes_clear(SpiceSession *session);
 void spice_session_images_clear(SpiceSession *session);

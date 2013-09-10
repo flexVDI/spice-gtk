@@ -144,6 +144,7 @@ static void spice_display_channel_finalize(GObject *object)
     clear_surfaces(SPICE_CHANNEL(object), FALSE);
     g_hash_table_unref(c->surfaces);
     clear_streams(SPICE_CHANNEL(object));
+    g_clear_pointer(&c->palettes, cache_unref);
 
     if (G_OBJECT_CLASS(spice_display_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_display_channel_parent_class)->finalize(object);
@@ -155,7 +156,8 @@ static void spice_display_channel_constructed(GObject *object)
     SpiceSession *s = spice_channel_get_session(SPICE_CHANNEL(object));
 
     g_return_if_fail(s != NULL);
-    spice_session_get_caches(s, &c->images, &c->palettes, &c->glz_window);
+    spice_session_get_caches(s, &c->images, &c->glz_window);
+    c->palettes = cache_new(g_free);
 
     g_return_if_fail(c->glz_window != NULL);
     g_return_if_fail(c->images != NULL);

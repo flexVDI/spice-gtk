@@ -177,7 +177,6 @@ static void spice_session_init(SpiceSession *session)
 
     ring_init(&s->channels);
     s->images = cache_new((GDestroyNotify)pixman_image_unref);
-    s->palettes = cache_new(g_free);
     s->glz_window = glz_decoder_window_new();
     update_proxy(session, NULL);
 }
@@ -239,7 +238,6 @@ spice_session_finalize(GObject *gobject)
     g_strfreev(s->secure_channels);
 
     g_clear_pointer(&s->images, cache_unref);
-    g_clear_pointer(&s->palettes, cache_unref);
     glz_decoder_window_destroy(s->glz_window);
 
     g_clear_pointer(&s->pubkey, g_byte_array_unref);
@@ -1308,7 +1306,6 @@ static void cache_clear_all(SpiceSession *self)
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(self);
 
     cache_clear(s->images);
-    cache_clear(s->palettes);
     glz_decoder_window_clear(s->glz_window);
 }
 
@@ -2087,7 +2084,6 @@ const gchar* spice_session_get_ca_file(SpiceSession *session)
 G_GNUC_INTERNAL
 void spice_session_get_caches(SpiceSession *session,
                               display_cache **images,
-                              display_cache **palettes,
                               SpiceGlzDecoderWindow **glz_window)
 {
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
@@ -2096,8 +2092,6 @@ void spice_session_get_caches(SpiceSession *session,
 
     if (images)
         *images = s->images;
-    if (palettes)
-        *palettes = s->palettes;
     if (glz_window)
         *glz_window = s->glz_window;
 }
