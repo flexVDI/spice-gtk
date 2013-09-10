@@ -169,12 +169,12 @@ void spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in)
         spice_channel_recv_msg(channel, get_msg_handler, &data);
         if (!data) {
             g_critical("expected SPICE_MSG_MIGRATE_DATA, got empty message");
-            return;
+            goto end;
         } else if (spice_header_get_msg_type(data->header, c->use_mini_header) !=
                    SPICE_MSG_MIGRATE_DATA) {
             g_critical("expected SPICE_MSG_MIGRATE_DATA, got %d",
                       spice_header_get_msg_type(data->header, c->use_mini_header));
-            return;
+            goto end;
         }
     }
 
@@ -187,8 +187,11 @@ void spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in)
         spice_marshaller_add(out->marshaller, data->data,
                              spice_header_get_msg_size(data->header, c->use_mini_header));
         spice_msg_out_send_internal(out);
-        /* FIXME: who unref in? */
     }
+
+end:
+    if (data)
+        spice_msg_in_unref(data);
 }
 
 
