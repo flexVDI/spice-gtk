@@ -2763,24 +2763,18 @@ void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap, gboolean swap
 #endif
 }
 
-static const spice_msg_handler base_handlers[] = {
-    [ SPICE_MSG_SET_ACK ]                  = spice_channel_handle_set_ack,
-    [ SPICE_MSG_PING ]                     = spice_channel_handle_ping,
-    [ SPICE_MSG_NOTIFY ]                   = spice_channel_handle_notify,
-    [ SPICE_MSG_DISCONNECTING ]            = spice_channel_handle_disconnect,
-    [ SPICE_MSG_WAIT_FOR_CHANNELS ]        = spice_channel_handle_wait_for_channels,
-    [ SPICE_MSG_MIGRATE ]                  = spice_channel_handle_migrate,
-};
-
 /* coroutine context */
 static void spice_channel_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
 {
+    SpiceChannelClass *klass = SPICE_CHANNEL_GET_CLASS(channel);
     int type = spice_msg_in_type(msg);
+    spice_msg_handler handler;
 
-    g_return_if_fail(type < SPICE_N_ELEMENTS(base_handlers));
-    g_return_if_fail(base_handlers[type] != NULL);
+    g_return_if_fail(type < klass->handlers->len);
 
-    base_handlers[type](channel, msg);
+    handler = g_array_index(klass->handlers, spice_msg_handler, type);
+    g_return_if_fail(handler != NULL);
+    handler(channel, msg);
 }
 
 static void spice_channel_reset_capabilities(SpiceChannel *channel)

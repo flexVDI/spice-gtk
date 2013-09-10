@@ -107,8 +107,8 @@ enum {
 
 static guint signals[SPICE_DISPLAY_LAST_SIGNAL];
 
-static void spice_display_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg);
 static void spice_display_channel_up(SpiceChannel *channel);
+static void channel_set_handlers(SpiceChannelClass *klass);
 
 static void clear_surfaces(SpiceChannel *channel, gboolean keep_primary);
 static void clear_streams(SpiceChannel *channel);
@@ -235,7 +235,6 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
     gobject_class->set_property = spice_display_set_property;
     gobject_class->constructed = spice_display_channel_constructed;
 
-    channel_class->handle_msg   = spice_display_handle_msg;
     channel_class->channel_up   = spice_display_channel_up;
     channel_class->channel_reset = spice_display_channel_reset;
     channel_class->channel_reset_capabilities = spice_display_channel_reset_capabilities;
@@ -387,6 +386,7 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
     sw_canvas_init();
     quic_init();
     rop3_init();
+    channel_set_handlers(SPICE_CHANNEL_CLASS(klass));
 }
 
 /**
@@ -1841,58 +1841,45 @@ static void display_handle_monitors_config(SpiceChannel *channel, SpiceMsgIn *in
     g_object_notify_main_context(G_OBJECT(channel), "monitors");
 }
 
-static const spice_msg_handler display_handlers[] = {
-    [ SPICE_MSG_DISPLAY_MODE ]               = display_handle_mode,
-    [ SPICE_MSG_DISPLAY_MARK ]               = display_handle_mark,
-    [ SPICE_MSG_DISPLAY_RESET ]              = display_handle_reset,
-    [ SPICE_MSG_DISPLAY_COPY_BITS ]          = display_handle_copy_bits,
-    [ SPICE_MSG_DISPLAY_INVAL_LIST ]         = display_handle_inv_list,
-    [ SPICE_MSG_DISPLAY_INVAL_ALL_PIXMAPS ]  = display_handle_inv_pixmap_all,
-    [ SPICE_MSG_DISPLAY_INVAL_PALETTE ]      = display_handle_inv_palette,
-    [ SPICE_MSG_DISPLAY_INVAL_ALL_PALETTES ] = display_handle_inv_palette_all,
-
-    [ SPICE_MSG_DISPLAY_STREAM_CREATE ]      = display_handle_stream_create,
-    [ SPICE_MSG_DISPLAY_STREAM_DATA ]        = display_handle_stream_data,
-    [ SPICE_MSG_DISPLAY_STREAM_CLIP ]        = display_handle_stream_clip,
-    [ SPICE_MSG_DISPLAY_STREAM_DESTROY ]     = display_handle_stream_destroy,
-    [ SPICE_MSG_DISPLAY_STREAM_DESTROY_ALL ] = display_handle_stream_destroy_all,
-    [ SPICE_MSG_DISPLAY_STREAM_DATA_SIZED ]  = display_handle_stream_data,
-    [ SPICE_MSG_DISPLAY_STREAM_ACTIVATE_REPORT ] = display_handle_stream_activate_report,
-
-    [ SPICE_MSG_DISPLAY_DRAW_FILL ]          = display_handle_draw_fill,
-    [ SPICE_MSG_DISPLAY_DRAW_OPAQUE ]        = display_handle_draw_opaque,
-    [ SPICE_MSG_DISPLAY_DRAW_COPY ]          = display_handle_draw_copy,
-    [ SPICE_MSG_DISPLAY_DRAW_BLEND ]         = display_handle_draw_blend,
-    [ SPICE_MSG_DISPLAY_DRAW_BLACKNESS ]     = display_handle_draw_blackness,
-    [ SPICE_MSG_DISPLAY_DRAW_WHITENESS ]     = display_handle_draw_whiteness,
-    [ SPICE_MSG_DISPLAY_DRAW_INVERS ]        = display_handle_draw_invers,
-    [ SPICE_MSG_DISPLAY_DRAW_ROP3 ]          = display_handle_draw_rop3,
-    [ SPICE_MSG_DISPLAY_DRAW_STROKE ]        = display_handle_draw_stroke,
-    [ SPICE_MSG_DISPLAY_DRAW_TEXT ]          = display_handle_draw_text,
-    [ SPICE_MSG_DISPLAY_DRAW_TRANSPARENT ]   = display_handle_draw_transparent,
-    [ SPICE_MSG_DISPLAY_DRAW_ALPHA_BLEND ]   = display_handle_draw_alpha_blend,
-    [ SPICE_MSG_DISPLAY_DRAW_COMPOSITE ]     = display_handle_draw_composite,
-
-    [ SPICE_MSG_DISPLAY_SURFACE_CREATE ]     = display_handle_surface_create,
-    [ SPICE_MSG_DISPLAY_SURFACE_DESTROY ]    = display_handle_surface_destroy,
-
-    [ SPICE_MSG_DISPLAY_MONITORS_CONFIG ]    = display_handle_monitors_config,
-};
-
-/* coroutine context */
-static void spice_display_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
+static void channel_set_handlers(SpiceChannelClass *klass)
 {
-    int type = spice_msg_in_type(msg);
-    SpiceChannelClass *parent_class;
+    static const spice_msg_handler handlers[] = {
+        [ SPICE_MSG_DISPLAY_MODE ]               = display_handle_mode,
+        [ SPICE_MSG_DISPLAY_MARK ]               = display_handle_mark,
+        [ SPICE_MSG_DISPLAY_RESET ]              = display_handle_reset,
+        [ SPICE_MSG_DISPLAY_COPY_BITS ]          = display_handle_copy_bits,
+        [ SPICE_MSG_DISPLAY_INVAL_LIST ]         = display_handle_inv_list,
+        [ SPICE_MSG_DISPLAY_INVAL_ALL_PIXMAPS ]  = display_handle_inv_pixmap_all,
+        [ SPICE_MSG_DISPLAY_INVAL_PALETTE ]      = display_handle_inv_palette,
+        [ SPICE_MSG_DISPLAY_INVAL_ALL_PALETTES ] = display_handle_inv_palette_all,
 
-    g_return_if_fail(type < SPICE_N_ELEMENTS(display_handlers));
+        [ SPICE_MSG_DISPLAY_STREAM_CREATE ]      = display_handle_stream_create,
+        [ SPICE_MSG_DISPLAY_STREAM_DATA ]        = display_handle_stream_data,
+        [ SPICE_MSG_DISPLAY_STREAM_CLIP ]        = display_handle_stream_clip,
+        [ SPICE_MSG_DISPLAY_STREAM_DESTROY ]     = display_handle_stream_destroy,
+        [ SPICE_MSG_DISPLAY_STREAM_DESTROY_ALL ] = display_handle_stream_destroy_all,
+        [ SPICE_MSG_DISPLAY_STREAM_DATA_SIZED ]  = display_handle_stream_data,
+        [ SPICE_MSG_DISPLAY_STREAM_ACTIVATE_REPORT ] = display_handle_stream_activate_report,
 
-    parent_class = SPICE_CHANNEL_CLASS(spice_display_channel_parent_class);
+        [ SPICE_MSG_DISPLAY_DRAW_FILL ]          = display_handle_draw_fill,
+        [ SPICE_MSG_DISPLAY_DRAW_OPAQUE ]        = display_handle_draw_opaque,
+        [ SPICE_MSG_DISPLAY_DRAW_COPY ]          = display_handle_draw_copy,
+        [ SPICE_MSG_DISPLAY_DRAW_BLEND ]         = display_handle_draw_blend,
+        [ SPICE_MSG_DISPLAY_DRAW_BLACKNESS ]     = display_handle_draw_blackness,
+        [ SPICE_MSG_DISPLAY_DRAW_WHITENESS ]     = display_handle_draw_whiteness,
+        [ SPICE_MSG_DISPLAY_DRAW_INVERS ]        = display_handle_draw_invers,
+        [ SPICE_MSG_DISPLAY_DRAW_ROP3 ]          = display_handle_draw_rop3,
+        [ SPICE_MSG_DISPLAY_DRAW_STROKE ]        = display_handle_draw_stroke,
+        [ SPICE_MSG_DISPLAY_DRAW_TEXT ]          = display_handle_draw_text,
+        [ SPICE_MSG_DISPLAY_DRAW_TRANSPARENT ]   = display_handle_draw_transparent,
+        [ SPICE_MSG_DISPLAY_DRAW_ALPHA_BLEND ]   = display_handle_draw_alpha_blend,
+        [ SPICE_MSG_DISPLAY_DRAW_COMPOSITE ]     = display_handle_draw_composite,
 
-    if (display_handlers[type] != NULL)
-        display_handlers[type](channel, msg);
-    else if (parent_class->handle_msg)
-        parent_class->handle_msg(channel, msg);
-    else
-        g_return_if_reached();
+        [ SPICE_MSG_DISPLAY_SURFACE_CREATE ]     = display_handle_surface_create,
+        [ SPICE_MSG_DISPLAY_SURFACE_DESTROY ]    = display_handle_surface_destroy,
+
+        [ SPICE_MSG_DISPLAY_MONITORS_CONFIG ]    = display_handle_monitors_config,
+    };
+
+    spice_channel_set_handlers(klass, handlers, G_N_ELEMENTS(handlers));
 }

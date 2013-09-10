@@ -66,10 +66,10 @@ enum {
 
 static guint signals[SPICE_CURSOR_LAST_SIGNAL];
 
-static void spice_cursor_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg);
 static void delete_cursor_all(SpiceChannel *channel);
 static display_cursor * display_cursor_ref(display_cursor *cursor);
 static void display_cursor_unref(display_cursor *cursor);
+static void channel_set_handlers(SpiceChannelClass *klass);
 
 G_DEFINE_TYPE(SpiceCursorChannel, spice_cursor_channel, SPICE_TYPE_CHANNEL)
 
@@ -109,7 +109,6 @@ static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
     SpiceChannelClass *channel_class = SPICE_CHANNEL_CLASS(klass);
 
     gobject_class->finalize     = spice_cursor_channel_finalize;
-    channel_class->handle_msg   = spice_cursor_handle_msg;
     channel_class->channel_reset = spice_cursor_channel_reset;
 
     /**
@@ -194,6 +193,7 @@ static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
                      0);
 
     g_type_class_add_private(klass, sizeof(SpiceCursorChannelPrivate));
+    channel_set_handlers(SPICE_CHANNEL_CLASS(klass));
 }
 
 /* signal trampoline---------------------------------------------------------- */
@@ -598,31 +598,18 @@ static void cursor_handle_inval_all(SpiceChannel *channel, SpiceMsgIn *in)
     delete_cursor_all(channel);
 }
 
-static const spice_msg_handler cursor_handlers[] = {
-    [ SPICE_MSG_CURSOR_INIT ]              = cursor_handle_init,
-    [ SPICE_MSG_CURSOR_RESET ]             = cursor_handle_reset,
-    [ SPICE_MSG_CURSOR_SET ]               = cursor_handle_set,
-    [ SPICE_MSG_CURSOR_MOVE ]              = cursor_handle_move,
-    [ SPICE_MSG_CURSOR_HIDE ]              = cursor_handle_hide,
-    [ SPICE_MSG_CURSOR_TRAIL ]             = cursor_handle_trail,
-    [ SPICE_MSG_CURSOR_INVAL_ONE ]         = cursor_handle_inval_one,
-    [ SPICE_MSG_CURSOR_INVAL_ALL ]         = cursor_handle_inval_all,
-};
-
-/* coroutine context */
-static void spice_cursor_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
+static void channel_set_handlers(SpiceChannelClass *klass)
 {
-    int type = spice_msg_in_type(msg);
-    SpiceChannelClass *parent_class;
+    static const spice_msg_handler handlers[] = {
+        [ SPICE_MSG_CURSOR_INIT ]              = cursor_handle_init,
+        [ SPICE_MSG_CURSOR_RESET ]             = cursor_handle_reset,
+        [ SPICE_MSG_CURSOR_SET ]               = cursor_handle_set,
+        [ SPICE_MSG_CURSOR_MOVE ]              = cursor_handle_move,
+        [ SPICE_MSG_CURSOR_HIDE ]              = cursor_handle_hide,
+        [ SPICE_MSG_CURSOR_TRAIL ]             = cursor_handle_trail,
+        [ SPICE_MSG_CURSOR_INVAL_ONE ]         = cursor_handle_inval_one,
+        [ SPICE_MSG_CURSOR_INVAL_ALL ]         = cursor_handle_inval_all,
+    };
 
-    g_return_if_fail(type < SPICE_N_ELEMENTS(cursor_handlers));
-
-    parent_class = SPICE_CHANNEL_CLASS(spice_cursor_channel_parent_class);
-
-    if (cursor_handlers[type] != NULL)
-        cursor_handlers[type](channel, msg);
-    else if (parent_class->handle_msg)
-        parent_class->handle_msg(channel, msg);
-    else
-        g_return_if_reached();
+    spice_channel_set_handlers(klass, handlers, G_N_ELEMENTS(handlers));
 }

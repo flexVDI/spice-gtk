@@ -158,6 +158,7 @@ enum {
 static guint signals[SPICE_MAIN_LAST_SIGNAL];
 
 static void spice_main_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg);
+static void channel_set_handlers(SpiceChannelClass *klass);
 static void agent_send_msg_queue(SpiceMainChannel *channel);
 static void agent_free_msg_queue(SpiceMainChannel *channel);
 static void migrate_channel_event_cb(SpiceChannel *channel, SpiceChannelEvent event,
@@ -728,6 +729,7 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                      G_TYPE_OBJECT);
 
     g_type_class_add_private(klass, sizeof(SpiceMainChannelPrivate));
+    channel_set_handlers(SPICE_CHANNEL_CLASS(klass));
 }
 
 /* signal trampoline---------------------------------------------------------- */
@@ -2316,28 +2318,33 @@ static void main_handle_migrate_cancel(SpiceChannel *channel,
     spice_session_abort_migration(session);
 }
 
-static const spice_msg_handler main_handlers[] = {
-    [ SPICE_MSG_MAIN_INIT ]                = main_handle_init,
-    [ SPICE_MSG_MAIN_NAME ]                = main_handle_name,
-    [ SPICE_MSG_MAIN_UUID ]                = main_handle_uuid,
-    [ SPICE_MSG_MAIN_CHANNELS_LIST ]       = main_handle_channels_list,
-    [ SPICE_MSG_MAIN_MOUSE_MODE ]          = main_handle_mouse_mode,
-    [ SPICE_MSG_MAIN_MULTI_MEDIA_TIME ]    = main_handle_mm_time,
+static void channel_set_handlers(SpiceChannelClass *klass)
+{
+    static const spice_msg_handler handlers[] = {
+        [ SPICE_MSG_MAIN_INIT ]                = main_handle_init,
+        [ SPICE_MSG_MAIN_NAME ]                = main_handle_name,
+        [ SPICE_MSG_MAIN_UUID ]                = main_handle_uuid,
+        [ SPICE_MSG_MAIN_CHANNELS_LIST ]       = main_handle_channels_list,
+        [ SPICE_MSG_MAIN_MOUSE_MODE ]          = main_handle_mouse_mode,
+        [ SPICE_MSG_MAIN_MULTI_MEDIA_TIME ]    = main_handle_mm_time,
 
-    [ SPICE_MSG_MAIN_AGENT_CONNECTED ]     = main_handle_agent_connected,
-    [ SPICE_MSG_MAIN_AGENT_DISCONNECTED ]  = main_handle_agent_disconnected,
-    [ SPICE_MSG_MAIN_AGENT_DATA ]          = main_handle_agent_data,
-    [ SPICE_MSG_MAIN_AGENT_TOKEN ]         = main_handle_agent_token,
+        [ SPICE_MSG_MAIN_AGENT_CONNECTED ]     = main_handle_agent_connected,
+        [ SPICE_MSG_MAIN_AGENT_DISCONNECTED ]  = main_handle_agent_disconnected,
+        [ SPICE_MSG_MAIN_AGENT_DATA ]          = main_handle_agent_data,
+        [ SPICE_MSG_MAIN_AGENT_TOKEN ]         = main_handle_agent_token,
 
-    [ SPICE_MSG_MAIN_MIGRATE_BEGIN ]       = main_handle_migrate_begin,
-    [ SPICE_MSG_MAIN_MIGRATE_END ]         = main_handle_migrate_end,
-    [ SPICE_MSG_MAIN_MIGRATE_CANCEL ]      = main_handle_migrate_cancel,
-    [ SPICE_MSG_MAIN_MIGRATE_SWITCH_HOST ] = main_handle_migrate_switch_host,
-    [ SPICE_MSG_MAIN_AGENT_CONNECTED_TOKENS ]   = main_handle_agent_connected_tokens,
-    [ SPICE_MSG_MAIN_MIGRATE_BEGIN_SEAMLESS ]   = main_handle_migrate_begin_seamless,
-    [ SPICE_MSG_MAIN_MIGRATE_DST_SEAMLESS_ACK]  = main_handle_migrate_dst_seamless_ack,
-    [ SPICE_MSG_MAIN_MIGRATE_DST_SEAMLESS_NACK] = main_handle_migrate_dst_seamless_nack,
-};
+        [ SPICE_MSG_MAIN_MIGRATE_BEGIN ]       = main_handle_migrate_begin,
+        [ SPICE_MSG_MAIN_MIGRATE_END ]         = main_handle_migrate_end,
+        [ SPICE_MSG_MAIN_MIGRATE_CANCEL ]      = main_handle_migrate_cancel,
+        [ SPICE_MSG_MAIN_MIGRATE_SWITCH_HOST ] = main_handle_migrate_switch_host,
+        [ SPICE_MSG_MAIN_AGENT_CONNECTED_TOKENS ]   = main_handle_agent_connected_tokens,
+        [ SPICE_MSG_MAIN_MIGRATE_BEGIN_SEAMLESS ]   = main_handle_migrate_begin_seamless,
+        [ SPICE_MSG_MAIN_MIGRATE_DST_SEAMLESS_ACK]  = main_handle_migrate_dst_seamless_ack,
+        [ SPICE_MSG_MAIN_MIGRATE_DST_SEAMLESS_NACK] = main_handle_migrate_dst_seamless_nack,
+    };
+
+    spice_channel_set_handlers(klass, handlers, G_N_ELEMENTS(handlers));
+}
 
 /* coroutine context */
 static void spice_main_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
@@ -2345,8 +2352,6 @@ static void spice_main_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
     int type = spice_msg_in_type(msg);
     SpiceChannelClass *parent_class;
     SpiceChannelPrivate *c = SPICE_CHANNEL(channel)->priv;
-
-    g_return_if_fail(type < SPICE_N_ELEMENTS(main_handlers));
 
     parent_class = SPICE_CHANNEL_CLASS(spice_main_channel_parent_class);
 
@@ -2359,12 +2364,7 @@ static void spice_main_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
         }
     }
 
-    if (main_handlers[type] != NULL)
-        main_handlers[type](channel, msg);
-    else if (parent_class->handle_msg)
-        parent_class->handle_msg(channel, msg);
-    else
-        g_return_if_reached();
+    parent_class->handle_msg(channel, msg);
 }
 
 /**
