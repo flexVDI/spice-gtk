@@ -189,3 +189,42 @@ void spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in)
         spice_msg_out_send_internal(out);
     }
 }
+
+
+static void set_handlers(SpiceChannelClass *klass,
+                         const spice_msg_handler* handlers, const int n)
+{
+    int i;
+
+    g_array_set_size(klass->handlers, MAX(klass->handlers->len, n));
+    for (i = 0; i < n; i++) {
+        if (handlers[i])
+            g_array_index(klass->handlers, spice_msg_handler, i) = handlers[i];
+    }
+}
+
+static void spice_channel_add_base_handlers(SpiceChannelClass *klass)
+{
+    static const spice_msg_handler handlers[] = {
+        [ SPICE_MSG_SET_ACK ]                  = spice_channel_handle_set_ack,
+        [ SPICE_MSG_PING ]                     = spice_channel_handle_ping,
+        [ SPICE_MSG_NOTIFY ]                   = spice_channel_handle_notify,
+        [ SPICE_MSG_DISCONNECTING ]            = spice_channel_handle_disconnect,
+        [ SPICE_MSG_WAIT_FOR_CHANNELS ]        = spice_channel_handle_wait_for_channels,
+        [ SPICE_MSG_MIGRATE ]                  = spice_channel_handle_migrate,
+    };
+
+    set_handlers(klass, handlers, G_N_ELEMENTS(handlers));
+}
+
+G_GNUC_INTERNAL
+void spice_channel_set_handlers(SpiceChannelClass *klass,
+                                const spice_msg_handler* handlers, const int n)
+{
+    /* FIXME: use class private (requires glib 2.24) */
+    g_return_if_fail(klass->handlers == NULL);
+    klass->handlers = g_array_sized_new(FALSE, TRUE, sizeof(spice_msg_handler), n);
+
+    spice_channel_add_base_handlers(klass);
+    set_handlers(klass, handlers, n);
+}

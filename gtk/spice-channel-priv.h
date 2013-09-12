@@ -172,6 +172,8 @@ void spice_channel_handle_set_ack(SpiceChannel *channel, SpiceMsgIn *in);
 void spice_channel_handle_ping(SpiceChannel *channel, SpiceMsgIn *in);
 void spice_channel_handle_notify(SpiceChannel *channel, SpiceMsgIn *in);
 void spice_channel_handle_disconnect(SpiceChannel *channel, SpiceMsgIn *in);
+void spice_channel_set_handlers(SpiceChannelClass *klass,
+                                const spice_msg_handler* handlers, const int n);
 void spice_channel_handle_wait_for_channels(SpiceChannel *channel, SpiceMsgIn *in);
 void spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in);
 
