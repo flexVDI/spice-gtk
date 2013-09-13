@@ -50,6 +50,8 @@ static int _coroutine_release(struct continuation *cc)
 			return ret;
 	}
 
+	munmap(co->cc.stack, co->cc.stack_size);
+
 	co->caller = NULL;
 
 	return 0;
