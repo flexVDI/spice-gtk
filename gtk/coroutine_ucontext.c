@@ -25,8 +25,10 @@
 #include <sys/types.h>
 #endif
 #include <sys/mman.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "coroutine.h"
 
 #ifndef MAP_ANONYMOUS
@@ -70,7 +72,8 @@ int coroutine_init(struct coroutine *co)
 			    MAP_PRIVATE | MAP_ANONYMOUS,
 			    -1, 0);
 	if (co->cc.stack == MAP_FAILED)
-		return -1;
+		g_error("Failed to allocate %u bytes for coroutine stack: %s",
+			(unsigned)co->stack_size, strerror(errno));
 	co->cc.entry = coroutine_trampoline;
 	co->cc.release = _coroutine_release;
 	co->exited = 0;
