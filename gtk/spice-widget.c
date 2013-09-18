@@ -811,7 +811,7 @@ static void set_mouse_accel(SpiceDisplay *display, gboolean enabled)
 #elif defined GDK_WINDOWING_WIN32
     if (enabled) {
         g_return_if_fail(SystemParametersInfo(SPI_SETMOUSE, 0, &d->win_mouse, 0));
-        g_return_if_fail(SystemParametersInfo(SPI_SETMOUSESPEED, 0, (PVOID)d->win_mouse_speed, 0));
+        g_return_if_fail(SystemParametersInfo(SPI_SETMOUSESPEED, 0, (PVOID)(INT_PTR)d->win_mouse_speed, 0));
     } else {
         int accel[3] = { 0, 0, 0 }; // disabled
         g_return_if_fail(SystemParametersInfo(SPI_GETMOUSE, 0, &d->win_mouse, 0));
