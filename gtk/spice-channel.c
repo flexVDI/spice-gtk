@@ -2153,6 +2153,7 @@ static int spice_channel_load_ca(SpiceChannel *channel)
     guint8 *ca;
     guint size;
     const gchar *ca_file;
+    int rc;
 
     g_return_val_if_fail(c->ctx != NULL, 0);
 
@@ -2184,9 +2185,17 @@ static int spice_channel_load_ca(SpiceChannel *channel)
     }
 
     if (ca_file != NULL) {
-        int rc = SSL_CTX_load_verify_locations(c->ctx, ca_file, NULL);
+        rc = SSL_CTX_load_verify_locations(c->ctx, ca_file, NULL);
         if (rc != 1)
             g_warning("loading ca certs from %s failed", ca_file);
+        else
+            count++;
+    }
+
+    if (count == 0) {
+        rc = SSL_CTX_set_default_verify_paths(c->ctx);
+        if (rc != 1)
+            g_warning("loading ca certs from default location failed");
         else
             count++;
     }
