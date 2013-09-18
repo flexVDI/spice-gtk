@@ -1,3 +1,14 @@
+v0.21
+=====
+
+- improve inverted cursor support
+- win32 usb redirected device uninstall fix
+- add support for libusb hotplug API
+- smartcard initialization fixes
+- c&p converts line-endings if necessary
+- rendering and overall performance improvements
+- build and bindings fixes
+
 v0.20
 =====
 
