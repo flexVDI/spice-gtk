@@ -269,15 +269,15 @@ static void mono_cursor(display_cursor *cursor, const guint8 *data)
                      * the same contrast.
                      */
                     if ((x ^ y) & 1) {
-                        dest[0] = 0x30;
-                        dest[1] = 0x30;
-                        dest[2] = 0x30;
-                        dest[3] = 0xc0;
+                        dest[0] = 0xff;
+                        dest[1] = 0xff;
+                        dest[2] = 0xff;
+                        dest[3] = 0xff;
                     } else {
-                        dest[0] = 0x50;
-                        dest[1] = 0x50;
-                        dest[2] = 0x50;
-                        dest[3] = 0x30;
+                        dest[0] = 0x00;
+                        dest[1] = 0x00;
+                        dest[2] = 0x00;
+                        dest[3] = 0x00;
                     }
                 } else {
                     /* unchanged -> transparent */
