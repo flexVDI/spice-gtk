@@ -659,7 +659,7 @@ void spice_display_set_grab_keys(SpiceDisplay *display, SpiceGrabSequence *seq)
 #ifdef WIN32
 static LRESULT CALLBACK keyboard_hook_cb(int code, WPARAM wparam, LPARAM lparam)
 {
-    if  (win32_window && code == HC_ACTION && wparam == WM_KEYDOWN) {
+    if  (win32_window && code == HC_ACTION && wparam != WM_KEYUP) {
         KBDLLHOOKSTRUCT *hooked = (KBDLLHOOKSTRUCT*)lparam;
         DWORD dwmsg = (hooked->flags << 24) | (hooked->scanCode << 16) | 1;
 
