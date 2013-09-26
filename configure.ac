@@ -122,30 +122,24 @@ if test "x$with_sasl" != "xno"; then
     SASL_CFLAGS="-I$with_sasl"
     SASL_LIBS="-L$with_sasl"
   fi
-  fail=0
   old_cflags="$CFLAGS"
   old_libs="$LIBS"
   CFLAGS="$CFLAGS $SASL_CFLAGS"
   LIBS="$LIBS $SASL_LIBS"
-  AC_CHECK_HEADER([sasl/sasl.h],[],[
-    if test "x$with_sasl" != "xauto" ; then
-        with_sasl=no
-    else
-        fail=1
-    fi])
-  if test "x$with_sasl" != "xno" ; then
+  AC_CHECK_HEADER([sasl/sasl.h],[with_sasl=yes])
+  if test "x$with_sasl" = "xyes" ; then
     AC_CHECK_LIB([sasl2], [sasl_client_init],[with_sasl2=yes],[with_sasl2=no])
   fi
-  if test "x$with_sasl2" = "xno" -a "x$with_sasl" != "xno" ; then
+  if test "x$with_sasl2" = "xno" -a "x$with_sasl" = "xyes" ; then
     AC_CHECK_LIB([sasl], [sasl_client_init],[with_sasl=yes],[with_sasl=no])
   fi
   if test "x$with_sasl2" = "xyes"; then
     SASL_LIBS="$SASL_LIBS -lsasl2"
   elif test "x$with_sasl" = "xyes"; then
     SASL_LIBS="$SASL_LIBS -lsasl"
-  else
+  elif test "x$with_sasl" != "xauto"; then
     AC_MSG_ERROR([You must install the Cyrus SASL development package in order to compile spice-gtk])
- fi
+  fi
   CFLAGS="$old_cflags"
   LIBS="$old_libs"
   if test "x$with_sasl2" = "xyes" -o "x$with_sasl" = "xyes" ; then
