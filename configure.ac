@@ -572,22 +572,18 @@ AM_CONDITIONAL(WITH_VALA, [test "x$enable_vala" = "xyes"])
 VAPIDIR="${datadir}/vala/vapi"
 AC_SUBST(VAPIDIR)
 
+
 AC_ARG_WITH([python],
-  AS_HELP_STRING([--with-python], [build python bindings @<:@default=yes@:>@]),
-  [case "${withval}" in
-     yes|no) ;;
-     *) AC_MSG_ERROR([bad value ${withval} for python option]) ;;
+  AS_HELP_STRING([--with-python], [build python bindings @<:@default=auto@:>@]),
+  [case "$withval" in
+   yes|no) with_python="$withval";;
+   *) AC_MSG_ERROR([bad value $withval for python option]) ;;
    esac],
-  [withval=yes])
+  [AS_IF([test "$with_gtk" = "3.0" -o test "x$os_win32=xyes"],
+         [with_python=no])]
+)
 
-if test "$with_gtk" = "3.0"
-then
-  WITH_PYTHON=no
-else
-  WITH_PYTHON=$withval
-fi
-
-if test "$WITH_PYTHON" = "yes"; then
+if test "x$with_python" = "xyes"; then
   PKG_CHECK_MODULES(PYGTK, pygtk-2.0 >= 2.0.0)
   AC_SUBST(PYGTK_CFLAGS)
   AC_SUBST(PYGTK_LIBS)
@@ -615,7 +611,7 @@ if test "$WITH_PYTHON" = "yes"; then
   fi
 fi
 
-AM_CONDITIONAL(WITH_PYTHON, [test "$WITH_PYTHON" = "yes"])
+AM_CONDITIONAL(WITH_PYTHON, [test "x$with_python" = "xyes"])
 
 
 AC_ARG_ENABLE([dbus],
