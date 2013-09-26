@@ -265,9 +265,13 @@ AC_SUBST(GTHREAD_CFLAGS)
 AC_SUBST(GTHREAD_LIBS)
 
 AC_ARG_WITH([audio],
-  AS_HELP_STRING([--with-audio=@<:@gstreamer/pulse/no@:>@], [Select audio backend @<:@default=pulse@:>@]),
+  AS_HELP_STRING([--with-audio=@<:@gstreamer/pulse/auto/no@:>@], [Select audio backend @<:@default=auto@:>@]),
   [],
-  [with_audio="pulse"])
+  [with_audio="auto"])
+
+AS_IF([test "x$with_audio" = "xauto"], [
+  AS_IF([test "x$os_win32" = "xyes"], [with_audio=gstreamer], [with_audio=pulse])
+])
 
 case "$with_audio" in
   gstreamer|pulse|no*)
