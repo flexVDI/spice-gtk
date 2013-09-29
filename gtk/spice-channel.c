@@ -1790,6 +1790,7 @@ void spice_channel_recv_msg(SpiceChannel *channel,
     spice_channel_read(channel, in->data, msg_size);
     if (c->has_error)
         goto end;
+    in->dpos = msg_size;
 
     msg_type = spice_header_get_msg_type(in->header, c->use_mini_header);
     sub_list_offset = spice_header_get_msg_sub_list(in->header, c->use_mini_header);
