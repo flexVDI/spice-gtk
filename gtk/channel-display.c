@@ -551,7 +551,7 @@ static SpicePalette *palette_get(SpicePaletteCache *cache, uint64_t id)
     return cache_find(c->palettes, id);
 }
 
-static void palette_remove(SpicePaletteCache *cache, uint32_t id)
+static void palette_remove(SpicePaletteCache *cache, uint64_t id)
 {
     SpiceDisplayChannelPrivate *c =
         SPICE_CONTAINEROF(cache, SpiceDisplayChannelPrivate, palette_cache);
