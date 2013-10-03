@@ -546,8 +546,8 @@ static SpicePalette *palette_get(SpicePaletteCache *cache, uint64_t id)
         SPICE_CONTAINEROF(cache, SpiceDisplayChannelPrivate, palette_cache);
 
     /* here the returned pointer is weak, no ref given to caller.  it
-     * seems spice canvas usage is exclusively temporary, so it's ok
-     * (for now) */
+     * seems spice canvas usage is exclusively temporary, so it's ok.
+     * palette_release is a noop. */
     return cache_find(c->palettes, id);
 }
 
@@ -561,7 +561,7 @@ static void palette_remove(SpicePaletteCache *cache, uint32_t id)
 
 static void palette_release(SpicePaletteCache *cache, SpicePalette *palette)
 {
-    palette_remove(cache, palette->unique);
+    /* there is no refcount of palette, see palette_get() */
 }
 
 #ifdef SW_CANVAS_CACHE
