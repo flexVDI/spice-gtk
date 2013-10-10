@@ -191,6 +191,9 @@ static const char *agent_caps[] = {
     [ VD_AGENT_CAP_DISPLAY_CONFIG      ] = "display config",
     [ VD_AGENT_CAP_CLIPBOARD_BY_DEMAND ] = "clipboard",
     [ VD_AGENT_CAP_CLIPBOARD_SELECTION ] = "clipboard selection",
+    [ VD_AGENT_CAP_SPARSE_MONITORS_CONFIG ] = "sparse monitors",
+    [ VD_AGENT_CAP_GUEST_LINEEND_LF    ] = "line-end lf",
+    [ VD_AGENT_CAP_GUEST_LINEEND_CRLF  ] = "line-end crlf",
 };
 #define NAME(_a, _i) ((_i) < SPICE_N_ELEMENTS(_a) ? (_a[(_i)] ?: "?") : "?")
 
