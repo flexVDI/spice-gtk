@@ -1169,21 +1169,13 @@ static void spice_channel_send_link(SpiceChannel *channel)
     free(buffer);
 }
 
-static void spice_channel_switch_protocol(SpiceChannel *channel, gint version)
-{
-    SpiceChannelPrivate *c = channel->priv;
-
-    g_object_set(c->session, "protocol", version, NULL);
-    SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
-    spice_channel_connect(channel);
-}
-
 /* coroutine context */
-static gboolean spice_channel_recv_link_hdr(SpiceChannel *channel)
+static gboolean spice_channel_recv_link_hdr(SpiceChannel *channel, gboolean *switch_protocol)
 {
     SpiceChannelPrivate *c = channel->priv;
     int rc;
 
+    *switch_protocol = FALSE;
     rc = spice_channel_read(channel, &c->peer_hdr, sizeof(c->peer_hdr));
     if (rc != sizeof(c->peer_hdr)) {
         g_warning("incomplete link header (%d/%" G_GSIZE_FORMAT ")",
@@ -1216,7 +1208,8 @@ error:
        incompatible. Try with the oldest protocol in this case: */
     if (c->link_hdr.major_version != 1) {
         SPICE_DEBUG("%s: error, switching to protocol 1 (spice 0.4)", c->name);
-        spice_channel_switch_protocol(channel, 1);
+        *switch_protocol = TRUE;
+        g_object_set(c->session, "protocol", 1, NULL);
         return FALSE;
     }
 
@@ -2210,6 +2203,7 @@ static void *spice_channel_coroutine(void *data)
     guint verify;
     int rc, delay_val = 1;
     gboolean switch_tls = FALSE;
+    gboolean switch_protocol = FALSE;
 
     CHANNEL_DEBUG(channel, "Started background coroutine %p", &c->coroutine);
 
@@ -2332,7 +2326,7 @@ connected:
     }
 
     spice_channel_send_link(channel);
-    if (spice_channel_recv_link_hdr(channel) == FALSE)
+    if (spice_channel_recv_link_hdr(channel, &switch_protocol) == FALSE)
         goto cleanup;
     spice_channel_recv_link_msg(channel, &switch_tls);
     if (switch_tls)
@@ -2347,8 +2341,8 @@ cleanup:
 
     SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
 
-    if (switch_tls && !c->tls) {
-        c->tls = true;
+    if (switch_protocol || (switch_tls && !c->tls)) {
+        c->tls = switch_tls;
         spice_channel_connect(channel);
         g_object_unref(channel);
     } else
