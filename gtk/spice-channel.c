@@ -1214,10 +1214,10 @@ error:
     /* Windows socket seems to give early CONNRESET errors. The server
        does not linger when closing the socket if the protocol is
        incompatible. Try with the oldest protocol in this case: */
-    if (c->peer_msg != NULL && c->link_hdr.major_version != 1) {
+    if (c->link_hdr.major_version != 1) {
         SPICE_DEBUG("%s: error, switching to protocol 1 (spice 0.4)", c->name);
         spice_channel_switch_protocol(channel, 1);
-        return TRUE;
+        return FALSE;
     }
 
     emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_LINK);
