@@ -635,7 +635,7 @@ static void clipboard_get(GtkClipboard *clipboard,
     clipboard_handler = g_signal_connect(s->main, "main-clipboard-selection",
                                          G_CALLBACK(clipboard_got_from_guest),
                                          &ri);
-    agent_handler = g_signal_connect(s->main, "notify::agent-connected",
+    agent_handler = g_signal_connect_swapped(s->main, "notify::agent-connected",
                                      G_CALLBACK(clipboard_agent_connected),
                                      &ri);
 
