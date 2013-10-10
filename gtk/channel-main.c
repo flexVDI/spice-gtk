@@ -375,6 +375,9 @@ static void spice_main_channel_reset(SpiceChannel *channel, gboolean migrating)
     agent_free_msg_queue(SPICE_MAIN_CHANNEL(channel));
     c->agent_msg_queue = g_queue_new();
 
+    /* check: if agent_connected can be TRUE, it should call instead
+       set_agent_connected() to notify new state */
+    g_warn_if_fail(c->agent_connected == FALSE);
     spice_main_channel_reset_agent(SPICE_MAIN_CHANNEL(channel));
 
     SPICE_CHANNEL_CLASS(spice_main_channel_parent_class)->channel_reset(channel, migrating);
@@ -1399,8 +1402,8 @@ static void agent_start(SpiceMainChannel *channel)
 /* coroutine context  */
 static void agent_stopped(SpiceMainChannel *channel)
 {
-    spice_main_channel_reset_agent(channel);
     set_agent_connected(channel, FALSE); /* For notify */
+    spice_main_channel_reset_agent(channel);
     emit_main_context(channel, SPICE_MAIN_AGENT_UPDATE);
 }
 
