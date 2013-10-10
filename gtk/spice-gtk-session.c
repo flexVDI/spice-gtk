@@ -615,6 +615,7 @@ static void clipboard_get(GtkClipboard *clipboard,
     RunInfo ri = { NULL, };
     SpiceGtkSession *self = user_data;
     SpiceGtkSessionPrivate *s = self->priv;
+    gboolean agent_connected = FALSE;
     gulong clipboard_handler;
     gulong agent_handler;
     int selection;
@@ -642,12 +643,20 @@ static void clipboard_get(GtkClipboard *clipboard,
     spice_main_clipboard_selection_request(s->main, selection,
                                            atom2agent[info].vdagent);
 
+
+    g_object_get(s->main, "agent-connected", &agent_connected, NULL);
+    if (!agent_connected) {
+        SPICE_DEBUG("canceled clipboard_get, before running loop");
+        goto cleanup;
+    }
+
     /* apparently, this is needed to avoid dead-lock, from
        gtk_dialog_run */
     gdk_threads_leave();
     g_main_loop_run(ri.loop);
     gdk_threads_enter();
 
+cleanup:
     g_main_loop_unref(ri.loop);
     ri.loop = NULL;
     g_signal_handler_disconnect(s->main, clipboard_handler);
