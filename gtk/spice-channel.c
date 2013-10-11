@@ -1348,7 +1348,7 @@ static gboolean spice_channel_perform_auth_sasl(SpiceChannel *channel)
     };
     sasl_interact_t *interact = NULL;
     guint32 len;
-    char *mechlist;
+    char *mechlist = NULL;
     const char *mechname;
     gboolean ret = FALSE;
     GSocketAddress *addr = NULL;
@@ -1403,8 +1403,6 @@ static gboolean spice_channel_perform_auth_sasl(SpiceChannel *channel)
                           saslcb,
                           SASL_SUCCESS_DATA,
                           &saslconn);
-    g_free(localAddr);
-    g_free(remoteAddr);
 
     if (err != SASL_OK) {
         g_critical("Failed to create SASL client context: %d (%s)",
@@ -1453,8 +1451,6 @@ static gboolean spice_channel_perform_auth_sasl(SpiceChannel *channel)
     spice_channel_read(channel, mechlist, len);
     mechlist[len] = '\0';
     if (c->has_error) {
-        g_free(mechlist);
-        mechlist = NULL;
         goto error;
     }
 
@@ -1470,8 +1466,6 @@ restart:
     if (err != SASL_OK && err != SASL_CONTINUE && err != SASL_INTERACT) {
         g_critical("Failed to start SASL negotiation: %d (%s)",
                    err, sasl_errdetail(saslconn));
-        g_free(mechlist);
-        mechlist = NULL;
         goto error;
     }
 
@@ -1657,15 +1651,22 @@ complete:
      * is defined to be sent unencrypted, and setting saslconn turns
      * on the SSF layer encryption processing */
     c->sasl_conn = saslconn;
-    return ret;
+    goto cleanup;
 
 error:
-    g_clear_object(&addr);
     if (saslconn)
         sasl_dispose(&saslconn);
     emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_AUTH);
     c->has_error = TRUE; /* force disconnect */
-    return FALSE;
+    ret = FALSE;
+
+cleanup:
+    g_free(localAddr);
+    g_free(remoteAddr);
+    g_free(mechlist);
+    g_free(serverin);
+    g_clear_object(&addr);
+    return ret;
 }
 #endif /* HAVE_SASL */
 
