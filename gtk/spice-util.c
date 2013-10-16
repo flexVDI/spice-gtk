@@ -41,6 +41,20 @@
 
 static GOnce debug_once = G_ONCE_INIT;
 
+static void spice_util_enable_debug_messages(void)
+{
+#if GLIB_CHECK_VERSION(2, 31, 0)
+    const gchar *doms = g_getenv("G_MESSAGES_DEBUG");
+    if (!doms) {
+        g_setenv("G_MESSAGES_DEBUG", G_LOG_DOMAIN, 1);
+    } else if (!strstr(doms, G_LOG_DOMAIN)) {
+        gchar *newdoms = g_strdup_printf("%s %s", doms, G_LOG_DOMAIN);
+        g_setenv("G_MESSAGES_DEBUG", newdoms, 1);
+        g_free(newdoms);
+    }
+#endif
+}
+
 /**
  * spice_util_set_debug:
  * @enabled: %TRUE or %FALSE
@@ -56,24 +70,22 @@ void spice_util_set_debug(gboolean enabled)
      */
     spice_util_get_debug();
 
-#if GLIB_CHECK_VERSION(2, 31, 0)
     if (enabled) {
-        const gchar *doms = g_getenv("G_MESSAGES_DEBUG");
-        if (!doms) {
-            g_setenv("G_MESSAGES_DEBUG", G_LOG_DOMAIN, 1);
-        } else if (!strstr(doms, G_LOG_DOMAIN)) {
-            gchar *newdoms = g_strdup_printf("%s %s", doms, G_LOG_DOMAIN);
-            g_setenv("G_MESSAGES_DEBUG", newdoms, 1);
-            g_free(newdoms);
-        }
+        spice_util_enable_debug_messages();
     }
-#endif
+
     debug_once.retval = GINT_TO_POINTER(enabled);
 }
 
 static gpointer getenv_debug(gpointer data)
 {
-    return GINT_TO_POINTER(g_getenv("SPICE_DEBUG") != NULL);
+    gboolean debug;
+
+    debug = (g_getenv("SPICE_DEBUG") != NULL);
+    if (debug)
+        spice_util_enable_debug_messages();
+
+    return GINT_TO_POINTER(debug);
 }
 
 gboolean spice_util_get_debug(void)
