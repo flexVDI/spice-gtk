@@ -49,6 +49,13 @@ static GOnce debug_once = G_ONCE_INIT;
  **/
 void spice_util_set_debug(gboolean enabled)
 {
+    /* Make sure debug_once has been initialised
+     * with the value of SPICE_DEBUG already, otherwise
+     * spice_util_get_debug() may overwrite the value
+     * that was just set using spice_util_set_debug()
+     */
+    spice_util_get_debug();
+
 #if GLIB_CHECK_VERSION(2, 31, 0)
     if (enabled) {
         const gchar *doms = g_getenv("G_MESSAGES_DEBUG");
