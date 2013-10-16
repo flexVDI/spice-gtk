@@ -1325,7 +1325,7 @@ static gboolean spice_channel_perform_auth_sasl(SpiceChannel *channel)
     char *localAddr = NULL, *remoteAddr = NULL;
     const void *val;
     sasl_ssf_t ssf;
-    sasl_callback_t saslcb[] = {
+    static const sasl_callback_t saslcb[] = {
         { .id = SASL_CB_PASS },
         { .id = 0 },
     };
