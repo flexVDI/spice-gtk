@@ -722,9 +722,8 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
         surface->shmid = -1;
     }
 
-    if (surface->shmid == -1) {
-        surface->data = spice_malloc(surface->size);
-    }
+    if (surface->shmid == -1)
+        surface->data = g_malloc0(surface->size);
 
     g_return_val_if_fail(c->glz_window, 0);
 
