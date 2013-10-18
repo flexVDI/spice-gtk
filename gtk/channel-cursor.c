@@ -246,6 +246,35 @@ static void do_emit_main_context(GObject *object, int signum, gpointer params)
 
 /* ------------------------------------------------------------------ */
 
+#ifdef DEBUG_CURSOR
+static void print_cursor(display_cursor *cursor, const guint8 *data)
+{
+    int x, y, bpl;
+    const guint8 *xor, *and;
+
+    bpl = (cursor->hdr.width + 7) / 8;
+    and = data;
+    xor = and + bpl * cursor->hdr.height;
+
+    printf("data (%d x %d):\n", cursor->hdr.width, cursor->hdr.height);
+    for (y = 0 ; y < cursor->hdr.height; ++y) {
+        for (x = 0 ; x < cursor->hdr.width / 8; x++) {
+            printf("%02X", and[x]);
+        }
+        and += bpl;
+        printf("\n");
+    }
+    printf("xor:\n");
+    for (y = 0 ; y < cursor->hdr.height; ++y) {
+        for (x = 0 ; x < cursor->hdr.width / 8; ++x) {
+            printf("%02X", xor[x]);
+        }
+        xor += bpl;
+        printf("\n");
+    }
+}
+#endif
+
 static void mono_cursor(display_cursor *cursor, const guint8 *data)
 {
     const guint8 *xor, *and;
@@ -256,6 +285,9 @@ static void mono_cursor(display_cursor *cursor, const guint8 *data)
     and = data;
     xor = and + bpl * cursor->hdr.height;
     dest  = (uint8_t *)cursor->data;
+#ifdef DEBUG_CURSOR
+    print_cursor(cursor, data);
+#endif
     for (y = 0; y < cursor->hdr.height; y++) {
         bit = 0x80;
         for (x = 0; x < cursor->hdr.width; x++, dest += 4) {
