@@ -20,6 +20,7 @@
 # include "config.h"
 #endif
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -373,4 +374,115 @@ gchar* spice_unix2dos(const gchar *str, gssize len, GError **error)
                                   NEWLINE_TYPE_LF,
                                   NEWLINE_TYPE_CR_LF,
                                   error);
+}
+
+static bool buf_is_ones(unsigned size, const guint8 *data)
+{
+    int i;
+
+    for (i = 0 ; i < size; ++i) {
+        if (data[i] != 0xff) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool is_edge_helper(const guint8 *xor, int bpl, int x, int y)
+{
+    return (xor[bpl * y + (x / 8)] & (0x80 >> (x % 8))) > 0;
+}
+
+static bool is_edge(unsigned width, unsigned height, const guint8 *xor, int bpl, int x, int y)
+{
+    if (x == 0 || x == width -1 || y == 0 || y == height - 1) {
+        return 0;
+    }
+#define P(x, y) is_edge_helper(xor, bpl, x, y)
+    return !P(x, y) && (P(x - 1, y + 1) || P(x, y + 1) || P(x + 1, y + 1) ||
+                        P(x - 1, y)     ||                P(x + 1, y)     ||
+                        P(x - 1, y - 1) || P(x, y - 1) || P(x + 1, y - 1));
+#undef P
+}
+
+/* Mono cursors have two places, "and" and "xor". If a bit is 1 in both, it
+ * means invertion of the corresponding pixel in the display. Since X11 (and
+ * gdk) doesn't do invertion, instead we do edge detection and turn the
+ * sorrounding edge pixels black, and the invert-me pixels white. To
+ * illustrate:
+ *
+ *  and   xor      dest RGB (1=0xffffff, 0=0x000000)
+ *
+ *                        dest alpha (1=0xff, 0=0x00)
+ *
+ * 11111 00000     00000  00000
+ * 11111 00000     00000  01110
+ * 11111 00100 =>  00100  01110
+ * 11111 00100     00100  01110
+ * 11111 00000     00000  01110
+ * 11111 00000     00000  00000
+ *
+ * See tests/util.c for more tests
+ *
+ * Notes:
+ *  Assumes width >= 8 (i.e. bytes per line is at least 1)
+ *  Assumes edges are not on the boundary (first/last line/column) for simplicity
+ *
+ */
+G_GNUC_INTERNAL
+void spice_mono_edge_highlight(unsigned width, unsigned height,
+                               const guint8 *and, const guint8 *xor, guint8 *dest)
+{
+    int bpl = (width + 7) / 8;
+    bool and_ones = buf_is_ones(height * bpl, and);
+    int x, y, bit;
+    const guint8 *xor_base = xor;
+
+    for (y = 0; y < height; y++) {
+        bit = 0x80;
+        for (x = 0; x < width; x++, dest += 4) {
+            if (is_edge(width, height, xor_base, bpl, x, y) && and_ones) {
+                dest[0] = 0x00;
+                dest[1] = 0x00;
+                dest[2] = 0x00;
+                dest[3] = 0xff;
+                goto next_bit;
+            }
+            if (and[x/8] & bit) {
+                if (xor[x/8] & bit) {
+                    dest[0] = 0xff;
+                    dest[1] = 0xff;
+                    dest[2] = 0xff;
+                    dest[3] = 0xff;
+                } else {
+                    /* unchanged -> transparent */
+                    dest[0] = 0x00;
+                    dest[1] = 0x00;
+                    dest[2] = 0x00;
+                    dest[3] = 0x00;
+                }
+            } else {
+                if (xor[x/8] & bit) {
+                    /* set -> white */
+                    dest[0] = 0xff;
+                    dest[1] = 0xff;
+                    dest[2] = 0xff;
+                    dest[3] = 0xff;
+                } else {
+                    /* clear -> black */
+                    dest[0] = 0x00;
+                    dest[1] = 0x00;
+                    dest[2] = 0x00;
+                    dest[3] = 0xff;
+                }
+            }
+        next_bit:
+            bit >>= 1;
+            if (bit == 0) {
+                bit = 0x80;
+            }
+        }
+        and += bpl;
+        xor += bpl;
+    }
 }

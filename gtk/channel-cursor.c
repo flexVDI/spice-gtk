@@ -277,70 +277,18 @@ static void print_cursor(display_cursor *cursor, const guint8 *data)
 
 static void mono_cursor(display_cursor *cursor, const guint8 *data)
 {
+    int bpl = (cursor->hdr.width + 7) / 8;
     const guint8 *xor, *and;
     guint8 *dest;
-    int bpl, x, y, bit;
+    dest = (uint8_t *)cursor->data;
 
-    bpl = (cursor->hdr.width + 7) / 8;
-    and = data;
-    xor = and + bpl * cursor->hdr.height;
-    dest  = (uint8_t *)cursor->data;
 #ifdef DEBUG_CURSOR
     print_cursor(cursor, data);
 #endif
-    for (y = 0; y < cursor->hdr.height; y++) {
-        bit = 0x80;
-        for (x = 0; x < cursor->hdr.width; x++, dest += 4) {
-            if (and[x/8] & bit) {
-                if (xor[x/8] & bit) {
-                    /*
-                     * flip -> unsupported by x11, since XCreatePixmapCursor has
-                     * no invert functionality, only a mask, shape, background and
-                     * foreground colors. Use this checkerboard hack to get some
-                     * contrast for cursors in the guest that relied on invert for
-                     * the same contrast.
-                     */
-                    if ((x ^ y) & 1) {
-                        dest[0] = 0xff;
-                        dest[1] = 0xff;
-                        dest[2] = 0xff;
-                        dest[3] = 0xff;
-                    } else {
-                        dest[0] = 0x00;
-                        dest[1] = 0x00;
-                        dest[2] = 0x00;
-                        dest[3] = 0x00;
-                    }
-                } else {
-                    /* unchanged -> transparent */
-                    dest[0] = 0x00;
-                    dest[1] = 0x00;
-                    dest[2] = 0x00;
-                    dest[3] = 0x00;
-                }
-            } else {
-                if (xor[x/8] & bit) {
-                    /* set -> white */
-                    dest[0] = 0xff;
-                    dest[1] = 0xff;
-                    dest[2] = 0xff;
-                    dest[3] = 0xff;
-                } else {
-                    /* clear -> black */
-                    dest[0] = 0x00;
-                    dest[1] = 0x00;
-                    dest[2] = 0x00;
-                    dest[3] = 0xff;
-                }
-            }
-            bit >>= 1;
-            if (bit == 0) {
-                bit = 0x80;
-            }
-        }
-        and += bpl;
-        xor += bpl;
-    }
+    and = data;
+    xor = and + bpl * cursor->hdr.height;
+    spice_mono_edge_highlight(cursor->hdr.width, cursor->hdr.height,
+                              and, xor, dest);
 }
 
 static guint8 get_pix_mask(const guint8 *data, gint offset, gint pix_index)
