@@ -1482,7 +1482,7 @@ restart:
 
     /* NB, distinction of NULL vs "" is *critical* in SASL */
     if (clientout) {
-        len += clientoutlen + 1;
+        len = clientoutlen + 1;
         spice_channel_write(channel, &len, sizeof(guint32));
         spice_channel_write(channel, clientout, len);
     } else {
@@ -1524,6 +1524,9 @@ restart:
      * Even if the server has completed, the client must *always* do at least one step
      * in this loop to verify the server isn't lying about something. Mutual auth */
     for (;;) {
+       if (complete && err == SASL_OK)
+            break;
+
     restep:
         err = sasl_client_step(saslconn,
                                serverin,
