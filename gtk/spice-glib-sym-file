@@ -91,3 +91,4 @@ spice_usbredir_channel_get_type
 spice_util_get_debug
 spice_util_get_version_string
 spice_util_set_debug
+spice_uuid_to_string
