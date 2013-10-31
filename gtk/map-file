@@ -32,6 +32,7 @@ spice_display_new_with_monitor;
 spice_display_paste_from_guest;
 spice_display_send_keys;
 spice_display_set_grab_keys;
+spice_display_get_monitor_config;
 spice_error_get_type;
 spice_get_option_group;
 spice_grab_sequence_as_string;

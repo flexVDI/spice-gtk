@@ -278,25 +278,47 @@ static gint get_display_id(SpiceDisplay *display)
     return d->channel_id;
 }
 
-static void update_monitor_area(SpiceDisplay *display)
+/**
+ * spice_display_get_monitor_config:
+ * @display: the display widget
+ *
+ * Gets the monitor configuration for the display, from which you can determine
+ * the current position and resolution of the monitor
+ *
+ * Returns (transfer none): the monitor configuration for the display
+ **/
+const SpiceDisplayMonitorConfig* spice_display_get_monitor_config(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    SpiceDisplayMonitorConfig *cfg, *c = NULL;
-    GArray *monitors = NULL;
     int i;
+    GArray *monitors = NULL;
+    SpiceDisplayPrivate *d = NULL;
+    SpiceDisplayMonitorConfig* c = NULL;
 
-    SPICE_DEBUG("update monitor area %d:%d", d->channel_id, d->monitor_id);
-    if (d->monitor_id < 0)
-        goto whole;
+    g_return_val_if_fail(SPICE_IS_DISPLAY(display), NULL);
+
+    d = SPICE_DISPLAY_GET_PRIVATE(display);
+    g_return_val_if_fail(d->monitor_id >= 0, NULL);
 
     g_object_get(d->display, "monitors", &monitors, NULL);
     for (i = 0; monitors != NULL && i < monitors->len; i++) {
-        cfg = &g_array_index(monitors, SpiceDisplayMonitorConfig, i);
+        SpiceDisplayMonitorConfig *cfg = &g_array_index(monitors,
+                                                        SpiceDisplayMonitorConfig,
+                                                        i);
         if (cfg->id == d->monitor_id) {
-           c = cfg;
-           break;
+            c = cfg;
+            break;
         }
     }
+
+    g_clear_pointer(&monitors, g_array_unref);
+    return c;
+}
+
+static void update_monitor_area(SpiceDisplay *display)
+{
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    const SpiceDisplayMonitorConfig *c = spice_display_get_monitor_config(display);
+
     if (c == NULL) {
         SPICE_DEBUG("update monitor: no monitor %d", d->monitor_id);
         set_monitor_ready(display, false);
@@ -318,11 +340,9 @@ static void update_monitor_area(SpiceDisplay *display)
                                   c->x, c->y, c->width, c->height, FALSE);
 
     update_area(display, c->x, c->y, c->width, c->height);
-    g_clear_pointer(&monitors, g_array_unref);
     return;
 
 whole:
-    g_clear_pointer(&monitors, g_array_unref);
     /* by display whole surface */
     update_area(display, 0, 0, d->width, d->height);
     set_monitor_ready(display, true);

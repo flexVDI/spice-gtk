@@ -80,6 +80,8 @@ void spice_display_send_keys(SpiceDisplay *display, const guint *keyvals,
                              int nkeyvals, SpiceDisplayKeyEvent kind);
 GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display);
 
+const SpiceDisplayMonitorConfig* spice_display_get_monitor_config(SpiceDisplay *display);
+
 #ifndef SPICE_DISABLE_DEPRECATED
 SPICE_DEPRECATED_FOR(spice_gtk_session_copy_to_guest)
 void spice_display_copy_to_guest(SpiceDisplay *display);
