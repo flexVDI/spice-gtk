@@ -296,7 +296,7 @@ const SpiceDisplayMonitorConfig* spice_display_get_monitor_config(SpiceDisplay *
 
     g_return_val_if_fail(SPICE_IS_DISPLAY(display), NULL);
 
-    d = SPICE_DISPLAY_GET_PRIVATE(display);
+    d = display->priv;
     g_return_val_if_fail(d->monitor_id >= 0, NULL);
 
     g_object_get(d->display, "monitors", &monitors, NULL);
@@ -662,7 +662,11 @@ spice_display_constructor(GType                  gtype,
  **/
 void spice_display_set_grab_keys(SpiceDisplay *display, SpiceGrabSequence *seq)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d;
+
+    g_return_if_fail(SPICE_IS_DISPLAY(display));
+
+    d = display->priv;
     g_return_if_fail(d != NULL);
 
     if (d->grabseq) {
@@ -721,7 +725,11 @@ static LRESULT CALLBACK keyboard_hook_cb(int code, WPARAM wparam, LPARAM lparam)
  **/
 SpiceGrabSequence *spice_display_get_grab_keys(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d;
+
+    g_return_val_if_fail(SPICE_IS_DISPLAY(display), NULL);
+
+    d = display->priv;
     g_return_val_if_fail(d != NULL, NULL);
 
     return d->grabseq;
@@ -1406,7 +1414,7 @@ void spice_display_send_keys(SpiceDisplay *display, const guint *keyvals,
 {
     int i;
 
-    g_return_if_fail(SPICE_DISPLAY(display) != NULL);
+    g_return_if_fail(SPICE_IS_DISPLAY(display));
     g_return_if_fail(keyvals != NULL);
 
     SPICE_DEBUG("%s", __FUNCTION__);
@@ -2519,6 +2527,8 @@ SpiceDisplay* spice_display_new_with_monitor(SpiceSession *session, gint channel
  **/
 void spice_display_mouse_ungrab(SpiceDisplay *display)
 {
+    g_return_if_fail(SPICE_IS_DISPLAY(display));
+
     try_mouse_ungrab(display);
 }
 
@@ -2532,7 +2542,11 @@ void spice_display_mouse_ungrab(SpiceDisplay *display)
  **/
 void spice_display_copy_to_guest(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d;
+
+    g_return_if_fail(SPICE_IS_DISPLAY(display));
+
+    d = display->priv;
 
     g_return_if_fail(d->gtk_session != NULL);
 
@@ -2549,7 +2563,11 @@ void spice_display_copy_to_guest(SpiceDisplay *display)
  **/
 void spice_display_paste_from_guest(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d;
+
+    g_return_if_fail(SPICE_IS_DISPLAY(display));
+
+    d = display->priv;
 
     g_return_if_fail(d->gtk_session != NULL);
 
@@ -2566,10 +2584,14 @@ void spice_display_paste_from_guest(SpiceDisplay *display)
  **/
 GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d;
     GdkPixbuf *pixbuf;
     int x, y;
     guchar *src, *data, *dest;
+
+    g_return_val_if_fail(SPICE_IS_DISPLAY(display), NULL);
+
+    d = display->priv;
 
     g_return_val_if_fail(d != NULL, NULL);
     /* TODO: ensure d->data has been exposed? */
