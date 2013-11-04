@@ -286,6 +286,7 @@ static gint get_display_id(SpiceDisplay *display)
  * the current position and resolution of the monitor
  *
  * Returns (transfer none): the monitor configuration for the display
+ * Since: 0.22
  **/
 const SpiceDisplayMonitorConfig* spice_display_get_monitor_config(SpiceDisplay *display)
 {
