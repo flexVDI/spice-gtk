@@ -748,16 +748,19 @@ static void clipboard_received_cb(GtkClipboard *clipboard,
     gchar* name;
     GdkAtom atom;
     int selection;
+    int max_clipboard;
 
     selection = get_selection_from_clipboard(s, clipboard);
     g_return_if_fail(selection != -1);
 
+    g_object_get(s->main, "max-clipboard", &max_clipboard, NULL);
     len = gtk_selection_data_get_length(selection_data);
-    if (len == -1) {
+    if (len == 0 || (max_clipboard != -1 && len > max_clipboard)) {
+        g_warning("discarded clipboard of size %d (max: %d)", len, max_clipboard);
+        return;
+    } else if (len == -1) {
         SPICE_DEBUG("empty clipboard");
         len = 0;
-    } else if (len == 0) {
-        SPICE_DEBUG("TODO: what should be done here?");
     } else {
         atom = gtk_selection_data_get_data_type(selection_data);
         name = gdk_atom_name(atom);

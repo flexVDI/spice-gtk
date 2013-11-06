@@ -106,6 +106,7 @@ struct _SpiceMainChannelPrivate  {
     guint                       switch_host_delayed_id;
     guint                       migrate_delayed_id;
     spice_migrate               *migrate_data;
+    int                         max_clipboard;
 };
 
 struct spice_migrate {
@@ -137,6 +138,7 @@ enum {
     PROP_DISPLAY_COLOR_DEPTH,
     PROP_DISABLE_DISPLAY_POSITION,
     PROP_DISABLE_DISPLAY_ALIGN,
+    PROP_MAX_CLIPBOARD,
 };
 
 /* Signals */
@@ -253,6 +255,9 @@ static void spice_main_get_property(GObject    *object,
     case PROP_DISABLE_DISPLAY_ALIGN:
         g_value_set_boolean(value, c->disable_display_align);
         break;
+    case PROP_MAX_CLIPBOARD:
+        g_value_set_int(value, c->max_clipboard);
+        break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
 	break;
@@ -285,6 +290,9 @@ static void spice_main_set_property(GObject *gobject, guint prop_id,
         break;
     case PROP_DISABLE_DISPLAY_ALIGN:
         c->disable_display_align = g_value_get_boolean(value);
+        break;
+    case PROP_MAX_CLIPBOARD:
+        c->max_clipboard = g_value_get_int(value);
         break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -511,6 +519,24 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
                               G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceMainChannel:max-clipboard:
+     *
+     * Maximum size of clipboard operations in bytes (default 100MB,
+     * -1 for unlimited size);
+     *
+     * Since: 0.22
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_MAX_CLIPBOARD,
+         g_param_spec_int("max-clipboard",
+                          "max clipboard",
+                          "Maximum clipboard data size",
+                          -1, G_MAXINT, 100 * 1024 * 1024,
+                          G_PARAM_READWRITE |
+                          G_PARAM_CONSTRUCT |
+                          G_PARAM_STATIC_STRINGS));
 
     /* TODO use notify instead */
     /**
@@ -1245,6 +1271,8 @@ static void agent_clipboard_notify(SpiceMainChannel *channel, guint selection,
 
     g_return_if_fail(VD_AGENT_HAS_CAPABILITY(c->agent_caps,
         G_N_ELEMENTS(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
+
+    g_return_if_fail(c->max_clipboard == -1 || size < c->max_clipboard);
 
     msgsize = sizeof(VDAgentClipboard);
     if (HAS_CLIPBOARD_SELECTION(c))
