@@ -170,6 +170,7 @@ static void spice_main_channel_send_migration_handshake(SpiceChannel *channel);
 static void file_xfer_continue_read(SpiceFileXferTask *task);
 static void file_xfer_completed(SpiceFileXferTask *task, GError *error);
 static void file_xfer_flushed(SpiceMainChannel *channel, gboolean success);
+static void spice_main_set_max_clipboard(SpiceMainChannel *self, gint max);
 
 /* ------------------------------------------------------------------ */
 
@@ -196,6 +197,7 @@ static const char *agent_caps[] = {
     [ VD_AGENT_CAP_SPARSE_MONITORS_CONFIG ] = "sparse monitors",
     [ VD_AGENT_CAP_GUEST_LINEEND_LF    ] = "line-end lf",
     [ VD_AGENT_CAP_GUEST_LINEEND_CRLF  ] = "line-end crlf",
+    [ VD_AGENT_CAP_MAX_CLIPBOARD       ] = "max-clipboard",
 };
 #define NAME(_a, _i) ((_i) < SPICE_N_ELEMENTS(_a) ? (_a[(_i)] ?: "?") : "?")
 
@@ -288,7 +290,8 @@ static void spice_main_get_property(GObject    *object,
 static void spice_main_set_property(GObject *gobject, guint prop_id,
                                     const GValue *value, GParamSpec *pspec)
 {
-    SpiceMainChannelPrivate *c = SPICE_MAIN_CHANNEL(gobject)->priv;
+    SpiceMainChannel *self = SPICE_MAIN_CHANNEL(gobject);
+    SpiceMainChannelPrivate *c = self->priv;
 
     switch (prop_id) {
     case PROP_DISPLAY_DISABLE_WALLPAPER:
@@ -313,7 +316,7 @@ static void spice_main_set_property(GObject *gobject, guint prop_id,
         c->disable_display_align = g_value_get_boolean(value);
         break;
     case PROP_MAX_CLIPBOARD:
-        c->max_clipboard = g_value_get_int(value);
+        spice_main_set_max_clipboard(self, g_value_get_int(value));
         break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -1816,6 +1819,34 @@ static void file_xfer_handle_status(SpiceMainChannel *channel,
     file_xfer_completed(task, error);
 }
 
+/* any context: the message is not flushed immediately,
+   you can wakeup() the channel coroutine or send_msg_queue() */
+static void agent_max_clipboard(SpiceMainChannel *self)
+{
+    VDAgentMaxClipboard msg = { .max = spice_main_get_max_clipboard(self) };
+
+    if (!test_agent_cap(self, VD_AGENT_CAP_MAX_CLIPBOARD))
+        return;
+
+    agent_msg_queue(self, VD_AGENT_MAX_CLIPBOARD, sizeof(VDAgentMaxClipboard), &msg);
+}
+
+static void spice_main_set_max_clipboard(SpiceMainChannel *self, gint max)
+{
+    SpiceMainChannelPrivate *c;
+
+    g_return_if_fail(SPICE_IS_MAIN_CHANNEL(self));
+    g_return_if_fail(max >= -1);
+
+    c = self->priv;
+    if (max == spice_main_get_max_clipboard(self))
+        return;
+
+    c->max_clipboard = max;
+    agent_max_clipboard(self);
+    spice_channel_wakeup(SPICE_CHANNEL(self), FALSE);
+}
+
 /* coroutine context */
 static void main_agent_handle_msg(SpiceChannel *channel,
                                   VDAgentMessage *msg, gpointer payload)
@@ -1867,9 +1898,13 @@ static void main_agent_handle_msg(SpiceChannel *channel,
         if (test_agent_cap(self, VD_AGENT_CAP_DISPLAY_CONFIG) &&
             !c->agent_display_config_sent) {
             agent_display_config(self);
-            agent_send_msg_queue(self);
             c->agent_display_config_sent = true;
         }
+
+        agent_max_clipboard(self);
+
+        agent_send_msg_queue(self);
+
         break;
     }
     case VD_AGENT_CLIPBOARD:
