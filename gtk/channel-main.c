@@ -1283,10 +1283,10 @@ static void agent_clipboard_grab(SpiceMainChannel *channel, guint selection,
 
 /* any context: the message is not flushed immediately,
    you can wakeup() the channel coroutine or send_msg_queue() */
-static void agent_clipboard_notify(SpiceMainChannel *channel, guint selection,
+static void agent_clipboard_notify(SpiceMainChannel *self, guint selection,
                                    guint32 type, const guchar *data, size_t size)
 {
-    SpiceMainChannelPrivate *c = channel->priv;
+    SpiceMainChannelPrivate *c = self->priv;
     VDAgentClipboard *cb;
     guint8 *msg;
     size_t msgsize;
@@ -1301,7 +1301,7 @@ static void agent_clipboard_notify(SpiceMainChannel *channel, guint selection,
     if (HAS_CLIPBOARD_SELECTION(c))
         msgsize += 4;
     else if (selection != VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD) {
-        CHANNEL_DEBUG(channel, "Ignoring clipboard notify");
+        CHANNEL_DEBUG(self, "Ignoring clipboard notify");
         return;
     }
 
@@ -1316,7 +1316,7 @@ static void agent_clipboard_notify(SpiceMainChannel *channel, guint selection,
     }
 
     cb->type = type;
-    agent_msg_queue_many(channel, VD_AGENT_CLIPBOARD, msg, msgsize, data, size, NULL);
+    agent_msg_queue_many(self, VD_AGENT_CLIPBOARD, msg, msgsize, data, size, NULL);
 }
 
 /* any context: the message is not flushed immediately,
@@ -1819,7 +1819,8 @@ static void file_xfer_handle_status(SpiceMainChannel *channel,
 static void main_agent_handle_msg(SpiceChannel *channel,
                                   VDAgentMessage *msg, gpointer payload)
 {
-    SpiceMainChannelPrivate *c = SPICE_MAIN_CHANNEL(channel)->priv;
+    SpiceMainChannel *self = SPICE_MAIN_CHANNEL(channel);
+    SpiceMainChannelPrivate *c = self->priv;
     guint8 selection = VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD;
 
     g_return_if_fail(msg->protocol == VD_AGENT_PROTOCOL);
@@ -1857,15 +1858,15 @@ static void main_agent_handle_msg(SpiceChannel *channel,
             VD_AGENT_SET_CAPABILITY(c->agent_caps, i);
         }
         c->agent_caps_received = true;
-        emit_main_context(channel, SPICE_MAIN_AGENT_UPDATE);
+        emit_main_context(self, SPICE_MAIN_AGENT_UPDATE);
 
         if (caps->request)
-            agent_announce_caps(SPICE_MAIN_CHANNEL(channel));
+            agent_announce_caps(self);
 
         if (VD_AGENT_HAS_CAPABILITY(caps->caps, G_N_ELEMENTS(c->agent_caps), VD_AGENT_CAP_DISPLAY_CONFIG) &&
             !c->agent_display_config_sent) {
-            agent_display_config(SPICE_MAIN_CHANNEL(channel));
-            agent_send_msg_queue(SPICE_MAIN_CHANNEL(channel));
+            agent_display_config(self);
+            agent_send_msg_queue(self);
             c->agent_display_config_sent = true;
         }
         break;
@@ -1873,21 +1874,21 @@ static void main_agent_handle_msg(SpiceChannel *channel,
     case VD_AGENT_CLIPBOARD:
     {
         VDAgentClipboard *cb = payload;
-        emit_main_context(channel, SPICE_MAIN_CLIPBOARD_SELECTION, selection,
+        emit_main_context(self, SPICE_MAIN_CLIPBOARD_SELECTION, selection,
                           cb->type, cb->data, msg->size - sizeof(VDAgentClipboard));
 
        if (selection == VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD)
-            emit_main_context(channel, SPICE_MAIN_CLIPBOARD,
+            emit_main_context(self, SPICE_MAIN_CLIPBOARD,
                               cb->type, cb->data, msg->size - sizeof(VDAgentClipboard));
         break;
     }
     case VD_AGENT_CLIPBOARD_GRAB:
     {
         gboolean ret;
-        emit_main_context(channel, SPICE_MAIN_CLIPBOARD_SELECTION_GRAB, selection,
+        emit_main_context(self, SPICE_MAIN_CLIPBOARD_SELECTION_GRAB, selection,
                           (guint8*)payload, msg->size / sizeof(uint32_t), &ret);
         if (selection == VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD)
-            emit_main_context(channel, SPICE_MAIN_CLIPBOARD_GRAB,
+            emit_main_context(self, SPICE_MAIN_CLIPBOARD_GRAB,
                               payload, msg->size / sizeof(uint32_t), &ret);
         break;
     }
@@ -1895,20 +1896,20 @@ static void main_agent_handle_msg(SpiceChannel *channel,
     {
         gboolean ret;
         VDAgentClipboardRequest *req = payload;
-        emit_main_context(channel, SPICE_MAIN_CLIPBOARD_SELECTION_REQUEST, selection,
+        emit_main_context(self, SPICE_MAIN_CLIPBOARD_SELECTION_REQUEST, selection,
                           req->type, &ret);
 
         if (selection == VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD)
-            emit_main_context(channel, SPICE_MAIN_CLIPBOARD_REQUEST,
+            emit_main_context(self, SPICE_MAIN_CLIPBOARD_REQUEST,
                               req->type, &ret);
         break;
     }
     case VD_AGENT_CLIPBOARD_RELEASE:
     {
-        emit_main_context(channel, SPICE_MAIN_CLIPBOARD_SELECTION_RELEASE, selection);
+        emit_main_context(self, SPICE_MAIN_CLIPBOARD_SELECTION_RELEASE, selection);
 
         if (selection == VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD)
-            emit_main_context(channel, SPICE_MAIN_CLIPBOARD_RELEASE);
+            emit_main_context(self, SPICE_MAIN_CLIPBOARD_RELEASE);
         break;
     }
     case VD_AGENT_REPLY:
@@ -1919,7 +1920,7 @@ static void main_agent_handle_msg(SpiceChannel *channel,
         break;
     }
     case VD_AGENT_FILE_XFER_STATUS:
-        file_xfer_handle_status(SPICE_MAIN_CHANNEL(channel), payload);
+        file_xfer_handle_status(self, payload);
         break;
     default:
         g_warning("unhandled agent message type: %u (%s), size %u",
