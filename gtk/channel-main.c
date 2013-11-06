@@ -220,12 +220,23 @@ static void spice_main_channel_init(SpiceMainChannel *channel)
     spice_main_channel_reset_capabilties(SPICE_CHANNEL(channel));
 }
 
+static gint spice_main_get_max_clipboard(SpiceMainChannel *self)
+{
+    g_return_val_if_fail(SPICE_IS_MAIN_CHANNEL(self), 0);
+
+    if (g_getenv("SPICE_MAX_CLIPBOARD"))
+        return atoi(g_getenv("SPICE_MAX_CLIPBOARD"));
+
+    return self->priv->max_clipboard;
+}
+
 static void spice_main_get_property(GObject    *object,
                                     guint       prop_id,
                                     GValue     *value,
                                     GParamSpec *pspec)
 {
-    SpiceMainChannelPrivate *c = SPICE_MAIN_CHANNEL(object)->priv;
+    SpiceMainChannel *self = SPICE_MAIN_CHANNEL(object);
+    SpiceMainChannelPrivate *c = self->priv;
 
     switch (prop_id) {
     case PROP_MOUSE_MODE:
@@ -256,7 +267,7 @@ static void spice_main_get_property(GObject    *object,
         g_value_set_boolean(value, c->disable_display_align);
         break;
     case PROP_MAX_CLIPBOARD:
-        g_value_set_int(value, c->max_clipboard);
+        g_value_set_int(value, spice_main_get_max_clipboard(self));
         break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -394,6 +405,18 @@ static void spice_main_channel_reset(SpiceChannel *channel, gboolean migrating)
     SPICE_CHANNEL_CLASS(spice_main_channel_parent_class)->channel_reset(channel, migrating);
 }
 
+static void spice_main_constructed(GObject *object)
+{
+    SpiceMainChannel *self = SPICE_MAIN_CHANNEL(object);
+    SpiceMainChannelPrivate *c = self->priv;
+
+    /* update default value */
+    c->max_clipboard = spice_main_get_max_clipboard(self);
+
+    if (G_OBJECT_CLASS(spice_main_channel_parent_class)->constructed)
+        G_OBJECT_CLASS(spice_main_channel_parent_class)->constructed(object);
+}
+
 static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
@@ -403,6 +426,7 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
     gobject_class->finalize     = spice_main_channel_finalize;
     gobject_class->get_property = spice_main_get_property;
     gobject_class->set_property = spice_main_set_property;
+    gobject_class->constructed  = spice_main_constructed;
 
     channel_class->handle_msg    = spice_main_handle_msg;
     channel_class->iterate_write = spice_channel_iterate_write;
@@ -1266,13 +1290,12 @@ static void agent_clipboard_notify(SpiceMainChannel *channel, guint selection,
     VDAgentClipboard *cb;
     guint8 *msg;
     size_t msgsize;
+    gint max_clipboard = spice_main_get_max_clipboard(channel);
 
     g_return_if_fail(c->agent_connected);
-
     g_return_if_fail(VD_AGENT_HAS_CAPABILITY(c->agent_caps,
         G_N_ELEMENTS(c->agent_caps), VD_AGENT_CAP_CLIPBOARD_BY_DEMAND));
-
-    g_return_if_fail(c->max_clipboard == -1 || size < c->max_clipboard);
+    g_return_if_fail(max_clipboard == -1 || size < max_clipboard);
 
     msgsize = sizeof(VDAgentClipboard);
     if (HAS_CLIPBOARD_SELECTION(c))
