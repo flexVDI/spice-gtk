@@ -608,7 +608,7 @@ static void spice_session_set_property(GObject      *gobject,
         break;
     case PROP_READ_ONLY:
         s->read_only = g_value_get_boolean(value);
-        g_object_notify(gobject, "read-only");
+        g_object_notify_main_context(gobject, "read-only");
         break;
     case PROP_CACHE_SIZE:
         s->images_cache_size = g_value_get_int(value);
@@ -2033,7 +2033,7 @@ void spice_session_set_migration_state(SpiceSession *session, SpiceSessionMigrat
 
     g_return_if_fail(s != NULL);
     s->migration_state = state;
-    g_object_notify(G_OBJECT(session), "migration-state");
+    g_object_notify_main_context(G_OBJECT(session), "migration-state");
 }
 
 G_GNUC_INTERNAL
@@ -2128,7 +2128,7 @@ void spice_session_set_uuid(SpiceSession *session, guint8 uuid[16])
     g_return_if_fail(s != NULL);
     memcpy(s->uuid, uuid, sizeof(s->uuid));
 
-    g_object_notify(G_OBJECT(session), "uuid");
+    g_object_notify_main_context(G_OBJECT(session), "uuid");
 }
 
 G_GNUC_INTERNAL
@@ -2140,7 +2140,7 @@ void spice_session_set_name(SpiceSession *session, const gchar *name)
     g_free(s->name);
     s->name = g_strdup(name);
 
-    g_object_notify(G_OBJECT(session), "name");
+    g_object_notify_main_context(G_OBJECT(session), "name");
 }
 
 G_GNUC_INTERNAL
