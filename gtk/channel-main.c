@@ -1524,6 +1524,11 @@ static void main_handle_channels_list(SpiceChannel *channel, SpiceMsgIn *in)
     int i;
 
     session = spice_channel_get_session(channel);
+
+    /* guarantee that uuid is notified before setting up the channels, even if
+     * the server is older and doesn't actually send the uuid */
+    g_object_notify_main_context(G_OBJECT(session), "uuid");
+
     for (i = 0; i < msg->num_of_channels; i++) {
         channel_new_t *c;
 
