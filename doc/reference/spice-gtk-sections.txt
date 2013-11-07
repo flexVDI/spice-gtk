@@ -146,7 +146,6 @@ SpiceAudioPrivate
 <TITLE>SpiceDisplayChannel</TITLE>
 SpiceDisplayChannel
 SpiceDisplayChannelClass
-SpiceDisplayMonitorConfig
 <SUBSECTION Standard>
 SPICE_DISPLAY_CHANNEL
 SPICE_IS_DISPLAY_CHANNEL
@@ -353,7 +352,6 @@ spice_display_set_grab_keys
 spice_display_get_grab_keys
 spice_display_send_keys
 spice_display_get_pixbuf
-spice_display_get_monitor_config
 <SUBSECTION>
 SpiceGrabSequence
 spice_grab_sequence_new

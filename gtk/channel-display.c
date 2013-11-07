@@ -262,7 +262,7 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
     /**
      * SpiceDisplayChannel:monitors:
      *
-     * Current monitors configuration. An array of #SpiceDisplayMonitorConfig
+     * Current monitors configuration.
      *
      * Since: 0.13
      */
