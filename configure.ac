@@ -579,7 +579,7 @@ AC_ARG_WITH([python],
    yes|no) with_python="$withval";;
    *) AC_MSG_ERROR([bad value $withval for python option]) ;;
    esac],
-  [AS_IF([test "$with_gtk" = "3.0" -o test "x$os_win32=xyes"],
+  [AS_IF([test "$with_gtk" = "3.0" || test "x$os_win32" = "xyes"],
          [with_python=no])]
 )
 
