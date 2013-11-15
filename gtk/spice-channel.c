@@ -130,7 +130,6 @@ static void spice_channel_constructed(GObject *gobject)
     if (disabled && strstr(disabled, desc))
         c->disable_channel_msg = TRUE;
 
-    c->connection_id = spice_session_get_connection_id(c->session);
     spice_session_channel_new(c->session, channel);
 
     /* Chain up to the parent class */
@@ -1136,7 +1135,7 @@ static void spice_channel_send_link(SpiceChannel *channel)
         return;
     }
 
-    c->link_msg.connection_id = c->connection_id;
+    c->link_msg.connection_id = spice_session_get_connection_id(c->session);
     c->link_msg.channel_type  = c->channel_type;
     c->link_msg.channel_id    = c->channel_id;
     c->link_msg.caps_offset   = sizeof(c->link_msg);

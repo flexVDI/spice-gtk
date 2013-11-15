@@ -113,7 +113,6 @@ struct _SpiceChannelPrivate {
     guint                       channel_watch;
     int                         tls;
 
-    int                         connection_id;
     int                         channel_id;
     int                         channel_type;
     SpiceLinkHeader             link_hdr;
