@@ -576,20 +576,42 @@ AC_SUBST(VAPIDIR)
 AC_ARG_WITH([python],
   AS_HELP_STRING([--with-python], [build python bindings @<:@default=auto@:>@]),
   [case "$withval" in
-   yes|no) with_python="$withval";;
+   yes|no|auto) with_python="$withval";;
    *) AC_MSG_ERROR([bad value $withval for python option]) ;;
    esac],
   [AS_IF([test "$with_gtk" = "3.0" || test "x$os_win32" = "xyes"],
-         [with_python=no],[with_python=yes])]
+         [with_python=no],[with_python=auto])]
 )
 
-if test "x$with_python" = "xyes"; then
-  PKG_CHECK_MODULES(PYGTK, pygtk-2.0 >= 2.0.0)
+if test "x$with_python" != "xno"; then
+  PKG_CHECK_MODULES(PYGTK, [pygtk-2.0 >= 2.0.0], [have_pygtk=yes], [have_pygtk=no])
   AC_SUBST(PYGTK_CFLAGS)
   AC_SUBST(PYGTK_LIBS)
+  if test "x$have_pygtk" != "xyes"
+  then
+    if test "x$with_python" = "xyes"
+    then
+      AC_MSG_ERROR("No pygtk found")
+    else
+      with_python=no
+    fi
+  fi
+fi
 
-  AM_PATH_PYTHON
+if test "x$with_python" != "xno"; then
+  AM_PATH_PYTHON([], [have_python=yes], [have_python=no])
+  if test "x$have_python" != "xyes"
+  then
+    if test "x$with_python" = "xyes"
+    then
+      AC_MSG_ERROR("No python found")
+    else
+      with_python=no
+    fi
+  fi
+fi
 
+if test "x$with_python" != "xno"; then
   AC_MSG_CHECKING([whether $PYTHON version >= 2.0])
   HAVE_PYTHON_REQUIRED=no
   AM_PYTHON_CHECK_VERSION([$PYTHON], [2.0],
@@ -600,18 +622,30 @@ if test "x$with_python" = "xyes"; then
 
   if test "x$HAVE_PYTHON_REQUIRED" != "xyes"
   then
-    AC_MSG_ERROR("No suitable python found")
+    if test "x$with_python" = "xyes"
+    then
+      AC_MSG_ERROR("No suitable python found")
+    else
+      with_python=no
+    fi
   fi
+fi
 
+if test "x$with_python" != "xno"; then
   AM_CHECK_PYTHON_HEADERS(have_python_headers=yes,have_python_headers=no)
 
   if test "x$have_python_headers" != "xyes"
   then
-    AC_MSG_ERROR("No python development headers found")
+    if test "x$with_python" = "xyes"
+    then
+      AC_MSG_ERROR("No python development headers found")
+    else
+      with_python=no
+    fi
   fi
 fi
 
-AM_CONDITIONAL(WITH_PYTHON, [test "x$with_python" = "xyes"])
+AM_CONDITIONAL(WITH_PYTHON, [test "x$with_python" != "xno"])
 
 
 AC_ARG_ENABLE([dbus],
