@@ -130,6 +130,11 @@ void *coroutine_yield(void *arg)
 	coroutine_self()->caller = NULL;
 	return coroutine_swap(coroutine_self(), to, arg);
 }
+
+gboolean coroutine_is_main_context(struct coroutine *co)
+{
+    return (co == &leader);
+}
 /*
  * Local variables:
  *  c-indent-level: 8

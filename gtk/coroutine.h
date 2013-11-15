@@ -55,7 +55,7 @@ struct coroutine
 #endif
 };
 
-#define IN_MAIN_CONTEXT (coroutine_self() == NULL || coroutine_self()->caller == NULL)
+#define IN_MAIN_CONTEXT (coroutine_self() == NULL || coroutine_is_main_context(coroutine_self()))
 int coroutine_init(struct coroutine *co);
 
 int coroutine_release(struct coroutine *co);
@@ -67,6 +67,8 @@ struct coroutine *coroutine_self(void);
 void *coroutine_yieldto(struct coroutine *to, void *arg);
 
 void *coroutine_yield(void *arg);
+
+gboolean coroutine_is_main_context(struct coroutine *co);
 
 #endif
 /*

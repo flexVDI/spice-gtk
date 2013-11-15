@@ -160,3 +160,7 @@ void *coroutine_yield(void *arg)
 	return coroutine_swap(coroutine_self(), to, arg);
 }
 
+gboolean coroutine_is_main_context(struct coroutine *co)
+{
+    return (co == &leader);
+}
