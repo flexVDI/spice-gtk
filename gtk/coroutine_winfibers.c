@@ -94,10 +94,9 @@ void *coroutine_swap(struct coroutine *from, struct coroutine *to, void *arg)
 
 void *coroutine_yieldto(struct coroutine *to, void *arg)
 {
-	if (to->caller) {
-		fprintf(stderr, "Co-routine is re-entering itself\n");
-		abort();
-	}
+	g_return_val_if_fail(!to->caller, NULL);
+	g_return_val_if_fail(!to->exited, NULL);
+
 	to->caller = coroutine_self();
 	return coroutine_swap(coroutine_self(), to, arg);
 }
