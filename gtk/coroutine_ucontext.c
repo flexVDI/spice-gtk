@@ -103,7 +103,7 @@ void *coroutine_swap(struct coroutine *from, struct coroutine *to, void *arg)
 		return from->data;
 	else if (ret == 1) {
 		coroutine_release(to);
-		current = &leader;
+		current = from;
 		to->exited = 1;
 		return to->data;
 	}
