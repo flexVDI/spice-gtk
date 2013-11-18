@@ -56,7 +56,7 @@ struct coroutine
 };
 
 #define IN_MAIN_CONTEXT (coroutine_self() == NULL || coroutine_is_main_context(coroutine_self()))
-int coroutine_init(struct coroutine *co);
+int coroutine_init(struct coroutine *co) G_GNUC_WARN_UNUSED_RESULT;
 
 int coroutine_release(struct coroutine *co);
 

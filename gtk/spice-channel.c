@@ -2358,6 +2358,7 @@ static gboolean connect_delayed(gpointer data)
     SpiceChannel *channel = data;
     SpiceChannelPrivate *c = channel->priv;
     struct coroutine *co;
+    int inited;
 
     CHANNEL_DEBUG(channel, "Open coroutine starting %p", channel);
     c->connect_delayed_id = 0;
@@ -2368,7 +2369,13 @@ static gboolean connect_delayed(gpointer data)
     co->entry = spice_channel_coroutine;
     co->release = NULL;
 
-    coroutine_init(co);
+    inited = coroutine_init(co);
+    if (inited != 0) {
+        g_warning("Failed to initialize channel coroutine");
+        CHANNEL_DEBUG(channel, "coroutine_init failed");
+        g_object_unref(G_OBJECT(channel));
+        return FALSE;
+    }
     coroutine_yieldto(co, channel);
 
     return FALSE;
