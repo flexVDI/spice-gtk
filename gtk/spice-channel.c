@@ -123,7 +123,7 @@ static void spice_channel_constructed(GObject *gobject)
     const char *desc = spice_channel_type_to_string(c->channel_type);
 
     snprintf(c->name, sizeof(c->name), "%s-%d:%d",
-             desc ? desc : "unknown", c->channel_type, c->channel_id);
+             desc, c->channel_type, c->channel_id);
     CHANNEL_DEBUG(channel, "%s", __FUNCTION__);
 
     const char *disabled  = g_getenv("SPICE_DISABLE_CHANNELS");
