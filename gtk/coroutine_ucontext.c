@@ -65,6 +65,8 @@ static void coroutine_trampoline(struct continuation *cc)
 
 int coroutine_init(struct coroutine *co)
 {
+	int inited;
+
 	if (co->stack_size == 0)
 		co->stack_size = 16 << 20;
 
@@ -80,7 +82,14 @@ int coroutine_init(struct coroutine *co)
 	co->cc.release = _coroutine_release;
 	co->exited = 0;
 
-	return cc_init(&co->cc);
+	inited = cc_init(&co->cc);
+	if (inited != 0) {
+		munmap(co->cc.stack, co->cc.stack_size);
+		co->cc.stack = NULL;
+		co->exited = 1;
+	}
+
+	return inited;
 }
 
 #if 0
