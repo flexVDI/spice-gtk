@@ -252,7 +252,7 @@ void g_object_notify_main_context(GObject *object,
 {
     struct signal_data data;
 
-    if (IN_MAIN_CONTEXT) {
+    if (coroutine_self_is_main()) {
         g_object_notify(object, property_name);
     } else {
 
