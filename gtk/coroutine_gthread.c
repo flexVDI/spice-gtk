@@ -74,7 +74,7 @@ static gpointer coroutine_thread(gpointer opaque)
 
 	CO_DEBUG("RUNNABLE");
 	current = co;
-	co->data = co->entry(co->data);
+	co->caller->data = co->entry(co->data);
 	co->exited = 1;
 
 	co->caller->runnable = TRUE;
@@ -128,6 +128,7 @@ void *coroutine_swap(struct coroutine *from, struct coroutine *to, void *arg)
 		g_cond_wait(run_cond, run_lock);
 	}
 	current = from;
+	to->caller = NULL;
 
 	CO_DEBUG("SWAPPED");
 	return from->data;
@@ -135,6 +136,9 @@ void *coroutine_swap(struct coroutine *from, struct coroutine *to, void *arg)
 
 struct coroutine *coroutine_self(void)
 {
+	if (run_cond == NULL)
+		coroutine_system_init();
+
 	return current;
 }
 
