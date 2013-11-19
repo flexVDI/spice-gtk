@@ -86,8 +86,10 @@ static gpointer coroutine_thread(gpointer opaque)
 	return NULL;
 }
 
-int coroutine_init(struct coroutine *co)
+void coroutine_init(struct coroutine *co)
 {
+	GError *err = NULL;
+
 	if (run_cond == NULL)
 		coroutine_system_init();
 
@@ -95,15 +97,13 @@ int coroutine_init(struct coroutine *co)
 	co->thread = g_thread_create_full(coroutine_thread, co, co->stack_size,
 					  FALSE, TRUE,
 					  G_THREAD_PRIORITY_NORMAL,
-					  NULL);
-	if (co->thread == NULL)
-		return -1;
+					  &err);
+	if (err != NULL)
+		g_error("g_thread_create_full() failed: %s", err->message);
 
 	co->exited = 0;
 	co->runnable = FALSE;
 	co->caller = NULL;
-
-	return 0;
 }
 
 int coroutine_release(struct coroutine *co G_GNUC_UNUSED)

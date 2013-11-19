@@ -51,20 +51,19 @@ static void WINAPI coroutine_trampoline(LPVOID lpParameter)
 	SwitchToFiber(caller->fiber);
 }
 
-int coroutine_init(struct coroutine *co)
+void coroutine_init(struct coroutine *co)
 {
 	if (leader.fiber == NULL) {
 		leader.fiber = ConvertThreadToFiber(&leader);
 		if (leader.fiber == NULL)
-			return -1;
+			g_error("ConvertThreadToFiber() failed");
 	}
 
 	co->fiber = CreateFiber(0, &coroutine_trampoline, co);
-	co->ret = 0;
 	if (co->fiber == NULL)
-		return -1;
+		g_error("CreateFiber() failed");
 
-	return 0;
+	co->ret = 0;
 }
 
 struct coroutine *coroutine_self(void)

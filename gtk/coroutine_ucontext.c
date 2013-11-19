@@ -63,10 +63,8 @@ static void coroutine_trampoline(struct continuation *cc)
 	co->data = co->entry(co->data);
 }
 
-int coroutine_init(struct coroutine *co)
+void coroutine_init(struct coroutine *co)
 {
-	int inited;
-
 	if (co->stack_size == 0)
 		co->stack_size = 16 << 20;
 
@@ -76,20 +74,14 @@ int coroutine_init(struct coroutine *co)
 			    MAP_PRIVATE | MAP_ANONYMOUS,
 			    -1, 0);
 	if (co->cc.stack == MAP_FAILED)
-		g_error("Failed to allocate %u bytes for coroutine stack: %s",
-			(unsigned)co->stack_size, strerror(errno));
+		g_error("mmap(%" G_GSIZE_FORMAT ") failed: %s",
+			co->stack_size, g_strerror(errno));
+
 	co->cc.entry = coroutine_trampoline;
 	co->cc.release = _coroutine_release;
 	co->exited = 0;
 
-	inited = cc_init(&co->cc);
-	if (inited != 0) {
-		munmap(co->cc.stack, co->cc.stack_size);
-		co->cc.stack = NULL;
-		co->exited = 1;
-	}
-
-	return inited;
+	cc_init(&co->cc);
 }
 
 #if 0
