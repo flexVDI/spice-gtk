@@ -171,6 +171,7 @@ static void file_xfer_continue_read(SpiceFileXferTask *task);
 static void file_xfer_completed(SpiceFileXferTask *task, GError *error);
 static void file_xfer_flushed(SpiceMainChannel *channel, gboolean success);
 static void spice_main_set_max_clipboard(SpiceMainChannel *self, gint max);
+static void set_agent_connected(SpiceMainChannel *channel, gboolean connected);
 
 /* ------------------------------------------------------------------ */
 
@@ -410,10 +411,7 @@ static void spice_main_channel_reset(SpiceChannel *channel, gboolean migrating)
     agent_free_msg_queue(SPICE_MAIN_CHANNEL(channel));
     c->agent_msg_queue = g_queue_new();
 
-    /* check: if agent_connected can be TRUE, it should call instead
-       set_agent_connected() to notify new state */
-    g_warn_if_fail(c->agent_connected == FALSE);
-    spice_main_channel_reset_agent(SPICE_MAIN_CHANNEL(channel));
+    set_agent_connected(SPICE_MAIN_CHANNEL(channel), FALSE);
 
     SPICE_CHANNEL_CLASS(spice_main_channel_parent_class)->channel_reset(channel, migrating);
 }
@@ -1432,6 +1430,10 @@ static void set_agent_connected(SpiceMainChannel *channel, gboolean connected)
         c->agent_connected = connected;
         g_object_notify_main_context(G_OBJECT(channel), "agent-connected");
     }
+    if (!connected)
+        spice_main_channel_reset_agent(SPICE_MAIN_CHANNEL(channel));
+
+    emit_main_context(channel, SPICE_MAIN_AGENT_UPDATE);
 }
 
 /* coroutine context  */
@@ -1443,9 +1445,8 @@ static void agent_start(SpiceMainChannel *channel)
     };
     SpiceMsgOut *out;
 
-    set_agent_connected(channel, TRUE);
     c->agent_caps_received = false;
-    emit_main_context(channel, SPICE_MAIN_AGENT_UPDATE);
+    set_agent_connected(channel, TRUE);
 
     out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_AGENT_START);
     out->marshallers->msgc_main_agent_start(out->marshaller, &agent_start);
@@ -1460,9 +1461,7 @@ static void agent_start(SpiceMainChannel *channel)
 /* coroutine context  */
 static void agent_stopped(SpiceMainChannel *channel)
 {
-    set_agent_connected(channel, FALSE); /* For notify */
-    spice_main_channel_reset_agent(channel);
-    emit_main_context(channel, SPICE_MAIN_AGENT_UPDATE);
+    set_agent_connected(channel, FALSE);
 }
 
 /* coroutine context */
