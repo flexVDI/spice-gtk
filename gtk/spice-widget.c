@@ -302,6 +302,7 @@ static void update_monitor_area(SpiceDisplay *display)
         set_monitor_ready(display, false);
         if (spice_channel_test_capability(d->display, SPICE_DISPLAY_CAP_MONITORS_CONFIG)) {
             SPICE_DEBUG("waiting until MonitorsConfig is received");
+            g_clear_pointer(&monitors, g_array_unref);
             return;
         }
         goto whole;
