@@ -2727,6 +2727,7 @@ void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap, gboolean swap
 
     /* TODO: split channel in 2 objects: a controller and a swappable
        state object */
+    SWAP(conn);
     SWAP(sock);
     SWAP(ctx);
     SWAP(ssl);
