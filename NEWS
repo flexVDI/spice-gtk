@@ -1,3 +1,17 @@
+v0.22
+=====
+
+- improve inverted cursor support
+- use system-wide trust certificate store
+- make sasl support work with other method than MD5
+- fix some clipboard crasher, limit clipboard size
+- fix various regressions:
+  usbredir, alt-tab on win32, palette crash, agent notification, old
+  protocol support, sasl ending crash, gthread coroutine crash, close
+  sockets on migration, pulse backend crash
+- fix a few memory leaks
+- build-sys improvements
+
 v0.21
 =====
 
