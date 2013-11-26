@@ -18,10 +18,14 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
 #include <config.h>
+
+/* keep this above system headers, but below config.h */
+#ifdef _FORTIFY_SOURCE
+#undef _FORTIFY_SOURCE
+#endif
+
 #include <errno.h>
 #include <glib.h>
-
-#undef _FORTIFY_SOURCE
 
 #include "continuation.h"
 
