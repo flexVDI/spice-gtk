@@ -75,6 +75,8 @@ AC_CONFIG_SUBDIRS([spice-common])
 COMMON_CFLAGS='-I ${top_srcdir}/spice-common/ -I ${top_srcdir}/spice-common/spice-protocol/'
 AC_SUBST(COMMON_CFLAGS)
 
+AC_CONFIG_SUBDIRS([gtk/phodav])
+
 SPICE_GTK_MAJOR_VERSION=`echo $PACKAGE_VERSION | cut -d. -f1`
 SPICE_GTK_MINOR_VERSION=`echo $PACKAGE_VERSION | cut -d. -f2`
 SPICE_GTK_MICRO_VERSION=`echo $PACKAGE_VERSION | cut -d. -f3 | cut -d- -f1`
@@ -266,6 +268,8 @@ AC_SUBST(CAIRO_LIBS)
 PKG_CHECK_MODULES(GTHREAD, gthread-2.0 > 2.0.0)
 AC_SUBST(GTHREAD_CFLAGS)
 AC_SUBST(GTHREAD_LIBS)
+
+PKG_CHECK_MODULES(SOUP, libsoup-2.4)
 
 AC_ARG_WITH([audio],
   AS_HELP_STRING([--with-audio=@<:@gstreamer/pulse/auto/no@:>@], [Select audio backend @<:@default=auto@:>@]),

@@ -214,6 +214,7 @@ spice_session_dispose(GObject *gobject)
     g_clear_object(&s->gtk_session);
     g_clear_object(&s->usb_manager);
     g_clear_object(&s->proxy);
+    g_clear_object(&s->webdav);
 
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_session_parent_class)->dispose)

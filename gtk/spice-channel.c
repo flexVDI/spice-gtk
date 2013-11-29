@@ -1881,6 +1881,7 @@ static const char *to_string[] = {
     [ SPICE_CHANNEL_SMARTCARD ] = "smartcard",
     [ SPICE_CHANNEL_USBREDIR ] = "usbredir",
     [ SPICE_CHANNEL_PORT ] = "port",
+    [ SPICE_CHANNEL_WEBDAV ] = "webdav",
 };
 
 /**
@@ -1941,6 +1942,7 @@ gchar *spice_channel_supported_string(void)
 #ifdef USE_USBREDIR
                      spice_channel_type_to_string(SPICE_CHANNEL_USBREDIR),
 #endif
+                     spice_channel_type_to_string(SPICE_CHANNEL_WEBDAV),
                      NULL);
 }
 
@@ -2005,6 +2007,10 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
         break;
     }
 #endif
+    case SPICE_CHANNEL_WEBDAV: {
+        gtype = SPICE_TYPE_WEBDAV_CHANNEL;
+        break;
+    }
     case SPICE_CHANNEL_PORT:
         gtype = SPICE_TYPE_PORT_CHANNEL;
         break;

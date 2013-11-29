@@ -132,6 +132,7 @@ spice_uri_set_port;
 spice_uri_set_scheme;
 spice_uri_set_user;
 spice_uri_to_string;
+spice_webdav_channel_get_type;
 local:
 *;
 };

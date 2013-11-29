@@ -23,6 +23,7 @@
 #include "desktop-integration.h"
 #include "spice-session.h"
 #include "spice-gtk-session.h"
+#include "phodav/libphodav/phodav.h"
 #include "spice-channel-cache.h"
 #include "decode.h"
 
@@ -107,6 +108,8 @@ struct _SpiceSessionPrivate {
     SpiceGtkSession   *gtk_session;
     SpiceUsbDeviceManager *usb_manager;
     SpicePlaybackChannel *playback_channel;
+    PhodavServer      *webdav;
+    guint8             webdav_magic[16];
 };
 
 SpiceSession *spice_session_new_from_session(SpiceSession *session);

@@ -1,6 +1,6 @@
 NULL =
 
-SUBDIRS =
+SUBDIRS = phodav
 
 if WITH_CONTROLLER
 SUBDIRS += controller
@@ -96,6 +96,7 @@ SPICE_COMMON_CPPFLAGS =						\
 	$(SMARTCARD_CFLAGS)					\
 	$(USBREDIR_CFLAGS)					\
 	$(GUDEV_CFLAGS)						\
+	$(SOUP_CFLAGS)						\
 	$(NULL)
 
 AM_CPPFLAGS =					\
@@ -185,8 +186,9 @@ libspice_client_glib_2_0_la_LDFLAGS =	\
 libspice_client_glib_2_0_la_LIBADD =					\
 	$(top_builddir)/spice-common/common/libspice-common.la		\
 	$(top_builddir)/spice-common/common/libspice-common-client.la	\
+	phodav/libphodav.la						\
 	$(GLIB2_LIBS)							\
-	$(GIO_LIBS)							\
+	$(SOUP_LIBS)							\
 	$(GOBJECT2_LIBS)						\
 	$(CELT051_LIBS)							\
 	$(OPUS_LIBS)							\
@@ -236,6 +238,7 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	gio-coroutine.h					\
 							\
 	channel-base.c					\
+	channel-webdav.c				\
 	channel-cursor.c				\
 	channel-display.c				\
 	channel-display-priv.h				\
@@ -303,6 +306,7 @@ libspice_client_glibinclude_HEADERS =	\
 	channel-record.h		\
 	channel-smartcard.h		\
 	channel-usbredir.h		\
+	channel-webdav.h		\
 	usb-device-manager.h		\
 	smartcard-manager.h		\
 	$(NULL)
@@ -601,6 +605,7 @@ glib_introspection_files =				\
 	spice-glib-enums.c				\
 	spice-option.c					\
 	spice-util.c					\
+	channel-webdav.c				\
 	channel-cursor.c				\
 	channel-display.c				\
 	channel-inputs.c				\

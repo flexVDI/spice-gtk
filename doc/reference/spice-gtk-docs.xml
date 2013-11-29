@@ -37,6 +37,7 @@
       <xi:include href="xml/channel-smartcard.xml"/>
       <xi:include href="xml/channel-usbredir.xml"/>
       <xi:include href="xml/channel-port.xml"/>
+      <xi:include href="xml/channel-webdav.xml"/>
     </chapter>
 
     <chapter>

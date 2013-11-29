@@ -461,3 +461,20 @@ spice_uri_get_type
 <SUBSECTION Private>
 SpiceURIPrivate
 </SECTION>
+
+<SECTION>
+<FILE>channel-webdav</FILE>
+<TITLE>SpiceWebdavChannel</TITLE>
+SpiceWebdavChannel
+SpiceWebdavChannelClass
+<SUBSECTION Standard>
+SPICE_IS_WEBDAV_CHANNEL
+SPICE_IS_WEBDAV_CHANNEL_CLASS
+SPICE_TYPE_WEBDAV_CHANNEL
+SPICE_WEBDAV_CHANNEL
+SPICE_WEBDAV_CHANNEL_CLASS
+SPICE_WEBDAV_CHANNEL_GET_CLASS
+spice_webdav_channel_get_type
+<SUBSECTION Private>
+SpiceWebdavChannelPrivate
+</SECTION>
