@@ -90,8 +90,11 @@ static void channel_set_handlers(SpiceChannelClass *klass);
 static void spice_playback_channel_reset_capabilities(SpiceChannel *channel)
 {
     if (!g_getenv("SPICE_DISABLE_CELT"))
-        if (snd_codec_is_capable(SPICE_AUDIO_DATA_MODE_CELT_0_5_1))
+        if (snd_codec_is_capable(SPICE_AUDIO_DATA_MODE_CELT_0_5_1, SND_CODEC_ANY_FREQUENCY))
             spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_PLAYBACK_CAP_CELT_0_5_1);
+    if (!g_getenv("SPICE_DISABLE_OPUS"))
+        if (snd_codec_is_capable(SPICE_AUDIO_DATA_MODE_OPUS, SND_CODEC_ANY_FREQUENCY))
+            spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_PLAYBACK_CAP_OPUS);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_PLAYBACK_CAP_VOLUME);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_PLAYBACK_CAP_LATENCY);
 }
@@ -357,28 +360,22 @@ static void playback_handle_data(SpiceChannel *channel, SpiceMsgIn *in)
 
     c->last_time = packet->time;
 
-    switch (c->mode) {
-    case SPICE_AUDIO_DATA_MODE_RAW:
-        emit_main_context(channel, SPICE_PLAYBACK_DATA,
-                          packet->data, packet->data_size);
-        break;
-    case SPICE_AUDIO_DATA_MODE_CELT_0_5_1: {
-        uint8_t pcm[SND_CODEC_CELT_FRAME_SIZE * 2 * 2];
-        int n = sizeof(pcm);
+    uint8_t *data = packet->data;
+    int n = packet->data_size;
+    uint8_t pcm[SND_CODEC_MAX_FRAME_SIZE * 2 * 2];
+
+    if (c->mode != SPICE_AUDIO_DATA_MODE_RAW) {
+        n = sizeof(pcm);
+        data = pcm;
 
         if (snd_codec_decode(c->codec, packet->data, packet->data_size,
                     pcm, &n) != SND_CODEC_OK) {
-            g_warning("celt_decode() error");
+            g_warning("snd_codec_decode() error");
             return;
         }
+    }
 
-        emit_main_context(channel, SPICE_PLAYBACK_DATA, pcm, n);
-        break;
-    }
-    default:
-        g_warning("%s: unhandled mode", __FUNCTION__);
-        break;
-    }
+    emit_main_context(channel, SPICE_PLAYBACK_DATA, data, n);
 
     if ((c->frame_count++ % 100) == 0) {
         emit_main_context(channel, SPICE_PLAYBACK_GET_DELAY);
@@ -398,6 +395,7 @@ static void playback_handle_mode(SpiceChannel *channel, SpiceMsgIn *in)
     switch (c->mode) {
     case SPICE_AUDIO_DATA_MODE_RAW:
     case SPICE_AUDIO_DATA_MODE_CELT_0_5_1:
+    case SPICE_AUDIO_DATA_MODE_OPUS:
         break;
     default:
         g_warning("%s: unhandled mode", __FUNCTION__);
@@ -420,25 +418,14 @@ static void playback_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
     c->min_latency = SPICE_PLAYBACK_DEFAULT_LATENCY_MS;
     c->codec = NULL;
 
-    switch (c->mode) {
-    case SPICE_AUDIO_DATA_MODE_RAW:
-        emit_main_context(channel, SPICE_PLAYBACK_START,
-                          start->format, start->channels, start->frequency);
-        break;
-    case SPICE_AUDIO_DATA_MODE_CELT_0_5_1: {
+    if (c->mode != SPICE_AUDIO_DATA_MODE_RAW) {
         if (snd_codec_create(&c->codec, c->mode, start->frequency, SND_CODEC_DECODE) != SND_CODEC_OK) {
             g_warning("create decoder failed");
             return;
         }
-
-        emit_main_context(channel, SPICE_PLAYBACK_START,
-                          start->format, start->channels, start->frequency);
-        break;
     }
-    default:
-        g_warning("%s: unhandled mode", __FUNCTION__);
-        break;
-    }
+    emit_main_context(channel, SPICE_PLAYBACK_START,
+         start->format, start->channels, start->frequency);
 }
 
 /* coroutine context */

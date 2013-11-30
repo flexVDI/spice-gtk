@@ -81,15 +81,17 @@ enum {
 static guint signals[SPICE_RECORD_LAST_SIGNAL];
 
 static void channel_set_handlers(SpiceChannelClass *klass);
-static void channel_up(SpiceChannel *channel);
 
 /* ------------------------------------------------------------------ */
 
 static void spice_record_channel_reset_capabilities(SpiceChannel *channel)
 {
     if (!g_getenv("SPICE_DISABLE_CELT"))
-        if (snd_codec_is_capable(SPICE_AUDIO_DATA_MODE_CELT_0_5_1))
+        if (snd_codec_is_capable(SPICE_AUDIO_DATA_MODE_CELT_0_5_1, SND_CODEC_ANY_FREQUENCY))
             spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_RECORD_CAP_CELT_0_5_1);
+    if (!g_getenv("SPICE_DISABLE_OPUS"))
+        if (snd_codec_is_capable(SPICE_AUDIO_DATA_MODE_OPUS, SND_CODEC_ANY_FREQUENCY))
+            spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_RECORD_CAP_OPUS);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_RECORD_CAP_VOLUME);
 }
 
@@ -178,7 +180,6 @@ static void spice_record_channel_class_init(SpiceRecordChannelClass *klass)
     gobject_class->finalize     = spice_record_channel_finalize;
     gobject_class->get_property = spice_record_channel_get_property;
     gobject_class->set_property = spice_record_channel_set_property;
-    channel_class->channel_up   = channel_up;
     channel_class->channel_reset = channel_reset;
     channel_class->channel_reset_capabilities = spice_record_channel_reset_capabilities;
 
@@ -299,18 +300,18 @@ static void spice_record_mode(SpiceRecordChannel *channel, uint32_t time,
     spice_msg_out_send(msg);
 }
 
-/* coroutine context */
-static void channel_up(SpiceChannel *channel)
+static int spice_record_desired_mode(SpiceChannel *channel, int frequency)
 {
-    SpiceRecordChannelPrivate *rc;
-
-    rc = SPICE_RECORD_CHANNEL(channel)->priv;
-    if (!g_getenv("SPICE_DISABLE_CELT") &&
-        snd_codec_is_capable(SPICE_AUDIO_DATA_MODE_CELT_0_5_1) &&
+    if (!g_getenv("SPICE_DISABLE_OPUS") &&
+        snd_codec_is_capable(SPICE_AUDIO_DATA_MODE_OPUS, frequency) &&
+        spice_channel_test_capability(channel, SPICE_RECORD_CAP_OPUS)) {
+        return SPICE_AUDIO_DATA_MODE_OPUS;
+    } else if (!g_getenv("SPICE_DISABLE_CELT") &&
+        snd_codec_is_capable(SPICE_AUDIO_DATA_MODE_CELT_0_5_1, frequency) &&
         spice_channel_test_capability(channel, SPICE_RECORD_CAP_CELT_0_5_1)) {
-        rc->mode = SPICE_AUDIO_DATA_MODE_CELT_0_5_1;
+        return SPICE_AUDIO_DATA_MODE_CELT_0_5_1;
     } else {
-        rc->mode = SPICE_AUDIO_DATA_MODE_RAW;
+        return SPICE_AUDIO_DATA_MODE_RAW;
     }
 }
 
@@ -424,6 +425,9 @@ static void record_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceRecordChannelPrivate *c = SPICE_RECORD_CHANNEL(channel)->priv;
     SpiceMsgRecordStart *start = spice_msg_in_parsed(in);
+    int frame_size = SND_CODEC_MAX_FRAME_SIZE;
+
+    c->mode = spice_record_desired_mode(channel, start->frequency);
 
     CHANNEL_DEBUG(channel, "%s: fmt %d channels %d freq %d", __FUNCTION__,
                   start->format, start->channels, start->frequency);
@@ -431,19 +435,17 @@ static void record_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
     g_return_if_fail(start->format == SPICE_AUDIO_FMT_S16);
 
     c->codec = NULL;
-    c->frame_bytes = SND_CODEC_MAX_FRAME_SIZE * 16 * start->channels / 8;
 
-    if (c->mode == SPICE_AUDIO_DATA_MODE_CELT_0_5_1)
-    {
-        c->frame_bytes = SND_CODEC_CELT_FRAME_SIZE * 16 * start->channels / 8;
-
+    if (c->mode != SPICE_AUDIO_DATA_MODE_RAW) {
         if (snd_codec_create(&c->codec, c->mode, start->frequency, SND_CODEC_ENCODE) != SND_CODEC_OK) {
             g_warning("Failed to create encoder");
             return;
         }
+        frame_size = snd_codec_frame_size(c->codec);
     }
 
     g_free(c->last_frame);
+    c->frame_bytes = frame_size * 16 * start->channels / 8;
     c->last_frame = g_malloc(c->frame_bytes);
     c->last_frame_current = 0;
 

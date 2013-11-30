@@ -79,6 +79,7 @@ SPICE_COMMON_CPPFLAGS =						\
 	$(COMMON_CFLAGS)					\
 	$(PIXMAN_CFLAGS)					\
 	$(CELT051_CFLAGS)					\
+	$(OPUS_CFLAGS)  					\
 	$(PULSE_CFLAGS)						\
 	$(GTK_CFLAGS)						\
 	$(CAIRO_CFLAGS)						\
@@ -185,6 +186,7 @@ libspice_client_glib_2_0_la_LIBADD =					\
 	$(GIO_LIBS)							\
 	$(GOBJECT2_LIBS)						\
 	$(CELT051_LIBS)							\
+	$(OPUS_LIBS)							\
 	$(JPEG_LIBS)							\
 	$(Z_LIBS)							\
 	$(PIXMAN_LIBS)							\
