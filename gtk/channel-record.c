@@ -15,14 +15,14 @@
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
-#include <celt051/celt.h>
-
 #include "spice-client.h"
 #include "spice-common.h"
 #include "spice-channel-priv.h"
 
 #include "spice-marshal.h"
 #include "spice-session-priv.h"
+
+#include "common/snd_codec.h"
 
 /**
  * SECTION:channel-record
@@ -51,8 +51,7 @@
 struct _SpiceRecordChannelPrivate {
     int                         mode;
     gboolean                    started;
-    CELTMode                    *celt_mode;
-    CELTEncoder                 *celt_encoder;
+    SndCodec                    codec;
     gsize                       frame_bytes;
     guint8                      *last_frame;
     gsize                       last_frame_current;
@@ -84,15 +83,13 @@ static guint signals[SPICE_RECORD_LAST_SIGNAL];
 static void channel_set_handlers(SpiceChannelClass *klass);
 static void channel_up(SpiceChannel *channel);
 
-#define FRAME_SIZE 256
-#define CELT_BIT_RATE (64 * 1024)
-
 /* ------------------------------------------------------------------ */
 
 static void spice_record_channel_reset_capabilities(SpiceChannel *channel)
 {
     if (!g_getenv("SPICE_DISABLE_CELT"))
-        spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_RECORD_CAP_CELT_0_5_1);
+        if (snd_codec_is_capable(SPICE_AUDIO_DATA_MODE_CELT_0_5_1))
+            spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_RECORD_CAP_CELT_0_5_1);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_RECORD_CAP_VOLUME);
 }
 
@@ -110,15 +107,7 @@ static void spice_record_channel_finalize(GObject *obj)
     g_free(c->last_frame);
     c->last_frame = NULL;
 
-    if (c->celt_encoder) {
-        celt051_encoder_destroy(c->celt_encoder);
-        c->celt_encoder = NULL;
-    }
-
-    if (c->celt_mode) {
-        celt051_mode_destroy(c->celt_mode);
-        c->celt_mode = NULL;
-    }
+    snd_codec_destroy(&c->codec);
 
     g_free(c->volume);
     c->volume = NULL;
@@ -176,15 +165,7 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
     g_free(c->last_frame);
     c->last_frame = NULL;
 
-    if (c->celt_encoder) {
-        celt051_encoder_destroy(c->celt_encoder);
-        c->celt_encoder = NULL;
-    }
-
-    if (c->celt_mode) {
-        celt051_mode_destroy(c->celt_mode);
-        c->celt_mode = NULL;
-    }
+    snd_codec_destroy(&c->codec);
 
     SPICE_CHANNEL_CLASS(spice_record_channel_parent_class)->channel_reset(channel, migrating);
 }
@@ -325,6 +306,7 @@ static void channel_up(SpiceChannel *channel)
 
     rc = SPICE_RECORD_CHANNEL(channel)->priv;
     if (!g_getenv("SPICE_DISABLE_CELT") &&
+        snd_codec_is_capable(SPICE_AUDIO_DATA_MODE_CELT_0_5_1) &&
         spice_channel_test_capability(channel, SPICE_RECORD_CAP_CELT_0_5_1)) {
         rc->mode = SPICE_AUDIO_DATA_MODE_CELT_0_5_1;
     } else {
@@ -363,11 +345,11 @@ void spice_record_send_data(SpiceRecordChannel *channel, gpointer data,
 {
     SpiceRecordChannelPrivate *rc;
     SpiceMsgcRecordPacket p = {0, };
-    int celt_compressed_frame_bytes = FRAME_SIZE * CELT_BIT_RATE / 44100 / 8;
-    uint8_t *celt_buf = NULL;
 
     g_return_if_fail(channel != NULL);
     g_return_if_fail(spice_channel_get_read_only(SPICE_CHANNEL(channel)) == FALSE);
+
+    uint8_t *encode_buf = NULL;
 
     rc = channel->priv;
 
@@ -377,8 +359,8 @@ void spice_record_send_data(SpiceRecordChannel *channel, gpointer data,
         rc->started = TRUE;
     }
 
-    if (rc->mode == SPICE_AUDIO_DATA_MODE_CELT_0_5_1)
-        celt_buf = g_alloca(celt_compressed_frame_bytes);
+    if (rc->mode != SPICE_AUDIO_DATA_MODE_RAW)
+        encode_buf = g_alloca(SND_CODEC_MAX_COMPRESSED_BYTES);
 
     p.time = time;
 
@@ -412,14 +394,14 @@ void spice_record_send_data(SpiceRecordChannel *channel, gpointer data,
             break;
         }
 
-        if (rc->mode == SPICE_AUDIO_DATA_MODE_CELT_0_5_1) {
-            frame_size = celt051_encode(rc->celt_encoder, (celt_int16_t *)frame, NULL, celt_buf,
-                               celt_compressed_frame_bytes);
-            if (frame_size < 0) {
-                g_warning("celt encode failed");
+        if (rc->mode != SPICE_AUDIO_DATA_MODE_RAW) {
+            int len = SND_CODEC_MAX_COMPRESSED_BYTES;
+            if (snd_codec_encode(rc->codec, frame, frame_size, encode_buf, &len) != SND_CODEC_OK) {
+                g_warning("encode failed");
                 return;
             }
-            frame = celt_buf;
+            frame = encode_buf;
+            frame_size = len;
         }
 
         msg = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_RECORD_DATA);
@@ -446,42 +428,25 @@ static void record_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
     CHANNEL_DEBUG(channel, "%s: fmt %d channels %d freq %d", __FUNCTION__,
                   start->format, start->channels, start->frequency);
 
-    c->frame_bytes = FRAME_SIZE * 16 * start->channels / 8;
+    g_return_if_fail(start->format == SPICE_AUDIO_FMT_S16);
+
+    c->codec = NULL;
+    c->frame_bytes = SND_CODEC_MAX_FRAME_SIZE * 16 * start->channels / 8;
+
+    if (c->mode == SPICE_AUDIO_DATA_MODE_CELT_0_5_1)
+    {
+        c->frame_bytes = SND_CODEC_CELT_FRAME_SIZE * 16 * start->channels / 8;
+
+        if (snd_codec_create(&c->codec, c->mode, start->frequency, SND_CODEC_ENCODE) != SND_CODEC_OK)
+            g_warning("Failed to create encoder");
+    }
 
     g_free(c->last_frame);
     c->last_frame = g_malloc(c->frame_bytes);
     c->last_frame_current = 0;
 
-    switch (c->mode) {
-    case SPICE_AUDIO_DATA_MODE_RAW:
-        emit_main_context(channel, SPICE_RECORD_START,
-                          start->format, start->channels, start->frequency);
-        break;
-    case SPICE_AUDIO_DATA_MODE_CELT_0_5_1: {
-        int celt_mode_err;
-
-        g_return_if_fail(start->format == SPICE_AUDIO_FMT_S16);
-
-        if (!c->celt_mode)
-            c->celt_mode = celt051_mode_create(start->frequency, start->channels, FRAME_SIZE,
-                                               &celt_mode_err);
-        if (!c->celt_mode)
-            g_warning("Failed to create celt mode");
-
-        if (!c->celt_encoder)
-            c->celt_encoder = celt051_encoder_create(c->celt_mode);
-
-        if (!c->celt_encoder)
-            g_warning("Failed to create celt encoder");
-
-        emit_main_context(channel, SPICE_RECORD_START,
-                          start->format, start->channels, start->frequency);
-        break;
-    }
-    default:
-        g_warning("%s: unhandled mode %d", __FUNCTION__, c->mode);
-        break;
-    }
+    emit_main_context(channel, SPICE_RECORD_START,
+                      start->format, start->channels, start->frequency);
 }
 
 /* coroutine context */

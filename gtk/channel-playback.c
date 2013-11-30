@@ -15,14 +15,14 @@
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
-#include <celt051/celt.h>
-
 #include "spice-client.h"
 #include "spice-common.h"
 #include "spice-channel-priv.h"
 #include "spice-session-priv.h"
 
 #include "spice-marshal.h"
+
+#include "common/snd_codec.h"
 
 /**
  * SECTION:channel-playback
@@ -48,8 +48,7 @@
 
 struct _SpicePlaybackChannelPrivate {
     int                         mode;
-    CELTMode                    *celt_mode;
-    CELTDecoder                 *celt_decoder;
+    SndCodec                    codec;
     guint32                     frame_count;
     guint32                     last_time;
     guint8                      nchannels;
@@ -91,7 +90,8 @@ static void channel_set_handlers(SpiceChannelClass *klass);
 static void spice_playback_channel_reset_capabilities(SpiceChannel *channel)
 {
     if (!g_getenv("SPICE_DISABLE_CELT"))
-        spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_PLAYBACK_CAP_CELT_0_5_1);
+        if (snd_codec_is_capable(SPICE_AUDIO_DATA_MODE_CELT_0_5_1))
+            spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_PLAYBACK_CAP_CELT_0_5_1);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_PLAYBACK_CAP_VOLUME);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_PLAYBACK_CAP_LATENCY);
 }
@@ -107,15 +107,7 @@ static void spice_playback_channel_finalize(GObject *obj)
 {
     SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(obj)->priv;
 
-    if (c->celt_decoder) {
-        celt051_decoder_destroy(c->celt_decoder);
-        c->celt_decoder = NULL;
-    }
-
-    if (c->celt_mode) {
-        celt051_mode_destroy(c->celt_mode);
-        c->celt_mode = NULL;
-    }
+    snd_codec_destroy(&c->codec);
 
     g_free(c->volume);
     c->volume = NULL;
@@ -174,15 +166,7 @@ static void spice_playback_channel_reset(SpiceChannel *channel, gboolean migrati
 {
     SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
 
-    if (c->celt_decoder) {
-        celt051_decoder_destroy(c->celt_decoder);
-        c->celt_decoder = NULL;
-    }
-
-    if (c->celt_mode) {
-        celt051_mode_destroy(c->celt_mode);
-        c->celt_mode = NULL;
-    }
+    snd_codec_destroy(&c->codec);
 
     SPICE_CHANNEL_CLASS(spice_playback_channel_parent_class)->channel_reset(channel, migrating);
 }
@@ -379,18 +363,16 @@ static void playback_handle_data(SpiceChannel *channel, SpiceMsgIn *in)
                           packet->data, packet->data_size);
         break;
     case SPICE_AUDIO_DATA_MODE_CELT_0_5_1: {
-        celt_int16_t pcm[256 * 2];
+        uint8_t pcm[SND_CODEC_CELT_FRAME_SIZE * 2 * 2];
+        int n = sizeof(pcm);
 
-        g_return_if_fail(c->celt_decoder != NULL);
-
-        if (celt051_decode(c->celt_decoder, packet->data,
-                           packet->data_size, pcm) != CELT_OK) {
+        if (snd_codec_decode(c->codec, packet->data, packet->data_size,
+                    pcm, &n) != SND_CODEC_OK) {
             g_warning("celt_decode() error");
             return;
         }
 
-        emit_main_context(channel, SPICE_PLAYBACK_DATA,
-                          (uint8_t *)pcm, sizeof(pcm));
+        emit_main_context(channel, SPICE_PLAYBACK_DATA, pcm, n);
         break;
     }
     default:
@@ -428,7 +410,6 @@ static void playback_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackStart *start = spice_msg_in_parsed(in);
-    int celt_mode_err;
 
     CHANNEL_DEBUG(channel, "%s: fmt %d channels %d freq %d time %d", __FUNCTION__,
                   start->format, start->channels, start->frequency, start->time);
@@ -437,6 +418,7 @@ static void playback_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
     c->last_time = start->time;
     c->is_active = TRUE;
     c->min_latency = SPICE_PLAYBACK_DEFAULT_LATENCY_MS;
+    c->codec = NULL;
 
     switch (c->mode) {
     case SPICE_AUDIO_DATA_MODE_RAW:
@@ -444,19 +426,8 @@ static void playback_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
                           start->format, start->channels, start->frequency);
         break;
     case SPICE_AUDIO_DATA_MODE_CELT_0_5_1: {
-        /* TODO: only support one setting now */
-        int frame_size = 256;
-        if (!c->celt_mode)
-            c->celt_mode = celt051_mode_create(start->frequency, start->channels,
-                                               frame_size, &celt_mode_err);
-        if (!c->celt_mode)
-            g_warning("create celt mode failed %d", celt_mode_err);
-
-        if (!c->celt_decoder)
-            c->celt_decoder = celt051_decoder_create(c->celt_mode);
-
-        if (!c->celt_decoder)
-            g_warning("create celt decoder failed");
+        if (snd_codec_create(&c->codec, c->mode, start->frequency, SND_CODEC_DECODE) != SND_CODEC_OK)
+            g_warning("create decoder failed");
 
         emit_main_context(channel, SPICE_PLAYBACK_START,
                           start->format, start->channels, start->frequency);
