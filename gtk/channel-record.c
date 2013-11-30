@@ -437,8 +437,10 @@ static void record_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
     {
         c->frame_bytes = SND_CODEC_CELT_FRAME_SIZE * 16 * start->channels / 8;
 
-        if (snd_codec_create(&c->codec, c->mode, start->frequency, SND_CODEC_ENCODE) != SND_CODEC_OK)
+        if (snd_codec_create(&c->codec, c->mode, start->frequency, SND_CODEC_ENCODE) != SND_CODEC_OK) {
             g_warning("Failed to create encoder");
+            return;
+        }
     }
 
     g_free(c->last_frame);

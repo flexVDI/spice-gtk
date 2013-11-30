@@ -426,8 +426,10 @@ static void playback_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
                           start->format, start->channels, start->frequency);
         break;
     case SPICE_AUDIO_DATA_MODE_CELT_0_5_1: {
-        if (snd_codec_create(&c->codec, c->mode, start->frequency, SND_CODEC_DECODE) != SND_CODEC_OK)
+        if (snd_codec_create(&c->codec, c->mode, start->frequency, SND_CODEC_DECODE) != SND_CODEC_OK) {
             g_warning("create decoder failed");
+            return;
+        }
 
         emit_main_context(channel, SPICE_PLAYBACK_START,
                           start->format, start->channels, start->frequency);
