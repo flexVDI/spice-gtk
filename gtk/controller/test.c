@@ -205,7 +205,9 @@ void connect_signals (gpointer obj)
 
 int main (int argc, char *argv[])
 {
+#ifdef WIN32
     int spicec_pid = (argc > 1 ? atoi (argv[1]) : 0);
+#endif
     char* host = (argc > 2 ? argv[2] : (char*)HOST);
     int port = (argc > 3 ? atoi (argv[3]) : PORT);
     char pipe_name[PIPE_NAME_MAX_LEN];
