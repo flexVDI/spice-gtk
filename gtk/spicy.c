@@ -1475,24 +1475,18 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec,
         /* only send a break event and disconnect */
         if (g_strcmp0(name, "org.spice.spicy.break") == 0) {
             spice_port_event(port, SPICE_PORT_EVENT_BREAK);
+            spice_channel_flush_async(channel, NULL, port_flushed_cb, conn);
         }
 
         /* handle the first spicy port and connect it to stdin/out */
         if (g_strcmp0(name, "org.spice.spicy") == 0 && stdin_port == NULL) {
             stdin_port = port;
-            goto end;
         }
-
-        if (port == stdin_port)
-            goto end;
-
-        spice_channel_flush_async(channel, NULL, port_flushed_cb, conn);
     } else {
         if (port == stdin_port)
             stdin_port = NULL;
     }
 
-end:
     g_free(name);
 }
 
