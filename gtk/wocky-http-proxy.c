@@ -98,7 +98,7 @@ create_request (GProxyAddress *proxy_address, gboolean *has_cred)
       base64_cred = g_base64_encode ((guchar *) cred, strlen (cred));
       g_free (cred);
       g_string_append_printf (request,
-          "Proxy-Authorization: %s\r\n",
+          "Proxy-Authorization: Basic %s\r\n",
           base64_cred);
       g_free (base64_cred);
     }
