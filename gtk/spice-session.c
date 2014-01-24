@@ -1723,8 +1723,11 @@ static void proxy_lookup_ready(GObject *source_object, GAsyncResult *result,
 
     for (it = addresses; it != NULL; it = it->next) {
         address = g_proxy_address_new(G_INET_ADDRESS(it->data),
-                                      spice_proxy_get_port(open_host->proxy), "http",
-                                      s->host, open_host->port, NULL, NULL);
+                                      spice_proxy_get_port(open_host->proxy),
+                                      spice_proxy_get_protocol(open_host->proxy),
+                                      s->host, open_host->port,
+                                      spice_proxy_get_user(open_host->proxy),
+                                      spice_proxy_get_password(open_host->proxy));
         if (address != NULL)
             break;
     }
