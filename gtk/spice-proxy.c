@@ -65,9 +65,17 @@ gboolean spice_proxy_parse(SpiceProxy *self, const gchar *proxyuri, GError **err
     uri = dup = g_strdup(proxyuri);
     /* FIXME: use GUri when it is ready... only support http atm */
     /* the code is voluntarily not parsing thoroughly the uri */
-    if (g_ascii_strncasecmp("http://", uri, 7) == 0)
+    if (g_ascii_strncasecmp("http://", uri, 7) == 0) {
         uri += 7;
-
+        spice_proxy_set_protocol(self, "http");
+        spice_proxy_set_port(self, 3128);
+    } else if (g_ascii_strncasecmp("https://", uri, 8) == 0) {
+        uri += 8;
+        spice_proxy_set_protocol(self, "https");
+        spice_proxy_set_port(self, 3129);
+    } else {
+        return FALSE;
+    }
     /* remove trailing slash */
     len = strlen(uri);
     for (; len > 0; len--)
@@ -76,8 +84,6 @@ gboolean spice_proxy_parse(SpiceProxy *self, const gchar *proxyuri, GError **err
         else
             break;
 
-    spice_proxy_set_protocol(self, "http");
-    spice_proxy_set_port(self, 3128);
 
     /* yes, that parser is bad, we need GUri... */
     if (strstr(uri, "@")) {
