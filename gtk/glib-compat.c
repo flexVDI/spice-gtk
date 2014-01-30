@@ -1,5 +1,8 @@
 /* -*- Mode: C; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 /*
+   Copyright (C) 2012-2014 Red Hat, Inc.
+   Copyright © 1998-2009 VLC authors and VideoLAN
+
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public
    License as published by the Free Software Foundation; either
@@ -13,6 +16,8 @@
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
+
+#include <string.h>
 
 #include "glib-compat.h"
 
@@ -103,5 +108,35 @@ guint64 g_get_monotonic_time(void)
     g_get_current_time(&tv);
 
     return (((gint64) tv.tv_sec) * 1000000) + tv.tv_usec;
+}
+#endif
+
+#ifndef HAVE_STRTOK_R
+G_GNUC_INTERNAL
+char *strtok_r(char *s, const char *delim, char **save_ptr)
+{
+    char *token;
+
+    if (s == NULL)
+        s = *save_ptr;
+
+    /* Scan leading delimiters. */
+    s += strspn (s, delim);
+    if (*s == '\0')
+        return NULL;
+
+    /* Find the end of the token. */
+    token = s;
+    s = strpbrk (token, delim);
+    if (s == NULL)
+        /* This token finishes the string. */
+        *save_ptr = strchr (token, '\0');
+    else
+    {
+        /* Terminate the token and make *SAVE_PTR point past it. */
+        *s = '\0';
+        *save_ptr = s + 1;
+    }
+    return token;
 }
 #endif

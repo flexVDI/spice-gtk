@@ -1,5 +1,8 @@
 /* -*- Mode: C; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 /*
+   Copyright (C) 2012-2014 Red Hat, Inc.
+   Copyright © 1998-2009 VLC authors and VideoLAN
+
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public
    License as published by the Free Software Foundation; either
@@ -15,6 +18,8 @@
 */
 #ifndef GLIB_COMPAT_H
 #define GLIB_COMPAT_H
+
+#include "config.h"
 
 #include <glib-object.h>
 #include <gio/gio.h>
@@ -131,6 +136,10 @@ GType spice_main_context_get_type (void) G_GNUC_CONST;
 
 #if !GLIB_CHECK_VERSION(2,27,2)
 guint64 g_get_monotonic_time(void);
+#endif
+
+#ifndef HAVE_STRTOK_R
+char* strtok_r(char *s, const char *delim, char **save_ptr);
 #endif
 
 #endif /* GLIB_COMPAT_H */
