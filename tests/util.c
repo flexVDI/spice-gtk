@@ -81,9 +81,9 @@ static void test_unix2dos(void)
 static const struct {
     unsigned width;
     unsigned height;
-    guint8 *and;
-    guint8 *xor;
-    guint8 *dest;
+    gchar *and;
+    gchar *xor;
+    gchar *dest;
 } mono[] = {
     {
         8, 6,
@@ -123,8 +123,8 @@ static void test_set_bit(void)
 {
     struct {
         unsigned len;
-        guint8 *src;
-        guint8 *dest;
+        gchar *src;
+        gchar *dest;
     } tests[] = {
         {
             4,
@@ -140,7 +140,7 @@ static void test_set_bit(void)
     int i, j, bit;
     guint8 *dest;
     int bytes;
-    
+
     for (i = 0 ; i < G_N_ELEMENTS(tests); ++i) {
         bytes = (tests[i].len + 7) / 8;
         dest = g_malloc0(bytes);
