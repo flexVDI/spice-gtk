@@ -2093,29 +2093,23 @@ static gboolean wait_migration(gpointer data)
 static gboolean spice_channel_iterate(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
-    GIOCondition ret;
 
     if (c->state == SPICE_CHANNEL_STATE_MIGRATING &&
         !g_coroutine_condition_wait(&c->coroutine, wait_migration, channel))
         CHANNEL_DEBUG(channel, "migration wait cancelled");
 
-    if (c->has_error) {
-        CHANNEL_DEBUG(channel, "channel has error, breaking loop");
-        return FALSE;
-    }
-
     /* flush any pending write and read */
-    SPICE_CHANNEL_GET_CLASS(channel)->iterate_write(channel);
-    SPICE_CHANNEL_GET_CLASS(channel)->iterate_read(channel);
+    if (!c->has_error)
+        SPICE_CHANNEL_GET_CLASS(channel)->iterate_write(channel);
+    if (!c->has_error)
+        SPICE_CHANNEL_GET_CLASS(channel)->iterate_read(channel);
 
-    ret = g_socket_condition_check(c->sock, G_IO_IN | G_IO_ERR | G_IO_HUP);
-    if (c->state > SPICE_CHANNEL_STATE_CONNECTING &&
-        ret & (G_IO_ERR|G_IO_HUP)) {
-        SPICE_DEBUG("got socket error: %d", ret);
-        emit_main_context(channel, SPICE_CHANNEL_EVENT,
-                          c->state == SPICE_CHANNEL_STATE_READY ?
-                          SPICE_CHANNEL_ERROR_IO : SPICE_CHANNEL_ERROR_LINK);
-        c->has_error = TRUE;
+    if (c->has_error) {
+        CHANNEL_DEBUG(channel, "channel got error");
+        if (c->state > SPICE_CHANNEL_STATE_CONNECTING)
+            emit_main_context(channel, SPICE_CHANNEL_EVENT,
+                              c->state == SPICE_CHANNEL_STATE_READY ?
+                              SPICE_CHANNEL_ERROR_IO : SPICE_CHANNEL_ERROR_LINK);
         return FALSE;
     }
 
