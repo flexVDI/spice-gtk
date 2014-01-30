@@ -210,8 +210,8 @@ USB_ACL_HELPER_SRCS =
 endif
 
 libspice_client_glib_2_0_la_SOURCES =			\
-	bio-gsocket.c					\
-	bio-gsocket.h					\
+	bio-gio.c					\
+	bio-gio.h					\
 	glib-compat.c					\
 	glib-compat.h					\
 	spice-audio.c					\
