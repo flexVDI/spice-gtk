@@ -2189,3 +2189,17 @@ guint32 spice_session_get_playback_latency(SpiceSession *session)
         return 0;
     }
 }
+
+/**
+ * spice_session_get_proxy_uri:
+ * @session: a #SpiceSession
+ *
+ * Returns: (transfer none): the session proxy #SpiceURI or %NULL.
+ * Since: 0.24
+ **/
+SpiceURI *spice_session_get_proxy_uri(SpiceSession *session)
+{
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    return s->proxy;
+}

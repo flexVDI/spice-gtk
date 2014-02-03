@@ -105,3 +105,4 @@ spice_uri_set_port
 spice_uri_set_scheme
 spice_uri_set_user
 spice_uri_to_string
+spice_session_get_proxy_uri

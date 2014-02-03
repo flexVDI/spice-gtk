@@ -90,6 +90,7 @@ spice_session_migration_get_type;
 spice_session_new;
 spice_session_open_fd;
 spice_session_verify_get_type;
+spice_session_get_proxy_uri;
 spice_set_session_option;
 spice_smartcard_channel_get_type;
 spice_smartcard_manager_get;
