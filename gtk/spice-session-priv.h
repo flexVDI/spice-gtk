@@ -22,7 +22,6 @@
 #include <gio/gio.h>
 #include "desktop-integration.h"
 #include "spice-session.h"
-#include "spice-proxy.h"
 #include "spice-gtk-session.h"
 #include "spice-channel-cache.h"
 #include "decode.h"
@@ -45,7 +44,7 @@ struct _SpiceSessionPrivate {
     char              *cert_subject;
     guint             verify;
     gboolean          read_only;
-    SpiceProxy        *proxy;
+    SpiceURI          *proxy;
 
     /* whether to enable audio */
     gboolean          audio;

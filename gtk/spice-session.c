@@ -28,7 +28,7 @@
 #include "gio-coroutine.h"
 #include "glib-compat.h"
 #include "wocky-http-proxy.h"
-#include "spice-proxy.h"
+#include "spice-uri-priv.h"
 #include "channel-playback-priv.h"
 
 struct channel {
@@ -139,7 +139,7 @@ static void do_emit_main_context(GObject *object, int signum, gpointer params)
 static void update_proxy(SpiceSession *self, const gchar *str)
 {
     SpiceSessionPrivate *s = self->priv;
-    SpiceProxy *proxy = NULL;
+    SpiceURI *proxy = NULL;
     GError *error = NULL;
 
     if (str == NULL)
@@ -149,8 +149,8 @@ static void update_proxy(SpiceSession *self, const gchar *str)
         return;
     }
 
-    proxy = spice_proxy_new();
-    if (!spice_proxy_parse(proxy, str, &error))
+    proxy = spice_uri_new();
+    if (!spice_uri_parse(proxy, str, &error))
         g_clear_object(&proxy);
     if (error) {
         g_warning("%s", error->message);
@@ -269,7 +269,7 @@ static int spice_uri_create(SpiceSession *session, char *dest, int len)
     return pos;
 }
 
-static int spice_uri_parse(SpiceSession *session, const char *original_uri)
+static int spice_parse_uri(SpiceSession *session, const char *original_uri)
 {
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     gchar *host = NULL, *port = NULL, *tls_port = NULL, *uri = NULL, *password = NULL;
@@ -499,7 +499,7 @@ static void spice_session_get_property(GObject    *gobject,
         g_value_set_pointer(value, s->uuid);
 	break;
     case PROP_PROXY:
-        g_value_take_string(value, spice_proxy_to_string(s->proxy));
+        g_value_take_string(value, spice_uri_to_string(s->proxy));
 	break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -547,7 +547,7 @@ static void spice_session_set_property(GObject      *gobject,
     case PROP_URI:
         str = g_value_get_string(value);
         if (str != NULL)
-            spice_uri_parse(session, str);
+            spice_parse_uri(session, str);
         break;
     case PROP_CLIENT_SOCKETS:
         s->client_provided_sockets = g_value_get_boolean(value);
@@ -1664,7 +1664,7 @@ struct spice_open_host {
     struct coroutine *from;
     SpiceSession *session;
     SpiceChannel *channel;
-    SpiceProxy *proxy;
+    SpiceURI *proxy;
     int port;
     GCancellable *cancellable;
     GError *error;
@@ -1723,11 +1723,11 @@ static void proxy_lookup_ready(GObject *source_object, GAsyncResult *result,
 
     for (it = addresses; it != NULL; it = it->next) {
         address = g_proxy_address_new(G_INET_ADDRESS(it->data),
-                                      spice_proxy_get_port(open_host->proxy),
-                                      spice_proxy_get_protocol(open_host->proxy),
+                                      spice_uri_get_port(open_host->proxy),
+                                      spice_uri_get_scheme(open_host->proxy),
                                       s->host, open_host->port,
-                                      spice_proxy_get_user(open_host->proxy),
-                                      spice_proxy_get_password(open_host->proxy));
+                                      spice_uri_get_user(open_host->proxy),
+                                      spice_uri_get_password(open_host->proxy));
         if (address != NULL)
             break;
     }
@@ -1755,7 +1755,7 @@ static gboolean open_host_idle_cb(gpointer data)
 
     if (open_host->proxy)
         g_resolver_lookup_by_name_async(g_resolver_get_default(),
-                                        spice_proxy_get_hostname(open_host->proxy),
+                                        spice_uri_get_hostname(open_host->proxy),
                                         open_host->cancellable,
                                         proxy_lookup_ready, open_host);
     else
@@ -1770,7 +1770,7 @@ static gboolean open_host_idle_cb(gpointer data)
 
     SPICE_DEBUG("open host %s:%d", s->host, open_host->port);
     if (open_host->proxy != NULL) {
-        gchar *str = spice_proxy_to_string(open_host->proxy);
+        gchar *str = spice_uri_to_string(open_host->proxy);
         SPICE_DEBUG("(with proxy %s)", str);
         g_free(str);
     }

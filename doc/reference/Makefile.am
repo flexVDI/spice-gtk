@@ -44,6 +44,7 @@ IGNORE_HFILES=					\
 	spice-marshal.h				\
 	spice-pulse.h				\
 	spice-session-priv.h			\
+	spice-uri-priv.h			\
 	spice-util-priv.h			\
 	spice-widget-priv.h			\
 	usb-acl-helper.h			\

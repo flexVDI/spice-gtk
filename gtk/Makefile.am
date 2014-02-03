@@ -248,8 +248,8 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	channel-usbredir-priv.h				\
 	smartcard-manager.c				\
 	smartcard-manager-priv.h			\
-	spice-proxy.c					\
-	spice-proxy.h					\
+	spice-uri.c					\
+	spice-uri-priv.h				\
 	usb-device-manager.c				\
 	usb-device-manager-priv.h			\
 	usbutil.c					\
@@ -284,6 +284,7 @@ libspice_client_glibincludedir = $(includedir)/spice-client-glib-2.0
 libspice_client_glibinclude_HEADERS =	\
 	spice-audio.h			\
 	spice-client.h			\
+	spice-uri.h			\
 	spice-types.h			\
 	spice-session.h			\
 	spice-channel.h			\

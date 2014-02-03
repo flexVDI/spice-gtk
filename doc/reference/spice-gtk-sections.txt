@@ -429,3 +429,29 @@ SPICE_PORT_CHANNEL_GET_CLASS
 SpicePortChannelPrivate
 </SECTION>
 
+<SECTION>
+<FILE>spice-uri</FILE>
+spice_uri_get_scheme
+spice_uri_set_scheme
+spice_uri_get_hostname
+spice_uri_set_hostname
+spice_uri_get_port
+spice_uri_set_port
+spice_uri_get_user
+spice_uri_set_user
+spice_uri_get_password
+spice_uri_set_password
+spice_uri_to_string
+SpiceURIClass
+SpiceURI
+<SUBSECTION Standard>
+SPICE_IS_URI
+SPICE_IS_URI_CLASS
+SPICE_TYPE_URI
+SPICE_URI
+SPICE_URI_CLASS
+SPICE_URI_GET_CLASS
+spice_uri_get_type
+<SUBSECTION Private>
+SpiceURIPrivate
+</SECTION>
