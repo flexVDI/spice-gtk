@@ -102,6 +102,7 @@ spice_channel_string_to_type
 spice_channel_set_capability
 spice_channel_flush_async
 spice_channel_flush_finish
+spice_channel_get_error
 <SUBSECTION Standard>
 SPICE_TYPE_CHANNEL_EVENT
 spice_channel_event_get_type

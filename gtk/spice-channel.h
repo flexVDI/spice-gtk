@@ -123,6 +123,8 @@ void spice_channel_set_capability(SpiceChannel *channel, guint32 cap);
 const gchar* spice_channel_type_to_string(gint type);
 gint spice_channel_string_to_type(const gchar *str);
 
+const GError* spice_channel_get_error(SpiceChannel *channel);
+
 G_END_DECLS
 
 #endif /* __SPICE_CLIENT_CHANNEL_H__ */

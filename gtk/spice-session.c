@@ -1795,7 +1795,7 @@ static gboolean connect_timeout(gpointer data)
 /* coroutine context */
 G_GNUC_INTERNAL
 GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceChannel *channel,
-                                                   gboolean *use_tls)
+                                                   gboolean *use_tls, GError **error)
 {
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     SpiceChannelPrivate *c = channel->priv;
@@ -1844,8 +1844,8 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
 #endif
 
     if (open_host.error != NULL) {
-        g_warning("open host: %s", open_host.error->message);
-        g_clear_error(&open_host.error);
+        SPICE_DEBUG("open host: %s", open_host.error->message);
+        g_propagate_error(error, open_host.error);
     } else if (open_host.connection != NULL) {
         GSocket *socket;
         socket = g_socket_connection_get_socket(open_host.connection);

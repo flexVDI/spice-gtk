@@ -154,6 +154,8 @@ static void spice_channel_dispose(GObject *gobject)
          c->session = NULL;
     }
 
+    g_clear_error(&c->error);
+
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_channel_parent_class)->dispose)
         G_OBJECT_CLASS(spice_channel_parent_class)->dispose(gobject);
@@ -317,7 +319,9 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
      * @event: a #SpiceChannelEvent
      *
      * The #SpiceChannel::channel-event signal is emitted when the
-     * state of the connection change.
+     * state of the connection is changed. In case of errors,
+     * spice_channel_get_error() may provide additional informations
+     * on the source of the error.
      **/
     signals[SPICE_CHANNEL_EVENT] =
         g_signal_new("channel-event",
@@ -2214,6 +2218,25 @@ static int spice_channel_load_ca(SpiceChannel *channel)
     return count;
 }
 
+/**
+ * spice_channel_get_error:
+ * @channel:
+ *
+ * Retrieves the #GError currently set on channel, if the #SpiceChannel
+ * is in error state and can provide additional error details.
+ *
+ * Returns: the pointer to the error, or %NULL
+ * Since: 0.24
+ **/
+const GError* spice_channel_get_error(SpiceChannel *self)
+{
+    SpiceChannelPrivate *c;
+
+    g_return_val_if_fail(SPICE_IS_CHANNEL(self), NULL);
+    c = self->priv;
+
+    return c->error;
+}
 
 /* coroutine context */
 static void *spice_channel_coroutine(void *data)
@@ -2251,15 +2274,16 @@ static void *spice_channel_coroutine(void *data)
 
 
 reconnect:
-    c->conn = spice_session_channel_open_host(c->session, channel, &c->tls);
+    c->conn = spice_session_channel_open_host(c->session, channel, &c->tls, &c->error);
     if (c->conn == NULL) {
-        if (!c->tls) {
+        if (!c->error && !c->tls) {
             CHANNEL_DEBUG(channel, "trying with TLS port");
             c->tls = true; /* FIXME: does that really work with provided fd */
             goto reconnect;
         } else {
             CHANNEL_DEBUG(channel, "Connect error");
             emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_CONNECT);
+            g_clear_error(&c->error);
             goto cleanup;
         }
     }

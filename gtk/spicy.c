@@ -1208,6 +1208,7 @@ static void recent_add(SpiceSession *session)
 static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
                                gpointer data)
 {
+    const GError *error = NULL;
     spice_connection *conn = data;
     char password[64];
     int rc;
@@ -1231,7 +1232,12 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
     case SPICE_CHANNEL_ERROR_TLS:
     case SPICE_CHANNEL_ERROR_LINK:
     case SPICE_CHANNEL_ERROR_CONNECT:
+        error = spice_channel_get_error(channel);
         g_message("main channel: failed to connect");
+        if (error) {
+            g_message("channel error: %s", error->message);
+        }
+
         rc = connect_dialog(conn->session);
         if (rc == 0) {
             connection_connect(conn);

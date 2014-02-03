@@ -136,6 +136,7 @@ struct _SpiceChannelPrivate {
     GSList                      *flushing;
 
     gboolean                    disable_channel_msg;
+    GError                      *error;
 };
 
 SpiceMsgIn *spice_msg_in_new(SpiceChannel *channel);
