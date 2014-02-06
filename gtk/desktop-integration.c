@@ -22,7 +22,7 @@
 #include "config.h"
 
 #include <glib-object.h>
-#ifdef USE_DBUS_GLIB
+#if defined(USE_DBUS_GLIB)
 #include <dbus/dbus-glib.h>
 #endif
 
@@ -41,12 +41,12 @@
     (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_DESKTOP_INTEGRATION, SpiceDesktopIntegrationPrivate))
 
 struct _SpiceDesktopIntegrationPrivate {
-#ifdef USE_DBUS_GLIB
+#if defined(USE_DBUS_GLIB)
     DBusGProxy *gnome_session_proxy;
-    guint gnome_automount_inhibit_cookie;
 #else
-    int dummy;
+    GObject *gnome_session_proxy; /* dummy */
 #endif
+    guint gnome_automount_inhibit_cookie;
 };
 
 G_DEFINE_TYPE(SpiceDesktopIntegration, spice_desktop_integration, G_TYPE_OBJECT);
@@ -54,27 +54,28 @@ G_DEFINE_TYPE(SpiceDesktopIntegration, spice_desktop_integration, G_TYPE_OBJECT)
 /* ------------------------------------------------------------------ */
 /* Gnome specific code                                                */
 
-#ifdef USE_DBUS_GLIB
-
 static void handle_dbus_call_error(const char *call, GError **_error)
 {
     GError *error = *_error;
     const char *message = error->message;
 
+#if defined(USE_DBUS_GLIB)
     if (error->domain == DBUS_GERROR &&
             error->code == DBUS_GERROR_REMOTE_EXCEPTION)
         message = dbus_g_error_get_name(error);
+#endif
     g_warning("Error calling '%s': %s", call, message);
     g_clear_error(_error);
 }
 
 static gboolean gnome_integration_init(SpiceDesktopIntegration *self)
 {
-    SpiceDesktopIntegrationPrivate *priv = self->priv;
+    G_GNUC_UNUSED SpiceDesktopIntegrationPrivate *priv = self->priv;
     GError *error = NULL;
-    DBusGConnection *conn;
+    gboolean success = TRUE;
 
-    conn = dbus_g_bus_get(DBUS_BUS_SESSION, &error);
+#if defined(USE_DBUS_GLIB)
+    DBusGConnection *conn = dbus_g_bus_get(DBUS_BUS_SESSION, &error);
     if (!conn)
         goto end;
 
@@ -87,14 +88,18 @@ static gboolean gnome_integration_init(SpiceDesktopIntegration *self)
                                             "org.gnome.SessionManager",
                                             &error);
 end:
+#else
+    success = FALSE;
+#endif
+
     if (error) {
-        g_debug("Could not create org.gnome.SessionManager dbus proxy: %s",
-                error->message);
+        g_warning("Could not create org.gnome.SessionManager dbus proxy: %s",
+                  error->message);
         g_clear_error(&error);
         return FALSE;
     }
 
-    return TRUE;
+    return success;
 }
 
 static void gnome_integration_inhibit_automount(SpiceDesktopIntegration *self)
@@ -107,7 +112,8 @@ static void gnome_integration_inhibit_automount(SpiceDesktopIntegration *self)
 
     g_return_if_fail(priv->gnome_automount_inhibit_cookie == 0);
 
-    if (!dbus_g_proxy_call(
+#if defined(USE_DBUS_GLIB)
+    dbus_g_proxy_call(
                 priv->gnome_session_proxy, "Inhibit", &error,
                 G_TYPE_STRING, g_get_prgname(),
                 G_TYPE_UINT, 0,
@@ -116,7 +122,9 @@ static void gnome_integration_inhibit_automount(SpiceDesktopIntegration *self)
                 G_TYPE_UINT, GNOME_SESSION_INHIBIT_AUTOMOUNT,
                 G_TYPE_INVALID,
                 G_TYPE_UINT, &priv->gnome_automount_inhibit_cookie,
-                G_TYPE_INVALID))
+                G_TYPE_INVALID);
+#endif
+    if (error)
         handle_dbus_call_error("org.gnome.SessionManager.Inhibit", &error);
 }
 
@@ -132,11 +140,14 @@ static void gnome_integration_uninhibit_automount(SpiceDesktopIntegration *self)
     if (priv->gnome_automount_inhibit_cookie == 0)
         return;
 
-    if (!dbus_g_proxy_call(
+#if defined(USE_DBUS_GLIB)
+    dbus_g_proxy_call(
                 priv->gnome_session_proxy, "Uninhibit", &error,
                 G_TYPE_UINT, priv->gnome_automount_inhibit_cookie,
                 G_TYPE_INVALID,
-                G_TYPE_INVALID))
+                G_TYPE_INVALID);
+#endif
+    if (error)
         handle_dbus_call_error("org.gnome.SessionManager.Uninhibit", &error);
 
     priv->gnome_automount_inhibit_cookie = 0;
@@ -149,8 +160,6 @@ static void gnome_integration_dispose(SpiceDesktopIntegration *self)
     g_clear_object(&priv->gnome_session_proxy);
 }
 
-#endif
-
 /* ------------------------------------------------------------------ */
 /* gobject glue                                                       */
 
@@ -161,19 +170,15 @@ static void spice_desktop_integration_init(SpiceDesktopIntegration *self)
     priv = SPICE_DESKTOP_INTEGRATION_GET_PRIVATE(self);
     self->priv = priv;
 
-#ifdef USE_DBUS_GLIB
     if (!gnome_integration_init(self))
-#endif
        g_warning("Warning no automount-inhibiting implementation available");
 }
 
 static void spice_desktop_integration_dispose(GObject *gobject)
 {
-#ifdef USE_DBUS_GLIB
     SpiceDesktopIntegration *self = SPICE_DESKTOP_INTEGRATION(gobject);
 
     gnome_integration_dispose(self);
-#endif
 
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_desktop_integration_parent_class)->dispose)
@@ -212,14 +217,10 @@ SpiceDesktopIntegration *spice_desktop_integration_get(SpiceSession *session)
 
 void spice_desktop_integration_inhibit_automount(SpiceDesktopIntegration *self)
 {
-#ifdef USE_DBUS_GLIB
     gnome_integration_inhibit_automount(self);
-#endif
 }
 
 void spice_desktop_integration_uninhibit_automount(SpiceDesktopIntegration *self)
 {
-#ifdef USE_DBUS_GLIB
     gnome_integration_uninhibit_automount(self);
-#endif
 }
