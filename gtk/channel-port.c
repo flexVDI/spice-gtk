@@ -289,14 +289,6 @@ static void port_handle_msg(SpiceChannel *channel, SpiceMsgIn *in)
     emit_main_context(channel, SPICE_PORT_DATA, buf, size);
 }
 
-static void port_write_free_cb(uint8_t *data, void *user_data)
-{
-    GSimpleAsyncResult *result = user_data;
-
-    g_simple_async_result_complete(result);
-    g_object_unref(result);
-}
-
 /**
  * spice_port_write_async:
  * @port: A #SpicePortChannel
@@ -320,9 +312,7 @@ void spice_port_write_async(SpicePortChannel *self,
                             GAsyncReadyCallback callback,
                             gpointer user_data)
 {
-    GSimpleAsyncResult *simple;
     SpicePortChannelPrivate *c;
-    SpiceMsgOut *msg;
 
     g_return_if_fail(SPICE_IS_PORT_CHANNEL(self));
     g_return_if_fail(buffer != NULL);
@@ -335,14 +325,8 @@ void spice_port_write_async(SpicePortChannel *self,
         return;
     }
 
-    simple = g_simple_async_result_new(G_OBJECT(self), callback, user_data,
-                                       spice_port_write_async);
-    g_simple_async_result_set_op_res_gssize(simple, count);
-
-    msg = spice_msg_out_new(SPICE_CHANNEL(self), SPICE_MSGC_SPICEVMC_DATA);
-    spice_marshaller_add_ref_full(msg->marshaller, (uint8_t*)buffer, count,
-                                  port_write_free_cb, simple);
-    spice_msg_out_send(msg);
+    spice_vmc_write_async(SPICE_CHANNEL(self), buffer, count,
+                          cancellable, callback, user_data);
 }
 
 /**
@@ -360,20 +344,9 @@ void spice_port_write_async(SpicePortChannel *self,
 gssize spice_port_write_finish(SpicePortChannel *self,
                                GAsyncResult *result, GError **error)
 {
-    GSimpleAsyncResult *simple;
-
     g_return_val_if_fail(SPICE_IS_PORT_CHANNEL(self), -1);
-    g_return_val_if_fail(result != NULL, -1);
 
-    simple = (GSimpleAsyncResult *)result;
-
-    if (g_simple_async_result_propagate_error(simple, error))
-        return -1;
-
-    g_return_val_if_fail(g_simple_async_result_is_valid(result, G_OBJECT(self),
-                                                        spice_port_write_async), -1);
-
-    return g_simple_async_result_get_op_res_gssize(simple);
+    return spice_vmc_write_finish(SPICE_CHANNEL(self), result, error);
 }
 
 /**

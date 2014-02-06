@@ -196,6 +196,14 @@ void spice_caps_set(GArray *caps, guint32 cap, const gchar *desc);
 
 gchar *spice_channel_supported_string(void);
 
+void spice_vmc_write_async(SpiceChannel *self,
+                           const void *buffer, gsize count,
+                           GCancellable *cancellable,
+                           GAsyncReadyCallback callback,
+                           gpointer user_data);
+gssize spice_vmc_write_finish(SpiceChannel *self,
+                              GAsyncResult *result, GError **error);
+
 G_END_DECLS
 
 #endif /* __SPICE_CLIENT_CHANNEL_PRIV_H__ */
