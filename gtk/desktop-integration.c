@@ -22,7 +22,7 @@
 #include "config.h"
 
 #include <glib-object.h>
-#ifdef USE_DBUS
+#ifdef USE_DBUS_GLIB
 #include <dbus/dbus-glib.h>
 #endif
 
@@ -41,7 +41,7 @@
     (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_DESKTOP_INTEGRATION, SpiceDesktopIntegrationPrivate))
 
 struct _SpiceDesktopIntegrationPrivate {
-#ifdef USE_DBUS
+#ifdef USE_DBUS_GLIB
     DBusGConnection *dbus_conn;
     DBusGProxy *gnome_session_proxy;
     guint gnome_automount_inhibit_cookie;
@@ -55,7 +55,7 @@ G_DEFINE_TYPE(SpiceDesktopIntegration, spice_desktop_integration, G_TYPE_OBJECT)
 /* ------------------------------------------------------------------ */
 /* Gnome specific code                                                */
 
-#ifdef USE_DBUS
+#ifdef USE_DBUS_GLIB
 
 static void handle_dbus_call_error(const char *call, GError **_error)
 {
@@ -155,14 +155,14 @@ static void gnome_integration_dispose(SpiceDesktopIntegration *self)
 static void spice_desktop_integration_init(SpiceDesktopIntegration *self)
 {
     SpiceDesktopIntegrationPrivate *priv;
-#ifdef USE_DBUS
+#ifdef USE_DBUS_GLIB
     GError *error = NULL;
 #endif
 
     priv = SPICE_DESKTOP_INTEGRATION_GET_PRIVATE(self);
     self->priv = priv;
 
-#ifdef USE_DBUS
+#ifdef USE_DBUS_GLIB
     priv->dbus_conn = dbus_g_bus_get (DBUS_BUS_SESSION, &error);
     if (!priv->dbus_conn) {
        g_warning("Error connecting to session dbus: %s", error->message);
@@ -175,7 +175,7 @@ static void spice_desktop_integration_init(SpiceDesktopIntegration *self)
 
 static void spice_desktop_integration_dispose(GObject *gobject)
 {
-#ifdef USE_DBUS
+#ifdef USE_DBUS_GLIB
     SpiceDesktopIntegration *self = SPICE_DESKTOP_INTEGRATION(gobject);
 
     gnome_integration_dispose(self);
@@ -218,14 +218,14 @@ SpiceDesktopIntegration *spice_desktop_integration_get(SpiceSession *session)
 
 void spice_desktop_integration_inhibit_automount(SpiceDesktopIntegration *self)
 {
-#ifdef USE_DBUS
+#ifdef USE_DBUS_GLIB
     gnome_integration_inhibit_automount(self);
 #endif
 }
 
 void spice_desktop_integration_uninhibit_automount(SpiceDesktopIntegration *self)
 {
-#ifdef USE_DBUS
+#ifdef USE_DBUS_GLIB
     gnome_integration_uninhibit_automount(self);
 #endif
 }

@@ -657,7 +657,7 @@ if test "x$enable_dbus" != "xno"; then
   fi
 
   if test "x$have_dbus" = "xyes"; then
-    AC_DEFINE(USE_DBUS, [1], [Define if supporting dbus])
+    AC_DEFINE(USE_DBUS_GLIB, [1], [Define if supporting dbus])
   fi
 fi
 
