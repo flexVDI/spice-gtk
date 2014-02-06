@@ -247,8 +247,8 @@ PKG_CHECK_MODULES(GIO, gio-2.0 >= 2.10.0 $gio_os)
 AC_SUBST(GIO_CFLAGS)
 AC_SUBST(GIO_LIBS)
 
-PKG_CHECK_EXISTS([gio-2.0 >= 2.26], [have_gproxy=yes])
-AM_CONDITIONAL([WITH_GPROXY], [test "x$have_gproxy" = "xyes"])
+PKG_CHECK_EXISTS([gio-2.0 >= 2.26], [have_gio26=yes])
+AM_CONDITIONAL([WITH_GPROXY], [test "x$have_gio26" = "xyes"])
 
 PKG_CHECK_MODULES(CAIRO, cairo >= 1.2.0)
 AC_SUBST(CAIRO_CFLAGS)
@@ -648,16 +648,20 @@ AC_ARG_ENABLE([dbus],
   [],
   [enable_dbus="auto"])
 
+have_dbus=no
 if test "x$enable_dbus" != "xno"; then
-  PKG_CHECK_MODULES([DBUS_GLIB], [dbus-glib-1],
-                                 [have_dbus=yes],
-                                 [have_dbus=no])
-  if test "x$enable_dbus" = "xyes" && test "x$have_dbus" = "xno"; then
-    AC_MSG_ERROR([D-Bus support explicitly requested, but some required packages are not available])
+  if test "x$have_gio26" = "xyes"; then
+    AC_DEFINE(USE_GDBUS, [1], [Define if supporting gdbus])
+    have_dbus=gdbus
+  else
+    PKG_CHECK_EXISTS([DBUS_GLIB], [dbus-glib-1], [
+      AC_DEFINE(USE_DBUS_GLIB, [1], [Define if supporting dbus-glib])
+      have_dbus=dbus-glib
+    ])
   fi
 
-  if test "x$have_dbus" = "xyes"; then
-    AC_DEFINE(USE_DBUS_GLIB, [1], [Define if supporting dbus])
+  if test "x$enable_dbus" = "xyes" && test "x$have_dbus" = "xno"; then
+    AC_MSG_ERROR([D-Bus support explicitly requested, but some required packages are not available])
   fi
 fi
 
@@ -726,7 +730,11 @@ AC_MSG_NOTICE([
         Smartcard support:        ${have_smartcard}
         USB redirection support:  ${have_usbredir} ${with_usbredir_hotplug}
         Gtk:                      $GTK_API_VERSION
+        DBus:                     ${have_dbus}
 
         Now type 'make' to build $PACKAGE
 
 ])
+if test "x$have_dbus" = "xno"; then
+  AC_MSG_WARN([No D-Bus support, desktop integration and USB redirection may not work properly])
+fi
