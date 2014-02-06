@@ -42,7 +42,6 @@
 
 struct _SpiceDesktopIntegrationPrivate {
 #ifdef USE_DBUS_GLIB
-    DBusGConnection *dbus_conn;
     DBusGProxy *gnome_session_proxy;
     guint gnome_automount_inhibit_cookie;
 #else
@@ -73,18 +72,21 @@ static gboolean gnome_integration_init(SpiceDesktopIntegration *self)
 {
     SpiceDesktopIntegrationPrivate *priv = self->priv;
     GError *error = NULL;
+    DBusGConnection *conn;
 
-    if (!priv->dbus_conn)
-        return FALSE;
+    conn = dbus_g_bus_get(DBUS_BUS_SESSION, &error);
+    if (!conn)
+        goto end;
 
     /* We use for_name_owner, to resolve the name now, as we may not be
        running under gnome-session manager at all! */
     priv->gnome_session_proxy = dbus_g_proxy_new_for_name_owner(
-                                            priv->dbus_conn,
+                                            conn,
                                             "org.gnome.SessionManager",
                                             "/org/gnome/SessionManager",
                                             "org.gnome.SessionManager",
                                             &error);
+end:
     if (error) {
         g_debug("Could not create org.gnome.SessionManager dbus proxy: %s",
                 error->message);
@@ -155,19 +157,11 @@ static void gnome_integration_dispose(SpiceDesktopIntegration *self)
 static void spice_desktop_integration_init(SpiceDesktopIntegration *self)
 {
     SpiceDesktopIntegrationPrivate *priv;
-#ifdef USE_DBUS_GLIB
-    GError *error = NULL;
-#endif
 
     priv = SPICE_DESKTOP_INTEGRATION_GET_PRIVATE(self);
     self->priv = priv;
 
 #ifdef USE_DBUS_GLIB
-    priv->dbus_conn = dbus_g_bus_get (DBUS_BUS_SESSION, &error);
-    if (!priv->dbus_conn) {
-       g_warning("Error connecting to session dbus: %s", error->message);
-       g_clear_error(&error);
-    }
     if (!gnome_integration_init(self))
 #endif
        g_warning("Warning no automount-inhibiting implementation available");
