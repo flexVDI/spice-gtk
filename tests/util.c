@@ -150,7 +150,7 @@ static void test_set_bit(void)
             }
         }
         for (j = 0 ; j < bytes; ++j) {
-            g_assert(dest[j] == tests[i].dest[j]);
+            g_assert(dest[j] == (guchar) tests[i].dest[j]);
         }
         g_free(dest);
     }
