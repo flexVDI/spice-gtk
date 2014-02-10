@@ -1,3 +1,11 @@
+v0.23
+=====
+
+- support Opus codec for audio channels
+- ssl: use tls 1.0 or better
+- support gdbus instead of dbus-glib when available
+- misc build-sys, compile and runtime fixes
+
 v0.22
 =====
 
