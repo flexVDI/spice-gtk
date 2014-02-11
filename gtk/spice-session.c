@@ -1838,7 +1838,7 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
 #endif
 
     if (open_host.error != NULL) {
-        g_warning("%s", open_host.error->message);
+        g_warning("open host: %s", open_host.error->message);
         g_clear_error(&open_host.error);
     } else if (open_host.connection != NULL) {
         GSocket *socket;
