@@ -40,13 +40,13 @@ static void wocky_http_proxy_iface_init (GProxyInterface *proxy_iface);
 
 #define wocky_http_proxy_get_type _wocky_http_proxy_get_type
 G_DEFINE_TYPE_WITH_CODE (WockyHttpProxy, wocky_http_proxy, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (G_TYPE_PROXY,
-      wocky_http_proxy_iface_init)
-    g_io_extension_point_set_required_type (
-      g_io_extension_point_register (G_PROXY_EXTENSION_POINT_NAME),
-      G_TYPE_PROXY);
-    g_io_extension_point_implement (G_PROXY_EXTENSION_POINT_NAME,
-      g_define_type_id, "http", 0))
+  G_IMPLEMENT_INTERFACE (G_TYPE_PROXY,
+    wocky_http_proxy_iface_init)
+  g_io_extension_point_set_required_type (
+    g_io_extension_point_register (G_PROXY_EXTENSION_POINT_NAME),
+    G_TYPE_PROXY);
+  g_io_extension_point_implement (G_PROXY_EXTENSION_POINT_NAME,
+    g_define_type_id, "http", 0))
 
 static void
 wocky_http_proxy_init (WockyHttpProxy *proxy)
