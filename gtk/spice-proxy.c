@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "glib-compat.h"
 #include "spice-client.h"
 #include "spice-proxy.h"
 
@@ -77,6 +78,18 @@ gboolean spice_proxy_parse(SpiceProxy *self, const gchar *proxyuri, GError **err
 
     spice_proxy_set_protocol(self, "http");
     spice_proxy_set_port(self, 3128);
+
+    /* yes, that parser is bad, we need GUri... */
+    if (strstr(uri, "@")) {
+        gchar *saveptr, *saveptr2;
+        gchar *next = strstr(uri, "@") + 1;
+        gchar *auth = strtok_r(uri, "@", &saveptr);
+        const gchar *user = strtok_r(auth, ":", &saveptr2);
+        const gchar *pass = strtok_r(NULL, ":", &saveptr2);
+        spice_proxy_set_user(self, user);
+        spice_proxy_set_password(self, pass);
+        uri = next;
+    }
 
     /* max 2 parts, host:port */
     gchar **proxyv = g_strsplit(uri, ":", 2);
