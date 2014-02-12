@@ -26,6 +26,8 @@ struct _SpiceProxyPrivate {
     gchar *protocol;
     gchar *hostname;
     guint port;
+    gchar *user;
+    gchar *password;
 };
 
 #define SPICE_PROXY_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE((o), SPICE_TYPE_PROXY, SpiceProxyPrivate))
@@ -35,6 +37,8 @@ G_DEFINE_TYPE(SpiceProxy, spice_proxy, G_TYPE_OBJECT);
 enum  {
     SPICE_PROXY_DUMMY_PROPERTY,
     SPICE_PROXY_PROTOCOL,
+    SPICE_PROXY_USER,
+    SPICE_PROXY_PASSWORD,
     SPICE_PROXY_HOSTNAME,
     SPICE_PROXY_PORT
 };
@@ -173,6 +177,12 @@ static void spice_proxy_get_property(GObject *object, guint property_id,
     case SPICE_PROXY_PORT:
         g_value_set_uint(value, spice_proxy_get_port(self));
         break;
+    case SPICE_PROXY_USER:
+        g_value_set_string(value, spice_proxy_get_user(self));
+        break;
+    case SPICE_PROXY_PASSWORD:
+        g_value_set_string(value, spice_proxy_get_password(self));
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
         break;
@@ -193,6 +203,12 @@ static void spice_proxy_set_property(GObject *object, guint property_id,
     case SPICE_PROXY_HOSTNAME:
         spice_proxy_set_hostname(self, g_value_get_string(value));
         break;
+    case SPICE_PROXY_USER:
+        spice_proxy_set_user(self, g_value_get_string(value));
+        break;
+    case SPICE_PROXY_PASSWORD:
+        spice_proxy_set_password(self, g_value_get_string(value));
+        break;
     case SPICE_PROXY_PORT:
         spice_proxy_set_port(self, g_value_get_uint(value));
         break;
@@ -209,6 +225,8 @@ static void spice_proxy_finalize(GObject* obj)
     self = G_TYPE_CHECK_INSTANCE_CAST(obj, SPICE_TYPE_PROXY, SpiceProxy);
     g_free(self->priv->protocol);
     g_free(self->priv->hostname);
+    g_free(self->priv->user);
+    g_free(self->priv->password);
 
     G_OBJECT_CLASS (spice_proxy_parent_class)->finalize (obj);
 }
@@ -254,6 +272,24 @@ static void spice_proxy_class_init(SpiceProxyClass *klass)
                                                        0, G_MAXUINT, 0,
                                                        G_PARAM_STATIC_STRINGS |
                                                        G_PARAM_READWRITE));
+
+    g_object_class_install_property(G_OBJECT_CLASS (klass),
+                                    SPICE_PROXY_USER,
+                                    g_param_spec_string ("user",
+                                                         "user",
+                                                         "user",
+                                                         NULL,
+                                                         G_PARAM_STATIC_STRINGS |
+                                                         G_PARAM_READWRITE));
+
+    g_object_class_install_property(G_OBJECT_CLASS (klass),
+                                    SPICE_PROXY_PASSWORD,
+                                    g_param_spec_string ("password",
+                                                         "password",
+                                                         "password",
+                                                         NULL,
+                                                         G_PARAM_STATIC_STRINGS |
+                                                         G_PARAM_READWRITE));
 }
 
 G_GNUC_INTERNAL
@@ -267,5 +303,48 @@ gchar* spice_proxy_to_string(SpiceProxy* self)
     if (p->protocol == NULL || p->hostname == NULL)
         return NULL;
 
-    return g_strdup_printf("%s://%s:%u", p->protocol, p->hostname, p->port);
+    if (p->user || p->password)
+        return g_strdup_printf("%s://%s:%s@%s:%u",
+                               p->protocol,
+                               p->user, p->password,
+                               p->hostname, p->port);
+    else
+        return g_strdup_printf("%s://%s:%u",
+                               p->protocol, p->hostname, p->port);
+}
+
+G_GNUC_INTERNAL
+const gchar* spice_proxy_get_user(SpiceProxy *self)
+{
+    g_return_val_if_fail(SPICE_IS_PROXY(self), NULL);
+    return self->priv->user;
+}
+
+
+G_GNUC_INTERNAL
+void spice_proxy_set_user(SpiceProxy *self, const gchar *value)
+{
+    g_return_if_fail(SPICE_IS_PROXY(self));
+
+    g_free(self->priv->user);
+    self->priv->user = g_strdup(value);
+    g_object_notify((GObject *)self, "user");
+}
+
+G_GNUC_INTERNAL
+const gchar* spice_proxy_get_password(SpiceProxy *self)
+{
+    g_return_val_if_fail(SPICE_IS_PROXY(self), NULL);
+    return self->priv->password;
+}
+
+
+G_GNUC_INTERNAL
+void spice_proxy_set_password(SpiceProxy *self, const gchar *value)
+{
+    g_return_if_fail(SPICE_IS_PROXY(self));
+
+    g_free(self->priv->password);
+    self->priv->password = g_strdup(value);
+    g_object_notify((GObject *)self, "password");
 }
