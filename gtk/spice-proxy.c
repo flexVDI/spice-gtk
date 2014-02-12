@@ -74,7 +74,8 @@ gboolean spice_proxy_parse(SpiceProxy *self, const gchar *proxyuri, GError **err
     spice_proxy_set_protocol(self, "http");
     spice_proxy_set_port(self, 3128);
 
-    gchar **proxyv = g_strsplit(uri, ":", 0);
+    /* max 2 parts, host:port */
+    gchar **proxyv = g_strsplit(uri, ":", 2);
     const gchar *proxy_port = NULL;
 
     if (proxyv[0] == NULL || strlen(proxyv[0]) == 0) {
