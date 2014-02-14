@@ -696,6 +696,8 @@ AC_SUBST(SPICE_GTK_REQUIRES)
 
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
+AM_CONDITIONAL([BUILD_TESTS], [test x"$enable_static" = xyes])
+
 AC_OUTPUT([
 Makefile
 spice-client-glib-2.0.pc
