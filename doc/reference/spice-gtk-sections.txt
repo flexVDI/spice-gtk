@@ -402,6 +402,10 @@ SpiceGtkBoxClass
 <FILE>spice-util</FILE>
 spice_util_set_debug
 spice_util_get_version_string
+SPICE_GTK_CHECK_VERSION
+SPICE_GTK_MAJOR_VERSION
+SPICE_GTK_MICRO_VERSION
+SPICE_GTK_MINOR_VERSION
 <SUBSECTION Private>
 SPICE_DEBUG
 spice_util_get_debug

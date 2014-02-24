@@ -41,7 +41,10 @@ EXTRA_DIST =					\
 	spice-client-gtk-manual.defs		\
 	spice-client-gtk.override		\
 	spice-marshal.txt			\
+	spice-version.h.in			\
 	$(NULL)
+
+DISTCLEANFILES = spice-version.h
 
 bin_PROGRAMS = spicy spicy-stats spicy-screenshot
 if WITH_POLKIT
@@ -290,6 +293,7 @@ libspice_client_glibinclude_HEADERS =	\
 	spice-channel.h			\
 	spice-util.h			\
 	spice-option.h			\
+	spice-version.h			\
 	channel-cursor.h		\
 	channel-display.h		\
 	channel-inputs.h		\

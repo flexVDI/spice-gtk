@@ -75,6 +75,15 @@ AC_CONFIG_SUBDIRS([spice-common])
 COMMON_CFLAGS='-I ${top_srcdir}/spice-common/ -I ${top_srcdir}/spice-common/spice-protocol/'
 AC_SUBST(COMMON_CFLAGS)
 
+SPICE_GTK_MAJOR_VERSION=`echo $PACKAGE_VERSION | cut -d. -f1`
+SPICE_GTK_MINOR_VERSION=`echo $PACKAGE_VERSION | cut -d. -f2`
+SPICE_GTK_MICRO_VERSION=`echo $PACKAGE_VERSION | cut -d. -f3 | cut -d- -f1`
+[ "x$SPICE_GTK_MICRO_VERSION" = "x" ] && SPICE_GTK_MICRO_VERSION = 0
+
+AC_SUBST(SPICE_GTK_MAJOR_VERSION)
+AC_SUBST(SPICE_GTK_MINOR_VERSION)
+AC_SUBST(SPICE_GTK_MICRO_VERSION)
+
 dnl =========================================================================
 dnl Chek optional features
 
@@ -709,6 +718,7 @@ data/spicy.desktop.in
 data/spicy.nsis
 po/Makefile.in
 gtk/Makefile
+gtk/spice-version.h
 gtk/controller/Makefile
 doc/Makefile
 doc/reference/Makefile

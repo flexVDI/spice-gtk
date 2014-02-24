@@ -32,6 +32,7 @@
 #include "spice-channel.h"
 #include "spice-option.h"
 #include "spice-uri.h"
+#include "spice-version.h"
 
 #include "channel-main.h"
 #include "channel-display.h"
