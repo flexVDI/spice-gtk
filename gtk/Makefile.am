@@ -450,14 +450,16 @@ spice-glib-enums.c: spice-glib-enums.h
 spice-widget-enums.c: spice-widget-enums.h
 
 spice-marshal.c: spice-marshal.txt
-	$(AM_V_GEN)echo "#include \"spice-marshal.h\"" > $@ && \
+	$(AM_V_GEN)echo "#include \"config.h\"" > $@ && \
+		echo "#include \"spice-marshal.h\"" > $@ && \
 		glib-genmarshal --body $< >> $@ || (rm -f $@ && exit 1)
 
 spice-marshal.h: spice-marshal.txt
 	$(AM_V_GEN)glib-genmarshal --header $< > $@ || (rm -f $@ && exit 1)
 
 spice-glib-enums.c: spice-channel.h channel-inputs.h spice-session.h
-	$(AM_V_GEN)glib-mkenums --fhead "#include <glib-object.h>\n" \
+	$(AM_V_GEN)glib-mkenums --fhead "#include \"config.h\"\n\n" \
+			--fhead "#include <glib-object.h>\n" \
 			--fhead "#include \"spice-glib-enums.h\"\n\n" \
 			--fprod "\n#include \"spice-session.h\"\n" \
 			--fprod "\n#include \"spice-channel.h\"\n" \
@@ -486,7 +488,8 @@ spice-glib-enums.h: spice-channel.h channel-inputs.h spice-session.h
 		$^ >  $@
 
 spice-widget-enums.c: spice-widget.h
-	$(AM_V_GEN)glib-mkenums --fhead "#include <glib-object.h>\n" \
+	$(AM_V_GEN)glib-mkenums --fhead "#include \"config.h\"\n\n" \
+			--fhead "#include <glib-object.h>\n" \
 			--fhead "#include \"spice-widget-enums.h\"\n\n" \
 			--fprod "\n#include \"spice-widget.h\"\n" \
 			--vhead "static const G@Type@Value _@enum_name@_values[] = {" \
