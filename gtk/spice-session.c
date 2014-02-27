@@ -110,7 +110,8 @@ enum {
     PROP_NAME,
     PROP_CA,
     PROP_PROXY,
-    PROP_SECURE_CHANNELS
+    PROP_SECURE_CHANNELS,
+    PROP_SHARED_DIR
 };
 
 /* signals */
@@ -239,6 +240,7 @@ spice_session_finalize(GObject *gobject)
     g_free(s->smartcard_db);
     g_strfreev(s->disable_effects);
     g_strfreev(s->secure_channels);
+    g_free(s->shared_dir);
 
     g_clear_pointer(&s->images, cache_unref);
     glz_decoder_window_destroy(s->glz_window);
@@ -504,6 +506,9 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_PROXY:
         g_value_take_string(value, spice_uri_to_string(s->proxy));
 	break;
+    case PROP_SHARED_DIR:
+        g_value_set_string(value, spice_session_get_shared_dir(session));
+        break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -625,6 +630,9 @@ static void spice_session_set_property(GObject      *gobject,
         break;
     case PROP_PROXY:
         update_proxy(session, g_value_get_string(value));
+        break;
+    case PROP_SHARED_DIR:
+        spice_session_set_shared_dir(session, g_value_get_string(value));
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -1171,6 +1179,23 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              "The proxy server",
                              NULL,
                              G_PARAM_READWRITE |
+                             G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceSession:shared-dir:
+     *
+     * Location of the shared directory
+     *
+     * Since: 0.24
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_SHARED_DIR,
+         g_param_spec_string("shared-dir",
+                             "Shared directory",
+                             "Shared directory",
+                             g_get_user_special_dir(G_USER_DIRECTORY_PUBLIC_SHARE),
+                             G_PARAM_READWRITE |
+                             G_PARAM_CONSTRUCT |
                              G_PARAM_STATIC_STRINGS));
 
     g_type_class_add_private(klass, sizeof(SpiceSessionPrivate));
@@ -2191,6 +2216,28 @@ guint32 spice_session_get_playback_latency(SpiceSession *session)
         SPICE_DEBUG("%s: not implemented when there isn't audio playback", __FUNCTION__);
         return 0;
     }
+}
+
+G_GNUC_INTERNAL
+const gchar* spice_session_get_shared_dir(SpiceSession *session)
+{
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_val_if_fail(s != NULL, NULL);
+
+    return s->shared_dir;
+}
+
+G_GNUC_INTERNAL
+void spice_session_set_shared_dir(SpiceSession *session, const gchar *dir)
+{
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_if_fail(dir != NULL);
+    g_return_if_fail(s != NULL);
+
+    g_free(s->shared_dir);
+    s->shared_dir = g_strdup(dir);
 }
 
 /**

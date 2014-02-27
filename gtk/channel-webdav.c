@@ -36,7 +36,11 @@ static PhodavServer* phodav_server_get(SpiceSession *session, gint *port);
  *
  * The "webdav" channel exports a directory to the guest for file
  * manipulation (read/write/copy etc). The underlying protocol is
- * implemented using WebDAV (RFC 4918)
+ * implemented using WebDAV (RFC 4918).
+ *
+ * By default, the shared directory is the one associated with GLib
+ * %G_USER_DIRECTORY_PUBLIC_SHARE. You can specify a different
+ * directory with #SpiceSession #SpiceSession:shared-dir property.
  *
  * Since: 0.24
  */
@@ -697,7 +701,7 @@ static PhodavServer* webdav_server_new(SpiceSession *session)
 
     g_warn_if_fail(!session->priv->webdav);
 
-    dav = phodav_server_new(0, g_get_user_special_dir(G_USER_DIRECTORY_PUBLIC_SHARE));
+    dav = phodav_server_new(0, spice_session_get_shared_dir(session));
     session->priv->webdav = dav;
     for (i = 0; i < sizeof(session->priv->webdav_magic); i++)
         session->priv->webdav_magic[i] = g_random_int_range(0, 255);
