@@ -121,6 +121,7 @@ static void del_window(spice_connection *conn, SpiceWindow *win);
 static gboolean fullscreen = false;
 static gboolean version = false;
 static char *spicy_title = NULL;
+static gboolean kiosk_mode = false;
 /* globals */
 static GMainLoop     *mainloop = NULL;
 static int           connections = 0;
@@ -635,7 +636,11 @@ static void grab_keys_pressed_cb(GtkWidget *widget, gpointer data)
     /* since mnemonics are disabled, we leave fullscreen when
        ungrabbing mouse. Perhaps we should have a different handling
        of fullscreen key, or simply use a UI, like vinagre */
-    window_set_fullscreen(win, FALSE);
+    if (kiosk_mode) {
+        connection_disconnect(win->conn);
+    } else {
+        window_set_fullscreen(win, FALSE);
+    }
 }
 
 static void mouse_grab_cb(GtkWidget *widget, gint grabbed, gpointer data)
@@ -1099,7 +1104,7 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     gtk_box_pack_end(GTK_BOX(vbox), win->statusbar, FALSE, TRUE, 0);
 
     /* show window */
-    if (fullscreen)
+    if (fullscreen || kiosk_mode)
         gtk_window_fullscreen(GTK_WINDOW(win->toplevel));
 
     gtk_widget_show_all(vbox);
@@ -1232,11 +1237,15 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
     case SPICE_CHANNEL_ERROR_LINK:
     case SPICE_CHANNEL_ERROR_CONNECT:
         g_message("main channel: failed to connect");
-        rc = connect_dialog(conn->session);
-        if (rc == 0) {
-            connection_connect(conn);
+        if (kiosk_mode) {
+            exit(2);
         } else {
-            connection_disconnect(conn);
+            rc = connect_dialog(conn->session);
+            if (rc == 0) {
+                connection_connect(conn);
+            } else {
+                connection_disconnect(conn);
+            }
         }
         break;
     case SPICE_CHANNEL_ERROR_AUTH:
@@ -1687,6 +1696,12 @@ static GOptionEntry cmd_entries[] = {
         .description      = N_("Set the window title"),
         .arg_description  = N_("<title>"),
     },{
+        .long_name        = "kiosk-mode",
+        .short_name       = 'k',
+        .arg              = G_OPTION_ARG_NONE,
+        .arg_data         = &kiosk_mode,
+        .description      = N_("Use kiosk mode"),
+    },{
         /* end of list */
     }
 };
@@ -1837,6 +1852,14 @@ int main(int argc, char *argv[])
     if (version) {
         g_print("spicy " PACKAGE_VERSION "\n");
         exit(0);
+    }
+
+    if (kiosk_mode) {
+        g_key_file_set_boolean(keyfile, "general", "scaling", TRUE);
+        g_key_file_set_boolean(keyfile, "general", "resize-guest", TRUE);
+        g_key_file_set_boolean(keyfile, "general", "auto-usbredir", TRUE);
+        g_key_file_set_boolean(keyfile, "general", "grab-keyboard", TRUE);
+        g_key_file_set_boolean(keyfile, "general", "grab-mouse", TRUE);
     }
 
     g_type_init();
