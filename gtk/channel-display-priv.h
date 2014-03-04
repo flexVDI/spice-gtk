@@ -99,6 +99,10 @@ typedef struct display_stream {
     uint32_t report_num_frames;
     uint32_t report_num_drops;
     uint32_t report_drops_seq_len;
+
+    /* frame skipping */
+    uint8_t  fskip_level;
+    uint8_t  fskip_frame;
 } display_stream;
 
 void stream_get_dimensions(display_stream *st, int *width, int *height);
