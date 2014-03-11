@@ -103,7 +103,7 @@ gboolean spice_uri_parse(SpiceURI *self, const gchar *_uri, GError **error)
 
     /* yes, that parser is bad, we need GUri... */
     if (strstr(uri, "@")) {
-        gchar *saveptr, *saveptr2;
+        gchar *saveptr = NULL, *saveptr2 = NULL;
         gchar *next = strstr(uri, "@") + 1;
         gchar *auth = strtok_r(uri, "@", &saveptr);
         const gchar *user = strtok_r(auth, ":", &saveptr2);
