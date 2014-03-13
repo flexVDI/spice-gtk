@@ -2583,8 +2583,9 @@ GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
     src = d->data;
     dest = data;
 
-    for (y = d->area.y; y < d->area.height; ++y) {
-        for (x = d->area.x; x < d->area.width; ++x) {
+    src += d->area.y * d->stride + d->area.x * 4;
+    for (y = 0; y < d->area.height; ++y) {
+        for (x = 0; x < d->area.width; ++x) {
           dest[0] = src[x * 4 + 2];
           dest[1] = src[x * 4 + 1];
           dest[2] = src[x * 4 + 0];
