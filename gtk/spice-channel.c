@@ -114,6 +114,9 @@ static void spice_channel_init(SpiceChannel *channel)
     c->remote_common_caps = g_array_new(FALSE, TRUE, sizeof(guint32));
     spice_channel_set_common_capability(channel, SPICE_COMMON_CAP_PROTOCOL_AUTH_SELECTION);
     spice_channel_set_common_capability(channel, SPICE_COMMON_CAP_MINI_HEADER);
+#if HAVE_SASL
+    spice_channel_set_common_capability(channel, SPICE_COMMON_CAP_AUTH_SASL);
+#endif
     g_queue_init(&c->xmit_queue);
     STATIC_MUTEX_INIT(c->xmit_queue_lock);
 }
