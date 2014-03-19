@@ -1,3 +1,18 @@
+v0.24 (draft)
+=====
+
+- support folder sharing, via WebDAV channel
+- add HTTPS proxy support (requires glib 2.28), and Basic auth
+- add SPICE_GTK_CHECK_VERSION macro
+- fix crash when releasing primary surface
+- fix a few memory leaks with SASL
+- fix spice_display_get_pixbuf() with offset area
+- build-sys improvements
+
+- note: until now, providing an invalid plain-port didn't error, and
+  was falling back silently on tls-port. With this release, an error
+  will be reported if the port can't be opened.
+
 v0.23
 =====
 
