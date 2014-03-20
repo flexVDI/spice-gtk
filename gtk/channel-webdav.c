@@ -79,7 +79,7 @@ typedef struct _OutputQueueElem {
     OutputQueue *queue;
     const guint8 *buf;
     gsize size;
-    GFunc cb;
+    GFunc pushed_cb;
     gpointer user_data;
 } OutputQueueElem;
 
@@ -97,7 +97,6 @@ static void output_queue_free(OutputQueue *queue)
 {
     g_warn_if_fail(g_queue_get_length(queue->queue) == 0);
     g_warn_if_fail(!queue->flushing);
-    g_warn_if_fail(!queue->idle_id);
 
     g_queue_free_full(queue->queue, g_free);
     g_clear_object(&queue->output);
@@ -150,8 +149,8 @@ static gboolean output_queue_idle(gpointer user_data)
     g_output_stream_write_all(q->output, e->buf, e->size, NULL, NULL, &error);
     if (error)
         goto err;
-    else if (e->cb)
-        e->cb(q, e->user_data);
+    else if (e->pushed_cb)
+        e->pushed_cb(q, e->user_data);
 
     q->flushing = TRUE;
     g_output_stream_flush_async(q->output, G_PRIORITY_DEFAULT, NULL, output_queue_flush_cb, e);
@@ -173,7 +172,7 @@ static void output_queue_push(OutputQueue *q, const guint8 *buf, gsize size,
 
     e->buf = buf;
     e->size = size;
-    e->cb = pushed_cb;
+    e->pushed_cb = pushed_cb;
     e->user_data = user_data;
     e->queue = q;
     g_queue_push_tail(q->queue, e);
@@ -248,6 +247,8 @@ static void mux_pushed_cb(OutputQueue *q, gpointer user_data)
     client_unref(client);
 }
 
+#define MAX_MUX_SIZE G_MAXUINT16
+
 static void server_reply_cb(GObject *source_object,
                             GAsyncResult *res,
                             gpointer user_data)
@@ -262,7 +263,7 @@ static void server_reply_cb(GObject *source_object,
     if (err || g_cancellable_is_cancelled(client->cancellable))
         goto end;
 
-    g_return_if_fail(size <= G_MAXUINT16);
+    g_return_if_fail(size <= MAX_MUX_SIZE);
     g_return_if_fail(size >= 0);
     client->mux.size = size;
 
@@ -289,7 +290,7 @@ static void client_start_read(SpiceWebdavChannel *self, Client *client)
     GInputStream *input;
 
     input = g_io_stream_get_input_stream(G_IO_STREAM(client->conn));
-    g_input_stream_read_async(input, client->mux.buf, G_MAXUINT16,
+    g_input_stream_read_async(input, client->mux.buf, MAX_MUX_SIZE,
                               G_PRIORITY_DEFAULT, client->cancellable, server_reply_cb,
                               client_ref(client));
 }
@@ -385,7 +386,7 @@ static void client_connected(GObject *source_object,
     client->self = self;
     client->conn = conn;
     client->mux.id = GINT64_TO_LE(client->id);
-    client->mux.buf = g_malloc(G_MAXUINT16);
+    client->mux.buf = g_malloc(MAX_MUX_SIZE);
     client->cancellable = g_cancellable_new();
 
     output = g_buffered_output_stream_new(g_io_stream_get_output_stream(G_IO_STREAM(conn)));
@@ -556,7 +557,7 @@ static void spice_webdav_channel_init(SpiceWebdavChannel *channel)
     c->cancellable = g_cancellable_new();
     c->clients = g_hash_table_new_full(g_int64_hash, g_int64_equal,
                                        NULL, client_remove_unref);
-    c->demux.buf = g_malloc(G_MAXUINT16);
+    c->demux.buf = g_malloc(MAX_MUX_SIZE);
 
     GOutputStream *ostream = g_io_stream_get_output_stream(G_IO_STREAM(c->stream));
     c->queue = output_queue_new(ostream);
