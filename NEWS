@@ -1,9 +1,10 @@
-v0.24 (draft)
+v0.24
 =====
 
 - support folder sharing, via WebDAV channel
 - add HTTPS proxy support (requires glib 2.28), and Basic auth
 - add SPICE_GTK_CHECK_VERSION macro
+- advertise SASL capability early (to help fips-enabled servers)
 - fix crash when releasing primary surface
 - fix a few memory leaks with SASL
 - fix spice_display_get_pixbuf() with offset area
