@@ -131,7 +131,6 @@ static void try_mouse_ungrab(SpiceDisplay *display);
 static void recalc_geometry(GtkWidget *widget);
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data);
 static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer data);
-static void sync_keyboard_lock_modifiers(SpiceDisplay *display);
 static void cursor_invalidate(SpiceDisplay *display);
 static void update_area(SpiceDisplay *display, gint x, gint y, gint width, gint height);
 static void release_keys(SpiceDisplay *display);
@@ -1457,7 +1456,8 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
         return true;
 
     release_keys(display);
-    sync_keyboard_lock_modifiers(display);
+    if (!d->disable_inputs)
+        spice_gtk_session_sync_keyboard_modifiers(d->gtk_session);
     update_keyboard_focus(display, true);
     try_keyboard_grab(display);
     update_display(display);
@@ -2411,7 +2411,6 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     if (SPICE_IS_INPUTS_CHANNEL(channel)) {
         d->inputs = SPICE_INPUTS_CHANNEL(channel);
         spice_channel_connect(channel);
-        sync_keyboard_lock_modifiers(display);
         return;
     }
 
@@ -2600,89 +2599,3 @@ GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
     return pixbuf;
 }
 
-#if HAVE_X11_XKBLIB_H
-static guint32 get_keyboard_lock_modifiers(Display *x_display)
-{
-    XKeyboardState keyboard_state;
-    guint32 modifiers = 0;
-
-    XGetKeyboardControl(x_display, &keyboard_state);
-
-    if (keyboard_state.led_mask & 0x01) {
-        modifiers |= SPICE_INPUTS_CAPS_LOCK;
-    }
-    if (keyboard_state.led_mask & 0x02) {
-        modifiers |= SPICE_INPUTS_NUM_LOCK;
-    }
-    if (keyboard_state.led_mask & 0x04) {
-        modifiers |= SPICE_INPUTS_SCROLL_LOCK;
-    }
-    return modifiers;
-}
-
-static void sync_keyboard_lock_modifiers(SpiceDisplay *display)
-{
-    Display *x_display;
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    guint32 modifiers;
-    GdkWindow *w;
-
-    if (d->disable_inputs)
-        return;
-
-    w = gtk_widget_get_parent_window(GTK_WIDGET(display));
-    if (w == NULL) /* it can happen if the display is not yet shown */
-        return;
-
-    if (!GDK_IS_X11_DISPLAY(gdk_window_get_display(w))) {
-        SPICE_DEBUG("FIXME: gtk backend is not X11");
-        return;
-    }
-
-    x_display = GDK_WINDOW_XDISPLAY(w);
-    modifiers = get_keyboard_lock_modifiers(x_display);
-    if (d->inputs)
-        spice_inputs_set_key_locks(d->inputs, modifiers);
-}
-
-#elif defined (WIN32)
-static guint32 get_keyboard_lock_modifiers(void)
-{
-    guint32 modifiers = 0;
-
-    if (GetKeyState(VK_CAPITAL) & 1) {
-        modifiers |= SPICE_INPUTS_CAPS_LOCK;
-    }
-    if (GetKeyState(VK_NUMLOCK) & 1) {
-        modifiers |= SPICE_INPUTS_NUM_LOCK;
-    }
-    if (GetKeyState(VK_SCROLL) & 1) {
-        modifiers |= SPICE_INPUTS_SCROLL_LOCK;
-    }
-
-    return modifiers;
-}
-
-static void sync_keyboard_lock_modifiers(SpiceDisplay *display)
-{
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
-    guint32 modifiers;
-    GdkWindow *w;
-
-    if (d->disable_inputs)
-        return;
-
-    w = gtk_widget_get_parent_window(GTK_WIDGET(display));
-    if (w == NULL) /* it can happen if the display is not yet shown */
-        return;
-
-    modifiers = get_keyboard_lock_modifiers();
-    if (d->inputs)
-        spice_inputs_set_key_locks(d->inputs, modifiers);
-}
-#else
-static void sync_keyboard_lock_modifiers(SpiceDisplay *display)
-{
-    g_warning("sync_keyboard_lock_modifiers not implemented");
-}
-#endif // HAVE_X11_XKBLIB_H

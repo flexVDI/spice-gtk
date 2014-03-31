@@ -17,6 +17,22 @@
 */
 #include "config.h"
 
+#if HAVE_X11_XKBLIB_H
+#include <X11/XKBlib.h>
+#include <gdk/gdkx.h>
+#endif
+#ifdef GDK_WINDOWING_X11
+#include <X11/Xlib.h>
+#include <gdk/gdkx.h>
+#endif
+#ifdef WIN32
+#include <windows.h>
+#include <gdk/gdkwin32.h>
+#ifndef MAPVK_VK_TO_VSC /* may be undefined in older mingw-headers */
+#define MAPVK_VK_TO_VSC 0
+#endif
+#endif
+
 #include <gtk/gtk.h>
 #include <spice/vd_agent.h>
 #include "desktop-integration.h"
@@ -96,6 +112,70 @@ enum {
     PROP_AUTO_CLIPBOARD,
     PROP_AUTO_USBREDIR,
 };
+
+static guint32 get_keyboard_lock_modifiers(void)
+{
+    guint32 modifiers = 0;
+#if HAVE_X11_XKBLIB_H
+    Display *x_display = NULL;
+    XKeyboardState keyboard_state;
+
+    GdkScreen *screen = gdk_screen_get_default();
+    if (!GDK_IS_X11_DISPLAY(gdk_screen_get_display(screen))) {
+        SPICE_DEBUG("FIXME: gtk backend is not X11");
+        return 0;
+    }
+
+    x_display = GDK_SCREEN_XDISPLAY(screen);
+    XGetKeyboardControl(x_display, &keyboard_state);
+
+    if (keyboard_state.led_mask & 0x01) {
+        modifiers |= SPICE_INPUTS_CAPS_LOCK;
+    }
+    if (keyboard_state.led_mask & 0x02) {
+        modifiers |= SPICE_INPUTS_NUM_LOCK;
+    }
+    if (keyboard_state.led_mask & 0x04) {
+        modifiers |= SPICE_INPUTS_SCROLL_LOCK;
+    }
+#elif defined(win32)
+    if (GetKeyState(VK_CAPITAL) & 1) {
+        modifiers |= SPICE_INPUTS_CAPS_LOCK;
+    }
+    if (GetKeyState(VK_NUMLOCK) & 1) {
+        modifiers |= SPICE_INPUTS_NUM_LOCK;
+    }
+    if (GetKeyState(VK_SCROLL) & 1) {
+        modifiers |= SPICE_INPUTS_SCROLL_LOCK;
+    }
+#else
+    g_warning("get_keyboard_lock_modifiers not implemented");
+#endif // HAVE_X11_XKBLIB_H
+    return modifiers;
+}
+
+static void spice_gtk_session_sync_keyboard_modifiers_for_channel(SpiceGtkSession *self,
+                                                                  SpiceInputsChannel* inputs)
+{
+    gint guest_modifiers = 0, client_modifiers = 0;
+
+    g_return_if_fail(SPICE_IS_INPUTS_CHANNEL(inputs));
+
+    g_object_get(inputs, "key-modifiers", &guest_modifiers, NULL);
+
+    client_modifiers = get_keyboard_lock_modifiers();
+    g_debug("%s: input:%p client_modifiers:0x%x, guest_modifiers:0x%x",
+            G_STRFUNC, inputs, client_modifiers, guest_modifiers);
+
+    if (client_modifiers != guest_modifiers)
+        spice_inputs_set_key_locks(inputs, client_modifiers);
+}
+
+static void guest_modifiers_changed(SpiceInputsChannel *inputs, gpointer data)
+{
+    SpiceGtkSession *self = data;
+    spice_gtk_session_sync_keyboard_modifiers_for_channel(self, inputs);
+}
 
 static void spice_gtk_session_init(SpiceGtkSession *self)
 {
@@ -872,6 +952,11 @@ static void channel_new(SpiceSession *session, SpiceChannel *channel,
         g_signal_connect(channel, "main-clipboard-selection-release",
                          G_CALLBACK(clipboard_release), self);
     }
+    if (SPICE_IS_INPUTS_CHANNEL(channel)) {
+        spice_g_signal_connect_object(channel, "inputs-modifiers",
+                                      G_CALLBACK(guest_modifiers_changed), self, 0);
+        spice_gtk_session_sync_keyboard_modifiers_for_channel(self, SPICE_INPUTS_CHANNEL(channel));
+    }
 }
 
 static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
@@ -1028,4 +1113,16 @@ void spice_gtk_session_paste_from_guest(SpiceGtkSession *self)
     }
     s->clipboard_by_guest[selection] = TRUE;
     s->clip_hasdata[selection] = FALSE;
+}
+
+void spice_gtk_session_sync_keyboard_modifiers(SpiceGtkSession *self)
+{
+    GList *l = NULL, *channels = spice_session_get_channels(self->priv->session);
+
+    for (l = channels; l != NULL; l = l->next) {
+        if (SPICE_IS_INPUTS_CHANNEL(l->data)) {
+            SpiceInputsChannel *inputs = SPICE_INPUTS_CHANNEL(l->data);
+            spice_gtk_session_sync_keyboard_modifiers_for_channel(self, inputs);
+        }
+    }
 }
