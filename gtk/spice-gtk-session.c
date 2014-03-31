@@ -171,6 +171,12 @@ static void spice_gtk_session_sync_keyboard_modifiers_for_channel(SpiceGtkSessio
         spice_inputs_set_key_locks(inputs, client_modifiers);
 }
 
+static void keymap_modifiers_changed(GdkKeymap *keymap, gpointer data)
+{
+    SpiceGtkSession *self = data;
+    spice_gtk_session_sync_keyboard_modifiers(self);
+}
+
 static void guest_modifiers_changed(SpiceInputsChannel *inputs, gpointer data)
 {
     SpiceGtkSession *self = data;
@@ -180,6 +186,7 @@ static void guest_modifiers_changed(SpiceInputsChannel *inputs, gpointer data)
 static void spice_gtk_session_init(SpiceGtkSession *self)
 {
     SpiceGtkSessionPrivate *s;
+    GdkKeymap *keymap = gdk_keymap_get_default();
 
     s = self->priv = SPICE_GTK_SESSION_GET_PRIVATE(self);
 
@@ -189,6 +196,8 @@ static void spice_gtk_session_init(SpiceGtkSession *self)
     s->clipboard_primary = gtk_clipboard_get(GDK_SELECTION_PRIMARY);
     g_signal_connect(G_OBJECT(s->clipboard_primary), "owner-change",
                      G_CALLBACK(clipboard_owner_change), self);
+    spice_g_signal_connect_object(keymap, "state-changed",
+                                  G_CALLBACK(keymap_modifiers_changed), self, 0);
 }
 
 static GObject *
