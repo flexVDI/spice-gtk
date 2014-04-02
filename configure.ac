@@ -741,14 +741,14 @@ AC_MSG_NOTICE([
 
         prefix:                   ${prefix}
         c compiler:               ${CC}
+        Target:                   ${red_target}
+        Gtk:                      $GTK_API_VERSION
 
         Coroutine:                ${with_coroutine}
         Audio:                    ${with_audio}
-        Target:                   ${red_target}
         SASL support:             ${enable_sasl}
         Smartcard support:        ${have_smartcard}
         USB redirection support:  ${have_usbredir} ${with_usbredir_hotplug}
-        Gtk:                      $GTK_API_VERSION
         DBus:                     ${have_dbus}
 
         Now type 'make' to build $PACKAGE
