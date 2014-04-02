@@ -15,6 +15,8 @@
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
+#include "config.h"
+
 #include "spice-client.h"
 #include "spice-common.h"
 #include "spice-channel-priv.h"
@@ -642,6 +644,7 @@ static void spice_webdav_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
 
 
 
+#ifdef USE_PHODAV
 static void new_connection(SoupSocket *sock,
                            SoupSocket *new,
                            gpointer    user_data)
@@ -715,12 +718,14 @@ static PhodavServer* webdav_server_new(SpiceSession *session)
 
     return dav;
 }
+#endif /* USE_PHODAV */
 
 static PhodavServer* phodav_server_get(SpiceSession *session, gint *port)
 {
     g_return_val_if_fail(SPICE_IS_SESSION(session), NULL);
 
-    PhodavServer *self;
+#ifdef USE_PHODAV
+    PhodavServer *self = NULL;
     static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
 
     g_static_mutex_lock(&mutex);
@@ -735,4 +740,7 @@ static PhodavServer* phodav_server_get(SpiceSession *session, gint *port)
         *port = phodav_server_get_port(self);
 
     return self;
+#else
+    g_return_val_if_reached(NULL);
+#endif
 }
