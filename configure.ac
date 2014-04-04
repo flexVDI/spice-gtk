@@ -732,6 +732,7 @@ gtk/spice-version.h
 gtk/controller/Makefile
 doc/Makefile
 doc/reference/Makefile
+man/Makefile
 vapi/Makefile
 tests/Makefile
 ])
