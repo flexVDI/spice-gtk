@@ -42,6 +42,7 @@
 #include "spice-gtk-session-priv.h"
 #include "spice-session-priv.h"
 #include "spice-util-priv.h"
+#include "spice-channel-priv.h"
 
 #define CLIPBOARD_LAST (VD_AGENT_CLIPBOARD_SELECTION_SECONDARY + 1)
 
@@ -165,8 +166,8 @@ static void spice_gtk_session_sync_keyboard_modifiers_for_channel(SpiceGtkSessio
     g_object_get(inputs, "key-modifiers", &guest_modifiers, NULL);
 
     client_modifiers = get_keyboard_lock_modifiers();
-    g_debug("%s: input:%p client_modifiers:0x%x, guest_modifiers:0x%x",
-            G_STRFUNC, inputs, client_modifiers, guest_modifiers);
+    CHANNEL_DEBUG(inputs, "client_modifiers:0x%x, guest_modifiers:0x%x",
+                  client_modifiers, guest_modifiers);
 
     if (client_modifiers != guest_modifiers)
         spice_inputs_set_key_locks(inputs, client_modifiers);
