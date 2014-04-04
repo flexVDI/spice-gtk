@@ -807,11 +807,17 @@ static display_surface *find_surface(SpiceDisplayChannelPrivate *c, guint32 surf
     return g_hash_table_lookup(c->surfaces, GINT_TO_POINTER(surface_id));
 }
 
+/* main or coroutine context */
 static void clear_surfaces(SpiceChannel *channel, gboolean keep_primary)
 {
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     GHashTableIter iter;
     display_surface *surface;
+
+    if (!keep_primary) {
+        c->primary = NULL;
+        emit_main_context(channel, SPICE_DISPLAY_PRIMARY_DESTROY);
+    }
 
     g_hash_table_iter_init(&iter, c->surfaces);
     while (g_hash_table_iter_next(&iter, NULL, (gpointer*)&surface)) {
