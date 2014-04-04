@@ -157,32 +157,35 @@ static guint32 get_keyboard_lock_modifiers(void)
 }
 
 static void spice_gtk_session_sync_keyboard_modifiers_for_channel(SpiceGtkSession *self,
-                                                                  SpiceInputsChannel* inputs)
+                                                                  SpiceInputsChannel* inputs,
+                                                                  gboolean force)
 {
     gint guest_modifiers = 0, client_modifiers = 0;
 
     g_return_if_fail(SPICE_IS_INPUTS_CHANNEL(inputs));
 
     g_object_get(inputs, "key-modifiers", &guest_modifiers, NULL);
-
     client_modifiers = get_keyboard_lock_modifiers();
-    CHANNEL_DEBUG(inputs, "client_modifiers:0x%x, guest_modifiers:0x%x",
-                  client_modifiers, guest_modifiers);
 
-    if (client_modifiers != guest_modifiers)
+    if (force || client_modifiers != guest_modifiers) {
+        CHANNEL_DEBUG(inputs, "client_modifiers:0x%x, guest_modifiers:0x%x",
+                      client_modifiers, guest_modifiers);
         spice_inputs_set_key_locks(inputs, client_modifiers);
+    }
 }
 
 static void keymap_modifiers_changed(GdkKeymap *keymap, gpointer data)
 {
     SpiceGtkSession *self = data;
+
     spice_gtk_session_sync_keyboard_modifiers(self);
 }
 
 static void guest_modifiers_changed(SpiceInputsChannel *inputs, gpointer data)
 {
     SpiceGtkSession *self = data;
-    spice_gtk_session_sync_keyboard_modifiers_for_channel(self, inputs);
+
+    spice_gtk_session_sync_keyboard_modifiers_for_channel(self, inputs, FALSE);
 }
 
 static void spice_gtk_session_init(SpiceGtkSession *self)
@@ -966,7 +969,7 @@ static void channel_new(SpiceSession *session, SpiceChannel *channel,
     if (SPICE_IS_INPUTS_CHANNEL(channel)) {
         spice_g_signal_connect_object(channel, "inputs-modifiers",
                                       G_CALLBACK(guest_modifiers_changed), self, 0);
-        spice_gtk_session_sync_keyboard_modifiers_for_channel(self, SPICE_INPUTS_CHANNEL(channel));
+        spice_gtk_session_sync_keyboard_modifiers_for_channel(self, SPICE_INPUTS_CHANNEL(channel), TRUE);
     }
 }
 
@@ -1133,7 +1136,7 @@ void spice_gtk_session_sync_keyboard_modifiers(SpiceGtkSession *self)
     for (l = channels; l != NULL; l = l->next) {
         if (SPICE_IS_INPUTS_CHANNEL(l->data)) {
             SpiceInputsChannel *inputs = SPICE_INPUTS_CHANNEL(l->data);
-            spice_gtk_session_sync_keyboard_modifiers_for_channel(self, inputs);
+            spice_gtk_session_sync_keyboard_modifiers_for_channel(self, inputs, TRUE);
         }
     }
 }
