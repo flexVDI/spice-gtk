@@ -315,7 +315,7 @@ static void demux_to_client(SpiceWebdavChannel *self,
     SpiceWebdavChannelPrivate *c = self->priv;
     gssize size = c->demux.size;
 
-    CHANNEL_DEBUG(self, "pushing %ld to client %p", size, client);
+    CHANNEL_DEBUG(self, "pushing %"G_GSSIZE_FORMAT" to client %p", size, client);
 
     if (size != 0) {
         output_queue_push(client->output, (guint8 *)c->demux.buf, size,
