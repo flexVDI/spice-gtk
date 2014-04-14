@@ -122,6 +122,7 @@ SPICE_GTK_LIBADD_COMMON =		\
 
 SPICE_GTK_SOURCES_COMMON =		\
 	glib-compat.h			\
+	gtk-compat.h			\
 	spice-util.c			\
 	spice-util-priv.h		\
 	spice-gtk-session.c		\
