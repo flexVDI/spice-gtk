@@ -1139,4 +1139,5 @@ void spice_gtk_session_sync_keyboard_modifiers(SpiceGtkSession *self)
             spice_gtk_session_sync_keyboard_modifiers_for_channel(self, inputs, TRUE);
         }
     }
+    g_list_free(channels);
 }
