@@ -72,7 +72,6 @@ KEYMAP_GEN = $(srcdir)/keymap-gen.pl
 SPICE_COMMON_CPPFLAGS =						\
 	-DG_LOG_DOMAIN=\"GSpice\"				\
 	-DSPICE_NO_DEPRECATED					\
-	-DSW_CANVAS_CACHE					\
 	-DSPICE_GTK_LOCALEDIR=\"${SPICE_GTK_LOCALEDIR}\"	\
 	-DPNP_IDS=\""$(PNP_IDS)"\"				\
 	-DUSB_IDS=\""$(USB_IDS)"\"				\
@@ -271,8 +270,8 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	decode-jpeg.c					\
 	decode-zlib.c					\
 							\
-	$(top_srcdir)/spice-common/common/sw_canvas.c	\
-	$(top_srcdir)/spice-common/common/sw_canvas.h	\
+	client_sw_canvas.c	\
+	client_sw_canvas.h	\
 	$(NULL)
 
 if WITH_GPROXY
