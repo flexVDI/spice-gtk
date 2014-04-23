@@ -225,7 +225,7 @@ void spice_set_session_option(SpiceSession *session)
         const char *homedir = g_getenv("HOME");
         if (!homedir)
             homedir = g_get_home_dir();
-        ca_file = g_strdup_printf("%s/.spicec/spice_truststore.pem", homedir);
+        ca_file = g_build_filename(homedir, ".spicec", "spice_truststore.pem", NULL);
     }
 
     if (disable_effects) {
