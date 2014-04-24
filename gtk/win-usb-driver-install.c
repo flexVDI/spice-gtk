@@ -338,7 +338,7 @@ void spice_win_usb_driver_op(SpiceWinUsbDriver *self,
  * Returns: currently returns 0 (failure) and 1 (success)
  * possibly later we'll add error-codes
  */
-static gint
+static gboolean
 spice_win_usb_driver_op_finish(SpiceWinUsbDriver *self,
                                GAsyncResult *res, GError **err)
 {
@@ -349,9 +349,9 @@ spice_win_usb_driver_op_finish(SpiceWinUsbDriver *self,
                                                         spice_win_usb_driver_op),
                          FALSE);
     if (g_simple_async_result_propagate_error(result, err))
-        return 0;
+        return FALSE;
 
-    return self->priv->reply.status;
+    return TRUE;
 }
 
 /**
@@ -390,14 +390,14 @@ void spice_win_usb_driver_uninstall_async(SpiceWinUsbDriver *self,
 }
 
 G_GNUC_INTERNAL
-gint spice_win_usb_driver_install_finish(SpiceWinUsbDriver *self,
+gboolean spice_win_usb_driver_install_finish(SpiceWinUsbDriver *self,
                                           GAsyncResult *res, GError **err)
 {
     return spice_win_usb_driver_op_finish(self, res, err);
 }
 
 G_GNUC_INTERNAL
-gint spice_win_usb_driver_uninstall_finish(SpiceWinUsbDriver *self,
+gboolean spice_win_usb_driver_uninstall_finish(SpiceWinUsbDriver *self,
                                            GAsyncResult *res, GError **err)
 {
     return spice_win_usb_driver_op_finish(self, res, err);

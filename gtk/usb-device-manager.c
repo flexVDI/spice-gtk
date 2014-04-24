@@ -1099,7 +1099,6 @@ static void spice_usb_device_manager_drv_install_cb(GObject *gobject,
 {
     SpiceUsbDeviceManager *self;
     SpiceWinUsbDriver *installer;
-    gint status;
     GError *err = NULL;
     SpiceUsbDevice *device;
     UsbInstallCbInfo *cbinfo;
@@ -1124,15 +1123,9 @@ static void spice_usb_device_manager_drv_install_cb(GObject *gobject,
 
     SPICE_DEBUG("Win USB driver install finished");
 
-    status = spice_win_usb_driver_install_finish(installer, res, &err);
-
-    if (err) {
+    if (!spice_win_usb_driver_install_finish(installer, res, &err)) {
         g_warning("win usb driver install failed -- %s", err->message);
         g_error_free(err);
-    }
-
-    if (!status) {
-        g_warning("failed to install win usb driver (status=0)");
     }
 
     spice_usb_device_unref(device);
@@ -1154,19 +1147,13 @@ static void spice_usb_device_manager_drv_uninstall_cb(GObject *gobject,
     UsbInstallCbInfo *cbinfo = user_data;
     SpiceUsbDeviceManager *self = cbinfo->manager;
     GError *err = NULL;
-    gint status;
 
     SPICE_DEBUG("Win USB driver uninstall finished");
     g_return_if_fail(SPICE_IS_USB_DEVICE_MANAGER(self));
 
-    status = spice_win_usb_driver_uninstall_finish(cbinfo->installer, res, &err);
-    if (err) {
+    if (!spice_win_usb_driver_uninstall_finish(cbinfo->installer, res, &err)) {
         g_warning("win usb driver uninstall failed -- %s", err->message);
         g_clear_error(&err);
-    }
-
-    if (!status) {
-        g_warning("failed to uninstall win usb driver (status=0)");
     }
 
     spice_usb_device_unref(cbinfo->device);
