@@ -69,16 +69,16 @@ void spice_win_usb_driver_install_async(SpiceWinUsbDriver *self,
                                         GCancellable *cancellable,
                                         GAsyncReadyCallback callback,
                                         gpointer user_data);
-gint spice_win_usb_driver_install_finish(SpiceWinUsbDriver *self,
-                                         GAsyncResult *res, GError **err);
+gboolean spice_win_usb_driver_install_finish(SpiceWinUsbDriver *self,
+                                             GAsyncResult *res, GError **err);
 
 void spice_win_usb_driver_uninstall_async(SpiceWinUsbDriver *self,
                                           SpiceUsbDevice *device,
                                           GCancellable *cancellable,
                                           GAsyncReadyCallback callback,
                                           gpointer user_data);
-gint spice_win_usb_driver_uninstall_finish(SpiceWinUsbDriver *self,
-                                           GAsyncResult *res, GError **err);
+gboolean spice_win_usb_driver_uninstall_finish(SpiceWinUsbDriver *self,
+                                               GAsyncResult *res, GError **err);
 
 
 
