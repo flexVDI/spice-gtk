@@ -654,12 +654,12 @@ static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
             break;
         case usbredirhost_read_device_rejected:
             err = g_error_new(SPICE_CLIENT_ERROR,
-                              SPICE_CLIENT_USB_DEVICE_REJECTED,
+                              SPICE_CLIENT_ERROR_USB_DEVICE_REJECTED,
                               _("%s rejected by host"), desc);
             break;
         case usbredirhost_read_device_lost:
             err = g_error_new(SPICE_CLIENT_ERROR,
-                              SPICE_CLIENT_USB_DEVICE_LOST,
+                              SPICE_CLIENT_ERROR_USB_DEVICE_LOST,
                               _("%s disconnected (fatal IO error)"), desc);
             break;
         default:
