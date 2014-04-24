@@ -176,6 +176,14 @@ void win_usb_driver_handle_reply_cb(GObject *gobject,
         goto failed_reply;
     }
 
+    if (priv->reply.status == 0) {
+        g_simple_async_result_set_error(priv->result,
+                                        SPICE_WIN_USB_DRIVER_ERROR,
+                                        SPICE_WIN_USB_DRIVER_ERROR_MESSAGE,
+                                        "usbclerk error reply");
+        goto failed_reply;
+    }
+
  failed_reply:
     g_simple_async_result_complete_in_idle(priv->result);
     g_clear_object(&priv->result);
