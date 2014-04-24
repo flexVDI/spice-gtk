@@ -230,8 +230,8 @@ static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
                                                        GCancellable  *cancellable,
                                                        GError        **err)
 {
-    SpiceUsbDeviceManager *self;
-    SpiceUsbDeviceManagerPrivate *priv;
+    SpiceUsbDeviceManager *self = SPICE_USB_DEVICE_MANAGER(initable);
+    SpiceUsbDeviceManagerPrivate *priv = self->priv;
 #ifdef USE_USBREDIR
     GList *list;
     GList *it;
@@ -239,27 +239,6 @@ static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
 #ifdef USE_GUDEV
     const gchar *const subsystems[] = {"usb", NULL};
 #endif
-#endif
-
-    g_return_val_if_fail(SPICE_IS_USB_DEVICE_MANAGER(initable), FALSE);
-    g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
-
-    if (cancellable != NULL) {
-        g_set_error_literal(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
-                            "Cancellable initialization not supported");
-        return FALSE;
-    }
-
-    self = SPICE_USB_DEVICE_MANAGER(initable);
-    priv = self->priv;
-
-    if (!priv->session) {
-        g_set_error_literal(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
-                "SpiceUsbDeviceManager constructed without a session");
-        return FALSE;
-    }
-
-#ifdef USE_USBREDIR
 
 #ifdef G_OS_WIN32
     priv->installer = spice_win_usb_driver_new();
