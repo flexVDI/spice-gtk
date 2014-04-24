@@ -60,6 +60,7 @@ G_BEGIN_DECLS
  * @SPICE_CLIENT_ERROR_USB_DEVICE_LOST: device disconnected (fatal IO error)
  * @SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD: password is required
  * @SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD_AND_USERNAME: password and username are required
+ * @SPICE_CLIENT_ERROR_USB_SERVICE: USB service error
  *
  * Error codes returned by spice-client API.
  */
@@ -70,6 +71,7 @@ typedef enum
     SPICE_CLIENT_ERROR_USB_DEVICE_LOST,
     SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD,
     SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD_AND_USERNAME,
+    SPICE_CLIENT_ERROR_USB_SERVICE,
 } SpiceClientError;
 
 #ifndef SPICE_DISABLE_DEPRECATED

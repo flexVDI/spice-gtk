@@ -260,6 +260,17 @@ static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
     }
 
 #ifdef USE_USBREDIR
+
+#ifdef G_OS_WIN32
+    priv->installer = spice_win_usb_driver_new();
+    if (!priv->installer) {
+        g_warn_if_reached();
+        g_set_error_literal(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_USB_SERVICE,
+                            "Failed to initialize USB device installer service");
+        return FALSE;
+    }
+#endif
+
     /* Initialize libusb */
     rc = libusb_init(&priv->context);
     if (rc < 0) {
@@ -1485,10 +1496,10 @@ void spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
     SpiceWinUsbDriver *installer;
     UsbInstallCbInfo *cbinfo;
 
+    g_return_if_fail(self->priv->installer);
+
     spice_usb_device_set_state(device, SPICE_USB_DEVICE_STATE_INSTALLING);
-    if (! self->priv->installer) {
-        self->priv->installer = spice_win_usb_driver_new();
-    }
+
     installer = self->priv->installer;
     cbinfo = g_new0(UsbInstallCbInfo, 1);
     cbinfo->manager     = self;
@@ -1553,7 +1564,7 @@ void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
     guint8 state;
 
     g_warn_if_fail(device != NULL);
-    g_warn_if_fail(self->priv->installer != NULL);
+    g_return_if_fail(self->priv->installer);
 
     state = spice_usb_device_get_state(device);
     if ((state != SPICE_USB_DEVICE_STATE_INSTALLED) &&
@@ -1562,9 +1573,7 @@ void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
     }
 
     spice_usb_device_set_state(device, SPICE_USB_DEVICE_STATE_UNINSTALLING);
-    if (! self->priv->installer) {
-        self->priv->installer = spice_win_usb_driver_new();
-    }
+
     installer = self->priv->installer;
     cbinfo = g_new0(UsbInstallCbInfo, 1);
     cbinfo->manager     = self;
