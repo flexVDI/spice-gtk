@@ -227,8 +227,8 @@ static void spice_usb_device_manager_init(SpiceUsbDeviceManager *self)
 }
 
 static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
-                                                    GCancellable  *cancellable,
-                                                    GError        **err)
+                                                       GCancellable  *cancellable,
+                                                       GError        **err)
 {
     SpiceUsbDeviceManager *self;
     SpiceUsbDeviceManagerPrivate *priv;
