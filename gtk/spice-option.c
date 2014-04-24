@@ -226,6 +226,8 @@ void spice_set_session_option(SpiceSession *session)
         if (!homedir)
             homedir = g_get_home_dir();
         ca_file = g_build_filename(homedir, ".spicec", "spice_truststore.pem", NULL);
+        if (!g_file_test(ca_file, G_FILE_TEST_IS_REGULAR))
+            g_clear_pointer(&ca_file, g_free);
     }
 
     if (disable_effects) {
