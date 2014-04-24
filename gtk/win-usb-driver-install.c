@@ -59,20 +59,13 @@ static void spice_win_usb_driver_init(SpiceWinUsbDriver *self)
     self->priv = SPICE_WIN_USB_DRIVER_GET_PRIVATE(self);
 }
 
-static void spice_win_usb_driver_close(SpiceWinUsbDriver *self)
-{
-    if (self->priv->handle) {
-        CloseHandle(self->priv->handle);
-        self->priv->handle = 0;
-    }
-}
-
 static void spice_win_usb_driver_finalize(GObject *gobject)
 {
     SpiceWinUsbDriver *self = SPICE_WIN_USB_DRIVER(gobject);
     SpiceWinUsbDriverPrivate *priv = self->priv;
 
-    spice_win_usb_driver_close(self);
+    if (priv->handle)
+        CloseHandle(priv->handle);
     g_clear_object(&priv->result);
 
     if (G_OBJECT_CLASS(spice_win_usb_driver_parent_class)->finalize)
