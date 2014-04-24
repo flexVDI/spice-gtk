@@ -326,7 +326,25 @@ void spice_win_usb_driver_op(SpiceWinUsbDriver *self,
     g_clear_object(&result);
 }
 
+/**
+ * Returns: currently returns 0 (failure) and 1 (success)
+ * possibly later we'll add error-codes
+ */
+static gint
+spice_win_usb_driver_op_finish(SpiceWinUsbDriver *self,
+                               GAsyncResult *res, GError **err)
+{
+    GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT(res);
 
+    g_return_val_if_fail(SPICE_IS_WIN_USB_DRIVER(self), 0);
+    g_return_val_if_fail(g_simple_async_result_is_valid(res, G_OBJECT(self),
+                                                        spice_win_usb_driver_op),
+                         FALSE);
+    if (g_simple_async_result_propagate_error(result, err))
+        return 0;
+
+    return self->priv->reply.status;
+}
 
 /**
  * spice_win_usb_driver_install:
@@ -363,25 +381,11 @@ void spice_win_usb_driver_uninstall(SpiceWinUsbDriver *self,
                             callback, user_data);
 }
 
-
-/**
- * Returns: currently returns 0 (failure) and 1 (success)
- * possibly later we'll add error-codes
- */
 G_GNUC_INTERNAL
 gint spice_win_usb_driver_install_finish(SpiceWinUsbDriver *self,
                                           GAsyncResult *res, GError **err)
 {
-    GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT(res);
-
-    g_return_val_if_fail(SPICE_IS_WIN_USB_DRIVER(self), 0);
-    g_return_val_if_fail(g_simple_async_result_is_valid(res, G_OBJECT(self),
-                                                        spice_win_usb_driver_op),
-                         FALSE);
-    if (g_simple_async_result_propagate_error(result, err))
-        return 0;
-
-    return self->priv->reply.status;
+    return spice_win_usb_driver_op_finish(self, res, err);
 }
 
 G_GNUC_INTERNAL
