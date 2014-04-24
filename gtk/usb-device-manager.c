@@ -241,11 +241,9 @@ static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
 #endif
 
 #ifdef G_OS_WIN32
-    priv->installer = spice_win_usb_driver_new();
+    priv->installer = spice_win_usb_driver_new(err);
     if (!priv->installer) {
-        g_warn_if_reached();
-        g_set_error_literal(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_USB_SERVICE,
-                            "Failed to initialize USB device installer service");
+        SPICE_DEBUG("failed to initialize winusb driver");
         return FALSE;
     }
 #endif

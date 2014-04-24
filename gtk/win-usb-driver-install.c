@@ -51,12 +51,40 @@ struct _SpiceWinUsbDriverPrivate {
 };
 
 
+static void spice_win_usb_driver_initable_iface_init(GInitableIface *iface);
 
-G_DEFINE_TYPE(SpiceWinUsbDriver, spice_win_usb_driver, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_CODE(SpiceWinUsbDriver, spice_win_usb_driver, G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE, spice_win_usb_driver_initable_iface_init));
 
 static void spice_win_usb_driver_init(SpiceWinUsbDriver *self)
 {
     self->priv = SPICE_WIN_USB_DRIVER_GET_PRIVATE(self);
+}
+
+static gboolean spice_win_usb_driver_initable_init(GInitable     *initable,
+                                                   GCancellable  *cancellable,
+                                                   GError        **err)
+{
+    SpiceWinUsbDriver *self = SPICE_WIN_USB_DRIVER(initable);
+    SpiceWinUsbDriverPrivate *priv = self->priv;
+
+    SPICE_DEBUG("win-usb-driver-install: connecting to usbclerk named pipe");
+    priv->handle = CreateFile(USB_CLERK_PIPE_NAME,
+                              GENERIC_READ | GENERIC_WRITE,
+                              0, NULL,
+                              OPEN_EXISTING,
+                              FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED,
+                              NULL);
+    if (priv->handle == INVALID_HANDLE_VALUE) {
+        DWORD errval  = GetLastError();
+        gchar *errstr = g_win32_error_message(errval);
+        g_set_error(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_USB_SERVICE,
+                    "Failed to create service named pipe (%ld) %s", errval, errstr);
+        g_free(errstr);
+        return FALSE;
+    }
+
+    return TRUE;
 }
 
 static void spice_win_usb_driver_finalize(GObject *gobject)
@@ -66,6 +94,7 @@ static void spice_win_usb_driver_finalize(GObject *gobject)
 
     if (priv->handle)
         CloseHandle(priv->handle);
+
     g_clear_object(&priv->result);
 
     if (G_OBJECT_CLASS(spice_win_usb_driver_parent_class)->finalize)
@@ -79,6 +108,11 @@ static void spice_win_usb_driver_class_init(SpiceWinUsbDriverClass *klass)
     gobject_class->finalize     = spice_win_usb_driver_finalize;
 
     g_type_class_add_private(klass, sizeof(SpiceWinUsbDriverPrivate));
+}
+
+static void spice_win_usb_driver_initable_iface_init(GInitableIface *iface)
+{
+    iface->init = spice_win_usb_driver_initable_init;
 }
 
 /* ------------------------------------------------------------------ */
@@ -244,13 +278,15 @@ void spice_win_usb_driver_read_reply_async(SpiceWinUsbDriver *self)
 
 
 G_GNUC_INTERNAL
-SpiceWinUsbDriver *spice_win_usb_driver_new(void)
+SpiceWinUsbDriver *spice_win_usb_driver_new(GError **err)
 {
-    GObject *obj;
+    GObject *self;
 
-    obj = g_object_new(SPICE_TYPE_WIN_USB_DRIVER, NULL);
+    g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
 
-    return SPICE_WIN_USB_DRIVER(obj);
+    self = g_initable_new(SPICE_TYPE_WIN_USB_DRIVER, NULL, err, NULL);
+
+    return SPICE_WIN_USB_DRIVER(self);
 }
 
 static
@@ -285,26 +321,6 @@ void spice_win_usb_driver_op(SpiceWinUsbDriver *self,
 
     vid = spice_usb_device_get_vid(device);
     pid = spice_usb_device_get_pid(device);
-
-    if (! priv->handle ) {
-        SPICE_DEBUG("win-usb-driver-install: connecting to usbclerk named pipe");
-        priv->handle = CreateFile(USB_CLERK_PIPE_NAME,
-                                  GENERIC_READ | GENERIC_WRITE,
-                                  0, NULL,
-                                  OPEN_EXISTING,
-                                  FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED,
-                                  NULL);
-        if (priv->handle == INVALID_HANDLE_VALUE) {
-            DWORD errval  = GetLastError();
-            gchar *errstr = g_win32_error_message(errval);
-            g_warning("failed to create a named pipe to usbclerk (%ld) %s",
-                      errval,errstr);
-            g_simple_async_result_set_error(result,
-                      G_IO_ERROR, G_IO_ERROR_FAILED,
-                      "Failed to create named pipe (%ld) %s", errval, errstr);
-            goto failed_request;
-        }
-    }
 
     if (!spice_win_usb_driver_send_request(self, op_type,
                                            vid, pid, &err)) {

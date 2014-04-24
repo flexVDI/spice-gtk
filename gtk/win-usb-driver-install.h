@@ -61,7 +61,7 @@ struct _SpiceWinUsbDriverClass
 
 GType spice_win_usb_driver_get_type(void);
 
-SpiceWinUsbDriver *spice_win_usb_driver_new(void);
+SpiceWinUsbDriver *spice_win_usb_driver_new(GError **err);
 
 
 void spice_win_usb_driver_install_async(SpiceWinUsbDriver *self,
