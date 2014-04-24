@@ -77,6 +77,10 @@ void spice_win_usb_driver_uninstall_async(SpiceWinUsbDriver *self,
                                           GCancellable *cancellable,
                                           GAsyncReadyCallback callback,
                                           gpointer user_data);
+gint spice_win_usb_driver_uninstall_finish(SpiceWinUsbDriver *self,
+                                           GAsyncResult *res, GError **err);
+
+
 
 SpiceUsbDevice *spice_win_usb_driver_get_device(SpiceWinUsbDriver *self);
 

@@ -389,6 +389,13 @@ gint spice_win_usb_driver_install_finish(SpiceWinUsbDriver *self,
 }
 
 G_GNUC_INTERNAL
+gint spice_win_usb_driver_uninstall_finish(SpiceWinUsbDriver *self,
+                                           GAsyncResult *res, GError **err)
+{
+    return spice_win_usb_driver_op_finish(self, res, err);
+}
+
+G_GNUC_INTERNAL
 SpiceUsbDevice *spice_win_usb_driver_get_device(SpiceWinUsbDriver *self)
 {
     g_return_val_if_fail(SPICE_IS_WIN_USB_DRIVER(self), 0);
