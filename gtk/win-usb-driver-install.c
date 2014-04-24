@@ -347,7 +347,7 @@ spice_win_usb_driver_op_finish(SpiceWinUsbDriver *self,
 }
 
 /**
- * spice_win_usb_driver_install:
+ * spice_win_usb_driver_install_async:
  * Start libusb driver installation for @device
  *
  * A new NamedPipe is created for each request.
@@ -356,11 +356,11 @@ spice_win_usb_driver_op_finish(SpiceWinUsbDriver *self,
  *          FALSE upon failure to send a request.
  */
 G_GNUC_INTERNAL
-void spice_win_usb_driver_install(SpiceWinUsbDriver *self,
-                                  SpiceUsbDevice *device,
-                                  GCancellable *cancellable,
-                                  GAsyncReadyCallback callback,
-                                  gpointer user_data)
+void spice_win_usb_driver_install_async(SpiceWinUsbDriver *self,
+                                        SpiceUsbDevice *device,
+                                        GCancellable *cancellable,
+                                        GAsyncReadyCallback callback,
+                                        gpointer user_data)
 {
     SPICE_DEBUG("Win usb driver installation started");
 
@@ -369,11 +369,11 @@ void spice_win_usb_driver_install(SpiceWinUsbDriver *self,
 }
 
 G_GNUC_INTERNAL
-void spice_win_usb_driver_uninstall(SpiceWinUsbDriver *self,
-                                    SpiceUsbDevice *device,
-                                    GCancellable *cancellable,
-                                    GAsyncReadyCallback callback,
-                                    gpointer user_data)
+void spice_win_usb_driver_uninstall_async(SpiceWinUsbDriver *self,
+                                          SpiceUsbDevice *device,
+                                          GCancellable *cancellable,
+                                          GAsyncReadyCallback callback,
+                                          gpointer user_data)
 {
     SPICE_DEBUG("Win usb driver uninstall operation started");
 

@@ -1497,9 +1497,9 @@ void spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
     cbinfo->user_data   = user_data;
     cbinfo->is_install  = TRUE;
 
-    spice_win_usb_driver_install(installer, device, cancellable,
-                                 spice_usb_device_manager_drv_install_cb,
-                                 cbinfo);
+    spice_win_usb_driver_install_async(installer, device, cancellable,
+                                       spice_usb_device_manager_drv_install_cb,
+                                       cbinfo);
 #else
     _spice_usb_device_manager_connect_device_async(self,
                                                    device,
@@ -1574,9 +1574,9 @@ void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
     cbinfo->user_data   = NULL;
     cbinfo->is_install  = FALSE;
 
-    spice_win_usb_driver_uninstall(installer, device, NULL,
-                                   spice_usb_device_manager_drv_install_cb,
-                                   cbinfo);
+    spice_win_usb_driver_uninstall_async(installer, device, NULL,
+                                         spice_usb_device_manager_drv_install_cb,
+                                         cbinfo);
 #endif
 
 #endif

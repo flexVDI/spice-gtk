@@ -64,21 +64,19 @@ GType spice_win_usb_driver_get_type(void);
 SpiceWinUsbDriver *spice_win_usb_driver_new(void);
 
 
-void spice_win_usb_driver_install(SpiceWinUsbDriver *self,
-                                  SpiceUsbDevice *device,
-                                  GCancellable *cancellable,
-                                  GAsyncReadyCallback callback,
-                                  gpointer user_data);
-
-void spice_win_usb_driver_uninstall(SpiceWinUsbDriver *self,
-                                    SpiceUsbDevice *device,
-                                    GCancellable *cancellable,
-                                    GAsyncReadyCallback callback,
-                                    gpointer user_data);
-
+void spice_win_usb_driver_install_async(SpiceWinUsbDriver *self,
+                                        SpiceUsbDevice *device,
+                                        GCancellable *cancellable,
+                                        GAsyncReadyCallback callback,
+                                        gpointer user_data);
 gint spice_win_usb_driver_install_finish(SpiceWinUsbDriver *self,
                                          GAsyncResult *res, GError **err);
 
+void spice_win_usb_driver_uninstall_async(SpiceWinUsbDriver *self,
+                                          SpiceUsbDevice *device,
+                                          GCancellable *cancellable,
+                                          GAsyncReadyCallback callback,
+                                          gpointer user_data);
 
 SpiceUsbDevice *spice_win_usb_driver_get_device(SpiceWinUsbDriver *self);
 
