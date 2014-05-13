@@ -511,7 +511,6 @@ static void palette_release(SpicePaletteCache *cache, SpicePalette *palette)
     /* there is no refcount of palette, see palette_get() */
 }
 
-#ifdef SW_CANVAS_CACHE
 static void image_put_lossy(SpiceImageCache *cache, uint64_t id,
                             pixman_image_t *surface)
 {
@@ -544,7 +543,6 @@ static pixman_image_t* image_get_lossless(SpiceImageCache *cache, uint64_t id)
 
     return wait.image;
 }
-#endif
 
 static SpiceCanvas *surfaces_get(SpiceImageSurfaces *surfaces,
                                  uint32_t surface_id)
@@ -562,11 +560,9 @@ static SpiceImageCacheOps image_cache_ops = {
     .put = image_put,
     .get = image_get,
 
-#ifdef SW_CANVAS_CACHE
     .put_lossy = image_put_lossy,
     .replace_lossy = image_replace_lossy,
     .get_lossless = image_get_lossless,
-#endif
 };
 
 static SpicePaletteCacheOps palette_cache_ops = {
@@ -688,10 +684,8 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
                                              surface->format,
                                              surface->data,
                                              surface->stride,
-#ifdef SW_CANVAS_CACHE
                                              &c->image_cache,
                                              &c->palette_cache,
-#endif
                                              &c->image_surfaces,
                                              surface->glz_decoder,
                                              surface->jpeg_decoder,
