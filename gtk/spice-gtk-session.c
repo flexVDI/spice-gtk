@@ -909,6 +909,9 @@ static gboolean clipboard_request(SpiceMainChannel *main, guint selection,
     GtkClipboard* cb;
     int m;
 
+    g_return_val_if_fail(s->clipboard_by_guest[selection] == FALSE, FALSE);
+    g_return_val_if_fail(s->clip_grabbed[selection], FALSE);
+
     if (read_only(self))
         return FALSE;
 
