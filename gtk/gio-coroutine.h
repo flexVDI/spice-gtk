@@ -35,6 +35,17 @@ struct _GCoroutine
     guint condition_id;
 };
 
+static inline gboolean g_coroutine_is_idle(GCoroutine *self)
+{
+    gboolean idle;
+
+    g_return_val_if_fail(self != NULL, FALSE);
+
+    idle = self->wait_id != 0 || self->condition_id != 0;
+
+    return idle;
+}
+
 /*
  * A special GSource impl which allows us to wait on a certain
  * condition to be satisfied. This is effectively a boolean test
