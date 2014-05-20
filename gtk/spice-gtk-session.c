@@ -721,7 +721,6 @@ static void clipboard_get(GtkClipboard *clipboard,
     g_return_if_fail(selection != -1);
     g_return_if_fail(info < SPICE_N_ELEMENTS(atom2agent));
     g_return_if_fail(s->main != NULL);
-    g_return_if_fail(g_coroutine_is_idle(&SPICE_CHANNEL(s->main)->priv->coroutine));
 
     ri.selection_data = selection_data;
     ri.info = info;
