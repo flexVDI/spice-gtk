@@ -267,9 +267,6 @@ PKG_CHECK_MODULES(GTHREAD, gthread-2.0 > 2.0.0)
 AC_SUBST(GTHREAD_CFLAGS)
 AC_SUBST(GTHREAD_LIBS)
 
-PKG_CHECK_MODULES(SOUP, libsoup-2.4)
-AC_SUBST(SOUP_CFLAGS)
-AC_SUBST(SOUP_LIBS)
 AC_ARG_ENABLE([webdav],
   AS_HELP_STRING([--enable-webdav=@<:@auto/yes/no@:>@],
                  [Enable webdav support @<:@default=auto@:>@]),
