@@ -270,10 +270,23 @@ AC_SUBST(GTHREAD_LIBS)
 PKG_CHECK_MODULES(SOUP, libsoup-2.4)
 AC_SUBST(SOUP_CFLAGS)
 AC_SUBST(SOUP_LIBS)
+AC_ARG_ENABLE([webdav],
+  AS_HELP_STRING([--enable-webdav=@<:@auto/yes/no@:>@],
+                 [Enable webdav support @<:@default=auto@:>@]),
+  [],
+  [enable_webdav="auto"])
 
-PKG_CHECK_MODULES(PHODAV, [libphodav-1.0], [have_phodav=yes], [have_phodav=no])
-AC_SUBST(PHODAV_CFLAGS)
-AC_SUBST(PHODAV_LIBS)
+if test "x$enable_webdav" = "xno"; then
+  have_phodav="no"
+else
+  PKG_CHECK_MODULES(PHODAV, [libphodav-1.0], [have_phodav=yes], [have_phodav=no])
+  AC_SUBST(PHODAV_CFLAGS)
+  AC_SUBST(PHODAV_LIBS)
+
+  if test "x$have_phodav" = "xno" && test "x$enable_webdav" = "xyes"; then
+    AC_MSG_ERROR([webdav support explicitly requested, but some required packages are not available])
+  fi
+fi
 AS_IF([test "x$have_phodav" = "xyes"],
        AC_DEFINE(USE_PHODAV, [1], [Define if supporting phodav]))
 
@@ -754,7 +767,7 @@ AC_MSG_NOTICE([
         Smartcard support:        ${have_smartcard}
         USB redirection support:  ${have_usbredir} ${with_usbredir_hotplug}
         DBus:                     ${have_dbus}
-        PhoDAV:                   ${have_phodav}
+        WebDAV support:           ${have_phodav}
 
         Now type 'make' to build $PACKAGE
 
