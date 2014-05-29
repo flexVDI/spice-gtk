@@ -124,21 +124,6 @@ enum {
 
 static guint signals[SPICE_SESSION_LAST_SIGNAL];
 
-struct SPICE_SESSION_MM_TIME_RESET {
-};
-
-/* main context */
-static void do_emit_main_context(GObject *object, int signum, gpointer params)
-{
-    switch (signum) {
-    case SPICE_SESSION_MM_TIME_RESET:
-        g_signal_emit(object, signals[signum], 0);
-        break;
-    default:
-        g_warn_if_reached();
-    }
-}
-
 static void update_proxy(SpiceSession *self, const gchar *str)
 {
     SpiceSessionPrivate *s = self->priv;
@@ -616,7 +601,7 @@ static void spice_session_set_property(GObject      *gobject,
         break;
     case PROP_READ_ONLY:
         s->read_only = g_value_get_boolean(value);
-        g_object_notify_main_context(gobject, "read-only");
+        g_coroutine_object_notify(gobject, "read-only");
         break;
     case PROP_CACHE_SIZE:
         s->images_cache_size = g_value_get_int(value);
@@ -2006,7 +1991,7 @@ void spice_session_set_mm_time(SpiceSession *session, guint32 time)
     if (time > old_time + MM_TIME_DIFF_RESET_THRESH ||
         time < old_time) {
         SPICE_DEBUG("%s: mm-time-reset, old %u, new %u", __FUNCTION__, old_time, s->mm_time);
-        emit_main_context(session, SPICE_SESSION_MM_TIME_RESET);
+        g_coroutine_signal_emit(session, signals[SPICE_SESSION_MM_TIME_RESET], 0);
     }
 }
 
@@ -2066,7 +2051,7 @@ void spice_session_set_migration_state(SpiceSession *session, SpiceSessionMigrat
 
     g_return_if_fail(s != NULL);
     s->migration_state = state;
-    g_object_notify_main_context(G_OBJECT(session), "migration-state");
+    g_coroutine_object_notify(G_OBJECT(session), "migration-state");
 }
 
 G_GNUC_INTERNAL
@@ -2161,7 +2146,7 @@ void spice_session_set_uuid(SpiceSession *session, guint8 uuid[16])
     g_return_if_fail(s != NULL);
     memcpy(s->uuid, uuid, sizeof(s->uuid));
 
-    g_object_notify_main_context(G_OBJECT(session), "uuid");
+    g_coroutine_object_notify(G_OBJECT(session), "uuid");
 }
 
 G_GNUC_INTERNAL
@@ -2173,7 +2158,7 @@ void spice_session_set_name(SpiceSession *session, const gchar *name)
     g_free(s->name);
     s->name = g_strdup(name);
 
-    g_object_notify_main_context(G_OBJECT(session), "name");
+    g_coroutine_object_notify(G_OBJECT(session), "name");
 }
 
 G_GNUC_INTERNAL

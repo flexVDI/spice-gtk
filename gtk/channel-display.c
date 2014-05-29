@@ -429,60 +429,6 @@ gboolean spice_display_get_primary(SpiceChannel *channel, guint32 surface_id,
     return TRUE;
 }
 
-/* signal trampoline---------------------------------------------------------- */
-
-struct SPICE_DISPLAY_PRIMARY_CREATE {
-    gint format;
-    gint width;
-    gint height;
-    gint stride;
-    gint shmid;
-    gpointer imgdata;
-};
-
-struct SPICE_DISPLAY_PRIMARY_DESTROY {
-};
-
-struct SPICE_DISPLAY_INVALIDATE {
-    gint x;
-    gint y;
-    gint w;
-    gint h;
-};
-
-struct SPICE_DISPLAY_MARK {
-    gint mark;
-};
-
-/* main context */
-static void do_emit_main_context(GObject *object, int signum, gpointer params)
-{
-    switch (signum) {
-    case SPICE_DISPLAY_PRIMARY_DESTROY: {
-        g_signal_emit(object, signals[signum], 0);
-        break;
-    }
-    case SPICE_DISPLAY_MARK: {
-        struct SPICE_DISPLAY_MARK *p = params;
-        g_signal_emit(object, signals[signum], 0, p->mark);
-        break;
-    }
-    case SPICE_DISPLAY_PRIMARY_CREATE: {
-        struct SPICE_DISPLAY_PRIMARY_CREATE *p = params;
-        g_signal_emit(object, signals[signum], 0,
-                      p->format, p->width, p->height, p->stride, p->shmid, p->imgdata);
-        break;
-    }
-    case SPICE_DISPLAY_INVALIDATE: {
-        struct SPICE_DISPLAY_INVALIDATE *p = params;
-        g_signal_emit(object, signals[signum], 0, p->x, p->y, p->w, p->h);
-        break;
-    }
-    default:
-        g_warn_if_reached();
-    }
-}
-
 /* ------------------------------------------------------------------ */
 
 static void image_put(SpiceImageCache *cache, uint64_t id, pixman_image_t *image)
@@ -701,7 +647,7 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
                 return 0;
             }
 
-            emit_main_context(channel, SPICE_DISPLAY_PRIMARY_DESTROY);
+            g_coroutine_signal_emit(channel, signals[SPICE_DISPLAY_PRIMARY_DESTROY], 0);
 
             g_hash_table_remove(c->surfaces, GINT_TO_POINTER(c->primary->surface_id));
         }
@@ -757,9 +703,9 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
     if (surface->primary) {
         g_warn_if_fail(c->primary == NULL);
         c->primary = surface;
-        emit_main_context(channel, SPICE_DISPLAY_PRIMARY_CREATE,
-                          surface->format, surface->width, surface->height,
-                          surface->stride, surface->shmid, surface->data);
+        g_coroutine_signal_emit(channel, signals[SPICE_DISPLAY_PRIMARY_CREATE], 0,
+                                surface->format, surface->width, surface->height,
+                                surface->stride, surface->shmid, surface->data);
 
         if (!spice_channel_test_capability(channel, SPICE_DISPLAY_CAP_MONITORS_CONFIG)) {
             g_array_set_size(c->monitors, 1);
@@ -767,7 +713,7 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
             config->x = config->y = 0;
             config->width = surface->width;
             config->height = surface->height;
-            g_object_notify_main_context(G_OBJECT(channel), "monitors");
+            g_coroutine_object_notify(G_OBJECT(channel), "monitors");
         }
     }
 
@@ -816,7 +762,7 @@ static void clear_surfaces(SpiceChannel *channel, gboolean keep_primary)
 
     if (!keep_primary) {
         c->primary = NULL;
-        emit_main_context(channel, SPICE_DISPLAY_PRIMARY_DESTROY);
+        g_coroutine_signal_emit(channel, signals[SPICE_DISPLAY_PRIMARY_DESTROY], 0);
     }
 
     g_hash_table_iter_init(&iter, c->surfaces);
@@ -834,10 +780,10 @@ static void clear_surfaces(SpiceChannel *channel, gboolean keep_primary)
 /* coroutine context */
 static void emit_invalidate(SpiceChannel *channel, SpiceRect *bbox)
 {
-    emit_main_context(channel, SPICE_DISPLAY_INVALIDATE,
-                      bbox->left, bbox->top,
-                      bbox->right - bbox->left,
-                      bbox->bottom - bbox->top);
+    g_coroutine_signal_emit(channel, signals[SPICE_DISPLAY_INVALIDATE], 0,
+                            bbox->left, bbox->top,
+                            bbox->right - bbox->left,
+                            bbox->bottom - bbox->top);
 }
 
 /* ------------------------------------------------------------------ */
@@ -868,7 +814,7 @@ static void spice_display_channel_up(SpiceChannel *channel)
     /* if we are not using monitors config, notify of existence of
        this monitor */
     if (channel->priv->channel_id != 0)
-        g_object_notify_main_context(G_OBJECT(channel), "monitors");
+        g_coroutine_object_notify(G_OBJECT(channel), "monitors");
 }
 
 #define DRAW(type) {                                                    \
@@ -915,7 +861,7 @@ static void display_handle_mark(SpiceChannel *channel, SpiceMsgIn *in)
 #endif
 
     c->mark = TRUE;
-    emit_main_context(channel, SPICE_DISPLAY_MARK, TRUE);
+    g_coroutine_signal_emit(channel, signals[SPICE_DISPLAY_MARK], 0, TRUE);
 }
 
 /* coroutine context */
@@ -932,7 +878,7 @@ static void display_handle_reset(SpiceChannel *channel, SpiceMsgIn *in)
     cache_clear(c->palettes);
 
     c->mark = FALSE;
-    emit_main_context(channel, SPICE_DISPLAY_MARK, FALSE);
+    g_coroutine_signal_emit(channel, signals[SPICE_DISPLAY_MARK], 0, FALSE);
 }
 
 /* coroutine context */
@@ -1753,7 +1699,7 @@ static void display_handle_surface_destroy(SpiceChannel *channel, SpiceMsgIn *in
             c->mark_false_event_id = g_timeout_add_seconds(1, display_mark_false, channel);
         }
         c->primary = NULL;
-        emit_main_context(channel, SPICE_DISPLAY_PRIMARY_DESTROY);
+        g_coroutine_signal_emit(channel, signals[SPICE_DISPLAY_PRIMARY_DESTROY], 0);
     }
 
     g_hash_table_remove(c->surfaces, GINT_TO_POINTER(surface->surface_id));
@@ -1800,7 +1746,7 @@ static void display_handle_monitors_config(SpiceChannel *channel, SpiceMsgIn *in
         mc->height = head->height;
     }
 
-    g_object_notify_main_context(G_OBJECT(channel), "monitors");
+    g_coroutine_object_notify(G_OBJECT(channel), "monitors");
 }
 
 static void channel_set_handlers(SpiceChannelClass *klass)

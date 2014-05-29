@@ -734,29 +734,6 @@ void spice_msg_out_send_internal(SpiceMsgOut *out)
     spice_channel_write_msg(out->channel, out);
 }
 
-/* ---------------------------------------------------------------- */
-
-struct SPICE_CHANNEL_EVENT {
-    SpiceChannelEvent event;
-};
-
-/* main context */
-static void do_emit_main_context(GObject *object, int signum, gpointer params)
-{
-    switch (signum) {
-    case SPICE_CHANNEL_EVENT: {
-        struct SPICE_CHANNEL_EVENT *p = params;
-        g_signal_emit(object, signals[signum], 0, p->event);
-        break;
-    }
-    case SPICE_CHANNEL_OPEN_FD:
-        g_warning("this signal is only sent directly from main context");
-        break;
-    default:
-        g_warn_if_reached();
-    }
-}
-
 /*
  * Write all 'data' of length 'datalen' bytes out to
  * the wire
@@ -1094,19 +1071,19 @@ static void spice_channel_recv_auth(SpiceChannel *channel)
     if (rc != sizeof(link_res)) {
         CHANNEL_DEBUG(channel, "incomplete auth reply (%d/%" G_GSIZE_FORMAT ")",
                     rc, sizeof(link_res));
-        emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_LINK);
+        g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_LINK);
         return;
     }
 
     if (link_res != SPICE_LINK_ERR_OK) {
         CHANNEL_DEBUG(channel, "link result: reply %d", link_res);
-        emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_AUTH);
+        g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_AUTH);
         return;
     }
 
     c->state = SPICE_CHANNEL_STATE_READY;
 
-    emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_OPENED);
+    g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_OPENED);
 
     if (c->state == SPICE_CHANNEL_STATE_MIGRATION_HANDSHAKE) {
         spice_channel_send_migration_handshake(channel);
@@ -1233,7 +1210,7 @@ error:
         return FALSE;
     }
 
-    emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_LINK);
+    g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_LINK);
     return FALSE;
 }
 
@@ -1648,7 +1625,7 @@ complete:
     CHANNEL_DEBUG(channel, "%s", "SASL authentication complete");
     spice_channel_read(channel, &len, sizeof(len));
     if (len != SPICE_LINK_ERR_OK)
-        emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_AUTH);
+        g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_AUTH);
     ret = len == SPICE_LINK_ERR_OK;
     /* This must come *after* check-auth-result, because the former
      * is defined to be sent unencrypted, and setting saslconn turns
@@ -1659,7 +1636,7 @@ complete:
 error:
     if (saslconn)
         sasl_dispose(&saslconn);
-    emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_AUTH);
+    g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_AUTH);
     c->has_error = TRUE; /* force disconnect */
     ret = FALSE;
 
@@ -1691,7 +1668,7 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel, gboolean *switch_
     if (c->peer_pos != c->peer_hdr.size) {
         g_critical("%s: %s: incomplete link reply (%d/%d)",
                   c->name, __FUNCTION__, rc, c->peer_hdr.size);
-        emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_LINK);
+        g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_LINK);
         return;
     }
     switch (c->peer_msg->error) {
@@ -1759,7 +1736,7 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel, gboolean *switch_
 
 error:
     SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
-    emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_LINK);
+    g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_LINK);
 }
 
 /* system context */
@@ -2142,9 +2119,9 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
     if (c->has_error) {
         CHANNEL_DEBUG(channel, "channel got error");
         if (c->state > SPICE_CHANNEL_STATE_CONNECTING)
-            emit_main_context(channel, SPICE_CHANNEL_EVENT,
-                              c->state == SPICE_CHANNEL_STATE_READY ?
-                              SPICE_CHANNEL_ERROR_IO : SPICE_CHANNEL_ERROR_LINK);
+            g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0,
+                                    c->state == SPICE_CHANNEL_STATE_READY ?
+                                    SPICE_CHANNEL_ERROR_IO : SPICE_CHANNEL_ERROR_LINK);
         return FALSE;
     }
 
@@ -2272,13 +2249,13 @@ static void *spice_channel_coroutine(void *data)
     if (spice_session_get_client_provided_socket(c->session)) {
         if (c->fd < 0) {
             g_critical("fd not provided!");
-            emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_CONNECT);
+            g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_CONNECT);
             goto cleanup;
         }
 
         if (!(c->sock = g_socket_new_from_fd(c->fd, NULL))) {
                 CHANNEL_DEBUG(channel, "Failed to open socket from fd %d", c->fd);
-                emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_CONNECT);
+                g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_CONNECT);
                 goto cleanup;
         }
 
@@ -2298,7 +2275,7 @@ reconnect:
             goto reconnect;
         } else {
             CHANNEL_DEBUG(channel, "Connect error");
-            emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_CONNECT);
+            g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_CONNECT);
             g_clear_error(&c->error);
             goto cleanup;
         }
@@ -2311,7 +2288,7 @@ reconnect:
         c->ctx = SSL_CTX_new(SSLv23_method());
         if (c->ctx == NULL) {
             g_critical("SSL_CTX_new failed");
-            emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_TLS);
+            g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_TLS);
             goto cleanup;
         }
 
@@ -2327,7 +2304,7 @@ reconnect:
                     g_warning("only pubkey active");
                     verify = SPICE_SESSION_VERIFY_PUBKEY;
                 } else {
-                    emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_TLS);
+                    g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_TLS);
                     goto cleanup;
                 }
             }
@@ -2345,7 +2322,7 @@ reconnect:
         c->ssl = SSL_new(c->ctx);
         if (c->ssl == NULL) {
             g_critical("SSL_new failed");
-            emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_TLS);
+            g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_TLS);
             goto cleanup;
         }
 
@@ -2378,7 +2355,7 @@ ssl_reconnect:
             } else {
                 g_warning("%s: SSL_connect: %s",
                           c->name, ERR_error_string(rc, NULL));
-                emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_TLS);
+                g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_TLS);
                 goto cleanup;
             }
         }
@@ -2611,7 +2588,7 @@ static void channel_disconnect(SpiceChannel *channel)
     c->has_error = TRUE; /* break the loop */
 
     if (c->state == SPICE_CHANNEL_STATE_READY)
-        emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_CLOSED);
+        g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_CLOSED);
 
     c->state = SPICE_CHANNEL_STATE_UNCONNECTED;
     spice_channel_reset(channel, FALSE);

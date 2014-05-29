@@ -808,115 +808,6 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
     channel_set_handlers(SPICE_CHANNEL_CLASS(klass));
 }
 
-/* signal trampoline---------------------------------------------------------- */
-
-struct SPICE_MAIN_CLIPBOARD_RELEASE {
-};
-
-struct SPICE_MAIN_AGENT_UPDATE {
-};
-
-struct SPICE_MAIN_MOUSE_UPDATE {
-};
-
-struct SPICE_MAIN_CLIPBOARD {
-    guint type;
-    gpointer data;
-    gsize size;
-};
-
-struct SPICE_MAIN_CLIPBOARD_GRAB {
-    gpointer types;
-    gsize ntypes;
-    gboolean *ret;
-};
-
-struct SPICE_MAIN_CLIPBOARD_REQUEST {
-    guint type;
-    gboolean *ret;
-};
-
-struct SPICE_MAIN_CLIPBOARD_SELECTION {
-    guint8 selection;
-    guint type;
-    gpointer data;
-    gsize size;
-};
-
-struct SPICE_MAIN_CLIPBOARD_SELECTION_GRAB {
-    guint8 selection;
-    gpointer types;
-    gsize ntypes;
-    gboolean *ret;
-};
-
-struct SPICE_MAIN_CLIPBOARD_SELECTION_REQUEST {
-    guint8 selection;
-    guint type;
-    gboolean *ret;
-};
-
-struct SPICE_MAIN_CLIPBOARD_SELECTION_RELEASE {
-    guint8 selection;
-};
-
-/* main context */
-static void do_emit_main_context(GObject *object, int signum, gpointer params)
-{
-    switch (signum) {
-    case SPICE_MAIN_CLIPBOARD_RELEASE:
-    case SPICE_MAIN_AGENT_UPDATE:
-    case SPICE_MAIN_MOUSE_UPDATE: {
-        g_signal_emit(object, signals[signum], 0);
-        break;
-    }
-    case SPICE_MAIN_CLIPBOARD: {
-        struct SPICE_MAIN_CLIPBOARD *p = params;
-        g_signal_emit(object, signals[signum], 0,
-                      p->type, p->data, p->size);
-        break;
-    }
-    case SPICE_MAIN_CLIPBOARD_GRAB: {
-        struct SPICE_MAIN_CLIPBOARD_GRAB *p = params;
-        g_signal_emit(object, signals[signum], 0,
-                      p->types, p->ntypes, p->ret);
-        break;
-    }
-    case SPICE_MAIN_CLIPBOARD_REQUEST: {
-        struct SPICE_MAIN_CLIPBOARD_REQUEST *p = params;
-        g_signal_emit(object, signals[signum], 0,
-                      p->type, p->ret);
-        break;
-    }
-    case SPICE_MAIN_CLIPBOARD_SELECTION: {
-        struct SPICE_MAIN_CLIPBOARD_SELECTION *p = params;
-        g_signal_emit(object, signals[signum], 0,
-                      p->selection, p->type, p->data, p->size);
-        break;
-    }
-    case SPICE_MAIN_CLIPBOARD_SELECTION_GRAB: {
-        struct SPICE_MAIN_CLIPBOARD_SELECTION_GRAB *p = params;
-        g_signal_emit(object, signals[signum], 0,
-                      p->selection, p->types, p->ntypes, p->ret);
-        break;
-    }
-    case SPICE_MAIN_CLIPBOARD_SELECTION_REQUEST: {
-        struct SPICE_MAIN_CLIPBOARD_SELECTION_REQUEST *p = params;
-        g_signal_emit(object, signals[signum], 0,
-                      p->selection, p->type, p->ret);
-        break;
-    }
-    case SPICE_MAIN_CLIPBOARD_SELECTION_RELEASE: {
-        struct SPICE_MAIN_CLIPBOARD_SELECTION_RELEASE *p = params;
-        g_signal_emit(object, signals[signum], 0,
-                      p->selection);
-        break;
-    }
-    default:
-        g_warn_if_reached();
-    }
-}
-
 /* ------------------------------------------------------------------ */
 
 
@@ -1437,12 +1328,12 @@ static void set_agent_connected(SpiceMainChannel *channel, gboolean connected)
     SPICE_DEBUG("agent connected: %s", spice_yes_no(connected));
     if (connected != c->agent_connected) {
         c->agent_connected = connected;
-        g_object_notify_main_context(G_OBJECT(channel), "agent-connected");
+        g_coroutine_object_notify(G_OBJECT(channel), "agent-connected");
     }
     if (!connected)
         spice_main_channel_reset_agent(SPICE_MAIN_CHANNEL(channel));
 
-    emit_main_context(channel, SPICE_MAIN_AGENT_UPDATE);
+    g_coroutine_signal_emit(channel, signals[SPICE_MAIN_AGENT_UPDATE], 0);
 }
 
 /* coroutine context  */
@@ -1480,8 +1371,8 @@ static void set_mouse_mode(SpiceMainChannel *channel, uint32_t supported, uint32
 
     if (c->mouse_mode != current) {
         c->mouse_mode = current;
-        emit_main_context(channel, SPICE_MAIN_MOUSE_UPDATE);
-        g_object_notify_main_context(G_OBJECT(channel), "mouse-mode");
+        g_coroutine_signal_emit(channel, signals[SPICE_MAIN_MOUSE_UPDATE], 0);
+        g_coroutine_object_notify(G_OBJECT(channel), "mouse-mode");
     }
 
     /* switch to client mode if possible */
@@ -1590,7 +1481,7 @@ static void main_handle_channels_list(SpiceChannel *channel, SpiceMsgIn *in)
 
     /* guarantee that uuid is notified before setting up the channels, even if
      * the server is older and doesn't actually send the uuid */
-    g_object_notify_main_context(G_OBJECT(session), "uuid");
+    g_coroutine_object_notify(G_OBJECT(session), "uuid");
 
     for (i = 0; i < msg->num_of_channels; i++) {
         channel_new_t *c;
@@ -1898,7 +1789,7 @@ static void main_agent_handle_msg(SpiceChannel *channel,
             VD_AGENT_SET_CAPABILITY(c->agent_caps, i);
         }
         c->agent_caps_received = true;
-        emit_main_context(self, SPICE_MAIN_AGENT_UPDATE);
+        g_coroutine_signal_emit(self, signals[SPICE_MAIN_AGENT_UPDATE], 0);
 
         if (caps->request)
             agent_announce_caps(self);
@@ -1918,21 +1809,21 @@ static void main_agent_handle_msg(SpiceChannel *channel,
     case VD_AGENT_CLIPBOARD:
     {
         VDAgentClipboard *cb = payload;
-        emit_main_context(self, SPICE_MAIN_CLIPBOARD_SELECTION, selection,
-                          cb->type, cb->data, msg->size - sizeof(VDAgentClipboard));
+        g_coroutine_signal_emit(self, signals[SPICE_MAIN_CLIPBOARD_SELECTION], 0, selection,
+                                cb->type, cb->data, msg->size - sizeof(VDAgentClipboard));
 
        if (selection == VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD)
-            emit_main_context(self, SPICE_MAIN_CLIPBOARD,
+           g_coroutine_signal_emit(self, signals[SPICE_MAIN_CLIPBOARD], 0,
                               cb->type, cb->data, msg->size - sizeof(VDAgentClipboard));
         break;
     }
     case VD_AGENT_CLIPBOARD_GRAB:
     {
         gboolean ret;
-        emit_main_context(self, SPICE_MAIN_CLIPBOARD_SELECTION_GRAB, selection,
+        g_coroutine_signal_emit(self, signals[SPICE_MAIN_CLIPBOARD_SELECTION_GRAB], 0, selection,
                           (guint8*)payload, msg->size / sizeof(uint32_t), &ret);
         if (selection == VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD)
-            emit_main_context(self, SPICE_MAIN_CLIPBOARD_GRAB,
+            g_coroutine_signal_emit(self, signals[SPICE_MAIN_CLIPBOARD_GRAB], 0,
                               payload, msg->size / sizeof(uint32_t), &ret);
         break;
     }
@@ -1940,20 +1831,20 @@ static void main_agent_handle_msg(SpiceChannel *channel,
     {
         gboolean ret;
         VDAgentClipboardRequest *req = payload;
-        emit_main_context(self, SPICE_MAIN_CLIPBOARD_SELECTION_REQUEST, selection,
+        g_coroutine_signal_emit(self, signals[SPICE_MAIN_CLIPBOARD_SELECTION_REQUEST], 0, selection,
                           req->type, &ret);
 
         if (selection == VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD)
-            emit_main_context(self, SPICE_MAIN_CLIPBOARD_REQUEST,
+            g_coroutine_signal_emit(self, signals[SPICE_MAIN_CLIPBOARD_REQUEST], 0,
                               req->type, &ret);
         break;
     }
     case VD_AGENT_CLIPBOARD_RELEASE:
     {
-        emit_main_context(self, SPICE_MAIN_CLIPBOARD_SELECTION_RELEASE, selection);
+        g_coroutine_signal_emit(self, signals[SPICE_MAIN_CLIPBOARD_SELECTION_RELEASE], 0, selection);
 
         if (selection == VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD)
-            emit_main_context(self, SPICE_MAIN_CLIPBOARD_RELEASE);
+            g_coroutine_signal_emit(self, signals[SPICE_MAIN_CLIPBOARD_RELEASE], 0);
         break;
     }
     case VD_AGENT_REPLY:
