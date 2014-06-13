@@ -2482,7 +2482,7 @@ void spice_main_clipboard_selection_grab(SpiceMainChannel *channel, guint select
  * spice_main_clipboard_release:
  * @channel:
  *
- * Release the clipboard (for example, when the client looses the
+ * Release the clipboard (for example, when the client loses the
  * clipboard grab): Inform the guest no clipboard data is available.
  *
  * Deprecated: 0.6: use spice_main_clipboard_selection_release() instead.
@@ -2497,7 +2497,7 @@ void spice_main_clipboard_release(SpiceMainChannel *channel)
  * @channel:
  * @selection: one of the clipboard #VD_AGENT_CLIPBOARD_SELECTION_*
  *
- * Release the clipboard (for example, when the client looses the
+ * Release the clipboard (for example, when the client loses the
  * clipboard grab): Inform the guest no clipboard data is available.
  *
  * Since: 0.6
