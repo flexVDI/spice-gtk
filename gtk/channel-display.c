@@ -1176,6 +1176,8 @@ static gboolean display_stream_render(display_stream *st)
 
             g_return_val_if_fail(in != NULL, FALSE);
 
+            gettimeofday(&time1, NULL);
+
             st->msg_data = in;
             switch (st->codec) {
             case SPICE_VIDEO_CODEC_TYPE_MJPEG:
