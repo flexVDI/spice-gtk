@@ -90,7 +90,8 @@ gboolean spice_uri_parse(SpiceURI *self, const gchar *_uri, GError **error)
         spice_uri_set_scheme(self, "https");
         spice_uri_set_port(self, 3129);
     } else {
-        return FALSE;
+        spice_uri_set_scheme(self, "http");
+        spice_uri_set_port(self, 3128);
     }
     /* remove trailing slash */
     len = strlen(uri);
