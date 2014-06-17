@@ -37,6 +37,7 @@ struct _SpiceSessionPrivate {
     char              *host;
     char              *port;
     char              *tls_port;
+    char              *ws_port;
     char              *password;
     char              *ca_file;
     char              *ciphers;
@@ -117,7 +118,7 @@ int spice_session_get_connection_id(SpiceSession *session);
 gboolean spice_session_get_client_provided_socket(SpiceSession *session);
 
 GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceChannel *channel,
-                                                   gboolean *use_tls);
+                                                   gboolean *use_tls, char **ws_token);
 void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel);
 void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel);
 void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel);

@@ -22,6 +22,7 @@
 #include "config.h"
 #endif
 
+#include <nopoll.h>
 #include <openssl/ssl.h>
 #include <gio/gio.h>
 
@@ -112,6 +113,9 @@ struct _SpiceChannelPrivate {
     SpiceMessageMarshallers     *marshallers;
     guint                       channel_watch;
     int                         tls;
+    int                         ws;
+    noPollConn                  *np_conn;
+    noPollCtx                   *np_ctx;
 
     int                         channel_id;
     int                         channel_type;

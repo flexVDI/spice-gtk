@@ -27,6 +27,7 @@
 static char *host;
 static char *port;
 static char *tls_port;
+static char *ws_port;
 static char *password;
 static char *uri;
 
@@ -59,6 +60,14 @@ static GOptionEntry spice_entries[] = {
         .description      = N_("Spice server secure port"),
         .arg_description  = N_("<port>"),
     },{
+        .long_name        = "websocket-port",
+        .short_name       = 'x',
+        .arg              = G_OPTION_ARG_STRING,
+        .arg_data         = &ws_port,
+        .description      = N_("Spice server websocket port"),
+        .arg_description  = N_("<port>"),
+    },{
+
         .long_name        = "password",
         .short_name       = 'w',
         .arg              = G_OPTION_ARG_STRING,
@@ -95,6 +104,8 @@ void spice_cmdline_session_setup(SpiceSession *session)
         g_object_set(session, "port", port, NULL);
     if (tls_port)
         g_object_set(session, "tls-port", tls_port, NULL);
+    if (ws_port)
+        g_object_set(session, "ws-port", ws_port, NULL);
     if (password)
         g_object_set(session, "password", password, NULL);
 }

@@ -81,6 +81,7 @@ enum {
     PROP_HOST,
     PROP_PORT,
     PROP_TLS_PORT,
+    PROP_WS_PORT,
     PROP_PASSWORD,
     PROP_CA_FILE,
     PROP_CIPHERS,
@@ -228,6 +229,7 @@ spice_session_finalize(GObject *gobject)
     g_free(s->host);
     g_free(s->port);
     g_free(s->tls_port);
+    g_free(s->ws_port);
     g_free(s->password);
     g_free(s->ca_file);
     g_free(s->ciphers);
@@ -266,13 +268,16 @@ static int spice_uri_create(SpiceSession *session, char *dest, int len)
         pos += snprintf(dest + pos, len - pos, "port=%s;", s->port);
     if (s->tls_port && strlen(s->tls_port))
         pos += snprintf(dest + pos, len - pos, "tls-port=%s;", s->tls_port);
+    if (s->ws_port && strlen(s->ws_port))
+        pos += snprintf(dest + pos, len - pos, "ws-port=%s;", s->ws_port);
     return pos;
 }
 
 static int spice_uri_parse(SpiceSession *session, const char *original_uri)
 {
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
-    gchar *host = NULL, *port = NULL, *tls_port = NULL, *uri = NULL, *password = NULL;
+    gchar *host = NULL, *port = NULL, *tls_port = NULL, *ws_port = NULL;
+    gchar *uri = NULL, *password = NULL;
     gchar *path = NULL;
     gchar *unescaped_path = NULL;
     gchar *authority = NULL;
@@ -358,6 +363,8 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
             target_key = &port;
         } else if (g_str_equal(key, "tls-port")) {
             target_key = &tls_port;
+        } else if (g_str_equal(key, "ws-port")) {
+            target_key = &ws_port;
         } else if (g_str_equal(key, "password")) {
             target_key = &password;
             g_warning("password may be visible in process listings");
@@ -385,10 +392,12 @@ static int spice_uri_parse(SpiceSession *session, const char *original_uri)
     g_free(s->host);
     g_free(s->port);
     g_free(s->tls_port);
+    g_free(s->ws_port);
     g_free(s->password);
     s->host = host;
     s->port = port;
     s->tls_port = tls_port;
+    s->ws_port = ws_port;
     s->password = password;
     return 0;
 
@@ -398,6 +407,7 @@ fail:
     g_free(host);
     g_free(port);
     g_free(tls_port);
+    g_free(ws_port);
     g_free(password);
     return -1;
 }
@@ -421,6 +431,9 @@ static void spice_session_get_property(GObject    *gobject,
 	break;
     case PROP_TLS_PORT:
         g_value_set_string(value, s->tls_port);
+	break;
+    case PROP_WS_PORT:
+        g_value_set_string(value, s->ws_port);
 	break;
     case PROP_PASSWORD:
         g_value_set_string(value, s->password);
@@ -528,6 +541,10 @@ static void spice_session_set_property(GObject      *gobject,
     case PROP_TLS_PORT:
         g_free(s->tls_port);
         s->tls_port = g_value_dup_string(value);
+        break;
+    case PROP_WS_PORT:
+        g_free(s->ws_port);
+        s->ws_port = g_value_dup_string(value);
         break;
     case PROP_PASSWORD:
         g_free(s->password);
@@ -683,6 +700,21 @@ static void spice_session_class_init(SpiceSessionClass *klass)
         (gobject_class, PROP_TLS_PORT,
          g_param_spec_string("tls-port",
                              "TLS port",
+                             "Remote port (encrypted)",
+                             NULL,
+                             G_PARAM_READWRITE |
+                             G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceSession:tls-port:
+     *
+     * Port to connect to for TLS sessions
+     *
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_WS_PORT,
+         g_param_spec_string("ws-port",
+                             "Websocket port",
                              "Remote port (encrypted)",
                              NULL,
                              G_PARAM_READWRITE |
@@ -1198,6 +1230,7 @@ SpiceSession *spice_session_new_from_session(SpiceSession *session)
 
     g_warn_if_fail(c->host == NULL);
     g_warn_if_fail(c->tls_port == NULL);
+    g_warn_if_fail(c->ws_port == NULL);
     g_warn_if_fail(c->password == NULL);
     g_warn_if_fail(c->ca_file == NULL);
     g_warn_if_fail(c->ciphers == NULL);
@@ -1209,6 +1242,7 @@ SpiceSession *spice_session_new_from_session(SpiceSession *session)
     g_object_get(session,
                  "host", &c->host,
                  "tls-port", &c->tls_port,
+                 "ws-port", &c->ws_port,
                  "password", &c->password,
                  "ca-file", &c->ca_file,
                  "ciphers", &c->ciphers,
@@ -1789,7 +1823,7 @@ static gboolean connect_timeout(gpointer data)
 /* coroutine context */
 G_GNUC_INTERNAL
 GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceChannel *channel,
-                                                   gboolean *use_tls)
+                                                   gboolean *use_tls, char **ws_token)
 {
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     SpiceChannelPrivate *c = channel->priv;
@@ -1801,14 +1835,19 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
     open_host.session = session;
     open_host.channel = channel;
 
-    const char *name = spice_channel_type_to_string(c->channel_type);
-    if (spice_strv_contains(s->secure_channels, "all") ||
-        spice_strv_contains(s->secure_channels, name))
-        *use_tls = TRUE;
-
-    port = *use_tls ? s->tls_port : s->port;
-    if (port == NULL)
-        return NULL;
+    if (s->ws_port != NULL) {
+        port = s->ws_port;
+        *ws_token = s->port;
+    } else {
+        const char *name = spice_channel_type_to_string(c->channel_type);
+        if (spice_strv_contains(s->secure_channels, "all") ||
+            spice_strv_contains(s->secure_channels, name))
+            *use_tls = TRUE;
+        
+        port = *use_tls ? s->tls_port : s->port;
+        if (port == NULL)
+            return NULL;
+    }
 
     open_host.port = strtol(port, &endptr, 10);
     if (*port == '\0' || *endptr != '\0' ||

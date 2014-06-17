@@ -24,6 +24,7 @@
 #include "spice-marshal.h"
 #include "bio-gsocket.h"
 
+#include <nopoll.h>
 #include <openssl/rsa.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
@@ -768,7 +769,13 @@ static void spice_channel_flush_wire(SpiceChannel *channel,
         if (c->has_error) return;
 
         cond = 0;
-        if (c->tls) {
+        if (c->ws) {
+            ret = nopoll_conn_send_binary(c->np_conn, ptr+offset, datalen-offset);
+            if (ret < 0) {
+                g_warning("Error writting to websocket: %s", strerror(errno));
+                ret = -1;
+            }
+        } else if (c->tls) {
             ret = SSL_write(c->ssl, ptr+offset, datalen-offset);
             if (ret < 0) {
                 ret = SSL_get_error(c->ssl, ret);
@@ -896,7 +903,15 @@ reread:
     if (c->has_error) return 0; /* has_error is set by disconnect(), return no error */
 
     cond = 0;
-    if (c->tls) {
+    if (c->ws) {
+        ret = nopoll_conn_read(c->np_conn, data, len, nopoll_false, 0);
+        if (ret < 0) {
+            if (errno == 11) {
+                cond = G_IO_IN;
+            }
+            ret = -1;
+        }
+    } else if (c->tls) {
         ret = SSL_read(c->ssl, data, len);
         if (ret < 0) {
             ret = SSL_get_error(c->ssl, ret);
@@ -2055,14 +2070,20 @@ static void spice_channel_iterate_write(SpiceChannel *channel)
 static void spice_channel_iterate_read(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
+    gboolean pending_data = FALSE;
 
-    g_coroutine_socket_wait(&c->coroutine, c->sock, G_IO_IN);
+    if (c->ws && nopoll_conn_pending_data(c->np_conn) == nopoll_true) {
+        pending_data = TRUE;
+    } else {
+        g_coroutine_socket_wait(&c->coroutine, c->sock, G_IO_IN);
+    }
 
     /* treat all incoming data (block on message completion) */
     while (!c->has_error &&
            c->state != SPICE_CHANNEL_STATE_MIGRATING &&
-           g_socket_condition_check(c->sock, G_IO_IN) & G_IO_IN) {
-
+           ((g_socket_condition_check(c->sock, G_IO_IN) & G_IO_IN) ||
+           pending_data == TRUE)) {
+        pending_data = FALSE;
         do
             spice_channel_recv_msg(channel,
                                    (handler_msg_in)SPICE_CHANNEL_GET_CLASS(channel)->handle_msg, NULL);
@@ -2218,6 +2239,11 @@ static void *spice_channel_coroutine(void *data)
     /* When some other SSL/TLS version becomes obsolete, add it to this
      * variable. */
     long ssl_options = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3;
+    gchar wsportstr[32];
+    GSocketAddress *addr = NULL;
+    GInetSocketAddress *iaddr = NULL;
+    GInetAddress *host;
+    char *ws_token = NULL;
 
     CHANNEL_DEBUG(channel, "Started background coroutine %p", &c->coroutine);
 
@@ -2240,7 +2266,7 @@ static void *spice_channel_coroutine(void *data)
     }
 
 reconnect:
-    c->conn = spice_session_channel_open_host(c->session, channel, &c->tls);
+    c->conn = spice_session_channel_open_host(c->session, channel, &c->tls, &ws_token);
     if (c->conn == NULL) {
         if (!c->tls) {
             CHANNEL_DEBUG(channel, "trying with TLS port");
@@ -2256,7 +2282,49 @@ reconnect:
 
     c->has_error = FALSE;
 
-    if (c->tls) {
+    if (ws_token != NULL) {
+        c->ws = TRUE;
+
+        c->np_ctx = nopoll_ctx_new();
+        if (c->np_ctx == NULL) {
+            g_critical("Can't allocate noPoll context");
+            emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_TLS);
+            goto cleanup;
+        }
+
+        //nopoll_log_enable(c->np_ctx, nopoll_true);
+
+        addr = g_socket_get_remote_address(c->sock, NULL);
+        if (!addr) {
+            g_critical("failed to get peer address");
+            goto cleanup;
+        }
+
+        iaddr = G_INET_SOCKET_ADDRESS(addr);
+        host = g_inet_socket_address_get_address(iaddr);
+        snprintf(&wsportstr[0], 32, "/?token=%s", ws_token);
+
+        c->np_conn = nopoll_conn_tls_new_with_socket(c->np_ctx, NULL, g_socket_get_fd(c->sock),
+                                                     g_inet_address_to_string(host), NULL, NULL,
+                                                     &wsportstr[0], "binary", NULL);
+        if (nopoll_conn_is_ok(c->np_conn) != nopoll_true) {
+            g_critical("Can't connect to websocket");
+            emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_TLS);
+            goto cleanup;
+        }
+
+        if (nopoll_conn_wait_until_connection_ready(c->np_conn, 100) == nopoll_false) {
+            g_critical("Time out waiting for websocket connection");
+            emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_TLS);
+            goto cleanup;
+        }
+
+        if (nopoll_conn_is_ready(c->np_conn) != nopoll_true) {
+            g_critical("Websocket connection is NOT ready");
+            emit_main_context(channel, SPICE_CHANNEL_EVENT, SPICE_CHANNEL_ERROR_TLS);
+            goto cleanup;
+        }
+    } else if (c->tls) {
         c->ctx = SSL_CTX_new(SSLv23_method());
         if (c->ctx == NULL) {
             g_critical("SSL_CTX_new failed");

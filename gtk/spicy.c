@@ -1799,7 +1799,7 @@ int main(int argc, char *argv[])
     GOptionContext *context;
     spice_connection *conn;
     gchar *conf_file, *conf;
-    char *host = NULL, *port = NULL, *tls_port = NULL;
+    char *host = NULL, *port = NULL, *tls_port = NULL, *ws_port = NULL;
 
 #if !GLIB_CHECK_VERSION(2,31,18)
     g_thread_init(NULL);
@@ -1873,6 +1873,7 @@ int main(int argc, char *argv[])
                  "host", &host,
                  "port", &port,
                  "tls-port", &tls_port,
+                 "ws-port", &ws_port,
                  NULL);
     /* If user doesn't provide hostname and port, show the dialog window
        instead of connecting to server automatically */
@@ -1885,6 +1886,7 @@ int main(int argc, char *argv[])
     g_free(host);
     g_free(port);
     g_free(tls_port);
+    g_free(ws_port);
 
     watch_stdin();
 
