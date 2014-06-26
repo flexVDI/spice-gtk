@@ -1128,7 +1128,6 @@ static void spice_usb_device_manager_drv_install_cb(GObject *gobject,
         g_error_free(err);
     }
 
-    spice_usb_device_unref(device);
     spice_usb_device_set_state(device, SPICE_USB_DEVICE_STATE_INSTALLED);
 
     /* device is already ref'ed */
@@ -1138,6 +1137,7 @@ static void spice_usb_device_manager_drv_install_cb(GObject *gobject,
                                                    callback,
                                                    user_data);
 
+    spice_usb_device_unref(device);
 }
 
 static void spice_usb_device_manager_drv_uninstall_cb(GObject *gobject,
@@ -1156,9 +1156,9 @@ static void spice_usb_device_manager_drv_uninstall_cb(GObject *gobject,
         g_clear_error(&err);
     }
 
-    spice_usb_device_unref(cbinfo->device);
     spice_usb_device_set_state(cbinfo->device, SPICE_USB_DEVICE_STATE_NONE);
 
+    spice_usb_device_unref(cbinfo->device);
     g_free(cbinfo);
 }
 
