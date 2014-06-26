@@ -1556,9 +1556,6 @@ void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
     cbinfo->manager     = self;
     cbinfo->device      = spice_usb_device_ref(device);
     cbinfo->installer   = installer;
-    cbinfo->cancellable = NULL;
-    cbinfo->callback    = NULL;
-    cbinfo->user_data   = NULL;
 
     spice_win_usb_driver_uninstall_async(installer, device, NULL,
                                          spice_usb_device_manager_drv_uninstall_cb,
