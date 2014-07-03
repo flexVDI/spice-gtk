@@ -1730,6 +1730,7 @@ static void proxy_lookup_ready(GObject *source_object, GAsyncResult *result,
     addresses = g_resolver_lookup_by_name_finish(G_RESOLVER(source_object),
                                                  result, &open_host->error);
     if (addresses == NULL || open_host->error) {
+        g_prefix_error(&open_host->error, "SPICE proxy: ");
         coroutine_yieldto(open_host->from, NULL);
         return;
     }
