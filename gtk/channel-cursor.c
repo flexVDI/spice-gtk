@@ -389,7 +389,7 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
     }
 
 cache_add:
-    if (cursor && (scursor->flags & SPICE_CURSOR_FLAGS_CACHE_ME)) {
+    if (scursor->flags & SPICE_CURSOR_FLAGS_CACHE_ME) {
         cache_add(c->cursors, hdr->unique, display_cursor_ref(cursor));
     }
 
