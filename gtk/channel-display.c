@@ -730,7 +730,7 @@ static void destroy_canvas(display_surface *surface)
     jpeg_decoder_destroy(surface->jpeg_decoder);
 
     if (surface->shmid == -1) {
-        free(surface->data);
+        g_free(surface->data);
     }
 #ifdef HAVE_SYS_SHM_H
     else {
@@ -986,7 +986,7 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
         memset(c->streams + n, 0, (c->nstreams - n) * sizeof(c->streams[0]));
     }
     g_return_if_fail(c->streams[op->id] == NULL);
-    c->streams[op->id] = spice_new0(display_stream, 1);
+    c->streams[op->id] = g_new0(display_stream, 1);
     st = c->streams[op->id];
 
     st->msg_create = in;
@@ -1486,7 +1486,7 @@ static void destroy_stream(SpiceChannel *channel, int id)
     g_queue_free(st->msgq);
     if (st->timeout != 0)
         g_source_remove(st->timeout);
-    free(st);
+    g_free(st);
     c->streams[id] = NULL;
 }
 
@@ -1498,7 +1498,7 @@ static void clear_streams(SpiceChannel *channel)
     for (i = 0; i < c->nstreams; i++) {
         destroy_stream(channel, i);
     }
-    free(c->streams);
+    g_free(c->streams);
     c->streams = NULL;
     c->nstreams = 0;
 }

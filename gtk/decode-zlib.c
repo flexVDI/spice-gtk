@@ -57,7 +57,7 @@ static SpiceZlibDecoderOps zlib_decoder_ops = {
 
 SpiceZlibDecoder *zlib_decoder_new(void)
 {
-    GlibZlibDecoder *d = spice_new0(GlibZlibDecoder, 1);
+    GlibZlibDecoder *d = g_new0(GlibZlibDecoder, 1);
     int z_ret;
 
     d->_z_strm.zalloc = Z_NULL;

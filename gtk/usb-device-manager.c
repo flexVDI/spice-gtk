@@ -1017,7 +1017,7 @@ static int spice_usb_device_manager_hotplug_cb(libusb_context       *ctx,
                                                void                 *user_data)
 {
     SpiceUsbDeviceManager *self = SPICE_USB_DEVICE_MANAGER(user_data);
-    struct hotplug_idle_cb_args *args = g_malloc(sizeof(*args));
+    struct hotplug_idle_cb_args *args = g_malloc0(sizeof(*args));
 
     args->self = g_object_ref(self);
     args->device = libusb_ref_device(device);

@@ -1050,7 +1050,7 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
     }
 
     size = sizeof(VDAgentMonitorsConfig) + sizeof(VDAgentMonConfig) * monitors;
-    mon = spice_malloc0(size);
+    mon = g_malloc0(size);
 
     mon->num_of_monitors = monitors;
     if (c->disable_display_position == FALSE ||
@@ -1081,7 +1081,7 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
         monitors_align(mon->monitors, mon->num_of_monitors);
 
     agent_msg_queue(channel, VD_AGENT_MONITORS_CONFIG, size, mon);
-    free(mon);
+    g_free(mon);
 
     spice_channel_wakeup(SPICE_CHANNEL(channel), FALSE);
     if (c->timer_id != 0) {
@@ -1133,7 +1133,7 @@ static void agent_announce_caps(SpiceMainChannel *channel)
         return;
 
     size = sizeof(VDAgentAnnounceCapabilities) + VD_AGENT_CAPS_BYTES;
-    caps = spice_malloc0(size);
+    caps = g_malloc0(size);
     if (!c->agent_caps_received)
         caps->request = 1;
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_MOUSE_STATE);
@@ -1144,7 +1144,7 @@ static void agent_announce_caps(SpiceMainChannel *channel)
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_CLIPBOARD_SELECTION);
 
     agent_msg_queue(channel, VD_AGENT_ANNOUNCE_CAPABILITIES, size, caps);
-    free(caps);
+    g_free(caps);
 }
 
 /* any context: the message is not flushed immediately,
@@ -1879,7 +1879,7 @@ static void main_handle_agent_data_msg(SpiceChannel* channel, int* msg_size, guc
             SPICE_DEBUG("agent msg start: msg_size=%d, protocol=%d, type=%d",
                         c->agent_msg.size, c->agent_msg.protocol, c->agent_msg.type);
             g_return_if_fail(c->agent_msg_data == NULL);
-            c->agent_msg_data = g_malloc(c->agent_msg.size);
+            c->agent_msg_data = g_malloc0(c->agent_msg.size);
         }
     }
 
@@ -2740,7 +2740,7 @@ static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
     SpiceFileXferTask *task;
     static uint32_t xfer_id;    /* Used to identify task id */
 
-    task = spice_malloc0(sizeof(SpiceFileXferTask));
+    task = g_malloc0(sizeof(SpiceFileXferTask));
     task->id = ++xfer_id;
     task->channel = g_object_ref(channel);
     task->file = g_object_ref(file);

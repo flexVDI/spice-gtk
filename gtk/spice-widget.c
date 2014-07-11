@@ -2559,7 +2559,7 @@ GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
     /* TODO: ensure d->data has been exposed? */
     g_return_val_if_fail(d->data != NULL, NULL);
 
-    data = g_malloc(d->area.width * d->area.height * 3);
+    data = g_malloc0(d->area.width * d->area.height * 3);
     src = d->data;
     dest = data;
 

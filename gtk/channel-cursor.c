@@ -323,7 +323,7 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
     g_return_val_if_fail(scursor->data_size != 0, NULL);
 
     size = 4u * hdr->width * hdr->height;
-    cursor = spice_malloc(sizeof(*cursor) + size);
+    cursor = g_malloc0(sizeof(*cursor) + size);
     cursor->hdr = *hdr;
     cursor->default_cursor = FALSE;
     cursor->refcount = 1;

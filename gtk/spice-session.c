@@ -1884,7 +1884,7 @@ void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel)
     g_return_if_fail(s != NULL);
     g_return_if_fail(channel != NULL);
 
-    item = spice_new0(struct channel, 1);
+    item = g_new0(struct channel, 1);
     item->channel = channel;
     ring_add(&s->channels, &item->link);
 

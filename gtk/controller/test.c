@@ -94,13 +94,13 @@ void send_value (uint32_t id, uint32_t value)
 void send_data (uint32_t id, uint8_t* data, size_t data_size)
 {
     size_t size = sizeof (ControllerData) + data_size;
-    ControllerData* msg = (ControllerData*)malloc (size);
+    ControllerData* msg = (ControllerData*)g_malloc0 (size);
 
     msg->base.id = id;
     msg->base.size = (uint32_t)size;
     memcpy (msg->data, data, data_size);
     write_to_pipe (msg, size);
-    free (msg);
+    g_free (msg);
 }
 
 ssize_t read_from_pipe (void* data, size_t size)

@@ -516,7 +516,7 @@ void spice_msg_in_unref(SpiceMsgIn *in)
     if (in->parent) {
         spice_msg_in_unref(in->parent);
     } else {
-        free(in->data);
+        g_free(in->data);
     }
     g_slice_free(SpiceMsgIn, in);
 }
@@ -866,7 +866,7 @@ static void spice_channel_write_msg(SpiceChannel *channel, SpiceMsgOut *out)
     spice_channel_write(channel, data, len);
 
     if (free_data)
-        free(data);
+        g_free(data);
 
     spice_msg_out_unref(out);
 }
@@ -1143,7 +1143,7 @@ static void spice_channel_send_link(SpiceChannel *channel)
     c->link_hdr.size += (c->link_msg.num_common_caps +
                          c->link_msg.num_channel_caps) * sizeof(uint32_t);
 
-    buffer = spice_malloc(sizeof(c->link_hdr) + c->link_hdr.size);
+    buffer = g_malloc0(sizeof(c->link_hdr) + c->link_hdr.size);
     p = buffer;
 
     memcpy(p, &c->link_hdr, sizeof(c->link_hdr)); p += sizeof(c->link_hdr);
@@ -1163,7 +1163,7 @@ static void spice_channel_send_link(SpiceChannel *channel)
                   c->link_msg.num_common_caps,
                   c->link_msg.num_channel_caps);
     spice_channel_write(channel, buffer, p - buffer);
-    free(buffer);
+    g_free(buffer);
 }
 
 /* coroutine context */
@@ -1191,7 +1191,7 @@ static gboolean spice_channel_recv_link_hdr(SpiceChannel *channel, gboolean *swi
         goto error;
     }
 
-    c->peer_msg = spice_malloc(c->peer_hdr.size);
+    c->peer_msg = g_malloc0(c->peer_hdr.size);
     if (c->peer_msg == NULL) {
         g_warning("invalid peer header size: %u", c->peer_hdr.size);
         goto error;
@@ -1427,7 +1427,7 @@ static gboolean spice_channel_perform_auth_sasl(SpiceChannel *channel)
         goto error;
     }
 
-    mechlist = g_malloc(len + 1);
+    mechlist = g_malloc0(len + 1);
     spice_channel_read(channel, mechlist, len);
     mechlist[len] = '\0';
     if (c->has_error) {
@@ -1498,7 +1498,7 @@ restart:
 
     /* NB, distinction of NULL vs "" is *critical* in SASL */
     if (len > 0) {
-        serverin = g_malloc(len);
+        serverin = g_malloc0(len);
         spice_channel_read(channel, serverin, len);
         serverin[len - 1] = '\0';
         len--;
@@ -1580,7 +1580,7 @@ restart:
 
         /* NB, distinction of NULL vs "" is *critical* in SASL */
         if (len) {
-            serverin = g_malloc(len);
+            serverin = g_malloc0(len);
             spice_channel_read(channel, serverin, len);
             serverin[len - 1] = '\0';
             len--;
@@ -1780,7 +1780,7 @@ void spice_channel_recv_msg(SpiceChannel *channel,
     /* FIXME: do not allow others to take ref on in, and use realloc here?
      * this would avoid malloc/free on each message?
      */
-    in->data = spice_malloc(msg_size);
+    in->data = g_malloc0(msg_size);
     spice_channel_read(channel, in->data, msg_size);
     if (c->has_error)
         goto end;
@@ -2543,7 +2543,7 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
 
     c->fd = -1;
 
-    free(c->peer_msg);
+    g_free(c->peer_msg);
     c->peer_msg = NULL;
     c->peer_pos = 0;
 

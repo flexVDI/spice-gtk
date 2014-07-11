@@ -418,7 +418,7 @@ static void record_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
 
     g_free(c->last_frame);
     c->frame_bytes = frame_size * 16 * start->channels / 8;
-    c->last_frame = g_malloc(c->frame_bytes);
+    c->last_frame = g_malloc0(c->frame_bytes);
     c->last_frame_current = 0;
 
     g_coroutine_signal_emit(channel, signals[SPICE_RECORD_START], 0,
