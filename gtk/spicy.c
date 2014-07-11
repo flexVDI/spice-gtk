@@ -1845,7 +1845,9 @@ int main(int argc, char *argv[])
         exit(0);
     }
 
+#if !GLIB_CHECK_VERSION(2,36,0)
     g_type_init();
+#endif
     mainloop = g_main_loop_new(NULL, false);
 
     conn = connection_new();
