@@ -88,7 +88,8 @@ static void spice_cursor_channel_init(SpiceCursorChannel *channel)
 
 static void spice_cursor_channel_finalize(GObject *obj)
 {
-    SpiceCursorChannelPrivate *c = SPICE_CURSOR_CHANNEL_GET_PRIVATE(obj);
+    SpiceCursorChannel *channel = SPICE_CURSOR_CHANNEL(obj);
+    SpiceCursorChannelPrivate *c = channel->priv;
 
     g_clear_pointer(&c->cursors, cache_unref);
 

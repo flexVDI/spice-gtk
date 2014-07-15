@@ -81,9 +81,10 @@ void stream_dispose(struct stream *s)
 
 static void spice_gstaudio_dispose(GObject *obj)
 {
+    SpiceGstaudio *gstaudio = SPICE_GSTAUDIO(obj);
     SpiceGstaudioPrivate *p;
     SPICE_DEBUG("%s", __FUNCTION__);
-    p = SPICE_GSTAUDIO_GET_PRIVATE(obj);
+    p = gstaudio->priv;
 
     stream_dispose(&p->playback);
     stream_dispose(&p->record);
@@ -261,7 +262,7 @@ static void channel_event(SpiceChannel *channel, SpiceChannelEvent event,
 static void playback_stop(SpicePlaybackChannel *channel, gpointer data)
 {
     SpiceGstaudio *gstaudio = data;
-    SpiceGstaudioPrivate *p = SPICE_GSTAUDIO_GET_PRIVATE(gstaudio);
+    SpiceGstaudioPrivate *p = gstaudio->priv;
 
     if (p->playback.pipe)
         gst_element_set_state(p->playback.pipe, GST_STATE_READY);
@@ -274,7 +275,7 @@ static void playback_stop(SpicePlaybackChannel *channel, gpointer data)
 static gboolean update_mmtime_timeout_cb(gpointer data)
 {
     SpiceGstaudio *gstaudio = data;
-    SpiceGstaudioPrivate *p = SPICE_GSTAUDIO_GET_PRIVATE(gstaudio);
+    SpiceGstaudioPrivate *p = gstaudio->priv;
     GstQuery *q;
 
     q = gst_query_new_latency();
@@ -296,7 +297,7 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
                            gint frequency, gpointer data)
 {
     SpiceGstaudio *gstaudio = data;
-    SpiceGstaudioPrivate *p = SPICE_GSTAUDIO_GET_PRIVATE(gstaudio);
+    SpiceGstaudioPrivate *p = gstaudio->priv;
 
     g_return_if_fail(p != NULL);
     g_return_if_fail(format == SPICE_AUDIO_FMT_S16);
@@ -349,7 +350,7 @@ static void playback_data(SpicePlaybackChannel *channel,
                           gpointer data)
 {
     SpiceGstaudio *gstaudio = data;
-    SpiceGstaudioPrivate *p = SPICE_GSTAUDIO_GET_PRIVATE(gstaudio);
+    SpiceGstaudioPrivate *p = gstaudio->priv;
     GstBuffer *buf;
 
     g_return_if_fail(p != NULL);

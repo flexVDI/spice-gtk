@@ -25,7 +25,7 @@
 G_GNUC_INTERNAL
 int spicex_image_create(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     if (d->ximage != NULL)
         return 0;
@@ -51,7 +51,7 @@ int spicex_image_create(SpiceDisplay *display)
 G_GNUC_INTERNAL
 void spicex_image_destroy(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     if (d->ximage) {
         cairo_surface_destroy(d->ximage);
@@ -67,7 +67,7 @@ void spicex_image_destroy(SpiceDisplay *display)
 G_GNUC_INTERNAL
 void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     cairo_rectangle_int_t rect;
     cairo_region_t *region;
     double s;
@@ -153,6 +153,6 @@ void spicex_expose_event(SpiceDisplay *display, GdkEventExpose *expose)
 G_GNUC_INTERNAL
 gboolean spicex_is_scaled(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     return d->allow_scaling;
 }

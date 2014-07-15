@@ -124,7 +124,7 @@ static void spice_display_get_property(GObject    *object,
                                        GParamSpec *pspec)
 {
     SpiceDisplay *display = SPICE_DISPLAY(object);
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     gboolean boolean;
 
     switch (prop_id) {
@@ -176,7 +176,7 @@ static void spice_display_get_property(GObject    *object,
 
 static void scaling_updated(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(display));
 
     recalc_geometry(GTK_WIDGET(display));
@@ -187,7 +187,7 @@ static void scaling_updated(SpiceDisplay *display)
 
 static void update_size_request(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     gint reqwidth, reqheight;
 
     if (d->resize_guest_enable) {
@@ -204,7 +204,7 @@ static void update_size_request(SpiceDisplay *display)
 
 static void update_keyboard_focus(SpiceDisplay *display, gboolean state)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     d->keyboard_have_focus = state;
 
@@ -220,7 +220,7 @@ static void update_keyboard_focus(SpiceDisplay *display, gboolean state)
 
 static void update_ready(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     gboolean ready;
 
     ready = d->mark != 0 && d->monitor_ready;
@@ -245,7 +245,7 @@ static void set_monitor_ready(SpiceDisplay *self, gboolean ready)
 
 static gint get_display_id(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     /* supported monitor_id only with display channel #0 */
     if (d->channel_id == 0 && d->monitor_id >= 0)
@@ -258,7 +258,7 @@ static gint get_display_id(SpiceDisplay *display)
 
 static void update_monitor_area(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     SpiceDisplayMonitorConfig *cfg, *c = NULL;
     GArray *monitors = NULL;
     int i;
@@ -313,7 +313,7 @@ static void spice_display_set_property(GObject      *object,
                                        GParamSpec   *pspec)
 {
     SpiceDisplay *display = SPICE_DISPLAY(object);
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     switch (prop_id) {
     case PROP_SESSION:
@@ -386,7 +386,7 @@ static void session_inhibit_keyboard_grab_changed(GObject    *gobject,
                                                   gpointer    user_data)
 {
     SpiceDisplay *display = user_data;
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     g_object_get(d->session, "inhibit-keyboard-grab",
                  &d->keyboard_grab_inhibit, NULL);
@@ -397,7 +397,7 @@ static void session_inhibit_keyboard_grab_changed(GObject    *gobject,
 static void spice_display_dispose(GObject *obj)
 {
     SpiceDisplay *display = SPICE_DISPLAY(obj);
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     SPICE_DEBUG("spice display dispose");
 
@@ -416,7 +416,7 @@ static void spice_display_dispose(GObject *obj)
 static void spice_display_finalize(GObject *obj)
 {
     SpiceDisplay *display = SPICE_DISPLAY(obj);
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     SPICE_DEBUG("Finalize spice display");
 
@@ -484,7 +484,7 @@ static void drag_data_received_callback(SpiceDisplay *self,
     const guchar *buf;
     gchar **file_urls;
     int n_files;
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(self);
+    SpiceDisplayPrivate *d = self->priv;
     int i = 0;
     GFile **files;
 
@@ -579,7 +579,7 @@ spice_display_constructor(GType                  gtype,
     }
 
     display = SPICE_DISPLAY(obj);
-    d = SPICE_DISPLAY_GET_PRIVATE(display);
+    d = display->priv;
 
     if (!d->session)
         g_error("SpiceDisplay constructed without a session");
@@ -697,7 +697,7 @@ SpiceGrabSequence *spice_display_get_grab_keys(SpiceDisplay *display)
 static void try_keyboard_grab(SpiceDisplay *display)
 {
     GtkWidget *widget = GTK_WIDGET(display);
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     GdkGrabStatus status;
 
     if (g_getenv("SPICE_NOGRAB"))
@@ -740,7 +740,7 @@ static void try_keyboard_grab(SpiceDisplay *display)
 
 static void try_keyboard_ungrab(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     GtkWidget *widget = GTK_WIDGET(display);
 
     if (!d->keyboard_grab_active)
@@ -760,7 +760,7 @@ static void try_keyboard_ungrab(SpiceDisplay *display)
 
 static void update_keyboard_grab(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     if (d->keyboard_grab_enable &&
         !d->keyboard_grab_inhibit &&
@@ -772,7 +772,7 @@ static void update_keyboard_grab(SpiceDisplay *display)
 
 static void set_mouse_accel(SpiceDisplay *display, gboolean enabled)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
 #if defined GDK_WINDOWING_X11
     GdkWindow *w = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
@@ -857,7 +857,7 @@ error:
 
 static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     GdkWindow *window = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
     GdkGrabStatus status = GDK_GRAB_BROKEN;
     GdkCursor *blank = get_blank_cursor();
@@ -907,7 +907,7 @@ end:
 
 static void update_mouse_pointer(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     GdkWindow *window = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
 
     if (!window)
@@ -930,7 +930,7 @@ static void update_mouse_pointer(SpiceDisplay *display)
 
 static void try_mouse_grab(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     if (g_getenv("SPICE_NOGRAB"))
         return;
@@ -958,7 +958,7 @@ static void try_mouse_grab(SpiceDisplay *display)
 
 static void mouse_wrap(SpiceDisplay *display, GdkEventMotion *motion)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     gint xr, yr;
 
 #ifdef WIN32
@@ -990,7 +990,7 @@ static void mouse_wrap(SpiceDisplay *display, GdkEventMotion *motion)
 
 static void try_mouse_ungrab(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     if (!d->mouse_grab_active)
         return;
@@ -1009,7 +1009,7 @@ static void try_mouse_ungrab(SpiceDisplay *display)
 
 static void update_mouse_grab(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     if (d->mouse_grab_enable &&
         !d->keyboard_grab_inhibit &&
@@ -1022,7 +1022,7 @@ static void update_mouse_grab(SpiceDisplay *display)
 static void recalc_geometry(GtkWidget *widget)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     gdouble zoom = 1.0;
 
     if (spicex_is_scaled(display))
@@ -1055,7 +1055,7 @@ static void recalc_geometry(GtkWidget *widget)
 
 static gboolean do_color_convert(SpiceDisplay *display, GdkRectangle *r)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     guint32 *dest = d->data;
     guint16 *src = d->data_origin;
     gint x, y;
@@ -1095,7 +1095,7 @@ static gboolean do_color_convert(SpiceDisplay *display, GdkRectangle *r)
 static gboolean draw_event(GtkWidget *widget, cairo_t *cr)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     g_return_val_if_fail(d != NULL, false);
 
     if (d->mark == 0 || d->data == NULL ||
@@ -1112,7 +1112,7 @@ static gboolean draw_event(GtkWidget *widget, cairo_t *cr)
 static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     g_return_val_if_fail(d != NULL, false);
 
     if (d->mark == 0 || d->data == NULL ||
@@ -1135,7 +1135,7 @@ typedef enum {
 
 static void key_press_and_release(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     if (d->key_delayed_scancode == 0)
         return;
@@ -1151,7 +1151,8 @@ static void key_press_and_release(SpiceDisplay *display)
 
 static gboolean key_press_delayed(gpointer data)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(data);
+    SpiceDisplay *display = data;
+    SpiceDisplayPrivate *d = display->priv;
 
     if (d->key_delayed_scancode == 0)
         return FALSE;
@@ -1169,7 +1170,7 @@ static gboolean key_press_delayed(gpointer data)
 
 static void send_key(SpiceDisplay *display, int scancode, SendKeyType type, gboolean press_delayed)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     uint32_t i, b, m;
 
     g_return_if_fail(scancode != 0);
@@ -1224,7 +1225,7 @@ static void send_key(SpiceDisplay *display, int scancode, SendKeyType type, gboo
 
 static void release_keys(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     uint32_t i, b;
 
     SPICE_DEBUG("%s", __FUNCTION__);
@@ -1243,7 +1244,7 @@ static void release_keys(SpiceDisplay *display)
 
 static gboolean check_for_grab_key(SpiceDisplay *display, int type, int keyval)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     int i;
 
     if (!d->grabseq->nkeysyms)
@@ -1283,7 +1284,7 @@ static void update_display(SpiceDisplay *display)
 static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     int scancode;
 
 #ifdef WIN32
@@ -1342,7 +1343,7 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
 
 static guint get_scancode_from_keyval(SpiceDisplay *display, guint keyval)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     guint keycode = 0;
     GdkKeymapKey *keys = NULL;
     gint n_keys = 0;
@@ -1395,7 +1396,7 @@ void spice_display_send_keys(SpiceDisplay *display, const guint *keyvals,
 static gboolean enter_event(GtkWidget *widget, GdkEventCrossing *crossing G_GNUC_UNUSED)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     SPICE_DEBUG("%s", __FUNCTION__);
 
@@ -1409,7 +1410,7 @@ static gboolean enter_event(GtkWidget *widget, GdkEventCrossing *crossing G_GNUC
 static gboolean leave_event(GtkWidget *widget, GdkEventCrossing *crossing G_GNUC_UNUSED)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     SPICE_DEBUG("%s", __FUNCTION__);
 
@@ -1425,7 +1426,7 @@ static gboolean leave_event(GtkWidget *widget, GdkEventCrossing *crossing G_GNUC
 static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UNUSED)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     SPICE_DEBUG("%s", __FUNCTION__);
 
@@ -1449,7 +1450,7 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
 static gboolean focus_out_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UNUSED)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     SPICE_DEBUG("%s", __FUNCTION__);
     update_display(NULL);
@@ -1536,7 +1537,7 @@ void spicex_transform_input (SpiceDisplay *display,
 static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     int x, y;
 
     if (!d->inputs)
@@ -1579,7 +1580,7 @@ static gboolean scroll_event(GtkWidget *widget, GdkEventScroll *scroll)
 {
     int button;
     SpiceDisplay *display = SPICE_DISPLAY(widget);
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     SPICE_DEBUG("%s", __FUNCTION__);
 
@@ -1607,7 +1608,7 @@ static gboolean scroll_event(GtkWidget *widget, GdkEventScroll *scroll)
 static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     int x, y;
 
     SPICE_DEBUG("%s %s: button %d, state 0x%x", __FUNCTION__,
@@ -1669,7 +1670,7 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
 static gboolean configure_event(GtkWidget *widget, GdkEventConfigure *conf)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     if (conf->width == d->ww && conf->height == d->wh &&
             conf->x == d->mx && conf->y == d->my) {
@@ -1697,7 +1698,7 @@ static gboolean configure_event(GtkWidget *widget, GdkEventConfigure *conf)
 
 static void update_image(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     spicex_image_create(display);
     if (d->convert)
@@ -2017,7 +2018,7 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
 static void update_mouse_mode(SpiceChannel *channel, gpointer data)
 {
     SpiceDisplay *display = data;
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(display));
 
     g_object_get(channel, "mouse-mode", &d->mouse_mode, NULL);
@@ -2049,7 +2050,7 @@ static void update_mouse_mode(SpiceChannel *channel, gpointer data)
 static void update_area(SpiceDisplay *display,
                         gint x, gint y, gint width, gint height)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     GdkRectangle primary = {
         .x = 0,
         .y = 0,
@@ -2087,7 +2088,7 @@ static void primary_create(SpiceChannel *channel, gint format,
                            gint shmid, gpointer imgdata, gpointer data)
 {
     SpiceDisplay *display = data;
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     d->format = format;
     d->stride = stride;
@@ -2102,7 +2103,7 @@ static void primary_create(SpiceChannel *channel, gint format,
 static void primary_destroy(SpiceChannel *channel, gpointer data)
 {
     SpiceDisplay *display = SPICE_DISPLAY(data);
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     spicex_image_destroy(display);
     d->width  = 0;
@@ -2118,7 +2119,7 @@ static void invalidate(SpiceChannel *channel,
                        gint x, gint y, gint w, gint h, gpointer data)
 {
     SpiceDisplay *display = data;
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     int display_x, display_y;
     int x1, y1, x2, y2;
     double s;
@@ -2154,7 +2155,7 @@ static void invalidate(SpiceChannel *channel,
 
 static void mark(SpiceDisplay *display, gint mark)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     g_return_if_fail(d != NULL);
 
     SPICE_DEBUG("widget mark: %d, %d:%d %p", mark, d->channel_id, d->monitor_id, display);
@@ -2167,7 +2168,7 @@ static void cursor_set(SpiceCursorChannel *channel,
                        gpointer rgba, gpointer data)
 {
     SpiceDisplay *display = data;
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     GdkCursor *cursor = NULL;
 
     cursor_invalidate(display);
@@ -2213,7 +2214,7 @@ static void cursor_set(SpiceCursorChannel *channel,
 static void cursor_hide(SpiceCursorChannel *channel, gpointer data)
 {
     SpiceDisplay *display = data;
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     if (d->show_cursor != NULL) /* then we are already hidden */
         return;
@@ -2336,7 +2337,7 @@ static void cursor_reset(SpiceCursorChannel *channel, gpointer data)
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
     SpiceDisplay *display = data;
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     int id;
 
     g_object_get(channel, "channel-id", &id, NULL);
@@ -2409,7 +2410,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
     SpiceDisplay *display = data;
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     int id;
 
     g_object_get(channel, "channel-id", &id, NULL);

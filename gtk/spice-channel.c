@@ -224,7 +224,7 @@ static void spice_channel_get_property(GObject    *gobject,
 G_GNUC_INTERNAL
 gint spice_channel_get_channel_id(SpiceChannel *channel)
 {
-    SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    SpiceChannelPrivate *c = channel->priv;
 
     g_return_val_if_fail(c != NULL, 0);
     return c->channel_id;
@@ -233,7 +233,7 @@ gint spice_channel_get_channel_id(SpiceChannel *channel)
 G_GNUC_INTERNAL
 gint spice_channel_get_channel_type(SpiceChannel *channel)
 {
-    SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    SpiceChannelPrivate *c = channel->priv;
 
     g_return_val_if_fail(c != NULL, 0);
     return c->channel_type;
@@ -2493,11 +2493,13 @@ gboolean spice_channel_connect(SpiceChannel *channel)
  **/
 gboolean spice_channel_open_fd(SpiceChannel *channel, int fd)
 {
-    SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    SpiceChannelPrivate *c;
 
-    g_return_val_if_fail(c != NULL, FALSE);
+    g_return_val_if_fail(SPICE_IS_CHANNEL(channel), FALSE);
+    g_return_val_if_fail(channel->priv != NULL, FALSE);
     g_return_val_if_fail(fd >= -1, FALSE);
 
+    c = channel->priv;
     c->fd = fd;
 
     return channel_connect(channel);
@@ -2506,7 +2508,7 @@ gboolean spice_channel_open_fd(SpiceChannel *channel, int fd)
 /* system or coroutine context */
 static void channel_reset(SpiceChannel *channel, gboolean migrating)
 {
-    SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    SpiceChannelPrivate *c = channel->priv;
 
     if (c->connect_delayed_id) {
         g_source_remove(c->connect_delayed_id);
@@ -2578,7 +2580,7 @@ void spice_channel_reset(SpiceChannel *channel, gboolean migrating)
 /* system or coroutine context */
 static void channel_disconnect(SpiceChannel *channel)
 {
-    SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    SpiceChannelPrivate *c = channel->priv;
 
     g_return_if_fail(c != NULL);
 
@@ -2607,10 +2609,14 @@ static void channel_disconnect(SpiceChannel *channel)
  **/
 void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
 {
-    SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    SpiceChannelPrivate *c;
 
     CHANNEL_DEBUG(channel, "channel disconnect %d", reason);
-    g_return_if_fail(c != NULL);
+
+    g_return_if_fail(SPICE_IS_CHANNEL(channel));
+    g_return_if_fail(channel->priv != NULL);
+
+    c = channel->priv;
 
     if (c->state == SPICE_CHANNEL_STATE_UNCONNECTED)
         return;
@@ -2749,8 +2755,8 @@ enum spice_channel_state spice_channel_get_state(SpiceChannel *channel)
 G_GNUC_INTERNAL
 void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap, gboolean swap_msgs)
 {
-    SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
-    SpiceChannelPrivate *s = SPICE_CHANNEL_GET_PRIVATE(swap);
+    SpiceChannelPrivate *c = channel->priv;
+    SpiceChannelPrivate *s = swap->priv;
 
     g_return_if_fail(c != NULL);
     g_return_if_fail(s != NULL);
@@ -2811,7 +2817,7 @@ static void spice_channel_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
 
 static void spice_channel_reset_capabilities(SpiceChannel *channel)
 {
-    SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    SpiceChannelPrivate *c = channel->priv;
     g_array_set_size(c->caps, 0);
 
     if (SPICE_CHANNEL_GET_CLASS(channel)->channel_reset_capabilities) {
@@ -2821,7 +2827,7 @@ static void spice_channel_reset_capabilities(SpiceChannel *channel)
 
 static void spice_channel_send_migration_handshake(SpiceChannel *channel)
 {
-    SpiceChannelPrivate *c = SPICE_CHANNEL_GET_PRIVATE(channel);
+    SpiceChannelPrivate *c = channel->priv;
 
     if (SPICE_CHANNEL_GET_CLASS(channel)->channel_send_migration_handshake) {
         SPICE_CHANNEL_GET_CLASS(channel)->channel_send_migration_handshake(channel);
