@@ -890,6 +890,15 @@ static void clipboard_received_cb(GtkClipboard *clipboard,
         }
 
         len = strlen(conv);
+    } else {
+        /* On Windows, with some versions of gtk+, GtkSelectionData::length
+         * will include the final '\0'. When a string with this trailing '\0'
+         * is pasted in some linux applications, it will be pasted as <NIL> or
+         * as an invisible character, which is unwanted. Ensure the length we
+         * send to the agent does not include any trailing '\0'
+         * This is gtk+ bug https://bugzilla.gnome.org/show_bug.cgi?id=734670
+         */
+        len = strlen((const char *)data);
     }
 
     spice_main_clipboard_selection_notify(s->main, selection, type,
