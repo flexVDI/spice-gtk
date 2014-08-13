@@ -140,7 +140,7 @@ static guint32 get_keyboard_lock_modifiers(void)
     if (keyboard_state.led_mask & 0x04) {
         modifiers |= SPICE_INPUTS_SCROLL_LOCK;
     }
-#elif defined(win32)
+#elif defined(WIN32)
     if (GetKeyState(VK_CAPITAL) & 1) {
         modifiers |= SPICE_INPUTS_CAPS_LOCK;
     }
