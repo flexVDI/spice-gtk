@@ -17,6 +17,8 @@
 */
 #include "config.h"
 
+#include <glib.h>
+
 #if HAVE_X11_XKBLIB_H
 #include <X11/XKBlib.h>
 #include <gdk/gdkx.h>
@@ -25,7 +27,7 @@
 #include <X11/Xlib.h>
 #include <gdk/gdkx.h>
 #endif
-#ifdef WIN32
+#ifdef G_OS_WIN32
 #include <windows.h>
 #include <gdk/gdkwin32.h>
 #ifndef MAPVK_VK_TO_VSC /* may be undefined in older mingw-headers */
@@ -140,7 +142,7 @@ static guint32 get_keyboard_lock_modifiers(void)
     if (keyboard_state.led_mask & 0x04) {
         modifiers |= SPICE_INPUTS_SCROLL_LOCK;
     }
-#elif defined(WIN32)
+#elif defined(G_OS_WIN32)
     if (GetKeyState(VK_CAPITAL) & 1) {
         modifiers |= SPICE_INPUTS_CAPS_LOCK;
     }

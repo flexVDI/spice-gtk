@@ -81,7 +81,7 @@ struct _SpiceDisplayChannelPrivate {
     GArray                      *monitors;
     guint                       monitors_max;
     gboolean                    enable_adaptive_streaming;
-#ifdef WIN32
+#ifdef G_OS_WIN32
     HDC dc;
 #endif
 };
@@ -575,7 +575,7 @@ static SpiceImageSurfacesOps image_surfaces_ops = {
     .get = surfaces_get
 };
 
-#if defined(WIN32)
+#if defined(G_OS_WIN32)
 static HDC create_compatible_dc(void)
 {
     HDC dc = CreateCompatibleDC(NULL);
@@ -615,7 +615,7 @@ static void spice_display_channel_init(SpiceDisplayChannel *channel)
     c->image_cache.ops = &image_cache_ops;
     c->palette_cache.ops = &palette_cache_ops;
     c->image_surfaces.ops = &image_surfaces_ops;
-#if defined(WIN32)
+#if defined(G_OS_WIN32)
     c->dc = create_compatible_dc();
 #endif
     c->monitors_max = 1;
@@ -1143,7 +1143,7 @@ static gboolean display_stream_render(display_stream *st)
 
             st->surface->canvas->ops->put_image(
                 st->surface->canvas,
-#ifdef WIN32
+#ifdef G_OS_WIN32
                 SPICE_DISPLAY_CHANNEL(st->channel)->priv->dc,
 #endif
                 dest, data,

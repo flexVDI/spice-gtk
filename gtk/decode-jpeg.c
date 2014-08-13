@@ -19,7 +19,7 @@
 
 #include "decode.h"
 
-#ifdef WIN32
+#ifdef G_OS_WIN32
 /* We need some hacks to avoid warnings from the jpeg headers, ex: */
 /* #define HAVE_BOOLEAN */
 #define XMD_H

@@ -18,6 +18,7 @@
 #include "config.h"
 
 #include <math.h>
+#include <glib.h>
 
 #if HAVE_X11_XKBLIB_H
 #include <X11/XKBlib.h>
@@ -27,7 +28,7 @@
 #include <X11/Xlib.h>
 #include <gdk/gdkx.h>
 #endif
-#ifdef WIN32
+#ifdef G_OS_WIN32
 #include <windows.h>
 #include <gdk/gdkwin32.h>
 #ifndef MAPVK_VK_TO_VSC /* may be undefined in older mingw-headers */
@@ -99,7 +100,7 @@ enum {
 
 static guint signals[SPICE_DISPLAY_LAST_SIGNAL];
 
-#ifdef WIN32
+#ifdef G_OS_WIN32
 static HWND win32_window = NULL;
 #endif
 
@@ -639,7 +640,7 @@ void spice_display_set_grab_keys(SpiceDisplay *display, SpiceGrabSequence *seq)
     d->activeseq = g_new0(gboolean, d->grabseq->nkeysyms);
 }
 
-#ifdef WIN32
+#ifdef G_OS_WIN32
 static LRESULT CALLBACK keyboard_hook_cb(int code, WPARAM wparam, LPARAM lparam)
 {
     if  (win32_window && code == HC_ACTION && wparam != WM_KEYUP) {
@@ -721,7 +722,7 @@ static void try_keyboard_grab(SpiceDisplay *display)
     SPICE_DEBUG("grab keyboard");
     gtk_widget_grab_focus(widget);
 
-#ifdef WIN32
+#ifdef G_OS_WIN32
     if (d->keyboard_hook == NULL)
         d->keyboard_hook = SetWindowsHookEx(WH_KEYBOARD_LL, keyboard_hook_cb,
                                             GetModuleHandle(NULL), 0);
@@ -748,7 +749,7 @@ static void try_keyboard_ungrab(SpiceDisplay *display)
 
     SPICE_DEBUG("ungrab keyboard");
     gdk_keyboard_ungrab(GDK_CURRENT_TIME);
-#ifdef WIN32
+#ifdef G_OS_WIN32
     if (d->keyboard_hook != NULL) {
         UnhookWindowsHookEx(d->keyboard_hook);
         d->keyboard_hook = NULL;
@@ -811,7 +812,7 @@ static void set_mouse_accel(SpiceDisplay *display, gboolean enabled)
 #endif
 }
 
-#ifdef WIN32
+#ifdef G_OS_WIN32
 static gboolean win32_clip_cursor(void)
 {
     RECT window, workarea, rect;
@@ -865,7 +866,7 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
     if (!gtk_widget_get_realized(GTK_WIDGET(display)))
         goto end;
 
-#ifdef WIN32
+#ifdef G_OS_WIN32
     if (!win32_clip_cursor())
         goto end;
 #endif
@@ -961,7 +962,7 @@ static void mouse_wrap(SpiceDisplay *display, GdkEventMotion *motion)
     SpiceDisplayPrivate *d = display->priv;
     gint xr, yr;
 
-#ifdef WIN32
+#ifdef G_OS_WIN32
     RECT clip;
     g_return_if_fail(GetClipCursor(&clip));
     xr = clip.left + (clip.right - clip.left) / 2;
@@ -997,7 +998,7 @@ static void try_mouse_ungrab(SpiceDisplay *display)
 
     gdk_pointer_ungrab(GDK_CURRENT_TIME);
     gtk_grab_remove(GTK_WIDGET(display));
-#ifdef WIN32
+#ifdef G_OS_WIN32
     ClipCursor(NULL);
 #endif
     set_mouse_accel(display, TRUE);
@@ -1276,7 +1277,7 @@ static gboolean check_for_grab_key(SpiceDisplay *display, int type, int keyval)
 
 static void update_display(SpiceDisplay *display)
 {
-#ifdef WIN32
+#ifdef G_OS_WIN32
     win32_window = display ? GDK_WINDOW_HWND(gtk_widget_get_window(GTK_WIDGET(display))) : NULL;
 #endif
 }
@@ -1287,7 +1288,7 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
     SpiceDisplayPrivate *d = display->priv;
     int scancode;
 
-#ifdef WIN32
+#ifdef G_OS_WIN32
     /* on windows, we ought to ignore the reserved key event? */
     if (key->hardware_keycode == 0xff)
         return false;
@@ -1320,7 +1321,7 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
 
     scancode = vnc_display_keymap_gdk2xtkbd(d->keycode_map, d->keycode_maplen,
                                             key->hardware_keycode);
-#ifdef WIN32
+#ifdef G_OS_WIN32
     /* MapVirtualKey doesn't return scancode with needed higher byte */
     scancode = MapVirtualKey(key->hardware_keycode, MAPVK_VK_TO_VSC) |
         (scancode & 0xff00);
@@ -1686,7 +1687,7 @@ static gboolean configure_event(GtkWidget *widget, GdkEventConfigure *conf)
     d->mx = conf->x;
     d->my = conf->y;
 
-#ifdef WIN32
+#ifdef G_OS_WIN32
     if (d->mouse_grab_active) {
         try_mouse_ungrab(display);
         try_mouse_grab(display);
