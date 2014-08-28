@@ -1635,9 +1635,11 @@ static void file_xfer_read_cb(GObject *source_object,
         return;
     }
 
-    if (count > 0) {
+    if (count > 0 || task->file_size == 0) {
         task->read_bytes += count;
         file_xfer_queue(task, count);
+        if (count == 0)
+            return;
         file_xfer_flush_async(channel, task->cancellable,
                               file_xfer_data_flushed_cb, task);
         task->pending = TRUE;
