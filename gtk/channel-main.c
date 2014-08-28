@@ -2729,7 +2729,7 @@ static void file_xfer_read_async_cb(GObject *obj, GAsyncResult *res, gpointer da
 }
 
 static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
-                                           GFile *file,
+                                           GFile **files,
                                            GFileCopyFlags flags,
                                            GCancellable *cancellable,
                                            GFileProgressCallback progress_callback,
@@ -2740,27 +2740,30 @@ static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
     SpiceMainChannelPrivate *c = channel->priv;
     SpiceFileXferTask *task;
     static uint32_t xfer_id;    /* Used to identify task id */
+    gint i;
 
-    task = g_malloc0(sizeof(SpiceFileXferTask));
-    task->id = ++xfer_id;
-    task->channel = g_object_ref(channel);
-    task->file = g_object_ref(file);
-    task->flags = flags;
-    task->cancellable = cancellable;
-    task->progress_callback = progress_callback;
-    task->progress_callback_data = progress_callback_data;
-    task->callback = callback;
-    task->user_data = user_data;
+    for (i = 0; files[i] != NULL && !g_cancellable_is_cancelled(cancellable); i++) {
+        task = g_malloc0(sizeof(SpiceFileXferTask));
+        task->id = ++xfer_id;
+        task->channel = g_object_ref(channel);
+        task->file = g_object_ref(files[i]);
+        task->flags = flags;
+        task->cancellable = cancellable;
+        task->progress_callback = progress_callback;
+        task->progress_callback_data = progress_callback_data;
+        task->callback = callback;
+        task->user_data = user_data;
 
-    CHANNEL_DEBUG(task->channel, "Insert a xfer task:%d to task list", task->id);
-    g_hash_table_insert(c->file_xfer_tasks, GUINT_TO_POINTER(task->id), task);
+        CHANNEL_DEBUG(task->channel, "Insert a xfer task:%d to task list", task->id);
+        g_hash_table_insert(c->file_xfer_tasks, GUINT_TO_POINTER(task->id), task);
 
-    g_file_read_async(file,
-                      G_PRIORITY_DEFAULT,
-                      cancellable,
-                      file_xfer_read_async_cb,
-                      task);
-    task->pending = TRUE;
+        g_file_read_async(files[i],
+                          G_PRIORITY_DEFAULT,
+                          cancellable,
+                          file_xfer_read_async_cb,
+                          task);
+        task->pending = TRUE;
+    }
 }
 
 /**
@@ -2803,11 +2806,7 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
 
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
-    g_return_if_fail(sources != NULL && sources[0] != NULL);
-
-    /* At the moment, the copy() method is limited to a single file,
-       support for copying multi-files will be implemented later. */
-    g_return_if_fail(sources[1] == NULL);
+    g_return_if_fail(sources != NULL);
 
     if (!c->agent_connected) {
         g_simple_async_report_error_in_idle(G_OBJECT(channel),
@@ -2820,7 +2819,7 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
     }
 
     file_xfer_send_start_msg_async(channel,
-                                   sources[0],
+                                   sources,
                                    flags,
                                    cancellable,
                                    progress_callback,
