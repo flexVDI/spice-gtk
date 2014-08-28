@@ -1508,7 +1508,6 @@ static void main_handle_mouse_mode(SpiceChannel *channel, SpiceMsgIn *in)
 static void main_handle_agent_connected(SpiceChannel *channel, SpiceMsgIn *in)
 {
     agent_start(SPICE_MAIN_CHANNEL(channel));
-    update_display_timer(SPICE_MAIN_CHANNEL(channel), 0);
 }
 
 /* coroutine context */
@@ -1519,7 +1518,6 @@ static void main_handle_agent_connected_tokens(SpiceChannel *channel, SpiceMsgIn
 
     c->agent_tokens = msg->num_tokens;
     agent_start(SPICE_MAIN_CHANNEL(channel));
-    update_display_timer(SPICE_MAIN_CHANNEL(channel), 0);
 }
 
 /* coroutine context */
@@ -1790,6 +1788,7 @@ static void main_agent_handle_msg(SpiceChannel *channel,
         }
         c->agent_caps_received = true;
         g_coroutine_signal_emit(self, signals[SPICE_MAIN_AGENT_UPDATE], 0);
+        update_display_timer(SPICE_MAIN_CHANNEL(channel), 0);
 
         if (caps->request)
             agent_announce_caps(self);
