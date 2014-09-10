@@ -2117,11 +2117,18 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
         SPICE_CHANNEL_GET_CLASS(channel)->iterate_read(channel);
 
     if (c->has_error) {
-        CHANNEL_DEBUG(channel, "channel got error");
-        if (c->state > SPICE_CHANNEL_STATE_CONNECTING)
-            g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0,
-                                    c->state == SPICE_CHANNEL_STATE_READY ?
-                                    SPICE_CHANNEL_ERROR_IO : SPICE_CHANNEL_ERROR_LINK);
+        GIOCondition ret;
+        /* We don't want to report an error if the socket was closed gracefully
+         * on the other end (VM shutdown) */
+        ret = g_socket_condition_check(c->sock, G_IO_IN | G_IO_ERR | G_IO_HUP);
+        if (ret & (G_IO_ERR|G_IO_HUP)) {
+            CHANNEL_DEBUG(channel, "channel got error");
+            if (c->state > SPICE_CHANNEL_STATE_CONNECTING) {
+                g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0,
+                                        c->state == SPICE_CHANNEL_STATE_READY ?
+                                        SPICE_CHANNEL_ERROR_IO : SPICE_CHANNEL_ERROR_LINK);
+            }
+        }
         return FALSE;
     }
 
