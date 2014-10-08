@@ -26,6 +26,8 @@
 #include "spice-marshal.h"
 #include "bio-gio.h"
 
+#include <glib/gi18n.h>
+
 #include <openssl/rsa.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
@@ -107,6 +109,7 @@ static void spice_channel_init(SpiceChannel *channel)
     c->out_serial = 1;
     c->in_serial = 1;
     c->fd = -1;
+    c->auth_needs_username_and_password = FALSE;
     strcpy(c->name, "?");
     c->caps = g_array_new(FALSE, TRUE, sizeof(guint32));
     c->common_caps = g_array_new(FALSE, TRUE, sizeof(guint32));
@@ -1242,6 +1245,7 @@ spice_channel_gather_sasl_credentials(SpiceChannel *channel,
 {
     SpiceChannelPrivate *c;
     int ninteract;
+    gboolean ret = TRUE;
 
     g_return_val_if_fail(channel != NULL, FALSE);
     g_return_val_if_fail(channel->priv != NULL, FALSE);
@@ -1254,12 +1258,22 @@ spice_channel_gather_sasl_credentials(SpiceChannel *channel,
         switch (interact[ninteract].id) {
         case SASL_CB_AUTHNAME:
         case SASL_CB_USER:
-            g_warn_if_reached();
+            c->auth_needs_username_and_password = TRUE;
+            if (spice_session_get_username(c->session) == NULL)
+                return FALSE;
+
+            interact[ninteract].result =  spice_session_get_username(c->session);
+            interact[ninteract].len = strlen(interact[ninteract].result);
             break;
 
         case SASL_CB_PASS:
-            if (spice_session_get_password(c->session) == NULL)
-                return FALSE;
+            if (spice_session_get_password(c->session) == NULL) {
+                /* Even if we reach this point, we have to continue looking for
+                 * SASL_CB_AUTHNAME|SASL_CB_USER, otherwise we would return a
+                 * wrong error to the applications */
+                ret = FALSE;
+                continue;
+            }
 
             interact[ninteract].result =  spice_session_get_password(c->session);
             interact[ninteract].len = strlen(interact[ninteract].result);
@@ -1269,7 +1283,7 @@ spice_channel_gather_sasl_credentials(SpiceChannel *channel,
 
     CHANNEL_DEBUG(channel, "Filled SASL interact");
 
-    return TRUE;
+    return ret;
 }
 
 /*
@@ -1308,6 +1322,22 @@ spice_channel_gather_sasl_credentials(SpiceChannel *channel,
 #define SASL_MAX_MECHNAME_LEN 100
 #define SASL_MAX_DATA_LEN (1024 * 1024)
 
+static void spice_channel_set_detailed_authentication_error(SpiceChannel *channel)
+{
+    SpiceChannelPrivate *c = channel->priv;
+
+    if (c->auth_needs_username_and_password)
+        g_set_error_literal(&c->error,
+                            SPICE_CLIENT_ERROR,
+                            SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD_AND_USERNAME,
+                            _("Authentication failed: password and username are required"));
+    else
+        g_set_error_literal(&c->error,
+                            SPICE_CLIENT_ERROR,
+                            SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD,
+                            _("Authentication failed: password is required"));
+}
+
 /* Perform the SASL authentication process
  */
 static gboolean spice_channel_perform_auth_sasl(SpiceChannel *channel)
@@ -1323,6 +1353,8 @@ static gboolean spice_channel_perform_auth_sasl(SpiceChannel *channel)
     const void *val;
     sasl_ssf_t ssf;
     static const sasl_callback_t saslcb[] = {
+        { .id = SASL_CB_USER },
+        { .id = SASL_CB_AUTHNAME },
         { .id = SASL_CB_PASS },
         { .id = 0 },
     };
@@ -1624,8 +1656,10 @@ restart:
 complete:
     CHANNEL_DEBUG(channel, "%s", "SASL authentication complete");
     spice_channel_read(channel, &len, sizeof(len));
-    if (len != SPICE_LINK_ERR_OK)
+    if (len != SPICE_LINK_ERR_OK) {
+        spice_channel_set_detailed_authentication_error(channel);
         g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_AUTH);
+    }
     ret = len == SPICE_LINK_ERR_OK;
     /* This must come *after* check-auth-result, because the former
      * is defined to be sent unencrypted, and setting saslconn turns
@@ -1636,6 +1670,7 @@ complete:
 error:
     if (saslconn)
         sasl_dispose(&saslconn);
+    spice_channel_set_detailed_authentication_error(channel);
     g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_AUTH);
     c->has_error = TRUE; /* force disconnect */
     ret = FALSE;
@@ -2551,6 +2586,8 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
     g_clear_object(&c->sock);
 
     c->fd = -1;
+
+    c->auth_needs_username_and_password = FALSE;
 
     g_free(c->peer_msg);
     c->peer_msg = NULL;
