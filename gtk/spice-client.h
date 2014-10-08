@@ -56,6 +56,8 @@ G_BEGIN_DECLS
 /**
  * SpiceClientError:
  * @SPICE_CLIENT_ERROR_FAILED: generic error code
+ * @SPICE_CLIENT_USB_DEVICE_REJECTED: usb device rejected by host
+ * @SPICE_CLIENT_USB_DEVICE_LOST: usb device disconnected (fatal IO error)
  *
  * Error codes returned by spice-client API.
  */
