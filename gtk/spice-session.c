@@ -111,7 +111,8 @@ enum {
     PROP_CA,
     PROP_PROXY,
     PROP_SECURE_CHANNELS,
-    PROP_SHARED_DIR
+    PROP_SHARED_DIR,
+    PROP_USERNAME
 };
 
 /* signals */
@@ -217,6 +218,7 @@ spice_session_finalize(GObject *gobject)
     g_free(s->host);
     g_free(s->port);
     g_free(s->tls_port);
+    g_free(s->username);
     g_free(s->password);
     g_free(s->ca_file);
     g_free(s->ciphers);
@@ -262,11 +264,12 @@ static int spice_uri_create(SpiceSession *session, char *dest, int len)
 static int spice_parse_uri(SpiceSession *session, const char *original_uri)
 {
     SpiceSessionPrivate *s = session->priv;
-    gchar *host = NULL, *port = NULL, *tls_port = NULL, *uri = NULL, *password = NULL;
+    gchar *host = NULL, *port = NULL, *tls_port = NULL, *uri = NULL, *username = NULL, *password = NULL;
     gchar *path = NULL;
     gchar *unescaped_path = NULL;
     gchar *authority = NULL;
     gchar *query = NULL;
+    gchar *tmp = NULL;
 
     g_return_val_if_fail(original_uri != NULL, -1);
 
@@ -281,6 +284,15 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
         goto fail;
     }
     authority = uri + strlen(URI_SCHEME_SPICE);
+
+    tmp = strchr(authority, '@');
+    if (tmp) {
+        tmp[0] = '\0';
+        username = g_uri_unescape_string(authority, NULL);
+        authority = ++tmp;
+        tmp = NULL;
+    }
+
     path = strchr(authority, '/');
     if (path) {
         path[0] = '\0';
@@ -303,7 +315,7 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
     /* Now process the individual parts */
 
     if (authority[0] == '[') {
-        gchar *tmp = strchr(authority, ']');
+        tmp = strchr(authority, ']');
         if (!tmp) {
             g_warning("Missing closing ']' in authority for URI '%s'", uri);
             goto fail;
@@ -314,7 +326,7 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
         if (tmp[0] == ':')
             port = g_strdup(tmp + 1);
     } else {
-        gchar *tmp = strchr(authority, ':');
+        tmp = strchr(authority, ':');
         if (tmp) {
             *tmp = '\0';
             tmp++;
@@ -375,10 +387,12 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
     g_free(s->host);
     g_free(s->port);
     g_free(s->tls_port);
+    g_free(s->username);
     g_free(s->password);
     s->host = host;
     s->port = port;
     s->tls_port = tls_port;
+    s->username = username;
     s->password = password;
     return 0;
 
@@ -388,6 +402,7 @@ fail:
     g_free(host);
     g_free(port);
     g_free(tls_port);
+    g_free(username);
     g_free(password);
     return -1;
 }
@@ -411,6 +426,9 @@ static void spice_session_get_property(GObject    *gobject,
 	break;
     case PROP_TLS_PORT:
         g_value_set_string(value, s->tls_port);
+	break;
+    case PROP_USERNAME:
+        g_value_set_string(value, s->username);
 	break;
     case PROP_PASSWORD:
         g_value_set_string(value, s->password);
@@ -521,6 +539,10 @@ static void spice_session_set_property(GObject      *gobject,
     case PROP_TLS_PORT:
         g_free(s->tls_port);
         s->tls_port = g_value_dup_string(value);
+        break;
+    case PROP_USERNAME:
+        g_free(s->username);
+        s->username = g_value_dup_string(value);
         break;
     case PROP_PASSWORD:
         g_free(s->password);
@@ -683,6 +705,21 @@ static void spice_session_class_init(SpiceSessionClass *klass)
          g_param_spec_string("tls-port",
                              "TLS port",
                              "Remote port (encrypted)",
+                             NULL,
+                             G_PARAM_READWRITE |
+                             G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceSession:username:
+     *
+     * Username to use
+     *
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_USERNAME,
+         g_param_spec_string("username",
+                             "Username",
+                             "Username used for SASL connections",
                              NULL,
                              G_PARAM_READWRITE |
                              G_PARAM_STATIC_STRINGS));
@@ -1214,6 +1251,7 @@ SpiceSession *spice_session_new_from_session(SpiceSession *session)
 
     g_warn_if_fail(c->host == NULL);
     g_warn_if_fail(c->tls_port == NULL);
+    g_warn_if_fail(c->username == NULL);
     g_warn_if_fail(c->password == NULL);
     g_warn_if_fail(c->ca_file == NULL);
     g_warn_if_fail(c->ciphers == NULL);
@@ -1225,6 +1263,7 @@ SpiceSession *spice_session_new_from_session(SpiceSession *session)
     g_object_get(session,
                  "host", &c->host,
                  "tls-port", &c->tls_port,
+                 "username", &c->username,
                  "password", &c->password,
                  "ca-file", &c->ca_file,
                  "ciphers", &c->ciphers,
@@ -2070,6 +2109,15 @@ void spice_session_set_migration_state(SpiceSession *session, SpiceSessionMigrat
     g_return_if_fail(s != NULL);
     s->migration_state = state;
     g_coroutine_object_notify(G_OBJECT(session), "migration-state");
+}
+
+G_GNUC_INTERNAL
+const gchar* spice_session_get_username(SpiceSession *session)
+{
+    SpiceSessionPrivate *s = session->priv;
+
+    g_return_val_if_fail(s != NULL, NULL);
+    return s->username;
 }
 
 G_GNUC_INTERNAL
