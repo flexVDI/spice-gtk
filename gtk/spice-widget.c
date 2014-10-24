@@ -896,10 +896,9 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
     } else {
         d->mouse_grab_active = true;
         g_signal_emit(display, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, true);
-    }
-
-    if (status == GDK_GRAB_SUCCESS)
         set_mouse_accel(display, FALSE);
+        gtk_widget_queue_draw(GTK_WIDGET(display));
+    }
 
 end:
     gdk_cursor_unref(blank);
@@ -1017,6 +1016,8 @@ static void try_mouse_ungrab(SpiceDisplay *display)
     gdk_display_warp_pointer(gtk_widget_get_display(GTK_WIDGET(display)),
                              gtk_widget_get_screen(GTK_WIDGET(display)),
                              x, y);
+
+    gtk_widget_queue_draw(GTK_WIDGET(display));
 
     g_signal_emit(display, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, false);
 }
