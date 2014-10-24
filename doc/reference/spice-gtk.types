@@ -13,6 +13,7 @@
 #include "channel-record.h"
 #include "channel-smartcard.h"
 #include "channel-usbredir.h"
+#include "channel-webdav.h"
 #include "spice-gtk-session.h"
 #include "spice-widget.h"
 #include "spice-grabsequence.h"
@@ -43,3 +44,4 @@ spice_usb_device_get_type
 spice_usb_device_manager_get_type
 spice_usb_device_widget_get_type
 spice_port_channel_get_type
+spice_webdav_channel_get_type

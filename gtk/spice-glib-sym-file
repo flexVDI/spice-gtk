@@ -7,6 +7,7 @@ spice_channel_disconnect
 spice_channel_event_get_type
 spice_channel_flush_async
 spice_channel_flush_finish
+spice_channel_get_error
 spice_channel_get_type
 spice_channel_new
 spice_channel_open_fd
@@ -92,3 +93,17 @@ spice_util_get_debug
 spice_util_get_version_string
 spice_util_set_debug
 spice_uuid_to_string
+spice_uri_get_hostname
+spice_uri_get_password
+spice_uri_get_port
+spice_uri_get_scheme
+spice_uri_get_type
+spice_uri_get_user
+spice_uri_set_hostname
+spice_uri_set_password
+spice_uri_set_port
+spice_uri_set_scheme
+spice_uri_set_user
+spice_uri_to_string
+spice_session_get_proxy_uri
+spice_webdav_channel_get_type

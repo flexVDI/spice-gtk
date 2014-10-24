@@ -15,11 +15,9 @@
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
-#include <math.h>
-
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
+
+#include <math.h>
 
 #if HAVE_X11_XKBLIB_H
 #include <X11/XKBlib.h>
@@ -1255,7 +1253,10 @@ static void release_keys(SpiceDisplay *display)
             continue;
         }
         for (b = 0; b < 32; b++) {
-            send_key(display, i * 32 + b, SEND_KEY_RELEASE, FALSE);
+            unsigned int scancode = i * 32 + b;
+            if (scancode != 0) {
+                send_key(display, scancode, SEND_KEY_RELEASE, FALSE);
+            }
         }
     }
 }
@@ -2582,8 +2583,9 @@ GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
     src = d->data;
     dest = data;
 
-    for (y = d->area.y; y < d->area.height; ++y) {
-        for (x = d->area.x; x < d->area.width; ++x) {
+    src += d->area.y * d->stride + d->area.x * 4;
+    for (y = 0; y < d->area.height; ++y) {
+        for (x = 0; x < d->area.width; ++x) {
           dest[0] = src[x * 4 + 2];
           dest[1] = src[x * 4 + 1];
           dest[2] = src[x * 4 + 0];

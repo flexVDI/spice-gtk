@@ -15,6 +15,8 @@
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
+#include "config.h"
+
 #include "spice-client.h"
 #include "spice-common.h"
 
@@ -231,4 +233,52 @@ void spice_channel_set_handlers(SpiceChannelClass *klass,
 
     spice_channel_add_base_handlers(klass);
     set_handlers(klass, handlers, n);
+}
+
+static void
+vmc_write_free_cb(uint8_t *data, void *user_data)
+{
+    GSimpleAsyncResult *result = user_data;
+
+    g_simple_async_result_complete_in_idle(result);
+    g_object_unref(result);
+}
+
+G_GNUC_INTERNAL
+void spice_vmc_write_async(SpiceChannel *self,
+                           const void *buffer, gsize count,
+                           GCancellable *cancellable,
+                           GAsyncReadyCallback callback,
+                           gpointer user_data)
+{
+    SpiceMsgOut *msg;
+    GSimpleAsyncResult *simple;
+
+    simple = g_simple_async_result_new(G_OBJECT(self), callback, user_data,
+                                       spice_port_write_async);
+    g_simple_async_result_set_op_res_gssize(simple, count);
+
+    msg = spice_msg_out_new(SPICE_CHANNEL(self), SPICE_MSGC_SPICEVMC_DATA);
+    spice_marshaller_add_ref_full(msg->marshaller, (uint8_t*)buffer, count,
+                                  vmc_write_free_cb, simple);
+    spice_msg_out_send(msg);
+}
+
+G_GNUC_INTERNAL
+gssize spice_vmc_write_finish(SpiceChannel *self,
+                              GAsyncResult *result, GError **error)
+{
+    GSimpleAsyncResult *simple;
+
+    g_return_val_if_fail(result != NULL, -1);
+
+    simple = (GSimpleAsyncResult *)result;
+
+    if (g_simple_async_result_propagate_error(simple, error))
+        return -1;
+
+    g_return_val_if_fail(g_simple_async_result_is_valid(result, G_OBJECT(self),
+                                                        spice_port_write_async), -1);
+
+    return g_simple_async_result_get_op_res_gssize(simple);
 }

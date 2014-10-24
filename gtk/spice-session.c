@@ -15,6 +15,8 @@
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
+#include "config.h"
+
 #include <gio/gio.h>
 #include <glib.h>
 
@@ -28,7 +30,7 @@
 #include "gio-coroutine.h"
 #include "glib-compat.h"
 #include "wocky-http-proxy.h"
-#include "spice-proxy.h"
+#include "spice-uri-priv.h"
 #include "channel-playback-priv.h"
 
 struct channel {
@@ -108,7 +110,8 @@ enum {
     PROP_NAME,
     PROP_CA,
     PROP_PROXY,
-    PROP_SECURE_CHANNELS
+    PROP_SECURE_CHANNELS,
+    PROP_SHARED_DIR
 };
 
 /* signals */
@@ -139,7 +142,7 @@ static void do_emit_main_context(GObject *object, int signum, gpointer params)
 static void update_proxy(SpiceSession *self, const gchar *str)
 {
     SpiceSessionPrivate *s = self->priv;
-    SpiceProxy *proxy = NULL;
+    SpiceURI *proxy = NULL;
     GError *error = NULL;
 
     if (str == NULL)
@@ -149,8 +152,8 @@ static void update_proxy(SpiceSession *self, const gchar *str)
         return;
     }
 
-    proxy = spice_proxy_new();
-    if (!spice_proxy_parse(proxy, str, &error))
+    proxy = spice_uri_new();
+    if (!spice_uri_parse(proxy, str, &error))
         g_clear_object(&proxy);
     if (error) {
         g_warning("%s", error->message);
@@ -212,6 +215,7 @@ spice_session_dispose(GObject *gobject)
     g_clear_object(&s->gtk_session);
     g_clear_object(&s->usb_manager);
     g_clear_object(&s->proxy);
+    g_clear_object(&s->webdav);
 
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_session_parent_class)->dispose)
@@ -236,6 +240,7 @@ spice_session_finalize(GObject *gobject)
     g_free(s->smartcard_db);
     g_strfreev(s->disable_effects);
     g_strfreev(s->secure_channels);
+    g_free(s->shared_dir);
 
     g_clear_pointer(&s->images, cache_unref);
     glz_decoder_window_destroy(s->glz_window);
@@ -269,7 +274,7 @@ static int spice_uri_create(SpiceSession *session, char *dest, int len)
     return pos;
 }
 
-static int spice_uri_parse(SpiceSession *session, const char *original_uri)
+static int spice_parse_uri(SpiceSession *session, const char *original_uri)
 {
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     gchar *host = NULL, *port = NULL, *tls_port = NULL, *uri = NULL, *password = NULL;
@@ -499,8 +504,11 @@ static void spice_session_get_property(GObject    *gobject,
         g_value_set_pointer(value, s->uuid);
 	break;
     case PROP_PROXY:
-        g_value_take_string(value, spice_proxy_to_string(s->proxy));
+        g_value_take_string(value, spice_uri_to_string(s->proxy));
 	break;
+    case PROP_SHARED_DIR:
+        g_value_set_string(value, spice_session_get_shared_dir(session));
+        break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -547,7 +555,7 @@ static void spice_session_set_property(GObject      *gobject,
     case PROP_URI:
         str = g_value_get_string(value);
         if (str != NULL)
-            spice_uri_parse(session, str);
+            spice_parse_uri(session, str);
         break;
     case PROP_CLIENT_SOCKETS:
         s->client_provided_sockets = g_value_get_boolean(value);
@@ -623,6 +631,9 @@ static void spice_session_set_property(GObject      *gobject,
     case PROP_PROXY:
         update_proxy(session, g_value_get_string(value));
         break;
+    case PROP_SHARED_DIR:
+        spice_session_set_shared_dir(session, g_value_get_string(value));
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
         break;
@@ -635,6 +646,9 @@ static void spice_session_class_init(SpiceSessionClass *klass)
 
 #if GLIB_CHECK_VERSION(2, 26, 0)
     _wocky_http_proxy_get_type();
+#endif
+#if GLIB_CHECK_VERSION(2, 28, 0)
+    _wocky_https_proxy_get_type();
 #endif
 
     gobject_class->dispose      = spice_session_dispose;
@@ -1167,6 +1181,23 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              G_PARAM_READWRITE |
                              G_PARAM_STATIC_STRINGS));
 
+    /**
+     * SpiceSession:shared-dir:
+     *
+     * Location of the shared directory
+     *
+     * Since: 0.24
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_SHARED_DIR,
+         g_param_spec_string("shared-dir",
+                             "Shared directory",
+                             "Shared directory",
+                             g_get_user_special_dir(G_USER_DIRECTORY_PUBLIC_SHARE),
+                             G_PARAM_READWRITE |
+                             G_PARAM_CONSTRUCT |
+                             G_PARAM_STATIC_STRINGS));
+
     g_type_class_add_private(klass, sizeof(SpiceSessionPrivate));
 }
 
@@ -1661,7 +1692,7 @@ struct spice_open_host {
     struct coroutine *from;
     SpiceSession *session;
     SpiceChannel *channel;
-    SpiceProxy *proxy;
+    SpiceURI *proxy;
     int port;
     GCancellable *cancellable;
     GError *error;
@@ -1720,8 +1751,11 @@ static void proxy_lookup_ready(GObject *source_object, GAsyncResult *result,
 
     for (it = addresses; it != NULL; it = it->next) {
         address = g_proxy_address_new(G_INET_ADDRESS(it->data),
-                                      spice_proxy_get_port(open_host->proxy), "http",
-                                      s->host, open_host->port, NULL, NULL);
+                                      spice_uri_get_port(open_host->proxy),
+                                      spice_uri_get_scheme(open_host->proxy),
+                                      s->host, open_host->port,
+                                      spice_uri_get_user(open_host->proxy),
+                                      spice_uri_get_password(open_host->proxy));
         if (address != NULL)
             break;
     }
@@ -1749,7 +1783,7 @@ static gboolean open_host_idle_cb(gpointer data)
 
     if (open_host->proxy)
         g_resolver_lookup_by_name_async(g_resolver_get_default(),
-                                        spice_proxy_get_hostname(open_host->proxy),
+                                        spice_uri_get_hostname(open_host->proxy),
                                         open_host->cancellable,
                                         proxy_lookup_ready, open_host);
     else
@@ -1764,7 +1798,7 @@ static gboolean open_host_idle_cb(gpointer data)
 
     SPICE_DEBUG("open host %s:%d", s->host, open_host->port);
     if (open_host->proxy != NULL) {
-        gchar *str = spice_proxy_to_string(open_host->proxy);
+        gchar *str = spice_uri_to_string(open_host->proxy);
         SPICE_DEBUG("(with proxy %s)", str);
         g_free(str);
     }
@@ -1789,7 +1823,7 @@ static gboolean connect_timeout(gpointer data)
 /* coroutine context */
 G_GNUC_INTERNAL
 GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceChannel *channel,
-                                                   gboolean *use_tls)
+                                                   gboolean *use_tls, GError **error)
 {
     SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
     SpiceChannelPrivate *c = channel->priv;
@@ -1838,8 +1872,8 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
 #endif
 
     if (open_host.error != NULL) {
-        g_warning("%s", open_host.error->message);
-        g_clear_error(&open_host.error);
+        SPICE_DEBUG("open host: %s", open_host.error->message);
+        g_propagate_error(error, open_host.error);
     } else if (open_host.connection != NULL) {
         GSocket *socket;
         socket = g_socket_connection_get_socket(open_host.connection);
@@ -2182,4 +2216,40 @@ guint32 spice_session_get_playback_latency(SpiceSession *session)
         SPICE_DEBUG("%s: not implemented when there isn't audio playback", __FUNCTION__);
         return 0;
     }
+}
+
+G_GNUC_INTERNAL
+const gchar* spice_session_get_shared_dir(SpiceSession *session)
+{
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_val_if_fail(s != NULL, NULL);
+
+    return s->shared_dir;
+}
+
+G_GNUC_INTERNAL
+void spice_session_set_shared_dir(SpiceSession *session, const gchar *dir)
+{
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    g_return_if_fail(dir != NULL);
+    g_return_if_fail(s != NULL);
+
+    g_free(s->shared_dir);
+    s->shared_dir = g_strdup(dir);
+}
+
+/**
+ * spice_session_get_proxy_uri:
+ * @session: a #SpiceSession
+ *
+ * Returns: (transfer none): the session proxy #SpiceURI or %NULL.
+ * Since: 0.24
+ **/
+SpiceURI *spice_session_get_proxy_uri(SpiceSession *session)
+{
+    SpiceSessionPrivate *s = SPICE_SESSION_GET_PRIVATE(session);
+
+    return s->proxy;
 }

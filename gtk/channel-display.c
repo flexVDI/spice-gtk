@@ -886,7 +886,7 @@ static void display_handle_mode(SpiceChannel *channel, SpiceMsgIn *in)
 
     g_warn_if_fail(c->mark == FALSE);
 
-    surface = spice_new0(display_surface, 1);
+    surface = g_slice_new0(display_surface);
     surface->format  = mode->bits == 32 ?
         SPICE_SURFACE_FMT_32_xRGB : SPICE_SURFACE_FMT_16_555;
     surface->width   = mode->x_res;

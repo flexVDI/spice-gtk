@@ -1,3 +1,6 @@
 [submodule "spice-common"]
 	path = spice-common
 	url = ../spice-common
+[submodule "gtk/phodav"]
+	path = gtk/phodav
+	url = git://git.gnome.org/phodav

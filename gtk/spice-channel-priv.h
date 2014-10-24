@@ -82,6 +82,8 @@ struct _SpiceChannelPrivate {
     SpiceOpenSSLVerify          *sslverify;
     GSocket                     *sock;
     GSocketConnection           *conn;
+    GInputStream                *in;
+    GOutputStream               *out;
 
 #if HAVE_SASL
     sasl_conn_t                 *sasl_conn;
@@ -134,6 +136,7 @@ struct _SpiceChannelPrivate {
     GSList                      *flushing;
 
     gboolean                    disable_channel_msg;
+    GError                      *error;
 };
 
 SpiceMsgIn *spice_msg_in_new(SpiceChannel *channel);
@@ -195,6 +198,14 @@ void spice_caps_set(GArray *caps, guint32 cap, const gchar *desc);
     } G_STMT_END
 
 gchar *spice_channel_supported_string(void);
+
+void spice_vmc_write_async(SpiceChannel *self,
+                           const void *buffer, gsize count,
+                           GCancellable *cancellable,
+                           GAsyncReadyCallback callback,
+                           gpointer user_data);
+gssize spice_vmc_write_finish(SpiceChannel *self,
+                              GAsyncResult *result, GError **error);
 
 G_END_DECLS
 

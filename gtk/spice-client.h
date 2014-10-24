@@ -31,6 +31,8 @@
 #include "spice-session.h"
 #include "spice-channel.h"
 #include "spice-option.h"
+#include "spice-uri.h"
+#include "spice-version.h"
 
 #include "channel-main.h"
 #include "channel-display.h"
@@ -41,6 +43,7 @@
 #include "channel-smartcard.h"
 #include "channel-usbredir.h"
 #include "channel-port.h"
+#include "channel-webdav.h"
 
 #include "smartcard-manager.h"
 #include "usb-device-manager.h"

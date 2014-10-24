@@ -1,6 +1,6 @@
 NULL =
 
-SUBDIRS =
+SUBDIRS = phodav
 
 if WITH_CONTROLLER
 SUBDIRS += controller
@@ -41,7 +41,10 @@ EXTRA_DIST =					\
 	spice-client-gtk-manual.defs		\
 	spice-client-gtk.override		\
 	spice-marshal.txt			\
+	spice-version.h.in			\
 	$(NULL)
+
+DISTCLEANFILES = spice-version.h
 
 bin_PROGRAMS = spicy spicy-stats spicy-screenshot
 if WITH_POLKIT
@@ -93,6 +96,7 @@ SPICE_COMMON_CPPFLAGS =						\
 	$(SMARTCARD_CFLAGS)					\
 	$(USBREDIR_CFLAGS)					\
 	$(GUDEV_CFLAGS)						\
+	$(SOUP_CFLAGS)						\
 	$(NULL)
 
 AM_CPPFLAGS =					\
@@ -182,8 +186,9 @@ libspice_client_glib_2_0_la_LDFLAGS =	\
 libspice_client_glib_2_0_la_LIBADD =					\
 	$(top_builddir)/spice-common/common/libspice-common.la		\
 	$(top_builddir)/spice-common/common/libspice-common-client.la	\
+	phodav/libphodav.la						\
 	$(GLIB2_LIBS)							\
-	$(GIO_LIBS)							\
+	$(SOUP_LIBS)							\
 	$(GOBJECT2_LIBS)						\
 	$(CELT051_LIBS)							\
 	$(OPUS_LIBS)							\
@@ -210,8 +215,8 @@ USB_ACL_HELPER_SRCS =
 endif
 
 libspice_client_glib_2_0_la_SOURCES =			\
-	bio-gsocket.c					\
-	bio-gsocket.h					\
+	bio-gio.c					\
+	bio-gio.h					\
 	glib-compat.c					\
 	glib-compat.h					\
 	spice-audio.c					\
@@ -233,6 +238,7 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	gio-coroutine.h					\
 							\
 	channel-base.c					\
+	channel-webdav.c				\
 	channel-cursor.c				\
 	channel-display.c				\
 	channel-display-priv.h				\
@@ -248,13 +254,15 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	channel-usbredir-priv.h				\
 	smartcard-manager.c				\
 	smartcard-manager-priv.h			\
-	spice-proxy.c					\
-	spice-proxy.h					\
+	spice-uri.c					\
+	spice-uri-priv.h				\
 	usb-device-manager.c				\
 	usb-device-manager-priv.h			\
 	usbutil.c					\
 	usbutil.h					\
 	$(USB_ACL_HELPER_SRCS)				\
+	vmcstream.c					\
+	vmcstream.h					\
 							\
 	decode.h					\
 	decode-glz.c					\
@@ -282,11 +290,13 @@ libspice_client_glibincludedir = $(includedir)/spice-client-glib-2.0
 libspice_client_glibinclude_HEADERS =	\
 	spice-audio.h			\
 	spice-client.h			\
+	spice-uri.h			\
 	spice-types.h			\
 	spice-session.h			\
 	spice-channel.h			\
 	spice-util.h			\
 	spice-option.h			\
+	spice-version.h			\
 	channel-cursor.h		\
 	channel-display.h		\
 	channel-inputs.h		\
@@ -296,6 +306,7 @@ libspice_client_glibinclude_HEADERS =	\
 	channel-record.h		\
 	channel-smartcard.h		\
 	channel-usbredir.h		\
+	channel-webdav.h		\
 	usb-device-manager.h		\
 	smartcard-manager.h		\
 	$(NULL)
@@ -443,14 +454,16 @@ spice-glib-enums.c: spice-glib-enums.h
 spice-widget-enums.c: spice-widget-enums.h
 
 spice-marshal.c: spice-marshal.txt
-	$(AM_V_GEN)echo "#include \"spice-marshal.h\"" > $@ && \
+	$(AM_V_GEN)echo "#include \"config.h\"" > $@ && \
+		echo "#include \"spice-marshal.h\"" > $@ && \
 		glib-genmarshal --body $< >> $@ || (rm -f $@ && exit 1)
 
 spice-marshal.h: spice-marshal.txt
 	$(AM_V_GEN)glib-genmarshal --header $< > $@ || (rm -f $@ && exit 1)
 
 spice-glib-enums.c: spice-channel.h channel-inputs.h spice-session.h
-	$(AM_V_GEN)glib-mkenums --fhead "#include <glib-object.h>\n" \
+	$(AM_V_GEN)glib-mkenums --fhead "#include \"config.h\"\n\n" \
+			--fhead "#include <glib-object.h>\n" \
 			--fhead "#include \"spice-glib-enums.h\"\n\n" \
 			--fprod "\n#include \"spice-session.h\"\n" \
 			--fprod "\n#include \"spice-channel.h\"\n" \
@@ -479,7 +492,8 @@ spice-glib-enums.h: spice-channel.h channel-inputs.h spice-session.h
 		$^ >  $@
 
 spice-widget-enums.c: spice-widget.h
-	$(AM_V_GEN)glib-mkenums --fhead "#include <glib-object.h>\n" \
+	$(AM_V_GEN)glib-mkenums --fhead "#include \"config.h\"\n\n" \
+			--fhead "#include <glib-object.h>\n" \
 			--fhead "#include \"spice-widget-enums.h\"\n\n" \
 			--fprod "\n#include \"spice-widget.h\"\n" \
 			--vhead "static const G@Type@Value _@enum_name@_values[] = {" \
@@ -591,6 +605,7 @@ glib_introspection_files =				\
 	spice-glib-enums.c				\
 	spice-option.c					\
 	spice-util.c					\
+	channel-webdav.c				\
 	channel-cursor.c				\
 	channel-display.c				\
 	channel-inputs.c				\
