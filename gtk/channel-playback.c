@@ -375,6 +375,7 @@ static void playback_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
     c->codec = NULL;
 
     if (c->mode != SPICE_AUDIO_DATA_MODE_RAW) {
+        snd_codec_destroy(&c->codec);
         if (snd_codec_create(&c->codec, c->mode, start->frequency, SND_CODEC_DECODE) != SND_CODEC_OK) {
             g_warning("create decoder failed");
             return;
