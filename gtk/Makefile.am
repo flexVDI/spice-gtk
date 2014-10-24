@@ -188,6 +188,7 @@ libspice_client_glib_2_0_la_LIBADD =					\
 	$(CELT051_LIBS)							\
 	$(OPUS_LIBS)							\
 	$(JPEG_LIBS)							\
+	$(NOPOLL_LIBS)							\
 	$(Z_LIBS)							\
 	$(PIXMAN_LIBS)							\
 	$(SSL_LIBS)							\
