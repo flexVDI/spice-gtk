@@ -18,12 +18,20 @@
 #ifndef __SPICE_CLIENT_SESSION_PRIV_H__
 #define __SPICE_CLIENT_SESSION_PRIV_H__
 
+#include "config.h"
+
 #include <glib.h>
 #include <gio/gio.h>
+
+#ifdef USE_PHODAV
+#include <libphodav/phodav.h>
+#else
+typedef struct _PhodavServer PhodavServer;
+#endif
+
 #include "desktop-integration.h"
 #include "spice-session.h"
 #include "spice-gtk-session.h"
-#include "phodav/libphodav/phodav.h"
 #include "spice-channel-cache.h"
 #include "decode.h"
 

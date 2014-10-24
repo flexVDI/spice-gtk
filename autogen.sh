@@ -6,7 +6,6 @@ srcdir=`dirname $0`
 test -z "$srcdir" && srcdir=.
 
 git submodule update --init --recursive
-(cd "$srcdir/gtk/phodav/" && intltoolize -f)
 
 gtkdocize
 autoreconf -v --force --install
