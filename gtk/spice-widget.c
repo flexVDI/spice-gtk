@@ -992,6 +992,8 @@ static void mouse_wrap(SpiceDisplay *display, GdkEventMotion *motion)
 static void try_mouse_ungrab(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
+    double s;
+    int x, y;
 
     if (!d->mouse_grab_active)
         return;
@@ -1004,6 +1006,17 @@ static void try_mouse_ungrab(SpiceDisplay *display)
     set_mouse_accel(display, TRUE);
 
     d->mouse_grab_active = false;
+
+    spice_display_get_scaling(display, &s, &x, &y, NULL, NULL);
+
+    gdk_window_get_root_coords(gtk_widget_get_window(GTK_WIDGET(display)),
+                               x + d->mouse_guest_x * s,
+                               y + d->mouse_guest_y * s,
+                               &x, &y);
+
+    gdk_display_warp_pointer(gtk_widget_get_display(GTK_WIDGET(display)),
+                             gtk_widget_get_screen(GTK_WIDGET(display)),
+                             x, y);
 
     g_signal_emit(display, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, false);
 }
@@ -2581,4 +2594,3 @@ GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
                                       (GdkPixbufDestroyNotify)g_free, NULL);
     return pixbuf;
 }
-
