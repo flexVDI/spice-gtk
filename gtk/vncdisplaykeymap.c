@@ -12,6 +12,7 @@
 #include <gtk/gtk.h>
 #include <gdk/gdk.h>
 #include <gdk/gdkkeysyms.h>
+#include "gtk-compat.h"
 #include "vncdisplaykeymap.h"
 
 #include "spice-util.h"
@@ -49,11 +50,6 @@
 #ifndef GDK_Tab
 #define GDK_Tab GDK_KEY_Tab
 #endif
-
-#if !GTK_CHECK_VERSION(3,0,0)
-#define gdk_window_get_display(W) gdk_drawable_get_display(GDK_DRAWABLE(W))
-#endif
-
 
 /* keycode translation for sending ISO_Left_Send
  * to vncserver

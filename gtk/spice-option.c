@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <glib-object.h>
 #include <glib/gi18n.h>
+#include "glib-compat.h"
 #include "spice-session.h"
 #include "spice-util.h"
 #include "spice-channel-priv.h"
@@ -225,7 +226,9 @@ void spice_set_session_option(SpiceSession *session)
         const char *homedir = g_getenv("HOME");
         if (!homedir)
             homedir = g_get_home_dir();
-        ca_file = g_strdup_printf("%s/.spicec/spice_truststore.pem", homedir);
+        ca_file = g_build_filename(homedir, ".spicec", "spice_truststore.pem", NULL);
+        if (!g_file_test(ca_file, G_FILE_TEST_IS_REGULAR))
+            g_clear_pointer(&ca_file, g_free);
     }
 
     if (disable_effects) {

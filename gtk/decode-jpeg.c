@@ -19,7 +19,7 @@
 
 #include "decode.h"
 
-#ifdef WIN32
+#ifdef G_OS_WIN32
 /* We need some hacks to avoid warnings from the jpeg headers, ex: */
 /* #define HAVE_BOOLEAN */
 #define XMD_H
@@ -165,7 +165,7 @@ static void jpeg_decoder_term_source (j_decompress_ptr cinfo)
 
 SpiceJpegDecoder *jpeg_decoder_new(void)
 {
-    GlibJpegDecoder *d = spice_new0(GlibJpegDecoder, 1);
+    GlibJpegDecoder *d = g_new0(GlibJpegDecoder, 1);
 
     d->_cinfo.err = jpeg_std_error(&d->_jerr);
     jpeg_create_decompress(&d->_cinfo);

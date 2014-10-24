@@ -26,9 +26,8 @@
 #endif
 #include <jpeglib.h>
 
-#include "common/canvas_base.h"
 #include "common/canvas_utils.h"
-#include "common/sw_canvas.h"
+#include "client_sw_canvas.h"
 #include "common/ring.h"
 #include "common/quic.h"
 #include "common/rop3.h"

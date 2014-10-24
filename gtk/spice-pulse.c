@@ -81,9 +81,10 @@ static gboolean connect_channel(SpiceAudio *audio, SpiceChannel *channel);
 
 static void spice_pulse_finalize(GObject *obj)
 {
+    SpicePulse *pulse = SPICE_PULSE(obj);
     SpicePulsePrivate *p;
 
-    p = SPICE_PULSE_GET_PRIVATE(obj);
+    p = pulse->priv;
 
     if (p->context != NULL)
         pa_context_unref(p->context);
@@ -96,10 +97,11 @@ static void spice_pulse_finalize(GObject *obj)
 
 static void spice_pulse_dispose(GObject *obj)
 {
+    SpicePulse *pulse = SPICE_PULSE(obj);
     SpicePulsePrivate *p;
 
     SPICE_DEBUG("%s", __FUNCTION__);
-    p = SPICE_PULSE_GET_PRIVATE(obj);
+    p = pulse->priv;
 
     if (p->playback.uncork_op)
         pa_operation_unref(p->playback.uncork_op);
@@ -160,7 +162,7 @@ static void pulse_uncork_cb(pa_stream *pastream, int success, void *data)
 
 static void stream_uncork(SpicePulse *pulse, struct stream *s)
 {
-    SpicePulsePrivate *p = SPICE_PULSE_GET_PRIVATE(pulse);
+    SpicePulsePrivate *p = pulse->priv;
     pa_operation *o = NULL;
 
     g_return_if_fail(s->stream);
@@ -219,7 +221,7 @@ static void pulse_cork_cb(pa_stream *pastream, int success, void *data)
 
 static void stream_cork(SpicePulse *pulse, struct stream *s, gboolean with_flush)
 {
-    SpicePulsePrivate *p = SPICE_PULSE_GET_PRIVATE(pulse);
+    SpicePulsePrivate *p = pulse->priv;
     pa_operation *o = NULL;
 
     if (s->uncork_op) {
@@ -242,7 +244,7 @@ static void stream_cork(SpicePulse *pulse, struct stream *s, gboolean with_flush
 
 static void stream_stop(SpicePulse *pulse, struct stream *s)
 {
-    SpicePulsePrivate *p = SPICE_PULSE_GET_PRIVATE(pulse);
+    SpicePulsePrivate *p = pulse->priv;
 
     if (pa_stream_disconnect(s->stream) < 0) {
         g_warning("pa_stream_disconnect() failed: %s",
@@ -254,8 +256,10 @@ static void stream_stop(SpicePulse *pulse, struct stream *s)
 
 static void stream_state_callback(pa_stream *s, void *userdata)
 {
+    SpicePulse *pulse = userdata;
     SpicePulsePrivate *p;
-    p = SPICE_PULSE_GET_PRIVATE(userdata);
+
+    p = pulse->priv;
 
     g_return_if_fail(p != NULL);
     g_return_if_fail(s != NULL);
@@ -273,11 +277,12 @@ static void stream_state_callback(pa_stream *s, void *userdata)
 
 static void stream_underflow_cb(pa_stream *s, void *userdata)
 {
+    SpicePulse *pulse = userdata;
     SpicePulsePrivate *p;
 
     SPICE_DEBUG("PA stream underflow!!");
 
-    p = SPICE_PULSE_GET_PRIVATE(userdata);
+    p = pulse->priv;
     g_return_if_fail(p != NULL);
     p->playback.num_underflow++;
 #ifdef PULSE_ADJUST_LATENCY
@@ -303,7 +308,7 @@ static void stream_update_latency_callback(pa_stream *s, void *userdata)
     int negative = 0;
     SpicePulsePrivate *p;
 
-    p = SPICE_PULSE_GET_PRIVATE(pulse);
+    p = pulse->priv;
 
     g_return_if_fail(s != NULL);
     g_return_if_fail(p != NULL);
@@ -331,7 +336,7 @@ static void stream_update_latency_callback(pa_stream *s, void *userdata)
 
 static void create_playback(SpicePulse *pulse)
 {
-    SpicePulsePrivate *p = SPICE_PULSE_GET_PRIVATE(pulse);
+    SpicePulsePrivate *p = pulse->priv;
     pa_stream_flags_t flags;
     pa_buffer_attr buffer_attr = { 0, };
 
@@ -364,7 +369,7 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
                            gint frequency, gpointer data)
 {
     SpicePulse *pulse = data;
-    SpicePulsePrivate *p = SPICE_PULSE_GET_PRIVATE(pulse);
+    SpicePulsePrivate *p = pulse->priv;
     pa_context_state_t state;
     guint latency;
 
@@ -414,7 +419,7 @@ static void playback_data(SpicePlaybackChannel *channel,
                           gpointer data)
 {
     SpicePulse *pulse = data;
-    SpicePulsePrivate *p = SPICE_PULSE_GET_PRIVATE(pulse);
+    SpicePulsePrivate *p = pulse->priv;
     pa_stream_state_t state;
 
     if (!p->playback.stream)
@@ -461,7 +466,7 @@ static void playback_stop(SpicePlaybackChannel *channel, gpointer data)
 static void stream_read_callback(pa_stream *s, size_t length, void *data)
 {
     SpicePulse *pulse = data;
-    SpicePulsePrivate *p = SPICE_PULSE_GET_PRIVATE(pulse);
+    SpicePulsePrivate *p = pulse->priv;
 
     g_return_if_fail(p != NULL);
 
@@ -493,7 +498,7 @@ static void stream_read_callback(pa_stream *s, size_t length, void *data)
 
 static void create_record(SpicePulse *pulse)
 {
-    SpicePulsePrivate *p = SPICE_PULSE_GET_PRIVATE(pulse);
+    SpicePulsePrivate *p = pulse->priv;
     pa_buffer_attr buffer_attr = { 0, };
     pa_stream_flags_t flags;
 
@@ -525,7 +530,7 @@ static void record_start(SpiceRecordChannel *channel, gint format, gint channels
                          gint frequency, gpointer data)
 {
     SpicePulse *pulse = data;
-    SpicePulsePrivate *p = SPICE_PULSE_GET_PRIVATE(pulse);
+    SpicePulsePrivate *p = pulse->priv;
     pa_context_state_t state;
 
     p->record.started = TRUE;
@@ -793,8 +798,10 @@ static gboolean connect_channel(SpiceAudio *audio, SpiceChannel *channel)
 
 static void context_state_callback(pa_context *c, void *userdata)
 {
+    SpicePulse *pulse = userdata;
     SpicePulsePrivate *p;
-    p = SPICE_PULSE_GET_PRIVATE(userdata);
+
+    p = pulse->priv;
 
     g_return_if_fail(p != NULL);
     g_return_if_fail(c != NULL);
@@ -836,7 +843,7 @@ SpicePulse *spice_pulse_new(SpiceSession *session, GMainContext *context,
                          "session", session,
                          "main-context", context,
                          NULL);
-    p = SPICE_PULSE_GET_PRIVATE(pulse);
+    p = pulse->priv;
 
     p->mainloop = pa_glib_mainloop_new(context);
     p->state = PA_CONTEXT_READY;

@@ -17,14 +17,34 @@
 */
 #include "config.h"
 
+#include <glib.h>
+
+#if HAVE_X11_XKBLIB_H
+#include <X11/XKBlib.h>
+#include <gdk/gdkx.h>
+#endif
+#ifdef GDK_WINDOWING_X11
+#include <X11/Xlib.h>
+#include <gdk/gdkx.h>
+#endif
+#ifdef G_OS_WIN32
+#include <windows.h>
+#include <gdk/gdkwin32.h>
+#ifndef MAPVK_VK_TO_VSC /* may be undefined in older mingw-headers */
+#define MAPVK_VK_TO_VSC 0
+#endif
+#endif
+
 #include <gtk/gtk.h>
 #include <spice/vd_agent.h>
 #include "desktop-integration.h"
+#include "gtk-compat.h"
 #include "spice-common.h"
 #include "spice-gtk-session.h"
 #include "spice-gtk-session-priv.h"
 #include "spice-session-priv.h"
 #include "spice-util-priv.h"
+#include "spice-channel-priv.h"
 
 #define CLIPBOARD_LAST (VD_AGENT_CLIPBOARD_SELECTION_SECONDARY + 1)
 
@@ -97,9 +117,83 @@ enum {
     PROP_AUTO_USBREDIR,
 };
 
+static guint32 get_keyboard_lock_modifiers(void)
+{
+    guint32 modifiers = 0;
+#if HAVE_X11_XKBLIB_H
+    Display *x_display = NULL;
+    XKeyboardState keyboard_state;
+
+    GdkScreen *screen = gdk_screen_get_default();
+    if (!GDK_IS_X11_DISPLAY(gdk_screen_get_display(screen))) {
+        SPICE_DEBUG("FIXME: gtk backend is not X11");
+        return 0;
+    }
+
+    x_display = GDK_SCREEN_XDISPLAY(screen);
+    XGetKeyboardControl(x_display, &keyboard_state);
+
+    if (keyboard_state.led_mask & 0x01) {
+        modifiers |= SPICE_INPUTS_CAPS_LOCK;
+    }
+    if (keyboard_state.led_mask & 0x02) {
+        modifiers |= SPICE_INPUTS_NUM_LOCK;
+    }
+    if (keyboard_state.led_mask & 0x04) {
+        modifiers |= SPICE_INPUTS_SCROLL_LOCK;
+    }
+#elif defined(G_OS_WIN32)
+    if (GetKeyState(VK_CAPITAL) & 1) {
+        modifiers |= SPICE_INPUTS_CAPS_LOCK;
+    }
+    if (GetKeyState(VK_NUMLOCK) & 1) {
+        modifiers |= SPICE_INPUTS_NUM_LOCK;
+    }
+    if (GetKeyState(VK_SCROLL) & 1) {
+        modifiers |= SPICE_INPUTS_SCROLL_LOCK;
+    }
+#else
+    g_warning("get_keyboard_lock_modifiers not implemented");
+#endif // HAVE_X11_XKBLIB_H
+    return modifiers;
+}
+
+static void spice_gtk_session_sync_keyboard_modifiers_for_channel(SpiceGtkSession *self,
+                                                                  SpiceInputsChannel* inputs,
+                                                                  gboolean force)
+{
+    gint guest_modifiers = 0, client_modifiers = 0;
+
+    g_return_if_fail(SPICE_IS_INPUTS_CHANNEL(inputs));
+
+    g_object_get(inputs, "key-modifiers", &guest_modifiers, NULL);
+    client_modifiers = get_keyboard_lock_modifiers();
+
+    if (force || client_modifiers != guest_modifiers) {
+        CHANNEL_DEBUG(inputs, "client_modifiers:0x%x, guest_modifiers:0x%x",
+                      client_modifiers, guest_modifiers);
+        spice_inputs_set_key_locks(inputs, client_modifiers);
+    }
+}
+
+static void keymap_modifiers_changed(GdkKeymap *keymap, gpointer data)
+{
+    SpiceGtkSession *self = data;
+
+    spice_gtk_session_sync_keyboard_modifiers(self);
+}
+
+static void guest_modifiers_changed(SpiceInputsChannel *inputs, gpointer data)
+{
+    SpiceGtkSession *self = data;
+
+    spice_gtk_session_sync_keyboard_modifiers_for_channel(self, inputs, FALSE);
+}
+
 static void spice_gtk_session_init(SpiceGtkSession *self)
 {
     SpiceGtkSessionPrivate *s;
+    GdkKeymap *keymap = gdk_keymap_get_default();
 
     s = self->priv = SPICE_GTK_SESSION_GET_PRIVATE(self);
 
@@ -109,6 +203,8 @@ static void spice_gtk_session_init(SpiceGtkSession *self)
     s->clipboard_primary = gtk_clipboard_get(GDK_SELECTION_PRIMARY);
     g_signal_connect(G_OBJECT(s->clipboard_primary), "owner-change",
                      G_CALLBACK(clipboard_owner_change), self);
+    spice_g_signal_connect_object(keymap, "state-changed",
+                                  G_CALLBACK(keymap_modifiers_changed), self, 0);
 }
 
 static GObject *
@@ -796,6 +892,15 @@ static void clipboard_received_cb(GtkClipboard *clipboard,
         }
 
         len = strlen(conv);
+    } else {
+        /* On Windows, with some versions of gtk+, GtkSelectionData::length
+         * will include the final '\0'. When a string with this trailing '\0'
+         * is pasted in some linux applications, it will be pasted as <NIL> or
+         * as an invisible character, which is unwanted. Ensure the length we
+         * send to the agent does not include any trailing '\0'
+         * This is gtk+ bug https://bugzilla.gnome.org/show_bug.cgi?id=734670
+         */
+        len = strlen((const char *)data);
     }
 
     spice_main_clipboard_selection_notify(s->main, selection, type,
@@ -813,6 +918,9 @@ static gboolean clipboard_request(SpiceMainChannel *main, guint selection,
     GdkAtom atom;
     GtkClipboard* cb;
     int m;
+
+    g_return_val_if_fail(s->clipboard_by_guest[selection] == FALSE, FALSE);
+    g_return_val_if_fail(s->clip_grabbed[selection], FALSE);
 
     if (read_only(self))
         return FALSE;
@@ -871,6 +979,11 @@ static void channel_new(SpiceSession *session, SpiceChannel *channel,
                          G_CALLBACK(clipboard_request), self);
         g_signal_connect(channel, "main-clipboard-selection-release",
                          G_CALLBACK(clipboard_release), self);
+    }
+    if (SPICE_IS_INPUTS_CHANNEL(channel)) {
+        spice_g_signal_connect_object(channel, "inputs-modifiers",
+                                      G_CALLBACK(guest_modifiers_changed), self, 0);
+        spice_gtk_session_sync_keyboard_modifiers_for_channel(self, SPICE_INPUTS_CHANNEL(channel), TRUE);
     }
 }
 
@@ -1028,4 +1141,17 @@ void spice_gtk_session_paste_from_guest(SpiceGtkSession *self)
     }
     s->clipboard_by_guest[selection] = TRUE;
     s->clip_hasdata[selection] = FALSE;
+}
+
+void spice_gtk_session_sync_keyboard_modifiers(SpiceGtkSession *self)
+{
+    GList *l = NULL, *channels = spice_session_get_channels(self->priv->session);
+
+    for (l = channels; l != NULL; l = l->next) {
+        if (SPICE_IS_INPUTS_CHANNEL(l->data)) {
+            SpiceInputsChannel *inputs = SPICE_INPUTS_CHANNEL(l->data);
+            spice_gtk_session_sync_keyboard_modifiers_for_channel(self, inputs, TRUE);
+        }
+    }
+    g_list_free(channels);
 }

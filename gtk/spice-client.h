@@ -56,6 +56,10 @@ G_BEGIN_DECLS
 /**
  * SpiceClientError:
  * @SPICE_CLIENT_ERROR_FAILED: generic error code
+ * @SPICE_CLIENT_USB_DEVICE_REJECTED: usb device rejected by host
+ * @SPICE_CLIENT_USB_DEVICE_LOST: usb device disconnected (fatal IO error)
+ * @SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD: password is required
+ * @SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD_AND_USERNAME: password and username are required
  *
  * Error codes returned by spice-client API.
  */
@@ -64,6 +68,8 @@ typedef enum
     SPICE_CLIENT_ERROR_FAILED,
     SPICE_CLIENT_USB_DEVICE_REJECTED,
     SPICE_CLIENT_USB_DEVICE_LOST,
+    SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD,
+    SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD_AND_USERNAME,
 } SpiceClientError;
 
 GQuark spice_client_error_quark(void);

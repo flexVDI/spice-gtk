@@ -36,7 +36,7 @@ static void test_dos2unix(void)
 {
     GError *err = NULL;
     gchar *tmp;
-    int i;
+    unsigned int i;
 
     for (i = 0; i < G_N_ELEMENTS(dosunix); i++) {
         if (!(dosunix[i].flags & DOS2UNIX))
@@ -59,7 +59,7 @@ static void test_unix2dos(void)
 {
     GError *err = NULL;
     gchar *tmp;
-    int i;
+    unsigned int i;
 
     for (i = 0; i < G_N_ELEMENTS(dosunix); i++) {
         if (!(dosunix[i].flags & UNIX2DOS))
@@ -137,9 +137,9 @@ static void test_set_bit(void)
             "\xf7\x31",
         }
     };
-    int i, j, bit;
+    unsigned int i, j, bit;
     guint8 *dest;
-    int bytes;
+    unsigned int bytes;
 
     for (i = 0 ; i < G_N_ELEMENTS(tests); ++i) {
         bytes = (tests[i].len + 7) / 8;
@@ -158,7 +158,8 @@ static void test_set_bit(void)
 
 static void test_mono_edge_highlight(void)
 {
-    int i, j, bit;
+    unsigned int i;
+    int j, bit;
     guint8 *and;
     guint8 *xor;
     guint8 *dest;
