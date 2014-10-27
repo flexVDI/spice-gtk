@@ -6,6 +6,7 @@ srcdir=`dirname $0`
 test -z "$srcdir" && srcdir=.
 
 git submodule update --init --recursive
+(cd "$srcdir/gtk/phodav/" && intltoolize -f)
 
 gtkdocize
 autoreconf -v --force --install
@@ -15,4 +16,3 @@ if [ -z "$NOCONFIGURE" ]; then
     echo "Running configure with --enable-maintainer-mode --enable-gtk-doc --with-gtk=3.0 --enable-vala ${1+"$@"}"
     "$srcdir"/configure --enable-maintainer-mode --enable-gtk-doc --with-gtk=3.0 --enable-vala ${1+"$@"}
 fi
-

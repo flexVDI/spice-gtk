@@ -28,6 +28,7 @@ spice_session_disconnect
 spice_session_get_channels
 spice_session_get_read_only
 spice_session_has_channel_type
+spice_session_get_proxy_uri
 <SUBSECTION>
 SpiceSessionMigration
 SpiceSessionVerify
@@ -102,6 +103,7 @@ spice_channel_string_to_type
 spice_channel_set_capability
 spice_channel_flush_async
 spice_channel_flush_finish
+spice_channel_get_error
 <SUBSECTION Standard>
 SPICE_TYPE_CHANNEL_EVENT
 spice_channel_event_get_type
@@ -400,6 +402,10 @@ SpiceGtkBoxClass
 <FILE>spice-util</FILE>
 spice_util_set_debug
 spice_util_get_version_string
+SPICE_GTK_CHECK_VERSION
+SPICE_GTK_MAJOR_VERSION
+SPICE_GTK_MICRO_VERSION
+SPICE_GTK_MINOR_VERSION
 <SUBSECTION Private>
 SPICE_DEBUG
 spice_util_get_debug
@@ -429,3 +435,46 @@ SPICE_PORT_CHANNEL_GET_CLASS
 SpicePortChannelPrivate
 </SECTION>
 
+<SECTION>
+<FILE>spice-uri</FILE>
+spice_uri_get_scheme
+spice_uri_set_scheme
+spice_uri_get_hostname
+spice_uri_set_hostname
+spice_uri_get_port
+spice_uri_set_port
+spice_uri_get_user
+spice_uri_set_user
+spice_uri_get_password
+spice_uri_set_password
+spice_uri_to_string
+SpiceURIClass
+SpiceURI
+<SUBSECTION Standard>
+SPICE_IS_URI
+SPICE_IS_URI_CLASS
+SPICE_TYPE_URI
+SPICE_URI
+SPICE_URI_CLASS
+SPICE_URI_GET_CLASS
+spice_uri_get_type
+<SUBSECTION Private>
+SpiceURIPrivate
+</SECTION>
+
+<SECTION>
+<FILE>channel-webdav</FILE>
+<TITLE>SpiceWebdavChannel</TITLE>
+SpiceWebdavChannel
+SpiceWebdavChannelClass
+<SUBSECTION Standard>
+SPICE_IS_WEBDAV_CHANNEL
+SPICE_IS_WEBDAV_CHANNEL_CLASS
+SPICE_TYPE_WEBDAV_CHANNEL
+SPICE_WEBDAV_CHANNEL
+SPICE_WEBDAV_CHANNEL_CLASS
+SPICE_WEBDAV_CHANNEL_GET_CLASS
+spice_webdav_channel_get_type
+<SUBSECTION Private>
+SpiceWebdavChannelPrivate
+</SECTION>

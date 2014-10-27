@@ -141,7 +141,7 @@ g_udev_client_list_devices(GUdevClient *self, GList **devs,
         const char *errstr = spice_usbutil_libusb_strerror(rc);
         g_warning("%s: libusb_get_device_list failed", name);
         g_set_error(err, G_UDEV_CLIENT_ERROR, G_UDEV_CLIENT_LIBUSB_FAILED,
-                    "%s: Error getting device list from libusb: %s [%i]",
+                    "%s: Error getting device list from libusb: %s [%"G_GSSIZE_FORMAT"]",
                     name, errstr, rc);
         return -4;
     }
@@ -354,7 +354,8 @@ static void handle_dev_change(GUdevClient *self)
                                            __FUNCTION__);
     g_return_if_fail(dev_count >= 0);
 
-    SPICE_DEBUG("number of current devices %d, I know about %d devices",
+    SPICE_DEBUG("number of current devices %"G_GSSIZE_FORMAT
+                ", I know about %"G_GSSIZE_FORMAT" devices",
                 dev_count, priv->udev_list_size);
 
     is_dev_change = dev_count - priv->udev_list_size;

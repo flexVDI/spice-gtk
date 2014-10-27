@@ -75,6 +75,17 @@ AC_CONFIG_SUBDIRS([spice-common])
 COMMON_CFLAGS='-I ${top_srcdir}/spice-common/ -I ${top_srcdir}/spice-common/spice-protocol/'
 AC_SUBST(COMMON_CFLAGS)
 
+AC_CONFIG_SUBDIRS([gtk/phodav])
+
+SPICE_GTK_MAJOR_VERSION=`echo $PACKAGE_VERSION | cut -d. -f1`
+SPICE_GTK_MINOR_VERSION=`echo $PACKAGE_VERSION | cut -d. -f2`
+SPICE_GTK_MICRO_VERSION=`echo $PACKAGE_VERSION | cut -d. -f3 | cut -d- -f1`
+AS_IF([test "x$SPICE_GTK_MICRO_VERSION" = "x"], [SPICE_GTK_MICRO_VERSION = 0])
+
+AC_SUBST(SPICE_GTK_MAJOR_VERSION)
+AC_SUBST(SPICE_GTK_MINOR_VERSION)
+AC_SUBST(SPICE_GTK_MICRO_VERSION)
+
 dnl =========================================================================
 dnl Chek optional features
 
@@ -233,7 +244,7 @@ else
         EXTERNAL_PNP_IDS="$with_pnp_ids_path"
 fi
 
-AC_CHECK_FUNCS(clearenv)
+AC_CHECK_FUNCS(clearenv strtok_r)
 
 PKG_CHECK_MODULES(GLIB2, glib-2.0 >= 2.22)
 AC_SUBST(GLIB2_CFLAGS)
@@ -257,6 +268,8 @@ AC_SUBST(CAIRO_LIBS)
 PKG_CHECK_MODULES(GTHREAD, gthread-2.0 > 2.0.0)
 AC_SUBST(GTHREAD_CFLAGS)
 AC_SUBST(GTHREAD_LIBS)
+
+PKG_CHECK_MODULES(SOUP, libsoup-2.4)
 
 AC_ARG_WITH([audio],
   AS_HELP_STRING([--with-audio=@<:@gstreamer/pulse/auto/no@:>@], [Select audio backend @<:@default=auto@:>@]),
@@ -700,6 +713,8 @@ AC_SUBST(SPICE_GTK_REQUIRES)
 
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
+AM_CONDITIONAL([BUILD_TESTS], [test x"$enable_static" = xyes])
+
 AC_OUTPUT([
 Makefile
 spice-client-glib-2.0.pc
@@ -711,6 +726,7 @@ data/spicy.desktop.in
 data/spicy.nsis
 po/Makefile.in
 gtk/Makefile
+gtk/spice-version.h
 gtk/controller/Makefile
 doc/Makefile
 doc/reference/Makefile

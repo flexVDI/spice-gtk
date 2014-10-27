@@ -130,7 +130,8 @@ void win_usb_driver_handle_reply_cb(GObject *gobject,
     }
 
     if (bytes != sizeof(priv->reply)) {
-        g_warning("usbclerk size mismatch: read %d bytes, expected %d (header %d, size in header %d)",
+        g_warning("usbclerk size mismatch: read %"G_GSSIZE_FORMAT" bytes,expected "
+                  "%"G_GSSIZE_FORMAT" (header %"G_GSSIZE_FORMAT", size in header %d)",
                   bytes, sizeof(priv->reply), sizeof(priv->reply.hdr), priv->reply.hdr.size);
         /* For now just warn, do not fail */
     }
@@ -165,7 +166,7 @@ void win_usb_driver_handle_reply_cb(GObject *gobject,
     }
 
     if (priv->reply.hdr.size != bytes) {
-        g_warning("usbclerk message size mismatch: read %d bytes  hdr.size=%d",
+        g_warning("usbclerk message size mismatch: read %"G_GSSIZE_FORMAT" bytes  hdr.size=%d",
                   bytes, priv->reply.hdr.size);
         g_simple_async_result_set_error(priv->result,
                                         SPICE_WIN_USB_DRIVER_ERROR,
@@ -211,7 +212,8 @@ gboolean spice_win_usb_driver_send_request(SpiceWinUsbDriver *self, guint16 op,
     ret = g_output_stream_write_all(ostream, &req, sizeof(req), &bytes, NULL, err);
     g_warn_if_fail(g_output_stream_close(ostream, NULL, NULL));
     g_object_unref(ostream);
-    SPICE_DEBUG("write_all request returned %d written bytes %u expecting %u",
+    SPICE_DEBUG("write_all request returned %d written bytes %"G_GSIZE_FORMAT
+                " expecting %"G_GSIZE_FORMAT,
                 ret, bytes, sizeof(req));
     return ret;
 }

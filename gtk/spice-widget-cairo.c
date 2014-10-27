@@ -15,12 +15,10 @@
   You should have received a copy of the GNU Lesser General Public
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
+#include "config.h"
+
 #include "spice-widget.h"
 #include "spice-widget-priv.h"
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 /* Some compatibility defines to let us build on both Gtk2 and Gtk3 */
 #if GTK_CHECK_VERSION (2, 91, 0)

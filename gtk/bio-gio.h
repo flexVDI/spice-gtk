@@ -15,16 +15,20 @@
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef BIO_GSOCKET_H_
-# define BIO_GSOCKET_H_
+#ifndef BIO_GIO_H_
+# define BIO_GIO_H_
 
 #include <openssl/bio.h>
 #include <gio/gio.h>
 
 G_BEGIN_DECLS
 
+#if GLIB_CHECK_VERSION(2, 28, 0)
+BIO* bio_new_giostream(GIOStream *stream);
+#else
 BIO* bio_new_gsocket(GSocket *gsocket);
+#endif
 
 G_END_DECLS
 
-#endif /* !BIO_GSOCKET_H_ */
+#endif /* !BIO_GIO_H_ */
