@@ -62,7 +62,7 @@
  */
 #define SPICE_GTK_CHECK_VERSION(major, minor, micro)                    \
         (SPICE_GTK_MAJOR_VERSION > (major) ||                           \
-         (SPICE_GTK_MAJOR_VERSION == (major) && SPICE_GTK_MINOR_VERSION >= (minor)) || \
+         (SPICE_GTK_MAJOR_VERSION == (major) && SPICE_GTK_MINOR_VERSION > (minor)) || \
          (SPICE_GTK_MAJOR_VERSION == (major) && SPICE_GTK_MINOR_VERSION == (minor) && \
           SPICE_GTK_MICRO_VERSION >= (micro)))
 
