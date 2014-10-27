@@ -315,7 +315,7 @@ static void demux_to_client(SpiceWebdavChannel *self,
     SpiceWebdavChannelPrivate *c = self->priv;
     gssize size = c->demux.size;
 
-    CHANNEL_DEBUG(self, "pushing %ld to client %p", size, client);
+    CHANNEL_DEBUG(self, "pushing %"G_GSSIZE_FORMAT" to client %p", size, client);
 
     if (size != 0) {
         output_queue_push(client->output, (guint8 *)c->demux.buf, size,
@@ -388,7 +388,7 @@ static void client_connected(GObject *source_object,
     client->self = self;
     client->conn = conn;
     client->mux.id = GINT64_TO_LE(client->id);
-    client->mux.buf = g_malloc(MAX_MUX_SIZE);
+    client->mux.buf = g_malloc0(MAX_MUX_SIZE);
     client->cancellable = g_cancellable_new();
 
     output = g_buffered_output_stream_new(g_io_stream_get_output_stream(G_IO_STREAM(conn)));
@@ -559,7 +559,7 @@ static void spice_webdav_channel_init(SpiceWebdavChannel *channel)
     c->cancellable = g_cancellable_new();
     c->clients = g_hash_table_new_full(g_int64_hash, g_int64_equal,
                                        NULL, client_remove_unref);
-    c->demux.buf = g_malloc(MAX_MUX_SIZE);
+    c->demux.buf = g_malloc0(MAX_MUX_SIZE);
 
     GOutputStream *ostream = g_io_stream_get_output_stream(G_IO_STREAM(c->stream));
     c->queue = output_queue_new(ostream);

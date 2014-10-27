@@ -197,35 +197,6 @@ static void spice_port_channel_class_init(SpicePortChannelClass *klass)
     channel_set_handlers(SPICE_CHANNEL_CLASS(klass));
 }
 
-/* signal trampoline---------------------------------------------------------- */
-
-struct SPICE_PORT_DATA {
-    uint8_t *data;
-    gsize data_size;
-};
-
-struct SPICE_PORT_EVENT {
-    int event;
-};
-
-/* main context */
-static void do_emit_main_context(GObject *object, int signum, gpointer params)
-{
-    switch (signum) {
-    case SPICE_PORT_DATA: {
-        struct SPICE_PORT_DATA *p = params;
-        g_signal_emit(object, signals[signum], 0, p->data, p->data_size);
-        break;
-    }
-    case SPICE_PORT_EVENT: {
-        struct SPICE_PORT_EVENT *p = params;
-        g_signal_emit(object, signals[signum], 0, p->event);
-        break;
-    }
-    default:
-        g_warn_if_reached();
-    }
-}
 
 /* coroutine context */
 static void port_set_opened(SpicePortChannel *self, gboolean opened)
@@ -236,7 +207,7 @@ static void port_set_opened(SpicePortChannel *self, gboolean opened)
         return;
 
     c->opened = opened;
-    g_object_notify_main_context(G_OBJECT(self), "port-opened");
+    g_coroutine_object_notify(G_OBJECT(self), "port-opened");
 }
 
 /* coroutine context */
@@ -254,9 +225,9 @@ static void port_handle_init(SpiceChannel *channel, SpiceMsgIn *in)
 
     port_set_opened(self, init->opened);
     if (init->opened)
-        emit_main_context(channel, SPICE_PORT_EVENT, SPICE_PORT_EVENT_OPENED);
+        g_coroutine_signal_emit(channel, signals[SPICE_PORT_EVENT], 0, SPICE_PORT_EVENT_OPENED);
 
-    g_object_notify_main_context(G_OBJECT(channel), "port-name");
+    g_coroutine_object_notify(G_OBJECT(channel), "port-name");
 }
 
 /* coroutine context */
@@ -275,7 +246,7 @@ static void port_handle_event(SpiceChannel *channel, SpiceMsgIn *in)
         break;
     }
 
-    emit_main_context(channel, SPICE_PORT_EVENT, event->event);
+    g_coroutine_signal_emit(channel, signals[SPICE_PORT_EVENT], 0, event->event);
 }
 
 /* coroutine context */
@@ -288,7 +259,7 @@ static void port_handle_msg(SpiceChannel *channel, SpiceMsgIn *in)
     buf = spice_msg_in_raw(in, &size);
     CHANNEL_DEBUG(channel, "port %p got %d %p", channel, size, buf);
     port_set_opened(self, true);
-    emit_main_context(channel, SPICE_PORT_DATA, buf, size);
+    g_coroutine_signal_emit(channel, signals[SPICE_PORT_DATA], 0, buf, size);
 }
 
 /**

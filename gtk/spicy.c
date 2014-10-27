@@ -73,7 +73,7 @@ struct _SpiceWindow {
     bool             fullscreen;
     bool             mouse_grabbed;
     SpiceChannel     *display_channel;
-#ifdef WIN32
+#ifdef G_OS_WIN32
     gint             win_x;
     gint             win_y;
 #endif
@@ -186,7 +186,7 @@ static struct {
     { .text = N_("TLS Port"),   .prop = "tls-port"  },
 };
 
-#ifndef WIN32
+#ifndef G_OS_WIN32
 static void recent_selection_changed_dialog_cb(GtkRecentChooser *chooser, gpointer data)
 {
     GtkRecentInfo *info;
@@ -265,7 +265,7 @@ static int connect_dialog(SpiceSession *session)
     label = gtk_label_new("Recent connections:");
     gtk_box_pack_start(GTK_BOX(area), label, TRUE, TRUE, 0);
     gtk_misc_set_alignment(GTK_MISC(label), 0, 0.5);
-#ifndef WIN32
+#ifndef G_OS_WIN32
     GtkRecentFilter *rfilter;
     GtkWidget *recent;
 
@@ -398,13 +398,13 @@ static void menu_cb_paste(GtkAction *action, void *data)
 static void window_set_fullscreen(SpiceWindow *win, gboolean fs)
 {
     if (fs) {
-#ifdef WIN32
+#ifdef G_OS_WIN32
         gtk_window_get_position(GTK_WINDOW(win->toplevel), &win->win_x, &win->win_y);
 #endif
         gtk_window_fullscreen(GTK_WINDOW(win->toplevel));
     } else {
         gtk_window_unfullscreen(GTK_WINDOW(win->toplevel));
-#ifdef WIN32
+#ifdef G_OS_WIN32
         gtk_window_move(GTK_WINDOW(win->toplevel), win->win_x, win->win_y);
 #endif
     }
@@ -938,7 +938,7 @@ static gboolean is_gtk_session_property(const gchar *property)
     return FALSE;
 }
 
-#ifndef WIN32
+#ifndef G_OS_WIN32
 static void recent_item_activated_cb(GtkRecentChooser *chooser, gpointer data)
 {
     GtkRecentInfo *info;
@@ -1038,7 +1038,7 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     win->ritem  = gtk_ui_manager_get_widget
         (win->ui, "/MainMenu/FileMenu/FileRecentMenu");
 
-#ifndef WIN32
+#ifndef G_OS_WIN32
     GtkRecentFilter  *rfilter;
 
     win->rmenu = gtk_recent_chooser_menu_new();
@@ -1716,7 +1716,7 @@ static void (* segv_handler) (int) = SIG_DFL;
 static void (* abrt_handler) (int) = SIG_DFL;
 static void (* fpe_handler)  (int) = SIG_DFL;
 static void (* ill_handler)  (int) = SIG_DFL;
-#ifndef WIN32
+#ifndef G_OS_WIN32
 static void (* bus_handler)  (int) = SIG_DFL;
 #endif
 
@@ -1733,7 +1733,7 @@ signal_handler(int signum)
     signal(SIGABRT, abrt_handler);
     signal(SIGFPE,  fpe_handler);
     signal(SIGILL,  ill_handler);
-#ifndef WIN32
+#ifndef G_OS_WIN32
     signal(SIGBUS,  bus_handler);
 #endif
 
@@ -1820,7 +1820,7 @@ int main(int argc, char *argv[])
     abrt_handler = signal(SIGABRT, signal_handler);
     fpe_handler  = signal(SIGFPE,  signal_handler);
     ill_handler  = signal(SIGILL,  signal_handler);
-#ifndef WIN32
+#ifndef G_OS_WIN32
     signal(SIGHUP, signal_handler);
     bus_handler  = signal(SIGBUS,  signal_handler);
 #endif
@@ -1868,7 +1868,9 @@ int main(int argc, char *argv[])
         g_key_file_set_boolean(keyfile, "general", "grab-mouse", TRUE);
     }
 
+#if !GLIB_CHECK_VERSION(2,36,0)
     g_type_init();
+#endif
     mainloop = g_main_loop_new(NULL, false);
 
     conn = connection_new();

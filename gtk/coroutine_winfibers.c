@@ -60,6 +60,7 @@ void coroutine_init(struct coroutine *co)
 			g_error("ConvertThreadToFiber() failed");
 	}
 
+	co->exited = 0;
 	co->fiber = CreateFiber(0, &coroutine_trampoline, co);
 	if (co->fiber == NULL)
 		g_error("CreateFiber() failed");

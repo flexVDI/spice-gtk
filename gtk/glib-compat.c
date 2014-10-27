@@ -100,6 +100,28 @@ g_slist_free_full (GSList         *list,
 G_DEFINE_BOXED_TYPE (GMainContext, spice_main_context, g_main_context_ref, g_main_context_unref)
 #endif
 
+
+#if !GLIB_CHECK_VERSION(2,32,0)
+/**
+ * g_queue_free_full:
+ * @queue: a pointer to a #GQueue
+ * @free_func: the function to be called to free each element's data
+ *
+ * Convenience method, which frees all the memory used by a #GQueue,
+ * and calls the specified destroy function on every element's data.
+ *
+ * Since: 2.32
+ */
+void
+g_queue_free_full (GQueue        *queue,
+                  GDestroyNotify  free_func)
+{
+  g_queue_foreach (queue, (GFunc) free_func, NULL);
+  g_queue_free (queue);
+}
+#endif
+
+
 #if !GLIB_CHECK_VERSION(2,27,2)
 guint64 g_get_monotonic_time(void)
 {

@@ -344,7 +344,7 @@ static void handle_dev_change(GUdevClient *self)
     GUdevDevice *changed_dev = NULL;
     ssize_t dev_count;
     int is_dev_change;
-    GError *err;
+    GError *err = NULL;
     GList *now_devs = NULL;
     GList *llist, *slist; /* long-list and short-list*/
     GList *lit, *sit; /* iterators for long-list and short-list */

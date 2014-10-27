@@ -298,52 +298,6 @@ static void spice_playback_channel_class_init(SpicePlaybackChannelClass *klass)
     channel_set_handlers(SPICE_CHANNEL_CLASS(klass));
 }
 
-/* signal trampoline---------------------------------------------------------- */
-
-struct SPICE_PLAYBACK_START {
-    gint format;
-    gint channels;
-    gint frequency;
-    gint latency;
-};
-
-struct SPICE_PLAYBACK_DATA {
-    uint8_t *data;
-    gsize data_size;
-};
-
-struct SPICE_PLAYBACK_STOP {
-};
-
-struct SPICE_PLAYBACK_GET_DELAY {
-};
-
-/* main context */
-static void do_emit_main_context(GObject *object, int signum, gpointer params)
-{
-    switch (signum) {
-    case SPICE_PLAYBACK_GET_DELAY:
-    case SPICE_PLAYBACK_STOP: {
-        g_signal_emit(object, signals[signum], 0);
-        break;
-    }
-    case SPICE_PLAYBACK_START: {
-        struct SPICE_PLAYBACK_START *p = params;
-        g_signal_emit(object, signals[signum], 0,
-                      p->format, p->channels, p->frequency);
-        break;
-    }
-    case SPICE_PLAYBACK_DATA: {
-        struct SPICE_PLAYBACK_DATA *p = params;
-        g_signal_emit(object, signals[signum], 0,
-                      p->data, p->data_size);
-        break;
-    }
-    default:
-        g_warn_if_reached();
-    }
-}
-
 /* ------------------------------------------------------------------ */
 
 /* coroutine context */
@@ -377,10 +331,10 @@ static void playback_handle_data(SpiceChannel *channel, SpiceMsgIn *in)
         }
     }
 
-    emit_main_context(channel, SPICE_PLAYBACK_DATA, data, n);
+    g_coroutine_signal_emit(channel, signals[SPICE_PLAYBACK_DATA], 0, data, n);
 
     if ((c->frame_count++ % 100) == 0) {
-        emit_main_context(channel, SPICE_PLAYBACK_GET_DELAY);
+        g_coroutine_signal_emit(channel, signals[SPICE_PLAYBACK_GET_DELAY], 0);
     }
 }
 
@@ -421,13 +375,14 @@ static void playback_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
     c->codec = NULL;
 
     if (c->mode != SPICE_AUDIO_DATA_MODE_RAW) {
+        snd_codec_destroy(&c->codec);
         if (snd_codec_create(&c->codec, c->mode, start->frequency, SND_CODEC_DECODE) != SND_CODEC_OK) {
             g_warning("create decoder failed");
             return;
         }
     }
-    emit_main_context(channel, SPICE_PLAYBACK_START,
-         start->format, start->channels, start->frequency);
+    g_coroutine_signal_emit(channel, signals[SPICE_PLAYBACK_START], 0,
+                            start->format, start->channels, start->frequency);
 }
 
 /* coroutine context */
@@ -435,7 +390,7 @@ static void playback_handle_stop(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
 
-    emit_main_context(channel, SPICE_PLAYBACK_STOP);
+    g_coroutine_signal_emit(channel, signals[SPICE_PLAYBACK_STOP], 0);
     c->is_active = FALSE;
 }
 
@@ -454,7 +409,7 @@ static void playback_handle_set_volume(SpiceChannel *channel, SpiceMsgIn *in)
     c->nchannels = vol->nchannels;
     c->volume = g_new(guint16, c->nchannels);
     memcpy(c->volume, vol->volume, sizeof(guint16) * c->nchannels);
-    g_object_notify_main_context(G_OBJECT(channel), "volume");
+    g_coroutine_object_notify(G_OBJECT(channel), "volume");
 }
 
 /* coroutine context */
@@ -464,7 +419,7 @@ static void playback_handle_set_mute(SpiceChannel *channel, SpiceMsgIn *in)
     SpiceMsgAudioMute *m = spice_msg_in_parsed(in);
 
     c->mute = m->mute;
-    g_object_notify_main_context(G_OBJECT(channel), "mute");
+    g_coroutine_object_notify(G_OBJECT(channel), "mute");
 }
 
 /* coroutine context */
@@ -475,7 +430,7 @@ static void playback_handle_set_latency(SpiceChannel *channel, SpiceMsgIn *in)
 
     c->min_latency = msg->latency_ms;
     SPICE_DEBUG("%s: notify latency update %u", __FUNCTION__, c->min_latency);
-    g_object_notify_main_context(G_OBJECT(channel), "min-latency");
+    g_coroutine_object_notify(G_OBJECT(channel), "min-latency");
 }
 
 static void channel_set_handlers(SpiceChannelClass *klass)
@@ -530,5 +485,5 @@ void spice_playback_channel_sync_latency(SpicePlaybackChannel *channel)
     g_return_if_fail(SPICE_IS_PLAYBACK_CHANNEL(channel));
     g_return_if_fail(channel->priv->is_active);
     SPICE_DEBUG("%s: notify latency update %u", __FUNCTION__, channel->priv->min_latency);
-    g_object_notify_main_context(G_OBJECT(SPICE_CHANNEL(channel)), "min-latency");
+    g_coroutine_object_notify(G_OBJECT(SPICE_CHANNEL(channel)), "min-latency");
 }
