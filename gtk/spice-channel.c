@@ -1960,7 +1960,9 @@ gchar *spice_channel_supported_string(void)
 #ifdef USE_USBREDIR
                      spice_channel_type_to_string(SPICE_CHANNEL_USBREDIR),
 #endif
+#ifdef USE_PHODAV
                      spice_channel_type_to_string(SPICE_CHANNEL_WEBDAV),
+#endif
                      NULL);
 }
 
@@ -2025,10 +2027,12 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
         break;
     }
 #endif
+#ifdef USE_PHODAV
     case SPICE_CHANNEL_WEBDAV: {
         gtype = SPICE_TYPE_WEBDAV_CHANNEL;
         break;
     }
+#endif
     case SPICE_CHANNEL_PORT:
         gtype = SPICE_TYPE_PORT_CHANNEL;
         break;

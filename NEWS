@@ -1,3 +1,10 @@
+v0.25
+=====
+
+- Fix SPICE_GTK_MICRO_VERSION define for default value
+- Make "phodav", the webdav server, an external dependency rather than
+  a submodule
+
 v0.24
 =====
 

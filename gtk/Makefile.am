@@ -1,6 +1,5 @@
 NULL =
-
-SUBDIRS = phodav
+SUBDIRS =
 
 if WITH_CONTROLLER
 SUBDIRS += controller
@@ -97,6 +96,7 @@ SPICE_COMMON_CPPFLAGS =						\
 	$(USBREDIR_CFLAGS)					\
 	$(GUDEV_CFLAGS)						\
 	$(SOUP_CFLAGS)						\
+	$(PHODAV_CFLAGS)					\
 	$(NULL)
 
 AM_CPPFLAGS =					\
@@ -186,7 +186,6 @@ libspice_client_glib_2_0_la_LDFLAGS =	\
 libspice_client_glib_2_0_la_LIBADD =					\
 	$(top_builddir)/spice-common/common/libspice-common.la		\
 	$(top_builddir)/spice-common/common/libspice-common-client.la	\
-	phodav/libphodav.la						\
 	$(GLIB2_LIBS)							\
 	$(SOUP_LIBS)							\
 	$(GOBJECT2_LIBS)						\
@@ -203,6 +202,7 @@ libspice_client_glib_2_0_la_LIBADD =					\
 	$(SMARTCARD_LIBS)						\
 	$(USBREDIR_LIBS)						\
 	$(GUDEV_LIBS)							\
+	$(PHODAV_LIBS)							\
 	$(NULL)
 
 if WITH_POLKIT

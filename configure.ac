@@ -75,12 +75,10 @@ AC_CONFIG_SUBDIRS([spice-common])
 COMMON_CFLAGS='-I ${top_srcdir}/spice-common/ -I ${top_srcdir}/spice-common/spice-protocol/'
 AC_SUBST(COMMON_CFLAGS)
 
-AC_CONFIG_SUBDIRS([gtk/phodav])
-
 SPICE_GTK_MAJOR_VERSION=`echo $PACKAGE_VERSION | cut -d. -f1`
 SPICE_GTK_MINOR_VERSION=`echo $PACKAGE_VERSION | cut -d. -f2`
 SPICE_GTK_MICRO_VERSION=`echo $PACKAGE_VERSION | cut -d. -f3 | cut -d- -f1`
-AS_IF([test "x$SPICE_GTK_MICRO_VERSION" = "x"], [SPICE_GTK_MICRO_VERSION = 0])
+AS_IF([test "x$SPICE_GTK_MICRO_VERSION" = "x"], [SPICE_GTK_MICRO_VERSION=0])
 
 AC_SUBST(SPICE_GTK_MAJOR_VERSION)
 AC_SUBST(SPICE_GTK_MINOR_VERSION)
@@ -270,6 +268,14 @@ AC_SUBST(GTHREAD_CFLAGS)
 AC_SUBST(GTHREAD_LIBS)
 
 PKG_CHECK_MODULES(SOUP, libsoup-2.4)
+AC_SUBST(SOUP_CFLAGS)
+AC_SUBST(SOUP_LIBS)
+
+PKG_CHECK_MODULES(PHODAV, [libphodav-1.0], [have_phodav=yes], [have_phodav=no])
+AC_SUBST(PHODAV_CFLAGS)
+AC_SUBST(PHODAV_LIBS)
+AS_IF([test "x$have_phodav" = "xyes"],
+       AC_DEFINE(USE_PHODAV, [1], [Define if supporting phodav]))
 
 AC_ARG_WITH([audio],
   AS_HELP_STRING([--with-audio=@<:@gstreamer/pulse/auto/no@:>@], [Select audio backend @<:@default=auto@:>@]),
@@ -742,15 +748,16 @@ AC_MSG_NOTICE([
 
         prefix:                   ${prefix}
         c compiler:               ${CC}
+        Target:                   ${red_target}
+        Gtk:                      $GTK_API_VERSION
 
         Coroutine:                ${with_coroutine}
         Audio:                    ${with_audio}
-        Target:                   ${red_target}
         SASL support:             ${enable_sasl}
         Smartcard support:        ${have_smartcard}
         USB redirection support:  ${have_usbredir} ${with_usbredir_hotplug}
-        Gtk:                      $GTK_API_VERSION
         DBus:                     ${have_dbus}
+        PhoDAV:                   ${have_phodav}
 
         Now type 'make' to build $PACKAGE
 
