@@ -17,6 +17,8 @@ EXTRA_DIST =						\
 	SpiceClientGLib-2.0.metadata			\
 	$(NULL)
 
+CLEANFILES += $(vapi_DATA)
+
 spice-client-glib-2.0.vapi: $(top_builddir)/gtk/SpiceClientGLib-2.0.gir SpiceClientGLib-2.0.metadata
 	$(AM_V_GEN)$(VAPIGEN)			\
 		--metadatadir=$(srcdir)		\
