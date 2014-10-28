@@ -880,9 +880,8 @@ static void clipboard_received_cb(GtkClipboard *clipboard,
     gpointer conv = NULL;
 
     /* gtk+ internal utf8 newline is always LF, even on windows */
-    if (type == VD_AGENT_CLIPBOARD_UTF8_TEXT &&
-        spice_main_agent_test_capability(s->main, VD_AGENT_CAP_GUEST_LINEEND_CRLF)) {
-        {
+    if (type == VD_AGENT_CLIPBOARD_UTF8_TEXT) {
+        if (spice_main_agent_test_capability(s->main, VD_AGENT_CAP_GUEST_LINEEND_CRLF)) {
             GError *err = NULL;
 
             conv = spice_unix2dos((gchar*)data, len, &err);
