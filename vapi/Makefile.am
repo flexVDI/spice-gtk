@@ -11,7 +11,6 @@ dist_vapi_DATA =					\
 	spice-client-glib-2.0.deps			\
 	$(NULL)
 
-BUILT_SOURCES = $(vapi_DATA)
 EXTRA_DIST =						\
 	spice-client-gtk-2.0.deps			\
 	spice-client-gtk-3.0.deps			\
