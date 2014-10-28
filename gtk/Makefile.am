@@ -61,10 +61,14 @@ endif
 
 if HAVE_LD_VERSION_SCRIPT
 GLIB_SYMBOLS_LDFLAGS = -Wl,--version-script=${srcdir}/map-file
+GLIB_SYMBOLS_FILE = map-file
 GTK_SYMBOLS_LDFLAGS = $(GLIB_SYMBOLS_LDFLAGS)
+GTK_SYMBOLS_FILE = $(GLIB_SYMBOLS_FILE)
 else
 GLIB_SYMBOLS_LDFLAGS = -export-symbols ${srcdir}/spice-glib-sym-file
+GLIB_SYMBOLS_FILE = spice-glib-sym-file
 GTK_SYMBOLS_LDFLAGS = -export-symbols ${srcdir}/spice-gtk-sym-file
+GTK_SYMBOLS_FILE = spice-gtk-sym-file
 endif
 
 KEYMAP_GEN = $(srcdir)/keymap-gen.pl
@@ -153,11 +157,13 @@ SPICE_GTK_SOURCES_COMMON +=		\
 endif
 
 if HAVE_GTK_2
+libspice_client_gtk_2_0_la_DEPEDENCIES = $(GTK_SYMBOLS_FILE)
 libspice_client_gtk_2_0_la_LDFLAGS = $(SPICE_GTK_LDFLAGS_COMMON)
 libspice_client_gtk_2_0_la_LIBADD = $(SPICE_GTK_LIBADD_COMMON)
 libspice_client_gtk_2_0_la_SOURCES = $(SPICE_GTK_SOURCES_COMMON)
 nodist_libspice_client_gtk_2_0_la_SOURCES = $(nodist_SPICE_GTK_SOURCES_COMMON)
 else
+libspice_client_gtk_3_0_la_DEPEDENCIES = $(GTK_SYMBOLS_FILE)
 libspice_client_gtk_3_0_la_LDFLAGS = $(SPICE_GTK_LDFLAGS_COMMON)
 libspice_client_gtk_3_0_la_LIBADD = $(SPICE_GTK_LIBADD_COMMON)
 libspice_client_gtk_3_0_la_SOURCES = $(SPICE_GTK_SOURCES_COMMON)
@@ -176,6 +182,8 @@ libspice_client_gtkinclude_HEADERS =	\
 nodist_libspice_client_gtkinclude_HEADERS =	\
 	spice-widget-enums.h			\
 	$(NULL)
+
+libspice_client_glib_2_0_la_DEPENDENCIES = $(GLIB_SYMBOLS_FILE)
 
 libspice_client_glib_2_0_la_LDFLAGS =	\
 	-version-info 13:0:5		\
