@@ -285,7 +285,7 @@ else
   fi
 fi
 AS_IF([test "x$have_phodav" = "xyes"],
-       AC_DEFINE(USE_PHODAV, [1], [Define if supporting phodav]))
+       AC_DEFINE([USE_PHODAV], [1], [Define if supporting phodav]))
 
 AC_ARG_WITH([audio],
   AS_HELP_STRING([--with-audio=@<:@gstreamer/pulse/auto/no@:>@], [Select audio backend @<:@default=auto@:>@]),
@@ -360,7 +360,7 @@ if test "x$enable_smartcard" != "xno"; then
     AC_MSG_ERROR("Smartcard support requested but libcacard could not be found")
   fi
   if test "x$have_smartcard" = "xyes"; then
-    AC_DEFINE(USE_SMARTCARD, [1], [Define if supporting smartcard proxying])
+    AC_DEFINE([USE_SMARTCARD], [1], [Define if supporting smartcard proxying])
   fi
 fi
 AM_CONDITIONAL([WITH_SMARTCARD], [test "x$have_smartcard" = "xyes"])
@@ -394,7 +394,7 @@ else
     PKG_CHECK_MODULES([LIBUSB_HOTPLUG], [libusb-1.0 >= 1.0.16],
                       [have_libusb_hotplug=yes], [have_libusb_hotplug=no])
     if test "x$have_libusb_hotplug" = "xyes"; then
-      AC_DEFINE(USE_LIBUSB_HOTPLUG, [1], [Define if libusb has hotplug support])
+      AC_DEFINE([USE_LIBUSB_HOTPLUG], [1], [Define if libusb has hotplug support])
       with_usbredir_hotplug="with libusb hotplug"
     else
       PKG_CHECK_MODULES([GUDEV],
@@ -406,7 +406,7 @@ else
         AC_MSG_ERROR([usbredir requested but required gudev is not available])
       fi
       if test "x$have_gudev" = "xyes"; then
-        AC_DEFINE(USE_GUDEV, [1], [Define if supporting gudev])
+        AC_DEFINE([USE_GUDEV], [1], [Define if supporting gudev])
         with_usbredir_hotplug="with gudev hotplug"
       else
         have_usbredir=no
@@ -415,7 +415,7 @@ else
   fi
 
   if test "x$have_usbredir" = "xyes"; then
-    AC_DEFINE(USE_USBREDIR, [1], [Define if supporting usbredir proxying])
+    AC_DEFINE([USE_USBREDIR], [1], [Define if supporting usbredir proxying])
   fi
 fi
 AM_CONDITIONAL([WITH_USBREDIR], [test "x$have_usbredir" = "xyes"])
@@ -438,16 +438,16 @@ if test "x$have_usbredir" = "xyes" && test "x$enable_polkit" != "xno"; then
 
   if test "x$have_polkit" = "xyes"; then
     AC_SUBST(ACL_LIBS)
-    AC_DEFINE(USE_POLKIT, [1], [Define if supporting polkit])
+    AC_DEFINE([USE_POLKIT], [1], [Define if supporting polkit])
   fi
   AM_CONDITIONAL([WITH_POLKIT], [test "x$have_polkit" = "xyes"])
   POLICYDIR=`${PKG_CONFIG} polkit-gobject-1 --variable=policydir`
   AC_SUBST(POLICYDIR)
   # Check for polkit_authority_get_sync()
   AC_CHECK_LIB([polkit-gobject-1], [polkit_authority_get_sync], ac_have_pk_auth_get_sync="1", ac_have_pk_auth_get_sync="0")
-  AC_DEFINE_UNQUOTED(HAVE_POLKIT_AUTHORITY_GET_SYNC, $ac_have_pk_auth_get_sync, [Define if you have a polkit with polkit_authority_get_sync()])
+  AC_DEFINE_UNQUOTED([HAVE_POLKIT_AUTHORITY_GET_SYNC], $ac_have_pk_auth_get_sync, [Define if you have a polkit with polkit_authority_get_sync()])
   AC_CHECK_LIB([polkit-gobject-1], [polkit_authorization_result_get_dismissed], ac_have_pk_authorization_result_get_dismissed="1", ac_have_pk_authorization_result_get_dismissed="0")
-  AC_DEFINE_UNQUOTED(HAVE_POLKIT_AUTHORIZATION_RESULT_GET_DISMISSED, $ac_have_pk_authorization_result_get_dismissed, [Define if you have a polkit with polkit_authorization_result_get_dismissed()])
+  AC_DEFINE_UNQUOTED([HAVE_POLKIT_AUTHORIZATION_RESULT_GET_DISMISSED], $ac_have_pk_authorization_result_get_dismissed, [Define if you have a polkit with polkit_authorization_result_get_dismissed()])
 else
   AM_CONDITIONAL(WITH_POLKIT, false)
 fi
@@ -508,7 +508,7 @@ fi
 if test -n "$USB_IDS"; then
   AC_MSG_RESULT([$USB_IDS])
   AC_SUBST(USB_IDS)
-  AC_DEFINE(WITH_USBIDS, [1], [Define if compiling with usb.ids support])
+  AC_DEFINE([WITH_USBIDS], [1], [Define if compiling with usb.ids support])
 else
   AC_MSG_RESULT([not found])
 fi
@@ -549,13 +549,13 @@ case $with_coroutine in
   *) AC_MSG_ERROR(Unsupported coroutine type)
 esac
 
-AC_DEFINE_UNQUOTED(WITH_UCONTEXT,[$WITH_UCONTEXT], [Whether to use ucontext coroutine impl])
+AC_DEFINE_UNQUOTED([WITH_UCONTEXT],[$WITH_UCONTEXT], [Whether to use ucontext coroutine impl])
 AM_CONDITIONAL(WITH_UCONTEXT, [test "x$WITH_UCONTEXT" = "x1"])
 
-AC_DEFINE_UNQUOTED(WITH_WINFIBER,[$WITH_WINFIBER], [Whether to use fiber coroutine impl])
+AC_DEFINE_UNQUOTED([WITH_WINFIBER],[$WITH_WINFIBER], [Whether to use fiber coroutine impl])
 AM_CONDITIONAL(WITH_WINFIBER, [test "x$WITH_WINFIBER" = "x1"])
 
-AC_DEFINE_UNQUOTED(WITH_GTHREAD,[$WITH_GTHREAD], [Whether to use gthread coroutine impl])
+AC_DEFINE_UNQUOTED([WITH_GTHREAD],[$WITH_GTHREAD], [Whether to use gthread coroutine impl])
 AM_CONDITIONAL(WITH_GTHREAD, [test "x$WITH_GTHREAD" = "x1"])
 
 AM_CONDITIONAL([HAVE_INTROSPECTION], [test "0" = "1"])
@@ -680,11 +680,11 @@ AC_ARG_ENABLE([dbus],
 have_dbus=no
 if test "x$enable_dbus" != "xno"; then
   if test "x$have_gio26" = "xyes"; then
-    AC_DEFINE(USE_GDBUS, [1], [Define if supporting gdbus])
+    AC_DEFINE([USE_GDBUS], [1], [Define if supporting gdbus])
     have_dbus=gdbus
   else
     PKG_CHECK_EXISTS([DBUS_GLIB], [dbus-glib-1], [
-      AC_DEFINE(USE_DBUS_GLIB, [1], [Define if supporting dbus-glib])
+      AC_DEFINE([USE_DBUS_GLIB], [1], [Define if supporting dbus-glib])
       have_dbus=dbus-glib
     ])
   fi
