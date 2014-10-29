@@ -334,4 +334,3 @@ static size_t FNAME(decode)(SpiceGlzDecoderWindow *window,
 #undef COPY_COMP_PIXEL
 #undef COPY_PLT_ENTRY
 #undef CAST_PLT_DISTANCE
-
