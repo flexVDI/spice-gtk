@@ -373,7 +373,7 @@ static void check_can_redirect(GtkWidget *widget, gpointer user_data)
                                                                 device, &err);
     gtk_widget_set_sensitive(widget, can_redirect);
 
-    /* If we can not redirect this device, append the error message to
+    /* If we cannot redirect this device, append the error message to
        err_msg, but only if it is *not* already there! */
     if (!can_redirect) {
         if (priv->err_msg) {
