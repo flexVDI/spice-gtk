@@ -272,6 +272,8 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	$(USB_ACL_HELPER_SRCS)				\
 	vmcstream.c					\
 	vmcstream.h					\
+	wocky-http-proxy.c				\
+	wocky-http-proxy.h				\
 							\
 	decode.h					\
 	decode-glz.c					\
@@ -281,13 +283,6 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	client_sw_canvas.c	\
 	client_sw_canvas.h	\
 	$(NULL)
-
-if WITH_GPROXY
-libspice_client_glib_2_0_la_SOURCES +=			\
-	wocky-http-proxy.c				\
-	wocky-http-proxy.h				\
-	$(NULL)
-endif
 
 nodist_libspice_client_glib_2_0_la_SOURCES =	\
 	spice-glib-enums.c			\

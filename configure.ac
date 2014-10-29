@@ -244,7 +244,7 @@ fi
 
 AC_CHECK_FUNCS(clearenv strtok_r)
 
-PKG_CHECK_MODULES(GLIB2, glib-2.0 >= 2.22)
+PKG_CHECK_MODULES(GLIB2, glib-2.0 >= 2.28)
 AC_SUBST(GLIB2_CFLAGS)
 AC_SUBST(GLIB2_LIBS)
 
@@ -255,9 +255,6 @@ AC_SUBST(GOBJECT2_LIBS)
 PKG_CHECK_MODULES(GIO, gio-2.0 >= 2.10.0 $gio_os)
 AC_SUBST(GIO_CFLAGS)
 AC_SUBST(GIO_LIBS)
-
-PKG_CHECK_EXISTS([gio-2.0 >= 2.26], [have_gio26=yes])
-AM_CONDITIONAL([WITH_GPROXY], [test "x$have_gio26" = "xyes"])
 
 PKG_CHECK_MODULES(CAIRO, cairo >= 1.2.0)
 AC_SUBST(CAIRO_CFLAGS)
@@ -690,15 +687,8 @@ AC_ARG_ENABLE([dbus],
 
 have_dbus=no
 if test "x$enable_dbus" != "xno"; then
-  if test "x$have_gio26" = "xyes"; then
-    AC_DEFINE([USE_GDBUS], [1], [Define if supporting gdbus])
-    have_dbus=gdbus
-  else
-    PKG_CHECK_EXISTS([DBUS_GLIB], [dbus-glib-1], [
-      AC_DEFINE([USE_DBUS_GLIB], [1], [Define if supporting dbus-glib])
-      have_dbus=dbus-glib
-    ])
-  fi
+  AC_DEFINE([USE_GDBUS], [1], [Define if supporting gdbus])
+  have_dbus=yes
 
   if test "x$enable_dbus" = "xyes" && test "x$have_dbus" = "xno"; then
     AC_MSG_ERROR([D-Bus support explicitly requested, but some required packages are not available])
