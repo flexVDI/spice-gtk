@@ -25,6 +25,7 @@ G_BEGIN_DECLS
 void spice_gtk_session_request_auto_usbredir(SpiceGtkSession *self,
                                              gboolean state);
 gboolean spice_gtk_session_get_read_only(SpiceGtkSession *self);
+void spice_gtk_session_sync_keyboard_modifiers(SpiceGtkSession *self);
 
 G_END_DECLS
 
