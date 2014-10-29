@@ -133,7 +133,7 @@
     out->b = (out->b << 3) | ((out->b >> 2) & 0x07);                       \
     out->pad = 0;                                                          \
     out++;                                                                 \
-}                                                        
+}
 #endif
 #endif
 
