@@ -18,9 +18,7 @@
 #ifndef __SPICE_CLIENT_CHANNEL_PRIV_H__
 #define __SPICE_CLIENT_CHANNEL_PRIV_H__
 
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
 
 #include <openssl/ssl.h>
 #include <gio/gio.h>

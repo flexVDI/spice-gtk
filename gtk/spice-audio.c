@@ -32,9 +32,7 @@
  * application, and connect them to the default sound system.
  */
 
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
 
 #include "spice-client.h"
 #include "spice-common.h"

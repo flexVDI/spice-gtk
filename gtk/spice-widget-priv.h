@@ -20,9 +20,7 @@
 
 G_BEGIN_DECLS
 
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
 
 #ifdef WITH_X11
 #include <X11/Xlib.h>
