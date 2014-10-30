@@ -20,3 +20,5 @@ LDADD =							\
 
 util_SOURCES = util.c
 coroutine_SOURCES = coroutine.c
+
+-include $(top_srcdir)/git.mk
