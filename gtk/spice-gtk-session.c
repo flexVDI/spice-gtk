@@ -63,6 +63,7 @@ struct _SpiceGtkSessionPrivate {
     /* auto-usbredir related */
     gboolean                auto_usbredir_enable;
     int                     auto_usbredir_reqs;
+    gboolean                pointer_grabbed;
 };
 
 /**
@@ -115,6 +116,7 @@ enum {
     PROP_SESSION,
     PROP_AUTO_CLIPBOARD,
     PROP_AUTO_USBREDIR,
+    PROP_POINTER_GRABBED,
 };
 
 static guint32 get_keyboard_lock_modifiers(void)
@@ -311,6 +313,9 @@ static void spice_gtk_session_get_property(GObject    *gobject,
     case PROP_AUTO_USBREDIR:
         g_value_set_boolean(value, s->auto_usbredir_enable);
         break;
+    case PROP_POINTER_GRABBED:
+        g_value_set_boolean(value, s->pointer_grabbed);
+        break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -428,6 +433,22 @@ static void spice_gtk_session_class_init(SpiceGtkSessionClass *klass)
                               FALSE,
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
+                              G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceGtkSession:pointer-grabbed:
+     *
+     * Returns %TRUE if the pointer is currently grabbed by this session.
+     *
+     * Since: 0.27
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_POINTER_GRABBED,
+         g_param_spec_boolean("pointer-grabbed",
+                              "Pointer grabbed",
+                              "Whether the pointer is grabbed",
+                              FALSE,
+                              G_PARAM_READABLE |
                               G_PARAM_STATIC_STRINGS));
 
     g_type_class_add_private(klass, sizeof(SpiceGtkSessionPrivate));
@@ -1156,4 +1177,21 @@ void spice_gtk_session_sync_keyboard_modifiers(SpiceGtkSession *self)
         }
     }
     g_list_free(channels);
+}
+
+G_GNUC_INTERNAL
+void spice_gtk_session_set_pointer_grabbed(SpiceGtkSession *self, gboolean grabbed)
+{
+    g_return_if_fail(SPICE_IS_GTK_SESSION(self));
+
+    self->priv->pointer_grabbed = grabbed;
+    g_object_notify(G_OBJECT(self), "pointer-grabbed");
+}
+
+G_GNUC_INTERNAL
+gboolean spice_gtk_session_get_pointer_grabbed(SpiceGtkSession *self)
+{
+    g_return_val_if_fail(SPICE_IS_GTK_SESSION(self), FALSE);
+
+    return self->priv->pointer_grabbed;
 }
