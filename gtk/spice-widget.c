@@ -321,6 +321,9 @@ static void spice_display_set_property(GObject      *object,
         g_warn_if_fail(d->session == NULL);
         d->session = g_value_dup_object(value);
         d->gtk_session = spice_gtk_session_get(d->session);
+        spice_g_signal_connect_object(d->gtk_session, "notify::pointer-grabbed",
+                                      G_CALLBACK(cursor_invalidate), object,
+                                      G_CONNECT_SWAPPED);
         break;
     case PROP_CHANNEL_ID:
         d->channel_id = g_value_get_int(value);
@@ -896,8 +899,8 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
     } else {
         d->mouse_grab_active = true;
         g_signal_emit(display, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, true);
+        spice_gtk_session_set_pointer_grabbed(d->gtk_session, true);
         set_mouse_accel(display, FALSE);
-        gtk_widget_queue_draw(GTK_WIDGET(display));
     }
 
 end:
@@ -1017,9 +1020,8 @@ static void try_mouse_ungrab(SpiceDisplay *display)
                              gtk_widget_get_screen(GTK_WIDGET(display)),
                              x, y);
 
-    gtk_widget_queue_draw(GTK_WIDGET(display));
-
     g_signal_emit(display, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, false);
+    spice_gtk_session_set_pointer_grabbed(d->gtk_session, false);
 }
 
 static void update_mouse_grab(SpiceDisplay *display)
