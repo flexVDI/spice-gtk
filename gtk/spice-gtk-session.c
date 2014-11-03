@@ -1144,6 +1144,7 @@ void spice_gtk_session_paste_from_guest(SpiceGtkSession *self)
     s->clip_hasdata[selection] = FALSE;
 }
 
+G_GNUC_INTERNAL
 void spice_gtk_session_sync_keyboard_modifiers(SpiceGtkSession *self)
 {
     GList *l = NULL, *channels = spice_session_get_channels(self->priv->session);
