@@ -74,6 +74,9 @@ static void spice_win_usb_driver_finalize(GObject *gobject)
 
     spice_win_usb_driver_close(self);
     g_clear_object(&priv->result);
+
+    if (G_OBJECT_CLASS(spice_win_usb_driver_parent_class)->finalize)
+        G_OBJECT_CLASS(spice_win_usb_driver_parent_class)->finalize(gobject);
 }
 
 static void spice_win_usb_driver_class_init(SpiceWinUsbDriverClass *klass)

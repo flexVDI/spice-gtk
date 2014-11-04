@@ -250,6 +250,9 @@ static void spice_usb_device_widget_finalize(GObject *object)
     }
     g_object_unref(priv->session);
     g_free(priv->device_format_string);
+
+    if (G_OBJECT_CLASS(spice_usb_device_widget_parent_class)->finalize)
+        G_OBJECT_CLASS(spice_usb_device_widget_parent_class)->finalize(object);
 }
 
 static void spice_usb_device_widget_class_init(

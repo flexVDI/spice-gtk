@@ -73,6 +73,9 @@ static void spice_usb_acl_helper_cleanup(SpiceUsbAclHelper *self)
 static void spice_usb_acl_helper_finalize(GObject *gobject)
 {
     spice_usb_acl_helper_cleanup(SPICE_USB_ACL_HELPER(gobject));
+
+    if (G_OBJECT_CLASS(spice_usb_acl_helper_parent_class)->finalize)
+        G_OBJECT_CLASS(spice_usb_acl_helper_parent_class)->finalize(gobject);
 }
 
 static void spice_usb_acl_helper_class_init(SpiceUsbAclHelperClass *klass)
