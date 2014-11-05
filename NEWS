@@ -1,3 +1,19 @@
+v0.26
+=====
+
+- allow transferring multiple files at once with dnd
+- avoid guest-side fd leak when transferring empty files
+  with dnd
+- add support for passing a username with SASL authentication
+- hide guest cursor when ungrabbing mouse in server mode
+- make sure client cursor is in the same position as the guest cursor when
+  ungrabbing mouse in server mode
+- add man page for command line options of application using spice-gtk
+- strip '\0' from text clipboard data
+- fix synchronization of keyboard modifiers
+- coroutine improvements
+- use http by default when SPICE_PROXY uri has no scheme
+
 v0.25
 =====
 

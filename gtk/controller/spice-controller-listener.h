@@ -45,6 +45,3 @@ GIOStream* spice_controller_listener_accept_finish (GObject *listener,
 G_END_DECLS
 
 #endif /* __SPICE_CONTROLLER_LISTENER_H__ */
-
-
-

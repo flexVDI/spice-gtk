@@ -15,15 +15,17 @@
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
 
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
-#include <gst/app/gstappbuffer.h>
 #include <gst/app/gstappsink.h>
+#ifdef WITH_GST1AUDIO
+#include <gst/audio/streamvolume.h>
+#else
+#include <gst/app/gstappbuffer.h>
 #include <gst/interfaces/streamvolume.h>
+#endif
 
 #include "spice-gstaudio.h"
 #include "spice-common.h"
@@ -133,7 +135,12 @@ static void record_new_buffer(GstAppSink *appsink, gpointer data)
 
     g_return_if_fail(p != NULL);
 
+#ifdef WITH_GST1AUDIO
+    msg = gst_message_new_application(GST_OBJECT(p->record.pipe),
+                                      gst_structure_new_empty ("new-sample"));
+#else
     msg = gst_message_new_application(GST_OBJECT(p->record.pipe), NULL);
+#endif
     gst_element_post_message(p->record.pipe, msg);
 }
 
@@ -155,6 +162,38 @@ static gboolean record_bus_cb(GstBus *bus, GstMessage *msg, gpointer data)
     g_return_val_if_fail(p != NULL, FALSE);
 
     switch (GST_MESSAGE_TYPE(msg)) {
+#ifdef WITH_GST1AUDIO
+    case GST_MESSAGE_APPLICATION: {
+        GstSample *s;
+        GstBuffer *buffer;
+        GstMapInfo mapping;
+
+        s = gst_app_sink_pull_sample(GST_APP_SINK(p->record.sink));
+        if (!s) {
+            if (!gst_app_sink_is_eos(GST_APP_SINK(p->record.sink)))
+                g_warning("eos not reached, but can't pull new sample");
+            return TRUE;
+        }
+
+        buffer = gst_sample_get_buffer(s);
+        if (!buffer) {
+            if (!gst_app_sink_is_eos(GST_APP_SINK(p->record.sink)))
+                g_warning("eos not reached, but can't pull new buffer");
+            return TRUE;
+        }
+        if (!gst_buffer_map(buffer, &mapping, GST_MAP_READ)) {
+            return TRUE;
+        }
+
+        spice_record_send_data(SPICE_RECORD_CHANNEL(p->rchannel),
+                               /* FIXME: server side doesn't care about ts?
+                                  what is the unit? ms apparently */
+                               mapping.data, mapping.size, 0);
+        gst_buffer_unmap(buffer, &mapping);
+        gst_sample_unref(s);
+        break;
+    }
+#else
     case GST_MESSAGE_APPLICATION: {
         GstBuffer *b;
 
@@ -171,6 +210,7 @@ static gboolean record_bus_cb(GstBus *bus, GstMessage *msg, gpointer data)
                                GST_BUFFER_DATA(b), GST_BUFFER_SIZE(b), 0);
         break;
     }
+#endif
     default:
         break;
     }
@@ -198,9 +238,15 @@ static void record_start(SpiceRecordChannel *channel, gint format, gint channels
     if (!p->record.pipe) {
         GError *error = NULL;
         GstBus *bus;
+#ifdef WITH_GST1AUDIO
+        gchar *audio_caps =
+            g_strdup_printf("audio/x-raw,format=\"S16LE\",channels=%d,rate=%d,"
+                            "layout=interleaved", channels, frequency);
+#else
         gchar *audio_caps =
             g_strdup_printf("audio/x-raw-int,channels=%d,rate=%d,signed=(boolean)true,"
                             "width=16,depth=16,endianness=1234", channels, frequency);
+#endif
         gchar *pipeline =
             g_strdup_printf("autoaudiosrc name=audiosrc ! queue ! audioconvert ! audioresample ! "
                             "appsink caps=\"%s\" name=appsink", audio_caps);
@@ -221,8 +267,13 @@ static void record_start(SpiceRecordChannel *channel, gint format, gint channels
         p->record.channels = channels;
 
         gst_app_sink_set_emit_signals(GST_APP_SINK(p->record.sink), TRUE);
+#ifdef WITH_GST1AUDIO
+        spice_g_signal_connect_object(p->record.sink, "new-sample",
+                                      G_CALLBACK(record_new_buffer), gstaudio, 0);
+#else
         spice_g_signal_connect_object(p->record.sink, "new-buffer",
                                       G_CALLBACK(record_new_buffer), gstaudio, 0);
+#endif
 
 lerr:
         g_clear_error(&error);
@@ -313,8 +364,13 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
     if (!p->playback.pipe) {
         GError *error = NULL;
         gchar *audio_caps =
+#ifdef WITH_GST1AUDIO
+            g_strdup_printf("audio/x-raw,format=\"S16LE\",channels=%d,rate=%d,"
+                            "layout=interleaved", channels, frequency);
+#else
             g_strdup_printf("audio/x-raw-int,channels=%d,rate=%d,signed=(boolean)true,"
                             "width=16,depth=16,endianness=1234", channels, frequency);
+#endif
         gchar *pipeline = g_strdup (g_getenv("SPICE_GST_AUDIOSINK"));
         if (pipeline == NULL)
             pipeline = g_strdup_printf("appsrc is-live=1 do-timestamp=0 caps=\"%s\" name=\"appsrc\" ! queue ! "
@@ -356,7 +412,11 @@ static void playback_data(SpicePlaybackChannel *channel,
     g_return_if_fail(p != NULL);
 
     audio = g_memdup(audio, size); /* TODO: try to avoid memory copy */
+#ifdef WITH_GST1AUDIO
+    buf = gst_buffer_new_wrapped(audio, size);
+#else
     buf = gst_app_buffer_new(audio, size, g_free, audio);
+#endif
     gst_app_src_push_buffer(GST_APP_SRC(p->playback.src), buf);
 }
 

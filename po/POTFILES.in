@@ -1,5 +1,3 @@
-data/spice-mime.xml.in
-data/spicy.desktop.in.in
 gtk/channel-usbredir.c
 gtk/desktop-integration.c
 gtk/spice-channel.c

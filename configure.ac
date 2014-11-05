@@ -9,7 +9,7 @@ AC_CONFIG_AUX_DIR([build-aux])
 
 AM_INIT_AUTOMAKE([foreign dist-bzip2 -Wall -Werror -Wno-portability])
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
-LT_INIT
+LT_INIT([disable-static win32-dll])
 AM_MAINTAINER_MODE
 
 IT_PROG_INTLTOOL([0.40.0])
@@ -121,7 +121,7 @@ SASL_CFLAGS=
 SASL_LIBS=
 enable_sasl=no
 if test "x$with_sasl" != "xno"; then
-  if test "x$with_sasl" != "xyes" -a "x$with_sasl" != "xauto"; then
+  if test "x$with_sasl" != "xyes" && test "x$with_sasl" != "xauto"; then
     SASL_CFLAGS="-I$with_sasl"
     SASL_LIBS="-L$with_sasl"
   fi
@@ -133,7 +133,7 @@ if test "x$with_sasl" != "xno"; then
   if test "x$with_sasl" = "xyes" ; then
     AC_CHECK_LIB([sasl2], [sasl_client_init],[with_sasl2=yes],[with_sasl2=no])
   fi
-  if test "x$with_sasl2" = "xno" -a "x$with_sasl" = "xyes" ; then
+  if test "x$with_sasl2" = "xno" && test "x$with_sasl" = "xyes" ; then
     AC_CHECK_LIB([sasl], [sasl_client_init],[with_sasl=yes],[with_sasl=no])
   fi
   if test "x$with_sasl2" = "xyes"; then
@@ -145,13 +145,13 @@ if test "x$with_sasl" != "xno"; then
   fi
   CFLAGS="$old_cflags"
   LIBS="$old_libs"
-  if test "x$with_sasl2" = "xyes" -o "x$with_sasl" = "xyes" ; then
+  if test "x$with_sasl2" = "xyes" || test "x$with_sasl" = "xyes" ; then
     AC_DEFINE_UNQUOTED([HAVE_SASL], 1,
       [whether Cyrus SASL is available for authentication])
     enable_sasl=yes
   fi
 fi
-AM_CONDITIONAL([HAVE_SASL], [test "x$with_sasl2" = "xyes" -o "x$with_sasl" = "xyes"])
+AM_CONDITIONAL([HAVE_SASL], [test "x$with_sasl2" = "xyes" || test "x$with_sasl" = "xyes"])
 AC_SUBST([SASL_CFLAGS])
 AC_SUBST([SASL_LIBS])
 
@@ -244,7 +244,7 @@ fi
 
 AC_CHECK_FUNCS(clearenv strtok_r)
 
-PKG_CHECK_MODULES(GLIB2, glib-2.0 >= 2.22)
+PKG_CHECK_MODULES(GLIB2, glib-2.0 >= 2.28)
 AC_SUBST(GLIB2_CFLAGS)
 AC_SUBST(GLIB2_LIBS)
 
@@ -255,9 +255,6 @@ AC_SUBST(GOBJECT2_LIBS)
 PKG_CHECK_MODULES(GIO, gio-2.0 >= 2.10.0 $gio_os)
 AC_SUBST(GIO_CFLAGS)
 AC_SUBST(GIO_LIBS)
-
-PKG_CHECK_EXISTS([gio-2.0 >= 2.26], [have_gio26=yes])
-AM_CONDITIONAL([WITH_GPROXY], [test "x$have_gio26" = "xyes"])
 
 PKG_CHECK_MODULES(CAIRO, cairo >= 1.2.0)
 AC_SUBST(CAIRO_CFLAGS)
@@ -285,10 +282,10 @@ else
   fi
 fi
 AS_IF([test "x$have_phodav" = "xyes"],
-       AC_DEFINE(USE_PHODAV, [1], [Define if supporting phodav]))
+       AC_DEFINE([USE_PHODAV], [1], [Define if supporting phodav]))
 
 AC_ARG_WITH([audio],
-  AS_HELP_STRING([--with-audio=@<:@gstreamer/pulse/auto/no@:>@], [Select audio backend @<:@default=auto@:>@]),
+  AS_HELP_STRING([--with-audio=@<:@gstreamer/gstreamer1/pulse/auto/no@:>@], [Select audio backend @<:@default=auto@:>@]),
   [],
   [with_audio="auto"])
 
@@ -297,7 +294,7 @@ AS_IF([test "x$with_audio" = "xauto"], [
 ])
 
 case "$with_audio" in
-  gstreamer|pulse|no*)
+  gstreamer|gstreamer1|pulse|no*)
     ;;
   *) AC_MSG_ERROR(Unsupported audio backend)
 esac
@@ -326,7 +323,18 @@ AS_IF([test "x$have_gst" = "xyes"],
              [AC_MSG_ERROR([GStreamer requested but not found])
       ])
 ])
-AM_CONDITIONAL([WITH_GSTAUDIO], [test "x$have_gst" = "xyes"])
+
+AS_IF([test "x$with_audio" = "xgstreamer1"],
+      [PKG_CHECK_MODULES(GST, gstreamer-1.0 gstreamer-base-1.0 gstreamer-app-1.0 gstreamer-audio-1.0, [have_gst1=yes], [have_gst1=no])],
+      [have_gst1=no])
+
+AS_IF([test "x$have_gst1" = "xyes"],
+      [AC_DEFINE([WITH_GST1AUDIO], 1, [Have GStreamer 1.0?])],
+      [AS_IF([test "x$with_audio" = "xgstreamer1"],
+             [AC_MSG_ERROR([GStreamer 1.0 requested but not found])
+      ])
+])
+AM_CONDITIONAL([WITH_GSTAUDIO], [test "x$have_gst" = "xyes" -o "x$have_gst1" = "xyes"])
 AC_SUBST(GST_CFLAGS)
 AC_SUBST(GST_LIBS)
 
@@ -360,7 +368,7 @@ if test "x$enable_smartcard" != "xno"; then
     AC_MSG_ERROR("Smartcard support requested but libcacard could not be found")
   fi
   if test "x$have_smartcard" = "xyes"; then
-    AC_DEFINE(USE_SMARTCARD, [1], [Define if supporting smartcard proxying])
+    AC_DEFINE([USE_SMARTCARD], [1], [Define if supporting smartcard proxying])
   fi
 fi
 AM_CONDITIONAL([WITH_SMARTCARD], [test "x$have_smartcard" = "xyes"])
@@ -394,7 +402,7 @@ else
     PKG_CHECK_MODULES([LIBUSB_HOTPLUG], [libusb-1.0 >= 1.0.16],
                       [have_libusb_hotplug=yes], [have_libusb_hotplug=no])
     if test "x$have_libusb_hotplug" = "xyes"; then
-      AC_DEFINE(USE_LIBUSB_HOTPLUG, [1], [Define if libusb has hotplug support])
+      AC_DEFINE([USE_LIBUSB_HOTPLUG], [1], [Define if libusb has hotplug support])
       with_usbredir_hotplug="with libusb hotplug"
     else
       PKG_CHECK_MODULES([GUDEV],
@@ -406,7 +414,7 @@ else
         AC_MSG_ERROR([usbredir requested but required gudev is not available])
       fi
       if test "x$have_gudev" = "xyes"; then
-        AC_DEFINE(USE_GUDEV, [1], [Define if supporting gudev])
+        AC_DEFINE([USE_GUDEV], [1], [Define if supporting gudev])
         with_usbredir_hotplug="with gudev hotplug"
       else
         have_usbredir=no
@@ -415,7 +423,7 @@ else
   fi
 
   if test "x$have_usbredir" = "xyes"; then
-    AC_DEFINE(USE_USBREDIR, [1], [Define if supporting usbredir proxying])
+    AC_DEFINE([USE_USBREDIR], [1], [Define if supporting usbredir proxying])
   fi
 fi
 AM_CONDITIONAL([WITH_USBREDIR], [test "x$have_usbredir" = "xyes"])
@@ -438,16 +446,16 @@ if test "x$have_usbredir" = "xyes" && test "x$enable_polkit" != "xno"; then
 
   if test "x$have_polkit" = "xyes"; then
     AC_SUBST(ACL_LIBS)
-    AC_DEFINE(USE_POLKIT, [1], [Define if supporting polkit])
+    AC_DEFINE([USE_POLKIT], [1], [Define if supporting polkit])
   fi
   AM_CONDITIONAL([WITH_POLKIT], [test "x$have_polkit" = "xyes"])
   POLICYDIR=`${PKG_CONFIG} polkit-gobject-1 --variable=policydir`
   AC_SUBST(POLICYDIR)
   # Check for polkit_authority_get_sync()
   AC_CHECK_LIB([polkit-gobject-1], [polkit_authority_get_sync], ac_have_pk_auth_get_sync="1", ac_have_pk_auth_get_sync="0")
-  AC_DEFINE_UNQUOTED(HAVE_POLKIT_AUTHORITY_GET_SYNC, $ac_have_pk_auth_get_sync, [Define if you have a polkit with polkit_authority_get_sync()])
+  AC_DEFINE_UNQUOTED([HAVE_POLKIT_AUTHORITY_GET_SYNC], $ac_have_pk_auth_get_sync, [Define if you have a polkit with polkit_authority_get_sync()])
   AC_CHECK_LIB([polkit-gobject-1], [polkit_authorization_result_get_dismissed], ac_have_pk_authorization_result_get_dismissed="1", ac_have_pk_authorization_result_get_dismissed="0")
-  AC_DEFINE_UNQUOTED(HAVE_POLKIT_AUTHORIZATION_RESULT_GET_DISMISSED, $ac_have_pk_authorization_result_get_dismissed, [Define if you have a polkit with polkit_authorization_result_get_dismissed()])
+  AC_DEFINE_UNQUOTED([HAVE_POLKIT_AUTHORIZATION_RESULT_GET_DISMISSED], $ac_have_pk_authorization_result_get_dismissed, [Define if you have a polkit with polkit_authorization_result_get_dismissed()])
 else
   AM_CONDITIONAL(WITH_POLKIT, false)
 fi
@@ -508,7 +516,7 @@ fi
 if test -n "$USB_IDS"; then
   AC_MSG_RESULT([$USB_IDS])
   AC_SUBST(USB_IDS)
-  AC_DEFINE(WITH_USBIDS, [1], [Define if compiling with usb.ids support])
+  AC_DEFINE([WITH_USBIDS], [1], [Define if compiling with usb.ids support])
 else
   AC_MSG_RESULT([not found])
 fi
@@ -549,13 +557,13 @@ case $with_coroutine in
   *) AC_MSG_ERROR(Unsupported coroutine type)
 esac
 
-AC_DEFINE_UNQUOTED(WITH_UCONTEXT,[$WITH_UCONTEXT], [Whether to use ucontext coroutine impl])
+AC_DEFINE_UNQUOTED([WITH_UCONTEXT],[$WITH_UCONTEXT], [Whether to use ucontext coroutine impl])
 AM_CONDITIONAL(WITH_UCONTEXT, [test "x$WITH_UCONTEXT" = "x1"])
 
-AC_DEFINE_UNQUOTED(WITH_WINFIBER,[$WITH_WINFIBER], [Whether to use fiber coroutine impl])
+AC_DEFINE_UNQUOTED([WITH_WINFIBER],[$WITH_WINFIBER], [Whether to use fiber coroutine impl])
 AM_CONDITIONAL(WITH_WINFIBER, [test "x$WITH_WINFIBER" = "x1"])
 
-AC_DEFINE_UNQUOTED(WITH_GTHREAD,[$WITH_GTHREAD], [Whether to use gthread coroutine impl])
+AC_DEFINE_UNQUOTED([WITH_GTHREAD],[$WITH_GTHREAD], [Whether to use gthread coroutine impl])
 AM_CONDITIONAL(WITH_GTHREAD, [test "x$WITH_GTHREAD" = "x1"])
 
 AM_CONDITIONAL([HAVE_INTROSPECTION], [test "0" = "1"])
@@ -679,15 +687,8 @@ AC_ARG_ENABLE([dbus],
 
 have_dbus=no
 if test "x$enable_dbus" != "xno"; then
-  if test "x$have_gio26" = "xyes"; then
-    AC_DEFINE(USE_GDBUS, [1], [Define if supporting gdbus])
-    have_dbus=gdbus
-  else
-    PKG_CHECK_EXISTS([DBUS_GLIB], [dbus-glib-1], [
-      AC_DEFINE(USE_DBUS_GLIB, [1], [Define if supporting dbus-glib])
-      have_dbus=dbus-glib
-    ])
-  fi
+  AC_DEFINE([USE_GDBUS], [1], [Define if supporting gdbus])
+  have_dbus=yes
 
   if test "x$enable_dbus" = "xyes" && test "x$have_dbus" = "xno"; then
     AC_MSG_ERROR([D-Bus support explicitly requested, but some required packages are not available])
@@ -734,7 +735,6 @@ spice-client-gtk-2.0.pc
 spice-client-gtk-3.0.pc
 spice-controller.pc
 data/Makefile
-data/spicy.desktop.in
 data/spicy.nsis
 po/Makefile.in
 gtk/Makefile

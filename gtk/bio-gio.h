@@ -23,11 +23,7 @@
 
 G_BEGIN_DECLS
 
-#if GLIB_CHECK_VERSION(2, 28, 0)
 BIO* bio_new_giostream(GIOStream *stream);
-#else
-BIO* bio_new_gsocket(GSocket *gsocket);
-#endif
 
 G_END_DECLS
 

@@ -56,6 +56,7 @@ MAINTAINERCLEANFILES =				\
 	m4/ltsugar.m4				\
 	m4/ltversion.m4				\
 	m4/lt~obsolete.m4			\
+	build-aux/ar-lib			\
 	build-aux/compile			\
 	build-aux/config.guess			\
 	build-aux/config.rpath			\
@@ -65,6 +66,7 @@ MAINTAINERCLEANFILES =				\
 	build-aux/ltmain.sh			\
 	build-aux/missing			\
 	build-aux/mkinstalldirs			\
+	build-aux/test-driver			\
 	po/Makefile.in.in			\
 	gtk-doc.make				\
 	$(NULL)

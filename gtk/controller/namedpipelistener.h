@@ -68,4 +68,3 @@ SpiceNamedPipeConnection *  spice_named_pipe_listener_accept_finish  (SpiceNamed
 G_END_DECLS
 
 #endif /* __NAMED_PIPE_LISTENER_H__ */
-

@@ -25,11 +25,7 @@
 
 typedef struct bio_gsocket_method {
     BIO_METHOD method;
-#if GLIB_CHECK_VERSION(2, 28, 0)
     GIOStream *stream;
-#else
-    GSocket *gsocket;
-#endif
 } bio_gsocket_method;
 
 #define BIO_GET_GSOCKET(bio)  (((bio_gsocket_method*)bio->method)->gsocket)
@@ -41,12 +37,8 @@ static int bio_gio_write(BIO *bio, const char *in, int inl)
     gssize ret;
     GError *error = NULL;
 
-#if GLIB_CHECK_VERSION(2, 28, 0)
     ret = g_pollable_output_stream_write_nonblocking(G_POLLABLE_OUTPUT_STREAM(BIO_GET_OSTREAM(bio)),
-#else
-    ret = g_socket_send(BIO_GET_GSOCKET(bio),
-#endif
-                        in, inl, NULL, &error);
+                                                     in, inl, NULL, &error);
     BIO_clear_retry_flags(bio);
 
     if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK))
@@ -64,12 +56,8 @@ static int bio_gio_read(BIO *bio, char *out, int outl)
     gssize ret;
     GError *error = NULL;
 
-#if GLIB_CHECK_VERSION(2, 28, 0)
     ret = g_pollable_input_stream_read_nonblocking(G_POLLABLE_INPUT_STREAM(BIO_GET_ISTREAM(bio)),
-#else
-    ret = g_socket_receive(BIO_GET_GSOCKET(bio),
-#endif
-                           out, outl, NULL, &error);
+                                                   out, outl, NULL, &error);
     BIO_clear_retry_flags(bio);
 
     if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK))
@@ -105,24 +93,14 @@ static int bio_gio_puts(BIO *bio, const char *str)
 }
 
 G_GNUC_INTERNAL
-#if GLIB_CHECK_VERSION(2, 28, 0)
 BIO* bio_new_giostream(GIOStream *stream)
 {
     // TODO: make an actual new BIO type, or just switch to GTls already...
     BIO *bio = BIO_new_socket(-1, BIO_NOCLOSE);
-#else
-BIO* bio_new_gsocket(GSocket *gsocket)
-{
-    BIO *bio = BIO_new_socket(g_socket_get_fd(gsocket), BIO_NOCLOSE);
-#endif
 
     bio_gsocket_method *bio_method = g_new(bio_gsocket_method, 1);
     bio_method->method = *bio->method;
-#if GLIB_CHECK_VERSION(2, 28, 0)
     bio_method->stream = stream;
-#else
-    bio_method->gsocket = gsocket;
-#endif
 
     bio->method->destroy(bio);
     bio->method = (BIO_METHOD*)bio_method;

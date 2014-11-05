@@ -651,12 +651,8 @@ static void spice_session_class_init(SpiceSessionClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 
-#if GLIB_CHECK_VERSION(2, 26, 0)
     _wocky_http_proxy_get_type();
-#endif
-#if GLIB_CHECK_VERSION(2, 28, 0)
     _wocky_https_proxy_get_type();
-#endif
 
     gobject_class->dispose      = spice_session_dispose;
     gobject_class->finalize     = spice_session_finalize;
@@ -1737,9 +1733,6 @@ struct spice_open_host {
     GError *error;
     GSocketConnection *connection;
     GSocketClient *client;
-#if !GLIB_CHECK_VERSION(2,26,0)
-    guint timeout_id;
-#endif
 };
 
 static void socket_client_connect_ready(GObject *source_object, GAsyncResult *result,
@@ -1770,7 +1763,6 @@ static void open_host_connectable_connect(spice_open_host *open_host, GSocketCon
                                   socket_client_connect_ready, open_host);
 }
 
-#if GLIB_CHECK_VERSION(2,26,0)
 /* main context */
 static void proxy_lookup_ready(GObject *source_object, GAsyncResult *result,
                                gpointer data)
@@ -1804,7 +1796,6 @@ static void proxy_lookup_ready(GObject *source_object, GAsyncResult *result,
     open_host_connectable_connect(open_host, G_SOCKET_CONNECTABLE(address));
     g_resolver_free_addresses(addresses);
 }
-#endif
 
 /* main context */
 static gboolean open_host_idle_cb(gpointer data)
@@ -1816,7 +1807,6 @@ static gboolean open_host_idle_cb(gpointer data)
     g_return_val_if_fail(open_host != NULL, FALSE);
     g_return_val_if_fail(open_host->connection == NULL, FALSE);
 
-#if GLIB_CHECK_VERSION(2,26,0)
     open_host->proxy = s->proxy;
     if (open_host->error != NULL) {
         coroutine_yieldto(open_host->from, NULL);
@@ -1829,7 +1819,6 @@ static gboolean open_host_idle_cb(gpointer data)
                                         open_host->cancellable,
                                         proxy_lookup_ready, open_host);
     else
-#endif
     {
         GSocketConnectable *address;
 
@@ -1849,18 +1838,6 @@ static gboolean open_host_idle_cb(gpointer data)
 }
 
 #define SOCKET_TIMEOUT 10
-
-#if !GLIB_CHECK_VERSION(2,26,0)
-static gboolean connect_timeout(gpointer data)
-{
-    spice_open_host *open_host = data;
-
-    open_host->timeout_id = 0;
-    coroutine_yieldto(open_host->from, NULL);
-
-    return FALSE;
-}
-#endif
 
 /* coroutine context */
 G_GNUC_INTERNAL
@@ -1894,24 +1871,11 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
     }
 
     open_host.client = g_socket_client_new();
-#if GLIB_CHECK_VERSION(2,26,0)
     g_socket_client_set_timeout(open_host.client, SOCKET_TIMEOUT);
-#else
-    open_host.timeout_id =
-        g_timeout_add_seconds(SOCKET_TIMEOUT, connect_timeout, &open_host);
-#endif
 
     g_idle_add(open_host_idle_cb, &open_host);
     /* switch to main loop and wait for connection */
     coroutine_yield(NULL);
-
-#if !GLIB_CHECK_VERSION(2,26,0)
-    if (open_host.timeout_id == 0)
-        open_host.error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
-                                      "connect timed out");
-    else
-        g_source_remove(open_host.timeout_id);
-#endif
 
     if (open_host.error != NULL) {
         SPICE_DEBUG("open host: %s", open_host.error->message);
@@ -1919,9 +1883,7 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
     } else if (open_host.connection != NULL) {
         GSocket *socket;
         socket = g_socket_connection_get_socket(open_host.connection);
-#if GLIB_CHECK_VERSION(2,26,0)
         g_socket_set_timeout(socket, 0);
-#endif
         g_socket_set_blocking(socket, FALSE);
         g_socket_set_keepalive(socket, TRUE);
     }

@@ -22,9 +22,6 @@
 #include "config.h"
 
 #include <glib-object.h>
-#if defined(USE_DBUS_GLIB)
-#include <dbus/dbus-glib.h>
-#endif
 
 #include "glib-compat.h"
 #include "spice-session-priv.h"
@@ -41,9 +38,7 @@
     (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_DESKTOP_INTEGRATION, SpiceDesktopIntegrationPrivate))
 
 struct _SpiceDesktopIntegrationPrivate {
-#if defined(USE_DBUS_GLIB)
-    DBusGProxy *gnome_session_proxy;
-#elif defined(USE_GDBUS)
+#if defined(USE_GDBUS)
     GDBusProxy *gnome_session_proxy;
 #else
     GObject *gnome_session_proxy; /* dummy */
@@ -61,11 +56,6 @@ static void handle_dbus_call_error(const char *call, GError **_error)
     GError *error = *_error;
     const char *message = error->message;
 
-#if defined(USE_DBUS_GLIB)
-    if (error->domain == DBUS_GERROR &&
-            error->code == DBUS_GERROR_REMOTE_EXCEPTION)
-        message = dbus_g_error_get_name(error);
-#endif
     g_warning("Error calling '%s': %s", call, message);
     g_clear_error(_error);
 }
@@ -76,21 +66,7 @@ static gboolean gnome_integration_init(SpiceDesktopIntegration *self)
     GError *error = NULL;
     gboolean success = TRUE;
 
-#if defined(USE_DBUS_GLIB)
-    DBusGConnection *conn = dbus_g_bus_get(DBUS_BUS_SESSION, &error);
-    if (!conn)
-        goto end;
-
-    /* We use for_name_owner, to resolve the name now, as we may not be
-       running under gnome-session manager at all! */
-    priv->gnome_session_proxy = dbus_g_proxy_new_for_name_owner(
-                                            conn,
-                                            "org.gnome.SessionManager",
-                                            "/org/gnome/SessionManager",
-                                            "org.gnome.SessionManager",
-                                            &error);
-end:
-#elif defined(USE_GDBUS)
+#if defined(USE_GDBUS)
     priv->gnome_session_proxy =
         g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
                                       G_DBUS_PROXY_FLAGS_NONE,
@@ -126,18 +102,7 @@ static void gnome_integration_inhibit_automount(SpiceDesktopIntegration *self)
 
     g_return_if_fail(priv->gnome_automount_inhibit_cookie == 0);
 
-#if defined(USE_DBUS_GLIB)
-    dbus_g_proxy_call(
-                priv->gnome_session_proxy, "Inhibit", &error,
-                G_TYPE_STRING, g_get_prgname(),
-                G_TYPE_UINT, 0,
-                G_TYPE_STRING,
-                reason,
-                G_TYPE_UINT, GNOME_SESSION_INHIBIT_AUTOMOUNT,
-                G_TYPE_INVALID,
-                G_TYPE_UINT, &priv->gnome_automount_inhibit_cookie,
-                G_TYPE_INVALID);
-#elif defined(USE_GDBUS)
+#if defined(USE_GDBUS)
     GVariant *v = g_dbus_proxy_call_sync(priv->gnome_session_proxy,
                 "Inhibit",
                 g_variant_new("(susu)",
@@ -167,13 +132,7 @@ static void gnome_integration_uninhibit_automount(SpiceDesktopIntegration *self)
     if (priv->gnome_automount_inhibit_cookie == 0)
         return;
 
-#if defined(USE_DBUS_GLIB)
-    dbus_g_proxy_call(
-                priv->gnome_session_proxy, "Uninhibit", &error,
-                G_TYPE_UINT, priv->gnome_automount_inhibit_cookie,
-                G_TYPE_INVALID,
-                G_TYPE_INVALID);
-#elif defined(USE_GDBUS)
+#if defined(USE_GDBUS)
     GVariant *v = g_dbus_proxy_call_sync(priv->gnome_session_proxy,
                 "Uninhibit",
                 g_variant_new("(u)",
