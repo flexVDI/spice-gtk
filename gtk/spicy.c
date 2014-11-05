@@ -16,9 +16,7 @@
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifdef HAVE_CONFIG_H
-# include "config.h"
-#endif
+#include "config.h"
 #include <glib/gi18n.h>
 
 #include <sys/stat.h>

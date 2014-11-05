@@ -25,9 +25,7 @@
  * Each installer (instance) requests driver installation for a single device.
  */
 
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
 
 #include <windows.h>
 #include <gio/gio.h>

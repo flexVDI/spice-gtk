@@ -20,6 +20,7 @@
 #include "gtk-compat.h"
 #include "spice-widget.h"
 #include "spice-widget-priv.h"
+#include "spice-gtk-session-priv.h"
 
 
 G_GNUC_INTERNAL
@@ -118,7 +119,8 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
 
         if (d->mouse_mode == SPICE_MOUSE_MODE_SERVER &&
             d->mouse_guest_x != -1 && d->mouse_guest_y != -1 &&
-            !d->show_cursor) {
+            !d->show_cursor &&
+            spice_gtk_session_get_pointer_grabbed(d->gtk_session)) {
             GdkPixbuf *image = d->mouse_pixbuf;
             if (image != NULL) {
                 gdk_cairo_set_source_pixbuf(cr, image,

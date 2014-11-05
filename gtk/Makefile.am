@@ -60,11 +60,15 @@ lib_LTLIBRARIES += libspice-client-gtk-3.0.la
 endif
 
 if HAVE_LD_VERSION_SCRIPT
-GLIB_VERSION_LDFLAGS = -Wl,--version-script=${srcdir}/map-file
-GTK_VERSION_LDFLAGS = $(GLIB_VERSION_LDFLAGS)
+GLIB_SYMBOLS_LDFLAGS = -Wl,--version-script=${srcdir}/map-file
+GLIB_SYMBOLS_FILE = map-file
+GTK_SYMBOLS_LDFLAGS = $(GLIB_SYMBOLS_LDFLAGS)
+GTK_SYMBOLS_FILE = $(GLIB_SYMBOLS_FILE)
 else
-GLIB_VERSION_LDFLAGS = -export-symbols ${srcdir}/spice-glib-sym-file
-GTK_VERSION_LDFLAGS = -export-symbols ${srcdir}/spice-gtk-sym-file
+GLIB_SYMBOLS_LDFLAGS = -export-symbols ${srcdir}/spice-glib-sym-file
+GLIB_SYMBOLS_FILE = spice-glib-sym-file
+GTK_SYMBOLS_LDFLAGS = -export-symbols ${srcdir}/spice-gtk-sym-file
+GTK_SYMBOLS_FILE = spice-gtk-sym-file
 endif
 
 KEYMAP_GEN = $(srcdir)/keymap-gen.pl
@@ -107,7 +111,7 @@ AM_CPPFLAGS =					\
 SPICE_GTK_LDFLAGS_COMMON =		\
 	-version-info 4:0:0		\
 	-no-undefined			\
-	$(GTK_VERSION_LDFLAGS)		\
+	$(GTK_SYMBOLS_LDFLAGS)		\
 	$(NULL)
 
 SPICE_GTK_LIBADD_COMMON =		\
@@ -153,11 +157,13 @@ SPICE_GTK_SOURCES_COMMON +=		\
 endif
 
 if HAVE_GTK_2
+libspice_client_gtk_2_0_la_DEPEDENCIES = $(GTK_SYMBOLS_FILE)
 libspice_client_gtk_2_0_la_LDFLAGS = $(SPICE_GTK_LDFLAGS_COMMON)
 libspice_client_gtk_2_0_la_LIBADD = $(SPICE_GTK_LIBADD_COMMON)
 libspice_client_gtk_2_0_la_SOURCES = $(SPICE_GTK_SOURCES_COMMON)
 nodist_libspice_client_gtk_2_0_la_SOURCES = $(nodist_SPICE_GTK_SOURCES_COMMON)
 else
+libspice_client_gtk_3_0_la_DEPEDENCIES = $(GTK_SYMBOLS_FILE)
 libspice_client_gtk_3_0_la_LDFLAGS = $(SPICE_GTK_LDFLAGS_COMMON)
 libspice_client_gtk_3_0_la_LIBADD = $(SPICE_GTK_LIBADD_COMMON)
 libspice_client_gtk_3_0_la_SOURCES = $(SPICE_GTK_SOURCES_COMMON)
@@ -177,10 +183,12 @@ nodist_libspice_client_gtkinclude_HEADERS =	\
 	spice-widget-enums.h			\
 	$(NULL)
 
+libspice_client_glib_2_0_la_DEPENDENCIES = $(GLIB_SYMBOLS_FILE)
+
 libspice_client_glib_2_0_la_LDFLAGS =	\
 	-version-info 13:0:5		\
 	-no-undefined			\
-	$(GLIB_VERSION_LDFLAGS)		\
+	$(GLIB_SYMBOLS_LDFLAGS)		\
 	$(NULL)
 
 libspice_client_glib_2_0_la_LIBADD =					\
@@ -265,6 +273,8 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	$(USB_ACL_HELPER_SRCS)				\
 	vmcstream.c					\
 	vmcstream.h					\
+	wocky-http-proxy.c				\
+	wocky-http-proxy.h				\
 							\
 	decode.h					\
 	decode-glz.c					\
@@ -274,13 +284,6 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	client_sw_canvas.c	\
 	client_sw_canvas.h	\
 	$(NULL)
-
-if WITH_GPROXY
-libspice_client_glib_2_0_la_SOURCES +=			\
-	wocky-http-proxy.c				\
-	wocky-http-proxy.h				\
-	$(NULL)
-endif
 
 nodist_libspice_client_glib_2_0_la_SOURCES =	\
 	spice-glib-enums.c			\
@@ -670,13 +673,13 @@ endif
 update-symbol-files:
 	( echo "SPICEGTK_1 {" ; \
 	  echo "global:" ; \
-	  ctags -f - --c-kinds=p $(libspice_client_gtkinclude_HEADERS) $(nodist_libspice_client_gtkinclude_HEADERS) $(libspice_client_glibinclude_HEADERS) $(nodist_libspice_client_glibinclude_HEADERS) | awk '/^spice_/ { print $$1 ";" }' | sort ; \
+	  ctags -f - -I G_GNUC_CONST --c-kinds=p $(libspice_client_gtkinclude_HEADERS) $(nodist_libspice_client_gtkinclude_HEADERS) $(libspice_client_glibinclude_HEADERS) $(nodist_libspice_client_glibinclude_HEADERS) | awk '/^spice_/ { print $$1 ";" }' | sort ; \
 	  echo "local:" ;  \
 	  echo "*;" ; \
 	  echo "};" ) > $(srcdir)/map-file
-	( ctags -f - --c-kinds=p $(libspice_client_glibinclude_HEADERS) $(nodist_libspice_client_glibinclude_HEADERS) | awk '/^spice_/ { print $$1 }' | sort ; \
+	( ctags -f - -I G_GNUC_CONST --c-kinds=p $(libspice_client_glibinclude_HEADERS) $(nodist_libspice_client_glibinclude_HEADERS) | awk '/^spice_/ { print $$1 }' | sort ; \
 	) > $(srcdir)/spice-glib-sym-file
-	( ctags -f - --c-kinds=p $(libspice_client_gtkinclude_HEADERS) $(nodist_libspice_client_gtkinclude_HEADERS) | awk '/^spice_/ { print $$1 }' | sort ; \
+	( ctags -f - -I G_GNUC_CONST --c-kinds=p $(libspice_client_gtkinclude_HEADERS) $(nodist_libspice_client_gtkinclude_HEADERS) | awk '/^spice_/ { print $$1 }' | sort ; \
 	) > $(srcdir)/spice-gtk-sym-file
 
 -include $(top_srcdir)/git.mk

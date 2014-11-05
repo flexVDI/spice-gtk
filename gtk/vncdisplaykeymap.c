@@ -158,8 +158,8 @@ static gboolean check_for_xquartz(GdkDisplay *dpy)
 }
 #endif
 
-const guint16 const *vnc_display_keymap_gdk2xtkbd_table(GdkWindow *window,
-                                                        size_t *maplen)
+const guint16 *vnc_display_keymap_gdk2xtkbd_table(GdkWindow *window,
+                                                  size_t *maplen)
 {
 #ifdef GDK_WINDOWING_X11
 	if (GDK_IS_X11_WINDOW(window)) {
@@ -262,7 +262,7 @@ const guint16 const *vnc_display_keymap_gdk2xtkbd_table(GdkWindow *window,
 	return NULL;
 }
 
-guint16 vnc_display_keymap_gdk2xtkbd(const guint16 const *keycode_map,
+guint16 vnc_display_keymap_gdk2xtkbd(const guint16 *keycode_map,
 				     size_t keycode_maplen,
 				     guint16 keycode)
 {

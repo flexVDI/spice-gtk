@@ -188,7 +188,6 @@ wocky_http_proxy_connect (GProxy *proxy,
   gboolean has_cred;
   GIOStream *tlsconn = NULL;
 
-#if GLIB_CHECK_VERSION(2, 28, 0)
   if (WOCKY_IS_HTTPS_PROXY (proxy))
     {
       tlsconn = g_tls_client_connection_new (io_stream,
@@ -208,7 +207,6 @@ wocky_http_proxy_connect (GProxy *proxy,
 
       io_stream = tlsconn;
     }
-#endif
 
   in = g_io_stream_get_input_stream (io_stream);
   out = g_io_stream_get_output_stream (io_stream);
@@ -333,7 +331,6 @@ stream_connected (ConnectAsyncData *data,
   do_write (request_write_cb, data);
 }
 
-#if GLIB_CHECK_VERSION(2, 28, 0)
 static void
 handshake_completed (GObject *source_object,
                      GAsyncResult *res,
@@ -351,7 +348,6 @@ handshake_completed (GObject *source_object,
 
   stream_connected (data, G_IO_STREAM (conn));
 }
-#endif
 
 static void
 wocky_http_proxy_connect_async (GProxy *proxy,
@@ -380,7 +376,6 @@ wocky_http_proxy_connect_async (GProxy *proxy,
   g_simple_async_result_set_op_res_gpointer (simple, data,
                                              (GDestroyNotify) free_connect_data);
 
-#if GLIB_CHECK_VERSION(2, 28, 0)
   if (WOCKY_IS_HTTPS_PROXY (proxy))
     {
       GError *error = NULL;
@@ -408,7 +403,6 @@ wocky_http_proxy_connect_async (GProxy *proxy,
                                         handshake_completed, data);
     }
   else
-#endif
     {
       stream_connected (data, io_stream);
     }
@@ -512,7 +506,6 @@ wocky_http_proxy_iface_init (GProxyInterface *proxy_iface)
   proxy_iface->supports_hostname = wocky_http_proxy_supports_hostname;
 }
 
-#if GLIB_CHECK_VERSION(2, 28, 0)
 struct _WockyHttpsProxy
 {
   WockyHttpProxy parent;
@@ -542,4 +535,3 @@ static void
 wocky_https_proxy_class_init (WockyHttpsProxyClass *class)
 {
 }
-#endif

@@ -32,4 +32,3 @@ struct _SpiceAudioPrivate {
 G_END_DECLS
 
 #endif /* __SPICE_AUDIO_PRIVATE_H__ */
-

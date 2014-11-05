@@ -776,12 +776,8 @@ static void spice_channel_flush_wire(SpiceChannel *channel,
                 ret = -1;
             }
         } else {
-#if GLIB_CHECK_VERSION(2, 28, 0)
             ret = g_pollable_output_stream_write_nonblocking(G_POLLABLE_OUTPUT_STREAM(c->out),
                                                              ptr+offset, datalen-offset, NULL, &error);
-#else
-            ret = g_socket_send(c->sock, ptr+offset, datalen-offset, NULL, &error);
-#endif
             if (ret < 0) {
                 if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
                     cond = G_IO_OUT;
@@ -917,13 +913,8 @@ reread:
         }
     } else {
         GError *error = NULL;
-#if GLIB_CHECK_VERSION(2, 28, 0)
         ret = g_pollable_input_stream_read_nonblocking(G_POLLABLE_INPUT_STREAM(c->in),
                                                        data, len, NULL, &error);
-#else
-        ret = g_socket_receive(c->sock,
-                               data, len, NULL, &error);
-#endif
         if (ret < 0) {
             if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
                 cond = G_IO_IN;
@@ -2124,12 +2115,8 @@ static void spice_channel_iterate_read(SpiceChannel *channel)
 
     /* treat all incoming data (block on message completion) */
     while (!c->has_error &&
-           c->state != SPICE_CHANNEL_STATE_MIGRATING && (
-#if GLIB_CHECK_VERSION(2, 28, 0)
-           g_pollable_input_stream_is_readable(G_POLLABLE_INPUT_STREAM(c->in))
-#else
-           (g_socket_condition_check(c->sock, G_IO_IN) & G_IO_IN)
-#endif
+           c->state != SPICE_CHANNEL_STATE_MIGRATING &&
+           (g_pollable_input_stream_is_readable(G_POLLABLE_INPUT_STREAM(c->in))
            || pending_data == TRUE)) {
         pending_data = FALSE;
         do
@@ -2438,11 +2425,7 @@ reconnect:
         }
 
 
-#if GLIB_CHECK_VERSION(2, 28, 0)
         BIO *bio = bio_new_giostream(G_IO_STREAM(c->conn));
-#else
-        BIO *bio = bio_new_gsocket(c->sock);
-#endif
         SSL_set_bio(c->ssl, bio, bio);
 
         {
