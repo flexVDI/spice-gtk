@@ -74,10 +74,9 @@ static const char *context_state_names[] = {
 #define STATE_NAME(array, state) \
     ((state < G_N_ELEMENTS(array)) ? array[state] : NULL)
 
-static void channel_event(SpiceChannel *channel, SpiceChannelEvent event,
-                          gpointer data);
 static void stream_stop(SpicePulse *pulse, struct stream *s);
 static gboolean connect_channel(SpiceAudio *audio, SpiceChannel *channel);
+static void channel_weak_notified(gpointer data, GObject *where_the_object_was);
 
 static void spice_pulse_finalize(GObject *obj)
 {
@@ -120,11 +119,11 @@ static void spice_pulse_dispose(GObject *obj)
     p->record.cork_op = NULL;
 
     if (p->pchannel)
-        g_object_unref(p->pchannel);
+        g_object_weak_unref(G_OBJECT(p->pchannel), channel_weak_notified, pulse);
     p->pchannel = NULL;
 
     if (p->rchannel)
-        g_object_unref(p->rchannel);
+        g_object_weak_unref(G_OBJECT(p->rchannel), channel_weak_notified, pulse);
     p->rchannel = NULL;
 
     G_OBJECT_CLASS(spice_pulse_parent_class)->dispose(obj);
@@ -567,9 +566,8 @@ static void record_start(SpiceRecordChannel *channel, gint format, gint channels
     p->state = state;
 }
 
-static void record_stop(SpiceRecordChannel *channel, gpointer data)
+static void record_stop(SpicePulse *pulse)
 {
-    SpicePulse *pulse = data;
     SpicePulsePrivate *p = pulse->priv;
 
     SPICE_DEBUG("%s", __FUNCTION__);
@@ -579,33 +577,6 @@ static void record_stop(SpiceRecordChannel *channel, gpointer data)
         return;
 
     stream_stop(pulse, &p->record);
-}
-
-static void channel_event(SpiceChannel *channel, SpiceChannelEvent event,
-                          gpointer data)
-{
-    SpicePulse *pulse = data;
-    SpicePulsePrivate *p = pulse->priv;
-
-    switch (event) {
-    case SPICE_CHANNEL_OPENED:
-        break;
-    case SPICE_CHANNEL_CLOSED:
-        if (channel == p->pchannel) {
-            SPICE_DEBUG("playback closed");
-            p->pchannel = NULL;
-            g_object_unref(channel);
-        } else if (channel == p->rchannel) {
-            SPICE_DEBUG("record closed");
-            record_stop(SPICE_RECORD_CHANNEL(channel), pulse);
-            p->rchannel = NULL;
-            g_object_unref(channel);
-        } else /* if (p->pchannel || p->rchannel) */
-            g_warn_if_reached();
-        break;
-    default:
-        break;
-    }
 }
 
 static void playback_volume_changed(GObject *object, GParamSpec *pspec, gpointer data)
@@ -748,6 +719,22 @@ static void record_volume_changed(GObject *object, GParamSpec *pspec, gpointer d
         pa_operation_unref(op);
 }
 
+static void
+channel_weak_notified(gpointer data,
+                      GObject *where_the_object_was)
+{
+    SpicePulse *pulse = SPICE_PULSE(data);
+    SpicePulsePrivate *p = pulse->priv;
+
+    if (where_the_object_was == (GObject *)p->pchannel) {
+        p->pchannel = NULL;
+    } else if (where_the_object_was == (GObject *)p->rchannel) {
+        SPICE_DEBUG("record closed");
+        record_stop(pulse);
+        p->rchannel = NULL;
+    }
+}
+
 static gboolean connect_channel(SpiceAudio *audio, SpiceChannel *channel)
 {
     SpicePulse *pulse = SPICE_PULSE(audio);
@@ -756,15 +743,14 @@ static gboolean connect_channel(SpiceAudio *audio, SpiceChannel *channel)
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
         g_return_val_if_fail(p->pchannel == NULL, FALSE);
 
-        p->pchannel = g_object_ref(channel);
+        p->pchannel = channel;
+        g_object_weak_ref(G_OBJECT(p->pchannel), channel_weak_notified, audio);
         spice_g_signal_connect_object(channel, "playback-start",
                                       G_CALLBACK(playback_start), pulse, 0);
         spice_g_signal_connect_object(channel, "playback-data",
                                       G_CALLBACK(playback_data), pulse, 0);
         spice_g_signal_connect_object(channel, "playback-stop",
                                       G_CALLBACK(playback_stop), pulse, 0);
-        spice_g_signal_connect_object(channel, "channel-event",
-                                      G_CALLBACK(channel_event), pulse, 0);
         spice_g_signal_connect_object(channel, "notify::volume",
                                       G_CALLBACK(playback_volume_changed), pulse, 0);
         spice_g_signal_connect_object(channel, "notify::mute",
@@ -778,13 +764,12 @@ static gboolean connect_channel(SpiceAudio *audio, SpiceChannel *channel)
     if (SPICE_IS_RECORD_CHANNEL(channel)) {
         g_return_val_if_fail(p->rchannel == NULL, FALSE);
 
-        p->rchannel = g_object_ref(channel);
+        p->rchannel = channel;
+        g_object_weak_ref(G_OBJECT(p->rchannel), channel_weak_notified, audio);
         spice_g_signal_connect_object(channel, "record-start",
                                       G_CALLBACK(record_start), pulse, 0);
         spice_g_signal_connect_object(channel, "record-stop",
-                                      G_CALLBACK(record_stop), pulse, 0);
-        spice_g_signal_connect_object(channel, "channel-event",
-                                      G_CALLBACK(channel_event), pulse, 0);
+                                      G_CALLBACK(record_stop), pulse, G_CONNECT_SWAPPED);
         spice_g_signal_connect_object(channel, "notify::volume",
                                       G_CALLBACK(record_volume_changed), pulse, 0);
         spice_g_signal_connect_object(channel, "notify::mute",
