@@ -2163,7 +2163,7 @@ static void main_migrate_connect(SpiceChannel *channel,
     mig.session = spice_session_new_from_session(session);
     if (mig.session == NULL)
         goto end;
-    session->priv->migration = g_object_ref(mig.session);
+    session->priv->migration = mig.session;
 
     main_priv->migrate_data = &mig;
 
@@ -2187,7 +2187,6 @@ static void main_migrate_connect(SpiceChannel *channel,
         spice_session_start_migrating(spice_channel_get_session(channel),
                                       mig.do_seamless);
     }
-    g_object_unref(mig.session);
 
 end:
     CHANNEL_DEBUG(channel, "migrate connect reply %d", reply_type);
