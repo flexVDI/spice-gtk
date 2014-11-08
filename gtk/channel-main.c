@@ -2079,6 +2079,7 @@ static gboolean migrate_connect(gpointer data)
     mig->session = spice_session_new_from_session(session);
     mig->session->priv->migration_copy = true;
     spice_session_set_migration_state(mig->session, SPICE_SESSION_MIGRATION_CONNECTING);
+    session->priv->migration = g_object_ref(mig->session);
 
     if ((c->peer_hdr.major_version == 1) &&
         (c->peer_hdr.minor_version < 1)) {
@@ -2178,9 +2179,8 @@ static void main_migrate_connect(SpiceChannel *channel,
             SPICE_DEBUG("migration (semi-seamless): connections all ok");
             reply_type = SPICE_MSGC_MAIN_MIGRATE_CONNECTED;
         }
-        spice_session_set_migration(spice_channel_get_session(channel),
-                                    mig.session,
-                                    mig.do_seamless);
+        spice_session_start_migrating(spice_channel_get_session(channel),
+                                      mig.do_seamless);
     }
     g_object_unref(mig.session);
 

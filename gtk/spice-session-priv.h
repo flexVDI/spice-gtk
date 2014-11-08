@@ -138,9 +138,8 @@ void spice_session_set_mm_time(SpiceSession *session, guint32 time);
 guint32 spice_session_get_mm_time(SpiceSession *session);
 
 void spice_session_switching_disconnect(SpiceSession *session);
-void spice_session_set_migration(SpiceSession *session,
-                                 SpiceSession *migration,
-                                 gboolean full_migration);
+void spice_session_start_migrating(SpiceSession *session,
+                                   gboolean full_migration);
 void spice_session_abort_migration(SpiceSession *session);
 void spice_session_set_migration_state(SpiceSession *session, SpiceSessionMigration state);
 

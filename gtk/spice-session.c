@@ -1391,22 +1391,22 @@ void spice_session_switching_disconnect(SpiceSession *self)
 }
 
 G_GNUC_INTERNAL
-void spice_session_set_migration(SpiceSession *session,
-                                 SpiceSession *migration,
-                                 gboolean full_migration)
+void spice_session_start_migrating(SpiceSession *session,
+                                   gboolean full_migration)
 {
     SpiceSessionPrivate *s = session->priv;
-    SpiceSessionPrivate *m = migration->priv;
+    SpiceSessionPrivate *m;
     gchar *tmp;
 
-    g_return_if_fail(s != NULL);
+    g_return_if_fail(s->migration != NULL);
+    m = s->migration->priv;
+    g_return_if_fail(m->migration_state == SPICE_SESSION_MIGRATION_CONNECTING);
+
 
     s->full_migration = full_migration;
     spice_session_set_migration_state(session, SPICE_SESSION_MIGRATION_MIGRATING);
 
-    g_warn_if_fail(s->migration == NULL);
-    s->migration = g_object_ref(migration);
-
+    /* swapping connection details happens after MIGRATION_CONNECTING state */
     tmp = s->host;
     s->host = m->host;
     m->host = tmp;
