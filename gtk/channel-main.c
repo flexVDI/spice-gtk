@@ -2174,8 +2174,8 @@ static void main_migrate_connect(SpiceChannel *channel,
     coroutine_yield(NULL);
 
     if (mig.nchannels != 0) {
-        reply_type = SPICE_MSGC_MAIN_MIGRATE_CONNECT_ERROR;
-        spice_session_disconnect(mig.session);
+        CHANNEL_DEBUG(channel, "migrate failed: some channels failed to connect");
+        spice_session_abort_migration(session);
     } else {
         if (mig.do_seamless) {
             SPICE_DEBUG("migration (seamless): connections all ok");
