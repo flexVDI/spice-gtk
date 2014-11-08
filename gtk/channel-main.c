@@ -2074,6 +2074,8 @@ static gboolean migrate_connect(gpointer data)
     g_return_val_if_fail(c != NULL, FALSE);
 
     session = spice_channel_get_session(mig->src_channel);
+    g_return_val_if_fail(session->priv->migration == NULL, FALSE);
+
     mig->session = spice_session_new_from_session(session);
     mig->session->priv->migration_copy = true;
 

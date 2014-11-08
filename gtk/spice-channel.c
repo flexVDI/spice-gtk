@@ -2500,6 +2500,8 @@ gboolean spice_channel_connect(SpiceChannel *channel)
     if (c->state >= SPICE_CHANNEL_STATE_CONNECTING)
         return TRUE;
 
+    g_return_val_if_fail(channel->priv->fd == -1, FALSE);
+
     return channel_connect(channel);
 }
 
@@ -2522,6 +2524,7 @@ gboolean spice_channel_open_fd(SpiceChannel *channel, int fd)
 
     g_return_val_if_fail(SPICE_IS_CHANNEL(channel), FALSE);
     g_return_val_if_fail(channel->priv != NULL, FALSE);
+    g_return_val_if_fail(channel->priv->fd == -1, FALSE);
     g_return_val_if_fail(fd >= -1, FALSE);
 
     c = channel->priv;
