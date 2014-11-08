@@ -180,21 +180,9 @@ spice_session_dispose(GObject *gobject)
 
     spice_session_disconnect(session);
 
-    if (s->migration) {
-        spice_session_disconnect(s->migration);
-        g_object_unref(s->migration);
-        s->migration = NULL;
-    }
-
-    if (s->migration_left) {
-        g_list_free(s->migration_left);
-        s->migration_left = NULL;
-    }
-
-    if (s->after_main_init) {
-        g_source_remove(s->after_main_init);
-        s->after_main_init = 0;
-    }
+    g_warn_if_fail(s->migration == NULL);
+    g_warn_if_fail(s->migration_left == NULL);
+    g_warn_if_fail(s->after_main_init == 0);
 
     g_clear_object(&s->audio_manager);
     g_clear_object(&s->desktop_integration);
@@ -1499,6 +1487,12 @@ end:
     spice_session_disconnect(s->migration);
     g_object_unref(s->migration);
     s->migration = NULL;
+
+    s->migrate_wait_init = FALSE;
+    if (s->after_main_init) {
+        g_source_remove(s->after_main_init);
+        s->after_main_init = 0;
+    }
 
     spice_session_set_migration_state(session, SPICE_SESSION_MIGRATION_NONE);
 }
