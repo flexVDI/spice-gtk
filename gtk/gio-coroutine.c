@@ -222,9 +222,11 @@ g_coroutine_signal_emit(gpointer instance, guint signal_id,
     if (coroutine_self_is_main()) {
         g_signal_emit_valist(instance, signal_id, detail, data.var_args);
     } else {
+        g_object_ref(instance);
         g_idle_add(emit_main_context, &data);
         coroutine_yield(NULL);
         g_warn_if_fail(data.notified);
+        g_object_unref(instance);
     }
 
     va_end (data.var_args);
@@ -253,7 +255,7 @@ void g_coroutine_object_notify(GObject *object,
         g_object_notify(object, property_name);
     } else {
 
-        data.instance = object;
+        data.instance = g_object_ref(object);
         data.caller = coroutine_self();
         data.propname = (gpointer)property_name;
         data.notified = FALSE;
@@ -268,5 +270,6 @@ void g_coroutine_object_notify(GObject *object,
          */
         coroutine_yield(NULL);
         g_warn_if_fail(data.notified);
+        g_object_unref(object);
     }
 }
