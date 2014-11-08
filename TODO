@@ -1,3 +1,4 @@
+* implement migration support with client fd
 * create a ChannelBaseAudio
 * revive the win32 GDI backend
 

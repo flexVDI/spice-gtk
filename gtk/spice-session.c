@@ -1237,12 +1237,20 @@ SpiceSession *spice_session_new(void)
 G_GNUC_INTERNAL
 SpiceSession *spice_session_new_from_session(SpiceSession *session)
 {
-    SpiceSession *copy = SPICE_SESSION(g_object_new(SPICE_TYPE_SESSION,
-                                                    "host", NULL,
-                                                    "ca-file", NULL,
-                                                    NULL));
-    SpiceSessionPrivate *c = copy->priv, *s = session->priv;
+    SpiceSessionPrivate *s = session->priv;
+    SpiceSession *copy;
+    SpiceSessionPrivate *c;
 
+    if (s->client_provided_sockets) {
+        g_warning("migration with client provided fd is not supported yet");
+        return NULL;
+    }
+
+    copy = SPICE_SESSION(g_object_new(SPICE_TYPE_SESSION,
+                                      "host", NULL,
+                                      "ca-file", NULL,
+                                      NULL));
+    c = copy->priv;
     g_clear_object(&c->proxy);
 
     g_warn_if_fail(c->host == NULL);

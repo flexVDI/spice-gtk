@@ -2468,6 +2468,10 @@ static gboolean channel_connect(SpiceChannel *channel)
 
     if (spice_session_get_client_provided_socket(c->session)) {
         if (c->fd == -1) {
+            CHANNEL_DEBUG(channel, "requesting fd");
+            /* FIXME: no way for client to provide fd atm. */
+            /* It could either chain on parent channel.. */
+            /* or register migration channel on parent session, or ? */
             g_signal_emit(channel, signals[SPICE_CHANNEL_OPEN_FD], 0, c->tls);
             return true;
         }
