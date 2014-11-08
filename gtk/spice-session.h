@@ -52,6 +52,7 @@ typedef enum {
  * @SPICE_SESSION_MIGRATION_NONE: no migration going on
  * @SPICE_SESSION_MIGRATION_SWITCHING: the session is switching host (destroy and reconnect)
  * @SPICE_SESSION_MIGRATION_MIGRATING: the session is migrating seamlessly (reconnect)
+ * @SPICE_SESSION_MIGRATION_CONNECTING: the migration is connecting to destination
  *
  * Session migration state.
  **/
@@ -59,6 +60,7 @@ typedef enum {
     SPICE_SESSION_MIGRATION_NONE,
     SPICE_SESSION_MIGRATION_SWITCHING,
     SPICE_SESSION_MIGRATION_MIGRATING,
+    SPICE_SESSION_MIGRATION_CONNECTING,
 } SpiceSessionMigration;
 
 struct _SpiceSession

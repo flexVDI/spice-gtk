@@ -2078,6 +2078,7 @@ static gboolean migrate_connect(gpointer data)
 
     mig->session = spice_session_new_from_session(session);
     mig->session->priv->migration_copy = true;
+    spice_session_set_migration_state(mig->session, SPICE_SESSION_MIGRATION_CONNECTING);
 
     if ((c->peer_hdr.major_version == 1) &&
         (c->peer_hdr.minor_version < 1)) {
