@@ -2065,21 +2065,16 @@ static gboolean migrate_connect(gpointer data)
     SpiceChannelPrivate  *c;
     int port, sport;
     const char *host;
-    SpiceSession *session;
 
     g_return_val_if_fail(mig != NULL, FALSE);
     g_return_val_if_fail(mig->info != NULL, FALSE);
     g_return_val_if_fail(mig->nchannels == 0, FALSE);
     c = SPICE_CHANNEL(mig->src_channel)->priv;
     g_return_val_if_fail(c != NULL, FALSE);
+    g_return_val_if_fail(mig->session != NULL, FALSE);
 
-    session = spice_channel_get_session(mig->src_channel);
-    g_return_val_if_fail(session->priv->migration == NULL, FALSE);
-
-    mig->session = spice_session_new_from_session(session);
     mig->session->priv->migration_copy = true;
     spice_session_set_migration_state(mig->session, SPICE_SESSION_MIGRATION_CONNECTING);
-    session->priv->migration = g_object_ref(mig->session);
 
     if ((c->peer_hdr.major_version == 1) &&
         (c->peer_hdr.minor_version < 1)) {
@@ -2149,15 +2144,26 @@ static void main_migrate_connect(SpiceChannel *channel,
                                  uint32_t src_mig_version)
 {
     SpiceMainChannelPrivate *main_priv = SPICE_MAIN_CHANNEL(channel)->priv;
+    int reply_type = SPICE_MSGC_MAIN_MIGRATE_CONNECT_ERROR;
     spice_migrate mig = { 0, };
     SpiceMsgOut *out;
-    int reply_type;
+    SpiceSession *session;
 
     mig.src_channel = channel;
     mig.info = dst_info;
     mig.from = coroutine_self();
     mig.do_seamless = do_seamless;
     mig.src_mig_version = src_mig_version;
+
+    CHANNEL_DEBUG(channel, "migrate connect");
+    session = spice_channel_get_session(channel);
+    if (session->priv->migration != NULL)
+        goto end;
+
+    mig.session = spice_session_new_from_session(session);
+    if (mig.session == NULL)
+        goto end;
+    session->priv->migration = g_object_ref(mig.session);
 
     main_priv->migrate_data = &mig;
 
@@ -2166,7 +2172,6 @@ static void main_migrate_connect(SpiceChannel *channel,
 
     /* switch to main loop and wait for connections */
     coroutine_yield(NULL);
-    g_return_if_fail(mig.session != NULL);
 
     if (mig.nchannels != 0) {
         reply_type = SPICE_MSGC_MAIN_MIGRATE_CONNECT_ERROR;
@@ -2184,6 +2189,8 @@ static void main_migrate_connect(SpiceChannel *channel,
     }
     g_object_unref(mig.session);
 
+end:
+    CHANNEL_DEBUG(channel, "migrate connect reply %d", reply_type);
     out = spice_msg_out_new(SPICE_CHANNEL(channel), reply_type);
     spice_msg_out_send(out);
 }
