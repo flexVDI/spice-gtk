@@ -1467,6 +1467,9 @@ void spice_session_abort_migration(SpiceSession *session)
         return;
     }
 
+    if (s->migration_state != SPICE_SESSION_MIGRATION_MIGRATING)
+        goto end;
+
     for (ring = ring_get_head(&s->channels);
          ring != NULL; ring = next) {
         next = ring_next(&s->channels, ring);
@@ -1482,6 +1485,7 @@ void spice_session_abort_migration(SpiceSession *session)
                                          !s->full_migration);
     }
 
+end:
     g_list_free(s->migration_left);
     s->migration_left = NULL;
     spice_session_disconnect(s->migration);
@@ -1652,6 +1656,7 @@ void spice_session_disconnect(SpiceSession *session)
     s->name = NULL;
     memset(s->uuid, 0, sizeof(s->uuid));
 
+    spice_session_abort_migration(session);
     /* we leave disconnecting = TRUE, so that spice_channel_destroy()
        is not called multiple times on channels that are in pending
        destroy state. */
