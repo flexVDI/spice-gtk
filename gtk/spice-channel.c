@@ -2461,10 +2461,8 @@ static gboolean channel_connect(SpiceChannel *channel)
         g_warning("%s: channel setup incomplete", __FUNCTION__);
         return false;
     }
-    if (c->state != SPICE_CHANNEL_STATE_UNCONNECTED) {
-        g_warning("Invalid channel_connect state: %d", c->state);
-        return true;
-    }
+
+    c->state = SPICE_CHANNEL_STATE_CONNECTING;
 
     if (spice_session_get_client_provided_socket(c->session)) {
         if (c->fd == -1) {
@@ -2476,7 +2474,7 @@ static gboolean channel_connect(SpiceChannel *channel)
             return true;
         }
     }
-    c->state = SPICE_CHANNEL_STATE_CONNECTING;
+
     c->xmit_queue_blocked = FALSE;
 
     g_return_val_if_fail(c->sock == NULL, FALSE);
@@ -2532,6 +2530,11 @@ gboolean spice_channel_open_fd(SpiceChannel *channel, int fd)
     g_return_val_if_fail(fd >= -1, FALSE);
 
     c = channel->priv;
+    if (c->state > SPICE_CHANNEL_STATE_CONNECTING) {
+        g_warning("Invalid channel_connect state: %d", c->state);
+        return true;
+    }
+
     c->fd = fd;
 
     return channel_connect(channel);
