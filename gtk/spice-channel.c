@@ -2038,8 +2038,12 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
  * spice_channel_destroy:
  * @channel:
  *
- * Disconnect and unref the @channel. Called by @spice_session_channel_destroy()
+ * Disconnect and unref the @channel.
  *
+ * Deprecated: 0.27: this function has been deprecated because it is
+ * misleading, the object is not actually destroyed. Instead, it is
+ * recommended to call explicitely spice_channel_disconnect() and
+ * g_object_unref().
  **/
 void spice_channel_destroy(SpiceChannel *channel)
 {

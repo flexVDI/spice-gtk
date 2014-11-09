@@ -1756,9 +1756,8 @@ void spice_session_disconnect(SpiceSession *session)
     memset(s->uuid, 0, sizeof(s->uuid));
 
     spice_session_abort_migration(session);
-    /* we leave disconnecting = TRUE, so that spice_channel_destroy()
-       is not called multiple times on channels that are in pending
-       destroy state. */
+    /* we leave disconnecting = TRUE, so that spice_channel_disconnect()
+       is not called multiple times */
 }
 
 /**
@@ -2066,7 +2065,8 @@ static void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *c
     g_signal_emit(session, signals[SPICE_SESSION_CHANNEL_DESTROY], 0, channel);
 
     g_clear_object(&channel->priv->session);
-    spice_channel_destroy(channel);
+    spice_channel_disconnect(channel, SPICE_CHANNEL_NONE);
+    g_object_unref(channel);
 }
 
 G_GNUC_INTERNAL
