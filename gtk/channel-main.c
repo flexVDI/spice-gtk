@@ -2272,9 +2272,6 @@ static gboolean switch_host_delayed(gpointer data)
     spice_channel_disconnect(channel, SPICE_CHANNEL_SWITCHING);
     spice_session_switching_disconnect(session);
 
-    spice_channel_connect(channel);
-    spice_session_set_migration_state(session, SPICE_SESSION_MIGRATION_NONE);
-
     return FALSE;
 }
 

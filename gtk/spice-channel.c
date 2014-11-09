@@ -2639,6 +2639,12 @@ static void channel_disconnect(SpiceChannel *channel)
     spice_channel_reset(channel, FALSE);
 
     g_return_if_fail(SPICE_IS_CHANNEL(channel));
+
+    if (c->state == SPICE_CHANNEL_STATE_SWITCHING) {
+        spice_channel_connect(channel);
+        spice_session_set_migration_state(spice_channel_get_session(channel),
+                                          SPICE_SESSION_MIGRATION_NONE);
+    }
 }
 
 /**
