@@ -2140,6 +2140,10 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
 
     if (c->has_error) {
         GIOCondition ret;
+
+        if (!c->sock)
+            return FALSE;
+
         /* We don't want to report an error if the socket was closed gracefully
          * on the other end (VM shutdown) */
         ret = g_socket_condition_check(c->sock, G_IO_IN | G_IO_ERR | G_IO_HUP);
