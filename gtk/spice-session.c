@@ -210,6 +210,8 @@ enum {
 
 static guint signals[SPICE_SESSION_LAST_SIGNAL];
 
+static void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel);
+
 static void update_proxy(SpiceSession *self, const gchar *str)
 {
     SpiceSessionPrivate *s = self->priv;
@@ -1462,8 +1464,10 @@ void spice_session_switching_disconnect(SpiceSession *self)
     for (ring = ring_get_head(&s->channels); ring != NULL; ring = next) {
         next = ring_next(&s->channels, ring);
         item = SPICE_CONTAINEROF(ring, struct channel, link);
-        if (item->channel != s->cmain)
-            spice_channel_destroy(item->channel); /* /!\ item and channel are destroy() after this call */
+
+        if (item->channel == s->cmain)
+            continue;
+        spice_session_channel_destroy(self, item->channel);
     }
 
     g_warn_if_fail(!ring_is_empty(&s->channels)); /* ring_get_length() == 1 */
@@ -1742,7 +1746,7 @@ void spice_session_disconnect(SpiceSession *session)
     for (ring = ring_get_head(&s->channels); ring != NULL; ring = next) {
         next = ring_next(&s->channels, ring);
         item = SPICE_CONTAINEROF(ring, struct channel, link);
-        spice_channel_destroy(item->channel); /* /!\ item and channel are destroy() after this call */
+        spice_session_channel_destroy(session, item->channel);
     }
 
     s->connection_id = 0;
@@ -2030,8 +2034,7 @@ void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel)
     g_signal_emit(session, signals[SPICE_SESSION_CHANNEL_NEW], 0, channel);
 }
 
-G_GNUC_INTERNAL
-void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel)
+static void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel)
 {
     g_return_if_fail(SPICE_IS_SESSION(session));
     g_return_if_fail(SPICE_IS_CHANNEL(channel));
@@ -2061,6 +2064,9 @@ void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel)
     free(item);
 
     g_signal_emit(session, signals[SPICE_SESSION_CHANNEL_DESTROY], 0, channel);
+
+    g_clear_object(&channel->priv->session);
+    spice_channel_destroy(channel);
 }
 
 G_GNUC_INTERNAL

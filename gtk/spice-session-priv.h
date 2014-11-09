@@ -48,7 +48,6 @@ gboolean spice_session_get_client_provided_socket(SpiceSession *session);
 GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceChannel *channel,
                                                    gboolean *use_tls, GError **error);
 void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel);
-void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel);
 void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel);
 
 void spice_session_set_mm_time(SpiceSession *session, guint32 time);

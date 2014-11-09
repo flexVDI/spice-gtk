@@ -152,9 +152,6 @@ static void spice_channel_dispose(GObject *gobject)
 
     CHANNEL_DEBUG(channel, "%s %p", __FUNCTION__, gobject);
 
-    if (c->session)
-        spice_session_channel_destroy(c->session, channel);
-
     spice_channel_disconnect(channel, SPICE_CHANNEL_CLOSED);
 
     if (c->session) {
@@ -2041,7 +2038,7 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
  * spice_channel_destroy:
  * @channel:
  *
- * Disconnect and unref the @channel. Called by @spice_session_disconnect()
+ * Disconnect and unref the @channel. Called by @spice_session_channel_destroy()
  *
  **/
 void spice_channel_destroy(SpiceChannel *channel)
