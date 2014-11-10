@@ -706,6 +706,30 @@ static gboolean spice_usb_device_manager_get_device_descriptor(
     return TRUE;
 }
 
+
+/**
+ * spice_usb_device_get_libusb_device:
+ * @device: #SpiceUsbDevice to get the descriptor information of
+ *
+ * Returns: (transfer none): the %libusb_device associated to %SpiceUsbDevice.
+ *
+ * Since: 0.27
+ **/
+gconstpointer
+spice_usb_device_get_libusb_device(const SpiceUsbDevice *device G_GNUC_UNUSED)
+{
+#ifdef USE_USBREDIR
+#ifndef G_OS_WIN32
+    const SpiceUsbDeviceInfo *info = (const SpiceUsbDeviceInfo *)device;
+
+    g_return_val_if_fail(info != NULL, FALSE);
+
+    return info->libdev;
+#endif
+#endif
+    return NULL;
+}
+
 static gboolean spice_usb_device_manager_get_libdev_vid_pid(
     libusb_device *libdev, int *vid, int *pid)
 {
