@@ -1463,6 +1463,7 @@ void spice_session_abort_migration(SpiceSession *session)
         return;
     }
 
+    SPICE_DEBUG("migration: abort");
     if (s->migration_state != SPICE_SESSION_MIGRATION_MIGRATING)
         goto end;
 
@@ -1522,7 +1523,7 @@ void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel)
     s->migration_left = g_list_remove(s->migration_left, channel);
 
     if (g_list_length(s->migration_left) == 0) {
-        CHANNEL_DEBUG(channel, "all channel migrated");
+        CHANNEL_DEBUG(channel, "migration: all channel migrated, success");
         spice_session_disconnect(s->migration);
         g_object_unref(s->migration);
         s->migration = NULL;

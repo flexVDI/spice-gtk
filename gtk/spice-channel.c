@@ -2545,6 +2545,7 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
 {
     SpiceChannelPrivate *c = channel->priv;
 
+    CHANNEL_DEBUG(channel, "channel reset");
     if (c->connect_delayed_id) {
         g_source_remove(c->connect_delayed_id);
         c->connect_delayed_id = 0;
@@ -2611,6 +2612,7 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
 G_GNUC_INTERNAL
 void spice_channel_reset(SpiceChannel *channel, gboolean migrating)
 {
+    CHANNEL_DEBUG(channel, "reset %s", migrating ? "migrating" : "");
     SPICE_CHANNEL_GET_CLASS(channel)->channel_reset(channel, migrating);
 }
 
