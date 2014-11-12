@@ -1363,7 +1363,7 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
         CHANNEL_DEBUG(channel, "stream data too late by %u ms (ts: %u, mmtime: %u), dropin",
                       mmtime - op->multi_media_time, op->multi_media_time, mmtime);
         st->arrive_late_time += mmtime - op->multi_media_time;
-        st->num_drops_on_arive++;
+        st->num_drops_on_receive++;
 
         if (!st->cur_drops_seq_stats.len) {
             st->cur_drops_seq_stats.start_mm_time = op->multi_media_time;
@@ -1439,15 +1439,15 @@ static void destroy_stream(SpiceChannel *channel, int id)
     if (!st)
         return;
 
-    num_out_frames = st->num_input_frames - st->num_drops_on_arive - st->num_drops_on_playback;
+    num_out_frames = st->num_input_frames - st->num_drops_on_receive - st->num_drops_on_playback;
     CHANNEL_DEBUG(channel, "%s: id=%d #in-frames=%d out/in=%.2f "
-        "#drops-on-arrive=%d avg-late-time(ms)=%.2f "
+        "#drops-on-receive=%d avg-late-time(ms)=%.2f "
         "#drops-on-playback=%d", __FUNCTION__,
         id,
         st->num_input_frames,
         num_out_frames / (double)st->num_input_frames,
-        st->num_drops_on_arive,
-        st->num_drops_on_arive ? st->arrive_late_time / ((double)st->num_drops_on_arive): 0,
+        st->num_drops_on_receive,
+        st->num_drops_on_receive ? st->arrive_late_time / ((double)st->num_drops_on_receive): 0,
         st->num_drops_on_playback);
     if (st->num_drops_seqs) {
         CHANNEL_DEBUG(channel, "%s: #drops-sequences=%u ==>", __FUNCTION__, st->num_drops_seqs);
