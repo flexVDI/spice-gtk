@@ -99,7 +99,7 @@ struct _SpiceSessionPrivate {
     GList             *migration_left;
     SpiceSessionMigration migration_state;
     gboolean          full_migration; /* seamless migration indicator */
-    gooblean          disconnecting;
+    guint             disconnecting;
     gboolean          migrate_wait_init;
     guint             after_main_init;
     gboolean          for_migration;
@@ -258,6 +258,31 @@ static void spice_session_init(SpiceSession *session)
 }
 
 static void
+session_disconnect(SpiceSession *self)
+{
+    SpiceSessionPrivate *s;
+    struct channel *item;
+    RingItem *ring, *next;
+
+    s = self->priv;
+    s->cmain = NULL;
+
+    for (ring = ring_get_head(&s->channels); ring != NULL; ring = next) {
+        next = ring_next(&s->channels, ring);
+        item = SPICE_CONTAINEROF(ring, struct channel, link);
+        spice_session_channel_destroy(self, item->channel);
+    }
+
+    s->connection_id = 0;
+
+    g_free(s->name);
+    s->name = NULL;
+    memset(s->uuid, 0, sizeof(s->uuid));
+
+    spice_session_abort_migration(self);
+}
+
+static void
 spice_session_dispose(GObject *gobject)
 {
     SpiceSession *session = SPICE_SESSION(gobject);
@@ -265,11 +290,12 @@ spice_session_dispose(GObject *gobject)
 
     SPICE_DEBUG("session dispose");
 
-    spice_session_disconnect(session);
+    session_disconnect(session);
 
     g_warn_if_fail(s->migration == NULL);
     g_warn_if_fail(s->migration_left == NULL);
     g_warn_if_fail(s->after_main_init == 0);
+    g_warn_if_fail(s->disconnecting == 0);
 
     g_clear_object(&s->audio_manager);
     g_clear_object(&s->usb_manager);
@@ -1384,7 +1410,7 @@ gboolean spice_session_connect(SpiceSession *session)
     s = session->priv;
     g_return_val_if_fail(!s->disconnecting, FALSE);
 
-    spice_session_disconnect(session);
+    session_disconnect(session);
 
     s->client_provided_sockets = FALSE;
 
@@ -1419,7 +1445,7 @@ gboolean spice_session_open_fd(SpiceSession *session, int fd)
     s = session->priv;
     g_return_val_if_fail(!s->disconnecting, FALSE);
 
-    spice_session_disconnect(session);
+    session_disconnect(session);
 
     s->client_provided_sockets = TRUE;
 
@@ -1576,7 +1602,7 @@ void spice_session_abort_migration(SpiceSession *session)
 end:
     g_list_free(s->migration_left);
     s->migration_left = NULL;
-    spice_session_disconnect(s->migration);
+    session_disconnect(s->migration);
     g_object_unref(s->migration);
     s->migration = NULL;
 
@@ -1616,7 +1642,7 @@ void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel)
 
     if (g_list_length(s->migration_left) == 0) {
         CHANNEL_DEBUG(channel, "migration: all channel migrated, success");
-        spice_session_disconnect(s->migration);
+        session_disconnect(s->migration);
         g_object_unref(s->migration);
         s->migration = NULL;
         spice_session_set_migration_state(session, SPICE_SESSION_MIGRATION_NONE);
@@ -1719,6 +1745,18 @@ gboolean spice_session_get_read_only(SpiceSession *self)
     return self->priv->read_only;
 }
 
+static gboolean session_disconnect_idle(SpiceSession *self)
+{
+    SpiceSessionPrivate *s = self->priv;
+
+    session_disconnect(self);
+    s->disconnecting = 0;
+
+    g_object_unref(self);
+
+    return G_SOURCE_REMOVE;
+}
+
 /**
  * spice_session_disconnect:
  * @session:
@@ -1728,37 +1766,17 @@ gboolean spice_session_get_read_only(SpiceSession *self)
 void spice_session_disconnect(SpiceSession *session)
 {
     SpiceSessionPrivate *s;
-    struct channel *item;
-    RingItem *ring, *next;
 
     g_return_if_fail(SPICE_IS_SESSION(session));
-    g_return_if_fail(session->priv != NULL);
 
     s = session->priv;
 
     SPICE_DEBUG("session: disconnecting %d", s->disconnecting);
-    if (s->disconnecting)
+    if (s->disconnecting != 0)
         return;
 
     g_object_ref(session);
-    s->disconnecting = TRUE;
-    s->cmain = NULL;
-
-    for (ring = ring_get_head(&s->channels); ring != NULL; ring = next) {
-        next = ring_next(&s->channels, ring);
-        item = SPICE_CONTAINEROF(ring, struct channel, link);
-        spice_session_channel_destroy(session, item->channel);
-    }
-
-    s->connection_id = 0;
-
-    g_free(s->name);
-    s->name = NULL;
-    memset(s->uuid, 0, sizeof(s->uuid));
-
-    spice_session_abort_migration(session);
-    s->disconnecting = FALSE;
-    g_object_unref(session);
+    s->disconnecting = g_idle_add((GSourceFunc)session_disconnect_idle, session);
 }
 
 /**
