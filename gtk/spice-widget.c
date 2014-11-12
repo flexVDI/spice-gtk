@@ -719,6 +719,8 @@ static void try_keyboard_grab(SpiceDisplay *display)
         return;
     if (!d->mouse_have_pointer)
         return;
+    if (d->keyboard_grab_released)
+        return;
 
     g_return_if_fail(gtk_widget_is_focus(widget));
 
@@ -1198,6 +1200,9 @@ static void send_key(SpiceDisplay *display, int scancode, SendKeyType type, gboo
     if (d->disable_inputs)
         return;
 
+    if (d->keyboard_grab_released)
+        return;
+
     i = scancode / 32;
     b = scancode % 32;
     m = (1 << b);
@@ -1259,7 +1264,8 @@ static void release_keys(SpiceDisplay *display)
     }
 }
 
-static gboolean check_for_grab_key(SpiceDisplay *display, int type, int keyval)
+static gboolean check_for_grab_key(SpiceDisplay *display, int type, int keyval,
+                                   int check_type, int reset_type)
 {
     SpiceDisplayPrivate *d = display->priv;
     int i;
@@ -1267,13 +1273,13 @@ static gboolean check_for_grab_key(SpiceDisplay *display, int type, int keyval)
     if (!d->grabseq->nkeysyms)
         return FALSE;
 
-    if (type == GDK_KEY_PRESS) {
-        /* Record the new key press */
+    if (type == check_type) {
+        /* Record the new key */
         for (i = 0 ; i < d->grabseq->nkeysyms ; i++)
             if (d->grabseq->keysyms[i] == keyval)
                 d->activeseq[i] = TRUE;
 
-        /* Return if any key is not pressed */
+        /* Return if any key is missing */
         for (i = 0 ; i < d->grabseq->nkeysyms ; i++)
             if (d->activeseq[i] == FALSE)
                 return FALSE;
@@ -1281,14 +1287,25 @@ static gboolean check_for_grab_key(SpiceDisplay *display, int type, int keyval)
         /* resets the whole grab sequence on success */
         memset(d->activeseq, 0, sizeof(gboolean) * d->grabseq->nkeysyms);
         return TRUE;
-    } else if (type == GDK_KEY_RELEASE) {
-        /* Any key release resets the whole grab sequence */
+    } else if (type == reset_type) {
+        /* reset key event type resets the whole grab sequence */
         memset(d->activeseq, 0, sizeof(gboolean) * d->grabseq->nkeysyms);
+        d->seq_pressed = FALSE;
         return FALSE;
     } else
         g_warn_if_reached();
 
     return FALSE;
+}
+
+static gboolean check_for_grab_key_pressed(SpiceDisplay *display, int type, int keyval)
+{
+    return check_for_grab_key(display, type, keyval, GDK_KEY_PRESS, GDK_KEY_RELEASE);
+}
+
+static gboolean check_for_grab_key_released(SpiceDisplay *display, int type, int keyval)
+{
+    return check_for_grab_key(display, type, keyval, GDK_KEY_RELEASE, GDK_KEY_PRESS);
 }
 
 static void update_display(SpiceDisplay *display)
@@ -1321,7 +1338,7 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
             __FUNCTION__, key->type == GDK_KEY_PRESS ? "press" : "release",
             key->hardware_keycode, key->state, key->group, key->is_modifier);
 
-    if (check_for_grab_key(display, key->type, key->keyval)) {
+    if (!d->seq_pressed && check_for_grab_key_pressed(display, key->type, key->keyval)) {
         g_signal_emit(widget, signals[SPICE_DISPLAY_GRAB_KEY_PRESSED], 0);
 
         if (d->mouse_mode == SPICE_MOUSE_MODE_SERVER) {
@@ -1330,6 +1347,17 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
             else
                 try_mouse_grab(display);
         }
+        d->seq_pressed = TRUE;
+    } else if (d->seq_pressed && check_for_grab_key_released(display, key->type, key->keyval)) {
+        release_keys(display);
+        if (!d->keyboard_grab_released) {
+            d->keyboard_grab_released = TRUE;
+            try_keyboard_ungrab(display);
+        } else {
+            d->keyboard_grab_released = FALSE;
+            try_keyboard_grab(display);
+        }
+        d->seq_pressed = FALSE;
     }
 
     if (!d->inputs)
@@ -1460,6 +1488,8 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
     release_keys(display);
     if (!d->disable_inputs)
         spice_gtk_session_sync_keyboard_modifiers(d->gtk_session);
+    if (d->keyboard_grab_released)
+        memset(d->activeseq, 0, sizeof(gboolean) * d->grabseq->nkeysyms);
     update_keyboard_focus(display, true);
     try_keyboard_grab(display);
     update_display(display);
@@ -1564,6 +1594,14 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
         return true;
     if (d->disable_inputs)
         return true;
+
+    d->seq_pressed = FALSE;
+
+    if (d->keyboard_grab_released && d->keyboard_have_focus) {
+        d->keyboard_grab_released = FALSE;
+        release_keys(display);
+        try_keyboard_grab(display);
+    }
 
     spicex_transform_input (display, motion->x, motion->y, &x, &y);
 
