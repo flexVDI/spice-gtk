@@ -1,5 +1,4 @@
 * create a ChannelBaseAudio
-* missing TunnelChannel implementation
 * revive the win32 GDI backend
 
 See also list of bugs open:
