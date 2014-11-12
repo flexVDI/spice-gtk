@@ -1740,6 +1740,7 @@ void spice_session_disconnect(SpiceSession *session)
     if (s->disconnecting)
         return;
 
+    g_object_ref(session);
     s->disconnecting = TRUE;
     s->cmain = NULL;
 
@@ -1757,6 +1758,7 @@ void spice_session_disconnect(SpiceSession *session)
 
     spice_session_abort_migration(session);
     s->disconnecting = FALSE;
+    g_object_unref(session);
 }
 
 /**
