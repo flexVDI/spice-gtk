@@ -1382,9 +1382,9 @@ gboolean spice_session_connect(SpiceSession *session)
     g_return_val_if_fail(SPICE_IS_SESSION(session), FALSE);
 
     s = session->priv;
+    g_return_val_if_fail(!s->disconnecting, FALSE);
 
     spice_session_disconnect(session);
-    s->disconnecting = FALSE;
 
     s->client_provided_sockets = FALSE;
 
@@ -1417,9 +1417,9 @@ gboolean spice_session_open_fd(SpiceSession *session, int fd)
     g_return_val_if_fail(fd >= -1, FALSE);
 
     s = session->priv;
+    g_return_val_if_fail(!s->disconnecting, FALSE);
 
     spice_session_disconnect(session);
-    s->disconnecting = FALSE;
 
     s->client_provided_sockets = TRUE;
 
@@ -1756,8 +1756,7 @@ void spice_session_disconnect(SpiceSession *session)
     memset(s->uuid, 0, sizeof(s->uuid));
 
     spice_session_abort_migration(session);
-    /* we leave disconnecting = TRUE, so that spice_channel_disconnect()
-       is not called multiple times */
+    s->disconnecting = FALSE;
 }
 
 /**
