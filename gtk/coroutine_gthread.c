@@ -62,6 +62,16 @@ static void coroutine_system_init(void)
 	current = &leader;
 }
 
+void coroutine_system_stop(void)
+{
+	if (run_cond) {
+		g_mutex_free(run_lock);
+		g_cond_free(run_cond);
+		run_lock = NULL;
+		run_cond = NULL;
+	}
+}
+
 static gpointer coroutine_thread(gpointer opaque)
 {
 	struct coroutine *co = opaque;
@@ -74,10 +84,19 @@ static gpointer coroutine_thread(gpointer opaque)
 
 	CO_DEBUG("RUNNABLE");
 	current = co;
-	co->caller->data = co->entry(co->data);
+	if (co->caller == NULL) {
+		g_mutex_unlock(run_lock);
+		return NULL;
+	}
+	co->data = co->entry(co->data);
+
 	co->exited = 1;
 
-	co->caller->runnable = TRUE;
+	if (co->caller) {
+		co->caller->runnable = TRUE;
+	} else {
+		printf("CAN'T NOTIFY CALLER!\n");
+	}
 	CO_DEBUG("BROADCAST");
 	g_cond_broadcast(run_cond);
 	CO_DEBUG("UNLOCK");

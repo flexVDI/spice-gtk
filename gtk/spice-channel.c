@@ -896,7 +896,7 @@ reread:
     if (c->ws) {
         ret = nopoll_conn_read(c->np_conn, data, len, nopoll_false, 0);
         if (ret < 0) {
-            if (errno == 11) {
+            if (errno == EAGAIN) {
                 cond = G_IO_IN;
             }
             ret = -1;
