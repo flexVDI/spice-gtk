@@ -100,6 +100,7 @@ SPICE_COMMON_CPPFLAGS =						\
 	$(GUDEV_CFLAGS)						\
 	$(SOUP_CFLAGS)						\
 	$(PHODAV_CFLAGS)					\
+	$(LZ4_CFLAGS)					\
 	$(NULL)
 
 AM_CPPFLAGS =					\
@@ -202,6 +203,7 @@ libspice_client_glib_2_0_la_LIBADD =					\
 	$(OPUS_LIBS)							\
 	$(JPEG_LIBS)							\
 	$(Z_LIBS)							\
+	$(LZ4_LIBS)							\
 	$(PIXMAN_LIBS)							\
 	$(SSL_LIBS)							\
 	$(PULSE_LIBS)							\
