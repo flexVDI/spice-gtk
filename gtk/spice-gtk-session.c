@@ -847,6 +847,24 @@ skip_grab_clipboard:
     return TRUE;
 }
 
+static gboolean check_clipboard_size_limits(SpiceGtkSession *session,
+                                            gint clipboard_len)
+{
+    int max_clipboard;
+
+    g_object_get(session->priv->main, "max-clipboard", &max_clipboard, NULL);
+    if (max_clipboard != -1 && clipboard_len > max_clipboard) {
+        g_warning("discarded clipboard of size %d (max: %d)",
+                  clipboard_len, max_clipboard);
+        return FALSE;
+    } else if (clipboard_len <= 0) {
+        SPICE_DEBUG("discarding empty clipboard");
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
 static void clipboard_received_cb(GtkClipboard *clipboard,
                                   GtkSelectionData *selection_data,
                                   gpointer user_data)
@@ -866,18 +884,12 @@ static void clipboard_received_cb(GtkClipboard *clipboard,
     gchar* name;
     GdkAtom atom;
     int selection;
-    int max_clipboard;
 
     selection = get_selection_from_clipboard(s, clipboard);
     g_return_if_fail(selection != -1);
 
-    g_object_get(s->main, "max-clipboard", &max_clipboard, NULL);
     len = gtk_selection_data_get_length(selection_data);
-    if (max_clipboard != -1 && len > max_clipboard) {
-        g_warning("discarded clipboard of size %d (max: %d)", len, max_clipboard);
-        return;
-    } else if (len <= 0) {
-        SPICE_DEBUG("discarding empty clipboard");
+    if (!check_clipboard_size_limits(self, len)) {
         return;
     } else {
         atom = gtk_selection_data_get_data_type(selection_data);
@@ -922,6 +934,10 @@ static void clipboard_received_cb(GtkClipboard *clipboard,
              * This is gtk+ bug https://bugzilla.gnome.org/show_bug.cgi?id=734670
              */
             len = strlen((const char *)data);
+        }
+        if (!check_clipboard_size_limits(self, len)) {
+            g_free(conv);
+            return;
         }
     }
 
