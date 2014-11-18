@@ -372,10 +372,9 @@ static void playback_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
     c->last_time = start->time;
     c->is_active = TRUE;
     c->min_latency = SPICE_PLAYBACK_DEFAULT_LATENCY_MS;
-    c->codec = NULL;
+    snd_codec_destroy(&c->codec);
 
     if (c->mode != SPICE_AUDIO_DATA_MODE_RAW) {
-        snd_codec_destroy(&c->codec);
         if (snd_codec_create(&c->codec, c->mode, start->frequency, SND_CODEC_DECODE) != SND_CODEC_OK) {
             g_warning("create decoder failed");
             return;
