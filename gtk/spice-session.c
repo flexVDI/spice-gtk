@@ -1434,8 +1434,16 @@ gboolean spice_session_connect(SpiceSession *session)
  * descriptor. This is useful if you create the fd yourself, for
  * example to setup a SSH tunnel.
  *
+ * Note however that additional sockets will be needed by all the channels
+ * created for @session so users of this API should hook into
+ * SpiceChannel::open-fd signal for each channel they are interested in, and
+ * create and pass a new socket to the channel using #spice_channel_open_fd, in
+ * the signal callback.
+ *
  * If @fd is -1, a valid fd will be requested later via the
- * SpiceChannel::open-fd signal.
+ * SpiceChannel::open-fd signal. Typically, you would want to just pass -1 as
+ * @fd this call since you will have to hook to SpiceChannel::open-fd signal
+ * anyway.
  *
  * Returns:
  **/
