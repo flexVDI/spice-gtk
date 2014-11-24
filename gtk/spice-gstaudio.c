@@ -120,13 +120,13 @@ static void spice_gstaudio_class_init(SpiceGstaudioClass *klass)
     g_type_class_add_private(klass, sizeof(SpiceGstaudioPrivate));
 }
 
-static void record_new_buffer(GstAppSink *appsink, gpointer data)
+static GstFlowReturn record_new_buffer(GstAppSink *appsink, gpointer data)
 {
     SpiceGstaudio *gstaudio = data;
     SpiceGstaudioPrivate *p = gstaudio->priv;
     GstMessage *msg;
 
-    g_return_if_fail(p != NULL);
+    g_return_val_if_fail(p != NULL, GST_FLOW_ERROR);
 
 #ifdef WITH_GST1AUDIO
     msg = gst_message_new_application(GST_OBJECT(p->record.pipe),
@@ -135,6 +135,7 @@ static void record_new_buffer(GstAppSink *appsink, gpointer data)
     msg = gst_message_new_application(GST_OBJECT(p->record.pipe), NULL);
 #endif
     gst_element_post_message(p->record.pipe, msg);
+    return GST_FLOW_OK;
 }
 
 static void record_stop(SpiceGstaudio *gstaudio)
