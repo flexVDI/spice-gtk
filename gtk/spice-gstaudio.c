@@ -245,9 +245,9 @@ static void record_start(SpiceRecordChannel *channel, gint format, gint channels
                             "appsink caps=\"%s\" name=appsink", audio_caps);
 
         p->record.pipe = gst_parse_launch(pipeline, &error);
-        if (p->record.pipe == NULL) {
+        if (error != NULL) {
             g_warning("Failed to create pipeline: %s", error->message);
-            goto lerr;
+            goto cleanup;
         }
 
         bus = gst_pipeline_get_bus(GST_PIPELINE(p->record.pipe));
@@ -268,7 +268,11 @@ static void record_start(SpiceRecordChannel *channel, gint format, gint channels
                                       G_CALLBACK(record_new_buffer), gstaudio, 0);
 #endif
 
-lerr:
+cleanup:
+        if (error != NULL && p->record.pipe != NULL) {
+            gst_object_unref(p->record.pipe);
+            p->record.pipe = NULL;
+        }
         g_clear_error(&error);
         g_free(audio_caps);
         g_free(pipeline);
@@ -345,16 +349,20 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
                                        "audioconvert ! audioresample ! autoaudiosink name=\"audiosink\"", audio_caps);
         SPICE_DEBUG("audio pipeline: %s", pipeline);
         p->playback.pipe = gst_parse_launch(pipeline, &error);
-        if (p->playback.pipe == NULL) {
+        if (error != NULL) {
             g_warning("Failed to create pipeline: %s", error->message);
-            goto lerr;
+            goto cleanup;
         }
         p->playback.src = gst_bin_get_by_name(GST_BIN(p->playback.pipe), "appsrc");
         p->playback.sink = gst_bin_get_by_name(GST_BIN(p->playback.pipe), "audiosink");
         p->playback.rate = frequency;
         p->playback.channels = channels;
 
-lerr:
+cleanup:
+        if (error != NULL && p->playback.pipe != NULL) {
+            gst_object_unref(p->playback.pipe);
+            p->playback.pipe = NULL;
+        }
         g_clear_error(&error);
         g_free(audio_caps);
         g_free(pipeline);
