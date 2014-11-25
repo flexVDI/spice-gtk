@@ -26,6 +26,7 @@
 #include "spice-client.h"
 #include "spice-common.h"
 #include "spice-marshal.h"
+#include "port-forward.h"
 
 #include "spice-util-priv.h"
 #include "spice-channel-priv.h"
@@ -104,6 +105,7 @@ struct _SpiceMainChannelPrivate  {
     GQueue                      *agent_msg_queue;
     GHashTable                  *file_xfer_tasks;
     GSList                      *flushing;
+    PortForwarder               *port_forwarder;
 
     guint                       switch_host_delayed_id;
     guint                       migrate_delayed_id;
@@ -201,6 +203,7 @@ static const char *agent_caps[] = {
     [ VD_AGENT_CAP_GUEST_LINEEND_LF    ] = "line-end lf",
     [ VD_AGENT_CAP_GUEST_LINEEND_CRLF  ] = "line-end crlf",
     [ VD_AGENT_CAP_MAX_CLIPBOARD       ] = "max-clipboard",
+    [ VD_AGENT_CAP_PORT_FORWARDING     ] = "port-forwarding",
 };
 #define NAME(_a, _i) ((_i) < SPICE_N_ELEMENTS(_a) ? (_a[(_i)] ?: "?") : "?")
 
@@ -224,6 +227,9 @@ static void spice_main_channel_reset_capabilties(SpiceChannel *channel)
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_MAIN_CAP_SEAMLESS_MIGRATE);
 }
 
+static void port_forwarder_send_command(void *channel, uint32_t command,
+                                        const uint8_t *data, uint32_t data_size);
+
 static void spice_main_channel_init(SpiceMainChannel *channel)
 {
     SpiceMainChannelPrivate *c;
@@ -231,6 +237,7 @@ static void spice_main_channel_init(SpiceMainChannel *channel)
     c = channel->priv = SPICE_MAIN_CHANNEL_GET_PRIVATE(channel);
     c->agent_msg_queue = g_queue_new();
     c->file_xfer_tasks = g_hash_table_new(g_direct_hash, g_direct_equal);
+    c->port_forwarder = new_port_forwarder(channel, port_forwarder_send_command);
 
     spice_main_channel_reset_capabilties(SPICE_CHANNEL(channel));
 }
@@ -358,6 +365,8 @@ static void spice_main_channel_finalize(GObject *obj)
     agent_free_msg_queue(SPICE_MAIN_CHANNEL(obj));
     if (c->file_xfer_tasks)
         g_hash_table_unref(c->file_xfer_tasks);
+    if (c->port_forwarder)
+        delete_port_forwarder(c->port_forwarder);
 
     if (G_OBJECT_CLASS(spice_main_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_main_channel_parent_class)->finalize(obj);
@@ -398,6 +407,7 @@ static void spice_main_channel_reset_agent(SpiceMainChannel *channel)
     }
     g_list_free(tasks);
     file_xfer_flushed(channel, FALSE);
+    port_forwarder_agent_disconnected(c->port_forwarder);
 }
 
 /* main or coroutine context */
@@ -1142,6 +1152,7 @@ static void agent_announce_caps(SpiceMainChannel *channel)
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_DISPLAY_CONFIG);
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_CLIPBOARD_BY_DEMAND);
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_CLIPBOARD_SELECTION);
+    VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_PORT_FORWARDING);
 
     agent_msg_queue(channel, VD_AGENT_ANNOUNCE_CAPABILITIES, size, caps);
     g_free(caps);
@@ -1857,6 +1868,11 @@ static void main_agent_handle_msg(SpiceChannel *channel,
     }
     case VD_AGENT_FILE_XFER_STATUS:
         file_xfer_handle_status(self, payload);
+        break;
+    case VD_AGENT_PORT_FORWARD_CONNECT:
+    case VD_AGENT_PORT_FORWARD_DATA:
+    case VD_AGENT_PORT_FORWARD_CLOSE:
+        port_forwarder_handle_message(c->port_forwarder, msg->type, payload);
         break;
     default:
         g_warning("unhandled agent message type: %u (%s), size %u",
@@ -2858,4 +2874,47 @@ gboolean spice_main_file_copy_finish(SpiceMainChannel *channel,
     }
 
     return g_simple_async_result_get_op_res_gboolean(simple);
+}
+
+static void port_forwarder_send_command(void *channel, uint32_t command,
+                                        const uint8_t *data, uint32_t data_size)
+{
+    agent_msg_queue((SpiceMainChannel *)channel, command, data_size, data);
+    if (&SPICE_CHANNEL(channel)->priv->coroutine != g_coroutine_self())
+        spice_channel_wakeup(SPICE_CHANNEL(channel), FALSE);
+}
+
+/**
+ * spice_main_port_forward:
+ * @rport: the port forwarded in the agent side.
+ * @lport: the target port in the local side.
+ *
+ * Instructs the agent to start forwarding a port, and associate it with a
+ * local port.
+ *
+ * Returns: a %TRUE on success, %FALSE on error.
+ **/
+gboolean spice_main_port_forward(SpiceMainChannel *channel,
+                                 uint16_t rport, uint16_t lport)
+{
+    SpiceMainChannelPrivate *c = channel->priv;
+    g_return_val_if_fail(c->agent_connected, FALSE);
+    g_return_val_if_fail(test_agent_cap(channel, VD_AGENT_CAP_PORT_FORWARDING), FALSE);
+    return port_forwarder_associate(c->port_forwarder, rport, lport);
+}
+
+/**
+ * spice_main_port_forward_disassociate:
+ * @rport: the port forwarded in the agent side.
+ *
+ * Instructs the agent to stop forwarding a port.
+ *
+ * Returns: a %TRUE on success, %FALSE on error.
+ **/
+gboolean spice_main_port_forward_disassociate(SpiceMainChannel *channel, uint16_t rport)
+{
+    SpiceMainChannelPrivate *c = channel->priv;
+    g_return_val_if_fail(c->agent_connected, FALSE);
+    g_return_val_if_fail(test_agent_cap(channel, VD_AGENT_CAP_PORT_FORWARDING), FALSE);
+    return port_forwarder_disassociate(c->port_forwarder, rport);
 }

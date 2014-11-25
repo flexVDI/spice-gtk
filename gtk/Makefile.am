@@ -290,6 +290,7 @@ libspice_client_glib_2_0_la_SOURCES =			\
 							\
 	client_sw_canvas.c	\
 	client_sw_canvas.h	\
+	port-forward.c	\
 	$(NULL)
 
 nodist_libspice_client_glib_2_0_la_SOURCES =	\
