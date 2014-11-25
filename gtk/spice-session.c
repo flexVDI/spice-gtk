@@ -39,6 +39,90 @@ struct channel {
     RingItem          link;
 };
 
+#define IMAGES_CACHE_SIZE_DEFAULT (1024 * 1024 * 80)
+#define MIN_GLZ_WINDOW_SIZE_DEFAULT (1024 * 1024 * 12)
+#define MAX_GLZ_WINDOW_SIZE_DEFAULT MIN((LZ_MAX_WINDOW_SIZE * 4), 1024 * 1024 * 64)
+
+struct _SpiceSessionPrivate {
+    char              *host;
+    char              *port;
+    char              *tls_port;
+    char              *username;
+    char              *password;
+    char              *ca_file;
+    char              *ciphers;
+    GByteArray        *pubkey;
+    GByteArray        *ca;
+    char              *cert_subject;
+    guint             verify;
+    gboolean          read_only;
+    SpiceURI          *proxy;
+    gchar             *shared_dir;
+
+    /* whether to enable audio */
+    gboolean          audio;
+
+    /* whether to enable smartcard event forwarding to the server */
+    gboolean          smartcard;
+
+    /* list of certificates to use for the software smartcard reader if
+     * enabled. For now, it has to contain exactly 3 certificates for
+     * the software reader to be functional
+     */
+    GStrv             smartcard_certificates;
+
+    /* path to the local certificate database to use to lookup the
+     * certificates stored in 'certificates'. If NULL, libcacard will
+     * fallback to using a default database.
+     */
+    char *            smartcard_db;
+
+    /* whether to enable USB redirection */
+    gboolean          usbredir;
+
+    /* Set when a usbredir channel has requested the keyboard grab to be
+       temporarily released (because it is going to invoke policykit) */
+    gboolean          inhibit_keyboard_grab;
+
+    GStrv             disable_effects;
+    GStrv             secure_channels;
+    gint              color_depth;
+
+    int               connection_id;
+    int               protocol;
+    SpiceChannel      *cmain; /* weak reference */
+    Ring              channels;
+    guint32           mm_time;
+    gboolean          client_provided_sockets;
+    guint64           mm_time_at_clock;
+    SpiceSession      *migration;
+    GList             *migration_left;
+    SpiceSessionMigration migration_state;
+    gboolean          full_migration; /* seamless migration indicator */
+    gooblean          disconnecting;
+    gboolean          migrate_wait_init;
+    guint             after_main_init;
+    gboolean          for_migration;
+
+    display_cache     *images;
+    display_cache     *palettes;
+    SpiceGlzDecoderWindow *glz_window;
+    int               images_cache_size;
+    int               glz_window_size;
+    uint32_t          pci_ram_size;
+    uint32_t          n_display_channels;
+    guint8            uuid[16];
+    gchar             *name;
+
+    /* associated objects */
+    SpiceAudio        *audio_manager;
+    SpiceUsbDeviceManager *usb_manager;
+    SpicePlaybackChannel *playback_channel;
+    PhodavServer      *webdav;
+    guint8             webdav_magic[WEBDAV_MAGIC_SIZE];
+};
+
+
 /**
  * SECTION:spice-session
  * @short_description: handles connection details, and active channels
