@@ -187,9 +187,6 @@ static void spice_desktop_integration_class_init(SpiceDesktopIntegrationClass *k
     g_type_class_add_private(klass, sizeof(SpiceDesktopIntegrationPrivate));
 }
 
-/* ------------------------------------------------------------------ */
-/* public methods                                                     */
-
 SpiceDesktopIntegration *spice_desktop_integration_get(SpiceSession *session)
 {
     SpiceDesktopIntegration *self;
@@ -198,10 +195,10 @@ SpiceDesktopIntegration *spice_desktop_integration_get(SpiceSession *session)
     g_return_val_if_fail(session != NULL, NULL);
 
     g_static_mutex_lock(&mutex);
-    self = session->priv->desktop_integration;
+    self = g_object_get_data(G_OBJECT(session), "spice-desktop");
     if (self == NULL) {
         self = g_object_new(SPICE_TYPE_DESKTOP_INTEGRATION, NULL);
-        session->priv->desktop_integration = self;
+        g_object_set_data_full(G_OBJECT(session), "spice-desktop", self, g_object_unref);
     }
     g_static_mutex_unlock(&mutex);
 

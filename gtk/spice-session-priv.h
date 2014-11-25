@@ -115,8 +115,6 @@ struct _SpiceSessionPrivate {
 
     /* associated objects */
     SpiceAudio        *audio_manager;
-    SpiceDesktopIntegration *desktop_integration;
-    SpiceGtkSession   *gtk_session;
     SpiceUsbDeviceManager *usb_manager;
     SpicePlaybackChannel *playback_channel;
     PhodavServer      *webdav;

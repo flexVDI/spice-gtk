@@ -186,8 +186,6 @@ spice_session_dispose(GObject *gobject)
     g_warn_if_fail(s->after_main_init == 0);
 
     g_clear_object(&s->audio_manager);
-    g_clear_object(&s->desktop_integration);
-    g_clear_object(&s->gtk_session);
     g_clear_object(&s->usb_manager);
     g_clear_object(&s->proxy);
     g_clear_object(&s->webdav);
