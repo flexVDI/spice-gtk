@@ -694,19 +694,14 @@ end:
     g_object_unref(gaddr);
 }
 
-static PhodavServer* webdav_server_new(SpiceSession *session)
+G_GNUC_INTERNAL
+PhodavServer* channel_webdav_server_new(SpiceSession *session)
 {
     PhodavServer *dav;
     SoupServer *server;
     SoupSocket *listener;
-    int i;
-
-    g_warn_if_fail(!session->priv->webdav);
 
     dav = phodav_server_new(0, spice_session_get_shared_dir(session));
-    session->priv->webdav = dav;
-    for (i = 0; i < sizeof(session->priv->webdav_magic); i++)
-        session->priv->webdav_magic[i] = g_random_int_range(0, 255);
 
     server = phodav_server_get_soup_server(dav);
     listener = soup_server_get_listener(server);
@@ -723,21 +718,12 @@ static PhodavServer* phodav_server_get(SpiceSession *session, gint *port)
     g_return_val_if_fail(SPICE_IS_SESSION(session), NULL);
 
 #ifdef USE_PHODAV
-    PhodavServer *self = NULL;
-    static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
-
-    g_static_mutex_lock(&mutex);
-    self = session->priv->webdav;
-    if (self == NULL) {
-        self = webdav_server_new(session);
-        phodav_server_run(self);
-    }
-    g_static_mutex_unlock(&mutex);
+    PhodavServer *server = spice_session_get_webdav_server(session);
 
     if (port)
-        *port = phodav_server_get_port(self);
+        *port = phodav_server_get_port(server);
 
-    return self;
+    return server;
 #else
     g_return_val_if_reached(NULL);
 #endif

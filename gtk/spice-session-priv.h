@@ -178,6 +178,8 @@ gboolean spice_session_get_smartcard_enabled(SpiceSession *session);
 gboolean spice_session_get_usbredir_enabled(SpiceSession *session);
 
 const guint8* spice_session_get_webdav_magic(SpiceSession *session);
+PhodavServer *spice_session_get_webdav_server(SpiceSession *session);
+PhodavServer* channel_webdav_server_new(SpiceSession *session);
 guint spice_session_get_n_display_channels(SpiceSession *session);
 void spice_session_set_main_channel(SpiceSession *session, SpiceChannel *channel);
 gboolean spice_session_set_migration_session(SpiceSession *session, SpiceSession *mig_session);

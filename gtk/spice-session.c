@@ -2379,6 +2379,29 @@ const guint8* spice_session_get_webdav_magic(SpiceSession *session)
     return session->priv->webdav_magic;
 }
 
+G_GNUC_INTERNAL
+PhodavServer* spice_session_get_webdav_server(SpiceSession *session)
+{
+    g_return_val_if_fail(SPICE_IS_SESSION(session), NULL);
+
+#ifdef USE_PHODAV
+    static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
+    int i;
+
+    g_static_mutex_lock(&mutex);
+    if (!session->priv->webdav) {
+        for (i = 0; i < sizeof(session->priv->webdav_magic); i++)
+            session->priv->webdav_magic[i] = g_random_int_range(0, 255);
+
+        session->priv->webdav = channel_webdav_server_new(session);
+        phodav_server_run(session->priv->webdav);
+    }
+    g_static_mutex_unlock(&mutex);
+#endif
+
+    return session->priv->webdav;
+}
+
 /**
  * spice_session_is_for_migration:
  * @session: a Spice session
