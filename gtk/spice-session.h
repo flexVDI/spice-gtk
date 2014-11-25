@@ -96,6 +96,7 @@ GList *spice_session_get_channels(SpiceSession *session);
 gboolean spice_session_has_channel_type(SpiceSession *session, gint type);
 gboolean spice_session_get_read_only(SpiceSession *session);
 SpiceURI *spice_session_get_proxy_uri(SpiceSession *session);
+gboolean spice_session_is_for_migration(SpiceSession *session);
 
 G_END_DECLS
 

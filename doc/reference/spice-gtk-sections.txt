@@ -29,6 +29,7 @@ spice_session_get_channels
 spice_session_get_read_only
 spice_session_has_channel_type
 spice_session_get_proxy_uri
+spice_session_is_for_migration
 <SUBSECTION>
 SpiceSessionMigration
 SpiceSessionVerify

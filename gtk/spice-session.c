@@ -2343,3 +2343,22 @@ gboolean spice_session_get_audio_enabled(SpiceSession *session)
 
     return session->priv->audio;
 }
+
+/**
+ * spice_session_is_for_migration:
+ * @session: a Spice session
+ *
+ * During seamless migration, channels may be created to establish a
+ * connection with the target, but they are temporary and should only
+ * handle migration steps. In order to avoid other interactions with
+ * the client, channels should check this value.
+ *
+ * Returns: %TRUE if the session is a copy created during migration
+ * Since: 0.27
+ **/
+gboolean spice_session_is_for_migration(SpiceSession *session)
+{
+    g_return_val_if_fail(SPICE_IS_SESSION(session), FALSE);
+
+    return session->priv->migration_copy;
+}
