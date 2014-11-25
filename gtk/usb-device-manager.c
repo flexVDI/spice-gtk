@@ -1300,39 +1300,6 @@ static SpiceUsbredirChannel *spice_usb_device_manager_get_channel_for_dev(
 /* public api                                                         */
 
 /**
- * spice_usb_device_manager_get:
- * @session: #SpiceSession for which to get the #SpiceUsbDeviceManager
- *
- * Gets the #SpiceUsbDeviceManager associated with the passed in #SpiceSession.
- * A new #SpiceUsbDeviceManager instance will be created the first time this
- * function is called for a certain #SpiceSession.
- *
- * Note that this function returns a weak reference, which should not be used
- * after the #SpiceSession itself has been unref-ed by the caller.
- *
- * Returns: (transfer none): a weak reference to the #SpiceUsbDeviceManager associated with the passed in #SpiceSession
- */
-SpiceUsbDeviceManager *spice_usb_device_manager_get(SpiceSession *session,
-                                                    GError **err)
-{
-    SpiceUsbDeviceManager *self;
-    static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
-
-    g_return_val_if_fail(err == NULL || *err == NULL, NULL);
-
-    g_static_mutex_lock(&mutex);
-    self = session->priv->usb_manager;
-    if (self == NULL) {
-        self = g_initable_new(SPICE_TYPE_USB_DEVICE_MANAGER, NULL, err,
-                              "session", session, NULL);
-        session->priv->usb_manager = self;
-    }
-    g_static_mutex_unlock(&mutex);
-
-    return self;
-}
-
-/**
  * spice_usb_device_manager_get_devices_with_filter:
  * @manager: the #SpiceUsbDeviceManager manager
  * @filter: (allow-none): filter string for selecting which devices to return,

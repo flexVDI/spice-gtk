@@ -2347,6 +2347,40 @@ SpiceAudio *spice_audio_get(SpiceSession *session, GMainContext *context)
     return self;
 }
 
+/**
+ * spice_usb_device_manager_get:
+ * @session: #SpiceSession for which to get the #SpiceUsbDeviceManager
+ *
+ * Gets the #SpiceUsbDeviceManager associated with the passed in #SpiceSession.
+ * A new #SpiceUsbDeviceManager instance will be created the first time this
+ * function is called for a certain #SpiceSession.
+ *
+ * Note that this function returns a weak reference, which should not be used
+ * after the #SpiceSession itself has been unref-ed by the caller.
+ *
+ * Returns: (transfer none): a weak reference to the #SpiceUsbDeviceManager associated with the passed in #SpiceSession
+ */
+SpiceUsbDeviceManager *spice_usb_device_manager_get(SpiceSession *session,
+                                                    GError **err)
+{
+    SpiceUsbDeviceManager *self;
+    static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
+
+    g_return_val_if_fail(SPICE_IS_SESSION(session), NULL);
+    g_return_val_if_fail(err == NULL || *err == NULL, NULL);
+
+    g_static_mutex_lock(&mutex);
+    self = session->priv->usb_manager;
+    if (self == NULL) {
+        self = g_initable_new(SPICE_TYPE_USB_DEVICE_MANAGER, NULL, err,
+                              "session", session, NULL);
+        session->priv->usb_manager = self;
+    }
+    g_static_mutex_unlock(&mutex);
+
+    return self;
+}
+
 G_GNUC_INTERNAL
 gboolean spice_session_get_audio_enabled(SpiceSession *session)
 {
