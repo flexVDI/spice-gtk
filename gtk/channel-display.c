@@ -1003,15 +1003,16 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
 /* coroutine or main context */
 static gboolean display_stream_schedule(display_stream *st)
 {
+    SpiceSession *session = spice_channel_get_session(st->channel);
     guint32 time, d;
     SpiceStreamDataHeader *op;
     SpiceMsgIn *in;
 
     SPICE_DEBUG("%s", __FUNCTION__);
-    if (st->timeout)
+    if (st->timeout || !session)
         return TRUE;
 
-    time = spice_session_get_mm_time(spice_channel_get_session(st->channel));
+    time = spice_session_get_mm_time(session);
     in = g_queue_peek_head(st->msgq);
 
     if (in == NULL) {
