@@ -40,6 +40,7 @@ G_BEGIN_DECLS
 #define IMAGES_CACHE_SIZE_DEFAULT (1024 * 1024 * 80)
 #define MIN_GLZ_WINDOW_SIZE_DEFAULT (1024 * 1024 * 12)
 #define MAX_GLZ_WINDOW_SIZE_DEFAULT MIN((LZ_MAX_WINDOW_SIZE * 4), 1024 * 1024 * 64)
+#define WEBDAV_MAGIC_SIZE 16
 
 struct _SpiceSessionPrivate {
     char              *host;
@@ -109,7 +110,7 @@ struct _SpiceSessionPrivate {
     int               glz_window_size;
     uint32_t          pci_ram_size;
     uint32_t          display_channels_count;
-    guint8            uuid[16];
+    guint8            uuid[WEBDAV_MAGIC_SIZE];
     gchar             *name;
 
     /* associated objects */
@@ -173,6 +174,13 @@ void spice_session_sync_playback_latency(SpiceSession *session);
 const gchar* spice_session_get_shared_dir(SpiceSession *session);
 void spice_session_set_shared_dir(SpiceSession *session, const gchar *dir);
 gboolean spice_session_get_audio_enabled(SpiceSession *session);
+gboolean spice_session_get_smartcard_enabled(SpiceSession *session);
+gboolean spice_session_get_usbredir_enabled(SpiceSession *session);
+
+const guint8* spice_session_get_webdav_magic(SpiceSession *session);
+guint spice_session_get_display_channels_count(SpiceSession *session);
+void spice_session_set_main_channel(SpiceSession *session, SpiceChannel *channel);
+gboolean spice_session_set_migration_session(SpiceSession *session, SpiceSession *mig_session);
 
 G_END_DECLS
 

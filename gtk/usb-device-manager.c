@@ -1627,7 +1627,7 @@ spice_usb_device_manager_can_redirect_device(SpiceUsbDeviceManager  *self,
     g_return_val_if_fail(device != NULL, FALSE);
     g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
 
-    if (!priv->session->priv->usbredir) {
+    if (!spice_session_get_usbredir_enabled(priv->session)) {
         g_set_error_literal(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                             _("USB redirection is disabled"));
         return FALSE;

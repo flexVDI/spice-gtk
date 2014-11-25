@@ -2199,6 +2199,14 @@ void spice_session_set_caches_hints(SpiceSession *session,
 }
 
 G_GNUC_INTERNAL
+guint spice_session_get_display_channels_count(SpiceSession *session)
+{
+    g_return_val_if_fail(session != NULL, 0);
+
+    return session->priv->display_channels_count;
+}
+
+G_GNUC_INTERNAL
 void spice_session_set_uuid(SpiceSession *session, guint8 uuid[16])
 {
     g_return_if_fail(SPICE_IS_SESSION(session));
@@ -2347,6 +2355,30 @@ gboolean spice_session_get_audio_enabled(SpiceSession *session)
     return session->priv->audio;
 }
 
+G_GNUC_INTERNAL
+gboolean spice_session_get_usbredir_enabled(SpiceSession *session)
+{
+    g_return_val_if_fail(SPICE_IS_SESSION(session), FALSE);
+
+    return session->priv->usbredir;
+}
+
+G_GNUC_INTERNAL
+gboolean spice_session_get_smartcard_enabled(SpiceSession *session)
+{
+    g_return_val_if_fail(SPICE_IS_SESSION(session), FALSE);
+
+    return session->priv->smartcard;
+}
+
+G_GNUC_INTERNAL
+const guint8* spice_session_get_webdav_magic(SpiceSession *session)
+{
+    g_return_val_if_fail(SPICE_IS_SESSION(session), NULL);
+
+    return session->priv->webdav_magic;
+}
+
 /**
  * spice_session_is_for_migration:
  * @session: a Spice session
@@ -2364,4 +2396,26 @@ gboolean spice_session_is_for_migration(SpiceSession *session)
     g_return_val_if_fail(SPICE_IS_SESSION(session), FALSE);
 
     return session->priv->for_migration;
+}
+
+G_GNUC_INTERNAL
+void spice_session_set_main_channel(SpiceSession *session, SpiceChannel *channel)
+{
+    g_return_if_fail(SPICE_IS_SESSION(session));
+    g_return_if_fail(SPICE_IS_CHANNEL(channel));
+    g_return_if_fail(session->priv->cmain == NULL);
+
+    session->priv->cmain = channel;
+}
+
+G_GNUC_INTERNAL
+gboolean spice_session_set_migration_session(SpiceSession *session, SpiceSession *mig_session)
+{
+    g_return_val_if_fail(SPICE_IS_SESSION(session), FALSE);
+    g_return_val_if_fail(SPICE_IS_SESSION(mig_session), FALSE);
+    g_return_val_if_fail(session->priv->migration == NULL, FALSE);
+
+    session->priv->migration = mig_session;
+
+    return TRUE;
 }

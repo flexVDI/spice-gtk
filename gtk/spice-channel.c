@@ -1987,7 +1987,7 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
         break;
     case SPICE_CHANNEL_PLAYBACK:
     case SPICE_CHANNEL_RECORD: {
-        if (!s->priv->audio) {
+        if (!spice_session_get_audio_enabled(s)) {
             g_debug("audio channel is disabled, not creating it");
             return NULL;
         }
@@ -1997,7 +1997,7 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
     }
 #ifdef USE_SMARTCARD
     case SPICE_CHANNEL_SMARTCARD: {
-        if (!s->priv->smartcard) {
+        if (!spice_session_get_smartcard_enabled(s)) {
             g_debug("smartcard channel is disabled, not creating it");
             return NULL;
         }
@@ -2007,7 +2007,7 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
 #endif
 #ifdef USE_USBREDIR
     case SPICE_CHANNEL_USBREDIR: {
-        if (!s->priv->usbredir) {
+        if (!spice_session_get_usbredir_enabled(s)) {
             g_debug("usbredir channel is disabled, not creating it");
             return NULL;
         }

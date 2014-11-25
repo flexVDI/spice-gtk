@@ -1298,7 +1298,7 @@ static gboolean timer_set_display(gpointer data)
 
     /* ensure we have an explicit monitor configuration at least for
        number of display channels */
-    for (i = 0; i < session->priv->display_channels_count; i++)
+    for (i = 0; i < spice_session_get_display_channels_count(session); i++)
         if (!c->display[i].enabled_set) {
             SPICE_DEBUG("Not sending monitors config, missing monitors");
             return FALSE;
@@ -2132,7 +2132,8 @@ static gboolean migrate_connect(gpointer data)
 
     /* the migration process is in 2 steps, first the main channel and
        then the rest of the channels */
-    mig->session->priv->cmain = migrate_channel_connect(mig, SPICE_CHANNEL_MAIN, 0);
+    spice_session_set_main_channel(mig->session,
+                                   migrate_channel_connect(mig, SPICE_CHANNEL_MAIN, 0));
 
     return FALSE;
 }
@@ -2156,13 +2157,11 @@ static void main_migrate_connect(SpiceChannel *channel,
 
     CHANNEL_DEBUG(channel, "migrate connect");
     session = spice_channel_get_session(channel);
-    if (session->priv->migration != NULL)
-        goto end;
-
     mig.session = spice_session_new_from_session(session);
     if (mig.session == NULL)
         goto end;
-    session->priv->migration = mig.session;
+    if (!spice_session_set_migration_session(session, mig.session))
+        goto end;
 
     main_priv->migrate_data = &mig;
 
