@@ -166,17 +166,18 @@ static void connect_channel(SpiceAudio *self, SpiceChannel *channel)
 
 static void update_audio_channels(SpiceAudio *self, SpiceSession *session)
 {
-    if (session->priv->audio) {
-        GList *list, *tmp;
+    GList *list, *tmp;
 
-        list = spice_session_get_channels(session);
-        for (tmp = g_list_first(list); tmp != NULL; tmp = g_list_next(tmp)) {
-            connect_channel(self, tmp->data);
-        }
-        g_list_free(list);
-    } else {
+    if (!spice_session_get_audio_enabled(session)) {
         g_debug("FIXME: disconnect audio channels");
+        return;
     }
+
+    list = spice_session_get_channels(session);
+    for (tmp = g_list_first(list); tmp != NULL; tmp = g_list_next(tmp)) {
+        connect_channel(self, tmp->data);
+    }
+    g_list_free(list);
 }
 
 static void channel_new(SpiceSession *session, SpiceChannel *channel, SpiceAudio *self)

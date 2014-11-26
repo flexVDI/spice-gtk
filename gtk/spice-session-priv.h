@@ -172,6 +172,7 @@ guint32 spice_session_get_playback_latency(SpiceSession *session);
 void spice_session_sync_playback_latency(SpiceSession *session);
 const gchar* spice_session_get_shared_dir(SpiceSession *session);
 void spice_session_set_shared_dir(SpiceSession *session, const gchar *dir);
+gboolean spice_session_get_audio_enabled(SpiceSession *session);
 
 G_END_DECLS
 

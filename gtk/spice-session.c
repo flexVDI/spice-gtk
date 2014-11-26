@@ -2279,3 +2279,11 @@ SpiceURI *spice_session_get_proxy_uri(SpiceSession *session)
 
     return s->proxy;
 }
+
+G_GNUC_INTERNAL
+gboolean spice_session_get_audio_enabled(SpiceSession *session)
+{
+    g_return_val_if_fail(SPICE_IS_SESSION(session), FALSE);
+
+    return session->priv->audio;
+}
