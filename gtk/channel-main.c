@@ -1298,7 +1298,7 @@ static gboolean timer_set_display(gpointer data)
 
     /* ensure we have an explicit monitor configuration at least for
        number of display channels */
-    for (i = 0; i < spice_session_get_display_channels_count(session); i++)
+    for (i = 0; i < spice_session_get_n_display_channels(session); i++)
         if (!c->display[i].enabled_set) {
             SPICE_DEBUG("Not sending monitors config, missing monitors");
             return FALSE;

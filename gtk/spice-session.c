@@ -2177,14 +2177,14 @@ void spice_session_get_caches(SpiceSession *session,
 G_GNUC_INTERNAL
 void spice_session_set_caches_hints(SpiceSession *session,
                                     uint32_t pci_ram_size,
-                                    uint32_t display_channels_count)
+                                    uint32_t n_display_channels)
 {
     g_return_if_fail(SPICE_IS_SESSION(session));
 
     SpiceSessionPrivate *s = session->priv;
 
     s->pci_ram_size = pci_ram_size;
-    s->display_channels_count = display_channels_count;
+    s->n_display_channels = n_display_channels;
 
     /* TODO: when setting cache and window size, we should consider the client's
      *       available memory and the number of display channels */
@@ -2199,11 +2199,11 @@ void spice_session_set_caches_hints(SpiceSession *session,
 }
 
 G_GNUC_INTERNAL
-guint spice_session_get_display_channels_count(SpiceSession *session)
+guint spice_session_get_n_display_channels(SpiceSession *session)
 {
     g_return_val_if_fail(session != NULL, 0);
 
-    return session->priv->display_channels_count;
+    return session->priv->n_display_channels;
 }
 
 G_GNUC_INTERNAL

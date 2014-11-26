@@ -109,7 +109,7 @@ struct _SpiceSessionPrivate {
     int               images_cache_size;
     int               glz_window_size;
     uint32_t          pci_ram_size;
-    uint32_t          display_channels_count;
+    uint32_t          n_display_channels;
     guint8            uuid[WEBDAV_MAGIC_SIZE];
     gchar             *name;
 
@@ -157,7 +157,7 @@ void spice_session_get_ca(SpiceSession *session, guint8 **ca, guint *size);
 
 void spice_session_set_caches_hints(SpiceSession *session,
                                     uint32_t pci_ram_size,
-                                    uint32_t display_channels_count);
+                                    uint32_t n_display_channels);
 void spice_session_get_caches(SpiceSession *session,
                               display_cache **images,
                               SpiceGlzDecoderWindow **glz_window);
@@ -178,7 +178,7 @@ gboolean spice_session_get_smartcard_enabled(SpiceSession *session);
 gboolean spice_session_get_usbredir_enabled(SpiceSession *session);
 
 const guint8* spice_session_get_webdav_magic(SpiceSession *session);
-guint spice_session_get_display_channels_count(SpiceSession *session);
+guint spice_session_get_n_display_channels(SpiceSession *session);
 void spice_session_set_main_channel(SpiceSession *session, SpiceChannel *channel);
 gboolean spice_session_set_migration_session(SpiceSession *session, SpiceSession *mig_session);
 
