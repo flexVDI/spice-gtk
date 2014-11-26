@@ -230,34 +230,3 @@ SpiceAudio *spice_audio_new(SpiceSession *session, GMainContext *context,
 
     return self;
 }
-
-/**
- * spice_audio_get:
- * @session: the #SpiceSession to connect to
- * @context: (allow-none): a #GMainContext to attach to (or %NULL for default).
- *
- * Gets the #SpiceAudio associated with the passed in #SpiceSession.
- * A new #SpiceAudio instance will be created the first time this
- * function is called for a certain #SpiceSession.
- *
- * Note that this function returns a weak reference, which should not be used
- * after the #SpiceSession itself has been unref-ed by the caller.
- *
- * Returns: (transfer none): a weak reference to a #SpiceAudio
- * instance or %NULL if failed.
- **/
-SpiceAudio *spice_audio_get(SpiceSession *session, GMainContext *context)
-{
-    static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
-    SpiceAudio *self;
-
-    g_static_mutex_lock(&mutex);
-    self = session->priv->audio_manager;
-    if (self == NULL) {
-        self = spice_audio_new(session, context, NULL);
-        session->priv->audio_manager = self;
-    }
-    g_static_mutex_unlock(&mutex);
-
-    return self;
-}
