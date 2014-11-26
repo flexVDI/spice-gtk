@@ -767,6 +767,14 @@ static void channel_new(SpiceSession *session, SpiceChannel *channel,
     g_ptr_array_add(self->priv->channels, channel);
 
     spice_usb_device_manager_check_redir_on_connect(self, channel);
+
+    /*
+     * add a reference to ourself, to make sure the libusb context is
+     * alive as long as the channel is.
+     * TODO: moving to gusb could help here too.
+     */
+    g_object_ref(self);
+    g_object_weak_ref(G_OBJECT(channel), (GWeakNotify)g_object_unref, self);
 }
 
 static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
