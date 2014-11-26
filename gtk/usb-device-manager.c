@@ -758,14 +758,15 @@ static void channel_new(SpiceSession *session, SpiceChannel *channel,
 {
     SpiceUsbDeviceManager *self = user_data;
 
-    if (SPICE_IS_USBREDIR_CHANNEL(channel)) {
-        spice_usbredir_channel_set_context(SPICE_USBREDIR_CHANNEL(channel),
-                                           self->priv->context);
-        spice_channel_connect(channel);
-        g_ptr_array_add(self->priv->channels, channel);
+    if (!SPICE_IS_USBREDIR_CHANNEL(channel))
+        return;
 
-        spice_usb_device_manager_check_redir_on_connect(self, channel);
-    }
+    spice_usbredir_channel_set_context(SPICE_USBREDIR_CHANNEL(channel),
+                                       self->priv->context);
+    spice_channel_connect(channel);
+    g_ptr_array_add(self->priv->channels, channel);
+
+    spice_usb_device_manager_check_redir_on_connect(self, channel);
 }
 
 static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
@@ -773,8 +774,10 @@ static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
 {
     SpiceUsbDeviceManager *self = user_data;
 
-    if (SPICE_IS_USBREDIR_CHANNEL(channel))
-        g_ptr_array_remove(self->priv->channels, channel);
+    if (!SPICE_IS_USBREDIR_CHANNEL(channel))
+        return;
+
+    g_ptr_array_remove(self->priv->channels, channel);
 }
 
 static void spice_usb_device_manager_auto_connect_cb(GObject      *gobject,
