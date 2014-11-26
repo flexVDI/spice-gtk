@@ -2073,7 +2073,7 @@ static gboolean migrate_connect(gpointer data)
     g_return_val_if_fail(c != NULL, FALSE);
     g_return_val_if_fail(mig->session != NULL, FALSE);
 
-    mig->session->priv->migration_copy = true;
+    mig->session->priv->for_migration = true;
     spice_session_set_migration_state(mig->session, SPICE_SESSION_MIGRATION_CONNECTING);
 
     if ((c->peer_hdr.major_version == 1) &&

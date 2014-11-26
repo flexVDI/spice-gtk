@@ -100,7 +100,7 @@ struct _SpiceSessionPrivate {
     gboolean          disconnecting;
     gboolean          migrate_wait_init;
     guint             after_main_init;
-    gboolean          migration_copy;
+    gboolean          for_migration;
 
     display_cache     *images;
     display_cache     *palettes;

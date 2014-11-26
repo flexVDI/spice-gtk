@@ -2360,5 +2360,5 @@ gboolean spice_session_is_for_migration(SpiceSession *session)
 {
     g_return_val_if_fail(SPICE_IS_SESSION(session), FALSE);
 
-    return session->priv->migration_copy;
+    return session->priv->for_migration;
 }
