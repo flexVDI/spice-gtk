@@ -1447,6 +1447,9 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
 
     SPICE_DEBUG("%s", __FUNCTION__);
 
+    if (!gtk_widget_get_realized(widget))
+        return true;
+
     /*
      * Ignore focus in when we already have the focus
      * (this happens when doing an ungrab from the leave_event callback).
