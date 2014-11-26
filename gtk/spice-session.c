@@ -2092,6 +2092,9 @@ void spice_session_set_migration_state(SpiceSession *session, SpiceSessionMigrat
 
     SpiceSessionPrivate *s = session->priv;
 
+    if (state == SPICE_SESSION_MIGRATION_CONNECTING)
+        s->for_migration = true;
+
     s->migration_state = state;
     g_coroutine_object_notify(G_OBJECT(session), "migration-state");
 }
