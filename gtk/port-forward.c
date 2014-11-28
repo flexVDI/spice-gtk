@@ -26,7 +26,7 @@ static void send_command(PortForwarder *pf, uint32_t command,
 typedef struct Connection {
     GSocketClient *socket;
     GSocketConnection *conn;
-    GCancellable *cancelator;
+    GCancellable *cancelable;
     GQueue *write_buffer;
     gboolean connecting;
     PortForwarder *pf;
@@ -43,7 +43,7 @@ static Connection *new_connection(PortForwarder *pf, int id)
             g_free(conn);
             return NULL;
         }
-        conn->cancelator = g_cancellable_new();
+        conn->cancelable = g_cancellable_new();
         conn->refs = 1;
         conn->id = id;
         conn->pf = pf;
@@ -58,7 +58,7 @@ static void unref_connection(gpointer value)
     Connection * conn = (Connection *) value;
     if (!--conn->refs) {
         SPICE_DEBUG("Closing connection %d", conn->id);
-        g_object_unref(conn->cancelator);
+        g_object_unref(conn->cancelable);
         if (conn->conn) {
             g_io_stream_close((GIOStream *)conn->conn, NULL, NULL);
         }
@@ -80,8 +80,8 @@ static void close_agent_connection(PortForwarder *pf, int id)
 static void close_connection_no_notify(Connection * conn)
 {
     SPICE_DEBUG("Start closing connection %d", conn->id);
-    if (!g_cancellable_is_cancelled(conn->cancelator))
-        g_cancellable_cancel(conn->cancelator);
+    if (!g_cancellable_is_cancelled(conn->cancelable))
+        g_cancellable_cancel(conn->cancelable);
     g_hash_table_remove(conn->pf->connections, GUINT_TO_POINTER(conn->id));
     unref_connection(conn);
 }
@@ -167,11 +167,12 @@ static void connection_read_callback(GObject *source_object, GAsyncResult *res,
                                      gpointer user_data)
 {
     Connection *conn = (Connection *)user_data;
-    GBytes * buffer = g_input_stream_read_bytes_finish((GInputStream *)source_object, res, NULL);
+    GInputStream *stream = (GInputStream *)source_object;
+    GBytes * buffer = g_input_stream_read_bytes_finish(stream, res, NULL);
     uint8_t msg_buffer[VD_AGENT_MAX_DATA_SIZE];
     VDAgentPortForwardDataMessage * msg = (VDAgentPortForwardDataMessage *)msg_buffer;
 
-    if (g_cancellable_is_cancelled(conn->cancelator)) {
+    if (g_cancellable_is_cancelled(conn->cancelable)) {
         unref_connection(conn);
         return;
     }
@@ -187,9 +188,8 @@ static void connection_read_callback(GObject *source_object, GAsyncResult *res,
         memcpy(msg->data, g_bytes_get_data(buffer, NULL), msg->size);
         send_command(conn->pf, VD_AGENT_PORT_FORWARD_DATA,
                      msg_buffer, DATA_HEAD_SIZE + msg->size);
-        GInputStream *stream = (GInputStream *)source_object;
         g_input_stream_read_bytes_async(stream, BUFFER_SIZE, G_PRIORITY_DEFAULT,
-                                        conn->cancelator, connection_read_callback, conn);
+                                        conn->cancelable, connection_read_callback, conn);
     }
     g_bytes_unref(buffer);
 }
@@ -201,9 +201,9 @@ static void connection_write_callback(GObject *source_object, GAsyncResult *res,
     GOutputStream *stream = (GOutputStream *)source_object;
     GBytes * bytes = (GBytes *)g_queue_pop_head(conn->write_buffer);
     size_t num_written = g_output_stream_write_bytes_finish(stream, res, NULL);
-    size_t to_write = g_bytes_get_size(bytes);
+    int remaining = g_bytes_get_size(bytes) - num_written;
 
-    if (g_cancellable_is_cancelled(conn->cancelator)) {
+    if (g_cancellable_is_cancelled(conn->cancelable)) {
         unref_connection(conn);
         return;
     }
@@ -212,16 +212,16 @@ static void connection_write_callback(GObject *source_object, GAsyncResult *res,
     if (num_written == 0) {
         /* Error or connection closed by peer */
         close_connection(conn);
-    } else if (num_written < to_write) {
-        SPICE_DEBUG("Still %d bytes to go on connection %d", (int)(to_write - num_written), conn->id);
-        GBytes *new_bytes = g_bytes_new_from_bytes(bytes, num_written, to_write - num_written);
-        g_bytes_unref(bytes);
-        g_queue_push_head(conn->write_buffer, new_bytes);
+    } else if (remaining) {
+        SPICE_DEBUG("Still %d bytes to go on connection %d", remaining, conn->id);
+        g_queue_push_head(conn->write_buffer,
+                          g_bytes_new_from_bytes(bytes, num_written, remaining));
     }
+    g_bytes_unref(bytes);
 
     if(!g_queue_is_empty(conn->write_buffer)) {
         g_output_stream_write_bytes_async(stream, g_queue_peek_head(conn->write_buffer),
-                                          G_PRIORITY_DEFAULT, conn->cancelator,
+                                          G_PRIORITY_DEFAULT, conn->cancelable,
                                           connection_write_callback, conn);
     } else {
         unref_connection(conn);
@@ -232,8 +232,10 @@ static void connection_connect_callback(GObject *source_object, GAsyncResult *re
                                         gpointer user_data)
 {
     Connection *conn = (Connection *)user_data;
+    GInputStream *stream;
+    VDAgentPortForwardConnectMessage msg = { .port = 0, .id = conn->id };
 
-    if (g_cancellable_is_cancelled(conn->cancelator)) {
+    if (g_cancellable_is_cancelled(conn->cancelable)) {
         unref_connection(conn);
         return;
     }
@@ -245,16 +247,11 @@ static void connection_connect_callback(GObject *source_object, GAsyncResult *re
         close_connection(conn);
     } else {
         conn->connecting = FALSE;
-        GInputStream *stream = g_io_stream_get_input_stream((GIOStream *)conn->conn);
+        send_command(conn->pf, VD_AGENT_PORT_FORWARD_CONNECT,
+                     (const uint8_t *)&msg, sizeof(msg));
+        stream = g_io_stream_get_input_stream((GIOStream *)conn->conn);
         g_input_stream_read_bytes_async(stream, BUFFER_SIZE, G_PRIORITY_DEFAULT,
-                                        conn->cancelator, connection_read_callback, conn);
-        if(!g_queue_is_empty(conn->write_buffer)) {
-            conn->refs++;
-            GOutputStream *stream = g_io_stream_get_output_stream((GIOStream *)conn->conn);
-            g_output_stream_write_bytes_async(stream, g_queue_peek_head(conn->write_buffer),
-                                            G_PRIORITY_DEFAULT, conn->cancelator,
-                                            connection_write_callback, conn);
-        }
+                                        conn->cancelable, connection_read_callback, conn);
     }
 }
 
@@ -276,7 +273,7 @@ static void handle_connect(PortForwarder *pf, VDAgentPortForwardConnectMessage *
             g_hash_table_insert(pf->connections, id, conn);
             conn->refs++;
             g_socket_client_connect_to_host_async(conn->socket, "localhost",
-                                                  lport, conn->cancelator,
+                                                  lport, conn->cancelable,
                                                   connection_connect_callback, conn);
         } else {
             /* Error, close connection in agent */
@@ -291,22 +288,25 @@ static void handle_connect(PortForwarder *pf, VDAgentPortForwardConnectMessage *
 static void handle_data(PortForwarder *pf, VDAgentPortForwardDataMessage *msg)
 {
     Connection *conn = g_hash_table_lookup(pf->connections, GUINT_TO_POINTER(msg->id));
-    if (conn) {
+    GBytes *chunk;
+    GOutputStream *stream;
+
+    if (!conn) {
+        /* Error, ignore, this is usually an already closed connection */
+        g_warning("Connection %d does not exists.", msg->id);
+    } else if (conn->connecting) {
+        g_warning("Connection %d is still not connected!", conn->id);
+    } else {
         SPICE_DEBUG("Data command, %d bytes on connection %d", (int)msg->size, conn->id);
-        g_queue_push_tail(conn->write_buffer, g_bytes_new(msg->data, msg->size));
-        if (conn->connecting) {
-            SPICE_DEBUG("Deferring %d bytes on connection %d", (int)msg->size, conn->id);
-        } else {
+        chunk = g_bytes_new(msg->data, msg->size);
+        g_queue_push_tail(conn->write_buffer, chunk);
+        if (g_queue_get_length(conn->write_buffer) == 1) {
             conn->refs++;
-            GOutputStream *stream = g_io_stream_get_output_stream((GIOStream *)conn->conn);
-            g_output_stream_write_bytes_async(stream, g_queue_peek_head(conn->write_buffer),
-                                              G_PRIORITY_DEFAULT, conn->cancelator,
+            stream = g_io_stream_get_output_stream((GIOStream *)conn->conn);
+            g_output_stream_write_bytes_async(stream, chunk,
+                                              G_PRIORITY_DEFAULT, conn->cancelable,
                                               connection_write_callback, conn);
         }
-    } else {
-        /* Error, close connection in agent */
-        g_warning("Connection %d does not exists.", msg->id);
-        close_agent_connection(pf, msg->id);
     }
 }
 
