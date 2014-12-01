@@ -13,8 +13,9 @@ test -z "$srcdir" && srcdir=.
     intltoolize -f
 )
 
+CONFIGURE_ARGS="--enable-maintainer-mode --enable-gtk-doc --with-gtk=3.0 --enable-vala"
 
 if [ -z "$NOCONFIGURE" ]; then
-    echo "Running configure with --enable-maintainer-mode --enable-gtk-doc --with-gtk=3.0 --enable-vala ${1+"$@"}"
-    "$srcdir"/configure --enable-maintainer-mode --enable-gtk-doc --with-gtk=3.0 --enable-vala ${1+"$@"}
+    echo "Running configure with $CONFIGURE_ARGS $@"
+    "$srcdir/configure" $CONFIGURE_ARGS "$@"
 fi
