@@ -1871,6 +1871,7 @@ static void main_agent_handle_msg(SpiceChannel *channel,
         break;
     case VD_AGENT_PORT_FORWARD_CONNECT:
     case VD_AGENT_PORT_FORWARD_DATA:
+    case VD_AGENT_PORT_FORWARD_ACK:
     case VD_AGENT_PORT_FORWARD_CLOSE:
         port_forwarder_handle_message(c->port_forwarder, msg->type, payload);
         break;
