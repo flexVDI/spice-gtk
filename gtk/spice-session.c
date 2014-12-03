@@ -1754,7 +1754,7 @@ static gboolean session_disconnect_idle(SpiceSession *self)
 
     g_object_unref(self);
 
-    return G_SOURCE_REMOVE;
+    return FALSE;
 }
 
 /**
