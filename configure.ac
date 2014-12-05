@@ -352,8 +352,8 @@ AC_CHECK_LIB(jpeg, jpeg_destroy_decompress,
     AC_MSG_ERROR([libjpeg not found]))
 AC_SUBST(JPEG_LIBS)
 
-AC_CHECK_LIB(nopoll, nopoll_conn_new, NOPOLL_LIBS='-lnopoll', AC_MSG_ERROR([libnopoll not found]))
-AC_CHECK_HEADER([nopoll.h], [], AC_MSG_ERROR([nopoll.h not found]))
+PKG_CHECK_MODULES(NOPOLL, nopoll)
+AC_SUBST(NOPOLL_CFLAGS)
 AC_SUBST(NOPOLL_LIBS)
 
 AC_CHECK_LIB(z, deflate, Z_LIBS='-lz', AC_MSG_ERROR([zlib not found]))

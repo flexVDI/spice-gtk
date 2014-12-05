@@ -100,6 +100,7 @@ SPICE_COMMON_CPPFLAGS =						\
 	$(GUDEV_CFLAGS)						\
 	$(SOUP_CFLAGS)						\
 	$(PHODAV_CFLAGS)					\
+	$(NOPOLL_CFLAGS)					\
 	$(NULL)
 
 AM_CPPFLAGS =					\
