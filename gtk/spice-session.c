@@ -1896,7 +1896,7 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
         if (spice_strv_contains(s->secure_channels, "all") ||
             spice_strv_contains(s->secure_channels, name))
             *use_tls = TRUE;
-        
+
         port = *use_tls ? s->tls_port : s->port;
         if (port == NULL)
             return NULL;

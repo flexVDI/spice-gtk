@@ -2107,7 +2107,7 @@ static void spice_channel_iterate_read(SpiceChannel *channel)
     SpiceChannelPrivate *c = channel->priv;
     gboolean pending_data = FALSE;
 
-    if (c->ws && nopoll_conn_pending_write_bytes(c->np_conn) > 0) {
+    if (c->ws && nopoll_conn_pending_data(c->np_conn) == nopoll_true) {
         pending_data = TRUE;
     } else {
         g_coroutine_socket_wait(&c->coroutine, c->sock, G_IO_IN);
