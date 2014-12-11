@@ -307,6 +307,7 @@ spice_usb_device_manager_connect_device_finish
 <SUBSECTION>
 SpiceUsbDevice
 spice_usb_device_get_description
+spice_usb_device_get_libusb_device
 <SUBSECTION Standard>
 SPICE_USB_DEVICE_MANAGER
 SPICE_IS_USB_DEVICE_MANAGER
