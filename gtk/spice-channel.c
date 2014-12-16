@@ -1069,8 +1069,6 @@ static void spice_channel_failed_authentication(SpiceChannel *channel)
 
     c->state = SPICE_CHANNEL_STATE_FAILED_AUTHENTICATION;
 
-    g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_AUTH);
-
     c->has_error = TRUE; /* force disconnect */
 }
 
@@ -2182,6 +2180,9 @@ static gboolean spice_channel_delayed_unref(gpointer data)
 
     g_return_val_if_fail(c->coroutine.coroutine.exited == TRUE, FALSE);
 
+    if (c->state == SPICE_CHANNEL_STATE_FAILED_AUTHENTICATION)
+        g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_AUTH);
+
     g_object_unref(G_OBJECT(data));
 
     return FALSE;
@@ -2458,6 +2459,7 @@ static gboolean connect_delayed(gpointer data)
     return FALSE;
 }
 
+/* any context */
 static gboolean channel_connect(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
@@ -2639,7 +2641,6 @@ static void channel_disconnect(SpiceChannel *channel)
     if (c->state == SPICE_CHANNEL_STATE_READY)
         g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_CLOSED);
 
-    c->state = SPICE_CHANNEL_STATE_UNCONNECTED;
     spice_channel_reset(channel, FALSE);
 
     g_return_if_fail(SPICE_IS_CHANNEL(channel));
