@@ -1052,6 +1052,29 @@ static void spice_channel_send_spice_ticket(SpiceChannel *channel)
 }
 
 /* coroutine context */
+static void spice_channel_failed_authentication(SpiceChannel *channel)
+{
+    SpiceChannelPrivate *c = channel->priv;
+
+    if (c->auth_needs_username_and_password)
+        g_set_error_literal(&c->error,
+                            SPICE_CLIENT_ERROR,
+                            SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD_AND_USERNAME,
+                            _("Authentication failed: password and username are required"));
+    else
+        g_set_error_literal(&c->error,
+                            SPICE_CLIENT_ERROR,
+                            SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD,
+                            _("Authentication failed: password is required"));
+
+    c->state = SPICE_CHANNEL_STATE_FAILED_AUTHENTICATION;
+
+    g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_AUTH);
+
+    c->has_error = TRUE; /* force disconnect */
+}
+
+/* coroutine context */
 static void spice_channel_recv_auth(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
@@ -1068,7 +1091,7 @@ static void spice_channel_recv_auth(SpiceChannel *channel)
 
     if (link_res != SPICE_LINK_ERR_OK) {
         CHANNEL_DEBUG(channel, "link result: reply %d", link_res);
-        g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_AUTH);
+        spice_channel_failed_authentication(channel);
         return;
     }
 
@@ -1309,22 +1332,6 @@ spice_channel_gather_sasl_credentials(SpiceChannel *channel,
 #define SASL_MAX_MECHLIST_LEN 300
 #define SASL_MAX_MECHNAME_LEN 100
 #define SASL_MAX_DATA_LEN (1024 * 1024)
-
-static void spice_channel_set_detailed_authentication_error(SpiceChannel *channel)
-{
-    SpiceChannelPrivate *c = channel->priv;
-
-    if (c->auth_needs_username_and_password)
-        g_set_error_literal(&c->error,
-                            SPICE_CLIENT_ERROR,
-                            SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD_AND_USERNAME,
-                            _("Authentication failed: password and username are required"));
-    else
-        g_set_error_literal(&c->error,
-                            SPICE_CLIENT_ERROR,
-                            SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD,
-                            _("Authentication failed: password is required"));
-}
 
 /* Perform the SASL authentication process
  */
@@ -1644,23 +1651,20 @@ restart:
 complete:
     CHANNEL_DEBUG(channel, "%s", "SASL authentication complete");
     spice_channel_read(channel, &len, sizeof(len));
-    if (len != SPICE_LINK_ERR_OK) {
-        spice_channel_set_detailed_authentication_error(channel);
-        g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_AUTH);
+    if (len == SPICE_LINK_ERR_OK) {
+        ret = TRUE;
+        /* This must come *after* check-auth-result, because the former
+         * is defined to be sent unencrypted, and setting saslconn turns
+         * on the SSF layer encryption processing */
+        c->sasl_conn = saslconn;
+        goto cleanup;
     }
-    ret = len == SPICE_LINK_ERR_OK;
-    /* This must come *after* check-auth-result, because the former
-     * is defined to be sent unencrypted, and setting saslconn turns
-     * on the SSF layer encryption processing */
-    c->sasl_conn = saslconn;
-    goto cleanup;
 
 error:
     if (saslconn)
         sasl_dispose(&saslconn);
-    spice_channel_set_detailed_authentication_error(channel);
-    g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_AUTH);
-    c->has_error = TRUE; /* force disconnect */
+
+    spice_channel_failed_authentication(channel);
     ret = FALSE;
 
 cleanup:
