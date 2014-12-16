@@ -258,19 +258,23 @@ static void spice_session_init(SpiceSession *session)
 }
 
 static void
-session_disconnect(SpiceSession *self)
+session_disconnect(SpiceSession *self, gboolean keep_main)
 {
     SpiceSessionPrivate *s;
     struct channel *item;
     RingItem *ring, *next;
 
     s = self->priv;
-    s->cmain = NULL;
 
     for (ring = ring_get_head(&s->channels); ring != NULL; ring = next) {
         next = ring_next(&s->channels, ring);
         item = SPICE_CONTAINEROF(ring, struct channel, link);
-        spice_session_channel_destroy(self, item->channel);
+
+        if (keep_main && item->channel == s->cmain) {
+            spice_channel_disconnect(item->channel, SPICE_CHANNEL_NONE);
+        } else {
+            spice_session_channel_destroy(self, item->channel);
+        }
     }
 
     s->connection_id = 0;
@@ -290,7 +294,7 @@ spice_session_dispose(GObject *gobject)
 
     SPICE_DEBUG("session dispose");
 
-    session_disconnect(session);
+    session_disconnect(session, FALSE);
 
     g_warn_if_fail(s->migration == NULL);
     g_warn_if_fail(s->migration_left == NULL);
@@ -1410,12 +1414,12 @@ gboolean spice_session_connect(SpiceSession *session)
     s = session->priv;
     g_return_val_if_fail(!s->disconnecting, FALSE);
 
-    session_disconnect(session);
+    session_disconnect(session, TRUE);
 
     s->client_provided_sockets = FALSE;
 
-    g_warn_if_fail(s->cmain == NULL);
-    s->cmain = spice_channel_new(session, SPICE_CHANNEL_MAIN, 0);
+    if (s->cmain == NULL)
+        s->cmain = spice_channel_new(session, SPICE_CHANNEL_MAIN, 0);
 
     glz_decoder_window_clear(s->glz_window);
     return spice_channel_connect(s->cmain);
@@ -1445,12 +1449,12 @@ gboolean spice_session_open_fd(SpiceSession *session, int fd)
     s = session->priv;
     g_return_val_if_fail(!s->disconnecting, FALSE);
 
-    session_disconnect(session);
+    session_disconnect(session, TRUE);
 
     s->client_provided_sockets = TRUE;
 
-    g_warn_if_fail(s->cmain == NULL);
-    s->cmain = spice_channel_new(session, SPICE_CHANNEL_MAIN, 0);
+    if (s->cmain == NULL)
+        s->cmain = spice_channel_new(session, SPICE_CHANNEL_MAIN, 0);
 
     glz_decoder_window_clear(s->glz_window);
     return spice_channel_open_fd(s->cmain, fd);
@@ -1602,7 +1606,7 @@ void spice_session_abort_migration(SpiceSession *session)
 end:
     g_list_free(s->migration_left);
     s->migration_left = NULL;
-    session_disconnect(s->migration);
+    session_disconnect(s->migration, FALSE);
     g_object_unref(s->migration);
     s->migration = NULL;
 
@@ -1642,7 +1646,7 @@ void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel)
 
     if (g_list_length(s->migration_left) == 0) {
         CHANNEL_DEBUG(channel, "migration: all channel migrated, success");
-        session_disconnect(s->migration);
+        session_disconnect(s->migration, FALSE);
         g_object_unref(s->migration);
         s->migration = NULL;
         spice_session_set_migration_state(session, SPICE_SESSION_MIGRATION_NONE);
@@ -1749,7 +1753,7 @@ static gboolean session_disconnect_idle(SpiceSession *self)
 {
     SpiceSessionPrivate *s = self->priv;
 
-    session_disconnect(self);
+    session_disconnect(self, FALSE);
     s->disconnecting = 0;
 
     g_object_unref(self);
