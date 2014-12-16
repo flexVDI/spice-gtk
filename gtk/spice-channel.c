@@ -2180,8 +2180,10 @@ static gboolean spice_channel_delayed_unref(gpointer data)
 
     g_return_val_if_fail(c->coroutine.coroutine.exited == TRUE, FALSE);
 
-    if (c->state == SPICE_CHANNEL_STATE_FAILED_AUTHENTICATION)
+    if (c->state == SPICE_CHANNEL_STATE_FAILED_AUTHENTICATION) {
         g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_AUTH);
+        g_clear_error(&c->error);
+    }
 
     g_object_unref(G_OBJECT(data));
 
