@@ -1075,7 +1075,7 @@ static void spice_channel_failed_authentication(SpiceChannel *channel)
 }
 
 /* coroutine context */
-static void spice_channel_recv_auth(SpiceChannel *channel)
+static gboolean spice_channel_recv_auth(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
     uint32_t link_res;
@@ -1086,13 +1086,13 @@ static void spice_channel_recv_auth(SpiceChannel *channel)
         CHANNEL_DEBUG(channel, "incomplete auth reply (%d/%" G_GSIZE_FORMAT ")",
                     rc, sizeof(link_res));
         g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_LINK);
-        return;
+        return FALSE;
     }
 
     if (link_res != SPICE_LINK_ERR_OK) {
         CHANNEL_DEBUG(channel, "link result: reply %d", link_res);
         spice_channel_failed_authentication(channel);
-        return;
+        return FALSE;
     }
 
     c->state = SPICE_CHANNEL_STATE_READY;
@@ -1105,6 +1105,8 @@ static void spice_channel_recv_auth(SpiceChannel *channel)
 
     if (c->state != SPICE_CHANNEL_STATE_MIGRATING)
         spice_channel_up(channel);
+
+    return TRUE;
 }
 
 G_GNUC_INTERNAL
@@ -1678,14 +1680,14 @@ cleanup:
 #endif /* HAVE_SASL */
 
 /* coroutine context */
-static void spice_channel_recv_link_msg(SpiceChannel *channel, gboolean *switch_tls)
+static gboolean spice_channel_recv_link_msg(SpiceChannel *channel, gboolean *switch_tls)
 {
     SpiceChannelPrivate *c;
     int rc, num_caps, i;
     uint32_t *caps;
 
-    g_return_if_fail(channel != NULL);
-    g_return_if_fail(channel->priv != NULL);
+    g_return_val_if_fail(channel != NULL, FALSE);
+    g_return_val_if_fail(channel->priv != NULL, FALSE);
 
     c = channel->priv;
 
@@ -1696,7 +1698,7 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel, gboolean *switch_
         g_critical("%s: %s: incomplete link reply (%d/%d)",
                   c->name, __FUNCTION__, rc, c->peer_hdr.size);
         g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_LINK);
-        return;
+        return FALSE;
     }
     switch (c->peer_msg->error) {
     case SPICE_LINK_ERR_OK:
@@ -1705,7 +1707,7 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel, gboolean *switch_
     case SPICE_LINK_ERR_NEED_SECURED:
         *switch_tls = true;
         CHANNEL_DEBUG(channel, "switching to tls");
-        return;
+        return FALSE;
     default:
         g_warning("%s: %s: unhandled error %d",
                 c->name, __FUNCTION__, c->peer_msg->error);
@@ -1744,7 +1746,8 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel, gboolean *switch_
             CHANNEL_DEBUG(channel, "Choosing SASL mechanism");
             auth.auth_mechanism = SPICE_COMMON_CAP_AUTH_SASL;
             spice_channel_write(channel, &auth, sizeof(auth));
-            spice_channel_perform_auth_sasl(channel);
+            if (!spice_channel_perform_auth_sasl(channel))
+                return FALSE;
         } else
 #endif
         if (spice_channel_test_common_capability(channel, SPICE_COMMON_CAP_AUTH_SPICE)) {
@@ -1759,11 +1762,12 @@ static void spice_channel_recv_link_msg(SpiceChannel *channel, gboolean *switch_
     c->use_mini_header = spice_channel_test_common_capability(channel,
                                                               SPICE_COMMON_CAP_MINI_HEADER);
     CHANNEL_DEBUG(channel, "use mini header: %d", c->use_mini_header);
-    return;
+    return TRUE;
 
 error:
     SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
     g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_LINK);
+    return FALSE;
 }
 
 /* system context */
@@ -2411,12 +2415,10 @@ connected:
     }
 
     spice_channel_send_link(channel);
-    if (spice_channel_recv_link_hdr(channel, &switch_protocol) == FALSE)
+    if (!spice_channel_recv_link_hdr(channel, &switch_protocol) ||
+        !spice_channel_recv_link_msg(channel, &switch_tls) ||
+        !spice_channel_recv_auth(channel))
         goto cleanup;
-    spice_channel_recv_link_msg(channel, &switch_tls);
-    if (switch_tls)
-        goto cleanup;
-    spice_channel_recv_auth(channel);
 
     while (spice_channel_iterate(channel))
         ;
