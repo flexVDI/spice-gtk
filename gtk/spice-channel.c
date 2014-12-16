@@ -1183,12 +1183,11 @@ static void spice_channel_send_link(SpiceChannel *channel)
 }
 
 /* coroutine context */
-static gboolean spice_channel_recv_link_hdr(SpiceChannel *channel, gboolean *switch_protocol)
+static gboolean spice_channel_recv_link_hdr(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
     int rc;
 
-    *switch_protocol = FALSE;
     rc = spice_channel_read(channel, &c->peer_hdr, sizeof(c->peer_hdr));
     if (rc != sizeof(c->peer_hdr)) {
         g_warning("incomplete link header (%d/%" G_GSIZE_FORMAT ")",
@@ -1221,7 +1220,7 @@ error:
        incompatible. Try with the oldest protocol in this case: */
     if (c->link_hdr.major_version != 1) {
         SPICE_DEBUG("%s: error, switching to protocol 1 (spice 0.4)", c->name);
-        *switch_protocol = TRUE;
+        c->state = SPICE_CHANNEL_STATE_RECONNECTING;
         g_object_set(c->session, "protocol", 1, NULL);
         return FALSE;
     }
@@ -1680,7 +1679,7 @@ cleanup:
 #endif /* HAVE_SASL */
 
 /* coroutine context */
-static gboolean spice_channel_recv_link_msg(SpiceChannel *channel, gboolean *switch_tls)
+static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c;
     int rc, num_caps, i;
@@ -1705,8 +1704,9 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel, gboolean *swi
         /* nothing */
         break;
     case SPICE_LINK_ERR_NEED_SECURED:
-        *switch_tls = true;
+        c->state = SPICE_CHANNEL_STATE_RECONNECTING;
         CHANNEL_DEBUG(channel, "switching to tls");
+        c->tls = TRUE;
         return FALSE;
     default:
         g_warning("%s: %s: unhandled error %d",
@@ -2280,8 +2280,6 @@ static void *spice_channel_coroutine(void *data)
     SpiceChannelPrivate *c = channel->priv;
     guint verify;
     int rc, delay_val = 1;
-    gboolean switch_tls = FALSE;
-    gboolean switch_protocol = FALSE;
     /* When some other SSL/TLS version becomes obsolete, add it to this
      * variable. */
     long ssl_options = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3;
@@ -2415,8 +2413,8 @@ connected:
     }
 
     spice_channel_send_link(channel);
-    if (!spice_channel_recv_link_hdr(channel, &switch_protocol) ||
-        !spice_channel_recv_link_msg(channel, &switch_tls) ||
+    if (!spice_channel_recv_link_hdr(channel) ||
+        !spice_channel_recv_link_msg(channel) ||
         !spice_channel_recv_auth(channel))
         goto cleanup;
 
@@ -2428,8 +2426,7 @@ cleanup:
 
     SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
 
-    if (switch_protocol || (switch_tls && !c->tls)) {
-        c->tls = switch_tls;
+    if (c->state == SPICE_CHANNEL_STATE_RECONNECTING) {
         spice_channel_connect(channel);
         g_object_unref(channel);
     } else
