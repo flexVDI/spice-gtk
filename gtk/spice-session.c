@@ -357,7 +357,9 @@ static gchar* spice_uri_create(SpiceSession *session)
 {
     SpiceSessionPrivate *s = session->priv;
 
-    if (s->host != NULL) {
+    if (s->unix_path != NULL) {
+        return g_strdup_printf(URI_SCHEME_SPICE_UNIX "%s", s->unix_path);
+    } else if (s->host != NULL) {
         g_return_val_if_fail(s->port != NULL || s->tls_port != NULL, NULL);
 
         GString *str = g_string_new(URI_SCHEME_SPICE);
