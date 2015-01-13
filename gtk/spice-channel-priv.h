@@ -66,7 +66,6 @@ struct _SpiceMsgIn {
 
 enum spice_channel_state {
     SPICE_CHANNEL_STATE_UNCONNECTED = 0,
-    SPICE_CHANNEL_STATE_FAILED_AUTHENTICATION,
     SPICE_CHANNEL_STATE_RECONNECTING,
     SPICE_CHANNEL_STATE_CONNECTING,
     SPICE_CHANNEL_STATE_READY,
@@ -110,6 +109,8 @@ struct _SpiceChannelPrivate {
 
     char                        name[16];
     enum spice_channel_state    state;
+    SpiceChannelEvent           event;
+
     spice_parse_channel_func_t  parser;
     SpiceMessageMarshallers     *marshallers;
     guint                       channel_watch;

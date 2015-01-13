@@ -1067,7 +1067,7 @@ static void spice_channel_failed_authentication(SpiceChannel *channel)
                             SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD,
                             _("Authentication failed: password is required"));
 
-    c->state = SPICE_CHANNEL_STATE_FAILED_AUTHENTICATION;
+    c->event = SPICE_CHANNEL_ERROR_AUTH;
 
     c->has_error = TRUE; /* force disconnect */
 }
@@ -1083,7 +1083,7 @@ static gboolean spice_channel_recv_auth(SpiceChannel *channel)
     if (rc != sizeof(link_res)) {
         CHANNEL_DEBUG(channel, "incomplete auth reply (%d/%" G_GSIZE_FORMAT ")",
                     rc, sizeof(link_res));
-        g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_LINK);
+        c->event = SPICE_CHANNEL_ERROR_LINK;
         return FALSE;
     }
 
@@ -1223,7 +1223,7 @@ error:
         return FALSE;
     }
 
-    g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_LINK);
+    c->event = SPICE_CHANNEL_ERROR_LINK;
     return FALSE;
 }
 
@@ -1694,8 +1694,7 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
     if (c->peer_pos != c->peer_hdr.size) {
         g_critical("%s: %s: incomplete link reply (%d/%d)",
                   c->name, __FUNCTION__, rc, c->peer_hdr.size);
-        g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_LINK);
-        return FALSE;
+        goto error;
     }
     switch (c->peer_msg->error) {
     case SPICE_LINK_ERR_OK:
@@ -1764,7 +1763,7 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
 
 error:
     SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
-    g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_LINK);
+    c->event = SPICE_CHANNEL_ERROR_LINK;
     return FALSE;
 }
 
@@ -2154,12 +2153,15 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
         /* We don't want to report an error if the socket was closed gracefully
          * on the other end (VM shutdown) */
         ret = g_socket_condition_check(c->sock, G_IO_IN | G_IO_ERR | G_IO_HUP);
+
         if (ret & (G_IO_ERR|G_IO_HUP)) {
             CHANNEL_DEBUG(channel, "channel got error");
+
             if (c->state > SPICE_CHANNEL_STATE_CONNECTING) {
-                g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0,
-                                        c->state == SPICE_CHANNEL_STATE_READY ?
-                                        SPICE_CHANNEL_ERROR_IO : SPICE_CHANNEL_ERROR_LINK);
+                if (c->state == SPICE_CHANNEL_STATE_READY)
+                    c->event = SPICE_CHANNEL_ERROR_IO;
+                else
+                    c->event = SPICE_CHANNEL_ERROR_LINK;
             }
         }
         return FALSE;
@@ -2180,8 +2182,9 @@ static gboolean spice_channel_delayed_unref(gpointer data)
 
     g_return_val_if_fail(c->coroutine.coroutine.exited == TRUE, FALSE);
 
-    if (c->state == SPICE_CHANNEL_STATE_FAILED_AUTHENTICATION) {
-        g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_AUTH);
+    if (c->event != SPICE_CHANNEL_NONE) {
+        g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, c->event);
+        c->event = SPICE_CHANNEL_NONE;
         g_clear_error(&c->error);
     }
 
@@ -2292,13 +2295,13 @@ static void *spice_channel_coroutine(void *data)
     if (spice_session_get_client_provided_socket(c->session)) {
         if (c->fd < 0) {
             g_critical("fd not provided!");
-            g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_CONNECT);
+            c->event = SPICE_CHANNEL_ERROR_CONNECT;
             goto cleanup;
         }
 
         if (!(c->sock = g_socket_new_from_fd(c->fd, NULL))) {
                 CHANNEL_DEBUG(channel, "Failed to open socket from fd %d", c->fd);
-                g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_CONNECT);
+                c->event = SPICE_CHANNEL_ERROR_CONNECT;
                 goto cleanup;
         }
 
@@ -2318,8 +2321,7 @@ reconnect:
             goto reconnect;
         } else {
             CHANNEL_DEBUG(channel, "Connect error");
-            g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_CONNECT);
-            g_clear_error(&c->error);
+            c->event = SPICE_CHANNEL_ERROR_CONNECT;
             goto cleanup;
         }
     }
@@ -2331,7 +2333,7 @@ reconnect:
         c->ctx = SSL_CTX_new(SSLv23_method());
         if (c->ctx == NULL) {
             g_critical("SSL_CTX_new failed");
-            g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_TLS);
+            c->event = SPICE_CHANNEL_ERROR_TLS;
             goto cleanup;
         }
 
@@ -2347,7 +2349,7 @@ reconnect:
                     g_warning("only pubkey active");
                     verify = SPICE_SESSION_VERIFY_PUBKEY;
                 } else {
-                    g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_TLS);
+                    c->event = SPICE_CHANNEL_ERROR_TLS;
                     goto cleanup;
                 }
             }
@@ -2365,7 +2367,7 @@ reconnect:
         c->ssl = SSL_new(c->ctx);
         if (c->ssl == NULL) {
             g_critical("SSL_new failed");
-            g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_TLS);
+            c->event = SPICE_CHANNEL_ERROR_TLS;
             goto cleanup;
         }
 
@@ -2394,7 +2396,7 @@ ssl_reconnect:
             } else {
                 g_warning("%s: SSL_connect: %s",
                           c->name, ERR_error_string(rc, NULL));
-                g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_TLS);
+                c->event = SPICE_CHANNEL_ERROR_TLS;
                 goto cleanup;
             }
         }
@@ -2430,6 +2432,7 @@ cleanup:
     SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
 
     if (c->state == SPICE_CHANNEL_STATE_RECONNECTING) {
+        g_warn_if_fail(c->event == SPICE_CHANNEL_NONE);
         spice_channel_connect(channel);
         g_object_unref(channel);
     } else
