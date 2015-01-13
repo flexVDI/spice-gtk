@@ -349,6 +349,7 @@ spice_session_finalize(GObject *gobject)
 }
 
 #define URI_SCHEME_SPICE "spice://"
+#define URI_SCHEME_SPICE_UNIX "spice+unix://"
 #define URI_QUERY_START ";?"
 #define URI_QUERY_SEP   ";&"
 
@@ -383,10 +384,15 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
 
     uri = g_strdup(original_uri);
 
+    if (g_str_has_prefix(uri, URI_SCHEME_SPICE_UNIX)) {
+        path = uri + strlen(URI_SCHEME_SPICE_UNIX);
+        goto end;
+    }
+
     /* Break up the URI into its various parts, scheme, authority,
      * path (ignored) and query
      */
-    if (strncmp(uri, URI_SCHEME_SPICE, strlen(URI_SCHEME_SPICE)) != 0) {
+    if (!g_str_has_prefix(uri, URI_SCHEME_SPICE)) {
         g_warning("Expected a URI scheme of '%s' in URI '%s'",
                   URI_SCHEME_SPICE, uri);
         goto fail;
@@ -449,6 +455,7 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
         /* don't fail, just ignore */
     }
     unescaped_path = g_uri_unescape_string(path, NULL);
+    path = NULL;
 
     while (query && query[0] != '\0') {
         gchar key[32], value[128];
@@ -489,14 +496,17 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
         goto fail;
     }
 
+end:
     /* parsed ok -> apply */
     g_free(uri);
     g_free(unescaped_path);
+    g_free(s->unix_path);
     g_free(s->host);
     g_free(s->port);
     g_free(s->tls_port);
     g_free(s->username);
     g_free(s->password);
+    s->unix_path = g_strdup(path);
     s->host = host;
     s->port = port;
     s->tls_port = tls_port;
