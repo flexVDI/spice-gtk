@@ -55,6 +55,7 @@ static void channel_disconnect(SpiceChannel *channel);
 static void channel_reset(SpiceChannel *channel, gboolean migrating);
 static void spice_channel_reset_capabilities(SpiceChannel *channel);
 static void spice_channel_send_migration_handshake(SpiceChannel *channel);
+static gboolean channel_connect(SpiceChannel *channel, gboolean tls);
 
 /**
  * SECTION:spice-channel
@@ -2433,7 +2434,7 @@ cleanup:
 
     if (c->state == SPICE_CHANNEL_STATE_RECONNECTING) {
         g_warn_if_fail(c->event == SPICE_CHANNEL_NONE);
-        spice_channel_connect(channel);
+        channel_connect(channel, c->tls);
         g_object_unref(channel);
     } else
         g_idle_add(spice_channel_delayed_unref, data);
@@ -2465,7 +2466,7 @@ static gboolean connect_delayed(gpointer data)
 }
 
 /* any context */
-static gboolean channel_connect(SpiceChannel *channel)
+static gboolean channel_connect(SpiceChannel *channel, gboolean tls)
 {
     SpiceChannelPrivate *c = channel->priv;
 
@@ -2478,6 +2479,7 @@ static gboolean channel_connect(SpiceChannel *channel)
     }
 
     c->state = SPICE_CHANNEL_STATE_CONNECTING;
+    c->tls = tls;
 
     if (spice_session_get_client_provided_socket(c->session)) {
         if (c->fd == -1) {
@@ -2519,7 +2521,7 @@ gboolean spice_channel_connect(SpiceChannel *channel)
 
     g_return_val_if_fail(channel->priv->fd == -1, FALSE);
 
-    return channel_connect(channel);
+    return channel_connect(channel, FALSE);
 }
 
 /**
@@ -2552,7 +2554,7 @@ gboolean spice_channel_open_fd(SpiceChannel *channel, int fd)
 
     c->fd = fd;
 
-    return channel_connect(channel);
+    return channel_connect(channel, FALSE);
 }
 
 /* system or coroutine context */
@@ -2651,7 +2653,7 @@ static void channel_disconnect(SpiceChannel *channel)
     g_return_if_fail(SPICE_IS_CHANNEL(channel));
 
     if (c->state == SPICE_CHANNEL_STATE_SWITCHING) {
-        spice_channel_connect(channel);
+        channel_connect(channel, c->tls);
         spice_session_set_migration_state(spice_channel_get_session(channel),
                                           SPICE_SESSION_MIGRATION_NONE);
     }
