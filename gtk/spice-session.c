@@ -353,21 +353,27 @@ spice_session_finalize(GObject *gobject)
 #define URI_QUERY_START ";?"
 #define URI_QUERY_SEP   ";&"
 
-static int spice_uri_create(SpiceSession *session, char *dest, int len)
+static gchar* spice_uri_create(SpiceSession *session)
 {
     SpiceSessionPrivate *s = session->priv;
-    int pos = 0;
 
-    if (s->host == NULL || (s->port == NULL && s->tls_port == NULL)) {
-        return 0;
+    if (s->host != NULL) {
+        g_return_val_if_fail(s->port != NULL || s->tls_port != NULL, NULL);
+
+        GString *str = g_string_new(URI_SCHEME_SPICE);
+
+        g_string_append(str, s->host);
+        g_string_append(str, "?");
+        if (s->port != NULL) {
+            g_string_append_printf(str, "port=%s;", s->port);
+        }
+        if (s->tls_port != NULL) {
+            g_string_append_printf(str, "tls-port=%s;", s->tls_port);
+        }
+        return g_string_free(str, FALSE);
     }
 
-    pos += snprintf(dest + pos, len-pos, "spice://%s?", s->host);
-    if (s->port && strlen(s->port))
-        pos += snprintf(dest + pos, len - pos, "port=%s;", s->port);
-    if (s->tls_port && strlen(s->tls_port))
-        pos += snprintf(dest + pos, len - pos, "tls-port=%s;", s->tls_port);
-    return pos;
+    g_return_val_if_reached(NULL);
 }
 
 static int spice_parse_uri(SpiceSession *session, const char *original_uri)
@@ -532,8 +538,6 @@ static void spice_session_get_property(GObject    *gobject,
 {
     SpiceSession *session = SPICE_SESSION(gobject);
     SpiceSessionPrivate *s = session->priv;
-    char buf[256];
-    int len;
 
     switch (prop_id) {
     case PROP_HOST:
@@ -564,8 +568,7 @@ static void spice_session_get_property(GObject    *gobject,
         g_value_set_int(value, s->protocol);
 	break;
     case PROP_URI:
-        len = spice_uri_create(session, buf, sizeof(buf));
-        g_value_set_string(value, len ? buf : NULL);
+        g_value_take_string(value, spice_uri_create(session));
         break;
     case PROP_CLIENT_SOCKETS:
         g_value_set_boolean(value, s->client_provided_sockets);
