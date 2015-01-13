@@ -19,7 +19,9 @@
 
 #include <gio/gio.h>
 #include <glib.h>
-
+#ifdef G_OS_UNIX
+#include <gio/gunixsocketaddress.h>
+#endif
 #include "common/ring.h"
 
 #include "spice-client.h"
@@ -1980,21 +1982,36 @@ static gboolean open_host_idle_cb(gpointer data)
         return FALSE;
     }
 
-    if (open_host->proxy)
+    if (open_host->proxy) {
         g_resolver_lookup_by_name_async(g_resolver_get_default(),
                                         spice_uri_get_hostname(open_host->proxy),
                                         open_host->cancellable,
                                         proxy_lookup_ready, open_host);
-    else
-    {
-        GSocketConnectable *address;
+    } else {
+        GSocketConnectable *address = NULL;
 
-        address = g_network_address_new(s->host, open_host->port);
+        if (s->unix_path) {
+            SPICE_DEBUG("open unix path %s", s->unix_path);
+#ifdef G_OS_UNIX
+            address = G_SOCKET_CONNECTABLE(g_unix_socket_address_new(s->unix_path));
+#else
+            g_set_error_literal(&open_host->error, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                                "Unix path unsupported on this platform");
+#endif
+        } else {
+            SPICE_DEBUG("open host %s:%d", s->host, open_host->port);
+            address = g_network_address_new(s->host, open_host->port);
+        }
+
+        if (address == NULL || open_host->error != NULL) {
+            coroutine_yieldto(open_host->from, NULL);
+            return FALSE;
+        }
+
         open_host_connectable_connect(open_host, address);
         g_object_unref(address);
     }
 
-    SPICE_DEBUG("open host %s:%d", s->host, open_host->port);
     if (open_host->proxy != NULL) {
         gchar *str = spice_uri_to_string(open_host->proxy);
         SPICE_DEBUG("(with proxy %s)", str);
@@ -2028,15 +2045,22 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
         spice_strv_contains(s->secure_channels, name))
         *use_tls = TRUE;
 
-    port = *use_tls ? s->tls_port : s->port;
-    if (port == NULL)
-        return NULL;
+    if (s->unix_path) {
+        if (*use_tls) {
+            CHANNEL_DEBUG(channel, "No TLS for Unix sockets");
+            return NULL;
+        }
+    } else {
+        port = *use_tls ? s->tls_port : s->port;
+        if (port == NULL)
+            return NULL;
 
-    open_host.port = strtol(port, &endptr, 10);
-    if (*port == '\0' || *endptr != '\0' ||
-        open_host.port <= 0 || open_host.port > G_MAXUINT16) {
-        g_warning("Invalid port value %s", port);
-        return NULL;
+        open_host.port = strtol(port, &endptr, 10);
+        if (*port == '\0' || *endptr != '\0' ||
+            open_host.port <= 0 || open_host.port > G_MAXUINT16) {
+            g_warning("Invalid port value %s", port);
+            return NULL;
+        }
     }
 
     open_host.client = g_socket_client_new();
