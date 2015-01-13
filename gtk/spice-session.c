@@ -45,6 +45,7 @@ struct channel {
 
 struct _SpiceSessionPrivate {
     char              *host;
+    char              *unix_path;
     char              *port;
     char              *tls_port;
     char              *username;
@@ -197,7 +198,8 @@ enum {
     PROP_PROXY,
     PROP_SECURE_CHANNELS,
     PROP_SHARED_DIR,
-    PROP_USERNAME
+    PROP_USERNAME,
+    PROP_UNIX_PATH,
 };
 
 /* signals */
@@ -318,6 +320,7 @@ spice_session_finalize(GObject *gobject)
     SpiceSessionPrivate *s = session->priv;
 
     /* release stuff */
+    g_free(s->unix_path);
     g_free(s->host);
     g_free(s->port);
     g_free(s->tls_port);
@@ -524,6 +527,9 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_HOST:
         g_value_set_string(value, s->host);
 	break;
+    case PROP_UNIX_PATH:
+        g_value_set_string(value, s->unix_path);
+        break;
     case PROP_PORT:
         g_value_set_string(value, s->port);
 	break;
@@ -634,6 +640,10 @@ static void spice_session_set_property(GObject      *gobject,
     case PROP_HOST:
         g_free(s->host);
         s->host = g_value_dup_string(value);
+        break;
+    case PROP_UNIX_PATH:
+        g_free(s->unix_path);
+        s->unix_path = g_value_dup_string(value);
         break;
     case PROP_PORT:
         g_free(s->port);
@@ -774,6 +784,23 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              "Host",
                              "Remote host",
                              "localhost",
+                             G_PARAM_READWRITE |
+                             G_PARAM_CONSTRUCT |
+                             G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceSession:unix-path:
+     *
+     * Path of the Unix socket to connect to
+     *
+     * Since: 0.28
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_UNIX_PATH,
+         g_param_spec_string("unix-path",
+                             "Unix path",
+                             "Unix path",
+                             NULL,
                              G_PARAM_READWRITE |
                              G_PARAM_CONSTRUCT |
                              G_PARAM_STATIC_STRINGS));
@@ -1359,6 +1386,7 @@ SpiceSession *spice_session_new_from_session(SpiceSession *session)
     g_clear_object(&c->proxy);
 
     g_warn_if_fail(c->host == NULL);
+    g_warn_if_fail(c->unix_path == NULL);
     g_warn_if_fail(c->tls_port == NULL);
     g_warn_if_fail(c->username == NULL);
     g_warn_if_fail(c->password == NULL);
@@ -1371,6 +1399,7 @@ SpiceSession *spice_session_new_from_session(SpiceSession *session)
 
     g_object_get(session,
                  "host", &c->host,
+                 "unix-path", &c->unix_path,
                  "tls-port", &c->tls_port,
                  "username", &c->username,
                  "password", &c->password,
@@ -1543,6 +1572,10 @@ void spice_session_start_migrating(SpiceSession *session,
     tmp = s->tls_port;
     s->tls_port = m->tls_port;
     m->tls_port = tmp;
+
+    tmp = s->unix_path;
+    s->unix_path = m->unix_path;
+    m->unix_path = tmp;
 
     g_warn_if_fail(ring_get_length(&s->channels) == ring_get_length(&m->channels));
 
