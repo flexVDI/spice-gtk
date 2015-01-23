@@ -1475,9 +1475,6 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
 
     SPICE_DEBUG("%s", __FUNCTION__);
 
-    if (!gtk_widget_get_realized(widget))
-        return true;
-
     /*
      * Ignore focus in when we already have the focus
      * (this happens when doing an ungrab from the leave_event callback).
@@ -1492,7 +1489,9 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
         memset(d->activeseq, 0, sizeof(gboolean) * d->grabseq->nkeysyms);
     update_keyboard_focus(display, true);
     try_keyboard_grab(display);
-    update_display(display);
+
+    if (gtk_widget_get_realized(widget))
+        update_display(display);
 
     return true;
 }
