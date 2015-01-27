@@ -1924,10 +1924,12 @@ static void socket_client_connect_ready(GObject *source_object, GAsyncResult *re
     spice_open_host *open_host = data;
     GSocketConnection *connection = NULL;
 
-    SPICE_DEBUG("connect ready");
+    CHANNEL_DEBUG(open_host->channel, "connect ready");
     connection = g_socket_client_connect_finish(client, result, &open_host->error);
-    if (connection == NULL)
+    if (connection == NULL) {
+        g_warn_if_fail(open_host->error != NULL);
         goto end;
+    }
 
     open_host->connection = connection;
 
@@ -1938,7 +1940,7 @@ end:
 /* main context */
 static void open_host_connectable_connect(spice_open_host *open_host, GSocketConnectable *connectable)
 {
-    SPICE_DEBUG("connecting %p...", open_host);
+    CHANNEL_DEBUG(open_host->channel, "connecting %p...", open_host);
 
     g_socket_client_connect_async(open_host->client, connectable,
                                   open_host->cancellable,
@@ -2065,8 +2067,10 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
         }
     } else {
         port = *use_tls ? s->tls_port : s->port;
-        if (port == NULL)
+        if (port == NULL) {
+            g_warning("Missing port value (use_tls: %d)", *use_tls);
             return NULL;
+        }
 
         open_host.port = strtol(port, &endptr, 10);
         if (*port == '\0' || *endptr != '\0' ||
@@ -2074,6 +2078,11 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
             g_warning("Invalid port value %s", port);
             return NULL;
         }
+    }
+    if (*use_tls) {
+        CHANNEL_DEBUG(channel, "Using TLS, port %d", open_host.port);
+    } else {
+        CHANNEL_DEBUG(channel, "Using plain text, port %d", open_host.port);
     }
 
     open_host.client = g_socket_client_new();
@@ -2084,7 +2093,7 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
     coroutine_yield(NULL);
 
     if (open_host.error != NULL) {
-        SPICE_DEBUG("open host: %s", open_host.error->message);
+        CHANNEL_DEBUG(channel, "open host: %s", open_host.error->message);
         g_propagate_error(error, open_host.error);
     } else if (open_host.connection != NULL) {
         GSocket *socket;
