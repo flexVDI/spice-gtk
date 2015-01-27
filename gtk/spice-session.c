@@ -365,10 +365,10 @@ static gchar* spice_uri_create(SpiceSession *session)
         g_string_append(str, s->host);
         g_string_append(str, "?");
         if (s->port != NULL) {
-            g_string_append_printf(str, "port=%s;", s->port);
+            g_string_append_printf(str, "port=%s&", s->port);
         }
         if (s->tls_port != NULL) {
-            g_string_append_printf(str, "tls-port=%s;", s->tls_port);
+            g_string_append_printf(str, "tls-port=%s", s->tls_port);
         }
         return g_string_free(str, FALSE);
     }
