@@ -764,7 +764,7 @@ static void clear_surfaces(SpiceChannel *channel, gboolean keep_primary)
     while (g_hash_table_iter_next(&iter, NULL, (gpointer*)&surface)) {
 
         if (keep_primary && surface->primary) {
-            CHANNEL_DEBUG(channel, "keeping exisiting primary surface, migration or reset");
+            CHANNEL_DEBUG(channel, "keeping existing primary surface, migration or reset");
             continue;
         }
 
