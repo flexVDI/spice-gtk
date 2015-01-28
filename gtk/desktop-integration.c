@@ -67,6 +67,7 @@ static gboolean gnome_integration_init(SpiceDesktopIntegration *self)
     gboolean success = TRUE;
 
 #if defined(USE_GDBUS)
+    gchar *name_owner = NULL;
     priv->gnome_session_proxy =
         g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
                                       G_DBUS_PROXY_FLAGS_NONE,
@@ -76,6 +77,12 @@ static gboolean gnome_integration_init(SpiceDesktopIntegration *self)
                                       "org.gnome.SessionManager",
                                       NULL,
                                       &error);
+    if (!error &&
+        (name_owner = g_dbus_proxy_get_name_owner(priv->gnome_session_proxy)) == NULL) {
+        g_clear_object(&priv->gnome_session_proxy);
+        success = FALSE;
+    }
+    g_free(name_owner);
 #else
     success = FALSE;
 #endif
