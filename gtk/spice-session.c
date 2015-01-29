@@ -2485,7 +2485,6 @@ G_GNUC_INTERNAL
 void spice_session_set_shared_dir(SpiceSession *session, const gchar *dir)
 {
     g_return_if_fail(SPICE_IS_SESSION(session));
-    g_return_if_fail(dir != NULL);
 
     SpiceSessionPrivate *s = session->priv;
 
