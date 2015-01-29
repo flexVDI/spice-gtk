@@ -2626,7 +2626,9 @@ PhodavServer* spice_session_get_webdav_server(SpiceSession *session)
             session->priv->webdav_magic[i] = g_random_int_range(0, 255);
 
         session->priv->webdav = channel_webdav_server_new(session);
-        phodav_server_run(session->priv->webdav);
+        if (session->priv->webdav != NULL) {
+            phodav_server_run(session->priv->webdav);
+        }
     }
     g_static_mutex_unlock(&mutex);
 #endif

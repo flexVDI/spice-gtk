@@ -700,8 +700,15 @@ PhodavServer* channel_webdav_server_new(SpiceSession *session)
     PhodavServer *dav;
     SoupServer *server;
     SoupSocket *listener;
+    const char *shared_dir;
 
-    dav = phodav_server_new(0, spice_session_get_shared_dir(session));
+    shared_dir = spice_session_get_shared_dir(session);
+    if (shared_dir != NULL) {
+        g_debug("No shared dir set, not creating webdav channel");
+        return NULL;
+    }
+
+    dav = phodav_server_new(0, shared_dir);
 
     server = phodav_server_get_soup_server(dav);
     listener = soup_server_get_listener(server);
