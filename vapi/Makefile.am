@@ -4,12 +4,15 @@ CLEANFILES =
 vapidir = $(datadir)/vala/vapi
 vapi_DATA =						\
 	spice-client-glib-2.0.vapi			\
-	spice-client-gtk-$(SPICE_GTK_API_VERSION).vapi	\
 	$(NULL)
 dist_vapi_DATA =					\
-	spice-client-gtk-$(SPICE_GTK_API_VERSION).deps	\
 	spice-client-glib-2.0.deps			\
 	$(NULL)
+
+if WITH_GTK
+vapi_DATA += spice-client-gtk-$(SPICE_GTK_API_VERSION).vapi
+dist_vapi_DATA += spice-client-gtk-$(SPICE_GTK_API_VERSION).deps
+endif
 
 EXTRA_DIST =						\
 	spice-client-gtk-2.0.deps			\

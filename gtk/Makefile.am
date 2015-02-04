@@ -45,7 +45,10 @@ EXTRA_DIST =					\
 
 DISTCLEANFILES = spice-version.h
 
-bin_PROGRAMS = spicy spicy-stats spicy-screenshot
+bin_PROGRAMS = spicy-stats spicy-screenshot
+if WITH_GTK
+bin_PROGRAMS += spicy
+endif
 if WITH_POLKIT
 acldir = $(ACL_HELPER_DIR)
 acl_PROGRAMS = spice-client-glib-usb-acl-helper
@@ -53,10 +56,12 @@ endif
 
 lib_LTLIBRARIES = libspice-client-glib-2.0.la
 
+if WITH_GTK
 if HAVE_GTK_2
 lib_LTLIBRARIES += libspice-client-gtk-2.0.la
 else
 lib_LTLIBRARIES += libspice-client-gtk-3.0.la
+endif
 endif
 
 if HAVE_LD_VERSION_SCRIPT
@@ -157,6 +162,7 @@ SPICE_GTK_SOURCES_COMMON +=		\
 	$(NULL)
 endif
 
+if WITH_GTK
 if HAVE_GTK_2
 libspice_client_gtk_2_0_la_DEPEDENCIES = $(GTK_SYMBOLS_FILE)
 libspice_client_gtk_2_0_la_LDFLAGS = $(SPICE_GTK_LDFLAGS_COMMON)
@@ -171,7 +177,6 @@ libspice_client_gtk_3_0_la_SOURCES = $(SPICE_GTK_SOURCES_COMMON)
 nodist_libspice_client_gtk_3_0_la_SOURCES = $(nodist_SPICE_GTK_SOURCES_COMMON)
 endif
 
-
 libspice_client_gtkincludedir = $(includedir)/spice-client-gtk-$(SPICE_GTK_API_VERSION)
 libspice_client_gtkinclude_HEADERS =	\
 	spice-gtk-session.h		\
@@ -183,6 +188,7 @@ libspice_client_gtkinclude_HEADERS =	\
 nodist_libspice_client_gtkinclude_HEADERS =	\
 	spice-widget-enums.h			\
 	$(NULL)
+endif
 
 libspice_client_glib_2_0_la_DEPENDENCIES = $(GLIB_SYMBOLS_FILE)
 
@@ -449,10 +455,12 @@ spicy_stats_LDADD =				\
 
 $(libspice_client_glib_2_0_la_SOURCES): spice-glib-enums.h spice-marshal.h
 
+if WITH_GTK
 if HAVE_GTK_2
 $(libspice_client_gtk_2_0_la_SOURCES): spice-glib-enums.h spice-widget-enums.h
 else
 $(libspice_client_gtk_3_0_la_SOURCES): spice-glib-enums.h spice-widget-enums.h
+endif
 endif
 
 spice-marshal.c: spice-marshal.h
@@ -643,6 +651,7 @@ SpiceClientGLib_2_0_gir_EXPORT_PACKAGES = spice-client-glib-2.0
 SpiceClientGLib_2_0_gir_SCANNERFLAGS = --c-include="spice-client.h"
 INTROSPECTION_GIRS += SpiceClientGLib-2.0.gir
 
+if WITH_GTK
 if HAVE_GTK_2
 SpiceClientGtk-2.0.gir: libspice-client-gtk-2.0.la SpiceClientGLib-2.0.gir
 SpiceClientGtk_2_0_gir_INCLUDES = GObject-2.0 Gtk-2.0 SpiceClientGLib-2.0
@@ -661,6 +670,7 @@ SpiceClientGtk_3_0_gir_EXPORT_PACKAGES = spice-client-gtk-3.0
 SpiceClientGtk_3_0_gir_SCANNERFLAGS = --c-include="spice-widget.h"
 endif
 INTROSPECTION_GIRS += SpiceClientGtk-$(SPICE_GTK_API_VERSION).gir
+endif
 
 girdir = $(datadir)/gir-1.0
 gir_DATA = $(INTROSPECTION_GIRS)

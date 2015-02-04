@@ -16,8 +16,11 @@ endif
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA =					\
 	spice-client-glib-2.0.pc			\
-	spice-client-gtk-$(SPICE_GTK_API_VERSION).pc	\
 	$(NULL)
+
+if WITH_GTK
+pkgconfig_DATA += spice-client-gtk-$(SPICE_GTK_API_VERSION).pc
+endif
 
 if WITH_CONTROLLER
 pkgconfig_DATA += spice-controller.pc

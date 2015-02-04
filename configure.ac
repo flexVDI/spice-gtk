@@ -158,13 +158,13 @@ AC_SUBST([SASL_LIBS])
 
 AC_MSG_CHECKING([which gtk+ version to compile against])
 AC_ARG_WITH([gtk],
-  [AS_HELP_STRING([--with-gtk=@<:@2.0/3.0@:>@],[which gtk+ version to compile against @<:@default=3.0@:>@])],
+  [AS_HELP_STRING([--with-gtk=@<:@2.0/3.0/no@:>@],[which gtk+ version to compile against @<:@default=3.0@:>@])],
   [case "$with_gtk" in
-     2.0|3.0) ;;
+     2.0|3.0) AC_MSG_RESULT([$with_gtk]) ;;
+     no) AC_MSG_RESULT([none]) ;;
      *) AC_MSG_ERROR([invalid gtk version specified]) ;;
    esac],
   [with_gtk=3.0])
-AC_MSG_RESULT([$with_gtk])
 
 case "$with_gtk" in
   2.0) GTK_API_VERSION=2.0
@@ -175,15 +175,20 @@ case "$with_gtk" in
        GTK_REQUIRED=2.91.3
        SPICE_GTK_API_VERSION=3.0
        ;;
+  no)
+       AS_IF([test x$enable_gtk_doc = xyes],
+             [AC_MSG_ERROR([Without GTK+, gtk-doc must be disabled])])
 esac
 
 AC_SUBST([GTK_API_VERSION])
 AC_SUBST([GTK_REQUIRED])
 AC_SUBST([SPICE_GTK_API_VERSION])
+AM_CONDITIONAL([WITH_GTK],[test "$with_gtk" != "no"])
 AM_CONDITIONAL([HAVE_GTK_2],[test "$with_gtk" = "2.0"])
 AM_CONDITIONAL([HAVE_GTK_3],[test "$with_gtk" = "3.0"])
 
-PKG_CHECK_MODULES(GTK, gtk+-$GTK_API_VERSION >= $GTK_REQUIRED)
+AS_IF([test "x$with_gtk" != "xno"],
+      [PKG_CHECK_MODULES(GTK, gtk+-$GTK_API_VERSION >= $GTK_REQUIRED)])
 AC_SUBST(GTK_CFLAGS)
 AC_SUBST(GTK_LIBS)
 SPICE_GTK_REQUIRES="${SPICE_GTK_REQUIRES} gtk+-$GTK_API_VERSION >= $GTK_REQUIRED"
@@ -599,7 +604,7 @@ AC_ARG_WITH([python],
    yes|no|auto) with_python="$withval";;
    *) AC_MSG_ERROR([bad value $withval for python option]) ;;
    esac],
-  [AS_IF([test "$with_gtk" = "3.0" || test "x$os_win32" = "xyes"],
+  [AS_IF([test "$with_gtk" != "2.0" || test "x$os_win32" = "xyes"],
          [with_python=no],[with_python=auto])]
 )
 
@@ -758,8 +763,8 @@ AC_MSG_NOTICE([
         prefix:                   ${prefix}
         c compiler:               ${CC}
         Target:                   ${red_target}
-        Gtk:                      $GTK_API_VERSION
 
+        Gtk:                      ${with_gtk}
         Coroutine:                ${with_coroutine}
         Audio:                    ${with_audio}
         SASL support:             ${enable_sasl}
