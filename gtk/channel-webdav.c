@@ -703,7 +703,7 @@ PhodavServer* channel_webdav_server_new(SpiceSession *session)
     const char *shared_dir;
 
     shared_dir = spice_session_get_shared_dir(session);
-    if (shared_dir != NULL) {
+    if (shared_dir == NULL) {
         g_debug("No shared dir set, not creating webdav channel");
         return NULL;
     }
