@@ -25,8 +25,6 @@
 #include "glib-compat.h"
 #include "vmcstream.h"
 
-static PhodavServer* phodav_server_get(SpiceSession *session, gint *port);
-
 /**
  * SECTION:channel-webdav
  * @short_description: exports a directory
@@ -187,7 +185,7 @@ typedef struct Client
 {
     guint refs;
     SpiceWebdavChannel *self;
-    GSocketConnection *conn;
+    GIOStream *conn;
     OutputQueue *output;
     gint64 id;
     GCancellable *cancellable;
@@ -327,102 +325,31 @@ static void demux_to_client(SpiceWebdavChannel *self,
     }
 }
 
-static void magic_written(GObject *source_object,
-                          GAsyncResult *res,
-                          gpointer user_data)
+static void start_client(SpiceWebdavChannel *self)
 {
-    Client *client = user_data;
-    SpiceWebdavChannel *self = client->self;
     SpiceWebdavChannelPrivate *c = self->priv;
-    gssize bytes_written;
-    GError *err = NULL;
+    GOutputStream *output;
+    Client *client;
 
-    bytes_written = g_output_stream_write_finish(G_OUTPUT_STREAM(source_object),
-                                                 res, &err);
+    CHANNEL_DEBUG(self, "starting client %" G_GINT64_FORMAT, c->demux.client);
 
-    if (err || bytes_written != WEBDAV_MAGIC_SIZE)
-        goto error;
+    /* FIXME: connect to server */
+    client = g_new0(Client, 1);
+    client->refs = 1;
+    client->id = c->demux.client;
+    client->self = self;
+    client->mux.id = GINT64_TO_LE(client->id);
+    client->mux.buf = g_malloc0(MAX_MUX_SIZE);
+    client->cancellable = g_cancellable_new();
+
+    output = g_buffered_output_stream_new(g_io_stream_get_output_stream(G_IO_STREAM(client->conn)));
+    client->output = output_queue_new(output);
+    g_object_unref(output);
 
     client_start_read(self, client);
     g_hash_table_insert(c->clients, &client->id, client);
 
     demux_to_client(self, client);
-
-    return;
-
-error:
-    if (err) {
-        g_critical("socket creation failed %s", err->message);
-        g_clear_error(&err);
-    }
-    if (client) {
-        client_unref(client);
-    }
-}
-
-static void client_connected(GObject *source_object,
-                             GAsyncResult *res,
-                             gpointer user_data)
-{
-    SpiceWebdavChannel *self = user_data;
-    SpiceWebdavChannelPrivate *c = self->priv;
-    GSocketClient *sclient = G_SOCKET_CLIENT(source_object);
-    GError *err = NULL;
-    GSocketConnection *conn;
-    SpiceSession *session;
-    Client *client = NULL;
-    GOutputStream *output;
-
-    session = spice_channel_get_session(SPICE_CHANNEL(self));
-
-    conn = g_socket_client_connect_to_host_finish(sclient, res, &err);
-    g_object_unref(sclient);
-    if (err)
-        goto error;
-
-    client = g_new0(Client, 1);
-    client->refs = 1;
-    client->id = c->demux.client;
-    client->self = self;
-    client->conn = conn;
-    client->mux.id = GINT64_TO_LE(client->id);
-    client->mux.buf = g_malloc0(MAX_MUX_SIZE);
-    client->cancellable = g_cancellable_new();
-
-    output = g_buffered_output_stream_new(g_io_stream_get_output_stream(G_IO_STREAM(conn)));
-    client->output = output_queue_new(output);
-    g_object_unref(output);
-
-    g_output_stream_write_async(g_io_stream_get_output_stream(G_IO_STREAM(conn)),
-                                spice_session_get_webdav_magic(session), WEBDAV_MAGIC_SIZE,
-                                G_PRIORITY_DEFAULT, c->cancellable,
-                                magic_written, client);
-    return;
-
-error:
-    if (err) {
-        g_critical("socket creation failed %s", err->message);
-        g_clear_error(&err);
-    }
-    if (client) {
-        client_unref(client);
-    }
-}
-
-static void start_client(SpiceWebdavChannel *self)
-{
-    SpiceWebdavChannelPrivate *c = self->priv;
-    GSocketClient *sclient;
-    gint davport = -1;
-    SpiceSession *session;
-
-    session = spice_channel_get_session(SPICE_CHANNEL(self));
-    phodav_server_get(session, &davport);
-    CHANNEL_DEBUG(self, "starting client %" G_GINT64_FORMAT, c->demux.client);
-
-    sclient = g_socket_client_new();
-    g_socket_client_connect_to_host_async(sclient, "localhost", davport,
-                                          c->cancellable, client_connected, self);
 }
 
 static void data_read_cb(GObject *source_object,
@@ -638,100 +565,4 @@ static void spice_webdav_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
         parent_class->handle_msg(channel, msg);
     else
         g_return_if_reached();
-}
-
-
-
-#ifdef USE_PHODAV
-static void new_connection(SoupSocket *sock,
-                           SoupSocket *new,
-                           gpointer    user_data)
-{
-    SpiceSession *session = user_data;
-    SoupAddress *addr;
-    GSocketAddress *gaddr;
-    GInetAddress *iaddr;
-    guint port;
-    guint8 magic[WEBDAV_MAGIC_SIZE];
-    gsize nread;
-    gboolean success = FALSE;
-    SoupSocketIOStatus status;
-
-    /* note: this is sync calls, since webdav server is in a seperate thread */
-    addr = soup_socket_get_remote_address(new);
-    gaddr = soup_address_get_gsockaddr(addr);
-    iaddr = g_inet_socket_address_get_address(G_INET_SOCKET_ADDRESS(gaddr));
-    port = g_inet_socket_address_get_port(G_INET_SOCKET_ADDRESS(gaddr));
-
-    SPICE_DEBUG("port %d %p", port, iaddr);
-    if (!g_inet_address_get_is_loopback(iaddr)) {
-        g_warn_if_reached();
-        goto end;
-    }
-
-    g_object_set(new, "non-blocking", FALSE, NULL);
-    status = soup_socket_read(new, magic, sizeof(magic), &nread, NULL, NULL);
-    if (status != SOUP_SOCKET_OK) {
-        g_warning("bad initial socket read: %d", status);
-        goto end;
-    }
-    g_object_set(new, "non-blocking", TRUE, NULL);
-
-    /* check we got the right magic */
-    if (memcmp(spice_session_get_webdav_magic(session), magic, sizeof(magic))) {
-        g_warn_if_reached();
-        goto end;
-    }
-
-    success = TRUE;
-
-end:
-    if (!success) {
-        g_warn_if_reached();
-        soup_socket_disconnect(new);
-        g_signal_stop_emission_by_name(sock, "new_connection");
-    }
-    g_object_unref(gaddr);
-}
-
-G_GNUC_INTERNAL
-PhodavServer* channel_webdav_server_new(SpiceSession *session)
-{
-    PhodavServer *dav;
-    SoupServer *server;
-    SoupSocket *listener;
-    const char *shared_dir;
-
-    shared_dir = spice_session_get_shared_dir(session);
-    if (shared_dir == NULL) {
-        g_debug("No shared dir set, not creating webdav channel");
-        return NULL;
-    }
-
-    dav = phodav_server_new(0, shared_dir);
-
-    server = phodav_server_get_soup_server(dav);
-    listener = soup_server_get_listener(server);
-    spice_g_signal_connect_object(listener, "new_connection",
-                                  G_CALLBACK(new_connection), session,
-                                  0);
-
-    return dav;
-}
-#endif /* USE_PHODAV */
-
-static PhodavServer* phodav_server_get(SpiceSession *session, gint *port)
-{
-    g_return_val_if_fail(SPICE_IS_SESSION(session), NULL);
-
-#ifdef USE_PHODAV
-    PhodavServer *server = spice_session_get_webdav_server(session);
-
-    if (port)
-        *port = phodav_server_get_port(server);
-
-    return server;
-#else
-    g_return_val_if_reached(NULL);
-#endif
 }

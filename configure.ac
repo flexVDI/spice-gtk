@@ -278,7 +278,7 @@ AC_ARG_ENABLE([webdav],
 if test "x$enable_webdav" = "xno"; then
   have_phodav="no"
 else
-  PKG_CHECK_MODULES(PHODAV, [libphodav-1.0 glib-2.0 >= 2.43.90], [have_phodav=yes], [have_phodav=no])
+  PKG_CHECK_MODULES(PHODAV, [libphodav-2.0 glib-2.0 >= 2.43.90 libsoup-2.4 >= 2.49.1], [have_phodav=yes], [have_phodav=no])
   AC_SUBST(PHODAV_CFLAGS)
   AC_SUBST(PHODAV_LIBS)
 

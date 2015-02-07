@@ -122,7 +122,6 @@ struct _SpiceSessionPrivate {
     SpiceUsbDeviceManager *usb_manager;
     SpicePlaybackChannel *playback_channel;
     PhodavServer      *webdav;
-    guint8             webdav_magic[WEBDAV_MAGIC_SIZE];
 };
 
 
@@ -2620,36 +2619,31 @@ gboolean spice_session_get_smartcard_enabled(SpiceSession *session)
 }
 
 G_GNUC_INTERNAL
-const guint8* spice_session_get_webdav_magic(SpiceSession *session)
-{
-    g_return_val_if_fail(SPICE_IS_SESSION(session), NULL);
-
-    return session->priv->webdav_magic;
-}
-
-G_GNUC_INTERNAL
 PhodavServer* spice_session_get_webdav_server(SpiceSession *session)
 {
+    SpiceSessionPrivate *priv;
+
     g_return_val_if_fail(SPICE_IS_SESSION(session), NULL);
+    priv = session->priv;
 
 #ifdef USE_PHODAV
-    static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
-    int i;
+    static GMutex mutex;
 
-    g_static_mutex_lock(&mutex);
-    if (!session->priv->webdav) {
-        for (i = 0; i < sizeof(session->priv->webdav_magic); i++)
-            session->priv->webdav_magic[i] = g_random_int_range(0, 255);
-
-        session->priv->webdav = channel_webdav_server_new(session);
-        if (session->priv->webdav != NULL) {
-            phodav_server_run(session->priv->webdav);
-        }
+    const gchar *shared_dir = spice_session_get_shared_dir(session);
+    if (shared_dir == NULL) {
+        g_debug("No shared dir set, not creating webdav server");
+        return NULL;
     }
-    g_static_mutex_unlock(&mutex);
+
+    g_mutex_lock(&mutex);
+
+    if (priv->webdav == NULL)
+        priv->webdav = phodav_server_new(shared_dir);
+
+    g_mutex_unlock(&mutex);
 #endif
 
-    return session->priv->webdav;
+    return priv->webdav;
 }
 
 /**
