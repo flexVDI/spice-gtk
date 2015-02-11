@@ -1200,9 +1200,6 @@ static void send_key(SpiceDisplay *display, int scancode, SendKeyType type, gboo
     if (d->disable_inputs)
         return;
 
-    if (d->keyboard_grab_released)
-        return;
-
     i = scancode / 32;
     b = scancode % 32;
     m = (1 << b);
