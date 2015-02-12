@@ -346,6 +346,13 @@ libspice_client_glib_2_0_la_SOURCES +=	\
 	$(NULL)
 endif
 
+if WITH_PHODAV
+libspice_client_glib_2_0_la_SOURCES +=	\
+	giopipe.c			\
+	giopipe.h			\
+	$(NULL)
+endif
+
 if WITH_UCONTEXT
 libspice_client_glib_2_0_la_SOURCES += continuation.h continuation.c coroutine_ucontext.c
 endif

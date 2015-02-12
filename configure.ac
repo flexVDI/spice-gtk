@@ -278,7 +278,7 @@ AC_ARG_ENABLE([webdav],
 if test "x$enable_webdav" = "xno"; then
   have_phodav="no"
 else
-  PKG_CHECK_MODULES(PHODAV, [libphodav-1.0], [have_phodav=yes], [have_phodav=no])
+  PKG_CHECK_MODULES(PHODAV, [libphodav-1.0 glib-2.0 >= 2.43.90], [have_phodav=yes], [have_phodav=no])
   AC_SUBST(PHODAV_CFLAGS)
   AC_SUBST(PHODAV_LIBS)
 
@@ -288,6 +288,8 @@ else
 fi
 AS_IF([test "x$have_phodav" = "xyes"],
        AC_DEFINE([USE_PHODAV], [1], [Define if supporting phodav]))
+
+AM_CONDITIONAL([WITH_PHODAV], [test "x$have_phodav" = "xyes"])
 
 AC_ARG_WITH([audio],
   AS_HELP_STRING([--with-audio=@<:@gstreamer/pulse/auto/no@:>@], [Select audio backend @<:@default=auto@:>@]),

@@ -6,6 +6,10 @@ noinst_PROGRAMS =				\
 	session					\
 	$(NULL)
 
+if WITH_PHODAV
+noinst_PROGRAMS += pipe
+endif
+
 TESTS = $(noinst_PROGRAMS)
 
 AM_CPPFLAGS =					\
@@ -22,5 +26,7 @@ LDADD =							\
 util_SOURCES = util.c
 coroutine_SOURCES = coroutine.c
 session_SOURCES = session.c
+pipe_SOURCES = pipe.c
+
 
 -include $(top_srcdir)/git.mk
