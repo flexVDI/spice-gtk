@@ -19,17 +19,19 @@ struct PortForwarder {
 static void send_command(PortForwarder *pf, guint32 command,
                          const guint8 *data, guint32 data_size)
 {
-    SPICE_DEBUG("Sending command %d with %d bytes", (int)command, (int)data_size);
+    SPICE_DEBUG("Sending command %u with %u bytes", command, data_size);
     pf->send_command(pf->channel, command, data, data_size);
 }
 
 #define WINDOW_SIZE 10*1024*1024
+#define MAX_MSG_SIZE VD_AGENT_MAX_DATA_SIZE - sizeof(VDAgentMessage)
 
 typedef struct Connection {
     GSocketClient *socket;
     GSocketConnection *conn;
     GCancellable *cancelable;
     GQueue *write_buffer;
+    guint8 *read_buffer;
     guint32 data_sent, data_received, ack_interval;
     gboolean connecting;
     PortForwarder *pf;
@@ -53,6 +55,7 @@ static Connection *new_connection(PortForwarder *pf, int id, guint32 ack_int)
         conn->ack_interval = ack_int;
         conn->connecting = TRUE;
         conn->write_buffer = g_queue_new();
+        conn->read_buffer = (guint8 *)g_malloc(MAX_MSG_SIZE);
     }
     return conn;
 }
@@ -70,6 +73,7 @@ static void unref_connection(gpointer value)
             g_object_unref(conn->socket);
         }
         g_queue_free_full(conn->write_buffer, (GDestroyNotify)g_bytes_unref);
+        g_free(conn->read_buffer);
         g_free(conn);
     }
 }
@@ -164,44 +168,55 @@ gboolean port_forwarder_disassociate(PortForwarder *pf, guint16 rport) {
 
 
 #define DATA_HEAD_SIZE sizeof(VDAgentPortForwardDataMessage)
-#define BUFFER_SIZE VD_AGENT_MAX_DATA_SIZE - DATA_HEAD_SIZE
+#define BUFFER_SIZE MAX_MSG_SIZE - DATA_HEAD_SIZE
+
+static void connection_read_callback(GObject *source_object, GAsyncResult *res,
+                                     gpointer user_data);
+
+static void program_read(Connection *conn)
+{
+    GInputStream *stream = g_io_stream_get_input_stream((GIOStream *)conn->conn);
+    guint8 *data = conn->read_buffer + DATA_HEAD_SIZE;
+    g_input_stream_read_async(stream, data, BUFFER_SIZE, G_PRIORITY_DEFAULT,
+                              conn->cancelable, connection_read_callback, conn);
+}
 
 static void connection_read_callback(GObject *source_object, GAsyncResult *res,
                                      gpointer user_data)
 {
     Connection *conn = (Connection *)user_data;
     PortForwarder *pf = conn->pf;
+    GError *error = NULL;
     GInputStream *stream = (GInputStream *)source_object;
-    GBytes * buffer = g_input_stream_read_bytes_finish(stream, res, NULL);
-    guint8 msg_buffer[VD_AGENT_MAX_DATA_SIZE];
-    VDAgentPortForwardDataMessage * msg = (VDAgentPortForwardDataMessage *)msg_buffer;
+    gssize bytes = g_input_stream_read_finish(stream, res, &error);
+    VDAgentPortForwardDataMessage *msg = (VDAgentPortForwardDataMessage *)conn->read_buffer;
 
     if (g_cancellable_is_cancelled(conn->cancelable)) {
         unref_connection(conn);
         return;
     }
 
-    if (!buffer || g_bytes_get_size(buffer) == 0) {
+    if (error || bytes == 0) {
         /* Error or connection closed by peer */
-        SPICE_DEBUG("Read error or connection %d reset by peer", conn->id);
+        if (error)
+            SPICE_DEBUG("Read error on connection %d: %s", conn->id, error->message);
+        else
+            SPICE_DEBUG("Connection %d reset by peer", conn->id);
         close_connection(conn);
         unref_connection(conn);
     } else {
         msg->id = conn->id;
-        msg->size = g_bytes_get_size(buffer);
-        SPICE_DEBUG("Read %d bytes on connection %d", (int)msg->size, conn->id);
-        memcpy(msg->data, g_bytes_get_data(buffer, NULL), msg->size);
+        msg->size = bytes;
+        SPICE_DEBUG("Read %lu bytes on connection %d", msg->size, conn->id);
+        send_command(pf, VD_AGENT_PORT_FORWARD_DATA,
+                     conn->read_buffer, DATA_HEAD_SIZE + msg->size);
         conn->data_sent += msg->size;
         if (conn->data_sent < WINDOW_SIZE) {
-            g_input_stream_read_bytes_async(stream, BUFFER_SIZE, G_PRIORITY_DEFAULT,
-                                            conn->cancelable, connection_read_callback, conn);
+            program_read(conn);
         } else {
             unref_connection(conn);
         }
-        send_command(pf, VD_AGENT_PORT_FORWARD_DATA,
-                     msg_buffer, DATA_HEAD_SIZE + msg->size);
     }
-    g_bytes_unref(buffer);
 }
 
 static void connection_write_callback(GObject *source_object, GAsyncResult *res,
@@ -217,8 +232,7 @@ static void connection_write_callback(GObject *source_object, GAsyncResult *res,
 
     if (error != NULL) {
         /* Error or connection closed by peer */
-        SPICE_DEBUG("Write error or connection %d reset by peer: %s",
-                    conn->id, error->message);
+        SPICE_DEBUG("Write error on connection %d: %s", conn->id, error->message);
         close_connection(conn);
         unref_connection(conn);
     } else {
@@ -254,7 +268,6 @@ static void connection_connect_callback(GObject *source_object, GAsyncResult *re
                                         gpointer user_data)
 {
     Connection *conn = (Connection *)user_data;
-    GInputStream *stream;
     VDAgentPortForwardConnectMessage msg = { .port = 0, .id = conn->id,
         .ack_interval = WINDOW_SIZE/2 };
 
@@ -271,9 +284,7 @@ static void connection_connect_callback(GObject *source_object, GAsyncResult *re
         unref_connection(conn);
     } else {
         conn->connecting = FALSE;
-        stream = g_io_stream_get_input_stream((GIOStream *)conn->conn);
-        g_input_stream_read_bytes_async(stream, BUFFER_SIZE, G_PRIORITY_DEFAULT,
-                                        conn->cancelable, connection_read_callback, conn);
+        program_read(conn);
         send_command(conn->pf, VD_AGENT_PORT_FORWARD_CONNECT,
                      (const guint8 *)&msg, sizeof(msg));
     }
@@ -349,7 +360,6 @@ static void handle_close(PortForwarder *pf, VDAgentPortForwardCloseMessage *msg)
 
 static void handle_ack(PortForwarder *pf, VDAgentPortForwardAckMessage *msg)
 {
-    GInputStream *stream;
     Connection *conn = g_hash_table_lookup(pf->connections, GUINT_TO_POINTER(msg->id));
     if (conn) {
         SPICE_DEBUG("ACK command for connection %d with %d bytes", conn->id, (int)msg->size);
@@ -357,9 +367,7 @@ static void handle_ack(PortForwarder *pf, VDAgentPortForwardAckMessage *msg)
         conn->data_sent -= msg->size;
         if (conn->data_sent < WINDOW_SIZE && data_sent_before >= WINDOW_SIZE) {
             conn->refs++;
-            stream = g_io_stream_get_input_stream((GIOStream *)conn->conn);
-            g_input_stream_read_bytes_async(stream, BUFFER_SIZE, G_PRIORITY_DEFAULT,
-                                            conn->cancelable, connection_read_callback, conn);
+            program_read(conn);
         }
     } else {
         /* Ignore, this is usually an already closed connection */
