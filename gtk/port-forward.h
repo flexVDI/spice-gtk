@@ -6,7 +6,6 @@
 #define __PORT_FORWARD_H
 
 #include <glib.h>
-#include <stdint.h>
 
 typedef struct PortForwarder PortForwarder;
 
@@ -14,8 +13,8 @@ typedef struct PortForwarder PortForwarder;
  * Callback to send commands to the vdagent.
  */
 typedef void (*port_forwarder_send_command_cb)(
-    void *channel, uint32_t command,
-    const uint8_t *data, uint32_t data_size);
+    void *channel, guint32 command,
+    const guint8 *data, guint32 data_size);
 
 PortForwarder *new_port_forwarder(void *channel, port_forwarder_send_command_cb cb);
 
@@ -26,16 +25,16 @@ void port_forwarder_agent_disconnected(PortForwarder *pf);
 /*
  * Associate a remote port with a local port.
  */
-gboolean port_forwarder_associate(PortForwarder *pf, uint16_t rport, uint16_t lport);
+gboolean port_forwarder_associate(PortForwarder *pf, guint16 rport, guint16 lport);
 
 /*
  * Disassociate a remote port.
  */
-gboolean port_forwarder_disassociate(PortForwarder *pf, uint16_t rport);
+gboolean port_forwarder_disassociate(PortForwarder *pf, guint16 rport);
 
 /*
  * Handle a message received from the agent.
  */
-void port_forwarder_handle_message(PortForwarder *pf, uint32_t command, gpointer msg);
+void port_forwarder_handle_message(PortForwarder *pf, guint32 command, gpointer msg);
 
 #endif /* __PORT_FORWARD_H */

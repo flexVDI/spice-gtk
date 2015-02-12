@@ -16,8 +16,8 @@ struct PortForwarder {
     GHashTable *connections;
 };
 
-static void send_command(PortForwarder *pf, uint32_t command,
-                         const uint8_t *data, uint32_t data_size)
+static void send_command(PortForwarder *pf, guint32 command,
+                         const guint8 *data, guint32 data_size)
 {
     SPICE_DEBUG("Sending command %d with %d bytes", (int)command, (int)data_size);
     pf->send_command(pf->channel, command, data, data_size);
@@ -30,14 +30,14 @@ typedef struct Connection {
     GSocketConnection *conn;
     GCancellable *cancelable;
     GQueue *write_buffer;
-    uint32_t data_sent, data_received, ack_interval;
+    guint32 data_sent, data_received, ack_interval;
     gboolean connecting;
     PortForwarder *pf;
     int refs;
     int id;
 } Connection;
 
-static Connection *new_connection(PortForwarder *pf, int id, uint32_t ack_int)
+static Connection *new_connection(PortForwarder *pf, int id, guint32 ack_int)
 {
     Connection *conn = (Connection *)g_malloc0(sizeof(Connection));
     if (conn) {
@@ -78,7 +78,7 @@ static void close_agent_connection(PortForwarder *pf, int id)
 {
     VDAgentPortForwardCloseMessage closeMsg;
     closeMsg.id = id;
-    send_command(pf, VD_AGENT_PORT_FORWARD_CLOSE, (const uint8_t *)&closeMsg, sizeof(closeMsg));
+    send_command(pf, VD_AGENT_PORT_FORWARD_CLOSE, (const guint8 *)&closeMsg, sizeof(closeMsg));
 }
 
 static void close_connection_no_notify(Connection * conn)
@@ -134,7 +134,7 @@ void port_forwarder_agent_disconnected(PortForwarder *pf)
     g_hash_table_remove_all(pf->connections);
 }
 
-gboolean port_forwarder_associate(PortForwarder* pf, uint16_t rport, uint16_t lport)
+gboolean port_forwarder_associate(PortForwarder* pf, guint16 rport, guint16 lport)
 {
     VDAgentPortForwardListenMessage msg;
 
@@ -144,11 +144,11 @@ gboolean port_forwarder_associate(PortForwarder* pf, uint16_t rport, uint16_t lp
     }
     g_hash_table_insert(pf->associations, GUINT_TO_POINTER(rport), GUINT_TO_POINTER(lport));
     msg.port = rport;
-    send_command(pf, VD_AGENT_PORT_FORWARD_LISTEN, (const uint8_t *)&msg, sizeof(msg));
+    send_command(pf, VD_AGENT_PORT_FORWARD_LISTEN, (const guint8 *)&msg, sizeof(msg));
     return TRUE;
 }
 
-gboolean port_forwarder_disassociate(PortForwarder *pf, uint16_t rport) {
+gboolean port_forwarder_disassociate(PortForwarder *pf, guint16 rport) {
     VDAgentPortForwardShutdownMessage msg;
 
     if (!g_hash_table_remove(pf->associations, GUINT_TO_POINTER(rport))) {
@@ -157,7 +157,7 @@ gboolean port_forwarder_disassociate(PortForwarder *pf, uint16_t rport) {
     } else {
         SPICE_DEBUG("Disassociate remote port %d", rport);
         msg.port = rport;
-        send_command(pf, VD_AGENT_PORT_FORWARD_SHUTDOWN, (const uint8_t *)&msg, sizeof(msg));
+        send_command(pf, VD_AGENT_PORT_FORWARD_SHUTDOWN, (const guint8 *)&msg, sizeof(msg));
         return TRUE;
     }
 }
@@ -173,7 +173,7 @@ static void connection_read_callback(GObject *source_object, GAsyncResult *res,
     PortForwarder *pf = conn->pf;
     GInputStream *stream = (GInputStream *)source_object;
     GBytes * buffer = g_input_stream_read_bytes_finish(stream, res, NULL);
-    uint8_t msg_buffer[VD_AGENT_MAX_DATA_SIZE];
+    guint8 msg_buffer[VD_AGENT_MAX_DATA_SIZE];
     VDAgentPortForwardDataMessage * msg = (VDAgentPortForwardDataMessage *)msg_buffer;
 
     if (g_cancellable_is_cancelled(conn->cancelable)) {
@@ -245,7 +245,7 @@ static void connection_write_callback(GObject *source_object, GAsyncResult *res,
             msg.size = conn->data_received;
             conn->data_received = 0;
             send_command(conn->pf, VD_AGENT_PORT_FORWARD_ACK,
-                         (const uint8_t *)&msg, sizeof(msg));
+                         (const guint8 *)&msg, sizeof(msg));
         }
     }
 }
@@ -275,14 +275,14 @@ static void connection_connect_callback(GObject *source_object, GAsyncResult *re
         g_input_stream_read_bytes_async(stream, BUFFER_SIZE, G_PRIORITY_DEFAULT,
                                         conn->cancelable, connection_read_callback, conn);
         send_command(conn->pf, VD_AGENT_PORT_FORWARD_CONNECT,
-                     (const uint8_t *)&msg, sizeof(msg));
+                     (const guint8 *)&msg, sizeof(msg));
     }
 }
 
 static void handle_connect(PortForwarder *pf, VDAgentPortForwardConnectMessage *msg)
 {
     gpointer id = GUINT_TO_POINTER(msg->id), rport = GUINT_TO_POINTER(msg->port);
-    uint16_t lport;
+    guint16 lport;
     Connection *conn = g_hash_table_lookup(pf->connections, id);
     if (conn) {
         g_warning("Connection %d already exists.", msg->id);
@@ -353,7 +353,7 @@ static void handle_ack(PortForwarder *pf, VDAgentPortForwardAckMessage *msg)
     Connection *conn = g_hash_table_lookup(pf->connections, GUINT_TO_POINTER(msg->id));
     if (conn) {
         SPICE_DEBUG("ACK command for connection %d with %d bytes", conn->id, (int)msg->size);
-        uint32_t data_sent_before = conn->data_sent;
+        guint32 data_sent_before = conn->data_sent;
         conn->data_sent -= msg->size;
         if (conn->data_sent < WINDOW_SIZE && data_sent_before >= WINDOW_SIZE) {
             conn->refs++;
@@ -367,7 +367,7 @@ static void handle_ack(PortForwarder *pf, VDAgentPortForwardAckMessage *msg)
     }
 }
 
-void port_forwarder_handle_message(PortForwarder* pf, uint32_t command, gpointer msg)
+void port_forwarder_handle_message(PortForwarder* pf, guint32 command, gpointer msg)
 {
     switch (command) {
         case VD_AGENT_PORT_FORWARD_CONNECT:
