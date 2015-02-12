@@ -2902,7 +2902,7 @@ gboolean spice_main_port_forward(SpiceMainChannel *channel,
 {
     SpiceMainChannelPrivate *c = channel->priv;
     g_return_val_if_fail(c->agent_connected, FALSE);
-    g_return_val_if_fail(test_agent_cap(channel, VD_AGENT_CAP_PORT_FORWARDING), FALSE);
+    if (!test_agent_cap(channel, VD_AGENT_CAP_PORT_FORWARDING)) return FALSE;
     return port_forwarder_associate(c->port_forwarder, rport, lport);
 }
 
@@ -2918,6 +2918,6 @@ gboolean spice_main_port_forward_disassociate(SpiceMainChannel *channel, uint16_
 {
     SpiceMainChannelPrivate *c = channel->priv;
     g_return_val_if_fail(c->agent_connected, FALSE);
-    g_return_val_if_fail(test_agent_cap(channel, VD_AGENT_CAP_PORT_FORWARDING), FALSE);
+    if (!test_agent_cap(channel, VD_AGENT_CAP_PORT_FORWARDING)) return FALSE;
     return port_forwarder_disassociate(c->port_forwarder, rport);
 }
