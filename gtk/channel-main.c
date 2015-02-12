@@ -2883,6 +2883,8 @@ static void port_forwarder_send_command(void *channel, uint32_t command,
     agent_msg_queue((SpiceMainChannel *)channel, command, data_size, data);
     if (&SPICE_CHANNEL(channel)->priv->coroutine != g_coroutine_self())
         spice_channel_wakeup(SPICE_CHANNEL(channel), FALSE);
+    else
+        agent_send_msg_queue((SpiceMainChannel *)channel);
 }
 
 /**
