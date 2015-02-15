@@ -61,6 +61,7 @@ struct _SpiceSessionPrivate {
     gboolean          read_only;
     SpiceURI          *proxy;
     gchar             *shared_dir;
+    gboolean          share_dir_ro;
 
     /* whether to enable audio */
     gboolean          audio;
@@ -199,6 +200,7 @@ enum {
     PROP_PROXY,
     PROP_SECURE_CHANNELS,
     PROP_SHARED_DIR,
+    PROP_SHARE_DIR_RO,
     PROP_USERNAME,
     PROP_UNIX_PATH,
 };
@@ -653,6 +655,9 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_SHARED_DIR:
         g_value_set_string(value, spice_session_get_shared_dir(session));
         break;
+    case PROP_SHARE_DIR_RO:
+        g_value_set_boolean(value, s->share_dir_ro);
+        break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -785,6 +790,9 @@ static void spice_session_set_property(GObject      *gobject,
         break;
     case PROP_SHARED_DIR:
         spice_session_set_shared_dir(session, g_value_get_string(value));
+        break;
+    case PROP_SHARE_DIR_RO:
+        s->share_dir_ro = g_value_get_boolean(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -1377,6 +1385,23 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                              G_PARAM_READWRITE |
                              G_PARAM_CONSTRUCT |
                              G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceSession:share-dir-ro:
+     *
+     * Whether to share the directory read-only.
+     *
+     * Since: 0.28
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_SHARE_DIR_RO,
+         g_param_spec_boolean("share-dir-ro",
+                              "Share directory read-only",
+                              "Share directory read-only",
+                              FALSE,
+                              G_PARAM_READWRITE |
+                              G_PARAM_CONSTRUCT |
+                              G_PARAM_STATIC_STRINGS));
 
     g_type_class_add_private(klass, sizeof(SpiceSessionPrivate));
 }
