@@ -2662,9 +2662,18 @@ PhodavServer* spice_session_get_webdav_server(SpiceSession *session)
 
     g_mutex_lock(&mutex);
 
-    if (priv->webdav == NULL)
-        priv->webdav = phodav_server_new(shared_dir);
+    if (priv->webdav)
+        goto end;
 
+    priv->webdav = phodav_server_new(shared_dir);
+    g_object_bind_property(session,  "share-dir-ro",
+                           priv->webdav, "read-only",
+                           G_BINDING_SYNC_CREATE|G_BINDING_BIDIRECTIONAL);
+    g_object_bind_property(session,  "shared-dir",
+                           priv->webdav, "root",
+                           G_BINDING_SYNC_CREATE|G_BINDING_BIDIRECTIONAL);
+
+end:
     g_mutex_unlock(&mutex);
 #endif
 
