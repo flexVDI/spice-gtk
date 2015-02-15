@@ -2341,6 +2341,9 @@ static void cursor_invalidate(SpiceDisplay *display)
     double s;
     int x, y;
 
+    if (!gtk_widget_get_realized (GTK_WIDGET(display)))
+        return;
+
     if (d->mouse_pixbuf == NULL)
         return;
 
