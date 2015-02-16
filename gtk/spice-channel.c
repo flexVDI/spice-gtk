@@ -1763,7 +1763,7 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
     return TRUE;
 
 error:
-    SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
+    c->has_error = TRUE;
     c->event = SPICE_CHANNEL_ERROR_LINK;
     return FALSE;
 }
