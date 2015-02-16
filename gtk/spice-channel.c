@@ -2179,7 +2179,6 @@ static gboolean spice_channel_delayed_unref(gpointer data)
     SpiceChannelPrivate *c = channel->priv;
     gboolean was_ready = c->state == SPICE_CHANNEL_STATE_READY;
 
-    g_return_val_if_fail(channel != NULL, FALSE);
     CHANNEL_DEBUG(channel, "Delayed unref channel %p", channel);
 
     g_return_val_if_fail(c->coroutine.coroutine.exited == TRUE, FALSE);
