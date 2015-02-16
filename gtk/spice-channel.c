@@ -2183,8 +2183,9 @@ static gboolean spice_channel_delayed_unref(gpointer data)
 
     g_return_val_if_fail(c->coroutine.coroutine.exited == TRUE, FALSE);
 
+    c->state = SPICE_CHANNEL_STATE_UNCONNECTED;
+
     if (c->event != SPICE_CHANNEL_NONE) {
-        c->state = SPICE_CHANNEL_STATE_UNCONNECTED;
         g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, c->event);
         c->event = SPICE_CHANNEL_NONE;
         g_clear_error(&c->error);
