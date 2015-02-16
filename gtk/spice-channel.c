@@ -2437,7 +2437,8 @@ cleanup:
 
     SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
 
-    if (c->state == SPICE_CHANNEL_STATE_RECONNECTING) {
+    if (c->state == SPICE_CHANNEL_STATE_RECONNECTING ||
+        c->state == SPICE_CHANNEL_STATE_SWITCHING) {
         g_warn_if_fail(c->event == SPICE_CHANNEL_NONE);
         channel_connect(channel, c->tls);
         g_object_unref(channel);
@@ -2655,7 +2656,6 @@ static void channel_disconnect(SpiceChannel *channel)
     g_return_if_fail(SPICE_IS_CHANNEL(channel));
 
     if (c->state == SPICE_CHANNEL_STATE_SWITCHING) {
-        channel_connect(channel, c->tls);
         spice_session_set_migration_state(spice_channel_get_session(channel),
                                           SPICE_SESSION_MIGRATION_NONE);
     }
