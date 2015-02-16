@@ -2435,7 +2435,7 @@ connected:
 cleanup:
     CHANNEL_DEBUG(channel, "Coroutine exit %s", c->name);
 
-    SPICE_CHANNEL_GET_CLASS(channel)->channel_disconnect(channel);
+    spice_channel_reset(channel, FALSE);
 
     if (c->state == SPICE_CHANNEL_STATE_RECONNECTING ||
         c->state == SPICE_CHANNEL_STATE_SWITCHING) {
