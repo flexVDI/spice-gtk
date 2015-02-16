@@ -51,7 +51,6 @@
 static void spice_channel_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg);
 static void spice_channel_write_msg(SpiceChannel *channel, SpiceMsgOut *out);
 static void spice_channel_send_link(SpiceChannel *channel);
-static void channel_disconnect(SpiceChannel *channel);
 static void channel_reset(SpiceChannel *channel, gboolean migrating);
 static void spice_channel_reset_capabilities(SpiceChannel *channel);
 static void spice_channel_send_migration_handshake(SpiceChannel *channel);
@@ -270,7 +269,6 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
 
     klass->iterate_write = spice_channel_iterate_write;
     klass->iterate_read  = spice_channel_iterate_read;
-    klass->channel_disconnect = channel_disconnect;
     klass->channel_reset = channel_reset;
 
     gobject_class->constructed  = spice_channel_constructed;
@@ -2641,23 +2639,6 @@ void spice_channel_reset(SpiceChannel *channel, gboolean migrating)
 {
     CHANNEL_DEBUG(channel, "reset %s", migrating ? "migrating" : "");
     SPICE_CHANNEL_GET_CLASS(channel)->channel_reset(channel, migrating);
-}
-
-/* system or coroutine context */
-static void channel_disconnect(SpiceChannel *channel)
-{
-    SpiceChannelPrivate *c = channel->priv;
-
-    g_return_if_fail(c != NULL);
-
-    if (c->state == SPICE_CHANNEL_STATE_UNCONNECTED)
-        return;
-
-    c->has_error = TRUE; /* break the loop */
-
-    spice_channel_reset(channel, FALSE);
-
-    g_return_if_fail(SPICE_IS_CHANNEL(channel));
 }
 
 /**
