@@ -1557,6 +1557,7 @@ void spice_session_switching_disconnect(SpiceSession *self)
     g_warn_if_fail(!ring_is_empty(&s->channels)); /* ring_get_length() == 1 */
 
     cache_clear_all(self);
+    s->connection_id = 0;
 }
 
 #define SWAP_STR(x, y) G_STMT_START { \
