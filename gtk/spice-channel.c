@@ -2177,6 +2177,7 @@ static gboolean spice_channel_delayed_unref(gpointer data)
 {
     SpiceChannel *channel = SPICE_CHANNEL(data);
     SpiceChannelPrivate *c = channel->priv;
+    gboolean was_ready = c->state == SPICE_CHANNEL_STATE_READY;
 
     g_return_val_if_fail(channel != NULL, FALSE);
     CHANNEL_DEBUG(channel, "Delayed unref channel %p", channel);
@@ -2189,6 +2190,9 @@ static gboolean spice_channel_delayed_unref(gpointer data)
         c->event = SPICE_CHANNEL_NONE;
         g_clear_error(&c->error);
     }
+
+    if (was_ready)
+        g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_CLOSED);
 
     g_object_unref(G_OBJECT(data));
 
@@ -2645,9 +2649,6 @@ static void channel_disconnect(SpiceChannel *channel)
         return;
 
     c->has_error = TRUE; /* break the loop */
-
-    if (c->state == SPICE_CHANNEL_STATE_READY)
-        g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_CLOSED);
 
     spice_channel_reset(channel, FALSE);
 
