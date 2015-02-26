@@ -470,10 +470,26 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
         gchar **target_key;
 
         int len;
-        if (sscanf(query, "%31[-a-zA-Z0-9]=%127[^;&]%n", key, value, &len) != 2) {
-            g_warning("Failed to parse URI query '%s'", query);
+        if (sscanf(query, "%31[-a-zA-Z0-9]=%n", key, &len) != 1) {
+            spice_warning("Failed to parse key in URI '%s'", query);
             goto fail;
         }
+
+        query += len;
+        if (*query == '\0') {
+            spice_warning ("key '%s' without value", key);
+            break;
+        } else if (*query == ';' || *query == '&') {
+            /* another argument */
+            query++;
+            continue;
+        }
+
+        if (sscanf(query, "%127[^;&]%n", value, &len) != 1) {
+            spice_warning("Failed to parse value of key '%s' in URI '%s'", key, query);
+            goto fail;
+        }
+
         query += len;
         if (*query)
             query++;
