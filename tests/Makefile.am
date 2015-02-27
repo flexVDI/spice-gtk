@@ -3,6 +3,7 @@ NULL =
 noinst_PROGRAMS =				\
 	coroutine				\
 	util					\
+	session					\
 	$(NULL)
 
 TESTS = $(noinst_PROGRAMS)
@@ -20,5 +21,6 @@ LDADD =							\
 
 util_SOURCES = util.c
 coroutine_SOURCES = coroutine.c
+session_SOURCES = session.c
 
 -include $(top_srcdir)/git.mk
