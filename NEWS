@@ -1,3 +1,22 @@
+v0.28
+=====
+
+- webdav improvements:
+ - no longer spawn a server thread
+ - no longer use local TCP sockets & port
+ - provides read-only mode with SpiceSession:share-dir-ro
+ - requires libphodav-2.0 glib-2.0 >= 2.43.90 libsoup-2.4 >= 2.49.91
+- drop gstreamer 0.10 in favour of 1.0
+- add spice+unix://path connection support
+- accept URI with empty parameters value,
+  such as spice://localhost?port=5900&tls-port=
+- fixed lz4 support
+- silence some harmless warnings
+- misc API documentation improvements
+- switch-host migration fixes
+- learn to build --without-gtk
+- bugs and regressions fixes
+
 v0.27
 =====
 
