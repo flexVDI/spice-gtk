@@ -191,6 +191,48 @@ static void session_enable_audio(GObject *gobject, GParamSpec *pspec,
     update_audio_channels(SPICE_AUDIO(user_data), SPICE_SESSION(gobject));
 }
 
+void spice_audio_get_playback_volume_info_async(SpiceAudio *audio,
+                                                GCancellable *cancellable,
+                                                SpiceMainChannel *main_channel,
+                                                GAsyncReadyCallback callback,
+                                                gpointer user_data)
+{
+    SPICE_AUDIO_GET_CLASS(audio)->get_playback_volume_info_async(audio,
+            cancellable, main_channel, callback, user_data);
+}
+
+gboolean spice_audio_get_playback_volume_info_finish(SpiceAudio *audio,
+                                                     GAsyncResult *res,
+                                                     gboolean *mute,
+                                                     guint8 *nchannels,
+                                                     guint16 **volume,
+                                                     GError **error)
+{
+    return SPICE_AUDIO_GET_CLASS(audio)->get_playback_volume_info_finish(audio,
+            res, mute, nchannels, volume, error);
+}
+
+void spice_audio_get_record_volume_info_async(SpiceAudio *audio,
+                                              GCancellable *cancellable,
+                                              SpiceMainChannel *main_channel,
+                                              GAsyncReadyCallback callback,
+                                              gpointer user_data)
+{
+    SPICE_AUDIO_GET_CLASS(audio)->get_record_volume_info_async(audio,
+            cancellable, main_channel, callback, user_data);
+}
+
+gboolean spice_audio_get_record_volume_info_finish(SpiceAudio *audio,
+                                                   GAsyncResult *res,
+                                                   gboolean *mute,
+                                                   guint8 *nchannels,
+                                                   guint16 **volume,
+                                                   GError **error)
+{
+    return SPICE_AUDIO_GET_CLASS(audio)->get_record_volume_info_finish(audio,
+            res, mute, nchannels, volume, error);
+}
+
 /**
  * spice_audio_new:
  * @session: the #SpiceSession to connect to
