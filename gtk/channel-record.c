@@ -406,7 +406,7 @@ static void record_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
 
     g_return_if_fail(start->format == SPICE_AUDIO_FMT_S16);
 
-    c->codec = NULL;
+    snd_codec_destroy(&c->codec);
 
     if (c->mode != SPICE_AUDIO_DATA_MODE_RAW) {
         if (snd_codec_create(&c->codec, c->mode, start->frequency, SND_CODEC_ENCODE) != SND_CODEC_OK) {

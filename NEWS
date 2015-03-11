@@ -1,3 +1,22 @@
+v0.27
+=====
+
+- add GStreamer 1.0 audio support
+- add LZ4 compression algorithm support
+- learn to release the keyboard grab on release keys pressed (ctrl+alt
+  by default), to let alt+f4/alt-tab and others for client side
+- session and channels life-cycle changes: a channel will no longer
+  hold a reference after session disconnection
+- migration fixes, fail early on client provided fds (this is left to
+  solve in the future)
+- fix support for Gtk+ 3.0 on Windows
+- clipboard size fixes
+- server-side pointer drawing on grab
+- new APIs:
+  spice_usb_device_get_libusb_device()
+  spice_session_is_for_migration()
+- build-sys improvements
+
 v0.26
 =====
 

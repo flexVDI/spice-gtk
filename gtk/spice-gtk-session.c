@@ -847,6 +847,24 @@ skip_grab_clipboard:
     return TRUE;
 }
 
+static gboolean check_clipboard_size_limits(SpiceGtkSession *session,
+                                            gint clipboard_len)
+{
+    int max_clipboard;
+
+    g_object_get(session->priv->main, "max-clipboard", &max_clipboard, NULL);
+    if (max_clipboard != -1 && clipboard_len > max_clipboard) {
+        g_warning("discarded clipboard of size %d (max: %d)",
+                  clipboard_len, max_clipboard);
+        return FALSE;
+    } else if (clipboard_len <= 0) {
+        SPICE_DEBUG("discarding empty clipboard");
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
 static void clipboard_received_cb(GtkClipboard *clipboard,
                                   GtkSelectionData *selection_data,
                                   gpointer user_data)
@@ -866,19 +884,13 @@ static void clipboard_received_cb(GtkClipboard *clipboard,
     gchar* name;
     GdkAtom atom;
     int selection;
-    int max_clipboard;
 
     selection = get_selection_from_clipboard(s, clipboard);
     g_return_if_fail(selection != -1);
 
-    g_object_get(s->main, "max-clipboard", &max_clipboard, NULL);
     len = gtk_selection_data_get_length(selection_data);
-    if (len == 0 || (max_clipboard != -1 && len > max_clipboard)) {
-        g_warning("discarded clipboard of size %d (max: %d)", len, max_clipboard);
+    if (!check_clipboard_size_limits(self, len)) {
         return;
-    } else if (len == -1) {
-        SPICE_DEBUG("empty clipboard");
-        len = 0;
     } else {
         atom = gtk_selection_data_get_data_type(selection_data);
         name = gdk_atom_name(atom);
@@ -922,6 +934,10 @@ static void clipboard_received_cb(GtkClipboard *clipboard,
              * This is gtk+ bug https://bugzilla.gnome.org/show_bug.cgi?id=734670
              */
             len = strlen((const char *)data);
+        }
+        if (!check_clipboard_size_limits(self, len)) {
+            g_free(conv);
+            return;
         }
     }
 
@@ -1103,10 +1119,10 @@ SpiceGtkSession *spice_gtk_session_get(SpiceSession *session)
     static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
 
     g_static_mutex_lock(&mutex);
-    self = session->priv->gtk_session;
+    self = g_object_get_data(G_OBJECT(session), "spice-gtk-session");
     if (self == NULL) {
         self = g_object_new(SPICE_TYPE_GTK_SESSION, "session", session, NULL);
-        session->priv->gtk_session = self;
+        g_object_set_data_full(G_OBJECT(session), "spice-gtk-session", self, g_object_unref);
     }
     g_static_mutex_unlock(&mutex);
 

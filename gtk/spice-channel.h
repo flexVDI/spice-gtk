@@ -107,7 +107,6 @@ GType spice_channel_get_type(void);
 typedef void (*spice_msg_handler)(SpiceChannel *channel, SpiceMsgIn *in);
 
 SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id);
-void spice_channel_destroy(SpiceChannel *channel);
 gboolean spice_channel_connect(SpiceChannel *channel);
 gboolean spice_channel_open_fd(SpiceChannel *channel, int fd);
 void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason);
@@ -118,6 +117,8 @@ gboolean spice_channel_flush_finish(SpiceChannel *channel, GAsyncResult *result,
 #ifndef SPICE_DISABLE_DEPRECATED
 SPICE_DEPRECATED
 void spice_channel_set_capability(SpiceChannel *channel, guint32 cap);
+SPICE_DEPRECATED
+void spice_channel_destroy(SpiceChannel *channel);
 #endif
 
 const gchar* spice_channel_type_to_string(gint type);

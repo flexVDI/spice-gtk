@@ -1298,7 +1298,7 @@ static gboolean timer_set_display(gpointer data)
 
     /* ensure we have an explicit monitor configuration at least for
        number of display channels */
-    for (i = 0; i < session->priv->display_channels_count; i++)
+    for (i = 0; i < spice_session_get_n_display_channels(session); i++)
         if (!c->display[i].enabled_set) {
             SPICE_DEBUG("Not sending monitors config, missing monitors");
             return FALSE;
@@ -2070,17 +2070,15 @@ static gboolean migrate_connect(gpointer data)
     SpiceChannelPrivate  *c;
     int port, sport;
     const char *host;
-    SpiceSession *session;
 
     g_return_val_if_fail(mig != NULL, FALSE);
     g_return_val_if_fail(mig->info != NULL, FALSE);
     g_return_val_if_fail(mig->nchannels == 0, FALSE);
     c = SPICE_CHANNEL(mig->src_channel)->priv;
     g_return_val_if_fail(c != NULL, FALSE);
+    g_return_val_if_fail(mig->session != NULL, FALSE);
 
-    session = spice_channel_get_session(mig->src_channel);
-    mig->session = spice_session_new_from_session(session);
-    mig->session->priv->migration_copy = true;
+    spice_session_set_migration_state(mig->session, SPICE_SESSION_MIGRATION_CONNECTING);
 
     if ((c->peer_hdr.major_version == 1) &&
         (c->peer_hdr.minor_version < 1)) {
@@ -2139,7 +2137,8 @@ static gboolean migrate_connect(gpointer data)
 
     /* the migration process is in 2 steps, first the main channel and
        then the rest of the channels */
-    mig->session->priv->cmain = migrate_channel_connect(mig, SPICE_CHANNEL_MAIN, 0);
+    spice_session_set_main_channel(mig->session,
+                                   migrate_channel_connect(mig, SPICE_CHANNEL_MAIN, 0));
 
     return FALSE;
 }
@@ -2150,15 +2149,24 @@ static void main_migrate_connect(SpiceChannel *channel,
                                  uint32_t src_mig_version)
 {
     SpiceMainChannelPrivate *main_priv = SPICE_MAIN_CHANNEL(channel)->priv;
+    int reply_type = SPICE_MSGC_MAIN_MIGRATE_CONNECT_ERROR;
     spice_migrate mig = { 0, };
     SpiceMsgOut *out;
-    int reply_type;
+    SpiceSession *session;
 
     mig.src_channel = channel;
     mig.info = dst_info;
     mig.from = coroutine_self();
     mig.do_seamless = do_seamless;
     mig.src_mig_version = src_mig_version;
+
+    CHANNEL_DEBUG(channel, "migrate connect");
+    session = spice_channel_get_session(channel);
+    mig.session = spice_session_new_from_session(session);
+    if (mig.session == NULL)
+        goto end;
+    if (!spice_session_set_migration_session(session, mig.session))
+        goto end;
 
     main_priv->migrate_data = &mig;
 
@@ -2167,11 +2175,10 @@ static void main_migrate_connect(SpiceChannel *channel,
 
     /* switch to main loop and wait for connections */
     coroutine_yield(NULL);
-    g_return_if_fail(mig.session != NULL);
 
     if (mig.nchannels != 0) {
-        reply_type = SPICE_MSGC_MAIN_MIGRATE_CONNECT_ERROR;
-        spice_session_disconnect(mig.session);
+        CHANNEL_DEBUG(channel, "migrate failed: some channels failed to connect");
+        spice_session_abort_migration(session);
     } else {
         if (mig.do_seamless) {
             SPICE_DEBUG("migration (seamless): connections all ok");
@@ -2180,12 +2187,12 @@ static void main_migrate_connect(SpiceChannel *channel,
             SPICE_DEBUG("migration (semi-seamless): connections all ok");
             reply_type = SPICE_MSGC_MAIN_MIGRATE_CONNECTED;
         }
-        spice_session_set_migration(spice_channel_get_session(channel),
-                                    mig.session,
-                                    mig.do_seamless);
+        spice_session_start_migrating(spice_channel_get_session(channel),
+                                      mig.do_seamless);
     }
-    g_object_unref(mig.session);
 
+end:
+    CHANNEL_DEBUG(channel, "migrate connect reply %d", reply_type);
     out = spice_msg_out_new(SPICE_CHANNEL(channel), reply_type);
     spice_msg_out_send(out);
 }
@@ -2267,9 +2274,6 @@ static gboolean switch_host_delayed(gpointer data)
 
     spice_channel_disconnect(channel, SPICE_CHANNEL_SWITCHING);
     spice_session_switching_disconnect(session);
-
-    spice_channel_connect(channel);
-    spice_session_set_migration_state(session, SPICE_SESSION_MIGRATION_NONE);
 
     return FALSE;
 }

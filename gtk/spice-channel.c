@@ -153,9 +153,6 @@ static void spice_channel_dispose(GObject *gobject)
 
     CHANNEL_DEBUG(channel, "%s %p", __FUNCTION__, gobject);
 
-    if (c->session)
-        spice_session_channel_destroy(c->session, channel);
-
     spice_channel_disconnect(channel, SPICE_CHANNEL_CLOSED);
 
     if (c->session) {
@@ -2002,7 +1999,7 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
         break;
     case SPICE_CHANNEL_PLAYBACK:
     case SPICE_CHANNEL_RECORD: {
-        if (!s->priv->audio) {
+        if (!spice_session_get_audio_enabled(s)) {
             g_debug("audio channel is disabled, not creating it");
             return NULL;
         }
@@ -2012,7 +2009,7 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
     }
 #ifdef USE_SMARTCARD
     case SPICE_CHANNEL_SMARTCARD: {
-        if (!s->priv->smartcard) {
+        if (!spice_session_get_smartcard_enabled(s)) {
             g_debug("smartcard channel is disabled, not creating it");
             return NULL;
         }
@@ -2022,7 +2019,7 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
 #endif
 #ifdef USE_USBREDIR
     case SPICE_CHANNEL_USBREDIR: {
-        if (!s->priv->usbredir) {
+        if (!spice_session_get_usbredir_enabled(s)) {
             g_debug("usbredir channel is disabled, not creating it");
             return NULL;
         }
@@ -2056,8 +2053,12 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
  * spice_channel_destroy:
  * @channel:
  *
- * Disconnect and unref the @channel. Called by @spice_session_disconnect()
+ * Disconnect and unref the @channel.
  *
+ * Deprecated: 0.27: this function has been deprecated because it is
+ * misleading, the object is not actually destroyed. Instead, it is
+ * recommended to call explicitely spice_channel_disconnect() and
+ * g_object_unref().
  **/
 void spice_channel_destroy(SpiceChannel *channel)
 {
@@ -2162,6 +2163,10 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
 
     if (c->has_error) {
         GIOCondition ret;
+
+        if (!c->sock)
+            return FALSE;
+
         /* We don't want to report an error if the socket was closed gracefully
          * on the other end (VM shutdown) */
         ret = g_socket_condition_check(c->sock, G_IO_IN | G_IO_ERR | G_IO_HUP);
@@ -2530,18 +2535,20 @@ static gboolean channel_connect(SpiceChannel *channel)
         g_warning("%s: channel setup incomplete", __FUNCTION__);
         return false;
     }
-    if (c->state != SPICE_CHANNEL_STATE_UNCONNECTED) {
-        g_warning("Invalid channel_connect state: %d", c->state);
-        return true;
-    }
+
+    c->state = SPICE_CHANNEL_STATE_CONNECTING;
 
     if (spice_session_get_client_provided_socket(c->session)) {
         if (c->fd == -1) {
+            CHANNEL_DEBUG(channel, "requesting fd");
+            /* FIXME: no way for client to provide fd atm. */
+            /* It could either chain on parent channel.. */
+            /* or register migration channel on parent session, or ? */
             g_signal_emit(channel, signals[SPICE_CHANNEL_OPEN_FD], 0, c->tls);
             return true;
         }
     }
-    c->state = SPICE_CHANNEL_STATE_CONNECTING;
+
     c->xmit_queue_blocked = FALSE;
 
     g_return_val_if_fail(c->sock == NULL, FALSE);
@@ -2569,6 +2576,8 @@ gboolean spice_channel_connect(SpiceChannel *channel)
     if (c->state >= SPICE_CHANNEL_STATE_CONNECTING)
         return TRUE;
 
+    g_return_val_if_fail(channel->priv->fd == -1, FALSE);
+
     return channel_connect(channel);
 }
 
@@ -2591,9 +2600,15 @@ gboolean spice_channel_open_fd(SpiceChannel *channel, int fd)
 
     g_return_val_if_fail(SPICE_IS_CHANNEL(channel), FALSE);
     g_return_val_if_fail(channel->priv != NULL, FALSE);
+    g_return_val_if_fail(channel->priv->fd == -1, FALSE);
     g_return_val_if_fail(fd >= -1, FALSE);
 
     c = channel->priv;
+    if (c->state > SPICE_CHANNEL_STATE_CONNECTING) {
+        g_warning("Invalid channel_connect state: %d", c->state);
+        return true;
+    }
+
     c->fd = fd;
 
     return channel_connect(channel);
@@ -2604,6 +2619,7 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
 {
     SpiceChannelPrivate *c = channel->priv;
 
+    CHANNEL_DEBUG(channel, "channel reset");
     if (c->connect_delayed_id) {
         g_source_remove(c->connect_delayed_id);
         c->connect_delayed_id = 0;
@@ -2670,6 +2686,7 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
 G_GNUC_INTERNAL
 void spice_channel_reset(SpiceChannel *channel, gboolean migrating)
 {
+    CHANNEL_DEBUG(channel, "reset %s", migrating ? "migrating" : "");
     SPICE_CHANNEL_GET_CLASS(channel)->channel_reset(channel, migrating);
 }
 
@@ -2692,6 +2709,12 @@ static void channel_disconnect(SpiceChannel *channel)
     spice_channel_reset(channel, FALSE);
 
     g_return_if_fail(SPICE_IS_CHANNEL(channel));
+
+    if (c->state == SPICE_CHANNEL_STATE_SWITCHING) {
+        spice_channel_connect(channel);
+        spice_session_set_migration_state(spice_channel_get_session(channel),
+                                          SPICE_SESSION_MIGRATION_NONE);
+    }
 }
 
 /**

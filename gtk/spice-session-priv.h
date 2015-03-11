@@ -41,87 +41,7 @@ G_BEGIN_DECLS
 #define MIN_GLZ_WINDOW_SIZE_DEFAULT (1024 * 1024 * 12)
 #define MAX_GLZ_WINDOW_SIZE_DEFAULT MIN((LZ_MAX_WINDOW_SIZE * 4), 1024 * 1024 * 64)
 
-struct _SpiceSessionPrivate {
-    char              *host;
-    char              *port;
-    char              *tls_port;
-    char              *ws_port;
-    char              *username;
-    char              *password;
-    char              *ca_file;
-    char              *ciphers;
-    GByteArray        *pubkey;
-    GByteArray        *ca;
-    char              *cert_subject;
-    guint             verify;
-    gboolean          read_only;
-    SpiceURI          *proxy;
-    gchar             *shared_dir;
-
-    /* whether to enable audio */
-    gboolean          audio;
-
-    /* whether to enable smartcard event forwarding to the server */
-    gboolean          smartcard;
-
-    /* list of certificates to use for the software smartcard reader if
-     * enabled. For now, it has to contain exactly 3 certificates for
-     * the software reader to be functional
-     */
-    GStrv             smartcard_certificates;
-
-    /* path to the local certificate database to use to lookup the
-     * certificates stored in 'certificates'. If NULL, libcacard will
-     * fallback to using a default database.
-     */
-    char *            smartcard_db;
-
-    /* whether to enable USB redirection */
-    gboolean          usbredir;
-
-    /* Set when a usbredir channel has requested the keyboard grab to be
-       temporarily released (because it is going to invoke policykit) */
-    gboolean          inhibit_keyboard_grab;
-
-    GStrv             disable_effects;
-    GStrv             secure_channels;
-    gint              color_depth;
-
-    int               connection_id;
-    int               protocol;
-    SpiceChannel      *cmain; /* weak reference */
-    Ring              channels;
-    guint32           mm_time;
-    gboolean          client_provided_sockets;
-    guint64           mm_time_at_clock;
-    SpiceSession      *migration;
-    GList             *migration_left;
-    SpiceSessionMigration migration_state;
-    gboolean          full_migration; /* seamless migration indicator */
-    gboolean          disconnecting;
-    gboolean          migrate_wait_init;
-    guint             after_main_init;
-    gboolean          migration_copy;
-
-    display_cache     *images;
-    display_cache     *palettes;
-    SpiceGlzDecoderWindow *glz_window;
-    int               images_cache_size;
-    int               glz_window_size;
-    uint32_t          pci_ram_size;
-    uint32_t          display_channels_count;
-    guint8            uuid[16];
-    gchar             *name;
-
-    /* associated objects */
-    SpiceAudio        *audio_manager;
-    SpiceDesktopIntegration *desktop_integration;
-    SpiceGtkSession   *gtk_session;
-    SpiceUsbDeviceManager *usb_manager;
-    SpicePlaybackChannel *playback_channel;
-    PhodavServer      *webdav;
-    guint8             webdav_magic[16];
-};
+#define WEBDAV_MAGIC_SIZE 16
 
 SpiceSession *spice_session_new_from_session(SpiceSession *session);
 
@@ -132,16 +52,14 @@ gboolean spice_session_get_client_provided_socket(SpiceSession *session);
 GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceChannel *channel,
                                                    gboolean *use_tls, char **ws_token, GError **error);
 void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel);
-void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel);
 void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel);
 
 void spice_session_set_mm_time(SpiceSession *session, guint32 time);
 guint32 spice_session_get_mm_time(SpiceSession *session);
 
 void spice_session_switching_disconnect(SpiceSession *session);
-void spice_session_set_migration(SpiceSession *session,
-                                 SpiceSession *migration,
-                                 gboolean full_migration);
+void spice_session_start_migrating(SpiceSession *session,
+                                   gboolean full_migration);
 void spice_session_abort_migration(SpiceSession *session);
 void spice_session_set_migration_state(SpiceSession *session, SpiceSessionMigration state);
 
@@ -158,7 +76,7 @@ void spice_session_get_ca(SpiceSession *session, guint8 **ca, guint *size);
 
 void spice_session_set_caches_hints(SpiceSession *session,
                                     uint32_t pci_ram_size,
-                                    uint32_t display_channels_count);
+                                    uint32_t n_display_channels);
 void spice_session_get_caches(SpiceSession *session,
                               display_cache **images,
                               SpiceGlzDecoderWindow **glz_window);
@@ -174,6 +92,16 @@ guint32 spice_session_get_playback_latency(SpiceSession *session);
 void spice_session_sync_playback_latency(SpiceSession *session);
 const gchar* spice_session_get_shared_dir(SpiceSession *session);
 void spice_session_set_shared_dir(SpiceSession *session, const gchar *dir);
+gboolean spice_session_get_audio_enabled(SpiceSession *session);
+gboolean spice_session_get_smartcard_enabled(SpiceSession *session);
+gboolean spice_session_get_usbredir_enabled(SpiceSession *session);
+
+const guint8* spice_session_get_webdav_magic(SpiceSession *session);
+PhodavServer *spice_session_get_webdav_server(SpiceSession *session);
+PhodavServer* channel_webdav_server_new(SpiceSession *session);
+guint spice_session_get_n_display_channels(SpiceSession *session);
+void spice_session_set_main_channel(SpiceSession *session, SpiceChannel *channel);
+gboolean spice_session_set_migration_session(SpiceSession *session, SpiceSession *mig_session);
 
 G_END_DECLS
 

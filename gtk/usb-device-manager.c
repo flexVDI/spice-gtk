@@ -706,6 +706,30 @@ static gboolean spice_usb_device_manager_get_device_descriptor(
     return TRUE;
 }
 
+
+/**
+ * spice_usb_device_get_libusb_device:
+ * @device: #SpiceUsbDevice to get the descriptor information of
+ *
+ * Returns: (transfer none): the %libusb_device associated to %SpiceUsbDevice.
+ *
+ * Since: 0.27
+ **/
+gconstpointer
+spice_usb_device_get_libusb_device(const SpiceUsbDevice *device G_GNUC_UNUSED)
+{
+#ifdef USE_USBREDIR
+#ifndef G_OS_WIN32
+    const SpiceUsbDeviceInfo *info = (const SpiceUsbDeviceInfo *)device;
+
+    g_return_val_if_fail(info != NULL, FALSE);
+
+    return info->libdev;
+#endif
+#endif
+    return NULL;
+}
+
 static gboolean spice_usb_device_manager_get_libdev_vid_pid(
     libusb_device *libdev, int *vid, int *pid)
 {
@@ -734,14 +758,23 @@ static void channel_new(SpiceSession *session, SpiceChannel *channel,
 {
     SpiceUsbDeviceManager *self = user_data;
 
-    if (SPICE_IS_USBREDIR_CHANNEL(channel)) {
-        spice_usbredir_channel_set_context(SPICE_USBREDIR_CHANNEL(channel),
-                                           self->priv->context);
-        spice_channel_connect(channel);
-        g_ptr_array_add(self->priv->channels, channel);
+    if (!SPICE_IS_USBREDIR_CHANNEL(channel))
+        return;
 
-        spice_usb_device_manager_check_redir_on_connect(self, channel);
-    }
+    spice_usbredir_channel_set_context(SPICE_USBREDIR_CHANNEL(channel),
+                                       self->priv->context);
+    spice_channel_connect(channel);
+    g_ptr_array_add(self->priv->channels, channel);
+
+    spice_usb_device_manager_check_redir_on_connect(self, channel);
+
+    /*
+     * add a reference to ourself, to make sure the libusb context is
+     * alive as long as the channel is.
+     * TODO: moving to gusb could help here too.
+     */
+    g_object_ref(self);
+    g_object_weak_ref(G_OBJECT(channel), (GWeakNotify)g_object_unref, self);
 }
 
 static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
@@ -749,8 +782,10 @@ static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
 {
     SpiceUsbDeviceManager *self = user_data;
 
-    if (SPICE_IS_USBREDIR_CHANNEL(channel))
-        g_ptr_array_remove(self->priv->channels, channel);
+    if (!SPICE_IS_USBREDIR_CHANNEL(channel))
+        return;
+
+    g_ptr_array_remove(self->priv->channels, channel);
 }
 
 static void spice_usb_device_manager_auto_connect_cb(GObject      *gobject,
@@ -1150,6 +1185,7 @@ static gpointer spice_usb_device_manager_usb_ev_thread(gpointer user_data)
         if (rc && rc != LIBUSB_ERROR_INTERRUPTED) {
             const char *desc = spice_usbutil_libusb_strerror(rc);
             g_warning("Error handling USB events: %s [%i]", desc, rc);
+            break;
         }
     }
 
@@ -1273,39 +1309,6 @@ static SpiceUsbredirChannel *spice_usb_device_manager_get_channel_for_dev(
 
 /* ------------------------------------------------------------------ */
 /* public api                                                         */
-
-/**
- * spice_usb_device_manager_get:
- * @session: #SpiceSession for which to get the #SpiceUsbDeviceManager
- *
- * Gets the #SpiceUsbDeviceManager associated with the passed in #SpiceSession.
- * A new #SpiceUsbDeviceManager instance will be created the first time this
- * function is called for a certain #SpiceSession.
- *
- * Note that this function returns a weak reference, which should not be used
- * after the #SpiceSession itself has been unref-ed by the caller.
- *
- * Returns: (transfer none): a weak reference to the #SpiceUsbDeviceManager associated with the passed in #SpiceSession
- */
-SpiceUsbDeviceManager *spice_usb_device_manager_get(SpiceSession *session,
-                                                    GError **err)
-{
-    SpiceUsbDeviceManager *self;
-    static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
-
-    g_return_val_if_fail(err == NULL || *err == NULL, NULL);
-
-    g_static_mutex_lock(&mutex);
-    self = session->priv->usb_manager;
-    if (self == NULL) {
-        self = g_initable_new(SPICE_TYPE_USB_DEVICE_MANAGER, NULL, err,
-                              "session", session, NULL);
-        session->priv->usb_manager = self;
-    }
-    g_static_mutex_unlock(&mutex);
-
-    return self;
-}
 
 /**
  * spice_usb_device_manager_get_devices_with_filter:
@@ -1602,7 +1605,7 @@ spice_usb_device_manager_can_redirect_device(SpiceUsbDeviceManager  *self,
     g_return_val_if_fail(device != NULL, FALSE);
     g_return_val_if_fail(err == NULL || *err == NULL, FALSE);
 
-    if (!priv->session->priv->usbredir) {
+    if (!spice_session_get_usbredir_enabled(priv->session)) {
         g_set_error_literal(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                             _("USB redirection is disabled"));
         return FALSE;

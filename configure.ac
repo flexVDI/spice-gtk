@@ -699,6 +699,19 @@ if test "x$enable_dbus" != "xno"; then
   fi
 fi
 
+AC_ARG_ENABLE([lz4],
+  AS_HELP_STRING([--enable-lz4=@<:@yes/no@:>@],
+                 [Enable lz4 compression algorithm @<:@default=no@:>@]),
+  [],
+  [enable_lz4="no"])
+
+if test "x$enable_lz4" = "xyes"; then
+    PKG_CHECK_MODULES(LZ4, liblz4)
+    AC_DEFINE([USE_LZ4], [1], [Define to build with Lz4 support])
+fi
+AC_SUBST(LZ4_CFLAGS)
+AC_SUBST(LZ4_LIBS)
+
 dnl ===========================================================================
 dnl check compiler flags
 
@@ -769,6 +782,7 @@ AC_MSG_NOTICE([
         USB redirection support:  ${have_usbredir} ${with_usbredir_hotplug}
         DBus:                     ${have_dbus}
         WebDAV support:           ${have_phodav}
+        LZ4 support:              ${enable_lz4}
 
         Now type 'make' to build $PACKAGE
 

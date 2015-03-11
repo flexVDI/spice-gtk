@@ -336,13 +336,11 @@ static void magic_written(GObject *source_object,
     SpiceWebdavChannelPrivate *c = self->priv;
     gssize bytes_written;
     GError *err = NULL;
-    SpiceSession *session;
 
-    session = spice_channel_get_session(SPICE_CHANNEL(self));
     bytes_written = g_output_stream_write_finish(G_OUTPUT_STREAM(source_object),
                                                  res, &err);
 
-    if (err || bytes_written != sizeof(session->priv->webdav_magic))
+    if (err || bytes_written != WEBDAV_MAGIC_SIZE)
         goto error;
 
     client_start_read(self, client);
@@ -396,7 +394,7 @@ static void client_connected(GObject *source_object,
     g_object_unref(output);
 
     g_output_stream_write_async(g_io_stream_get_output_stream(G_IO_STREAM(conn)),
-                                session->priv->webdav_magic, sizeof(session->priv->webdav_magic),
+                                spice_session_get_webdav_magic(session), WEBDAV_MAGIC_SIZE,
                                 G_PRIORITY_DEFAULT, c->cancellable,
                                 magic_written, client);
     return;
@@ -654,7 +652,7 @@ static void new_connection(SoupSocket *sock,
     GSocketAddress *gaddr;
     GInetAddress *iaddr;
     guint port;
-    guint8 magic[16];
+    guint8 magic[WEBDAV_MAGIC_SIZE];
     gsize nread;
     gboolean success = FALSE;
     SoupSocketIOStatus status;
@@ -680,7 +678,7 @@ static void new_connection(SoupSocket *sock,
     g_object_set(new, "non-blocking", TRUE, NULL);
 
     /* check we got the right magic */
-    if (memcmp(session->priv->webdav_magic, magic, sizeof(magic))) {
+    if (memcmp(spice_session_get_webdav_magic(session), magic, sizeof(magic))) {
         g_warn_if_reached();
         goto end;
     }
@@ -696,19 +694,14 @@ end:
     g_object_unref(gaddr);
 }
 
-static PhodavServer* webdav_server_new(SpiceSession *session)
+G_GNUC_INTERNAL
+PhodavServer* channel_webdav_server_new(SpiceSession *session)
 {
     PhodavServer *dav;
     SoupServer *server;
     SoupSocket *listener;
-    int i;
-
-    g_warn_if_fail(!session->priv->webdav);
 
     dav = phodav_server_new(0, spice_session_get_shared_dir(session));
-    session->priv->webdav = dav;
-    for (i = 0; i < sizeof(session->priv->webdav_magic); i++)
-        session->priv->webdav_magic[i] = g_random_int_range(0, 255);
 
     server = phodav_server_get_soup_server(dav);
     listener = soup_server_get_listener(server);
@@ -725,21 +718,12 @@ static PhodavServer* phodav_server_get(SpiceSession *session, gint *port)
     g_return_val_if_fail(SPICE_IS_SESSION(session), NULL);
 
 #ifdef USE_PHODAV
-    PhodavServer *self = NULL;
-    static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
-
-    g_static_mutex_lock(&mutex);
-    self = session->priv->webdav;
-    if (self == NULL) {
-        self = webdav_server_new(session);
-        phodav_server_run(self);
-    }
-    g_static_mutex_unlock(&mutex);
+    PhodavServer *server = spice_session_get_webdav_server(session);
 
     if (port)
-        *port = phodav_server_get_port(self);
+        *port = phodav_server_get_port(server);
 
-    return self;
+    return server;
 #else
     g_return_val_if_reached(NULL);
 #endif

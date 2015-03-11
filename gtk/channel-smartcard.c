@@ -136,7 +136,7 @@ static void spice_smartcard_channel_constructed(GObject *object)
     g_return_if_fail(s != NULL);
 
 #ifdef USE_SMARTCARD
-    if (!s->priv->migration_copy) {
+    if (!spice_session_is_for_migration(s)) {
         SpiceSmartcardChannel *channel = SPICE_SMARTCARD_CHANNEL(object);
         SpiceSmartcardManager *manager = spice_smartcard_manager_get();
 
@@ -452,23 +452,24 @@ static void spice_smartcard_channel_up_cb(GObject *source_object,
                                           gpointer user_data)
 {
     SpiceChannel *channel = SPICE_CHANNEL(user_data);
+    GError *error = NULL;
 
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_SESSION(source_object));
 
-    if (!spice_channel_get_session(SPICE_CHANNEL(channel))->priv->migration_copy) {
-        GError *error = NULL;
+    spice_smartcard_manager_init_finish(SPICE_SESSION(source_object),
+                                        res, &error);
+    if (error)
+        g_warning("%s", error->message);
 
-        spice_smartcard_manager_init_finish(SPICE_SESSION(source_object),
-                                            res, &error);
-        if (error)
-            g_warning("%s", error->message);
-        g_clear_error(&error);
-    }
+    g_clear_error(&error);
 }
 
 static void spice_smartcard_channel_up(SpiceChannel *channel)
 {
+    if (spice_session_is_for_migration(spice_channel_get_session(channel)))
+        return;
+
     spice_smartcard_manager_init_async(spice_channel_get_session(channel),
                                        g_cancellable_new(),
                                        spice_smartcard_channel_up_cb,

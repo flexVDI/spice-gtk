@@ -109,6 +109,8 @@ struct _SpiceDisplayPrivate {
     guint                   key_delayed_id;
     SpiceGrabSequence         *grabseq; /* the configured key sequence */
     gboolean                *activeseq; /* the currently pressed keys */
+    gboolean                seq_pressed;
+    gboolean                keyboard_grab_released;
     gint                    mark;
 #ifdef WIN32
     HHOOK                   keyboard_hook;

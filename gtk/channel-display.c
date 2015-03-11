@@ -590,6 +590,9 @@ static void spice_display_channel_reset_capabilities(SpiceChannel *channel)
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_MONITORS_CONFIG);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_COMPOSITE);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_A8_SURFACE);
+#ifdef USE_LZ4
+    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_LZ4_COMPRESSION);
+#endif
     if (SPICE_DISPLAY_CHANNEL(channel)->priv->enable_adaptive_streaming) {
         spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_STREAM_REPORT);
     }
@@ -1003,15 +1006,16 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
 /* coroutine or main context */
 static gboolean display_stream_schedule(display_stream *st)
 {
+    SpiceSession *session = spice_channel_get_session(st->channel);
     guint32 time, d;
     SpiceStreamDataHeader *op;
     SpiceMsgIn *in;
 
     SPICE_DEBUG("%s", __FUNCTION__);
-    if (st->timeout)
+    if (st->timeout || !session)
         return TRUE;
 
-    time = spice_session_get_mm_time(spice_channel_get_session(st->channel));
+    time = spice_session_get_mm_time(session);
     in = g_queue_peek_head(st->msgq);
 
     if (in == NULL) {
