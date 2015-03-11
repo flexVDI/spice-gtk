@@ -86,7 +86,7 @@ struct _SpiceChannelClass
 
     /*< private >*/
     /* virtual method, any context */
-    void (*channel_disconnect)(SpiceChannel *channel);
+    gpointer deprecated;
     void (*channel_reset)(SpiceChannel *channel, gboolean migrating);
     void (*channel_reset_capabilities)(SpiceChannel *channel);
 

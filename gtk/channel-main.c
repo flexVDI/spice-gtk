@@ -2137,8 +2137,7 @@ static gboolean migrate_connect(gpointer data)
 
     /* the migration process is in 2 steps, first the main channel and
        then the rest of the channels */
-    spice_session_set_main_channel(mig->session,
-                                   migrate_channel_connect(mig, SPICE_CHANNEL_MAIN, 0));
+    migrate_channel_connect(mig, SPICE_CHANNEL_MAIN, 0);
 
     return FALSE;
 }

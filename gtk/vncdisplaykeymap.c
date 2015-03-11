@@ -175,11 +175,12 @@ const guint16 *vnc_display_keymap_gdk2xtkbd_table(GdkWindow *window,
 		 * X servers..... patches welcomed.
 		 */
 
-		desc = XkbGetKeyboard(gdk_x11_display_get_xdisplay(dpy),
+		Display *xdisplay = gdk_x11_display_get_xdisplay(dpy);
+		desc = XkbGetMap(xdisplay,
 				      XkbGBN_AllComponentsMask,
 				      XkbUseCoreKbd);
 		if (desc) {
-			if (desc->names) {
+			if (XkbGetNames(xdisplay, XkbKeycodesNameMask, desc) == Success) {
 				keycodes = gdk_x11_get_xatom_name(desc->names->keycodes);
 				if (!keycodes)
 					g_warning("could not lookup keycode name");
@@ -195,11 +196,11 @@ const guint16 *vnc_display_keymap_gdk2xtkbd_table(GdkWindow *window,
 			VNC_DEBUG("Using xquartz keycode mapping");
 			*maplen = G_N_ELEMENTS(keymap_xorgxquartz2xtkbd);
 			return keymap_xorgxquartz2xtkbd;
-		} else if (keycodes && STRPREFIX(keycodes, "evdev_")) {
+		} else if (keycodes && STRPREFIX(keycodes, "evdev")) {
 			VNC_DEBUG("Using evdev keycode mapping");
 			*maplen = G_N_ELEMENTS(keymap_xorgevdev2xtkbd);
 			return keymap_xorgevdev2xtkbd;
-		} else if (keycodes && STRPREFIX(keycodes, "xfree86_")) {
+		} else if (keycodes && STRPREFIX(keycodes, "xfree86")) {
 			VNC_DEBUG("Using xfree86 keycode mapping");
 			*maplen = G_N_ELEMENTS(keymap_xorgkbd2xtkbd);
 			return keymap_xorgkbd2xtkbd;

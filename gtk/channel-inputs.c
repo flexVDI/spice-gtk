@@ -32,8 +32,8 @@
  *
  * Spice supports sending keyboard key events and keyboard leds
  * synchronization. The key events are sent using
- * spice_inputs_key_press() and spice_inputs_key_release() using PC AT
- * scancode.
+ * spice_inputs_key_press() and spice_inputs_key_release() using
+ * a modified variant of PC XT scancodes.
  *
  * Guest keyboard leds state can be manipulated with
  * spice_inputs_set_key_locks(). When key lock change, a notification
@@ -438,7 +438,8 @@ void spice_inputs_button_release(SpiceInputsChannel *channel, gint button,
 /**
  * spice_inputs_key_press:
  * @channel:
- * @scancode: a PC AT key scancode
+ * @scancode: a PC XT (set 1) key scancode.  For scancodes with an %0xe0
+ *            prefix, drop the prefix and OR the scancode with %0x100.
  *
  * Press a key.
  **/
@@ -463,7 +464,8 @@ void spice_inputs_key_press(SpiceInputsChannel *channel, guint scancode)
 /**
  * spice_inputs_key_release:
  * @channel:
- * @scancode: a PC AT key scancode
+ * @scancode: a PC XT (set 1) key scancode.  For scancodes with an %0xe0
+ *            prefix, drop the prefix and OR the scancode with %0x100.
  *
  * Release a key.
  **/
@@ -488,7 +490,8 @@ void spice_inputs_key_release(SpiceInputsChannel *channel, guint scancode)
 /**
  * spice_inputs_key_press_and_release:
  * @channel:
- * @scancode: a PC AT key scancode
+ * @scancode: a PC XT (set 1) key scancode.  For scancodes with an %0xe0
+ *            prefix, drop the prefix and OR the scancode with %0x100.
  *
  * Press and release a key event atomically (in the same message).
  *

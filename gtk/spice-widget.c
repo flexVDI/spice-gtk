@@ -1200,9 +1200,6 @@ static void send_key(SpiceDisplay *display, int scancode, SendKeyType type, gboo
     if (d->disable_inputs)
         return;
 
-    if (d->keyboard_grab_released)
-        return;
-
     i = scancode / 32;
     b = scancode % 32;
     m = (1 << b);
@@ -1475,9 +1472,6 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
 
     SPICE_DEBUG("%s", __FUNCTION__);
 
-    if (!gtk_widget_get_realized(widget))
-        return true;
-
     /*
      * Ignore focus in when we already have the focus
      * (this happens when doing an ungrab from the leave_event callback).
@@ -1492,7 +1486,9 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
         memset(d->activeseq, 0, sizeof(gboolean) * d->grabseq->nkeysyms);
     update_keyboard_focus(display, true);
     try_keyboard_grab(display);
-    update_display(display);
+
+    if (gtk_widget_get_realized(widget))
+        update_display(display);
 
     return true;
 }
@@ -2344,6 +2340,9 @@ static void cursor_invalidate(SpiceDisplay *display)
     SpiceDisplayPrivate *d = display->priv;
     double s;
     int x, y;
+
+    if (!gtk_widget_get_realized (GTK_WIDGET(display)))
+        return;
 
     if (d->mouse_pixbuf == NULL)
         return;

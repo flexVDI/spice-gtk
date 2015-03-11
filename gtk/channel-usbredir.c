@@ -466,6 +466,9 @@ static void usbredir_write_flush_callback(void *user_data)
             SPICE_CHANNEL_STATE_READY)
         return;
 
+    if (!priv->host)
+        return;
+
     usbredirhost_write_guest_data(priv->host);
 }
 

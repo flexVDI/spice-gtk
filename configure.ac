@@ -158,13 +158,13 @@ AC_SUBST([SASL_LIBS])
 
 AC_MSG_CHECKING([which gtk+ version to compile against])
 AC_ARG_WITH([gtk],
-  [AS_HELP_STRING([--with-gtk=@<:@2.0/3.0@:>@],[which gtk+ version to compile against @<:@default=3.0@:>@])],
+  [AS_HELP_STRING([--with-gtk=@<:@2.0/3.0/no@:>@],[which gtk+ version to compile against @<:@default=3.0@:>@])],
   [case "$with_gtk" in
-     2.0|3.0) ;;
+     2.0|3.0) AC_MSG_RESULT([$with_gtk]) ;;
+     no) AC_MSG_RESULT([none]) ;;
      *) AC_MSG_ERROR([invalid gtk version specified]) ;;
    esac],
   [with_gtk=3.0])
-AC_MSG_RESULT([$with_gtk])
 
 case "$with_gtk" in
   2.0) GTK_API_VERSION=2.0
@@ -175,15 +175,20 @@ case "$with_gtk" in
        GTK_REQUIRED=2.91.3
        SPICE_GTK_API_VERSION=3.0
        ;;
+  no)
+       AS_IF([test x$enable_gtk_doc = xyes],
+             [AC_MSG_ERROR([Without GTK+, gtk-doc must be disabled])])
 esac
 
 AC_SUBST([GTK_API_VERSION])
 AC_SUBST([GTK_REQUIRED])
 AC_SUBST([SPICE_GTK_API_VERSION])
+AM_CONDITIONAL([WITH_GTK],[test "$with_gtk" != "no"])
 AM_CONDITIONAL([HAVE_GTK_2],[test "$with_gtk" = "2.0"])
 AM_CONDITIONAL([HAVE_GTK_3],[test "$with_gtk" = "3.0"])
 
-PKG_CHECK_MODULES(GTK, gtk+-$GTK_API_VERSION >= $GTK_REQUIRED)
+AS_IF([test "x$with_gtk" != "xno"],
+      [PKG_CHECK_MODULES(GTK, gtk+-$GTK_API_VERSION >= $GTK_REQUIRED)])
 AC_SUBST(GTK_CFLAGS)
 AC_SUBST(GTK_LIBS)
 SPICE_GTK_REQUIRES="${SPICE_GTK_REQUIRES} gtk+-$GTK_API_VERSION >= $GTK_REQUIRED"
@@ -273,7 +278,7 @@ AC_ARG_ENABLE([webdav],
 if test "x$enable_webdav" = "xno"; then
   have_phodav="no"
 else
-  PKG_CHECK_MODULES(PHODAV, [libphodav-1.0], [have_phodav=yes], [have_phodav=no])
+  PKG_CHECK_MODULES(PHODAV, [libphodav-2.0 glib-2.0 >= 2.43.90 libsoup-2.4 >= 2.49.91], [have_phodav=yes], [have_phodav=no])
   AC_SUBST(PHODAV_CFLAGS)
   AC_SUBST(PHODAV_LIBS)
 
@@ -284,8 +289,10 @@ fi
 AS_IF([test "x$have_phodav" = "xyes"],
        AC_DEFINE([USE_PHODAV], [1], [Define if supporting phodav]))
 
+AM_CONDITIONAL([WITH_PHODAV], [test "x$have_phodav" = "xyes"])
+
 AC_ARG_WITH([audio],
-  AS_HELP_STRING([--with-audio=@<:@gstreamer/gstreamer1/pulse/auto/no@:>@], [Select audio backend @<:@default=auto@:>@]),
+  AS_HELP_STRING([--with-audio=@<:@gstreamer/pulse/auto/no@:>@], [Select audio backend @<:@default=auto@:>@]),
   [],
   [with_audio="auto"])
 
@@ -294,7 +301,7 @@ AS_IF([test "x$with_audio" = "xauto"], [
 ])
 
 case "$with_audio" in
-  gstreamer|gstreamer1|pulse|no*)
+  gstreamer|pulse|no*)
     ;;
   *) AC_MSG_ERROR(Unsupported audio backend)
 esac
@@ -314,27 +321,16 @@ AC_SUBST(PULSE_CFLAGS)
 AC_SUBST(PULSE_LIBS)
 
 AS_IF([test "x$with_audio" = "xgstreamer"],
-      [PKG_CHECK_MODULES(GST, gstreamer-0.10 gstreamer-base-0.10 gstreamer-app-0.10 gstreamer-audio-0.10, [have_gst=yes], [have_gst=no])],
+      [PKG_CHECK_MODULES(GST, gstreamer-1.0 gstreamer-base-1.0 gstreamer-app-1.0 gstreamer-audio-1.0, [have_gst=yes], [have_gst=no])],
       [have_gst=no])
 
 AS_IF([test "x$have_gst" = "xyes"],
-      [AC_DEFINE([WITH_GSTAUDIO], 1, [Have GStreamer?])],
+      [AC_DEFINE([WITH_GSTAUDIO], 1, [Have GStreamer 1.0?])],
       [AS_IF([test "x$with_audio" = "xgstreamer"],
-             [AC_MSG_ERROR([GStreamer requested but not found])
-      ])
-])
-
-AS_IF([test "x$with_audio" = "xgstreamer1"],
-      [PKG_CHECK_MODULES(GST, gstreamer-1.0 gstreamer-base-1.0 gstreamer-app-1.0 gstreamer-audio-1.0, [have_gst1=yes], [have_gst1=no])],
-      [have_gst1=no])
-
-AS_IF([test "x$have_gst1" = "xyes"],
-      [AC_DEFINE([WITH_GST1AUDIO], 1, [Have GStreamer 1.0?])],
-      [AS_IF([test "x$with_audio" = "xgstreamer1"],
              [AC_MSG_ERROR([GStreamer 1.0 requested but not found])
       ])
 ])
-AM_CONDITIONAL([WITH_GSTAUDIO], [test "x$have_gst" = "xyes" -o "x$have_gst1" = "xyes"])
+AM_CONDITIONAL([WITH_GSTAUDIO], [test "x$have_gst" = "xyes"])
 AC_SUBST(GST_CFLAGS)
 AC_SUBST(GST_LIBS)
 
@@ -614,7 +610,7 @@ AC_ARG_WITH([python],
    yes|no|auto) with_python="$withval";;
    *) AC_MSG_ERROR([bad value $withval for python option]) ;;
    esac],
-  [AS_IF([test "$with_gtk" = "3.0" || test "x$os_win32" = "xyes"],
+  [AS_IF([test "$with_gtk" != "2.0" || test "x$os_win32" = "xyes"],
          [with_python=no],[with_python=auto])]
 )
 
@@ -773,8 +769,8 @@ AC_MSG_NOTICE([
         prefix:                   ${prefix}
         c compiler:               ${CC}
         Target:                   ${red_target}
-        Gtk:                      $GTK_API_VERSION
 
+        Gtk:                      ${with_gtk}
         Coroutine:                ${with_coroutine}
         Audio:                    ${with_audio}
         SASL support:             ${enable_sasl}

@@ -1198,10 +1198,14 @@ static void recent_add(SpiceSession *session)
     g_object_get(session, "uri", &uri, NULL);
     SPICE_DEBUG("%s: %s", __FUNCTION__, uri);
 
-    g_return_if_fail(g_str_has_prefix(uri, "spice://"));
-
     recent = gtk_recent_manager_get_default();
-    meta.display_name = uri + 8;
+    if (g_str_has_prefix(uri, "spice://"))
+        meta.display_name = uri + 8;
+    else if (g_str_has_prefix(uri, "spice+unix://"))
+        meta.display_name = uri + 13;
+    else
+        g_return_if_reached();
+
     if (!gtk_recent_manager_add_full(recent, uri, &meta))
         g_warning("Recent item couldn't be added successfully");
 
@@ -1803,7 +1807,7 @@ int main(int argc, char *argv[])
     GOptionContext *context;
     spice_connection *conn;
     gchar *conf_file, *conf;
-    char *host = NULL, *port = NULL, *tls_port = NULL, *ws_port = NULL;
+    char *host = NULL, *port = NULL, *tls_port = NULL, *ws_port = NULL, *unix_path = NULL;
 
 #if !GLIB_CHECK_VERSION(2,31,18)
     g_thread_init(NULL);
@@ -1876,6 +1880,7 @@ int main(int argc, char *argv[])
     spice_cmdline_session_setup(conn->session);
 
     g_object_get(conn->session,
+                 "unix-path", &unix_path,
                  "host", &host,
                  "port", &port,
                  "tls-port", &tls_port,
@@ -1883,7 +1888,7 @@ int main(int argc, char *argv[])
                  NULL);
     /* If user doesn't provide hostname and port, show the dialog window
        instead of connecting to server automatically */
-    if (host == NULL || (port == NULL && tls_port == NULL)) {
+    if ((host == NULL || (port == NULL && tls_port == NULL)) && unix_path == NULL) {
         int ret = connect_dialog(conn->session);
         if (ret != 0) {
             exit(0);
@@ -1893,6 +1898,7 @@ int main(int argc, char *argv[])
     g_free(port);
     g_free(tls_port);
     g_free(ws_port);
+    g_free(unix_path);
 
     watch_stdin();
 

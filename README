@@ -49,9 +49,9 @@ cyrus-sasl-devel gtk-doc
 
 pygtk2-devel python
 
-. The experimental GStreamer backend needs:
+. The GStreamer backend needs:
 
-gstreamer-devel gstreamer-plugins-base-devel
+gstreamer1-devel gstreamer1-plugins-base-devel gstreamer1-plugins-good gstreamer1-plugins-bad-free
 
 . If you build from git, you'll also need:
 

@@ -24,8 +24,7 @@
 #include "spice-marshal.h"
 #include "glib-compat.h"
 #include "vmcstream.h"
-
-static PhodavServer* phodav_server_get(SpiceSession *session, gint *port);
+#include "giopipe.h"
 
 /**
  * SECTION:channel-webdav
@@ -187,8 +186,7 @@ typedef struct Client
 {
     guint refs;
     SpiceWebdavChannel *self;
-    GSocketConnection *conn;
-    OutputQueue *output;
+    GIOStream *pipe;
     gint64 id;
     GCancellable *cancellable;
 
@@ -206,9 +204,8 @@ client_unref(Client *client)
         return;
 
     g_free(client->mux.buf);
-    output_queue_free(client->output);
 
-    g_object_unref(client->conn);
+    g_object_unref(client->pipe);
     g_object_unref(client->cancellable);
 
     g_free(client);
@@ -291,7 +288,7 @@ static void client_start_read(SpiceWebdavChannel *self, Client *client)
 {
     GInputStream *input;
 
-    input = g_io_stream_get_input_stream(G_IO_STREAM(client->conn));
+    input = g_io_stream_get_input_stream(G_IO_STREAM(client->pipe));
     g_input_stream_read_async(input, client->mux.buf, MAX_MUX_SIZE,
                               G_PRIORITY_DEFAULT, client->cancellable, server_reply_cb,
                               client_ref(client));
@@ -299,130 +296,101 @@ static void client_start_read(SpiceWebdavChannel *self, Client *client)
 
 static void start_demux(SpiceWebdavChannel *self);
 
-static void pushed_client_cb(OutputQueue *q, gpointer user_data)
+static void demux_to_client_finish(SpiceWebdavChannel *self,
+                                   Client *client, gssize size)
 {
-    Client *client = user_data;
-    SpiceWebdavChannel *self = client->self;
     SpiceWebdavChannelPrivate *c = self->priv;
+
+    if (size <= 0) {
+        remove_client(self, client);
+    }
 
     c->demuxing = FALSE;
     start_demux(self);
 }
 
+static void demux_to_client_cb(GObject *source, GAsyncResult *result, gpointer user_data)
+{
+    Client *client = user_data;
+    SpiceWebdavChannelPrivate *c = client->self->priv;
+    GError *error = NULL;
+    gssize size;
+
+    size = g_output_stream_write_finish(G_OUTPUT_STREAM(source), result, &error);
+
+    if (error) {
+        CHANNEL_DEBUG(client->self, "write failed: %s", error->message);
+        g_clear_error(&error);
+    }
+
+    g_warn_if_fail(size == c->demux.size);
+    demux_to_client_finish(client->self, client, size);
+}
+
 static void demux_to_client(SpiceWebdavChannel *self,
-                           Client *client)
+                            Client *client)
 {
     SpiceWebdavChannelPrivate *c = self->priv;
     gssize size = c->demux.size;
 
     CHANNEL_DEBUG(self, "pushing %"G_GSSIZE_FORMAT" to client %p", size, client);
 
-    if (size != 0) {
-        output_queue_push(client->output, (guint8 *)c->demux.buf, size,
-                          (GFunc)pushed_client_cb, client);
+    if (size > 0) {
+        g_output_stream_write_async(g_io_stream_get_output_stream(client->pipe),
+                                    c->demux.buf, size, G_PRIORITY_DEFAULT,
+                                    c->cancellable, demux_to_client_cb, client);
+        return;
     } else {
-        remove_client(self, client);
-        c->demuxing = FALSE;
-        start_demux(self);
-    }
-}
-
-static void magic_written(GObject *source_object,
-                          GAsyncResult *res,
-                          gpointer user_data)
-{
-    Client *client = user_data;
-    SpiceWebdavChannel *self = client->self;
-    SpiceWebdavChannelPrivate *c = self->priv;
-    gssize bytes_written;
-    GError *err = NULL;
-
-    bytes_written = g_output_stream_write_finish(G_OUTPUT_STREAM(source_object),
-                                                 res, &err);
-
-    if (err || bytes_written != WEBDAV_MAGIC_SIZE)
-        goto error;
-
-    client_start_read(self, client);
-    g_hash_table_insert(c->clients, &client->id, client);
-
-    demux_to_client(self, client);
-
-    return;
-
-error:
-    if (err) {
-        g_critical("socket creation failed %s", err->message);
-        g_clear_error(&err);
-    }
-    if (client) {
-        client_unref(client);
-    }
-}
-
-static void client_connected(GObject *source_object,
-                             GAsyncResult *res,
-                             gpointer user_data)
-{
-    SpiceWebdavChannel *self = user_data;
-    SpiceWebdavChannelPrivate *c = self->priv;
-    GSocketClient *sclient = G_SOCKET_CLIENT(source_object);
-    GError *err = NULL;
-    GSocketConnection *conn;
-    SpiceSession *session;
-    Client *client = NULL;
-    GOutputStream *output;
-
-    session = spice_channel_get_session(SPICE_CHANNEL(self));
-
-    conn = g_socket_client_connect_to_host_finish(sclient, res, &err);
-    g_object_unref(sclient);
-    if (err)
-        goto error;
-
-    client = g_new0(Client, 1);
-    client->refs = 1;
-    client->id = c->demux.client;
-    client->self = self;
-    client->conn = conn;
-    client->mux.id = GINT64_TO_LE(client->id);
-    client->mux.buf = g_malloc0(MAX_MUX_SIZE);
-    client->cancellable = g_cancellable_new();
-
-    output = g_buffered_output_stream_new(g_io_stream_get_output_stream(G_IO_STREAM(conn)));
-    client->output = output_queue_new(output);
-    g_object_unref(output);
-
-    g_output_stream_write_async(g_io_stream_get_output_stream(G_IO_STREAM(conn)),
-                                spice_session_get_webdav_magic(session), WEBDAV_MAGIC_SIZE,
-                                G_PRIORITY_DEFAULT, c->cancellable,
-                                magic_written, client);
-    return;
-
-error:
-    if (err) {
-        g_critical("socket creation failed %s", err->message);
-        g_clear_error(&err);
-    }
-    if (client) {
-        client_unref(client);
+        demux_to_client_finish(self, client, size);
     }
 }
 
 static void start_client(SpiceWebdavChannel *self)
 {
+#ifdef USE_PHODAV
     SpiceWebdavChannelPrivate *c = self->priv;
-    GSocketClient *sclient;
-    gint davport = -1;
+    Client *client;
+    GIOStream *peer = NULL;
     SpiceSession *session;
+    SoupServer *server;
+    GSocketAddress *addr;
+    GError *error = NULL;
 
     session = spice_channel_get_session(SPICE_CHANNEL(self));
-    phodav_server_get(session, &davport);
+    server = phodav_server_get_soup_server(spice_session_get_webdav_server(session));
+
     CHANNEL_DEBUG(self, "starting client %" G_GINT64_FORMAT, c->demux.client);
 
-    sclient = g_socket_client_new();
-    g_socket_client_connect_to_host_async(sclient, "localhost", davport,
-                                          c->cancellable, client_connected, self);
+    client = g_new0(Client, 1);
+    client->refs = 1;
+    client->id = c->demux.client;
+    client->self = self;
+    client->mux.id = GINT64_TO_LE(client->id);
+    client->mux.buf = g_malloc0(MAX_MUX_SIZE);
+    client->cancellable = g_cancellable_new();
+    spice_make_pipe(&client->pipe, &peer);
+
+    addr = g_inet_socket_address_new_from_string ("127.0.0.1", 0);
+    if (!soup_server_accept_iostream(server, peer, addr, addr, &error))
+        goto fail;
+
+    g_hash_table_insert(c->clients, &client->id, client);
+
+    client_start_read(self, client);
+    demux_to_client(self, client);
+
+    g_clear_object(&addr);
+    return;
+
+fail:
+    if (error)
+        CHANNEL_DEBUG(self, "failed to start client: %s", error->message);
+
+    g_clear_object(&addr);
+    g_clear_object(&peer);
+    g_clear_error(&error);
+    client_unref(client);
+#endif
 }
 
 static void data_read_cb(GObject *source_object,
@@ -638,93 +606,4 @@ static void spice_webdav_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
         parent_class->handle_msg(channel, msg);
     else
         g_return_if_reached();
-}
-
-
-
-#ifdef USE_PHODAV
-static void new_connection(SoupSocket *sock,
-                           SoupSocket *new,
-                           gpointer    user_data)
-{
-    SpiceSession *session = user_data;
-    SoupAddress *addr;
-    GSocketAddress *gaddr;
-    GInetAddress *iaddr;
-    guint port;
-    guint8 magic[WEBDAV_MAGIC_SIZE];
-    gsize nread;
-    gboolean success = FALSE;
-    SoupSocketIOStatus status;
-
-    /* note: this is sync calls, since webdav server is in a seperate thread */
-    addr = soup_socket_get_remote_address(new);
-    gaddr = soup_address_get_gsockaddr(addr);
-    iaddr = g_inet_socket_address_get_address(G_INET_SOCKET_ADDRESS(gaddr));
-    port = g_inet_socket_address_get_port(G_INET_SOCKET_ADDRESS(gaddr));
-
-    SPICE_DEBUG("port %d %p", port, iaddr);
-    if (!g_inet_address_get_is_loopback(iaddr)) {
-        g_warn_if_reached();
-        goto end;
-    }
-
-    g_object_set(new, "non-blocking", FALSE, NULL);
-    status = soup_socket_read(new, magic, sizeof(magic), &nread, NULL, NULL);
-    if (status != SOUP_SOCKET_OK) {
-        g_warning("bad initial socket read: %d", status);
-        goto end;
-    }
-    g_object_set(new, "non-blocking", TRUE, NULL);
-
-    /* check we got the right magic */
-    if (memcmp(spice_session_get_webdav_magic(session), magic, sizeof(magic))) {
-        g_warn_if_reached();
-        goto end;
-    }
-
-    success = TRUE;
-
-end:
-    if (!success) {
-        g_warn_if_reached();
-        soup_socket_disconnect(new);
-        g_signal_stop_emission_by_name(sock, "new_connection");
-    }
-    g_object_unref(gaddr);
-}
-
-G_GNUC_INTERNAL
-PhodavServer* channel_webdav_server_new(SpiceSession *session)
-{
-    PhodavServer *dav;
-    SoupServer *server;
-    SoupSocket *listener;
-
-    dav = phodav_server_new(0, spice_session_get_shared_dir(session));
-
-    server = phodav_server_get_soup_server(dav);
-    listener = soup_server_get_listener(server);
-    spice_g_signal_connect_object(listener, "new_connection",
-                                  G_CALLBACK(new_connection), session,
-                                  0);
-
-    return dav;
-}
-#endif /* USE_PHODAV */
-
-static PhodavServer* phodav_server_get(SpiceSession *session, gint *port)
-{
-    g_return_val_if_fail(SPICE_IS_SESSION(session), NULL);
-
-#ifdef USE_PHODAV
-    PhodavServer *server = spice_session_get_webdav_server(session);
-
-    if (port)
-        *port = phodav_server_get_port(server);
-
-    return server;
-#else
-    g_return_val_if_reached(NULL);
-#endif
 }
