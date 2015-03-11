@@ -419,9 +419,12 @@ void spice_usbredir_channel_disconnect_device(SpiceUsbredirChannel *channel)
          * usbredirhost_set_device NULL will interrupt the
          * libusb_handle_events call in the thread.
          */
-        spice_usb_device_manager_stop_event_listening(
-            spice_usb_device_manager_get(
-                spice_channel_get_session(SPICE_CHANNEL(channel)), NULL));
+        {
+            SpiceSession *session = spice_channel_get_session(SPICE_CHANNEL(channel));
+            if (session != NULL)
+                spice_usb_device_manager_stop_event_listening(
+                    spice_usb_device_manager_get(session, NULL));
+        }
         /* This also closes the libusb handle we passed from open_device */
         usbredirhost_set_device(priv->host, NULL);
         libusb_unref_device(priv->device);
