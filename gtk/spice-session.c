@@ -2109,7 +2109,8 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
     } else {
         port = *use_tls ? s->tls_port : s->port;
         if (port == NULL) {
-            g_warning("Missing port value (use_tls: %d)", *use_tls);
+            g_debug("Missing port value, not attempting %s connection.",
+                    *use_tls?"TLS":"unencrypted");
             return NULL;
         }
 
