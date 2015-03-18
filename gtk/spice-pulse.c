@@ -672,11 +672,11 @@ static void record_mute_changed(GObject *object, GParamSpec *pspec, gpointer dat
         pa_stream_get_device_index(p->record.stream) == PA_INVALID_INDEX)
         return;
 
-    op = pa_context_set_source_mute_by_index(p->context,
-        pa_stream_get_device_index(p->record.stream),
+    op = pa_context_set_source_output_mute(p->context,
+        pa_stream_get_index(p->record.stream),
         mute, NULL, NULL);
     if (!op)
-        g_warning("set_source_mute() failed: %s",
+        g_warning("set_source_output_mute() failed: %s",
                   pa_strerror(pa_context_errno(p->context)));
     else
         pa_operation_unref(op);
@@ -708,12 +708,11 @@ static void record_volume_changed(GObject *object, GParamSpec *pspec, gpointer d
         pa_stream_get_device_index(p->record.stream) == PA_INVALID_INDEX)
         return;
 
-    /* FIXME: use the upcoming "set_source_output_volume" */
-    op = pa_context_set_source_volume_by_index(p->context,
-        pa_stream_get_device_index(p->record.stream),
+    op = pa_context_set_source_output_volume(p->context,
+        pa_stream_get_index(p->record.stream),
         &v, NULL, NULL);
     if (!op)
-        g_warning("set_source_volume() failed: %s",
+        g_warning("set_source_output_volume() failed: %s",
                   pa_strerror(pa_context_errno(p->context)));
     else
         pa_operation_unref(op);
