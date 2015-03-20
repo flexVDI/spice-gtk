@@ -50,6 +50,16 @@ struct _SpiceGstaudioPrivate {
 
 static gboolean connect_channel(SpiceAudio *audio, SpiceChannel *channel);
 static void channel_weak_notified(gpointer data, GObject *where_the_object_was);
+static void spice_gstaudio_get_playback_volume_info_async(SpiceAudio *audio,
+        GCancellable *cancellable, SpiceMainChannel *main_channel,
+        GAsyncReadyCallback callback, gpointer user_data);
+static gboolean spice_gstaudio_get_playback_volume_info_finish(SpiceAudio *audio,
+        GAsyncResult *res, gboolean *mute, guint8 *nchannels, guint16 **volume, GError **error);
+static void spice_gstaudio_get_record_volume_info_async(SpiceAudio *audio,
+        GCancellable *cancellable, SpiceMainChannel *main_channel,
+        GAsyncReadyCallback callback, gpointer user_data);
+static gboolean spice_gstaudio_get_record_volume_info_finish(SpiceAudio *audio,
+        GAsyncResult *res, gboolean *mute, guint8 *nchannels, guint16 **volume, GError **error);
 
 static void spice_gstaudio_finalize(GObject *obj)
 {
@@ -108,6 +118,10 @@ static void spice_gstaudio_class_init(SpiceGstaudioClass *klass)
     SpiceAudioClass *audio_class = SPICE_AUDIO_CLASS(klass);
 
     audio_class->connect_channel = connect_channel;
+    audio_class->get_playback_volume_info_async = spice_gstaudio_get_playback_volume_info_async;
+    audio_class->get_playback_volume_info_finish = spice_gstaudio_get_playback_volume_info_finish;
+    audio_class->get_record_volume_info_async = spice_gstaudio_get_record_volume_info_async;
+    audio_class->get_record_volume_info_finish = spice_gstaudio_get_record_volume_info_finish;
 
     gobject_class->finalize = spice_gstaudio_finalize;
     gobject_class->dispose = spice_gstaudio_dispose;
@@ -370,6 +384,7 @@ static void playback_volume_changed(GObject *object, GParamSpec *pspec, gpointer
     g_return_if_fail(nchannels > 0);
 
     vol = 1.0 * volume[0] / VOLUME_NORMAL;
+    SPICE_DEBUG("playback volume changed to %u (%0.2f)", volume[0], 100*vol);
 
     if (GST_IS_BIN(p->playback.sink))
         e = gst_bin_get_by_interface(GST_BIN(p->playback.sink), GST_TYPE_STREAM_VOLUME);
@@ -395,7 +410,7 @@ static void playback_mute_changed(GObject *object, GParamSpec *pspec, gpointer d
         return;
 
     g_object_get(object, "mute", &mute, NULL);
-    SPICE_DEBUG("playback mute changed %u", mute);
+    SPICE_DEBUG("playback mute changed to %u", mute);
 
     if (GST_IS_BIN(p->playback.sink))
         e = gst_bin_get_by_interface(GST_BIN(p->playback.sink), GST_TYPE_STREAM_VOLUME);
@@ -428,6 +443,7 @@ static void record_volume_changed(GObject *object, GParamSpec *pspec, gpointer d
     g_return_if_fail(nchannels > 0);
 
     vol = 1.0 * volume[0] / VOLUME_NORMAL;
+    SPICE_DEBUG("record volume changed to %u (%0.2f)", volume[0], 100*vol);
 
     /* TODO directsoundsrc doesn't support IDirectSoundBuffer_SetVolume */
     /* TODO pulsesrc doesn't support volume property, it's all coming! */
@@ -456,6 +472,7 @@ static void record_mute_changed(GObject *object, GParamSpec *pspec, gpointer dat
         return;
 
     g_object_get(object, "mute", &mute, NULL);
+    SPICE_DEBUG("record mute changed to %u", mute);
 
     if (GST_IS_BIN(p->record.src))
         e = gst_bin_get_by_interface(GST_BIN(p->record.src), GST_TYPE_STREAM_VOLUME);
@@ -542,4 +559,180 @@ SpiceGstaudio *spice_gstaudio_new(SpiceSession *session, GMainContext *context,
                             NULL);
 
     return gstaudio;
+}
+
+static void spice_gstaudio_get_playback_volume_info_async(SpiceAudio *audio,
+                                                          GCancellable *cancellable,
+                                                          SpiceMainChannel *main_channel,
+                                                          GAsyncReadyCallback callback,
+                                                          gpointer user_data)
+{
+    GSimpleAsyncResult *simple;
+
+    simple = g_simple_async_result_new(G_OBJECT(audio),
+                                       callback,
+                                       user_data,
+                                       spice_gstaudio_get_playback_volume_info_async);
+    g_simple_async_result_set_check_cancellable (simple, cancellable);
+
+    g_simple_async_result_set_op_res_gboolean(simple, TRUE);
+    g_simple_async_result_complete_in_idle(simple);
+}
+
+static gboolean spice_gstaudio_get_playback_volume_info_finish(SpiceAudio *audio,
+                                                               GAsyncResult *res,
+                                                               gboolean *mute,
+                                                               guint8 *nchannels,
+                                                               guint16 **volume,
+                                                               GError **error)
+{
+    SpiceGstaudioPrivate *p = SPICE_GSTAUDIO(audio)->priv;
+    GstElement *e;
+    gboolean lmute;
+    gdouble vol;
+    gboolean fake_channel = FALSE;
+    GSimpleAsyncResult *simple = (GSimpleAsyncResult *) res;
+
+    g_return_val_if_fail(g_simple_async_result_is_valid(res,
+        G_OBJECT(audio), spice_gstaudio_get_playback_volume_info_async), FALSE);
+
+    if (g_simple_async_result_propagate_error(simple, error)) {
+        return FALSE;
+    }
+
+    if (p->playback.sink == NULL || p->playback.channels == 0) {
+        SPICE_DEBUG("PlaybackChannel not created yet, force start");
+        /* In order to get system volume, we start the pipeline */
+        playback_start(NULL, SPICE_AUDIO_FMT_S16, 2, 48000, audio);
+        fake_channel = TRUE;
+    }
+
+    if (GST_IS_BIN(p->playback.sink))
+        e = gst_bin_get_by_interface(GST_BIN(p->playback.sink), GST_TYPE_STREAM_VOLUME);
+    else
+        e = g_object_ref(p->playback.sink);
+
+    if (GST_IS_STREAM_VOLUME(e)) {
+        vol = gst_stream_volume_get_volume(GST_STREAM_VOLUME(e), GST_STREAM_VOLUME_FORMAT_CUBIC);
+        lmute = gst_stream_volume_get_mute(GST_STREAM_VOLUME(e));
+    } else {
+        g_object_get(e,
+                     "volume", &vol,
+                     "mute", &lmute, NULL);
+    }
+    g_object_unref(e);
+
+    if (fake_channel) {
+        SPICE_DEBUG("Stop faked PlaybackChannel");
+        playback_stop(NULL, audio);
+    }
+
+    if (mute != NULL) {
+        *mute = lmute;
+    }
+
+    if (nchannels != NULL) {
+        *nchannels = p->playback.channels;
+    }
+
+    if (volume != NULL) {
+        gint i;
+        *volume = g_new(guint16, p->playback.channels);
+        for (i = 0; i < p->playback.channels; i++) {
+            (*volume)[i] = (guint16) (vol * VOLUME_NORMAL);
+            SPICE_DEBUG("(playback) volume at %d is %u (%0.2f%%)", i, (*volume)[i], 100*vol);
+        }
+    }
+
+    return g_simple_async_result_get_op_res_gboolean(simple);
+}
+
+static void spice_gstaudio_get_record_volume_info_async(SpiceAudio *audio,
+                                                        GCancellable *cancellable,
+                                                        SpiceMainChannel *main_channel,
+                                                        GAsyncReadyCallback callback,
+                                                        gpointer user_data)
+{
+    GSimpleAsyncResult *simple;
+
+    simple = g_simple_async_result_new(G_OBJECT(audio),
+                                       callback,
+                                       user_data,
+                                       spice_gstaudio_get_record_volume_info_async);
+    g_simple_async_result_set_check_cancellable (simple, cancellable);
+
+    g_simple_async_result_set_op_res_gboolean(simple, TRUE);
+    g_simple_async_result_complete_in_idle(simple);
+}
+
+static gboolean spice_gstaudio_get_record_volume_info_finish(SpiceAudio *audio,
+                                                             GAsyncResult *res,
+                                                             gboolean *mute,
+                                                             guint8 *nchannels,
+                                                             guint16 **volume,
+                                                             GError **error)
+{
+    SpiceGstaudioPrivate *p = SPICE_GSTAUDIO(audio)->priv;
+    GstElement *e;
+    gboolean lmute;
+    gdouble vol;
+    gboolean fake_channel = FALSE;
+    GSimpleAsyncResult *simple = (GSimpleAsyncResult *) res;
+
+    g_return_val_if_fail(g_simple_async_result_is_valid(res,
+        G_OBJECT(audio), spice_gstaudio_get_record_volume_info_async), FALSE);
+
+    if (g_simple_async_result_propagate_error(simple, error)) {
+        /* set out args that should have new alloc'ed memory to NULL */
+        if (volume != NULL) {
+            *volume = NULL;
+        }
+        return FALSE;
+    }
+
+    if (p->record.src == NULL || p->record.channels == 0) {
+        SPICE_DEBUG("RecordChannel not created yet, force start");
+        /* In order to get system volume, we start the pipeline */
+        record_start(NULL, SPICE_AUDIO_FMT_S16, 2, 48000, audio);
+        fake_channel = TRUE;
+    }
+
+    if (GST_IS_BIN(p->record.src))
+        e = gst_bin_get_by_interface(GST_BIN(p->record.src), GST_TYPE_STREAM_VOLUME);
+    else
+        e = g_object_ref(p->record.src);
+
+    if (GST_IS_STREAM_VOLUME(e)) {
+        vol = gst_stream_volume_get_volume(GST_STREAM_VOLUME(e), GST_STREAM_VOLUME_FORMAT_CUBIC);
+        lmute = gst_stream_volume_get_mute(GST_STREAM_VOLUME(e));
+    } else {
+        g_object_get(e,
+                     "volume", &vol,
+                     "mute", &lmute, NULL);
+    }
+    g_object_unref(e);
+
+    if (fake_channel) {
+        SPICE_DEBUG("Stop faked RecordChannel");
+        record_stop(SPICE_GSTAUDIO(audio));
+    }
+
+    if (mute != NULL) {
+        *mute = lmute;
+    }
+
+    if (nchannels != NULL) {
+        *nchannels = p->record.channels;
+    }
+
+    if (volume != NULL) {
+        gint i;
+        *volume = g_new(guint16, p->record.channels);
+        for (i = 0; i < p->record.channels; i++) {
+            (*volume)[i] = (guint16) (vol * VOLUME_NORMAL);
+            SPICE_DEBUG("(record) volume at %d is %u (%0.2f%%)", i, (*volume)[i], 100*vol);
+        }
+    }
+
+    return g_simple_async_result_get_op_res_gboolean(simple);
 }
