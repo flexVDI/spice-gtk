@@ -140,14 +140,14 @@ static void spice_smartcard_channel_constructed(GObject *object)
         SpiceSmartcardChannel *channel = SPICE_SMARTCARD_CHANNEL(object);
         SpiceSmartcardManager *manager = spice_smartcard_manager_get();
 
-        g_signal_connect(G_OBJECT(manager), "reader-added",
-                         (GCallback)reader_added_cb, channel);
-        g_signal_connect(G_OBJECT(manager), "reader-removed",
-                         (GCallback)reader_removed_cb, channel);
-        g_signal_connect(G_OBJECT(manager), "card-inserted",
-                         (GCallback)card_inserted_cb, channel);
-        g_signal_connect(G_OBJECT(manager), "card-removed",
-                         (GCallback)card_removed_cb, channel);
+        spice_g_signal_connect_object(G_OBJECT(manager), "reader-added",
+                                      (GCallback)reader_added_cb, channel, 0);
+        spice_g_signal_connect_object(G_OBJECT(manager), "reader-removed",
+                                      (GCallback)reader_removed_cb, channel, 0);
+        spice_g_signal_connect_object(G_OBJECT(manager), "card-inserted",
+                                      (GCallback)card_inserted_cb, channel, 0);
+        spice_g_signal_connect_object(G_OBJECT(manager), "card-removed",
+                                      (GCallback)card_removed_cb, channel, 0);
     }
 #endif
 
