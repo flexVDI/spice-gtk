@@ -29,6 +29,10 @@
 #include "smartcard-manager.h"
 #endif
 
+#ifdef WITH_FLEXVDI
+#include <flexvdi-port.h>
+#endif
+
 #include "glib-compat.h"
 #include "spice-widget.h"
 #include "spice-gtk-session.h"
@@ -1851,6 +1855,9 @@ int main(int argc, char *argv[])
     g_option_context_set_main_group(context, spice_cmdline_get_option_group());
     g_option_context_add_main_entries(context, cmd_entries, NULL);
     g_option_context_add_group(context, gtk_get_option_group(TRUE));
+#ifdef WITH_FLEXVDI
+    g_option_context_add_group(context, flexvdi_get_option_group());
+#endif
     if (!g_option_context_parse (context, &argc, &argv, &error)) {
         g_print(_("option parsing failed: %s\n"), error->message);
         exit(1);
@@ -1878,6 +1885,9 @@ int main(int argc, char *argv[])
     conn = connection_new();
     spice_set_session_option(conn->session);
     spice_cmdline_session_setup(conn->session);
+#ifdef WITH_FLEXVDI
+    flexvdi_port_register_session(conn->session);
+#endif
 
     g_object_get(conn->session,
                  "unix-path", &unix_path,
