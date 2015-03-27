@@ -456,8 +456,10 @@ static void spice_smartcard_channel_up_cb(GObject *source_object,
                                           gpointer user_data)
 {
     SpiceChannel *channel = SPICE_CHANNEL(user_data);
+#ifdef USE_SMARTCARD
     SpiceSmartcardManager *manager = spice_smartcard_manager_get();
     GList *l, *list = NULL;
+#endif
     GError *error = NULL;
 
     g_return_if_fail(channel != NULL);
@@ -470,6 +472,7 @@ static void spice_smartcard_channel_up_cb(GObject *source_object,
         goto end;
     }
 
+#ifdef USE_SMARTCARD
     list = spice_smartcard_manager_get_readers(manager);
     for (l = list; l != NULL; l = l->next) {
         VReader *reader = l->data;
@@ -481,9 +484,12 @@ static void spice_smartcard_channel_up_cb(GObject *source_object,
 
         g_boxed_free(SPICE_TYPE_SMARTCARD_READER, reader);
     }
+#endif
 
 end:
+#ifdef USE_SMARTCARD
     g_list_free(list);
+#endif
     g_clear_error(&error);
 }
 
