@@ -756,6 +756,9 @@ static const GtkActionEntry entries[] = {
         .name        = "InputMenu",
         .label       = "_Input",
     },{
+        .name        = "SharePrinterMenu",
+        .label       = "_Share Printer",
+    },{
         .name        = "OptionMenu",
         .label       = "_Options",
     },{
@@ -906,6 +909,7 @@ static char ui_xml[] =
 "      <menuitem action='SelectUsbDevices'/>\n"
 #endif
 "    </menu>\n"
+"    <menu action='SharePrinterMenu'/>\n"
 "    <menu action='OptionMenu'>\n"
 "      <menuitem action='grab-keyboard'/>\n"
 "      <menuitem action='grab-mouse'/>\n"
@@ -945,6 +949,7 @@ static char ui_xml[] =
 "      <menuitem action='SelectUsbDevices'/>\n"
 #endif
 "    </menu>\n"
+"    <menu action='SharePrinterMenu'/>\n"
 "    <menu action='OptionMenu'>\n"
 "      <menuitem action='grab-keyboard'/>\n"
 "      <menuitem action='grab-mouse'/>\n"
@@ -1028,6 +1033,33 @@ spice_window_class_init (SpiceWindowClass *klass)
 static void
 spice_window_init (SpiceWindow *self)
 {
+}
+
+void printer_toggled(GtkWidget *widget, gpointer win)
+{
+    const char * printer = gtk_menu_item_get_label(GTK_MENU_ITEM(widget));
+    if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
+        flexvdi_share_printer(printer);
+    } else {
+        flexvdi_unshare_printer(printer);
+    }
+}
+
+static GtkWidget * get_printers_menu(SpiceWindow *win)
+{
+    GtkWidget * sharePrinterMenu = gtk_menu_new();
+    GSList * printers, * printer;
+    flexvdi_get_printer_list(&printers);
+    for (printer = printers; printer != NULL; printer = g_slist_next(printer)) {
+        GtkWidget * item = gtk_check_menu_item_new_with_label((const char *)printer->data);
+        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), FALSE);
+        gtk_menu_shell_append(GTK_MENU_SHELL(sharePrinterMenu), item);
+        gtk_widget_set_visible(item, TRUE);
+        g_signal_connect(G_OBJECT(item), "activate",
+                         G_CALLBACK(printer_toggled), win);
+    }
+    g_slist_free_full(printers, g_free);
+    return sharePrinterMenu;
 }
 
 static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *channel, int id, gint monitor_id)
@@ -1237,6 +1269,12 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
 #endif
 
     gtk_widget_grab_focus(win->spice);
+
+    // Printers menu
+    GtkWidget * sPMenu = gtk_ui_manager_get_widget(win->ui, "/MainMenu/SharePrinterMenu");
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(sPMenu), get_printers_menu(win));
+    sPMenu = gtk_ui_manager_get_widget(win->ui, "/FullscreenMenu/SharePrinterMenu");
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(sPMenu), get_printers_menu(win));
 
     return win;
 }
