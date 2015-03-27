@@ -67,7 +67,7 @@ struct _SpiceWindow {
     gint             id;
     gint             monitor_id;
     GtkWidget        *toplevel, *spice;
-    GtkWidget        *menubar, *toolbar;
+    GtkWidget        *menubar, *toolbar, *fullscreen_menubar;
     GtkWidget        *ritem, *rmenu;
     GtkWidget        *statusbar, *status, *st[STATE_MAX];
     GtkActionGroup   *ag;
@@ -626,6 +626,8 @@ static gboolean window_state_cb(GtkWidget *widget, GdkEventWindowState *event,
             toggle = gtk_action_group_get_action(win->ag, "Statusbar");
             state = gtk_toggle_action_get_active(GTK_TOGGLE_ACTION(toggle));
             gtk_widget_set_visible(win->statusbar, state);
+
+            gtk_widget_hide(win->fullscreen_menubar);
         }
     }
     return TRUE;
@@ -918,6 +920,36 @@ static char ui_xml[] =
 "      <menuitem action='About'/>\n"
 "    </menu>\n"
 "  </menubar>\n"
+"  <menubar action='FullscreenMenu'>\n"
+"    <menu action='FileMenu'>\n"
+"      <menuitem action='Close'/>\n"
+"    </menu>\n"
+"    <menu action='EditMenu'>\n"
+"      <menuitem action='CopyToGuest'/>\n"
+"      <menuitem action='PasteFromGuest'/>\n"
+"    </menu>\n"
+"    <menu action='ViewMenu'>\n"
+"      <menuitem action='Fullscreen'/>\n"
+"    </menu>\n"
+"    <menu action='InputMenu'>\n"
+#ifdef USE_SMARTCARD
+"      <menuitem action='InsertSmartcard'/>\n"
+"      <menuitem action='RemoveSmartcard'/>\n"
+#endif
+#ifdef USE_USBREDIR
+"      <menuitem action='SelectUsbDevices'/>\n"
+#endif
+"    </menu>\n"
+"    <menu action='OptionMenu'>\n"
+"      <menuitem action='grab-keyboard'/>\n"
+"      <menuitem action='grab-mouse'/>\n"
+"      <menuitem action='resize-guest'/>\n"
+"      <menuitem action='scaling'/>\n"
+"      <menuitem action='disable-inputs'/>\n"
+"      <menuitem action='auto-clipboard'/>\n"
+"      <menuitem action='auto-usbredir'/>\n"
+"    </menu>\n"
+"  </menubar>\n"
 "  <toolbar action='ToolBar'>\n"
 "    <toolitem action='Close'/>\n"
 "    <separator/>\n"
@@ -976,6 +1008,20 @@ static gboolean configure_event_cb(GtkWidget         *widget,
     return FALSE;
 }
 
+static gboolean motion_notify_event_cb(GtkWidget * widget, GdkEventMotion * event,
+                                       gpointer data) {
+    SpiceWindow *win = data;
+    if (win->fullscreen) {
+        if (event->y == 0.0) {
+            gtk_widget_show(win->fullscreen_menubar);
+        } else {
+            gtk_widget_hide(win->fullscreen_menubar);
+        }
+
+    }
+    return FALSE;
+}
+
 static void
 spice_window_class_init (SpiceWindowClass *klass)
 {
@@ -992,7 +1038,7 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     SpiceWindow *win;
     GtkAction *toggle;
     gboolean state;
-    GtkWidget *vbox, *frame;
+    GtkWidget *vbox, *frame, *overlay;
     GError *err = NULL;
     int i;
     SpiceGrabSequence *seq;
@@ -1034,6 +1080,7 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
         exit(1);
     }
     win->menubar = gtk_ui_manager_get_widget(win->ui, "/MainMenu");
+    win->fullscreen_menubar = gtk_ui_manager_get_widget(win->ui, "/FullscreenMenu");
     win->toolbar = gtk_ui_manager_get_widget(win->ui, "/ToolBar");
 
     /* recent menu */
@@ -1067,6 +1114,8 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
                      G_CALLBACK(keyboard_grab_cb), win);
     g_signal_connect(G_OBJECT(win->spice), "grab-keys-pressed",
                      G_CALLBACK(grab_keys_pressed_cb), win);
+    g_signal_connect(G_OBJECT(win->spice), "motion-notify-event",
+                     G_CALLBACK(motion_notify_event_cb), win);
 
     /* status line */
 #if GTK_CHECK_VERSION(3,0,0)
@@ -1092,6 +1141,12 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
         gtk_container_add(GTK_CONTAINER(frame), win->st[i]);
     }
 
+    overlay = gtk_overlay_new();
+    gtk_container_add(GTK_CONTAINER(win->toplevel), overlay);
+    g_object_set(win->fullscreen_menubar, "valign", GTK_ALIGN_START, NULL);
+    g_object_set(win->fullscreen_menubar, "halign", GTK_ALIGN_CENTER, NULL);
+    gtk_overlay_add_overlay(GTK_OVERLAY(overlay), win->fullscreen_menubar);
+
     /* Make a vbox and put stuff in */
 #if GTK_CHECK_VERSION(3,0,0)
     vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
@@ -1099,7 +1154,7 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     vbox = gtk_vbox_new(FALSE, 1);
 #endif
     gtk_container_set_border_width(GTK_CONTAINER(vbox), 0);
-    gtk_container_add(GTK_CONTAINER(win->toplevel), vbox);
+    gtk_container_add(GTK_CONTAINER(overlay), vbox);
     gtk_box_pack_start(GTK_BOX(vbox), win->menubar, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(vbox), win->toolbar, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(vbox), win->spice, TRUE, TRUE, 0);
@@ -1109,7 +1164,8 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     if (fullscreen || kiosk_mode)
         gtk_window_fullscreen(GTK_WINDOW(win->toplevel));
 
-    gtk_widget_show_all(vbox);
+    gtk_widget_show_all(overlay);
+    gtk_widget_hide(win->fullscreen_menubar);
     restore_configuration(win);
 
     /* init toggle actions */
