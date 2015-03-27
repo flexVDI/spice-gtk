@@ -41,6 +41,7 @@
 #include "spice-cmdline.h"
 #include "spice-option.h"
 #include "usb-device-widget.h"
+#include <gdk/gdkkeysyms.h>
 
 typedef struct spice_connection spice_connection;
 
@@ -518,6 +519,44 @@ static void menu_cb_select_usb_devices(GtkAction *action, void *data)
 }
 #endif
 
+static void send_keystroke_cb(GtkAction *action, void *data)
+{
+    SpiceWindow *win = data;
+    guint keyvals[3] = {
+        GDK_KEY_Control_L,
+        GDK_KEY_Alt_L,
+        GDK_KEY_F1
+    };
+    if (!strcmp(gtk_action_get_name(action), "CAF1")) {
+        keyvals[2] = GDK_KEY_F1;
+    } else if (!strcmp(gtk_action_get_name(action), "CAF2")) {
+        keyvals[2] = GDK_KEY_F2;
+    } else if (!strcmp(gtk_action_get_name(action), "CAF3")) {
+        keyvals[2] = GDK_KEY_F3;
+    } else if (!strcmp(gtk_action_get_name(action), "CAF4")) {
+        keyvals[2] = GDK_KEY_F4;
+    } else if (!strcmp(gtk_action_get_name(action), "CAF5")) {
+        keyvals[2] = GDK_KEY_F5;
+    } else if (!strcmp(gtk_action_get_name(action), "CAF6")) {
+        keyvals[2] = GDK_KEY_F6;
+    } else if (!strcmp(gtk_action_get_name(action), "CAF7")) {
+        keyvals[2] = GDK_KEY_F7;
+    } else if (!strcmp(gtk_action_get_name(action), "CAF8")) {
+        keyvals[2] = GDK_KEY_F8;
+    } else if (!strcmp(gtk_action_get_name(action), "CAF9")) {
+        keyvals[2] = GDK_KEY_F9;
+    } else if (!strcmp(gtk_action_get_name(action), "CAF10")) {
+        keyvals[2] = GDK_KEY_F10;
+    } else if (!strcmp(gtk_action_get_name(action), "CAF11")) {
+        keyvals[2] = GDK_KEY_F11;
+    } else if (!strcmp(gtk_action_get_name(action), "CAF12")) {
+        keyvals[2] = GDK_KEY_F12;
+    } else return;
+
+    spice_display_send_keys(SPICE_DISPLAY(win->spice), keyvals, 3,
+                            SPICE_DISPLAY_KEY_EVENT_PRESS | SPICE_DISPLAY_KEY_EVENT_RELEASE);
+}
+
 static void menu_cb_bool_prop(GtkToggleAction *action, gpointer data)
 {
     SpiceWindow *win = data;
@@ -820,7 +859,54 @@ static const GtkActionEntry entries[] = {
         .accelerator = "<shift>F10",
     },{
 #endif
-
+        .name        = "CAF1",
+        .label       = "Ctrl+Alt+F1",
+        .callback    = G_CALLBACK(send_keystroke_cb),
+    },{
+        .name        = "CAF2",
+        .label       = "Ctrl+Alt+F2",
+        .callback    = G_CALLBACK(send_keystroke_cb),
+    },{
+        .name        = "CAF3",
+        .label       = "Ctrl+Alt+F3",
+        .callback    = G_CALLBACK(send_keystroke_cb),
+    },{
+        .name        = "CAF4",
+        .label       = "Ctrl+Alt+F4",
+        .callback    = G_CALLBACK(send_keystroke_cb),
+    },{
+        .name        = "CAF5",
+        .label       = "Ctrl+Alt+F5",
+        .callback    = G_CALLBACK(send_keystroke_cb),
+    },{
+        .name        = "CAF6",
+        .label       = "Ctrl+Alt+F6",
+        .callback    = G_CALLBACK(send_keystroke_cb),
+    },{
+        .name        = "CAF7",
+        .label       = "Ctrl+Alt+F7",
+        .callback    = G_CALLBACK(send_keystroke_cb),
+    },{
+        .name        = "CAF8",
+        .label       = "Ctrl+Alt+F8",
+        .callback    = G_CALLBACK(send_keystroke_cb),
+    },{
+        .name        = "CAF9",
+        .label       = "Ctrl+Alt+F9",
+        .callback    = G_CALLBACK(send_keystroke_cb),
+    },{
+        .name        = "CAF10",
+        .label       = "Ctrl+Alt+F10",
+        .callback    = G_CALLBACK(send_keystroke_cb),
+    },{
+        .name        = "CAF11",
+        .label       = "Ctrl+Alt+F11",
+        .callback    = G_CALLBACK(send_keystroke_cb),
+    },{
+        .name        = "CAF12",
+        .label       = "Ctrl+Alt+F12",
+        .callback    = G_CALLBACK(send_keystroke_cb),
+    },{
         /* Help menu */
         .name        = "About",
         .stock_id    = GTK_STOCK_ABOUT,
@@ -908,6 +994,18 @@ static char ui_xml[] =
 #ifdef USE_USBREDIR
 "      <menuitem action='SelectUsbDevices'/>\n"
 #endif
+"      <menuitem action='CAF1'/>\n"
+"      <menuitem action='CAF2'/>\n"
+"      <menuitem action='CAF3'/>\n"
+"      <menuitem action='CAF4'/>\n"
+"      <menuitem action='CAF5'/>\n"
+"      <menuitem action='CAF6'/>\n"
+"      <menuitem action='CAF7'/>\n"
+"      <menuitem action='CAF8'/>\n"
+"      <menuitem action='CAF9'/>\n"
+"      <menuitem action='CAF10'/>\n"
+"      <menuitem action='CAF11'/>\n"
+"      <menuitem action='CAF12'/>\n"
 "    </menu>\n"
 "    <menu action='SharePrinterMenu'/>\n"
 "    <menu action='OptionMenu'>\n"
@@ -948,6 +1046,18 @@ static char ui_xml[] =
 #ifdef USE_USBREDIR
 "      <menuitem action='SelectUsbDevices'/>\n"
 #endif
+"      <menuitem action='CAF1'/>\n"
+"      <menuitem action='CAF2'/>\n"
+"      <menuitem action='CAF3'/>\n"
+"      <menuitem action='CAF4'/>\n"
+"      <menuitem action='CAF5'/>\n"
+"      <menuitem action='CAF6'/>\n"
+"      <menuitem action='CAF7'/>\n"
+"      <menuitem action='CAF8'/>\n"
+"      <menuitem action='CAF9'/>\n"
+"      <menuitem action='CAF10'/>\n"
+"      <menuitem action='CAF11'/>\n"
+"      <menuitem action='CAF12'/>\n"
 "    </menu>\n"
 "    <menu action='SharePrinterMenu'/>\n"
 "    <menu action='OptionMenu'>\n"
