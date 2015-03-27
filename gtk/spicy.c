@@ -1029,6 +1029,12 @@ static char ui_xml[] =
 "    <separator/>\n"
 "    <toolitem action='Fullscreen'/>\n"
 "  </toolbar>\n"
+"  <toolbar action='KioskBar'>\n"
+"    <toolitem action='Close'/>\n"
+"    <separator/>\n"
+"    <toolitem action='CopyToGuest'/>\n"
+"    <toolitem action='PasteFromGuest'/>\n"
+"  </toolbar>\n"
 "  <toolbar action='FullscreenBar'>\n"
 "    <toolitem action='Close'/>\n"
 "    <separator/>\n"
@@ -1229,7 +1235,9 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     gtk_container_set_border_width(GTK_CONTAINER(vbox), 0);
     gtk_box_set_spacing(GTK_BOX(vbox), 0);
     GtkWidget * fsBar, * fsMenu;
-    fsBar = gtk_ui_manager_get_widget(win->ui, "/FullscreenBar");
+    fsBar = kiosk_mode ?
+                gtk_ui_manager_get_widget(win->ui, "/KioskBar") :
+                gtk_ui_manager_get_widget(win->ui, "/FullscreenBar");
     gtk_toolbar_insert(GTK_TOOLBAR(fsBar), gtk_separator_tool_item_new(), -1);
     fsMenu = gtk_ui_manager_get_widget(win->ui, "/FullscreenMenu");
     gtk_box_pack_start(GTK_BOX(vbox), fsBar, FALSE, FALSE, 0);
