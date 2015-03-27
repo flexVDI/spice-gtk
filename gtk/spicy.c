@@ -626,7 +626,6 @@ static gboolean window_state_cb(GtkWidget *widget, GdkEventWindowState *event,
             toggle = gtk_action_group_get_action(win->ag, "Statusbar");
             state = gtk_toggle_action_get_active(GTK_TOGGLE_ACTION(toggle));
             gtk_widget_set_visible(win->statusbar, state);
-
             gtk_widget_hide(win->fullscreen_menubar);
         }
     }
@@ -920,17 +919,23 @@ static char ui_xml[] =
 "      <menuitem action='About'/>\n"
 "    </menu>\n"
 "  </menubar>\n"
+"  <toolbar action='ToolBar'>\n"
+"    <toolitem action='Close'/>\n"
+"    <separator/>\n"
+"    <toolitem action='CopyToGuest'/>\n"
+"    <toolitem action='PasteFromGuest'/>\n"
+"    <separator/>\n"
+"    <toolitem action='Fullscreen'/>\n"
+"  </toolbar>\n"
+"  <toolbar action='FullscreenBar'>\n"
+"    <toolitem action='Close'/>\n"
+"    <separator/>\n"
+"    <toolitem action='CopyToGuest'/>\n"
+"    <toolitem action='PasteFromGuest'/>\n"
+"    <separator/>\n"
+"    <toolitem action='Fullscreen'/>\n"
+"  </toolbar>\n"
 "  <menubar action='FullscreenMenu'>\n"
-"    <menu action='FileMenu'>\n"
-"      <menuitem action='Close'/>\n"
-"    </menu>\n"
-"    <menu action='EditMenu'>\n"
-"      <menuitem action='CopyToGuest'/>\n"
-"      <menuitem action='PasteFromGuest'/>\n"
-"    </menu>\n"
-"    <menu action='ViewMenu'>\n"
-"      <menuitem action='Fullscreen'/>\n"
-"    </menu>\n"
 "    <menu action='InputMenu'>\n"
 #ifdef USE_SMARTCARD
 "      <menuitem action='InsertSmartcard'/>\n"
@@ -950,14 +955,6 @@ static char ui_xml[] =
 "      <menuitem action='auto-usbredir'/>\n"
 "    </menu>\n"
 "  </menubar>\n"
-"  <toolbar action='ToolBar'>\n"
-"    <toolitem action='Close'/>\n"
-"    <separator/>\n"
-"    <toolitem action='CopyToGuest'/>\n"
-"    <toolitem action='PasteFromGuest'/>\n"
-"    <separator/>\n"
-"    <toolitem action='Fullscreen'/>\n"
-"  </toolbar>\n"
 "</ui>\n";
 
 static gboolean is_gtk_session_property(const gchar *property)
@@ -1014,10 +1011,11 @@ static gboolean motion_notify_event_cb(GtkWidget * widget, GdkEventMotion * even
     if (win->fullscreen) {
         if (event->y == 0.0) {
             gtk_widget_show(win->fullscreen_menubar);
+            gtk_revealer_set_reveal_child(GTK_REVEALER(win->fullscreen_menubar), TRUE);
         } else {
             gtk_widget_hide(win->fullscreen_menubar);
+            gtk_revealer_set_reveal_child(GTK_REVEALER(win->fullscreen_menubar), FALSE);
         }
-
     }
     return FALSE;
 }
@@ -1080,8 +1078,20 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
         exit(1);
     }
     win->menubar = gtk_ui_manager_get_widget(win->ui, "/MainMenu");
-    win->fullscreen_menubar = gtk_ui_manager_get_widget(win->ui, "/FullscreenMenu");
     win->toolbar = gtk_ui_manager_get_widget(win->ui, "/ToolBar");
+    win->fullscreen_menubar = gtk_revealer_new();
+    gtk_revealer_set_transition_type(GTK_REVEALER(win->fullscreen_menubar),
+                                     GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
+    vbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+    gtk_container_add(GTK_CONTAINER(win->fullscreen_menubar), vbox);
+    gtk_container_set_border_width(GTK_CONTAINER(vbox), 0);
+    gtk_box_set_spacing(GTK_BOX(vbox), 0);
+    GtkWidget * fsBar, * fsMenu;
+    fsBar = gtk_ui_manager_get_widget(win->ui, "/FullscreenBar");
+    gtk_toolbar_insert(GTK_TOOLBAR(fsBar), gtk_separator_tool_item_new(), -1);
+    fsMenu = gtk_ui_manager_get_widget(win->ui, "/FullscreenMenu");
+    gtk_box_pack_start(GTK_BOX(vbox), fsBar, FALSE, FALSE, 0);
+    gtk_box_pack_end(GTK_BOX(vbox), fsMenu, FALSE, TRUE, 0);
 
     /* recent menu */
     win->ritem  = gtk_ui_manager_get_widget
