@@ -1126,16 +1126,26 @@ static gboolean configure_event_cb(GtkWidget         *widget,
     return FALSE;
 }
 
+
+static gboolean hide_widget_cb(gpointer data) {
+    GtkWidget * widget = data;
+    if (!gtk_revealer_get_reveal_child(GTK_REVEALER(widget)))
+        gtk_widget_hide(widget);
+    return FALSE;
+}
+
 static gboolean motion_notify_event_cb(GtkWidget * widget, GdkEventMotion * event,
                                        gpointer data) {
     SpiceWindow *win = data;
+    GtkRevealer * revealer = GTK_REVEALER(win->fullscreen_menubar);
     if (win->fullscreen) {
         if (event->y == 0.0) {
             gtk_widget_show(win->fullscreen_menubar);
-            gtk_revealer_set_reveal_child(GTK_REVEALER(win->fullscreen_menubar), TRUE);
-        } else {
-            gtk_widget_hide(win->fullscreen_menubar);
-            gtk_revealer_set_reveal_child(GTK_REVEALER(win->fullscreen_menubar), FALSE);
+            gtk_revealer_set_reveal_child(revealer, TRUE);
+        } else if (gtk_revealer_get_reveal_child(revealer)) {
+            gtk_revealer_set_reveal_child(revealer, FALSE);
+            g_timeout_add(gtk_revealer_get_transition_duration(revealer),
+                          hide_widget_cb, revealer);
         }
     }
     return FALSE;
