@@ -672,8 +672,13 @@ static void record_mute_changed(GObject *object, GParamSpec *pspec, gpointer dat
         pa_stream_get_device_index(p->record.stream) == PA_INVALID_INDEX)
         return;
 
+#if PA_CHECK_VERSION(1,0,0)
     op = pa_context_set_source_output_mute(p->context,
         pa_stream_get_index(p->record.stream),
+#else
+    op = pa_context_set_source_mute_by_index(p->context,
+        pa_stream_get_device_index(p->record.stream),
+#endif
         mute, NULL, NULL);
     if (!op)
         g_warning("set_source_output_mute() failed: %s",
@@ -708,8 +713,13 @@ static void record_volume_changed(GObject *object, GParamSpec *pspec, gpointer d
         pa_stream_get_device_index(p->record.stream) == PA_INVALID_INDEX)
         return;
 
+#if PA_CHECK_VERSION(1,0,0)
     op = pa_context_set_source_output_volume(p->context,
         pa_stream_get_index(p->record.stream),
+#else
+    op = pa_context_set_source_volume_by_index(p->context,
+        pa_stream_get_device_index(p->record.stream),
+#endif
         &v, NULL, NULL);
     if (!op)
         g_warning("set_source_output_volume() failed: %s",
