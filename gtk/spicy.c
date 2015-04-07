@@ -1007,7 +1007,9 @@ static char ui_xml[] =
 "      <menuitem action='CAF11'/>\n"
 "      <menuitem action='CAF12'/>\n"
 "    </menu>\n"
+#ifdef WITH_FLEXVDI
 "    <menu action='SharePrinterMenu'/>\n"
+#endif
 "    <menu action='OptionMenu'>\n"
 "      <menuitem action='grab-keyboard'/>\n"
 "      <menuitem action='grab-mouse'/>\n"
@@ -1065,7 +1067,9 @@ static char ui_xml[] =
 "      <menuitem action='CAF11'/>\n"
 "      <menuitem action='CAF12'/>\n"
 "    </menu>\n"
+#ifdef WITH_FLEXVDI
 "    <menu action='SharePrinterMenu'/>\n"
+#endif
 "    <menu action='OptionMenu'>\n"
 "      <menuitem action='grab-keyboard'/>\n"
 "      <menuitem action='grab-mouse'/>\n"
@@ -1161,6 +1165,7 @@ spice_window_init (SpiceWindow *self)
 {
 }
 
+#ifdef WITH_FLEXVDI
 void printer_toggled(GtkWidget *widget, gpointer win)
 {
     const char * printer = gtk_menu_item_get_label(GTK_MENU_ITEM(widget));
@@ -1187,6 +1192,7 @@ static GtkWidget * get_printers_menu(SpiceWindow *win)
     g_slist_free_full(printers, g_free);
     return sharePrinterMenu;
 }
+#endif
 
 static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *channel, int id, gint monitor_id)
 {
@@ -1398,11 +1404,13 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
 
     gtk_widget_grab_focus(win->spice);
 
+#ifdef WITH_FLEXVDI
     // Printers menu
     GtkWidget * sPMenu = gtk_ui_manager_get_widget(win->ui, "/MainMenu/SharePrinterMenu");
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(sPMenu), get_printers_menu(win));
     sPMenu = gtk_ui_manager_get_widget(win->ui, "/FullscreenMenu/SharePrinterMenu");
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(sPMenu), get_printers_menu(win));
+#endif
 
     return win;
 }
