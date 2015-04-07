@@ -2347,6 +2347,9 @@ static void cursor_invalidate(SpiceDisplay *display)
     if (d->mouse_pixbuf == NULL)
         return;
 
+    if (!d->ready || !d->monitor_ready)
+        return;
+
     spice_display_get_scaling(display, &s, &x, &y, NULL, NULL);
 
     gtk_widget_queue_draw_area(GTK_WIDGET(display),
