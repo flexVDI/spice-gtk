@@ -99,6 +99,26 @@ static void close_connection(Connection * conn)
     close_connection_no_notify(conn);
 }
 
+typedef struct PortAddress
+{
+    guint16 port;
+    char * address;
+} PortAddress;
+
+static gpointer new_port_address(guint16 port, const char * address)
+{
+    PortAddress * p = g_malloc(sizeof(PortAddress));
+    p->port = port;
+    p->address = g_strdup(address);
+    return p;
+}
+
+static void unref_port_address(gpointer value)
+{
+    g_free(((PortAddress *)value)->address);
+    g_free(value);
+}
+
 PortForwarder *new_port_forwarder(void *channel, port_forwarder_send_command_cb cb)
 {
     PortForwarder *pf = g_malloc(sizeof(PortForwarder));
@@ -106,7 +126,8 @@ PortForwarder *new_port_forwarder(void *channel, port_forwarder_send_command_cb 
         SPICE_DEBUG("Created new port forwarder");
         pf->channel = channel;
         pf->send_command = cb;
-        pf->associations = g_hash_table_new(g_direct_hash, g_direct_equal);
+        pf->associations = g_hash_table_new_full(g_direct_hash, g_direct_equal,
+                                                 NULL, unref_port_address);
         pf->connections = g_hash_table_new_full(g_direct_hash, g_direct_equal,
                                                 NULL, unref_connection);
         if (!pf->associations || !pf->connections) {
@@ -138,17 +159,28 @@ void port_forwarder_agent_disconnected(PortForwarder *pf)
     g_hash_table_remove_all(pf->connections);
 }
 
-gboolean port_forwarder_associate(PortForwarder* pf, guint16 rport, guint16 lport)
+gboolean port_forwarder_associate(PortForwarder* pf, const gchar * bind_address,
+                                  guint16 rport, const gchar * host, guint16 lport)
 {
-    VDAgentPortForwardListenMessage msg;
-
-    SPICE_DEBUG("Associate remote port %d -> local port %d", rport, lport);
+    SPICE_DEBUG("Associate guest %s, port %d -> %s port %d", bind_address, rport, host, lport);
     if (g_hash_table_lookup(pf->associations, GUINT_TO_POINTER(rport))) {
         port_forwarder_disassociate(pf, rport);
     }
-    g_hash_table_insert(pf->associations, GUINT_TO_POINTER(rport), GUINT_TO_POINTER(lport));
-    msg.port = rport;
-    send_command(pf, VD_AGENT_PORT_FORWARD_LISTEN, (const guint8 *)&msg, sizeof(msg));
+    g_hash_table_insert(pf->associations, GUINT_TO_POINTER(rport),
+                        new_port_address(lport, host));
+
+    if (bind_address) {
+        int msg_len = sizeof(VDAgentPortForwardListenBindMessage) + strlen(bind_address) + 1;
+        VDAgentPortForwardListenBindMessage *msg = g_malloc0(msg_len);
+        msg->port = rport;
+        strcpy(msg->bind_address, bind_address);
+        send_command(pf, VD_AGENT_PORT_FORWARD_LISTEN_BIND, (const guint8 *)msg, msg_len);
+        g_free(msg);
+    } else {
+        VDAgentPortForwardListenMessage msg;
+        msg.port = rport;
+        send_command(pf, VD_AGENT_PORT_FORWARD_LISTEN, (const guint8 *)&msg, sizeof(msg));
+    }
     return TRUE;
 }
 
@@ -293,22 +325,23 @@ static void connection_connect_callback(GObject *source_object, GAsyncResult *re
 static void handle_connect(PortForwarder *pf, VDAgentPortForwardConnectMessage *msg)
 {
     gpointer id = GUINT_TO_POINTER(msg->id), rport = GUINT_TO_POINTER(msg->port);
-    guint16 lport;
+    PortAddress *local;
     Connection *conn = g_hash_table_lookup(pf->connections, id);
     if (conn) {
         g_warning("Connection %d already exists.", msg->id);
         close_connection_no_notify(conn);
     }
 
-    lport = GPOINTER_TO_UINT(g_hash_table_lookup(pf->associations, rport));
-    SPICE_DEBUG("Connection command, id %d on remote port %d -> local port %d", msg->id, msg->port, lport);
-    if (lport) {
+    local = g_hash_table_lookup(pf->associations, rport);
+    SPICE_DEBUG("Connection command, id %d on remote port %d -> %s port %d",
+                msg->id, msg->port, local->address, local->port);
+    if (local) {
         conn = new_connection(pf, msg->id, msg->ack_interval);
         if (conn) {
             g_hash_table_insert(pf->connections, id, conn);
             conn->refs++;
-            g_socket_client_connect_to_host_async(conn->socket, "localhost",
-                                                  lport, conn->cancelable,
+            g_socket_client_connect_to_host_async(conn->socket, local->address,
+                                                  local->port, conn->cancelable,
                                                   connection_connect_callback, conn);
         } else {
             /* Error, close connection in agent */

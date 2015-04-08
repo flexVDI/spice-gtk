@@ -25,7 +25,8 @@ void port_forwarder_agent_disconnected(PortForwarder *pf);
 /*
  * Associate a remote port with a local port.
  */
-gboolean port_forwarder_associate(PortForwarder *pf, guint16 rport, guint16 lport);
+gboolean port_forwarder_associate(PortForwarder *pf, const gchar *bind_address,
+                                  guint16 rport, const gchar *host, guint16 lport);
 
 /*
  * Disassociate a remote port.

@@ -2898,12 +2898,13 @@ static void port_forwarder_send_command(void *channel, uint32_t command,
  * Returns: a %TRUE on success, %FALSE on error.
  **/
 gboolean spice_main_port_forward(SpiceMainChannel *channel,
-                                 uint16_t rport, uint16_t lport)
+                                 const char *bind_address, uint16_t rport,
+                                 const char *host, uint16_t lport)
 {
     SpiceMainChannelPrivate *c = channel->priv;
     g_return_val_if_fail(c->agent_connected, FALSE);
     if (!test_agent_cap(channel, VD_AGENT_CAP_PORT_FORWARDING)) return FALSE;
-    return port_forwarder_associate(c->port_forwarder, rport, lport);
+    return port_forwarder_associate(c->port_forwarder, bind_address, rport, host, lport);
 }
 
 /**
