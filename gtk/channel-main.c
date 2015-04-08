@@ -176,6 +176,7 @@ static void file_xfer_completed(SpiceFileXferTask *task, GError *error);
 static void file_xfer_flushed(SpiceMainChannel *channel, gboolean success);
 static void spice_main_set_max_clipboard(SpiceMainChannel *self, gint max);
 static void set_agent_connected(SpiceMainChannel *channel, gboolean connected);
+static void agent_send_port_redirections(SpiceMainChannel *channel);
 
 /* ------------------------------------------------------------------ */
 
@@ -1815,6 +1816,7 @@ static void main_agent_handle_msg(SpiceChannel *channel,
         agent_max_clipboard(self);
 
         agent_send_msg_queue(self);
+        agent_send_port_redirections(self);
 
         break;
     }
@@ -2885,6 +2887,35 @@ static void port_forwarder_send_command(void *channel, uint32_t command,
         spice_channel_wakeup(SPICE_CHANNEL(channel), FALSE);
     else
         agent_send_msg_queue((SpiceMainChannel *)channel);
+}
+
+static void agent_send_port_redirections(SpiceMainChannel *channel)
+{
+    SpiceSession *session;
+
+    session = spice_channel_get_session(SPICE_CHANNEL(channel));
+    GStrv redirected_ports = NULL;
+    g_object_get(session, "redirected-ports", &redirected_ports, NULL);
+    while (redirected_ports && *redirected_ports) {
+        gchar *redir = g_strdup(*redirected_ports);
+        gchar *bind_address, *guest_port, *host, *host_port;
+        if ((bind_address = strtok(redir, ":")) &&
+                (guest_port = strtok(NULL, ":")) &&
+                (host = strtok(NULL, ":"))) {
+            if (!(host_port = strtok(NULL, ":"))) {
+                // bind_address was not provided
+                host_port = host;
+                host = guest_port;
+                guest_port = bind_address;
+                bind_address = NULL;
+            }
+            spice_main_port_forward(channel, bind_address, atoi(guest_port),
+                                    host, atoi(host_port));
+        } else
+            SPICE_DEBUG("Failed redirecting %s\n", *redirected_ports);
+        g_free(redir);
+        ++redirected_ports;
+    }
 }
 
 /**
