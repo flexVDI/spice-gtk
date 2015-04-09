@@ -300,8 +300,7 @@ static void connection_connect_callback(GObject *source_object, GAsyncResult *re
                                         gpointer user_data)
 {
     Connection *conn = (Connection *)user_data;
-    VDAgentPortForwardConnectMessage msg = { .port = 0, .id = conn->id,
-        .ack_interval = WINDOW_SIZE/2 };
+    VDAgentPortForwardAckMessage msg = {.id = conn->id, .size = WINDOW_SIZE/2};
 
     if (g_cancellable_is_cancelled(conn->cancelable)) {
         unref_connection(conn);
@@ -317,7 +316,7 @@ static void connection_connect_callback(GObject *source_object, GAsyncResult *re
     } else {
         conn->connecting = FALSE;
         program_read(conn);
-        send_command(conn->pf, VD_AGENT_PORT_FORWARD_CONNECT,
+        send_command(conn->pf, VD_AGENT_PORT_FORWARD_ACK,
                      (const guint8 *)&msg, sizeof(msg));
     }
 }
