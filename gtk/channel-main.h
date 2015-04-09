@@ -93,9 +93,10 @@ gboolean spice_main_file_copy_finish(SpiceMainChannel *channel,
                                      GAsyncResult *result,
                                      GError **error);
 
-gboolean spice_main_port_forward(SpiceMainChannel *channel, const char * bind_address,
-                                 uint16_t rport, const char * host, uint16_t lport);
-gboolean spice_main_port_forward_disassociate(SpiceMainChannel *channel, uint16_t rport);
+gboolean spice_main_port_forward_remote(SpiceMainChannel *channel, const char * bind_address,
+                                        uint16_t rport, const char * host, uint16_t lport);
+gboolean spice_main_port_forward_disassociate_remote(SpiceMainChannel *channel,
+                                                     uint16_t rport);
 
 #ifndef SPICE_DISABLE_DEPRECATED
 SPICE_DEPRECATED_FOR(spice_main_clipboard_selection_grab)

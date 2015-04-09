@@ -12,7 +12,7 @@
 struct PortForwarder {
     void *channel;
     port_forwarder_send_command_cb send_command;
-    GHashTable *associations;
+    GHashTable *remote_assocs;
     GHashTable *connections;
 };
 
@@ -126,11 +126,11 @@ PortForwarder *new_port_forwarder(void *channel, port_forwarder_send_command_cb 
         SPICE_DEBUG("Created new port forwarder");
         pf->channel = channel;
         pf->send_command = cb;
-        pf->associations = g_hash_table_new_full(g_direct_hash, g_direct_equal,
-                                                 NULL, unref_port_address);
+        pf->remote_assocs = g_hash_table_new_full(g_direct_hash, g_direct_equal,
+                                                  NULL, unref_port_address);
         pf->connections = g_hash_table_new_full(g_direct_hash, g_direct_equal,
                                                 NULL, unref_connection);
-        if (!pf->associations || !pf->connections) {
+        if (!pf->remote_assocs || !pf->connections) {
             delete_port_forwarder(pf);
             pf = NULL;
         }
@@ -142,8 +142,8 @@ void delete_port_forwarder(PortForwarder *pf)
 {
     if (pf) {
         SPICE_DEBUG("Deleting port forwarder");
-        if (pf->associations) {
-            g_hash_table_destroy(pf->associations);
+        if (pf->remote_assocs) {
+            g_hash_table_destroy(pf->remote_assocs);
         }
         if (pf->connections) {
             g_hash_table_destroy(pf->connections);
@@ -155,18 +155,18 @@ void delete_port_forwarder(PortForwarder *pf)
 void port_forwarder_agent_disconnected(PortForwarder *pf)
 {
     SPICE_DEBUG("Agent disconnected, close all connections");
-    g_hash_table_remove_all(pf->associations);
+    g_hash_table_remove_all(pf->remote_assocs);
     g_hash_table_remove_all(pf->connections);
 }
 
-gboolean port_forwarder_associate(PortForwarder* pf, const gchar * bind_address,
-                                  guint16 rport, const gchar * host, guint16 lport)
+gboolean port_forwarder_associate_remote(PortForwarder* pf, const gchar * bind_address,
+                                         guint16 rport, const gchar * host, guint16 lport)
 {
     SPICE_DEBUG("Associate guest %s, port %d -> %s port %d", bind_address, rport, host, lport);
-    if (g_hash_table_lookup(pf->associations, GUINT_TO_POINTER(rport))) {
-        port_forwarder_disassociate(pf, rport);
+    if (g_hash_table_lookup(pf->remote_assocs, GUINT_TO_POINTER(rport))) {
+        port_forwarder_disassociate_remote(pf, rport);
     }
-    g_hash_table_insert(pf->associations, GUINT_TO_POINTER(rport),
+    g_hash_table_insert(pf->remote_assocs, GUINT_TO_POINTER(rport),
                         new_port_address(lport, host));
 
     if (!bind_address) {
@@ -181,10 +181,10 @@ gboolean port_forwarder_associate(PortForwarder* pf, const gchar * bind_address,
     return TRUE;
 }
 
-gboolean port_forwarder_disassociate(PortForwarder *pf, guint16 rport) {
+gboolean port_forwarder_disassociate_remote(PortForwarder *pf, guint16 rport) {
     VDAgentPortForwardShutdownMessage msg;
 
-    if (!g_hash_table_remove(pf->associations, GUINT_TO_POINTER(rport))) {
+    if (!g_hash_table_remove(pf->remote_assocs, GUINT_TO_POINTER(rport))) {
         g_warning("Remote port %d is not associated with a local port.", rport);
         return FALSE;
     } else {
@@ -328,7 +328,7 @@ static void handle_connect(PortForwarder *pf, VDAgentPortForwardAcceptedMessage 
         close_connection_no_notify(conn);
     }
 
-    local = g_hash_table_lookup(pf->associations, rport);
+    local = g_hash_table_lookup(pf->remote_assocs, rport);
     SPICE_DEBUG("Connection command, id %d on remote port %d -> %s port %d",
                 msg->id, msg->port, local->address, local->port);
     if (local) {

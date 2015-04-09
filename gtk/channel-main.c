@@ -2889,28 +2889,36 @@ static void port_forwarder_send_command(void *channel, uint32_t command,
         agent_send_msg_queue((SpiceMainChannel *)channel);
 }
 
+
+static gboolean tokenize_redirection(gchar *redir, gchar **bind_address, gchar **port,
+                                     gchar **host, gchar **host_port)
+{
+    if ((*bind_address = strtok(redir, ":")) &&
+            (*port = strtok(NULL, ":")) &&
+            (*host = strtok(NULL, ":"))) {
+        if (!(*host_port = strtok(NULL, ":"))) {
+            // bind_address was not provided
+            *host_port = *host;
+            *host = *port;
+            *port = *bind_address;
+            *bind_address = NULL;
+        }
+        return TRUE;
+    } else
+        return FALSE;
+}
+
 static void agent_send_port_redirections(SpiceMainChannel *channel)
 {
-    SpiceSession *session;
-
-    session = spice_channel_get_session(SPICE_CHANNEL(channel));
+    SpiceSession *session = spice_channel_get_session(SPICE_CHANNEL(channel));
     GStrv redirected_ports = NULL;
     g_object_get(session, "redirected-remote-ports", &redirected_ports, NULL);
     while (redirected_ports && *redirected_ports) {
         gchar *redir = g_strdup(*redirected_ports);
         gchar *bind_address, *guest_port, *host, *host_port;
-        if ((bind_address = strtok(redir, ":")) &&
-                (guest_port = strtok(NULL, ":")) &&
-                (host = strtok(NULL, ":"))) {
-            if (!(host_port = strtok(NULL, ":"))) {
-                // bind_address was not provided
-                host_port = host;
-                host = guest_port;
-                guest_port = bind_address;
-                bind_address = NULL;
-            }
-            spice_main_port_forward(channel, bind_address, atoi(guest_port),
-                                    host, atoi(host_port));
+        if (tokenize_redirection(redir, &bind_address, &guest_port, &host, &host_port)) {
+            spice_main_port_forward_remote(channel, bind_address, atoi(guest_port),
+                                           host, atoi(host_port));
         } else
             SPICE_DEBUG("Failed redirecting %s\n", *redirected_ports);
         g_free(redir);
@@ -2928,14 +2936,15 @@ static void agent_send_port_redirections(SpiceMainChannel *channel)
  *
  * Returns: a %TRUE on success, %FALSE on error.
  **/
-gboolean spice_main_port_forward(SpiceMainChannel *channel,
-                                 const char *bind_address, uint16_t rport,
-                                 const char *host, uint16_t lport)
+gboolean spice_main_port_forward_remote(SpiceMainChannel *channel,
+                                        const char *bind_address, uint16_t rport,
+                                        const char *host, uint16_t lport)
 {
     SpiceMainChannelPrivate *c = channel->priv;
     g_return_val_if_fail(c->agent_connected, FALSE);
     if (!test_agent_cap(channel, VD_AGENT_CAP_PORT_FORWARDING)) return FALSE;
-    return port_forwarder_associate(c->port_forwarder, bind_address, rport, host, lport);
+    return port_forwarder_associate_remote(c->port_forwarder, bind_address,
+                                           rport, host, lport);
 }
 
 /**
@@ -2946,10 +2955,11 @@ gboolean spice_main_port_forward(SpiceMainChannel *channel,
  *
  * Returns: a %TRUE on success, %FALSE on error.
  **/
-gboolean spice_main_port_forward_disassociate(SpiceMainChannel *channel, uint16_t rport)
+gboolean spice_main_port_forward_disassociate_remote(SpiceMainChannel *channel,
+                                                     uint16_t rport)
 {
     SpiceMainChannelPrivate *c = channel->priv;
     g_return_val_if_fail(c->agent_connected, FALSE);
     if (!test_agent_cap(channel, VD_AGENT_CAP_PORT_FORWARDING)) return FALSE;
-    return port_forwarder_disassociate(c->port_forwarder, rport);
+    return port_forwarder_disassociate_remote(c->port_forwarder, rport);
 }
