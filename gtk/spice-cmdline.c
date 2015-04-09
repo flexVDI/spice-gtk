@@ -28,6 +28,7 @@ static char *tls_port;
 static char *password;
 static char *uri;
 static GStrv redir_rports;
+static GStrv redir_lports;
 
 static GOptionEntry spice_entries[] = {
     {
@@ -72,6 +73,13 @@ static GOptionEntry spice_entries[] = {
         .description      = N_("Redirect a remote TCP port"),
         .arg_description  = N_("[bind_address:]guest_port:host:hostport"),
     },{
+        .long_name        = "redirect-lport",
+        .short_name       = 'L',
+        .arg              = G_OPTION_ARG_STRING_ARRAY,
+        .arg_data         = &redir_lports,
+        .description      = N_("Redirect a local TCP port"),
+        .arg_description  = N_("[bind_address:]local_port:host:hostport"),
+    },{
         /* end of list */
     }
 };
@@ -105,4 +113,6 @@ void spice_cmdline_session_setup(SpiceSession *session)
         g_object_set(session, "password", password, NULL);
     if (redir_rports)
         g_object_set(session, "redirected-remote-ports", redir_rports, NULL);
+    if (redir_lports)
+        g_object_set(session, "redirected-local-ports", redir_lports, NULL);
 }
