@@ -101,24 +101,62 @@ static void close_connection(Connection * conn)
     close_connection_no_notify(conn);
 }
 
-typedef struct PortAddress
-{
-    guint16 port;
-    char * address;
-} PortAddress;
+#define TYPE_ADDRESS_PORT            (address_port_get_type ())
+#define ADDRESS_PORT(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), TYPE_ADDRESS_PORT, AddressPort))
+#define IS_ADDRESS_PORT(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), TYPE_ADDRESS_PORT))
+#define ADDRESS_PORT_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), TYPE_ADDRESS_PORT, AddressPortClass))
+#define IS_ADDRESS_PORT_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), TYPE_ADDRESS_PORT))
+#define ADDRESS_PORT_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), TYPE_ADDRESS_PORT, AddressPortClass))
 
-static gpointer new_port_address(guint16 port, const char * address)
+typedef struct _AddressPort
 {
-    PortAddress * p = g_malloc(sizeof(PortAddress));
+  /* Parent instance structure */
+  GObject parent_instance;
+
+  /* instance members */
+  guint16 port;
+  gchar *address;
+} AddressPort;
+
+typedef struct _AddressPortClass
+{
+  /* Parent class structure */
+  GObjectClass parent_class;
+
+  /* class members */
+} AddressPortClass;
+
+G_DEFINE_TYPE(AddressPort, address_port, G_TYPE_OBJECT);
+
+static void address_port_dispose(GObject *gobject)
+{
+  G_OBJECT_CLASS(address_port_parent_class)->dispose(gobject);
+}
+
+static void address_port_finalize(GObject *gobject)
+{
+  AddressPort *self = ADDRESS_PORT(gobject);
+  g_free(self->address);
+  G_OBJECT_CLASS(address_port_parent_class)->finalize(gobject);
+}
+
+static void address_port_class_init(AddressPortClass *klass)
+{
+    GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+    gobject_class->dispose = address_port_dispose;
+    gobject_class->finalize = address_port_finalize;
+}
+
+static void address_port_init (AddressPort *self)
+{
+}
+
+static gpointer address_port_new(guint16 port, const char * address)
+{
+    AddressPort * p = g_object_new(TYPE_ADDRESS_PORT, NULL);
     p->port = port;
     p->address = g_strdup(address);
     return p;
-}
-
-static void unref_port_address(gpointer value)
-{
-    g_free(((PortAddress *)value)->address);
-    g_free(value);
 }
 
 static void listener_accept_callback(GObject *source_object, GAsyncResult *res,
@@ -132,7 +170,7 @@ PortForwarder *new_port_forwarder(void *channel, port_forwarder_send_command_cb 
         pf->channel = channel;
         pf->send_command = cb;
         pf->remote_assocs = g_hash_table_new_full(g_direct_hash, g_direct_equal,
-                                                  NULL, unref_port_address);
+                                                  NULL, g_object_unref);
         pf->connections = g_hash_table_new_full(g_direct_hash, g_direct_equal,
                                                 NULL, unref_connection);
         pf->listener = g_socket_listener_new();
@@ -181,7 +219,7 @@ gboolean port_forwarder_associate_remote(PortForwarder *pf, const gchar * bind_a
         port_forwarder_disassociate_remote(pf, rport);
     }
     g_hash_table_insert(pf->remote_assocs, GUINT_TO_POINTER(rport),
-                        new_port_address(lport, host));
+                        address_port_new(lport, host));
 
     if (!bind_address) {
         bind_address = "localhost";
@@ -213,23 +251,23 @@ gboolean port_forwarder_associate_local(PortForwarder *pf, const gchar *bind_add
                                         guint16 lport, const gchar *host, guint16 rport)
 {
     // Listen and wait for a connection
-    gboolean result;
+    gboolean res;
     if (bind_address) {
         GInetAddress *inet_address = g_inet_address_new_from_string(bind_address);
         GSocketAddress *socket_address = g_inet_socket_address_new(inet_address, lport);
-        result = g_socket_listener_add_address(pf->listener, socket_address,
-                                               G_SOCKET_TYPE_STREAM, G_SOCKET_PROTOCOL_DEFAULT,
-                                               new_port_address(rport, host), NULL, NULL);
+        res = g_socket_listener_add_address(pf->listener, socket_address,
+                                            G_SOCKET_TYPE_STREAM, G_SOCKET_PROTOCOL_DEFAULT,
+                                            address_port_new(rport, host), NULL, NULL);
     } else {
-        result = g_socket_listener_add_inet_port(pf->listener, lport,
-                                                 NULL, NULL);
+        res = g_socket_listener_add_inet_port(pf->listener, lport,
+                                              address_port_new(rport, host), NULL);
     }
     g_cancellable_cancel(pf->listener_cancellable);
     g_object_unref(pf->listener_cancellable);
     pf->listener_cancellable = g_cancellable_new();
     g_socket_listener_accept_async(pf->listener, pf->listener_cancellable,
                                    listener_accept_callback, pf);
-    return result;
+    return res;
 }
 
 gboolean port_forwarder_disassociate_local(PortForwarder *pf, guint16 lport)
@@ -245,7 +283,8 @@ static void listener_accept_callback(GObject *source_object, GAsyncResult *res,
 {
     PortForwarder *pf = (PortForwarder *)user_data;
     GError *error = NULL;
-    GSocketConnection *c = g_socket_listener_accept_finish(pf->listener, res, NULL, &error);
+    GSocketConnection *c = g_socket_listener_accept_finish(pf->listener, res,
+                                                           &source_object, &error);
     if (error) {
         if (!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
             g_warning("Could not accept connection");
@@ -253,7 +292,10 @@ static void listener_accept_callback(GObject *source_object, GAsyncResult *res,
         GInetSocketAddress * local_address =
                 (GInetSocketAddress *)g_socket_connection_get_local_address(c, NULL);
         guint16 port = g_inet_socket_address_get_port(local_address);
-        g_warning("Accepted connection on port %d", port);
+        AddressPort * host = ADDRESS_PORT(source_object);
+        SPICE_DEBUG("Accepted connection on port %d to %s:%d",
+                    port, host->address, host->port);
+
         g_socket_listener_accept_async(pf->listener, pf->listener_cancellable,
                                        listener_accept_callback, pf);
     }
@@ -381,14 +423,14 @@ static void connection_connect_callback(GObject *source_object, GAsyncResult *re
 static void handle_accepted(PortForwarder *pf, VDAgentPortForwardAcceptedMessage *msg)
 {
     gpointer id = GUINT_TO_POINTER(msg->id), rport = GUINT_TO_POINTER(msg->port);
-    PortAddress *local;
+    AddressPort *local;
     Connection *conn = g_hash_table_lookup(pf->connections, id);
     if (conn) {
         g_warning("Connection %d already exists.", msg->id);
         close_connection_no_notify(conn);
     }
 
-    local = g_hash_table_lookup(pf->remote_assocs, rport);
+    local = ADDRESS_PORT(g_hash_table_lookup(pf->remote_assocs, rport));
     SPICE_DEBUG("Connection command, id %d on remote port %d -> %s port %d",
                 msg->id, msg->port, local->address, local->port);
     if (local) {
