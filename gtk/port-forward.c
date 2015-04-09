@@ -29,7 +29,7 @@ static void send_command(PortForwarder *pf, guint32 command,
 typedef struct Connection {
     GSocketClient *socket;
     GSocketConnection *conn;
-    GCancellable *cancelable;
+    GCancellable *cancellable;
     GQueue *write_buffer;
     guint8 *read_buffer;
     guint32 data_sent, data_received, ack_interval;
@@ -48,7 +48,7 @@ static Connection *new_connection(PortForwarder *pf, int id, guint32 ack_int)
             g_free(conn);
             return NULL;
         }
-        conn->cancelable = g_cancellable_new();
+        conn->cancellable = g_cancellable_new();
         conn->refs = 1;
         conn->id = id;
         conn->pf = pf;
@@ -65,7 +65,7 @@ static void unref_connection(gpointer value)
     Connection * conn = (Connection *) value;
     if (!--conn->refs) {
         SPICE_DEBUG("Closing connection %d", conn->id);
-        g_object_unref(conn->cancelable);
+        g_object_unref(conn->cancellable);
         if (conn->conn) {
             g_io_stream_close((GIOStream *)conn->conn, NULL, NULL);
         }
@@ -88,8 +88,8 @@ static void close_agent_connection(PortForwarder *pf, int id)
 static void close_connection_no_notify(Connection * conn)
 {
     SPICE_DEBUG("Start closing connection %d", conn->id);
-    if (!g_cancellable_is_cancelled(conn->cancelable))
-        g_cancellable_cancel(conn->cancelable);
+    if (!g_cancellable_is_cancelled(conn->cancellable))
+        g_cancellable_cancel(conn->cancellable);
     g_hash_table_remove(conn->pf->connections, GUINT_TO_POINTER(conn->id));
 }
 
@@ -159,7 +159,7 @@ void port_forwarder_agent_disconnected(PortForwarder *pf)
     g_hash_table_remove_all(pf->connections);
 }
 
-gboolean port_forwarder_associate_remote(PortForwarder* pf, const gchar * bind_address,
+gboolean port_forwarder_associate_remote(PortForwarder *pf, const gchar * bind_address,
                                          guint16 rport, const gchar * host, guint16 lport)
 {
     SPICE_DEBUG("Associate guest %s, port %d -> %s port %d", bind_address, rport, host, lport);
@@ -207,7 +207,7 @@ static void program_read(Connection *conn)
     GInputStream *stream = g_io_stream_get_input_stream((GIOStream *)conn->conn);
     guint8 *data = conn->read_buffer + DATA_HEAD_SIZE;
     g_input_stream_read_async(stream, data, BUFFER_SIZE, G_PRIORITY_DEFAULT,
-                              conn->cancelable, connection_read_callback, conn);
+                              conn->cancellable, connection_read_callback, conn);
 }
 
 static void connection_read_callback(GObject *source_object, GAsyncResult *res,
@@ -220,7 +220,7 @@ static void connection_read_callback(GObject *source_object, GAsyncResult *res,
     gssize bytes = g_input_stream_read_finish(stream, res, &error);
     VDAgentPortForwardDataMessage *msg = (VDAgentPortForwardDataMessage *)conn->read_buffer;
 
-    if (g_cancellable_is_cancelled(conn->cancelable)) {
+    if (g_cancellable_is_cancelled(conn->cancellable)) {
         unref_connection(conn);
         return;
     }
@@ -299,7 +299,7 @@ static void connection_connect_callback(GObject *source_object, GAsyncResult *re
     Connection *conn = (Connection *)user_data;
     VDAgentPortForwardAckMessage msg = {.id = conn->id, .size = WINDOW_SIZE/2};
 
-    if (g_cancellable_is_cancelled(conn->cancelable)) {
+    if (g_cancellable_is_cancelled(conn->cancellable)) {
         unref_connection(conn);
         return;
     }
@@ -318,7 +318,7 @@ static void connection_connect_callback(GObject *source_object, GAsyncResult *re
     }
 }
 
-static void handle_connect(PortForwarder *pf, VDAgentPortForwardAcceptedMessage *msg)
+static void handle_accepted(PortForwarder *pf, VDAgentPortForwardAcceptedMessage *msg)
 {
     gpointer id = GUINT_TO_POINTER(msg->id), rport = GUINT_TO_POINTER(msg->port);
     PortAddress *local;
@@ -337,7 +337,7 @@ static void handle_connect(PortForwarder *pf, VDAgentPortForwardAcceptedMessage 
             g_hash_table_insert(pf->connections, id, conn);
             conn->refs++;
             g_socket_client_connect_to_host_async(conn->socket, local->address,
-                                                  local->port, conn->cancelable,
+                                                  local->port, conn->cancellable,
                                                   connection_connect_callback, conn);
         } else {
             /* Error, close connection in agent */
@@ -408,7 +408,7 @@ void port_forwarder_handle_message(PortForwarder* pf, guint32 command, gpointer 
 {
     switch (command) {
         case VD_AGENT_PORT_FORWARD_ACCEPTED:
-            handle_connect(pf, (VDAgentPortForwardAcceptedMessage *)msg);
+            handle_accepted(pf, (VDAgentPortForwardAcceptedMessage *)msg);
             break;
         case VD_AGENT_PORT_FORWARD_DATA:
             handle_data(pf, (VDAgentPortForwardDataMessage *)msg);
