@@ -169,18 +169,15 @@ gboolean port_forwarder_associate(PortForwarder* pf, const gchar * bind_address,
     g_hash_table_insert(pf->associations, GUINT_TO_POINTER(rport),
                         new_port_address(lport, host));
 
-    if (bind_address) {
-        int msg_len = sizeof(VDAgentPortForwardListenBindMessage) + strlen(bind_address) + 1;
-        VDAgentPortForwardListenBindMessage *msg = g_malloc0(msg_len);
-        msg->port = rport;
-        strcpy(msg->bind_address, bind_address);
-        send_command(pf, VD_AGENT_PORT_FORWARD_LISTEN_BIND, (const guint8 *)msg, msg_len);
-        g_free(msg);
-    } else {
-        VDAgentPortForwardListenMessage msg;
-        msg.port = rport;
-        send_command(pf, VD_AGENT_PORT_FORWARD_LISTEN, (const guint8 *)&msg, sizeof(msg));
+    if (!bind_address) {
+        bind_address = "localhost";
     }
+    int msg_len = sizeof(VDAgentPortForwardListenMessage) + strlen(bind_address) + 1;
+    VDAgentPortForwardListenMessage *msg = g_malloc0(msg_len);
+    msg->port = rport;
+    strcpy(msg->bind_address, bind_address);
+    send_command(pf, VD_AGENT_PORT_FORWARD_LISTEN, (const guint8 *)msg, msg_len);
+    g_free(msg);
     return TRUE;
 }
 
@@ -321,7 +318,7 @@ static void connection_connect_callback(GObject *source_object, GAsyncResult *re
     }
 }
 
-static void handle_connect(PortForwarder *pf, VDAgentPortForwardConnectMessage *msg)
+static void handle_connect(PortForwarder *pf, VDAgentPortForwardAcceptedMessage *msg)
 {
     gpointer id = GUINT_TO_POINTER(msg->id), rport = GUINT_TO_POINTER(msg->port);
     PortAddress *local;
@@ -410,8 +407,8 @@ static void handle_ack(PortForwarder *pf, VDAgentPortForwardAckMessage *msg)
 void port_forwarder_handle_message(PortForwarder* pf, guint32 command, gpointer msg)
 {
     switch (command) {
-        case VD_AGENT_PORT_FORWARD_CONNECT:
-            handle_connect(pf, (VDAgentPortForwardConnectMessage *)msg);
+        case VD_AGENT_PORT_FORWARD_ACCEPTED:
+            handle_connect(pf, (VDAgentPortForwardAcceptedMessage *)msg);
             break;
         case VD_AGENT_PORT_FORWARD_DATA:
             handle_data(pf, (VDAgentPortForwardDataMessage *)msg);

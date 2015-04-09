@@ -1871,7 +1871,7 @@ static void main_agent_handle_msg(SpiceChannel *channel,
     case VD_AGENT_FILE_XFER_STATUS:
         file_xfer_handle_status(self, payload);
         break;
-    case VD_AGENT_PORT_FORWARD_CONNECT:
+    case VD_AGENT_PORT_FORWARD_ACCEPTED:
     case VD_AGENT_PORT_FORWARD_DATA:
     case VD_AGENT_PORT_FORWARD_ACK:
     case VD_AGENT_PORT_FORWARD_CLOSE:
