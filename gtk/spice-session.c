@@ -126,6 +126,7 @@ struct _SpiceSessionPrivate {
 
     /* redirected TCP ports */
     GStrv             redirected_rports;
+    GStrv             redirected_lports;
 };
 
 
@@ -207,6 +208,7 @@ enum {
     PROP_USERNAME,
     PROP_UNIX_PATH,
     PROP_REDIR_RPORTS,
+    PROP_REDIR_LPORTS,
 };
 
 /* signals */
@@ -342,6 +344,7 @@ spice_session_finalize(GObject *gobject)
     g_strfreev(s->secure_channels);
     g_free(s->shared_dir);
     g_strfreev(s->redirected_rports);
+    g_strfreev(s->redirected_lports);
 
     g_clear_pointer(&s->images, cache_unref);
     glz_decoder_window_destroy(s->glz_window);
@@ -666,6 +669,9 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_REDIR_RPORTS:
         g_value_set_boxed(value, s->redirected_rports);
         break;
+    case PROP_REDIR_LPORTS:
+        g_value_set_boxed(value, s->redirected_lports);
+        break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -805,6 +811,10 @@ static void spice_session_set_property(GObject      *gobject,
     case PROP_REDIR_RPORTS:
         g_strfreev(s->redirected_rports);
         s->redirected_rports = g_value_dup_boxed(value);
+        break;
+    case PROP_REDIR_LPORTS:
+        g_strfreev(s->redirected_lports);
+        s->redirected_lports = g_value_dup_boxed(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -1248,6 +1258,26 @@ static void spice_session_class_init(SpiceSessionClass *klass)
          g_param_spec_boxed ("redirected-remote-ports",
                              "Redirected remote ports",
                              "Array of remote port redirections",
+                             G_TYPE_STRV,
+                             G_PARAM_READWRITE |
+                             G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceSession:redirected-local-ports:
+     *
+     * A string array of TCP ports to redirect to the guest. Each string
+     * is formated as [bind_address:]local_port:host:hostport, where bind_address
+     * and local_port are the address and port in the client side, and host and hostport
+     * are the address and port in the guest side. This is the same syntax as the
+     * -L switch of the openssh client.
+     *
+     * Since: 0.28
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_REDIR_LPORTS,
+         g_param_spec_boxed ("redirected-local-ports",
+                             "Redirected local ports",
+                             "Array of local port redirections",
                              G_TYPE_STRV,
                              G_PARAM_READWRITE |
                              G_PARAM_STATIC_STRINGS));
