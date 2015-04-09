@@ -2895,7 +2895,7 @@ static void agent_send_port_redirections(SpiceMainChannel *channel)
 
     session = spice_channel_get_session(SPICE_CHANNEL(channel));
     GStrv redirected_ports = NULL;
-    g_object_get(session, "redirected-ports", &redirected_ports, NULL);
+    g_object_get(session, "redirected-remote-ports", &redirected_ports, NULL);
     while (redirected_ports && *redirected_ports) {
         gchar *redir = g_strdup(*redirected_ports);
         gchar *bind_address, *guest_port, *host, *host_port;

@@ -125,7 +125,7 @@ struct _SpiceSessionPrivate {
     PhodavServer      *webdav;
 
     /* redirected TCP ports */
-    GStrv             redirected_ports;
+    GStrv             redirected_rports;
 };
 
 
@@ -206,7 +206,7 @@ enum {
     PROP_SHARE_DIR_RO,
     PROP_USERNAME,
     PROP_UNIX_PATH,
-    PROP_REDIR_PORTS,
+    PROP_REDIR_RPORTS,
 };
 
 /* signals */
@@ -341,7 +341,7 @@ spice_session_finalize(GObject *gobject)
     g_strfreev(s->disable_effects);
     g_strfreev(s->secure_channels);
     g_free(s->shared_dir);
-    g_strfreev(s->redirected_ports);
+    g_strfreev(s->redirected_rports);
 
     g_clear_pointer(&s->images, cache_unref);
     glz_decoder_window_destroy(s->glz_window);
@@ -663,8 +663,8 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_SHARE_DIR_RO:
         g_value_set_boolean(value, s->share_dir_ro);
         break;
-    case PROP_REDIR_PORTS:
-        g_value_set_boxed(value, s->redirected_ports);
+    case PROP_REDIR_RPORTS:
+        g_value_set_boxed(value, s->redirected_rports);
         break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -802,9 +802,9 @@ static void spice_session_set_property(GObject      *gobject,
     case PROP_SHARE_DIR_RO:
         s->share_dir_ro = g_value_get_boolean(value);
         break;
-    case PROP_REDIR_PORTS:
-        g_strfreev(s->redirected_ports);
-        s->redirected_ports = g_value_dup_boxed(value);
+    case PROP_REDIR_RPORTS:
+        g_strfreev(s->redirected_rports);
+        s->redirected_rports = g_value_dup_boxed(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -1233,7 +1233,7 @@ static void spice_session_class_init(SpiceSessionClass *klass)
 
 
     /**
-     * SpiceSession:redirected-ports:
+     * SpiceSession:redirected-remote-ports:
      *
      * A string array of TCP ports to redirect from the guest. Each string
      * is formated as [bind_address:]guest_port:host:hostport, where bind_address
@@ -1244,10 +1244,10 @@ static void spice_session_class_init(SpiceSessionClass *klass)
      * Since: 0.28
      **/
     g_object_class_install_property
-        (gobject_class, PROP_REDIR_PORTS,
-         g_param_spec_boxed ("redirected-ports",
-                             "Redirect port",
-                             "Array of port redirections",
+        (gobject_class, PROP_REDIR_RPORTS,
+         g_param_spec_boxed ("redirected-remote-ports",
+                             "Redirected remote ports",
+                             "Array of remote port redirections",
                              G_TYPE_STRV,
                              G_PARAM_READWRITE |
                              G_PARAM_STATIC_STRINGS));
