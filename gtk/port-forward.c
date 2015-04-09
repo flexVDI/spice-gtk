@@ -14,6 +14,8 @@ struct PortForwarder {
     port_forwarder_send_command_cb send_command;
     GHashTable *remote_assocs;
     GHashTable *connections;
+    GSocketListener *listener;
+    GCancellable *listener_cancellable;
 };
 
 static void send_command(PortForwarder *pf, guint32 command,
@@ -119,6 +121,9 @@ static void unref_port_address(gpointer value)
     g_free(value);
 }
 
+static void listener_accept_callback(GObject *source_object, GAsyncResult *res,
+                                     gpointer user_data);
+
 PortForwarder *new_port_forwarder(void *channel, port_forwarder_send_command_cb cb)
 {
     PortForwarder *pf = g_malloc(sizeof(PortForwarder));
@@ -130,7 +135,10 @@ PortForwarder *new_port_forwarder(void *channel, port_forwarder_send_command_cb 
                                                   NULL, unref_port_address);
         pf->connections = g_hash_table_new_full(g_direct_hash, g_direct_equal,
                                                 NULL, unref_connection);
-        if (!pf->remote_assocs || !pf->connections) {
+        pf->listener = g_socket_listener_new();
+        pf->listener_cancellable = g_cancellable_new();
+        if (!pf->remote_assocs || !pf->connections ||
+                !pf->listener || !pf->listener_cancellable) {
             delete_port_forwarder(pf);
             pf = NULL;
         }
@@ -147,6 +155,12 @@ void delete_port_forwarder(PortForwarder *pf)
         }
         if (pf->connections) {
             g_hash_table_destroy(pf->connections);
+        }
+        if (pf->listener_cancellable) {
+            g_object_unref(pf->listener_cancellable);
+        }
+        if (pf->listener) {
+            g_socket_listener_close(pf->listener);
         }
         g_free(pf);
     }
@@ -195,9 +209,55 @@ gboolean port_forwarder_disassociate_remote(PortForwarder *pf, guint16 rport) {
     }
 }
 
+gboolean port_forwarder_associate_local(PortForwarder *pf, const gchar *bind_address,
+                                        guint16 lport, const gchar *host, guint16 rport)
+{
+    // Listen and wait for a connection
+    gboolean result;
+    if (bind_address) {
+        GInetAddress *inet_address = g_inet_address_new_from_string(bind_address);
+        GSocketAddress *socket_address = g_inet_socket_address_new(inet_address, lport);
+        result = g_socket_listener_add_address(pf->listener, socket_address,
+                                               G_SOCKET_TYPE_STREAM, G_SOCKET_PROTOCOL_DEFAULT,
+                                               new_port_address(rport, host), NULL, NULL);
+    } else {
+        result = g_socket_listener_add_inet_port(pf->listener, lport,
+                                                 NULL, NULL);
+    }
+    g_cancellable_cancel(pf->listener_cancellable);
+    g_object_unref(pf->listener_cancellable);
+    pf->listener_cancellable = g_cancellable_new();
+    g_socket_listener_accept_async(pf->listener, pf->listener_cancellable,
+                                   listener_accept_callback, pf);
+    return result;
+}
+
+gboolean port_forwarder_disassociate_local(PortForwarder *pf, guint16 lport)
+{
+    return TRUE;
+}
 
 #define DATA_HEAD_SIZE sizeof(VDAgentPortForwardDataMessage)
 #define BUFFER_SIZE MAX_MSG_SIZE - DATA_HEAD_SIZE
+
+static void listener_accept_callback(GObject *source_object, GAsyncResult *res,
+                                     gpointer user_data)
+{
+    PortForwarder *pf = (PortForwarder *)user_data;
+    GError *error = NULL;
+    GSocketConnection *c = g_socket_listener_accept_finish(pf->listener, res, NULL, &error);
+    if (error) {
+        if (!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+            g_warning("Could not accept connection");
+    } else {
+        GInetSocketAddress * local_address =
+                (GInetSocketAddress *)g_socket_connection_get_local_address(c, NULL);
+        guint16 port = g_inet_socket_address_get_port(local_address);
+        g_warning("Accepted connection on port %d", port);
+        g_socket_listener_accept_async(pf->listener, pf->listener_cancellable,
+                                       listener_accept_callback, pf);
+    }
+}
 
 static void connection_read_callback(GObject *source_object, GAsyncResult *res,
                                      gpointer user_data);

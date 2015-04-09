@@ -2912,6 +2912,7 @@ static void agent_send_port_redirections(SpiceMainChannel *channel)
 {
     SpiceSession *session = spice_channel_get_session(SPICE_CHANNEL(channel));
     GStrv redirected_ports = NULL;
+
     g_object_get(session, "redirected-remote-ports", &redirected_ports, NULL);
     while (redirected_ports && *redirected_ports) {
         gchar *redir = g_strdup(*redirected_ports);
@@ -2919,6 +2920,20 @@ static void agent_send_port_redirections(SpiceMainChannel *channel)
         if (tokenize_redirection(redir, &bind_address, &guest_port, &host, &host_port)) {
             spice_main_port_forward_remote(channel, bind_address, atoi(guest_port),
                                            host, atoi(host_port));
+        } else
+            SPICE_DEBUG("Failed redirecting %s\n", *redirected_ports);
+        g_free(redir);
+        ++redirected_ports;
+    }
+
+    redirected_ports = NULL;
+    g_object_get(session, "redirected-local-ports", &redirected_ports, NULL);
+    while (redirected_ports && *redirected_ports) {
+        gchar *redir = g_strdup(*redirected_ports);
+        gchar *bind_address, *local_port, *host, *host_port;
+        if (tokenize_redirection(redir, &bind_address, &local_port, &host, &host_port)) {
+            spice_main_port_forward_local(channel, bind_address, atoi(local_port),
+                                          host, atoi(host_port));
         } else
             SPICE_DEBUG("Failed redirecting %s\n", *redirected_ports);
         g_free(redir);
@@ -2962,4 +2977,42 @@ gboolean spice_main_port_forward_disassociate_remote(SpiceMainChannel *channel,
     g_return_val_if_fail(c->agent_connected, FALSE);
     if (!test_agent_cap(channel, VD_AGENT_CAP_PORT_FORWARDING)) return FALSE;
     return port_forwarder_disassociate_remote(c->port_forwarder, rport);
+}
+
+/**
+ * spice_main_port_forward:
+ * @rport: the port forwarded in the agent side.
+ * @lport: the target port in the local side.
+ *
+ * Instructs the agent to start forwarding a port, and associate it with a
+ * local port.
+ *
+ * Returns: a %TRUE on success, %FALSE on error.
+ **/
+gboolean spice_main_port_forward_local(SpiceMainChannel *channel,
+                                       const char *bind_address, uint16_t lport,
+                                       const char *host, uint16_t rport)
+{
+    SpiceMainChannelPrivate *c = channel->priv;
+    g_return_val_if_fail(c->agent_connected, FALSE);
+    if (!test_agent_cap(channel, VD_AGENT_CAP_PORT_FORWARDING)) return FALSE;
+    return port_forwarder_associate_local(c->port_forwarder, bind_address,
+                                          lport, host, rport);
+}
+
+/**
+ * spice_main_port_forward_disassociate:
+ * @rport: the port forwarded in the agent side.
+ *
+ * Instructs the agent to stop forwarding a port.
+ *
+ * Returns: a %TRUE on success, %FALSE on error.
+ **/
+gboolean spice_main_port_forward_disassociate_local(SpiceMainChannel *channel,
+                                                    uint16_t lport)
+{
+    SpiceMainChannelPrivate *c = channel->priv;
+    g_return_val_if_fail(c->agent_connected, FALSE);
+    if (!test_agent_cap(channel, VD_AGENT_CAP_PORT_FORWARDING)) return FALSE;
+    return port_forwarder_disassociate_local(c->port_forwarder, lport);
 }

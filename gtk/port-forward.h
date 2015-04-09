@@ -34,6 +34,17 @@ gboolean port_forwarder_associate_remote(PortForwarder *pf, const gchar *bind_ad
 gboolean port_forwarder_disassociate_remote(PortForwarder *pf, guint16 rport);
 
 /*
+ * Associate a local port with a remote endpoint.
+ */
+gboolean port_forwarder_associate_local(PortForwarder *pf, const gchar *bind_address,
+                                        guint16 lport, const gchar *host, guint16 rport);
+
+/*
+ * Disassociate a local port.
+ */
+gboolean port_forwarder_disassociate_local(PortForwarder *pf, guint16 lport);
+
+/*
  * Handle a message received from the agent.
  */
 void port_forwarder_handle_message(PortForwarder *pf, guint32 command, gpointer msg);
