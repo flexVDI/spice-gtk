@@ -21,7 +21,6 @@ struct PortForwarder {
 static void send_command(PortForwarder *pf, guint32 command,
                          const guint8 *data, guint32 data_size)
 {
-    SPICE_DEBUG("Sending command %u with %u bytes", command, data_size);
     pf->send_command(pf->channel, command, data, data_size);
 }
 
@@ -107,10 +106,11 @@ static void close_agent_connection(PortForwarder *pf, int id)
 
 static void close_connection_no_notify(Connection * conn)
 {
-    SPICE_DEBUG("Start closing connection %d", conn->id);
+    SPICE_DEBUG("Start closing connection %d with %d refs", conn->id, conn->refs);
     if (!g_cancellable_is_cancelled(conn->cancellable))
         g_cancellable_cancel(conn->cancellable);
-    g_hash_table_remove(conn->pf->connections, GUINT_TO_POINTER(conn->id));
+    if (!g_hash_table_remove(conn->pf->connections, GUINT_TO_POINTER(conn->id)))
+        SPICE_DEBUG("Connection not found in hash table with id %p???", GUINT_TO_POINTER(conn->id));
 }
 
 static void close_connection(Connection * conn)
@@ -128,34 +128,28 @@ static void close_connection(Connection * conn)
 
 typedef struct _AddressPort
 {
-  /* Parent instance structure */
-  GObject parent_instance;
-
-  /* instance members */
-  guint16 port;
-  gchar *address;
+    GObject parent_instance;
+    guint16 port;
+    gchar *address;
 } AddressPort;
 
 typedef struct _AddressPortClass
 {
-  /* Parent class structure */
-  GObjectClass parent_class;
-
-  /* class members */
+    GObjectClass parent_class;
 } AddressPortClass;
 
 G_DEFINE_TYPE(AddressPort, address_port, G_TYPE_OBJECT);
 
 static void address_port_dispose(GObject *gobject)
 {
-  G_OBJECT_CLASS(address_port_parent_class)->dispose(gobject);
+    G_OBJECT_CLASS(address_port_parent_class)->dispose(gobject);
 }
 
 static void address_port_finalize(GObject *gobject)
 {
-  AddressPort *self = ADDRESS_PORT(gobject);
-  g_free(self->address);
-  G_OBJECT_CLASS(address_port_parent_class)->finalize(gobject);
+    AddressPort *self = ADDRESS_PORT(gobject);
+    g_free(self->address);
+    G_OBJECT_CLASS(address_port_parent_class)->finalize(gobject);
 }
 
 static void address_port_class_init(AddressPortClass *klass)
@@ -332,6 +326,7 @@ static void listener_accept_callback(GObject *source_object, GAsyncResult *res,
             strcpy(msg->host, host->address);
             send_command(pf, VD_AGENT_PORT_FORWARD_CONNECT, (const guint8 *)msg, msg_len);
             g_hash_table_insert(pf->connections, GUINT_TO_POINTER(msg->id), conn);
+            SPICE_DEBUG("Inserted connection in table with id %p", GUINT_TO_POINTER(msg->id));
             g_free(msg);
         }
 
@@ -377,7 +372,6 @@ static void connection_read_callback(GObject *source_object, GAsyncResult *res,
     } else {
         msg->id = conn->id;
         msg->size = bytes;
-        SPICE_DEBUG("Read %lu bytes on connection %d", msg->size, conn->id);
         send_command(pf, VD_AGENT_PORT_FORWARD_DATA,
                      conn->read_buffer, DATA_HEAD_SIZE + msg->size);
         conn->data_sent += msg->size;
@@ -498,11 +492,10 @@ static void handle_data(PortForwarder *pf, VDAgentPortForwardDataMessage *msg)
 
     if (!conn) {
         /* Ignore, this is usually an already closed connection */
-        g_warning("Connection %d does not exists.", msg->id);
+        SPICE_DEBUG("Connection %d does not exist.", msg->id);
     } else if (conn->connecting) {
         g_warning("Connection %d is still not connected!", conn->id);
     } else {
-        SPICE_DEBUG("Data command, %d bytes on connection %d", (int)msg->size, conn->id);
         chunk = g_bytes_new(msg->data, msg->size);
         g_queue_push_tail(conn->write_buffer, chunk);
         if (g_queue_get_length(conn->write_buffer) == 1) {
