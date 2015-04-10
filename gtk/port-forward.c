@@ -45,11 +45,6 @@ static Connection *new_connection(PortForwarder *pf, int id, guint32 ack_int)
 {
     Connection *conn = (Connection *)g_malloc0(sizeof(Connection));
     if (conn) {
-        conn->socket = g_socket_client_new();
-        if (!conn->socket) {
-            g_free(conn);
-            return NULL;
-        }
         conn->cancellable = g_cancellable_new();
         conn->refs = 1;
         conn->id = id;
@@ -78,6 +73,29 @@ static void unref_connection(gpointer value)
         g_free(conn->read_buffer);
         g_free(conn);
     }
+}
+
+static Connection *new_connection_with_socket(PortForwarder *pf, int id, guint32 ack_int)
+{
+    Connection *conn = new_connection(pf, id, ack_int);
+    if (conn) {
+        conn->socket = g_socket_client_new();
+        if (!conn->socket) {
+            unref_connection(conn);
+            return NULL;
+        }
+    }
+    return conn;
+}
+
+static Connection *new_open_connection(PortForwarder *pf, int id, guint32 ack_int,
+                                       GSocketConnection *open_conn)
+{
+    Connection *conn = new_connection(pf, id, ack_int);
+    if (conn) {
+        conn->conn = open_conn;
+    }
+    return conn;
 }
 
 static void close_agent_connection(PortForwarder *pf, int id)
@@ -278,23 +296,44 @@ gboolean port_forwarder_disassociate_local(PortForwarder *pf, guint16 lport)
 #define DATA_HEAD_SIZE sizeof(VDAgentPortForwardDataMessage)
 #define BUFFER_SIZE MAX_MSG_SIZE - DATA_HEAD_SIZE
 
+static guint32 generate_connection_id(void)
+{
+    static guint32 seq = 0;
+    return --seq;
+}
+
 static void listener_accept_callback(GObject *source_object, GAsyncResult *res,
                                      gpointer user_data)
 {
     PortForwarder *pf = (PortForwarder *)user_data;
     GError *error = NULL;
-    GSocketConnection *c = g_socket_listener_accept_finish(pf->listener, res,
-                                                           &source_object, &error);
+    GSocketConnection *sc = g_socket_listener_accept_finish(pf->listener, res,
+                                                            &source_object, &error);
     if (error) {
         if (!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
             g_warning("Could not accept connection");
     } else {
         GInetSocketAddress * local_address =
-                (GInetSocketAddress *)g_socket_connection_get_local_address(c, NULL);
+                (GInetSocketAddress *)g_socket_connection_get_local_address(sc, NULL);
         guint16 port = g_inet_socket_address_get_port(local_address);
         AddressPort * host = ADDRESS_PORT(source_object);
         SPICE_DEBUG("Accepted connection on port %d to %s:%d",
                     port, host->address, host->port);
+
+        Connection *conn = new_open_connection(pf, generate_connection_id(),
+                                               WINDOW_SIZE / 2, sc);
+        if (conn) {
+            int msg_len = sizeof(VDAgentPortForwardConnectMessage)
+                          + strlen(host->address) + 1;
+            VDAgentPortForwardConnectMessage *msg = g_malloc0(msg_len);
+            msg->id = conn->id;
+            msg->ack_interval = conn->ack_interval;
+            msg->port = host->port;
+            strcpy(msg->host, host->address);
+            send_command(pf, VD_AGENT_PORT_FORWARD_CONNECT, (const guint8 *)msg, msg_len);
+            g_hash_table_insert(pf->connections, GUINT_TO_POINTER(msg->id), conn);
+            g_free(msg);
+        }
 
         g_socket_listener_accept_async(pf->listener, pf->listener_cancellable,
                                        listener_accept_callback, pf);
@@ -434,7 +473,7 @@ static void handle_accepted(PortForwarder *pf, VDAgentPortForwardAcceptedMessage
     SPICE_DEBUG("Connection command, id %d on remote port %d -> %s port %d",
                 msg->id, msg->port, local->address, local->port);
     if (local) {
-        conn = new_connection(pf, msg->id, msg->ack_interval);
+        conn = new_connection_with_socket(pf, msg->id, msg->ack_interval);
         if (conn) {
             g_hash_table_insert(pf->connections, id, conn);
             conn->refs++;
@@ -492,13 +531,20 @@ static void handle_close(PortForwarder *pf, VDAgentPortForwardCloseMessage *msg)
 static void handle_ack(PortForwarder *pf, VDAgentPortForwardAckMessage *msg)
 {
     Connection *conn = g_hash_table_lookup(pf->connections, GUINT_TO_POINTER(msg->id));
+    SPICE_DEBUG("ACK command for connection %d with %d bytes", msg->id, (int)msg->size);
     if (conn) {
-        SPICE_DEBUG("ACK command for connection %d with %d bytes", conn->id, (int)msg->size);
-        guint32 data_sent_before = conn->data_sent;
-        conn->data_sent -= msg->size;
-        if (conn->data_sent < WINDOW_SIZE && data_sent_before >= WINDOW_SIZE) {
+        if (conn->connecting) {
+            conn->connecting = FALSE;
+            conn->ack_interval = msg->size;
             conn->refs++;
             program_read(conn);
+        } else {
+            guint32 data_sent_before = conn->data_sent;
+            conn->data_sent -= msg->size;
+            if (conn->data_sent < WINDOW_SIZE && data_sent_before >= WINDOW_SIZE) {
+                conn->refs++;
+                program_read(conn);
+            }
         }
     } else {
         /* Ignore, this is usually an already closed connection */
