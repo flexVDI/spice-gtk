@@ -37,7 +37,7 @@ typedef struct Connection {
     gboolean connecting;
     PortForwarder *pf;
     int refs;
-    int id;
+    guint32 id;
 } Connection;
 
 static Connection *new_connection(PortForwarder *pf, int id, guint32 ack_int)
