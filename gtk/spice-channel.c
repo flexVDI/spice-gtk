@@ -2331,8 +2331,6 @@ reconnect:
     }
     c->sock = g_object_ref(g_socket_connection_get_socket(c->conn));
 
-    c->has_error = FALSE;
-
     if (c->tls) {
         c->ctx = SSL_CTX_new(SSLv23_method());
         if (c->ctx == NULL) {
@@ -2407,6 +2405,7 @@ ssl_reconnect:
     }
 
 connected:
+    c->has_error = FALSE;
     c->in = g_io_stream_get_input_stream(G_IO_STREAM(c->conn));
     c->out = g_io_stream_get_output_stream(G_IO_STREAM(c->conn));
 
