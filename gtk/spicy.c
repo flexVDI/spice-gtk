@@ -1247,7 +1247,11 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     gtk_revealer_set_transition_type(GTK_REVEALER(win->fullscreen_menubar),
                                      GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
     vbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-    gtk_container_add(GTK_CONTAINER(win->fullscreen_menubar), vbox);
+    GtkWidget * event_box = gtk_event_box_new();
+    gtk_container_add(GTK_CONTAINER(win->fullscreen_menubar), event_box);
+    gtk_container_add(GTK_CONTAINER(event_box), vbox);
+    GtkStyle *default_style = gtk_widget_get_default_style();
+    gtk_widget_modify_bg(event_box, GTK_STATE_NORMAL, &default_style->bg[GTK_STATE_NORMAL]);
     gtk_container_set_border_width(GTK_CONTAINER(vbox), 0);
     gtk_box_set_spacing(GTK_BOX(vbox), 0);
     GtkWidget * fsBar, * fsMenu;
