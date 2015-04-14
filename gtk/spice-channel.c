@@ -2151,9 +2151,9 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
 
         /* We don't want to report an error if the socket was closed gracefully
          * on the other end (VM shutdown) */
-        ret = g_socket_condition_check(c->sock, G_IO_IN | G_IO_ERR | G_IO_HUP);
+        ret = g_socket_condition_check(c->sock, G_IO_IN | G_IO_ERR);
 
-        if (ret & (G_IO_ERR|G_IO_HUP)) {
+        if (ret & G_IO_ERR) {
             CHANNEL_DEBUG(channel, "channel got error");
 
             if (c->state > SPICE_CHANNEL_STATE_CONNECTING) {
