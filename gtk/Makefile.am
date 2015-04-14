@@ -688,16 +688,22 @@ typelibs_DATA = $(INTROSPECTION_GIRS:.gir=.typelib)
 CLEANFILES += $(gir_DATA) $(typelibs_DATA)
 endif
 
-update-symbol-files:
+update-map-file: $(libspice_client_gtkinclude_HEADERS) $(nodist_libspice_client_gtkinclude_HEADERS) $(libspice_client_glibinclude_HEADERS) $(nodist_libspice_client_glibinclude_HEADERS)
 	( echo "SPICEGTK_1 {" ; \
 	  echo "global:" ; \
-	  ctags -f - -I G_GNUC_CONST --c-kinds=p $(libspice_client_gtkinclude_HEADERS) $(nodist_libspice_client_gtkinclude_HEADERS) $(libspice_client_glibinclude_HEADERS) $(nodist_libspice_client_glibinclude_HEADERS) | awk '/^spice_/ { print $$1 ";" }' | sort ; \
+	  ctags -f - -I G_GNUC_CONST --c-kinds=p $^ | awk '/^spice_/ { print $$1 ";" }' | sort ; \
 	  echo "local:" ;  \
 	  echo "*;" ; \
 	  echo "};" ) > $(srcdir)/map-file
-	( ctags -f - -I G_GNUC_CONST --c-kinds=p $(libspice_client_glibinclude_HEADERS) $(nodist_libspice_client_glibinclude_HEADERS) | awk '/^spice_/ { print $$1 }' | sort ; \
+
+update-glib-sym-file: $(libspice_client_glibinclude_HEADERS) $(nodist_libspice_client_glibinclude_HEADERS)
+	( ctags -f - -I G_GNUC_CONST --c-kinds=p $^ | awk '/^spice_/ { print $$1 }' | sort ; \
 	) > $(srcdir)/spice-glib-sym-file
-	( ctags -f - -I G_GNUC_CONST --c-kinds=p $(libspice_client_gtkinclude_HEADERS) $(nodist_libspice_client_gtkinclude_HEADERS) | awk '/^spice_/ { print $$1 }' | sort ; \
+
+update-gtk-sym-file: $(libspice_client_gtkinclude_HEADERS) $(nodist_libspice_client_gtkinclude_HEADERS)
+	( ctags -f - -I G_GNUC_CONST --c-kinds=p $^ | awk '/^spice_/ { print $$1 }' | sort ; \
 	) > $(srcdir)/spice-gtk-sym-file
+
+update-symbol-files: update-map-file update-glib-sym-file update-gtk-sym-file
 
 -include $(top_srcdir)/git.mk
