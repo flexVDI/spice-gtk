@@ -2020,6 +2020,7 @@ static void proxy_lookup_ready(GObject *source_object, GAsyncResult *result,
 
     open_host_connectable_connect(open_host, G_SOCKET_CONNECTABLE(address));
     g_resolver_free_addresses(addresses);
+    g_object_unref(address);
 }
 
 /* main context */
