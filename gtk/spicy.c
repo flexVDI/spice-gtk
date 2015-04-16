@@ -1130,9 +1130,9 @@ static gboolean configure_event_cb(GtkWidget         *widget,
     return FALSE;
 }
 
-
+#if GTK_CHECK_VERSION(3,10,0)
 static gboolean hide_widget_cb(gpointer data) {
-    GtkWidget * widget = data;
+    GtkWidget *widget = data;
     if (!gtk_revealer_get_reveal_child(GTK_REVEALER(widget)))
         gtk_widget_hide(widget);
     return FALSE;
@@ -1141,7 +1141,7 @@ static gboolean hide_widget_cb(gpointer data) {
 static gboolean motion_notify_event_cb(GtkWidget * widget, GdkEventMotion * event,
                                        gpointer data) {
     SpiceWindow *win = data;
-    GtkRevealer * revealer = GTK_REVEALER(win->fullscreen_menubar);
+    GtkRevealer *revealer = GTK_REVEALER(win->fullscreen_menubar);
     if (win->fullscreen) {
         if (event->y == 0.0) {
             gtk_widget_show(win->fullscreen_menubar);
@@ -1153,6 +1153,35 @@ static gboolean motion_notify_event_cb(GtkWidget * widget, GdkEventMotion * even
         }
     }
     return FALSE;
+}
+#else
+static gboolean motion_notify_event_cb(GtkWidget *widget, GdkEventMotion *event,
+                                       gpointer data) {
+    SpiceWindow *win = data;
+    if (win->fullscreen) {
+        GtkWidget *fixed = gtk_widget_get_parent(win->fullscreen_menubar);
+        if (event->y <= 0.0) {
+            GtkRequisition size;
+            gint window_width;
+            gtk_widget_show(win->fullscreen_menubar);
+            gtk_window_get_size(GTK_WINDOW(win->toplevel), &window_width, NULL);
+            gtk_widget_size_request(win->fullscreen_menubar, &size);
+            int x = (window_width - size.width) / 2;
+            gtk_fixed_move(GTK_FIXED(fixed), win->fullscreen_menubar, x, 0);
+        } else {
+            gtk_widget_hide(win->fullscreen_menubar);
+        }
+    }
+    return FALSE;
+}
+#endif
+
+static gboolean leave_window_cb(GtkWidget *widget, GdkEventCrossing *event,
+                                gpointer data) {
+    GdkEventMotion mevent = {
+        .y = event->y
+    };
+    return motion_notify_event_cb(widget, &mevent, data);
 }
 
 static void
@@ -1200,7 +1229,7 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     SpiceWindow *win;
     GtkAction *toggle;
     gboolean state;
-    GtkWidget *vbox, *frame, *overlay;
+    GtkWidget *vbox, *hbox, *frame, *overlay, *fsBar, *fsMenu;
     GError *err = NULL;
     int i;
     SpiceGrabSequence *seq;
@@ -1243,25 +1272,30 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     }
     win->menubar = gtk_ui_manager_get_widget(win->ui, "/MainMenu");
     win->toolbar = gtk_ui_manager_get_widget(win->ui, "/ToolBar");
+#if GTK_CHECK_VERSION(3,10,0)
     win->fullscreen_menubar = gtk_revealer_new();
     gtk_revealer_set_transition_type(GTK_REVEALER(win->fullscreen_menubar),
                                      GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
-    vbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+    hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+#else
+    win->fullscreen_menubar = gtk_hbox_new(FALSE, 0);
+    hbox = gtk_hbox_new(FALSE, 1);
+#endif
     GtkWidget * event_box = gtk_event_box_new();
     gtk_container_add(GTK_CONTAINER(win->fullscreen_menubar), event_box);
-    gtk_container_add(GTK_CONTAINER(event_box), vbox);
+    gtk_container_add(GTK_CONTAINER(event_box), hbox);
     GtkStyle *default_style = gtk_widget_get_default_style();
     gtk_widget_modify_bg(event_box, GTK_STATE_NORMAL, &default_style->bg[GTK_STATE_NORMAL]);
-    gtk_container_set_border_width(GTK_CONTAINER(vbox), 0);
-    gtk_box_set_spacing(GTK_BOX(vbox), 0);
-    GtkWidget * fsBar, * fsMenu;
+    gtk_container_set_border_width(GTK_CONTAINER(hbox), 0);
+    gtk_box_set_spacing(GTK_BOX(hbox), 0);
     fsBar = kiosk_mode ?
                 gtk_ui_manager_get_widget(win->ui, "/KioskBar") :
                 gtk_ui_manager_get_widget(win->ui, "/FullscreenBar");
+    g_object_set(fsBar, "show-arrow", FALSE, NULL);
     gtk_toolbar_insert(GTK_TOOLBAR(fsBar), gtk_separator_tool_item_new(), -1);
     fsMenu = gtk_ui_manager_get_widget(win->ui, "/FullscreenMenu");
-    gtk_box_pack_start(GTK_BOX(vbox), fsBar, FALSE, FALSE, 0);
-    gtk_box_pack_end(GTK_BOX(vbox), fsMenu, FALSE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(hbox), fsBar, TRUE, TRUE, 0);
+    gtk_box_pack_end(GTK_BOX(hbox), fsMenu, FALSE, FALSE, 0);
 
     /* recent menu */
     win->ritem  = gtk_ui_manager_get_widget
@@ -1296,6 +1330,8 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
                      G_CALLBACK(grab_keys_pressed_cb), win);
     g_signal_connect(G_OBJECT(win->spice), "motion-notify-event",
                      G_CALLBACK(motion_notify_event_cb), win);
+    g_signal_connect(G_OBJECT(win->spice), "leave-notify-event",
+                     G_CALLBACK(leave_window_cb), win);
 
     /* status line */
 #if GTK_CHECK_VERSION(3,0,0)
@@ -1321,12 +1357,6 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
         gtk_container_add(GTK_CONTAINER(frame), win->st[i]);
     }
 
-    overlay = gtk_overlay_new();
-    gtk_container_add(GTK_CONTAINER(win->toplevel), overlay);
-    g_object_set(win->fullscreen_menubar, "valign", GTK_ALIGN_START, NULL);
-    g_object_set(win->fullscreen_menubar, "halign", GTK_ALIGN_CENTER, NULL);
-    gtk_overlay_add_overlay(GTK_OVERLAY(overlay), win->fullscreen_menubar);
-
     /* Make a vbox and put stuff in */
 #if GTK_CHECK_VERSION(3,0,0)
     vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
@@ -1334,11 +1364,26 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     vbox = gtk_vbox_new(FALSE, 1);
 #endif
     gtk_container_set_border_width(GTK_CONTAINER(vbox), 0);
-    gtk_container_add(GTK_CONTAINER(overlay), vbox);
     gtk_box_pack_start(GTK_BOX(vbox), win->menubar, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(vbox), win->toolbar, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(vbox), win->spice, TRUE, TRUE, 0);
     gtk_box_pack_end(GTK_BOX(vbox), win->statusbar, FALSE, TRUE, 0);
+
+#if GTK_CHECK_VERSION(3,2,0)
+    overlay = gtk_overlay_new();
+    g_object_set(win->fullscreen_menubar, "valign", GTK_ALIGN_START, NULL);
+    g_object_set(win->fullscreen_menubar, "halign", GTK_ALIGN_CENTER, NULL);
+    gtk_overlay_add_overlay(GTK_OVERLAY(overlay), win->fullscreen_menubar);
+    gtk_container_add(GTK_CONTAINER(overlay), vbox);
+#else
+    overlay = gtk_vbox_new(FALSE, 0);
+    GtkWidget *fixed = gtk_fixed_new();
+    gtk_box_pack_start(GTK_BOX(overlay), fixed, FALSE, FALSE, 0);
+    gtk_fixed_put(GTK_FIXED(fixed), win->fullscreen_menubar, 0, 0);
+    gtk_widget_set_size_request(fixed, -1, 0);
+    gtk_box_pack_start(GTK_BOX(overlay), vbox, TRUE, TRUE, 0);
+#endif
+    gtk_container_add(GTK_CONTAINER(win->toplevel), overlay);
 
     /* show window */
     if (fullscreen || kiosk_mode)
