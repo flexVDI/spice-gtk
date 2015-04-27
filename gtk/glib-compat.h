@@ -32,6 +32,10 @@ GType spice_main_context_get_type (void) G_GNUC_CONST;
 
 #if !GLIB_CHECK_VERSION(2,32,0)
 # define G_SIGNAL_DEPRECATED (1 << 9)
+
+#define G_SOURCE_CONTINUE   TRUE
+#define G_SOURCE_REMOVE     FALSE
+
 void
 g_queue_free_full (GQueue        *queue,
                    GDestroyNotify  free_func);
