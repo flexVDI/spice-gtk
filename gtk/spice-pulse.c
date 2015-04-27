@@ -22,6 +22,7 @@
 #include "spice-session-priv.h"
 #include "spice-channel-priv.h"
 #include "spice-util-priv.h"
+#include "glib-compat.h"
 
 #include <pulse/glib-mainloop.h>
 #include <pulse/pulseaudio.h>
@@ -979,6 +980,14 @@ static void cancel_task(GCancellable *cancellable, gpointer user_data)
         task->pulse->priv->pending_restore_task = NULL;
     }
 
+#if !GLIB_CHECK_VERSION(2,32,0)
+    /* g_simple_async_result_set_check_cancellable is not present. Set an error
+     * in the GSimpleAsyncResult in case of _finish functions is called */
+    g_simple_async_result_set_error(task->res,
+                                    SPICE_CLIENT_ERROR,
+                                    SPICE_CLIENT_ERROR_FAILED,
+                                    "Operation was cancelled");
+#endif
     /* FIXME: https://bugzilla.gnome.org/show_bug.cgi?id=705395
      * Free the memory in idle */
     g_idle_add(free_async_task, task);
@@ -1148,7 +1157,9 @@ static void pulse_stream_restore_info_async(gboolean is_playback,
                                        callback,
                                        user_data,
                                        pulse_stream_restore_info_async);
+#if GLIB_CHECK_VERSION(2,32,0)
     g_simple_async_result_set_check_cancellable (simple, cancellable);
+#endif
 
     task->res = simple;
     task->pulse = g_object_ref(audio);
