@@ -1098,10 +1098,17 @@ static void stream_restore_read_cb(pa_context *context,
     pstream->info.volume = info->volume;
 }
 
+#if PA_CHECK_VERSION(1,0,0)
 static void source_output_info_cb(pa_context *context,
                                   const pa_source_output_info *info,
                                   int eol,
                                   void *userdata)
+#else
+static void source_info_cb(pa_context *context,
+                           const pa_source_info *info,
+                           int eol,
+                           void *userdata)
+#endif
 {
     struct async_task *task = userdata;
     SpicePulsePrivate *p = task->pulse->priv;
@@ -1198,10 +1205,17 @@ static void pulse_stream_restore_info_async(gboolean is_playback,
             pa_stream_get_index(p->record.stream) != PA_INVALID_INDEX) {
         SPICE_DEBUG("Record stream is created - get-source-output-info");
         p->record.info_updated = FALSE;
+#if PA_CHECK_VERSION(1,0,0)
         op = pa_context_get_source_output_info(p->context,
                                                pa_stream_get_index(p->record.stream),
                                                source_output_info_cb,
                                                task);
+#else
+        op = pa_context_get_source_info_by_index(p->context,
+                                                 pa_stream_get_device_index(p->record.stream),
+                                                 source_info_cb,
+                                                 task);
+#endif
         if (!op)
             goto fail;
         task->pa_op = op;
