@@ -310,8 +310,7 @@ static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
 #endif
 
     /* Start listening for usb channels connect/disconnect */
-    g_signal_connect(priv->session, "channel-new",
-                     G_CALLBACK(channel_new), self);
+    spice_g_signal_connect_object(priv->session, "channel-new", G_CALLBACK(channel_new), self, G_CONNECT_AFTER);
     g_signal_connect(priv->session, "channel-destroy",
                      G_CALLBACK(channel_destroy), self);
     list = spice_session_get_channels(priv->session);
