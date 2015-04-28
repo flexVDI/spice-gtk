@@ -267,7 +267,7 @@ SpiceAudio *spice_audio_new(SpiceSession *session, GMainContext *context,
         return NULL;
 
     spice_g_signal_connect_object(session, "notify::enable-audio", G_CALLBACK(session_enable_audio), self, 0);
-    spice_g_signal_connect_object(session, "channel-new", G_CALLBACK(channel_new), self, 0);
+    spice_g_signal_connect_object(session, "channel-new", G_CALLBACK(channel_new), self, G_CONNECT_AFTER);
     update_audio_channels(self, session);
 
     return self;
