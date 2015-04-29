@@ -452,6 +452,7 @@ static void channel_set_handlers(SpiceChannelClass *klass)
 void spice_playback_channel_set_delay(SpicePlaybackChannel *channel, guint32 delay_ms)
 {
     SpicePlaybackChannelPrivate *c;
+    SpiceSession *session;
 
     g_return_if_fail(SPICE_IS_PLAYBACK_CHANNEL(channel));
 
@@ -459,8 +460,13 @@ void spice_playback_channel_set_delay(SpicePlaybackChannel *channel, guint32 del
 
     c = channel->priv;
     c->latency = delay_ms;
-    spice_session_set_mm_time(spice_channel_get_session(SPICE_CHANNEL(channel)),
-                              c->last_time - delay_ms);
+
+    session = spice_channel_get_session(SPICE_CHANNEL(channel));
+    if (session) {
+        spice_session_set_mm_time(session, c->last_time - delay_ms);
+    } else {
+        CHANNEL_DEBUG(channel, "channel detached from session, mm time skipped");
+    }
 }
 
 G_GNUC_INTERNAL
