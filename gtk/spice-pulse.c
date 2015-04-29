@@ -489,9 +489,8 @@ static void playback_data(SpicePlaybackChannel *channel,
     p->playback.state = state;
 }
 
-static void playback_stop(SpicePlaybackChannel *channel, gpointer data)
+static void playback_stop(SpicePulse *pulse)
 {
-    SpicePulse *pulse = data;
     SpicePulsePrivate *p = pulse->priv;
 
     SPICE_DEBUG("%s: #underflow %u", __FUNCTION__, p->playback.num_underflow);
@@ -800,7 +799,7 @@ static gboolean connect_channel(SpiceAudio *audio, SpiceChannel *channel)
         spice_g_signal_connect_object(channel, "playback-data",
                                       G_CALLBACK(playback_data), pulse, 0);
         spice_g_signal_connect_object(channel, "playback-stop",
-                                      G_CALLBACK(playback_stop), pulse, 0);
+                                      G_CALLBACK(playback_stop), pulse, G_CONNECT_SWAPPED);
         spice_g_signal_connect_object(channel, "notify::volume",
                                       G_CALLBACK(playback_volume_changed), pulse, 0);
         spice_g_signal_connect_object(channel, "notify::mute",

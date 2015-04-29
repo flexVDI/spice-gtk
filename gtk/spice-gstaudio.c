@@ -257,9 +257,8 @@ cleanup:
         gst_element_set_state(p->record.pipe, GST_STATE_PLAYING);
 }
 
-static void playback_stop(SpicePlaybackChannel *channel, gpointer data)
+static void playback_stop(SpiceGstaudio *gstaudio)
 {
-    SpiceGstaudio *gstaudio = data;
     SpiceGstaudioPrivate *p = gstaudio->priv;
 
     if (p->playback.pipe)
@@ -303,7 +302,7 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
     if (p->playback.pipe &&
         (p->playback.rate != frequency ||
          p->playback.channels != channels)) {
-        playback_stop(channel, data);
+        playback_stop(gstaudio);
         gst_object_unref(p->playback.pipe);
         p->playback.pipe = NULL;
     }
@@ -518,7 +517,7 @@ static gboolean connect_channel(SpiceAudio *audio, SpiceChannel *channel)
         spice_g_signal_connect_object(channel, "playback-data",
                                       G_CALLBACK(playback_data), gstaudio, 0);
         spice_g_signal_connect_object(channel, "playback-stop",
-                                      G_CALLBACK(playback_stop), gstaudio, 0);
+                                      G_CALLBACK(playback_stop), gstaudio, G_CONNECT_SWAPPED);
         spice_g_signal_connect_object(channel, "notify::volume",
                                       G_CALLBACK(playback_volume_changed), gstaudio, 0);
         spice_g_signal_connect_object(channel, "notify::mute",
