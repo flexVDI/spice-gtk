@@ -172,6 +172,8 @@ static void spice_playback_channel_reset(SpiceChannel *channel, gboolean migrati
     SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
 
     snd_codec_destroy(&c->codec);
+    g_coroutine_signal_emit(channel, signals[SPICE_PLAYBACK_STOP], 0);
+    c->is_active = FALSE;
 
     SPICE_CHANNEL_CLASS(spice_playback_channel_parent_class)->channel_reset(channel, migrating);
 }

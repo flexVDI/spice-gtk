@@ -169,6 +169,9 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
     g_free(c->last_frame);
     c->last_frame = NULL;
 
+    g_coroutine_signal_emit(channel, signals[SPICE_RECORD_STOP], 0);
+    c->started = FALSE;
+
     snd_codec_destroy(&c->codec);
 
     SPICE_CHANNEL_CLASS(spice_record_channel_parent_class)->channel_reset(channel, migrating);
