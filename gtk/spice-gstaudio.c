@@ -494,6 +494,8 @@ channel_weak_notified(gpointer data,
     SpiceGstaudioPrivate *p = gstaudio->priv;
 
     if (where_the_object_was == (GObject *)p->pchannel) {
+        SPICE_DEBUG("playback closed");
+        playback_stop(gstaudio);
         p->pchannel = NULL;
     } else if (where_the_object_was == (GObject *)p->rchannel) {
         SPICE_DEBUG("record closed");

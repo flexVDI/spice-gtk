@@ -776,6 +776,8 @@ channel_weak_notified(gpointer data,
     SpicePulsePrivate *p = pulse->priv;
 
     if (where_the_object_was == (GObject *)p->pchannel) {
+        SPICE_DEBUG("playback closed");
+        playback_stop(pulse);
         p->pchannel = NULL;
     } else if (where_the_object_was == (GObject *)p->rchannel) {
         SPICE_DEBUG("record closed");
