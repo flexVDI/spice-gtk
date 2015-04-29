@@ -2027,12 +2027,15 @@ static void proxy_lookup_ready(GObject *source_object, GAsyncResult *result,
 static gboolean open_host_idle_cb(gpointer data)
 {
     spice_open_host *open_host = data;
-    SpiceSession *session = open_host->session;
-    SpiceSessionPrivate *s = session->priv;
+    SpiceSessionPrivate *s;
 
     g_return_val_if_fail(open_host != NULL, FALSE);
     g_return_val_if_fail(open_host->connection == NULL, FALSE);
 
+    if (spice_channel_get_session(open_host->channel) != open_host->session)
+        return FALSE;
+
+    s = open_host->session->priv;
     open_host->proxy = s->proxy;
     if (open_host->error != NULL) {
         coroutine_yieldto(open_host->from, NULL);
