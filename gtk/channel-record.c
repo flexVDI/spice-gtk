@@ -322,12 +322,16 @@ void spice_record_send_data(SpiceRecordChannel *channel, gpointer data,
     SpiceRecordChannelPrivate *rc;
     SpiceMsgcRecordPacket p = {0, };
 
-    g_return_if_fail(channel != NULL);
+    g_return_if_fail(SPICE_IS_RECORD_CHANNEL(channel));
+    rc = channel->priv;
+    if (rc->last_frame == NULL) {
+        CHANNEL_DEBUG(channel, "recording didn't start or was reset");
+        return;
+    }
+
     g_return_if_fail(spice_channel_get_read_only(SPICE_CHANNEL(channel)) == FALSE);
 
     uint8_t *encode_buf = NULL;
-
-    rc = channel->priv;
 
     if (!rc->started) {
         spice_record_mode(channel, time, rc->mode, NULL, 0);
