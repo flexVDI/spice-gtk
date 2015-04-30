@@ -892,11 +892,19 @@ reread:
     if (c->ws) {
         ret = nopoll_conn_read(c->np_conn, data, len, nopoll_false, 0);
         if (ret < 0) {
-            if (errno == EAGAIN) {
+            if (errno == EAGAIN
+#ifdef WIN32
+                    || errno == WSAEWOULDBLOCK
+#endif
+                ) {
                 cond = G_IO_IN;
             }
             ret = -1;
         }
+#ifdef WIN32
+        // Reset socket state
+        g_socket_receive(c->sock, data, 0, NULL, NULL);
+#endif
     } else if (c->tls) {
         ret = SSL_read(c->ssl, data, len);
         if (ret < 0) {
