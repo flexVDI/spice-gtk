@@ -515,8 +515,8 @@ static void handle_close(PortForwarder *pf, VDAgentPortForwardCloseMessage *msg)
         SPICE_DEBUG("Close command for connection %d", conn->id);
         close_connection_no_notify(conn);
     } else {
-        /* Error, close connection in agent */
-        g_warning("Connection %d does not exists.", msg->id);
+        /* This is usually an already closed connection */
+        SPICE_DEBUG("Connection %d does not exists.", msg->id);
         close_agent_connection(pf, msg->id);
     }
 }
@@ -541,7 +541,7 @@ static void handle_ack(PortForwarder *pf, VDAgentPortForwardAckMessage *msg)
         }
     } else {
         /* Ignore, this is usually an already closed connection */
-        g_warning("Connection %d does not exists.", msg->id);
+        SPICE_DEBUG("Connection %d does not exists.", msg->id);
     }
 }
 
