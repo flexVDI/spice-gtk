@@ -147,8 +147,7 @@ static gboolean output_queue_idle(gpointer user_data)
         return FALSE;
     }
 
-    g_output_stream_write_all(q->output, e->buf, e->size, NULL, NULL, &error);
-    if (error)
+    if (!g_output_stream_write_all(q->output, e->buf, e->size, NULL, NULL, &error))
         goto err;
     else if (e->pushed_cb)
         e->pushed_cb(q, e->user_data);
@@ -159,7 +158,9 @@ static gboolean output_queue_idle(gpointer user_data)
     return TRUE;
 
 err:
-    g_warning("error: %s", error->message);
+    g_warning("failed to write to output stream");
+    if (error)
+        g_warning("error: %s", error->message);
     g_clear_error(&error);
 
     q->idle_id = 0;
