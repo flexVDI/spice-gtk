@@ -1699,40 +1699,6 @@ static GOptionEntry cmd_entries[] = {
     }
 };
 
-static void (* segv_handler) (int) = SIG_DFL;
-static void (* abrt_handler) (int) = SIG_DFL;
-static void (* fpe_handler)  (int) = SIG_DFL;
-static void (* ill_handler)  (int) = SIG_DFL;
-#ifndef G_OS_WIN32
-static void (* bus_handler)  (int) = SIG_DFL;
-#endif
-
-static void
-signal_handler(int signum)
-{
-    static gint recursion = FALSE;
-
-    /*
-     * reset all signal handlers: any further crashes should just be allowed
-     * to crash normally.
-     * */
-    signal(SIGSEGV, segv_handler);
-    signal(SIGABRT, abrt_handler);
-    signal(SIGFPE,  fpe_handler);
-    signal(SIGILL,  ill_handler);
-#ifndef G_OS_WIN32
-    signal(SIGBUS,  bus_handler);
-#endif
-
-    /* Stop bizarre loops */
-    if (recursion)
-        abort ();
-
-    recursion = TRUE;
-
-    g_main_loop_quit(mainloop);
-}
-
 static void usb_connect_failed(GObject               *object,
                                SpiceUsbDevice        *device,
                                GError                *error,
@@ -1800,17 +1766,6 @@ int main(int argc, char *argv[])
     bindtextdomain(GETTEXT_PACKAGE, SPICE_GTK_LOCALEDIR);
     bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
     textdomain(GETTEXT_PACKAGE);
-
-    signal(SIGINT, signal_handler);
-    signal(SIGTERM, signal_handler);
-    segv_handler = signal(SIGSEGV, signal_handler);
-    abrt_handler = signal(SIGABRT, signal_handler);
-    fpe_handler  = signal(SIGFPE,  signal_handler);
-    ill_handler  = signal(SIGILL,  signal_handler);
-#ifndef G_OS_WIN32
-    signal(SIGHUP, signal_handler);
-    bus_handler  = signal(SIGBUS,  signal_handler);
-#endif
 
     keyfile = g_key_file_new();
 
