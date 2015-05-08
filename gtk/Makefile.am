@@ -396,7 +396,6 @@ spicy_LDADD =						\
 	libspice-client-gtk-$(SPICE_GTK_API_VERSION).la	\
 	libspice-client-glib-2.0.la			\
 	$(XRANDR_LIBS)					\
-        $(FLEXVDI_LIBS)                                 \
 	$(GTHREAD_LIBS)					\
 	$(GTK_LIBS)					\
 	$(LIBM)						\
@@ -405,7 +404,6 @@ spicy_LDADD =						\
 spicy_CPPFLAGS =			\
 	$(AM_CPPFLAGS)			\
 	$(XRANDR_CFLAGS)		\
-        $(FLEXVDI_CFLAGS)               \
 	$(GTHREAD_CFLAGS)		\
 	-DSPICE_DISABLE_DEPRECATED	\
 	$(NULL)

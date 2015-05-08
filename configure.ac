@@ -708,19 +708,6 @@ fi
 AC_SUBST(LZ4_CFLAGS)
 AC_SUBST(LZ4_LIBS)
 
-AC_ARG_ENABLE([flexvdi],
-  AS_HELP_STRING([--enable-flexvdi=@<:@yes/no@:>@],
-                 [Enable flexVDI extensions @<:@default=no@:>@]),
-  [],
-  [enable_flexvdi="no"])
-
-if test "x$enable_flexvdi" = "xyes"; then
-    PKG_CHECK_MODULES(FLEXVDI, flexvdi-spice-client)
-    AC_DEFINE([WITH_FLEXVDI], [1], [Define to enable flexVDI extensions])
-fi
-AC_SUBST(FLEXVDI_CFLAGS)
-AC_SUBST(FLEXVDI_LIBS)
-
 dnl ===========================================================================
 dnl check compiler flags
 
@@ -792,7 +779,6 @@ AC_MSG_NOTICE([
         DBus:                     ${have_dbus}
         WebDAV support:           ${have_phodav}
         LZ4 support:              ${enable_lz4}
-        flexVDI extensions:       ${enable_flexvdi}
 
         Now type 'make' to build $PACKAGE
 
