@@ -17,7 +17,7 @@ AM_CPPFLAGS =					\
 	$(GIO_CFLAGS)				\
 	-I$(top_srcdir)/gtk			\
 	-I$(top_builddir)/gtk			\
-	-I../spice-common/spice-protocol	\
+	-I$(top_srcdir)/spice-common/spice-protocol	\
 	-DG_LOG_DOMAIN=\"GSpice\"		\
 	$(NULL)
 
@@ -33,7 +33,6 @@ session_SOURCES = session.c
 pipe_SOURCES = pipe.c
 test_port_forward_SOURCES =			\
 	test-port-forward.c			\
-	$(top_builddir)/gtk/port-forward.c	\
 	$(NULL)
 
 
