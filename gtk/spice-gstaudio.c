@@ -625,7 +625,7 @@ static gboolean spice_gstaudio_get_playback_volume_info_finish(SpiceAudio *audio
 
     if (fake_channel) {
         SPICE_DEBUG("Stop faked PlaybackChannel");
-        playback_stop(NULL, audio);
+        playback_stop(SPICE_GSTAUDIO(audio));
     }
 
     if (mute != NULL) {
