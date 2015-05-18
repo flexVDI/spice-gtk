@@ -245,8 +245,20 @@ static gboolean create_pipeline(SpiceGstDecoder *decoder)
         gstdec_name = "h264parse ! avdec_h264";
         break;
     default:
-        spice_warning("Unknown codec type %d", decoder->base.codec_type);
-        return -1;
+        SPICE_DEBUG("Unknown codec type %d. Trying decodebin.",
+                    decoder->base.codec_type);
+        src_caps = "";
+        gstdec_name = NULL;
+        break;
+    }
+
+    /* decodebin will use vaapi if installed, which for a time could
+     * intentionally crash the application. So only use decodebin as a
+     * fallback or when SPICE_GSTVIDEO_AUTO is set.
+     * See: https://bugs.freedesktop.org/show_bug.cgi?id=90884
+     */
+    if (gstdec_name == NULL || g_getenv("SPICE_GSTVIDEO_AUTO") != NULL) {
+        gstdec_name = "decodebin";
     }
 
     /* - We schedule the frame display ourselves so set sync=false on appsink
