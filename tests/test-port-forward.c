@@ -11,6 +11,8 @@
 #include "../gtk/spice-util.h"
 #include "port-forward.h"
 
+#define LOCAL "localhost"
+
 const uint16_t rport = 80, lport = 8080;
 typedef struct TestFixture {
     PortForwarder * pf;
@@ -74,7 +76,7 @@ void test_listen_to_port(TestFixture * fixture, gconstpointer user_data)
     VDAgentPortForwardConnectMessage msgConnect = { .port = rport, .id = 1 };
 
     g_assert(g_socket_listener_add_inet_port(fixture->listener, lport, NULL, NULL));
-    port_forwarder_associate(fixture->pf, rport, lport);
+    port_forwarder_associate_remote(fixture->pf, LOCAL, rport, LOCAL, lport);
     g_assert_cmpuint(last_command, ==, VD_AGENT_PORT_FORWARD_LISTEN);
     g_assert_cmpuint(last_data_size, ==, sizeof(VDAgentPortForwardListenMessage));
     msgListen = (VDAgentPortForwardListenMessage *)last_data;
@@ -99,7 +101,7 @@ void test_direct_close(TestFixture * fixture, gconstpointer user_data)
     VDAgentPortForwardCloseMessage *msgClose;
 
     g_assert(g_socket_listener_add_inet_port(fixture->listener, lport, NULL, NULL));
-    port_forwarder_associate(fixture->pf, rport, lport);
+    port_forwarder_associate_remote(fixture->pf, LOCAL, rport, LOCAL, lport);
     port_forwarder_handle_message(fixture->pf, VD_AGENT_PORT_FORWARD_CONNECT,
                                   (gpointer)&msgConnect);
     gpointer ended = NULL;
@@ -122,7 +124,7 @@ void test_send_data(TestFixture * fixture, gconstpointer user_data)
     VDAgentPortForwardDataMessage *msgData;
 
     g_assert(g_socket_listener_add_inet_port(fixture->listener, lport, NULL, NULL));
-    port_forwarder_associate(fixture->pf, rport, lport);
+    port_forwarder_associate_remote(fixture->pf, LOCAL, rport, LOCAL, lport);
     port_forwarder_handle_message(fixture->pf, VD_AGENT_PORT_FORWARD_CONNECT,
                                   (gpointer)&msgConnect);
     gpointer ended = NULL;
@@ -155,7 +157,7 @@ void test_receive_data(TestFixture * fixture, gconstpointer user_data)
     VDAgentPortForwardDataMessage * msgData = (VDAgentPortForwardDataMessage *)msg_buffer;
 
     g_assert(g_socket_listener_add_inet_port(fixture->listener, lport, NULL, NULL));
-    port_forwarder_associate(fixture->pf, rport, lport);
+    port_forwarder_associate_remote(fixture->pf, LOCAL, rport, LOCAL, lport);
     port_forwarder_handle_message(fixture->pf, VD_AGENT_PORT_FORWARD_CONNECT,
                                   (gpointer)&msgConnect);
     gpointer ended = NULL;
@@ -184,7 +186,7 @@ void test_agent_close(TestFixture * fixture, gconstpointer user_data)
     VDAgentPortForwardCloseMessage msgClose = { .id = 1 };
 
     g_assert(g_socket_listener_add_inet_port(fixture->listener, lport, NULL, NULL));
-    port_forwarder_associate(fixture->pf, rport, lport);
+    port_forwarder_associate_remote(fixture->pf, LOCAL, rport, LOCAL, lport);
     port_forwarder_handle_message(fixture->pf, VD_AGENT_PORT_FORWARD_CONNECT,
                                   (gpointer)&msgConnect);
     gpointer ended = NULL;
