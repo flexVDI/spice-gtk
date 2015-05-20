@@ -1198,7 +1198,9 @@ spice_window_init (SpiceWindow *self)
 void printer_toggled(GtkWidget *widget, gpointer win)
 {
     const char * printer = gtk_menu_item_get_label(GTK_MENU_ITEM(widget));
-    if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget))) {
+    gboolean active = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget));
+    g_key_file_set_boolean(keyfile, "printers", printer, active);
+    if (active) {
         flexvdi_share_printer(printer);
     } else {
         flexvdi_unshare_printer(printer);
@@ -1211,8 +1213,10 @@ static GtkWidget * get_printers_menu(SpiceWindow *win)
     GSList * printers, * printer;
     flexvdi_get_printer_list(&printers);
     for (printer = printers; printer != NULL; printer = g_slist_next(printer)) {
-        GtkWidget * item = gtk_check_menu_item_new_with_label((const char *)printer->data);
-        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), FALSE);
+        const char * printerName = (const char *)printer->data;
+        gboolean state = g_key_file_get_boolean(keyfile, "printers", printerName, NULL);
+        GtkWidget * item = gtk_check_menu_item_new_with_label(printerName);
+        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), state);
         gtk_menu_shell_append(GTK_MENU_SHELL(sharePrinterMenu), item);
         gtk_widget_set_visible(item, TRUE);
         g_signal_connect(G_OBJECT(item), "activate",
@@ -1221,6 +1225,19 @@ static GtkWidget * get_printers_menu(SpiceWindow *win)
     g_slist_free_full(printers, g_free);
     return sharePrinterMenu;
 }
+
+static void share_current_printers(gpointer data)
+{
+    GtkWidget *subMenu = gtk_menu_item_get_submenu(GTK_MENU_ITEM(data));
+    GList *children = gtk_container_get_children(GTK_CONTAINER(subMenu)), *child;
+    for (child = children; child != NULL; child = g_list_next(child)) {
+        if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(child->data))) {
+            const char * printer = gtk_menu_item_get_label(GTK_MENU_ITEM(child->data));
+            flexvdi_share_printer(printer);
+        }
+    }
+}
+
 #endif
 
 static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *channel, int id, gint monitor_id)
@@ -1459,6 +1476,7 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(sPMenu), get_printers_menu(win));
     sPMenu = gtk_ui_manager_get_widget(win->ui, "/FullscreenMenu/SharePrinterMenu");
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(sPMenu), get_printers_menu(win));
+    flexvdi_on_agent_connected(share_current_printers, sPMenu);
 #endif
 
     return win;
