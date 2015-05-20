@@ -796,7 +796,7 @@ static const GtkActionEntry entries[] = {
         .label       = "_Input",
     },{
         .name        = "SharePrinterMenu",
-        .label       = "_Share Printer",
+        .label       = "_Printers",
     },{
         .name        = "OptionMenu",
         .label       = "_Options",
