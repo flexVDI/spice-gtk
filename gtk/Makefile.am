@@ -88,15 +88,12 @@ SPICE_COMMON_CPPFLAGS =						\
 	-I$(top_srcdir)						\
 	$(COMMON_CFLAGS)					\
 	$(PIXMAN_CFLAGS)					\
-	$(CELT051_CFLAGS)					\
-	$(OPUS_CFLAGS)  					\
 	$(PULSE_CFLAGS)						\
 	$(GTK_CFLAGS)						\
 	$(CAIRO_CFLAGS)						\
 	$(GLIB2_CFLAGS)						\
 	$(GIO_CFLAGS)						\
 	$(GOBJECT2_CFLAGS)					\
-	$(DBUS_GLIB_CFLAGS)					\
 	$(SSL_CFLAGS)						\
 	$(SASL_CFLAGS)						\
 	$(GST_CFLAGS)						\
@@ -124,7 +121,6 @@ SPICE_GTK_LIBADD_COMMON =		\
 	libspice-client-glib-2.0.la	\
 	$(GTK_LIBS)			\
 	$(CAIRO_LIBS)			\
-	$(DBUS_GLIB_LIBS)		\
 	$(XRANDR_LIBS)			\
 	$(LIBM)				\
 	$(NULL)
@@ -205,8 +201,6 @@ libspice_client_glib_2_0_la_LIBADD =					\
 	$(SOUP_LIBS)							\
 	$(GIO_LIBS)							\
 	$(GOBJECT2_LIBS)						\
-	$(CELT051_LIBS)							\
-	$(OPUS_LIBS)							\
 	$(JPEG_LIBS)							\
 	$(Z_LIBS)							\
 	$(LZ4_LIBS)							\
