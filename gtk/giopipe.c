@@ -473,4 +473,9 @@ spice_make_pipe(GIOStream **p1, GIOStream **p2)
 
     *p1 = g_simple_io_stream_new(in1, out1);
     *p2 = g_simple_io_stream_new(in2, out2);
+
+    g_object_unref(in1);
+    g_object_unref(in2);
+    g_object_unref(out1);
+    g_object_unref(out2);
 }
