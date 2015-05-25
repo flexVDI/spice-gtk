@@ -1159,15 +1159,17 @@ static gboolean motion_notify_event_cb(GtkWidget *widget, GdkEventMotion *event,
                                        gpointer data) {
     SpiceWindow *win = data;
     if (win->fullscreen) {
-        GtkWidget *fixed = gtk_widget_get_parent(win->fullscreen_menubar);
         if (event->y <= 0.0) {
+            gtk_widget_show(win->fullscreen_menubar);
+#if !GTK_CHECK_VERSION(3,2,0)
             GtkRequisition size;
             gint window_width;
-            gtk_widget_show(win->fullscreen_menubar);
+            GtkWidget *fixed = gtk_widget_get_parent(win->fullscreen_menubar);
             gtk_window_get_size(GTK_WINDOW(win->toplevel), &window_width, NULL);
             gtk_widget_size_request(win->fullscreen_menubar, &size);
             int x = (window_width - size.width) / 2;
             gtk_fixed_move(GTK_FIXED(fixed), win->fullscreen_menubar, x, 0);
+#endif
         } else {
             gtk_widget_hide(win->fullscreen_menubar);
         }
