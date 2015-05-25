@@ -160,26 +160,12 @@ test_pipe_readwrite(Fixture *f, gconstpointer user_data)
 }
 
 static void
-read8_cb(GObject *source, GAsyncResult *result, gpointer user_data)
-{
-    GError *error = NULL;
-    gssize nbytes;
-    GMainLoop *loop = user_data;
-
-    nbytes = g_input_stream_read_finish(G_INPUT_STREAM(source), result, &error);
-
-    g_assert_cmpint(nbytes, ==, 8);
-    g_assert_no_error(error);
-    g_clear_error(&error);
-}
-
-static void
 test_pipe_write16read8(Fixture *f, gconstpointer user_data)
 {
     g_output_stream_write_async(f->op1, "0123456789abcdef", 16, G_PRIORITY_DEFAULT,
                                 f->cancellable, write_cb, f->loop);
     g_input_stream_read_async(f->ip2, f->buf, 8, G_PRIORITY_DEFAULT,
-                              f->cancellable, read8_cb, GINT_TO_POINTER(8));
+                              f->cancellable, read_cb, GINT_TO_POINTER(8));
 
     g_main_loop_run (f->loop);
 
@@ -193,7 +179,7 @@ test_pipe_write8read16(Fixture *f, gconstpointer user_data)
     g_output_stream_write_async(f->op1, "01234567", 8, G_PRIORITY_DEFAULT,
                                 f->cancellable, write_cb, f->loop);
     g_input_stream_read_async(f->ip2, f->buf, 16, G_PRIORITY_DEFAULT,
-                              f->cancellable, read8_cb, GINT_TO_POINTER(8));
+                              f->cancellable, read_cb, GINT_TO_POINTER(8));
 
     g_main_loop_run (f->loop);
 
