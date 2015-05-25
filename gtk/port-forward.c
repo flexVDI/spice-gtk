@@ -390,7 +390,7 @@ static void connection_write_callback(GObject *source_object, GAsyncResult *res,
     GOutputStream *stream = (GOutputStream *)source_object;
     GBytes *bytes, *new_bytes;
     GError *error = NULL;
-    int num_written = g_output_stream_write_bytes_finish(stream, res, &error);
+    int num_written = g_output_stream_write_finish(stream, res, &error);
     int remaining;
     VDAgentPortForwardAckMessage msg;
 
@@ -409,9 +409,10 @@ static void connection_write_callback(GObject *source_object, GAsyncResult *res,
             g_queue_push_head(conn->write_buffer, new_bytes);
         }
         if(!g_queue_is_empty(conn->write_buffer)) {
-            g_output_stream_write_bytes_async(stream, g_queue_peek_head(conn->write_buffer),
-                                              G_PRIORITY_DEFAULT, NULL,
-                                              connection_write_callback, conn);
+            new_bytes = g_queue_peek_head(conn->write_buffer);
+            g_output_stream_write_async(stream, g_bytes_get_data(new_bytes, NULL),
+                                        g_bytes_get_size(new_bytes), G_PRIORITY_DEFAULT,
+                                        NULL, connection_write_callback, conn);
         } else {
             unref_connection(conn);
         }
@@ -501,9 +502,9 @@ static void handle_data(PortForwarder *pf, VDAgentPortForwardDataMessage *msg)
         if (g_queue_get_length(conn->write_buffer) == 1) {
             conn->refs++;
             stream = g_io_stream_get_output_stream((GIOStream *)conn->conn);
-            g_output_stream_write_bytes_async(stream, chunk,
-                                              G_PRIORITY_DEFAULT, NULL,
-                                              connection_write_callback, conn);
+            g_output_stream_write_async(stream, g_bytes_get_data(chunk, NULL),
+                                        g_bytes_get_size(chunk), G_PRIORITY_DEFAULT,
+                                        NULL, connection_write_callback, conn);
         }
     }
 }
