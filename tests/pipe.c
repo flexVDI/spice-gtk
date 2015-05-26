@@ -324,6 +324,47 @@ test_pipe_write_all_64_read_chunks_16(Fixture *f, gconstpointer user_data)
     g_main_loop_run (f->loop);
 }
 
+static void
+read_chunk_cb_and_try_write(GObject *source, GAsyncResult *result, gpointer user_data)
+{
+    Fixture *f = user_data;
+    GError *error = NULL;
+    gssize nbytes;
+    gboolean data_match;
+
+    nbytes = g_input_stream_read_finish(G_INPUT_STREAM(source), result, &error);
+    g_assert_no_error(error);
+    g_assert_cmpint(nbytes, >, 0);
+    data_match = (g_ascii_strncasecmp(f->data + f->total_read, f->buf, nbytes) == 0);
+    g_assert_true(data_match);
+
+    f->total_read += nbytes;
+    if (f->total_read != f->data_len) {
+        /* try write before reading another chunk */
+        g_output_stream_write(f->op1, "", 1, f->cancellable, &error);
+        g_assert_error(error, G_IO_ERROR, G_IO_ERROR_PENDING);
+        g_clear_error(&error);
+
+        g_input_stream_read_async(f->ip2, f->buf, f->read_size, G_PRIORITY_DEFAULT,
+                                  f->cancellable, read_chunk_cb_and_try_write, f);
+    }
+}
+
+static void
+test_pipe_concurrent_write(Fixture *f, gconstpointer user_data)
+{
+    f->data_len = 64;
+    f->data = get_test_data(f->data_len);
+    f->read_size = 16;
+    f->total_read = 0;
+
+    g_output_stream_write_all_async(f->op1, f->data, f->data_len, G_PRIORITY_DEFAULT,
+                                    f->cancellable, write_all_cb, f);
+    g_input_stream_read_async(f->ip2, f->buf, f->read_size, G_PRIORITY_DEFAULT,
+                              f->cancellable, read_chunk_cb_and_try_write, f);
+    g_main_loop_run (f->loop);
+}
+
 int main(int argc, char* argv[])
 {
     setlocale(LC_ALL, "");
@@ -356,6 +397,10 @@ int main(int argc, char* argv[])
 
     g_test_add("/pipe/write-all64-read-chunks16", Fixture, NULL,
                fixture_set_up, test_pipe_write_all_64_read_chunks_16,
+               fixture_tear_down);
+
+    g_test_add("/pipe/concurrent-write", Fixture, NULL,
+               fixture_set_up, test_pipe_concurrent_write,
                fixture_tear_down);
 
     g_test_add("/pipe/readclosestream", Fixture, NULL,
