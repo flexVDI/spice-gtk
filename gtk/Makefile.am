@@ -107,6 +107,7 @@ SPICE_COMMON_CPPFLAGS =						\
 	$(PHODAV_CFLAGS)					\
 	$(NOPOLL_CFLAGS)					\
 	$(LZ4_CFLAGS)					\
+	$(VA_CFLAGS)					\
 	$(NULL)
 
 AM_CPPFLAGS =					\
@@ -212,6 +213,7 @@ libspice_client_glib_2_0_la_LIBADD =					\
 	$(NOPOLL_LIBS)							\
 	$(Z_LIBS)							\
 	$(LZ4_LIBS)							\
+	$(VA_LIBS)							\
 	$(PIXMAN_LIBS)							\
 	$(SSL_LIBS)							\
 	$(PULSE_LIBS)							\
