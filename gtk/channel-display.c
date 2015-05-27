@@ -1168,6 +1168,8 @@ static gboolean display_stream_render(display_stream *st)
 
             gettimeofday(&time2, NULL);
             delta = ((time2.tv_sec * 1000) + (time2.tv_usec / 1000)) - ((time1.tv_sec * 1000) + (time1.tv_usec / 1000));
+            SPICE_DEBUG("FSkip delta: %llu ms", delta);
+#if 0
             if (st->fskip_level < 3 && delta > 120) {
                 SPICE_DEBUG("FSkip level: 3 - MJPEG process time: %llu ms\n",
                     (unsigned long long int) delta);
@@ -1184,6 +1186,7 @@ static gboolean display_stream_render(display_stream *st)
                 st->fskip_level = 1;
                 st->fskip_frame = 1;
             }
+#endif
         } else if (st->fskip_frame == st->fskip_level) {
             st->fskip_frame = 0;
         } else {

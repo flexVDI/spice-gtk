@@ -32,6 +32,12 @@
 #include "common/quic.h"
 #include "common/rop3.h"
 
+#ifdef USE_VA
+#include "tinyjpeg.h"
+#else
+typedef struct tinyjpeg_session tinyjpeg_session;
+#endif
+
 G_BEGIN_DECLS
 
 
@@ -54,6 +60,12 @@ typedef struct drops_sequence_stats {
     uint32_t duration;
 } drops_sequence_stats;
 
+typedef struct vaapi_source {
+    tinyjpeg_session *session;
+    int width;
+    int height;
+} vaapi_source;
+
 typedef struct display_stream {
     SpiceMsgIn                  *msg_create;
     SpiceMsgIn                  *msg_clip;
@@ -67,9 +79,11 @@ typedef struct display_stream {
     int                         codec;
 
     /* mjpeg decoder */
+    int                            hw_accel;
     struct jpeg_source_mgr         mjpeg_src;
     struct jpeg_decompress_struct  mjpeg_cinfo;
     struct jpeg_error_mgr          mjpeg_jerr;
+    vaapi_source                   vaapi_src;
 
     uint8_t                     *out_frame;
     GQueue                      *msgq;

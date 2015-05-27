@@ -49,9 +49,44 @@ static void mjpeg_src_term(struct jpeg_decompress_struct *cinfo)
     /* nothing */
 }
 
+#ifdef USE_VA
+static SpiceRect *stream_get_dest(display_stream *st)
+{
+    if (st->msg_data == NULL ||
+        spice_msg_in_type(st->msg_data) != SPICE_MSG_DISPLAY_STREAM_DATA_SIZED) {
+        SpiceMsgDisplayStreamCreate *info = spice_msg_in_parsed(st->msg_create);
+        return &info->dest;
+    } else {
+        SpiceMsgDisplayStreamDataSized *op = spice_msg_in_parsed(st->msg_data);
+        return &op->dest;
+    }
+}
+#endif
+
 G_GNUC_INTERNAL
 void stream_mjpeg_init(display_stream *st)
 {
+#ifdef USE_VA
+    // Try hardware acceleration first, fallback to soft decode if it fails
+    tinyjpeg_session *session;
+    SpiceRect *dest;
+
+    session = tinyjpeg_open_display();
+    if (session) {
+        st->hw_accel = 1;
+        dest = stream_get_dest(st);
+        session->dst_rect.x = dest->left;
+        session->dst_rect.y = dest->top;
+        session->dst_rect.width = dest->right - dest->left;
+        // XXX - Give some room for progress bar
+        session->dst_rect.height = dest->bottom - dest->top;
+        st->vaapi_src.session = session;
+        SPICE_DEBUG("New accelerated MJPEG stream of size %dx%d, pos %d,%d",
+                    session->dst_rect.width, session->dst_rect.height,
+                    session->dst_rect.x, session->dst_rect.y);
+        return;
+    }
+#endif
     st->mjpeg_cinfo.err = jpeg_std_error(&st->mjpeg_jerr);
     jpeg_create_decompress(&st->mjpeg_cinfo);
 
@@ -63,6 +98,39 @@ void stream_mjpeg_init(display_stream *st)
     st->mjpeg_cinfo.src               = &st->mjpeg_src;
 }
 
+#ifdef USE_VA
+static int stream_mjpeg_data_va(display_stream *st)
+{
+    tinyjpeg_session *session = st->vaapi_src.session;
+    uint8_t *data;
+    size_t length;
+
+#if 0
+    int width;
+    int height;
+    stream_get_dimensions(st, &width, &height);
+    if (width != st->vaapi_src.width || height != st->vaapi_src.height) {
+        g_warning("MJPEG VAAPI ignoring frame with wrong dimensions %dx%d vs %dx%d",
+                  widht, height, st->vaapi_src.width, st->vaapi_src.height);
+        return 0;
+    }
+#endif
+
+    length = stream_get_current_frame(st, &data);
+    if (tinyjpeg_parse_header(session, data, length) < 0) {
+        g_warning("MJPEG VAAPI failed parsing frame header");
+        st->hw_accel = 0;
+        return 0;
+    }
+    if (tinyjpeg_decode(session) < 0) {
+        g_warning("MJPEG VAAPI failed decoding JPEG frame");
+        st->hw_accel = 0;
+        return 0;
+    }
+    return 1;
+}
+#endif
+
 G_GNUC_INTERNAL
 void stream_mjpeg_data(display_stream *st)
 {
@@ -71,6 +139,10 @@ void stream_mjpeg_data(display_stream *st)
     int height;
     uint8_t *dest;
     uint8_t *lines[4];
+
+#ifdef USE_VA
+    if (st->hw_accel && stream_mjpeg_data_va(st)) return;
+#endif
 
     stream_get_dimensions(st, &width, &height);
     dest = g_malloc0(width * height * 4);
@@ -150,6 +222,12 @@ void stream_mjpeg_data(display_stream *st)
 G_GNUC_INTERNAL
 void stream_mjpeg_cleanup(display_stream *st)
 {
+#ifdef USE_VA
+    if (st->hw_accel) {
+        tinyjpeg_close_display(st->vaapi_src.session);
+        return;
+    }
+#endif
     jpeg_destroy_decompress(&st->mjpeg_cinfo);
     g_free(st->out_frame);
     st->out_frame = NULL;
