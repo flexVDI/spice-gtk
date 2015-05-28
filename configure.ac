@@ -289,6 +289,17 @@ AS_IF([test "x$enable_gstvideo" != "xno"],
 )
 AM_CONDITIONAL([HAVE_GSTVIDEO], [test "x$have_gstvideo" = "xyes"])
 
+AC_ARG_ENABLE([builtin-mjpeg],
+  AS_HELP_STRING([--enable-builtin-mjpeg], [Enable the builtin mjpeg video decoder @<:@default=yes@:>@]),
+  [],
+  enable_builtin_mjpeg="yes")
+AS_IF([test "x$enable_builtin_mjpeg" = "xyes"],
+      [AC_DEFINE([HAVE_BUILTIN_MJPEG], 1, [Use the builtin mjpeg decoder?])])
+AM_CONDITIONAL(HAVE_BUILTIN_MJPEG, [test "x$enable_builtin_mjpeg" != "xno"])
+
+AS_IF([test "x$enable_builtin_mjpeg$enable_gstvideo" = "xnono"],
+      [SPICE_WARNING([No builtin MJPEG or GStreamer decoder, video will not be streamed])])
+
 AC_CHECK_LIB(jpeg, jpeg_destroy_decompress,
     AC_MSG_CHECKING([for jpeglib.h])
     AC_TRY_CPP(

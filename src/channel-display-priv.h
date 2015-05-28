@@ -68,7 +68,9 @@ struct VideoDecoder {
  * @stream:     The associated video stream.
  * @return:     A pointer to a structure implementing the VideoDecoder methods.
  */
+#ifdef HAVE_BUILTIN_MJPEG
 VideoDecoder* create_mjpeg_decoder(int codec_type, display_stream *stream);
+#endif
 #ifdef HAVE_GSTVIDEO
 VideoDecoder* create_gstreamer_decoder(int codec_type, display_stream *stream);
 gboolean gstvideo_init(void);

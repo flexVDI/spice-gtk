@@ -717,8 +717,11 @@ static void spice_display_channel_reset_capabilities(SpiceChannel *channel)
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_GL_SCANOUT);
 #endif
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_MULTI_CODEC);
+#ifdef HAVE_BUILTIN_MJPEG
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_CODEC_MJPEG);
+#endif
     if (gstvideo_init()) {
+        spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_CODEC_MJPEG);
         spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_CODEC_VP8);
         spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_CODEC_H264);
     }
@@ -1098,9 +1101,11 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
     display_update_stream_region(st);
 
     switch (op->codec_type) {
+#ifdef HAVE_BUILTIN_MJPEG
     case SPICE_VIDEO_CODEC_TYPE_MJPEG:
         st->video_decoder = create_mjpeg_decoder(op->codec_type, st);
         break;
+#endif
     default:
 #ifdef HAVE_GSTVIDEO
         st->video_decoder = create_gstreamer_decoder(op->codec_type, st);

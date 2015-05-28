@@ -242,7 +242,6 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	channel-cursor.c				\
 	channel-display.c				\
 	channel-display-priv.h				\
-	channel-display-mjpeg.c				\
 	channel-inputs.c				\
 	channel-main.c					\
 	channel-playback.c				\
@@ -327,6 +326,12 @@ if HAVE_GSTAUDIO
 libspice_client_glib_2_0_la_SOURCES +=	\
 	spice-gstaudio.c		\
 	spice-gstaudio.h		\
+	$(NULL)
+endif
+
+if HAVE_BUILTIN_MJPEG
+libspice_client_glib_2_0_la_SOURCES +=	\
+	channel-display-mjpeg.c		\
 	$(NULL)
 endif
 
