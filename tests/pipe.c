@@ -21,6 +21,8 @@ typedef struct _Fixture {
     guint16 read_size;
     guint16 total_read;
 
+    GList *sources;
+
     GMainLoop *loop;
     GCancellable *cancellable;
     guint timeout;
@@ -60,6 +62,7 @@ fixture_set_up(Fixture *fixture,
         fixture->buf[i] = 0x42 + i;
     }
 
+    fixture->sources = NULL;
     fixture->cancellable = g_cancellable_new();
     fixture->loop = g_main_loop_new (NULL, FALSE);
     fixture->timeout = g_timeout_add (1000, stop_loop, fixture->loop);
@@ -71,6 +74,9 @@ fixture_tear_down(Fixture *fixture,
 {
     g_clear_object(&fixture->p1);
     g_clear_object(&fixture->p2);
+
+    if (fixture->sources)
+        g_list_free_full(fixture->sources, (GDestroyNotify) g_source_unref);
 
     g_clear_pointer(&fixture->data, g_free);
     g_clear_object(&fixture->cancellable);
@@ -365,6 +371,102 @@ test_pipe_concurrent_write(Fixture *f, gconstpointer user_data)
     g_main_loop_run (f->loop);
 }
 
+static void
+write_all_cb_zombie_check(GObject *source, GAsyncResult *result, gpointer user_data)
+{
+    Fixture *f = user_data;
+    GError *error = NULL;
+    gsize nbytes;
+    GList *it;
+
+    g_output_stream_write_all_finish(G_OUTPUT_STREAM(source), result, &nbytes, &error);
+    g_assert_no_error(error);
+    g_assert_cmpint(nbytes, ==, f->data_len);
+    g_clear_error(&error);
+
+    for (it = f->sources; it != NULL; it = it->next) {
+        GSource *s = it->data;
+        g_assert_true (g_source_is_destroyed (s));
+    }
+
+    g_main_loop_quit (f->loop);
+}
+
+static gboolean
+source_cb (gpointer user_data)
+{
+    return G_SOURCE_REMOVE;
+}
+
+#define NUM_OF_DUMMY_GSOURCE 1000
+
+static void
+read_chunk_cb_and_do_zombie(GObject *source, GAsyncResult *result, gpointer user_data)
+{
+    Fixture *f = user_data;
+    GError *error = NULL;
+    gssize nbytes;
+    gboolean data_match, try_zombie;
+    gint i;
+
+    nbytes = g_input_stream_read_finish(G_INPUT_STREAM(source), result, &error);
+    g_assert_no_error(error);
+    g_assert_cmpint(nbytes, >, 0);
+    data_match = (g_ascii_strncasecmp(f->data + f->total_read, f->buf, nbytes) == 0);
+    g_assert_true(data_match);
+
+    /* Simulate more Pollable GSources created to read from Pipe; This should
+     * not fail but giopipe does not allow concurrent read/write which means
+     * that only the *last* GSource created will be the one that does the actual
+     * read; The other GSources that are still active should be dispatched.
+     * (In this test, only the real GSource created in g_input_stream_read_async
+     * will read the data) */
+
+    /* Create GSources in all iterations besides the last one, simply because
+     * it is convenient! The execution of the last interaction should give enough
+     * time for for all dummy GSources being detached. */
+    f->total_read += nbytes;
+    try_zombie = (f->total_read + f->read_size < f->data_len);
+
+    if (try_zombie) {
+        for (i = 0; i < NUM_OF_DUMMY_GSOURCE/2; i++) {
+            GSource *s = g_pollable_input_stream_create_source(G_POLLABLE_INPUT_STREAM(f->ip2), NULL);
+            g_source_set_callback(s, source_cb, NULL, NULL);
+            g_source_attach(s, NULL);
+            f->sources = g_list_prepend(f->sources, s);
+        }
+    }
+
+    if (f->total_read != f->data_len)
+        g_input_stream_read_async(f->ip2, f->buf, f->read_size, G_PRIORITY_DEFAULT,
+                                  f->cancellable, read_chunk_cb_and_do_zombie, f);
+
+    if (try_zombie) {
+        for (i = 0; i < NUM_OF_DUMMY_GSOURCE/2; i++) {
+            GSource *s = g_pollable_input_stream_create_source(G_POLLABLE_INPUT_STREAM(f->ip2), NULL);
+            g_source_set_callback(s, source_cb, NULL, NULL);
+            g_source_attach(s, NULL);
+            f->sources = g_list_prepend(f->sources, s);
+        }
+    }
+}
+
+static void
+test_pipe_zombie_sources(Fixture *f, gconstpointer user_data)
+{
+    gint i;
+    f->data_len = 64;
+    f->data = get_test_data(f->data_len);
+    f->read_size = 16;
+    f->total_read = 0;
+
+    g_output_stream_write_all_async(f->op1, f->data, f->data_len, G_PRIORITY_DEFAULT,
+                                    f->cancellable, write_all_cb_zombie_check, f);
+    g_input_stream_read_async(f->ip2, f->buf, f->read_size, G_PRIORITY_DEFAULT,
+                              f->cancellable, read_chunk_cb_and_do_zombie, f);
+    g_main_loop_run (f->loop);
+}
+
 int main(int argc, char* argv[])
 {
     setlocale(LC_ALL, "");
@@ -401,6 +503,10 @@ int main(int argc, char* argv[])
 
     g_test_add("/pipe/concurrent-write", Fixture, NULL,
                fixture_set_up, test_pipe_concurrent_write,
+               fixture_tear_down);
+
+    g_test_add("/pipe/zombie-sources", Fixture, NULL,
+               fixture_set_up, test_pipe_zombie_sources,
                fixture_tear_down);
 
     g_test_add("/pipe/readclosestream", Fixture, NULL,
