@@ -40,17 +40,13 @@
 extern "C" {
 #endif
 
-#include <gtk/gtk.h>
-#include <gdk/gdk.h>
-#include <gdk/gdkx.h>
 #include <va/va.h>
 
 struct jdec_private;
+struct display_private;
 
 typedef struct tinyjpeg_session {
-    Display *x11_dpy;
-    Window x11_win;
-    GtkWidget *gtk_widget;
+    struct display_private *dpy_priv;
     VADisplay va_dpy;
     VAStatus va_status;
     VAConfigAttrib attrib;
@@ -59,6 +55,14 @@ typedef struct tinyjpeg_session {
     VARectangle src_rect;
     VARectangle dst_rect;
 } tinyjpeg_session;
+
+typedef struct {
+    VAStatus (*open_display)(tinyjpeg_session *session);
+    void (*close_display)(tinyjpeg_session *session);
+    VAStatus (*put_surface)(tinyjpeg_session *session, VASurfaceID surface);
+} VADisplayHooks;
+
+void set_va_display_hooks(VADisplayHooks *hooks);
 
 /* Flags that can be set by any applications */
 #define TINYJPEG_FLAGS_MJPEG_TABLE	(1<<1)

@@ -716,13 +716,16 @@ AC_ARG_ENABLE([va],
 
 if test "x$have_x11" = "xyes"; then
     if test "x$enable_va" = "xyes"; then
-        PKG_CHECK_MODULES(VA, libva-x11)
+        PKG_CHECK_MODULES(VA, libva)
+        PKG_CHECK_MODULES(VA_X11, libva-x11)
         AC_DEFINE([USE_VA], [1], [Define to build with libva support])
     fi
 fi
 AM_CONDITIONAL(WITH_VA, [test "x$enable_va" = "xyes"])
 AC_SUBST(VA_CFLAGS)
 AC_SUBST(VA_LIBS)
+AC_SUBST(VA_X11_CFLAGS)
+AC_SUBST(VA_X11_LIBS)
 
 dnl ===========================================================================
 dnl check compiler flags

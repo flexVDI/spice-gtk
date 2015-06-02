@@ -107,7 +107,7 @@ SPICE_COMMON_CPPFLAGS =						\
 	$(PHODAV_CFLAGS)					\
 	$(NOPOLL_CFLAGS)					\
 	$(LZ4_CFLAGS)					\
-	$(VA_CFLAGS)					\
+	$(VA_X11_CFLAGS)					\
 	$(NULL)
 
 AM_CPPFLAGS =					\
@@ -127,6 +127,7 @@ SPICE_GTK_LIBADD_COMMON =		\
 	$(GTK_LIBS)			\
 	$(CAIRO_LIBS)			\
 	$(DBUS_GLIB_LIBS)		\
+	$(VA_X11_LIBS)							\
 	$(XRANDR_LIBS)			\
 	$(LIBM)				\
 	$(NULL)
@@ -162,6 +163,10 @@ else
 SPICE_GTK_SOURCES_COMMON +=		\
 	spice-widget-cairo.c		\
 	$(NULL)
+endif
+
+if WITH_VA
+SPICE_GTK_SOURCES_COMMON += va_display_x11.c
 endif
 
 if WITH_GTK
@@ -334,6 +339,10 @@ libspice_client_glibinclude_HEADERS =	\
 nodist_libspice_client_glibinclude_HEADERS =	\
 	spice-glib-enums.h			\
 	$(NULL)
+
+if WITH_VA
+nodist_libspice_client_glibinclude_HEADERS += tinyjpeg.h
+endif
 
 # file for API compatibility, but we don't want warning during our compilation
 dist_libspice_client_glibinclude_DATA =	\

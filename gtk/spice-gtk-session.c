@@ -369,6 +369,11 @@ static void spice_gtk_session_set_property(GObject      *gobject,
     }
 }
 
+#ifdef USE_VA
+// Assign VA hooks here
+void va_x11_set_display_hooks(void);
+#endif
+
 static void spice_gtk_session_class_init(SpiceGtkSessionClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
@@ -452,6 +457,10 @@ static void spice_gtk_session_class_init(SpiceGtkSessionClass *klass)
                               G_PARAM_STATIC_STRINGS));
 
     g_type_class_add_private(klass, sizeof(SpiceGtkSessionPrivate));
+
+#ifdef USE_VA
+    va_x11_set_display_hooks();
+#endif
 }
 
 /* ---------------------------------------------------------------- */

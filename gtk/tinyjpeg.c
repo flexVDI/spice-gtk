@@ -49,8 +49,6 @@
 #include <fcntl.h>
 #include <assert.h>
 #include <va/va.h>
-#include <va/va_x11.h>
-//#include "va_display.h"
 
 
 #define cY	0
@@ -446,6 +444,12 @@ bogus_jpeg_format:
  *
  ******************************************************************************/
 
+static VADisplayHooks *va_display_hooks;
+void set_va_display_hooks(VADisplayHooks *hooks)
+{
+    va_display_hooks = hooks;
+}
+
 /**
  * Allocate a new tinyjpeg decoder object.
  *
@@ -499,10 +503,11 @@ int tinyjpeg_parse_header(tinyjpeg_session *session, const unsigned char *buf, u
 
 tinyjpeg_session * tinyjpeg_open_display(void)
 {
+    CHECK_VASTATUS_RETURN_NULL(va_display_hooks ? VA_STATUS_SUCCESS : VA_STATUS_ERROR_UNKNOWN, "va_display_hooks");
+
     VAStatus va_status;
     VAEntrypoint entrypoints[5];
     VAConfigAttrib attrib;
-    int major_ver, minor_ver;
     int num_entrypoints;
     int vld_entrypoint;
     tinyjpeg_session *session = malloc(sizeof(tinyjpeg_session));
@@ -510,9 +515,7 @@ tinyjpeg_session * tinyjpeg_open_display(void)
     memset(session, 0, sizeof(tinyjpeg_session));
     session->src_rect.x = -1;
 
-    session->x11_dpy = XOpenDisplay(NULL);
-    session->va_dpy = vaGetDisplay(session->x11_dpy);
-    va_status = vaInitialize(session->va_dpy, &major_ver, &minor_ver);
+    va_status = va_display_hooks->open_display(session);
     CHECK_VASTATUS_RETURN_NULL(va_status, "vaInitialize");
  
     va_status = vaQueryConfigEntrypoints(session->va_dpy, VAProfileJPEGBaseline, entrypoints, 
@@ -550,8 +553,8 @@ void tinyjpeg_close_display(tinyjpeg_session *session)
 {
     vaDestroyConfig(session->va_dpy, session->config_id);
     vaTerminate(session->va_dpy);
-    gtk_widget_destroy(session->gtk_widget);
-    XCloseDisplay(session->x11_dpy);
+    if (va_display_hooks)
+        va_display_hooks->close_display(session);
     free(session->jdec);
     free(session);
 }
@@ -566,44 +569,6 @@ validate_rect(const VARectangle *rect)
             rect->height > 0);
 }
 
-static VAStatus
-tinyjpeg_put_surface(tinyjpeg_session *session, VASurfaceID surface)
-{
-    GtkWidget *widget = session->gtk_widget;
-    VARectangle *src_rect = &session->src_rect;
-    VARectangle *dst_rect = &session->dst_rect;
-
-    if (!session->va_dpy)
-        return VA_STATUS_ERROR_INVALID_DISPLAY;
-    if (surface == VA_INVALID_SURFACE)
-        return VA_STATUS_ERROR_INVALID_SURFACE;
-
-    if (widget) {
-        gtk_window_resize(GTK_WINDOW(widget), dst_rect->width, dst_rect->height);
-        gtk_window_move(GTK_WINDOW(widget), dst_rect->x, dst_rect->y);
-    } else {
-        GdkWindow *gdk_window;
-        Window x11_window;
-
-        widget = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-        gtk_window_set_decorated(GTK_WINDOW(widget), FALSE);
-        gtk_window_set_accept_focus(GTK_WINDOW(widget), FALSE);
-        gtk_window_set_keep_above(GTK_WINDOW(widget), TRUE);
-        gtk_widget_show(widget);
-
-        gdk_window = gtk_widget_get_window(widget);
-        x11_window = GDK_WINDOW_XID(gdk_window);
-
-        session->gtk_widget = widget;
-        session->x11_win = x11_window;
-    }
-
-    return vaPutSurface(session->va_dpy, surface, session->x11_win,
-                        0, 0, src_rect->width, src_rect->height,
-                        0, 0, dst_rect->width, dst_rect->height,
-                        NULL, 0, VA_FRAME_PICTURE);
-}
-
 int tinyjpeg_decode(tinyjpeg_session *session)
 {
 
@@ -611,7 +576,6 @@ int tinyjpeg_decode(tinyjpeg_session *session)
     VASurfaceID surface_id;
     VAContextID context_id;
     VABufferID pic_param_buf,iqmatrix_buf,huffmantable_buf,slice_param_buf,slice_data_buf;
-    //int major_ver, minor_ver;
     int max_h_factor, max_v_factor;
     unsigned int i, j;
     struct jdec_private *priv = session->jdec;
@@ -763,7 +727,8 @@ int tinyjpeg_decode(tinyjpeg_session *session)
         session->src_rect.width = priv->width;
         session->src_rect.height = priv->height;
     }
-    va_status = tinyjpeg_put_surface(session, surface_id);
+    //va_status = tinyjpeg_put_surface(session, surface_id);
+    va_status = va_display_hooks->put_surface(session, surface_id);
     CHECK_VASTATUS_RETURN(va_status, "vaPutSurface");
 
     vaDestroySurfaces(session->va_dpy, &surface_id, 1);
