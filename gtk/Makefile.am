@@ -192,6 +192,10 @@ libspice_client_gtkinclude_HEADERS =	\
 	usb-device-widget.h		\
 	$(NULL)
 
+if WITH_VA
+libspice_client_gtkinclude_HEADERS += va_display_x11.h
+endif
+
 nodist_libspice_client_gtkinclude_HEADERS =	\
 	spice-widget-enums.h			\
 	$(NULL)

@@ -64,6 +64,7 @@ typedef struct vaapi_source {
     tinyjpeg_session *session;
     int width;
     int height;
+    int st_count_miss;
 } vaapi_source;
 
 typedef struct display_stream {

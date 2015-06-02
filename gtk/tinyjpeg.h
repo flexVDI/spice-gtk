@@ -43,10 +43,10 @@ extern "C" {
 #include <va/va.h>
 
 struct jdec_private;
-struct display_private;
+typedef struct display_private display_private;
 
 typedef struct tinyjpeg_session {
-    struct display_private *dpy_priv;
+    display_private *dpy_priv;
     VADisplay va_dpy;
     VAStatus va_status;
     VAConfigAttrib attrib;

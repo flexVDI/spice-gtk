@@ -33,6 +33,10 @@
 #include <flexvdi-port.h>
 #endif
 
+#ifdef USE_VA
+#include "va_display_x11.h"
+#endif
+
 #include "glib-compat.h"
 #include "spice-widget.h"
 #include "spice-gtk-session.h"
@@ -1693,6 +1697,9 @@ static void display_mark(SpiceChannel *channel, gint mark, SpiceWindow *win)
 
     if (mark == TRUE) {
         gtk_widget_show(win->toplevel);
+#ifdef USE_VA
+        va_x11_set_toplevel_window(gtk_widget_get_window(win->toplevel));
+#endif
     } else {
         gtk_widget_hide(win->toplevel);
     }

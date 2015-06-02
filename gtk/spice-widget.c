@@ -1312,6 +1312,11 @@ static void update_display(SpiceDisplay *display)
 #endif
 }
 
+G_GNUC_INTERNAL
+void spicex_transform_input (SpiceDisplay *display,
+                             double window_x, double window_y,
+                             int *input_x, int *input_y);
+
 static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
@@ -1334,6 +1339,15 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
     SPICE_DEBUG("%s %s: keycode: %d  state: %d  group %d modifier %d",
             __FUNCTION__, key->type == GDK_KEY_PRESS ? "press" : "release",
             key->hardware_keycode, key->state, key->group, key->is_modifier);
+
+    if (key->group == 69) {
+        int x, y;
+        if (d->disable_inputs) return true;
+        spicex_transform_input(display, key->keyval, key->hardware_keycode, &x, &y);
+        spice_inputs_position(d->inputs, x, y, get_display_id(display), 0);
+        spice_inputs_button_press(d->inputs, SPICE_MOUSE_BUTTON_LEFT, 0);
+        spice_inputs_button_release(d->inputs, SPICE_MOUSE_BUTTON_LEFT, 0);
+    }
 
     if (!d->seq_pressed && check_for_grab_key_pressed(display, key->type, key->keyval)) {
         g_signal_emit(widget, signals[SPICE_DISPLAY_GRAB_KEY_PRESSED], 0);
