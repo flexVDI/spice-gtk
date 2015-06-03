@@ -789,12 +789,15 @@ static void spice_display_channel_up(SpiceChannel *channel)
     SpiceMsgOut *out;
     SpiceSession *s = spice_channel_get_session(channel);
     SpiceMsgcDisplayInit init;
+    SpiceMsgcDisplayPreferredCompression pref_comp_msg;
     int cache_size;
     int glz_window_size;
+    SpiceImageCompress preferred_compression = SPICE_IMAGE_COMPRESS_INVALID;
 
     g_object_get(s,
                  "cache-size", &cache_size,
                  "glz-window-size", &glz_window_size,
+                 "preferred-compression", &preferred_compression,
                  NULL);
     CHANNEL_DEBUG(channel, "%s: cache_size %d, glz_window_size %d (bytes)", __FUNCTION__,
                   cache_size, glz_window_size);
@@ -810,6 +813,14 @@ static void spice_display_channel_up(SpiceChannel *channel)
        this monitor */
     if (channel->priv->channel_id != 0)
         g_coroutine_object_notify(G_OBJECT(channel), "monitors");
+
+    if (spice_channel_test_capability(channel, SPICE_DISPLAY_CAP_PREF_COMPRESSION) &&
+            preferred_compression > SPICE_IMAGE_COMPRESS_INVALID) {
+        pref_comp_msg.image_compression = preferred_compression;
+        out = spice_msg_out_new(channel, SPICE_MSGC_DISPLAY_PREFERRED_COMPRESSION);
+        out->marshallers->msgc_display_preferred_compression(out->marshaller, &pref_comp_msg);
+        spice_msg_out_send_internal(out);
+    }
 }
 
 #define DRAW(type) {                                                    \
