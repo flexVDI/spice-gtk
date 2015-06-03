@@ -443,6 +443,7 @@ static void window_set_fullscreen(SpiceWindow *win, gboolean fs)
         toggle = gtk_action_group_get_action(win->ag, "Statusbar");
         state = gtk_toggle_action_get_active(GTK_TOGGLE_ACTION(toggle));
         gtk_widget_set_visible(win->statusbar, state);
+        gtk_widget_hide(win->fullscreen_menubar);
 
         win->fullscreen = 0;
     }
@@ -1520,7 +1521,7 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
 
     /* show window */
     if (fullscreen || kiosk_mode)
-        gtk_window_fullscreen(GTK_WINDOW(win->toplevel));
+        window_set_fullscreen(win, TRUE);
 
 #ifdef WITH_FLEXVDI
     // Printers menu
