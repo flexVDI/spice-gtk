@@ -131,6 +131,8 @@ static int stream_mjpeg_data_va(display_stream *st)
         st->hw_accel = 0;
         return 0;
     }
+    g_free(st->out_frame);
+    st->out_frame = NULL;
     return 1;
 }
 #endif
