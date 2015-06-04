@@ -82,6 +82,7 @@ struct _SpiceDisplayChannelPrivate {
 #ifdef G_OS_WIN32
     HDC dc;
 #endif
+    char * report;
 };
 
 G_DEFINE_TYPE(SpiceDisplayChannel, spice_display_channel, SPICE_TYPE_CHANNEL)
@@ -92,7 +93,8 @@ enum {
     PROP_WIDTH,
     PROP_HEIGHT,
     PROP_MONITORS,
-    PROP_MONITORS_MAX
+    PROP_MONITORS_MAX,
+    PROP_REPORT,
 };
 
 enum {
@@ -196,6 +198,10 @@ static void spice_display_get_property(GObject    *object,
         g_value_set_uint(value, c->monitors_max);
         break;
     }
+    case PROP_REPORT: {
+        g_value_set_static_string(value, c->report);
+        break;
+    }
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
         break;
@@ -290,6 +296,15 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
                            1, MONITORS_MAX, 1,
                            G_PARAM_READABLE |
                            G_PARAM_STATIC_STRINGS));
+
+    g_object_class_install_property
+        (gobject_class, PROP_REPORT,
+         g_param_spec_string("stream-report",
+                             "Stream report",
+                             "Report of stream properties",
+                             "",
+                             G_PARAM_READABLE |
+                             G_PARAM_STATIC_STRINGS));
 
     /**
      * SpiceDisplayChannel::display-primary-create:
@@ -1168,8 +1183,9 @@ static gboolean display_stream_render(display_stream *st)
 
             gettimeofday(&time2, NULL);
             delta = ((time2.tv_sec * 1000) + (time2.tv_usec / 1000)) - ((time1.tv_sec * 1000) + (time1.tv_usec / 1000));
-            SPICE_DEBUG("FSkip delta: %llu ms", delta);
-#if 0
+            st->acum_decode_time += delta;
+            st->decoded_frames++;
+            SPICE_DEBUG("FSkip delta: %llu ms", (unsigned long long int) delta);
             if (st->fskip_level < 3 && delta > 120) {
                 SPICE_DEBUG("FSkip level: 3 - MJPEG process time: %llu ms\n",
                     (unsigned long long int) delta);
@@ -1186,7 +1202,6 @@ static gboolean display_stream_render(display_stream *st)
                 st->fskip_level = 1;
                 st->fskip_frame = 1;
             }
-#endif
         } else if (st->fskip_frame == st->fskip_level) {
             st->fskip_frame = 0;
         } else {
@@ -1253,6 +1268,25 @@ static void display_update_stream_report(SpiceDisplayChannel *channel, uint32_t 
         } else {
             report.audio_delay = UINT_MAX;
         }
+
+        unsigned int dec_time = st->decoded_frames ?
+                                st->acum_decode_time / st->decoded_frames :
+                                0;
+        st->decoded_frames = st->acum_decode_time = 0;
+        guint64 elapsed = now - st->report_start_time;
+        int in_fps = st->report_num_frames * 1000000 / elapsed;
+        int out_fps = (st->report_num_frames - st-> report_num_drops) * 1000000 / elapsed;
+        int hw_accel = st->hw_accel;
+        g_free(channel->priv->report);
+        char *str = g_strdup_printf(
+            "HW accel %s, decode: %-3ums, dropped %-2d, in rate %-2d, out rate %-2d",
+                                    hw_accel ? "on" : "off",
+                                    dec_time,
+                                    st->report_num_drops,
+                                    in_fps, out_fps);
+        channel->priv->report = str;
+        SPICE_DEBUG("Reporting stream %d, elapsed %u: %s", stream_id, (unsigned int)elapsed, str);
+        g_coroutine_object_notify(G_OBJECT(channel), "stream-report");
 
         msg = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_DISPLAY_STREAM_REPORT);
         msg->marshallers->msgc_display_stream_report(msg->marshaller, &report);
@@ -1518,6 +1552,10 @@ static void destroy_stream(SpiceChannel *channel, int id)
         g_source_remove(st->timeout);
     g_free(st);
     c->streams[id] = NULL;
+
+    g_free(c->report);
+    c->report = g_strdup("");
+    g_coroutine_object_notify(G_OBJECT(channel), "stream-report");
 }
 
 static void clear_streams(SpiceChannel *channel)

@@ -100,6 +100,8 @@ typedef struct display_stream {
     drops_sequence_stats cur_drops_seq_stats;
     GArray               *drops_seqs_stats_arr;
     uint32_t             num_drops_seqs;
+    guint64              acum_decode_time;
+    uint32_t             decoded_frames;
 
     uint32_t             playback_sync_drops_seq_len;
 
