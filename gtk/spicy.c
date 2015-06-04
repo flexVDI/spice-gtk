@@ -108,6 +108,7 @@ struct spice_connection {
     SpiceAudio       *audio;
     const char       *mouse_state;
     const char       *agent_state;
+    const char       *stream_state;
     gboolean         agent_connected;
     int              channels;
     int              disconnecting;
@@ -319,8 +320,8 @@ static void update_status_window(SpiceWindow *win)
         status = g_strdup_printf(_("Use %s to ungrab mouse."), seq);
         g_free(seq);
     } else {
-        status = g_strdup_printf(_("mouse: %s, agent: %s"),
-                 win->conn->mouse_state, win->conn->agent_state);
+        status = g_strdup_printf(_("mouse: %s, agent: %s | stream: %s"),
+                 win->conn->mouse_state, win->conn->agent_state, win->conn->stream_state);
     }
 
     gtk_label_set_text(GTK_LABEL(win->status), status);
@@ -1794,6 +1795,13 @@ static void display_monitors(SpiceChannel *display, GParamSpec *pspec,
     g_clear_pointer(&monitors, g_array_unref);
 }
 
+static void stream_report(SpiceChannel *display, GParamSpec *pspec,
+                          spice_connection *conn)
+{
+    g_object_get(display, "stream-report", &conn->stream_state, NULL);
+    update_status(conn);
+}
+
 static void port_write_cb(GObject *source_object,
                           GAsyncResult *res,
                           gpointer user_data)
@@ -1918,6 +1926,8 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         SPICE_DEBUG("new display channel (#%d)", id);
         g_signal_connect(channel, "notify::monitors",
                          G_CALLBACK(display_monitors), conn);
+        g_signal_connect(channel, "notify::stream-report",
+                         G_CALLBACK(stream_report), conn);
         spice_channel_connect(channel);
     }
 
@@ -2016,6 +2026,8 @@ static spice_connection *connection_new(void)
         g_signal_connect(manager, "device-error",
                          G_CALLBACK(usb_connect_failed), NULL);
     }
+
+    conn->stream_state = "";
 
     connections++;
     SPICE_DEBUG("%s (%d)", __FUNCTION__, connections);

@@ -12,7 +12,7 @@ static GdkWindow *spice_toplevel_window;
 
 void va_x11_set_toplevel_window(void *window)
 {
-    SPICE_DEBUG("VA X11 settint toplevel window to %p", window);
+    SPICE_DEBUG("VA X11 setting toplevel window to %p", window);
     spice_toplevel_window = (GdkWindow *)window;
 }
 
