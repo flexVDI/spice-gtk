@@ -68,6 +68,8 @@ struct _SpiceChannel
     /* Do not add fields to this struct */
 };
 
+typedef struct _SpiceChannelClassPrivate SpiceChannelClassPrivate;
+
 struct _SpiceChannelClass
 {
     GObjectClass parent_class;
@@ -94,7 +96,7 @@ struct _SpiceChannelClass
     /* virtual methods, coroutine context */
     void (*channel_send_migration_handshake)(SpiceChannel *channel);
 
-    GArray                      *handlers;
+    SpiceChannelClassPrivate *priv;
     /*
      * If adding fields to this struct, remove corresponding
      * amount of padding to avoid changing overall struct size

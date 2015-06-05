@@ -76,7 +76,8 @@ static gboolean channel_connect(SpiceChannel *channel, gboolean tls);
 #define SPICE_CHANNEL_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_CHANNEL, SpiceChannelPrivate))
 
-G_DEFINE_TYPE(SpiceChannel, spice_channel, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_CODE (SpiceChannel, spice_channel, G_TYPE_OBJECT,
+                         g_type_add_class_private (g_define_type_id, sizeof (SpiceChannelClassPrivate)));
 
 /* Properties */
 enum {
@@ -2848,11 +2849,11 @@ static void spice_channel_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
     int type = spice_msg_in_type(msg);
     spice_msg_handler handler;
 
-    g_return_if_fail(type < klass->handlers->len);
+    g_return_if_fail(type < klass->priv->handlers->len);
     if (type > SPICE_MSG_BASE_LAST && channel->priv->disable_channel_msg)
         return;
 
-    handler = g_array_index(klass->handlers, spice_msg_handler, type);
+    handler = g_array_index(klass->priv->handlers, spice_msg_handler, type);
     g_return_if_fail(handler != NULL);
     handler(channel, msg);
 }
