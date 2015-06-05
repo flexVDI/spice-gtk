@@ -84,7 +84,7 @@ typedef struct display_stream {
     struct jpeg_source_mgr         mjpeg_src;
     struct jpeg_decompress_struct  mjpeg_cinfo;
     struct jpeg_error_mgr          mjpeg_jerr;
-    vaapi_source                   vaapi_src;
+    tinyjpeg_session               *vaapi_session;
 
     uint8_t                     *out_frame;
     GQueue                      *msgq;

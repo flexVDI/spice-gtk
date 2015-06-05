@@ -79,8 +79,7 @@ void stream_mjpeg_init(display_stream *st)
         session->dst_rect.y = dest->top;
         session->dst_rect.width = dest->right - dest->left;
         session->dst_rect.height = dest->bottom - dest->top;
-        st->vaapi_src.session = session;
-        st->vaapi_src.st_count_miss = 0;
+        st->vaapi_session = session;
         SPICE_DEBUG("New accelerated MJPEG stream of size %dx%d, pos %d,%d",
                     session->dst_rect.width, session->dst_rect.height,
                     session->dst_rect.x, session->dst_rect.y);
@@ -101,24 +100,20 @@ void stream_mjpeg_init(display_stream *st)
 #ifdef USE_VA
 static int stream_mjpeg_data_va(display_stream *st)
 {
-    vaapi_source *vaapi = &st->vaapi_src;
-    tinyjpeg_session *session = vaapi->session;
+    tinyjpeg_session *session = st->vaapi_session;
     uint8_t *data;
     size_t length;
     int width;
     int height;
 
     stream_get_dimensions(st, &width, &height);
-    if (width != vaapi->width || height != vaapi->height) {
-        ++vaapi->st_count_miss;
-        if (vaapi->st_count_miss == 5) {
-            vaapi->width = width;
-            vaapi->height = height;
-            vaapi->st_count_miss = 0;
-        }
-    } else {
-        vaapi->st_count_miss = 0;
-    }
+    session->src_rect.width = width;
+    session->src_rect.height = height;
+    SpiceRect *dest = stream_get_dest(st);
+    session->dst_rect.x = dest->left;
+    session->dst_rect.y = dest->top;
+    session->dst_rect.width = dest->right - dest->left;
+    session->dst_rect.height = dest->bottom - dest->top;
 
     length = stream_get_current_frame(st, &data);
     if (tinyjpeg_parse_header(session, data, length) < 0) {
@@ -230,7 +225,7 @@ void stream_mjpeg_cleanup(display_stream *st)
 {
 #ifdef USE_VA
     if (st->hw_accel) {
-        tinyjpeg_close_display(st->vaapi_src.session);
+        tinyjpeg_close_display(st->vaapi_session);
         return;
     }
 #endif
