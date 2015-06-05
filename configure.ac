@@ -88,7 +88,7 @@ dnl =========================================================================
 dnl Chek optional features
 
 srcdir="$(dirname $0)"
-if test ! -e "$srcdir/gtk/vncdisplaykeymap_osx2xtkbd.c"; then
+if test ! -e "$srcdir/src/vncdisplaykeymap_osx2xtkbd.c"; then
   AC_MSG_CHECKING([for Text::CSV Perl module])
   perl -MText::CSV -e "" >/dev/null 2>&1
   if test $? -ne 0 ; then
@@ -708,7 +708,7 @@ dnl ===========================================================================
 dnl check compiler flags
 
 # We want to enable these, but need to sort out the
-# decl mess with  gtk/generated_*.c
+# decl mess with  src/generated_*.c
 dontwarn="-Wmissing-prototypes -Wmissing-declarations"
 
 # We want to enable these, but Gtk+2.0 has a bad decl
@@ -746,9 +746,9 @@ spice-controller.pc
 data/Makefile
 data/spicy.nsis
 po/Makefile.in
-gtk/Makefile
-gtk/spice-version.h
-gtk/controller/Makefile
+src/Makefile
+src/spice-version.h
+src/controller/Makefile
 doc/Makefile
 doc/reference/Makefile
 man/Makefile

@@ -7,7 +7,7 @@ DOC_MODULE = spice-gtk
 DOC_MAIN_SGML_FILE = $(DOC_MODULE)-docs.xml
 
 # Source code location
-DOC_SOURCE_DIR = $(top_srcdir)/gtk
+DOC_SOURCE_DIR = $(top_srcdir)/src
 
 # Extra options to supply to gtkdoc-scan.
 SCAN_OPTIONS = \
@@ -18,8 +18,8 @@ SCAN_OPTIONS = \
 MKDB_OPTIONS = --xml-mode --output-format=xml
 
 # Used for dependencies. The docs will be rebuilt if any of these change.
-HFILE_GLOB = $(top_srcdir)/gtk/*.h
-CFILE_GLOB = $(top_srcdir)/gtk/*.c
+HFILE_GLOB = $(top_srcdir)/src/*.h
+CFILE_GLOB = $(top_srcdir)/src/*.c
 
 # Header files to ignore when scanning. Use base file name, no paths
 IGNORE_HFILES=					\
@@ -54,8 +54,8 @@ IGNORE_HFILES=					\
 	$(NULL)
 
 # CFLAGS and LDFLAGS for compiling gtkdoc-scangobj with your library.
-GTKDOC_CFLAGS = -I$(top_srcdir) -I$(top_builddir) -I$(top_srcdir)/gtk -I$(top_builddir)/gtk $(SPICE_GLIB_CFLAGS) $(SPICE_GTK_CFLAGS) $(COMMON_CFLAGS)
-GTKDOC_LIBS = $(top_builddir)/gtk/libspice-client-glib-2.0.la $(top_builddir)/gtk/libspice-client-gtk-$(SPICE_GTK_API_VERSION).la
+GTKDOC_CFLAGS = -I$(top_srcdir) -I$(top_builddir) -I$(top_srcdir)/src -I$(top_builddir)/src $(SPICE_GLIB_CFLAGS) $(SPICE_GTK_CFLAGS) $(COMMON_CFLAGS)
+GTKDOC_LIBS = $(top_builddir)/src/libspice-client-glib-2.0.la $(top_builddir)/src/libspice-client-gtk-$(SPICE_GTK_API_VERSION).la
 
 include $(top_srcdir)/gtk-doc.make
 

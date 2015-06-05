@@ -1,7 +1,7 @@
 ACLOCAL_AMFLAGS = -I m4
 NULL =
 
-SUBDIRS = spice-common gtk man po doc data
+SUBDIRS = spice-common src man po doc data
 
 if BUILD_TESTS
 SUBDIRS += tests
