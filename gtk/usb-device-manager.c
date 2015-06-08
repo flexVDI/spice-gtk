@@ -230,9 +230,9 @@ static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
                                                        GCancellable  *cancellable,
                                                        GError        **err)
 {
+#ifdef USE_USBREDIR
     SpiceUsbDeviceManager *self = SPICE_USB_DEVICE_MANAGER(initable);
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
-#ifdef USE_USBREDIR
     GList *list;
     GList *it;
     int rc;
