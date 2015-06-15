@@ -296,23 +296,28 @@ AC_ARG_WITH([audio],
   [],
   [with_audio="auto"])
 
-AS_IF([test "x$with_audio" = "xauto"], [
-  AS_IF([test "x$os_win32" = "xyes"], [with_audio=gstreamer], [with_audio=pulse])
-])
-
 case "$with_audio" in
-  gstreamer|pulse|no*)
+  gstreamer|pulse|auto*)
+    PKG_CHECK_MODULES(GST, gstreamer-1.0 gstreamer-base-1.0 gstreamer-app-1.0 gstreamer-audio-1.0, [have_gst=yes], [have_gst=no])
+    PKG_CHECK_MODULES(PULSE, libpulse libpulse-mainloop-glib, [have_pulse=yes], [have_pulse=no])
+    ;;
+  no*)
     ;;
   *) AC_MSG_ERROR(Unsupported audio backend)
 esac
 
-AS_IF([test "x$with_audio" = "xpulse"],
-      [PKG_CHECK_MODULES(PULSE, libpulse libpulse-mainloop-glib, [have_pulse=yes], [have_pulse=no])],
-      [have_pulse=no])
+AS_IF([test "x$with_audio" = "xauto" && test "x$have_pulse" = "xyes"],
+      [with_audio=pulse])
 
-AS_IF([test "x$have_pulse" = "xyes"],
-      [AC_DEFINE([WITH_PULSE], 1, [Have pulseaudio?])],
-      [AS_IF([test "x$with_audio" = "xpulse"],
+AS_IF([test "x$with_audio" = "xauto" && test "x$have_gst" = "xyes"],
+      [with_audio=gstreamer])
+
+AS_IF([test "x$with_audio" = "xauto"],
+      [with_audio=no])
+
+AS_IF([test "x$with_audio" = "xpulse"],
+      [AS_IF([test "x$have_pulse" = "xyes"],
+             [AC_DEFINE([WITH_PULSE], 1, [Have pulseaudio?])],
              [AC_MSG_ERROR([PulseAudio requested but not found])
       ])
 ])
@@ -321,12 +326,8 @@ AC_SUBST(PULSE_CFLAGS)
 AC_SUBST(PULSE_LIBS)
 
 AS_IF([test "x$with_audio" = "xgstreamer"],
-      [PKG_CHECK_MODULES(GST, gstreamer-1.0 gstreamer-base-1.0 gstreamer-app-1.0 gstreamer-audio-1.0, [have_gst=yes], [have_gst=no])],
-      [have_gst=no])
-
-AS_IF([test "x$have_gst" = "xyes"],
-      [AC_DEFINE([WITH_GSTAUDIO], 1, [Have GStreamer 1.0?])],
-      [AS_IF([test "x$with_audio" = "xgstreamer"],
+      [AS_IF([test "x$have_gst" = "xyes"],
+             [AC_DEFINE([WITH_GSTAUDIO], 1, [Have GStreamer 1.0?])],
              [AC_MSG_ERROR([GStreamer 1.0 requested but not found])
       ])
 ])
