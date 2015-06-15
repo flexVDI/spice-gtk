@@ -1011,7 +1011,34 @@ static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
 }
 
 /* coroutine context */
-static void spice_channel_send_spice_ticket(SpiceChannel *channel)
+static void spice_channel_failed_authentication(SpiceChannel *channel,
+                                                gboolean invalidPassword)
+{
+    SpiceChannelPrivate *c = channel->priv;
+
+    if (c->auth_needs_username_and_password)
+        g_set_error_literal(&c->error,
+                            SPICE_CLIENT_ERROR,
+                            SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD_AND_USERNAME,
+                            _("Authentication failed: password and username are required"));
+    else if (invalidPassword)
+        g_set_error_literal(&c->error,
+                            SPICE_CLIENT_ERROR,
+                            SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD,
+                            _("Authentication failed: password is too long"));
+    else
+        g_set_error_literal(&c->error,
+                            SPICE_CLIENT_ERROR,
+                            SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD,
+                            _("Authentication failed: password is required"));
+
+    c->event = SPICE_CHANNEL_ERROR_AUTH;
+
+    c->has_error = TRUE; /* force disconnect */
+}
+
+/* coroutine context */
+static SpiceChannelEvent spice_channel_send_spice_ticket(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
     EVP_PKEY *pubkey;
@@ -1021,13 +1048,14 @@ static void spice_channel_send_spice_ticket(SpiceChannel *channel)
     char *password;
     uint8_t *encrypted;
     int rc;
+    SpiceChannelEvent ret = SPICE_CHANNEL_ERROR_LINK;
 
     bioKey = BIO_new(BIO_s_mem());
-    g_return_if_fail(bioKey != NULL);
+    g_return_val_if_fail(bioKey != NULL, ret);
 
     BIO_write(bioKey, c->peer_msg->pub_key, SPICE_TICKET_PUBKEY_BYTES);
     pubkey = d2i_PUBKEY_bio(bioKey, NULL);
-    g_return_if_fail(pubkey != NULL);
+    g_return_val_if_fail(pubkey != NULL, ret);
 
     rsa = pubkey->pkey.rsa;
     nRSASize = RSA_size(rsa);
@@ -1040,36 +1068,24 @@ static void spice_channel_send_spice_ticket(SpiceChannel *channel)
     g_object_get(c->session, "password", &password, NULL);
     if (password == NULL)
         password = g_strdup("");
+    if (strlen(password) > SPICE_MAX_PASSWORD_LENGTH) {
+        spice_channel_failed_authentication(channel, TRUE);
+        ret = SPICE_CHANNEL_ERROR_AUTH;
+        goto cleanup;
+    }
     rc = RSA_public_encrypt(strlen(password) + 1, (uint8_t*)password,
                             encrypted, rsa, RSA_PKCS1_OAEP_PADDING);
     g_warn_if_fail(rc > 0);
 
     spice_channel_write(channel, encrypted, nRSASize);
+    ret = SPICE_CHANNEL_NONE;
+
+cleanup:
     memset(encrypted, 0, nRSASize);
     EVP_PKEY_free(pubkey);
     BIO_free(bioKey);
     g_free(password);
-}
-
-/* coroutine context */
-static void spice_channel_failed_authentication(SpiceChannel *channel)
-{
-    SpiceChannelPrivate *c = channel->priv;
-
-    if (c->auth_needs_username_and_password)
-        g_set_error_literal(&c->error,
-                            SPICE_CLIENT_ERROR,
-                            SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD_AND_USERNAME,
-                            _("Authentication failed: password and username are required"));
-    else
-        g_set_error_literal(&c->error,
-                            SPICE_CLIENT_ERROR,
-                            SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD,
-                            _("Authentication failed: password is required"));
-
-    c->event = SPICE_CHANNEL_ERROR_AUTH;
-
-    c->has_error = TRUE; /* force disconnect */
+    return ret;
 }
 
 /* coroutine context */
@@ -1089,7 +1105,7 @@ static gboolean spice_channel_recv_auth(SpiceChannel *channel)
 
     if (link_res != SPICE_LINK_ERR_OK) {
         CHANNEL_DEBUG(channel, "link result: reply %d", link_res);
-        spice_channel_failed_authentication(channel);
+        spice_channel_failed_authentication(channel, FALSE);
         return FALSE;
     }
 
@@ -1663,7 +1679,7 @@ error:
     if (saslconn)
         sasl_dispose(&saslconn);
 
-    spice_channel_failed_authentication(channel);
+    spice_channel_failed_authentication(channel, FALSE);
     ret = FALSE;
 
 cleanup:
@@ -1682,6 +1698,7 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
     SpiceChannelPrivate *c;
     int rc, num_caps, i;
     uint32_t *caps;
+    SpiceChannelEvent event = SPICE_CHANNEL_ERROR_LINK;
 
     g_return_val_if_fail(channel != NULL, FALSE);
     g_return_val_if_fail(channel->priv != NULL, FALSE);
@@ -1734,7 +1751,8 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
     if (!spice_channel_test_common_capability(channel,
             SPICE_COMMON_CAP_PROTOCOL_AUTH_SELECTION)) {
         CHANNEL_DEBUG(channel, "Server supports spice ticket auth only");
-        spice_channel_send_spice_ticket(channel);
+        if ((event = spice_channel_send_spice_ticket(channel)) != SPICE_CHANNEL_NONE)
+            goto error;
     } else {
         SpiceLinkAuthMechanism auth = { 0, };
 
@@ -1750,7 +1768,8 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
         if (spice_channel_test_common_capability(channel, SPICE_COMMON_CAP_AUTH_SPICE)) {
             auth.auth_mechanism = SPICE_COMMON_CAP_AUTH_SPICE;
             spice_channel_write(channel, &auth, sizeof(auth));
-            spice_channel_send_spice_ticket(channel);
+            if ((event = spice_channel_send_spice_ticket(channel)) != SPICE_CHANNEL_NONE)
+                goto error;
         } else {
             g_warning("No compatible AUTH mechanism");
             goto error;
@@ -1763,7 +1782,7 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
 
 error:
     c->has_error = TRUE;
-    c->event = SPICE_CHANNEL_ERROR_LINK;
+    c->event = event;
     return FALSE;
 }
 
