@@ -810,7 +810,6 @@ static gboolean is_gtk_session_property(const gchar *property)
     return FALSE;
 }
 
-#ifndef G_OS_WIN32
 static void recent_item_activated_cb(GtkRecentChooser *chooser, gpointer data)
 {
     GtkRecentInfo *info;
@@ -827,7 +826,6 @@ static void recent_item_activated_cb(GtkRecentChooser *chooser, gpointer data)
     gtk_recent_info_unref(info);
     connection_connect(conn);
 }
-#endif
 
 static gboolean configure_event_cb(GtkWidget         *widget,
                                    GdkEventConfigure *event,
@@ -910,7 +908,6 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     win->ritem  = gtk_ui_manager_get_widget
         (win->ui, "/MainMenu/FileMenu/FileRecentMenu");
 
-#ifndef G_OS_WIN32
     GtkRecentFilter  *rfilter;
 
     win->rmenu = gtk_recent_chooser_menu_new();
@@ -922,7 +919,6 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(win->ritem), win->rmenu);
     g_signal_connect(win->rmenu, "item-activated",
                      G_CALLBACK(recent_item_activated_cb), win);
-#endif
 
     /* spice display */
     win->spice = GTK_WIDGET(spice_display_new_with_monitor(conn->session, id, monitor_id));

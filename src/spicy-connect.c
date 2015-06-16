@@ -99,7 +99,6 @@ static gboolean key_pressed_cb(GtkWidget *widget, GdkEvent *event, gpointer data
     return FALSE;
 }
 
-#ifndef G_OS_WIN32
 static void recent_selection_changed_dialog_cb(GtkRecentChooser *chooser, gpointer data)
 {
     GtkRecentInfo *info;
@@ -125,7 +124,6 @@ static void recent_selection_changed_dialog_cb(GtkRecentChooser *chooser, gpoint
 
     gtk_recent_info_unref(info);
 }
-#endif
 
 static void connect_cb(gpointer data)
 {
@@ -214,7 +212,6 @@ gboolean spicy_connect_dialog(SpiceSession *session)
     g_signal_connect_swapped(cancel_button, "clicked",
                              G_CALLBACK(close_cb), &info);
 
-#ifndef G_OS_WIN32
     GtkRecentFilter *rfilter;
     GtkWidget *recent;
 
@@ -230,17 +227,14 @@ gboolean spicy_connect_dialog(SpiceSession *session)
                      G_CALLBACK(recent_selection_changed_dialog_cb), session);
     g_signal_connect_swapped(recent, "item-activated",
                              G_CALLBACK(connect_cb), &info);
-#endif
 
     for (i = 0; i < SPICE_N_ELEMENTS(connect_entries); i++) {
         g_signal_connect_swapped(connect_entries[i].entry, "activate",
                                  G_CALLBACK(connect_cb), &info);
         g_signal_connect(connect_entries[i].entry, "changed",
                          G_CALLBACK(entry_changed_cb), connect_button);
-#ifndef G_OS_WIN32
         g_signal_connect(connect_entries[i].entry, "focus-in-event",
                          G_CALLBACK(entry_focus_in_cb), recent);
-#endif
     }
 
     /* show and wait for response */
