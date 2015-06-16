@@ -39,6 +39,16 @@ static struct {
     { .text = N_("TLS Port"),   .prop = "tls-port"  },
 };
 
+static gboolean can_connect(void)
+{
+    if ((gtk_entry_get_text_length(GTK_ENTRY(connect_entries[0].entry)) > 0) &&
+        ((gtk_entry_get_text_length(GTK_ENTRY(connect_entries[1].entry)) > 0) ||
+         (gtk_entry_get_text_length(GTK_ENTRY(connect_entries[2].entry)) > 0)))
+        return TRUE;
+
+    return FALSE;
+}
+
 static void set_connection_info(SpiceSession *session)
 {
     const gchar *txt;
@@ -58,6 +68,12 @@ static gboolean close_cb(gpointer data)
         g_main_loop_quit(info->loop);
 
     return TRUE;
+}
+
+static void entry_changed_cb(GtkEditable* entry, gpointer data)
+{
+    GtkButton *connect_button = data;
+    gtk_widget_set_sensitive(GTK_WIDGET(connect_button), can_connect());
 }
 
 static gboolean entry_focus_in_cb(GtkWidget *widget, GdkEvent *event, gpointer data)
@@ -119,11 +135,13 @@ static void recent_selection_changed_dialog_cb(GtkRecentChooser *chooser, gpoint
 static void connect_cb(gpointer data)
 {
     ConnectionInfo *info = data;
-    info->connecting = TRUE;
-    set_connection_info(info->session);
-
-    if (g_main_loop_is_running(info->loop))
-        g_main_loop_quit(info->loop);
+    if (can_connect())
+    {
+        info->connecting = TRUE;
+        set_connection_info(info->session);
+        if (g_main_loop_is_running(info->loop))
+            g_main_loop_quit(info->loop);
+    }
 }
 
 gboolean spicy_connect_dialog(SpiceSession *session)
@@ -190,6 +208,8 @@ gboolean spicy_connect_dialog(SpiceSession *session)
 
     gtk_box_pack_start(main_box, GTK_WIDGET(button_box), FALSE, TRUE, 0);
 
+    gtk_widget_set_sensitive(GTK_WIDGET(connect_button), can_connect());
+
     g_signal_connect(window, "key-press-event",
                      G_CALLBACK(key_pressed_cb), window);
     g_signal_connect_swapped(window, "delete-event",
@@ -220,6 +240,8 @@ gboolean spicy_connect_dialog(SpiceSession *session)
     for (i = 0; i < SPICE_N_ELEMENTS(connect_entries); i++) {
         g_signal_connect_swapped(connect_entries[i].entry, "activate",
                                  G_CALLBACK(connect_cb), &info);
+        g_signal_connect(connect_entries[i].entry, "changed",
+                         G_CALLBACK(entry_changed_cb), connect_button);
 #ifndef G_OS_WIN32
         g_signal_connect(connect_entries[i].entry, "focus-in-event",
                          G_CALLBACK(entry_focus_in_cb), recent);
