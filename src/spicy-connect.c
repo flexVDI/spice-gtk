@@ -60,6 +60,13 @@ static gboolean close_cb(gpointer data)
     return TRUE;
 }
 
+static gboolean entry_focus_in_cb(GtkWidget *widget, GdkEvent *event, gpointer data)
+{
+    GtkRecentChooser *recent = GTK_RECENT_CHOOSER(data);
+    gtk_recent_chooser_unselect_all(recent);
+    return TRUE;
+}
+
 static gboolean key_pressed_cb(GtkWidget *widget, GdkEvent *event, gpointer data)
 {
     gboolean tst;
@@ -213,6 +220,10 @@ gboolean spicy_connect_dialog(SpiceSession *session)
     for (i = 0; i < SPICE_N_ELEMENTS(connect_entries); i++) {
         g_signal_connect_swapped(connect_entries[i].entry, "activate",
                                  G_CALLBACK(connect_cb), &info);
+#ifndef G_OS_WIN32
+        g_signal_connect(connect_entries[i].entry, "focus-in-event",
+                         G_CALLBACK(entry_focus_in_cb), recent);
+#endif
     }
 
     /* show and wait for response */
