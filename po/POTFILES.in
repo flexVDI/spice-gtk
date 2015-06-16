@@ -6,6 +6,7 @@ src/spice-option.c
 src/spicy-screenshot.c
 src/spicy-stats.c
 src/spicy.c
+src/spicy-connect.c
 src/usb-device-manager.c
 src/usb-device-widget.c
 src/usbutil.c
