@@ -74,6 +74,12 @@ typedef struct SpiceFileXferTask {
     GError                         *error;
 } SpiceFileXferTask;
 
+typedef enum {
+    DISPLAY_UNDEFINED,
+    DISPLAY_DISABLED,
+    DISPLAY_ENABLED,
+} SpiceDisplayState;
+
 struct _SpiceMainChannelPrivate  {
     enum SpiceMouseMode         mouse_mode;
     bool                        agent_connected;
@@ -98,8 +104,7 @@ struct _SpiceMainChannelPrivate  {
         int                     y;
         int                     width;
         int                     height;
-        gboolean                enabled;
-        gboolean                enabled_set;
+        SpiceDisplayState       display_state;
     } display[MAX_DISPLAY];
     gint                        timer_id;
     GQueue                      *agent_msg_queue;
@@ -1058,7 +1063,7 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
     } else {
         monitors = 0;
         for (i = 0; i < SPICE_N_ELEMENTS(c->display); i++) {
-            if (c->display[i].enabled)
+            if (c->display[i].display_state == DISPLAY_ENABLED)
                 monitors += 1;
         }
     }
@@ -1073,7 +1078,7 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
 
     j = 0;
     for (i = 0; i < SPICE_N_ELEMENTS(c->display); i++) {
-        if (!c->display[i].enabled) {
+        if (c->display[i].display_state != DISPLAY_ENABLED) {
             if (spice_main_agent_test_capability(channel,
                                      VD_AGENT_CAP_SPARSE_MONITORS_CONFIG))
                 j++;
@@ -1426,7 +1431,7 @@ static gboolean timer_set_display(gpointer data)
     /* ensure we have an explicit monitor configuration at least for
        number of display channels */
     for (i = 0; i < spice_session_get_n_display_channels(session); i++)
-        if (!c->display[i].enabled_set) {
+        if (c->display[i].display_state == DISPLAY_UNDEFINED) {
             SPICE_DEBUG("Not sending monitors config, missing monitors");
             return FALSE;
         }
@@ -2742,6 +2747,7 @@ void spice_main_clipboard_selection_request(SpiceMainChannel *channel, guint sel
  **/
 void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled)
 {
+    SpiceDisplayState display_state = enabled ? DISPLAY_ENABLED : DISPLAY_DISABLED;
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
     g_return_if_fail(id >= -1);
@@ -2751,15 +2757,13 @@ void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean 
     if (id == -1) {
         gint i;
         for (i = 0; i < G_N_ELEMENTS(c->display); i++) {
-            c->display[i].enabled = enabled;
-            c->display[i].enabled_set = TRUE;
+            c->display[i].display_state = display_state;
         }
     } else {
         g_return_if_fail(id < G_N_ELEMENTS(c->display));
-        if (c->display[id].enabled == enabled)
+        if (c->display[id].display_state == display_state)
             return;
-        c->display[id].enabled = enabled;
-        c->display[id].enabled_set = TRUE;
+        c->display[id].display_state = display_state;
     }
 
     update_display_timer(channel, 1);
