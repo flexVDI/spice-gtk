@@ -33,10 +33,6 @@
 #include <flexvdi-port.h>
 #endif
 
-#ifdef USE_VA
-#include "va_display_x11.h"
-#endif
-
 #include "glib-compat.h"
 #include "spice-widget.h"
 #include "spice-gtk-session.h"
@@ -405,50 +401,6 @@ static void menu_cb_paste(GtkAction *action, void *data)
 
 static void window_set_fullscreen(SpiceWindow *win, gboolean fs)
 {
-#ifdef USE_VA
-    if (fs) {
-        GdkDisplay *display;
-        GdkScreen *screen;
-        int width;
-        int height;
-
-        display = gdk_display_get_default();
-        screen = gdk_display_get_default_screen(display);
-        width = gdk_screen_get_width(screen);
-        height = gdk_screen_get_height(screen);
-
-        gtk_widget_hide(win->menubar);
-        gtk_widget_hide(win->toolbar);
-        gtk_widget_hide(win->statusbar);
-        gtk_widget_grab_focus(win->spice);
-
-        gtk_window_get_position(GTK_WINDOW(win->toplevel), &win->win_x, &win->win_y);
-        gtk_window_get_size(GTK_WINDOW(win->toplevel), &win->win_width, &win->win_height);
-        gtk_window_set_decorated(GTK_WINDOW(win->toplevel), FALSE);
-        gtk_window_move(GTK_WINDOW(win->toplevel), 0, 0);
-        gtk_window_resize(GTK_WINDOW(win->toplevel), width, height - 1);
-
-        win->fullscreen = 1;
-    } else {
-        gboolean state;
-        GtkAction *toggle;
-
-        gtk_window_resize(GTK_WINDOW(win->toplevel), 800, 600);
-        gtk_window_move(GTK_WINDOW(win->toplevel), 100, 100);
-        gtk_window_set_decorated(GTK_WINDOW(win->toplevel), TRUE);
-
-        gtk_widget_show(win->menubar);
-        toggle = gtk_action_group_get_action(win->ag, "Toolbar");
-        state = gtk_toggle_action_get_active(GTK_TOGGLE_ACTION(toggle));
-        gtk_widget_set_visible(win->toolbar, state);
-        toggle = gtk_action_group_get_action(win->ag, "Statusbar");
-        state = gtk_toggle_action_get_active(GTK_TOGGLE_ACTION(toggle));
-        gtk_widget_set_visible(win->statusbar, state);
-        gtk_widget_hide(win->fullscreen_menubar);
-
-        win->fullscreen = 0;
-    }
-#else
     if (fs) {
 #ifdef G_OS_WIN32
         gtk_window_get_position(GTK_WINDOW(win->toplevel), &win->win_x, &win->win_y);
@@ -460,7 +412,6 @@ static void window_set_fullscreen(SpiceWindow *win, gboolean fs)
         gtk_window_move(GTK_WINDOW(win->toplevel), win->win_x, win->win_y);
 #endif
     }
-#endif
 }
 
 static void menu_cb_fullscreen(GtkAction *action, void *data)
@@ -696,7 +647,6 @@ static gboolean delete_cb(GtkWidget *widget, GdkEvent *event, gpointer data)
 static gboolean window_state_cb(GtkWidget *widget, GdkEventWindowState *event,
                                 gpointer data)
 {
-#if 0
     SpiceWindow *win = data;
     if (event->changed_mask & GDK_WINDOW_STATE_FULLSCREEN) {
         win->fullscreen = event->new_window_state & GDK_WINDOW_STATE_FULLSCREEN;
@@ -719,7 +669,6 @@ static gboolean window_state_cb(GtkWidget *widget, GdkEventWindowState *event,
             gtk_widget_hide(win->fullscreen_menubar);
         }
     }
-#endif
     return TRUE;
 }
 
@@ -1699,9 +1648,6 @@ static void display_mark(SpiceChannel *channel, gint mark, SpiceWindow *win)
 
     if (mark == TRUE) {
         gtk_widget_show(win->toplevel);
-#ifdef USE_VA
-        va_x11_set_toplevel_window(win->toplevel);
-#endif
     } else {
         gtk_widget_hide(win->toplevel);
     }
