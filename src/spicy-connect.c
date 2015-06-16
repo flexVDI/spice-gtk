@@ -106,6 +106,7 @@ static void recent_selection_changed_dialog_cb(GtkRecentChooser *chooser, gpoint
     gchar *txt = NULL;
     const gchar *uri;
     SpiceSession *session = data;
+    int i;
 
     info = gtk_recent_chooser_get_current_item(chooser);
     if (info == NULL)
@@ -116,17 +117,11 @@ static void recent_selection_changed_dialog_cb(GtkRecentChooser *chooser, gpoint
 
     g_object_set(session, "uri", uri, NULL);
 
-    g_object_get(session, "host", &txt, NULL);
-    gtk_entry_set_text(GTK_ENTRY(connect_entries[0].entry), txt ? txt : "");
-    g_free(txt);
-
-    g_object_get(session, "port", &txt, NULL);
-    gtk_entry_set_text(GTK_ENTRY(connect_entries[1].entry), txt ? txt : "");
-    g_free(txt);
-
-    g_object_get(session, "tls-port", &txt, NULL);
-    gtk_entry_set_text(GTK_ENTRY(connect_entries[2].entry), txt ? txt : "");
-    g_free(txt);
+    for (i = 0; i < SPICE_N_ELEMENTS(connect_entries); i++) {
+        g_object_get(session, connect_entries[i].prop, &txt, NULL);
+        gtk_entry_set_text(GTK_ENTRY(connect_entries[i].entry), txt ? txt : "");
+        g_free(txt);
+    }
 
     gtk_recent_info_unref(info);
 }
