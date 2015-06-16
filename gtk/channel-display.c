@@ -95,6 +95,7 @@ enum {
     PROP_MONITORS,
     PROP_MONITORS_MAX,
     PROP_REPORT,
+    PROP_VA_SESSIONS,
 };
 
 enum {
@@ -202,6 +203,16 @@ static void spice_display_get_property(GObject    *object,
         g_value_set_static_string(value, c->report);
         break;
     }
+    case PROP_VA_SESSIONS: {
+        GSList *va_sessions = NULL;
+        int i;
+        for (i = 0; i < c->nstreams; ++i) {
+            if (c->streams[i] && c->streams[i]->hw_accel)
+                va_sessions = g_slist_prepend(va_sessions, c->streams[i]->vaapi_session);
+        }
+        g_value_set_pointer(value, va_sessions);
+        break;
+    }
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
         break;
@@ -305,6 +316,14 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
                              "",
                              G_PARAM_READABLE |
                              G_PARAM_STATIC_STRINGS));
+
+    g_object_class_install_property
+        (gobject_class, PROP_VA_SESSIONS,
+         g_param_spec_pointer("va-sessions",
+                              "VA Sessions",
+                              "VA sessions associated with streams where hw accel is active",
+                              G_PARAM_READABLE |
+                              G_PARAM_STATIC_STRINGS));
 
     /**
      * SpiceDisplayChannel::display-primary-create:
