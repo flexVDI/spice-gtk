@@ -3,11 +3,13 @@
 #include "tinyjpeg.h"
 #include "va_display_x11.h"
 #include <va/va_x11.h>
+#include <cairo/cairo-xlib.h>
 #include "spice-util.h"
 
 struct display_private {
     Display *x11_dpy;
     Window root;
+    Visual *visual;
     int depth;
     Pixmap pixmap;
     VARectangle dst_rect;
@@ -28,6 +30,7 @@ static VAStatus va_x11_open_display(tinyjpeg_session *session)
             int screen = XDefaultScreen(d->x11_dpy);
             d->depth = XDefaultDepth(d->x11_dpy, screen);
             d->root = XRootWindow(d->x11_dpy, screen); // TODO: Is this correct?
+            d->visual = XDefaultVisual(d->x11_dpy, screen);
             d->pixmap = XCreatePixmap(d->x11_dpy, d->root, 1, 1, d->depth);
             d->dst_rect.width = d->dst_rect.height = 1;
         } else XCloseDisplay(x11_dpy);
@@ -71,6 +74,22 @@ static VAStatus va_x11_put_surface(tinyjpeg_session *session, VASurfaceID surfac
                         0, 0, src_rect->width, src_rect->height,
                         0, 0, dst_rect->width, dst_rect->height,
                         NULL, 0, VA_FRAME_PICTURE);
+}
+
+void va_x11_draw_frame(tinyjpeg_session *session, cairo_t *cr)
+{
+    display_private *d = session->dpy_priv;
+    cairo_surface_t *surface =
+            cairo_xlib_surface_create(d->x11_dpy, d->pixmap, d->visual,
+                                      d->dst_rect.width, d->dst_rect.height);
+
+    cairo_save(cr);
+    cairo_translate(cr, d->dst_rect.x, d->dst_rect.y);
+    cairo_rectangle(cr, 0, 0, d->dst_rect.width, d->dst_rect.height);
+    cairo_set_source_surface(cr, surface, 0, 0);
+    cairo_fill(cr);
+    cairo_restore(cr);
+    cairo_surface_destroy(surface);
 }
 
 static VADisplayHooks va_x11_display_hooks = {

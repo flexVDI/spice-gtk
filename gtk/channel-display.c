@@ -1167,15 +1167,14 @@ static gboolean display_stream_render(display_stream *st)
                 break;
             }
 
+            SpiceRect *dest = stream_get_dest(st);
             if (st->out_frame) {
                 int width;
                 int height;
-                SpiceRect *dest;
                 uint8_t *data;
                 int stride;
 
                 stream_get_dimensions(st, &width, &height);
-                dest = stream_get_dest(st);
 
                 data = st->out_frame;
                 stride = width * sizeof(uint32_t);
@@ -1192,13 +1191,13 @@ static gboolean display_stream_render(display_stream *st)
                     dest, data,
                     width, height, stride,
                     st->have_region ? &st->region : NULL);
-
-                if (st->surface->primary)
-                    g_signal_emit(st->channel, signals[SPICE_DISPLAY_INVALIDATE], 0,
-                        dest->left, dest->top,
-                        dest->right - dest->left,
-                        dest->bottom - dest->top);
             }
+
+            if (st->surface->primary)
+                g_signal_emit(st->channel, signals[SPICE_DISPLAY_INVALIDATE], 0,
+                    dest->left, dest->top,
+                    dest->right - dest->left,
+                    dest->bottom - dest->top);
 
             gettimeofday(&time2, NULL);
             delta = ((time2.tv_sec * 1000) + (time2.tv_usec / 1000)) - ((time1.tv_sec * 1000) + (time1.tv_usec / 1000));
