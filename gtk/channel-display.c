@@ -38,6 +38,7 @@
 #include "spice-session-priv.h"
 #include "channel-display-priv.h"
 #include "decode.h"
+#include "common/rect.h"
 
 /**
  * SECTION:channel-display
@@ -1076,17 +1077,17 @@ static gboolean display_stream_schedule(display_stream *st)
     return FALSE;
 }
 
-static SpiceRect *stream_get_dest(display_stream *st)
+static void stream_get_dest(display_stream *st)
 {
     if (st->msg_data == NULL ||
         spice_msg_in_type(st->msg_data) != SPICE_MSG_DISPLAY_STREAM_DATA_SIZED) {
         SpiceMsgDisplayStreamCreate *info = spice_msg_in_parsed(st->msg_create);
 
-        return &info->dest;
+        memcpy(&st->dst_rect, &info->dest, sizeof(SpiceRect));
     } else {
         SpiceMsgDisplayStreamDataSized *op = spice_msg_in_parsed(st->msg_data);
 
-        return &op->dest;
+        memcpy(&st->dst_rect, &op->dest, sizeof(SpiceRect));
    }
 
 }
@@ -1160,14 +1161,19 @@ static gboolean display_stream_render(display_stream *st)
 
             gettimeofday(&time1, NULL);
 
+            SpiceRect last_frame_dest;
+            memcpy(&last_frame_dest, &st->dst_rect, sizeof(SpiceRect));
             st->msg_data = in;
+            stream_get_dest(st);
+            rect_union(&last_frame_dest, &st->dst_rect);
+
             switch (st->codec) {
             case SPICE_VIDEO_CODEC_TYPE_MJPEG:
                 stream_mjpeg_data(st);
                 break;
             }
 
-            SpiceRect *dest = stream_get_dest(st);
+            SpiceRect *dest = &st->dst_rect;
             if (st->out_frame) {
                 int width;
                 int height;
@@ -1193,6 +1199,8 @@ static gboolean display_stream_render(display_stream *st)
                     st->have_region ? &st->region : NULL);
             }
 
+            if (st->hw_accel)
+                dest = &last_frame_dest;
             if (st->surface->primary)
                 g_signal_emit(st->channel, signals[SPICE_DISPLAY_INVALIDATE], 0,
                     dest->left, dest->top,
@@ -1559,6 +1567,13 @@ static void destroy_stream(SpiceChannel *channel, int id)
         stream_mjpeg_cleanup(st);
         break;
     }
+
+    // If HW decode, force repaint of last frame's area
+    if (st->hw_accel && st->surface->primary)
+        g_signal_emit(st->channel, signals[SPICE_DISPLAY_INVALIDATE], 0,
+            st->dst_rect.left, st->dst_rect.top,
+            st->dst_rect.right - st->dst_rect.left,
+            st->dst_rect.bottom - st->dst_rect.top);
 
     if (st->msg_clip)
         spice_msg_in_unref(st->msg_clip);

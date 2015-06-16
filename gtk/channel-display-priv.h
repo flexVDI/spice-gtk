@@ -71,6 +71,7 @@ typedef struct display_stream {
     SpiceMsgIn                  *msg_create;
     SpiceMsgIn                  *msg_clip;
     SpiceMsgIn                  *msg_data;
+    SpiceRect                   dst_rect;
 
     /* from messages */
     display_surface             *surface;

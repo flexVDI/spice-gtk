@@ -49,20 +49,6 @@ static void mjpeg_src_term(struct jpeg_decompress_struct *cinfo)
     /* nothing */
 }
 
-#ifdef USE_VA
-static SpiceRect *stream_get_dest(display_stream *st)
-{
-    if (st->msg_data == NULL ||
-        spice_msg_in_type(st->msg_data) != SPICE_MSG_DISPLAY_STREAM_DATA_SIZED) {
-        SpiceMsgDisplayStreamCreate *info = spice_msg_in_parsed(st->msg_create);
-        return &info->dest;
-    } else {
-        SpiceMsgDisplayStreamDataSized *op = spice_msg_in_parsed(st->msg_data);
-        return &op->dest;
-    }
-}
-#endif
-
 G_GNUC_INTERNAL
 void stream_mjpeg_init(display_stream *st)
 {
@@ -74,7 +60,7 @@ void stream_mjpeg_init(display_stream *st)
     session = tinyjpeg_open_display();
     if (session) {
         st->hw_accel = 1;
-        dest = stream_get_dest(st);
+        dest = &st->dst_rect;
         session->dst_rect.x = dest->left;
         session->dst_rect.y = dest->top;
         session->dst_rect.width = dest->right - dest->left;
@@ -109,7 +95,7 @@ static int stream_mjpeg_data_va(display_stream *st)
     stream_get_dimensions(st, &width, &height);
     session->src_rect.width = width;
     session->src_rect.height = height;
-    SpiceRect *dest = stream_get_dest(st);
+    SpiceRect *dest = &st->dst_rect;
     session->dst_rect.x = dest->left;
     session->dst_rect.y = dest->top;
     session->dst_rect.width = dest->right - dest->left;
