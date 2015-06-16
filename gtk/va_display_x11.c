@@ -8,12 +8,12 @@
 #include <va/va_x11.h>
 #include "spice-util.h"
 
-static GdkWindow *spice_toplevel_window;
+static GtkWindow *spice_toplevel_window;
 
 void va_x11_set_toplevel_window(void *window)
 {
     SPICE_DEBUG("VA X11 setting toplevel window to %p", window);
-    spice_toplevel_window = (GdkWindow *)window;
+    spice_toplevel_window = (GtkWindow *)window;
 }
 
 struct display_private {
@@ -57,7 +57,7 @@ static void window_clicked_cb(GtkWidget *widget, void *e)
                 event->x, event->y, event->x_root, event->y_root, spice_toplevel_window);
 
     ke.type = GDK_KEY_PRESS;
-    ke.window = spice_toplevel_window;
+    ke.window = gtk_widget_get_window(GTK_WIDGET(spice_toplevel_window));
     ke.time = GDK_CURRENT_TIME;
     ke.keyval = event->x_root;
     ke.hardware_keycode = event->y_root;
@@ -94,8 +94,11 @@ static VAStatus va_x11_put_surface(tinyjpeg_session *session, VASurfaceID surfac
         gtk_window_set_default_size(GTK_WINDOW(widget), dst_rect->width, dst_rect->height);
         gtk_window_move(GTK_WINDOW(widget), dst_rect->x, dst_rect->y);
         gtk_window_set_decorated(GTK_WINDOW(widget), FALSE);
+        gtk_widget_set_app_paintable(widget, TRUE);
+        gtk_widget_set_double_buffered(widget, FALSE);
         gtk_window_set_accept_focus(GTK_WINDOW(widget), FALSE);
-        gtk_window_set_keep_above(GTK_WINDOW(widget), TRUE);
+        gtk_window_set_transient_for(GTK_WINDOW(widget), spice_toplevel_window);
+        gtk_window_set_opacity(GTK_WINDOW(widget), 0);
         g_signal_connect(G_OBJECT(widget), "button_release_event",
                          G_CALLBACK(window_clicked_cb), session);
         gtk_widget_add_events(widget, GDK_BUTTON_RELEASE_MASK);

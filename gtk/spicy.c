@@ -1700,7 +1700,7 @@ static void display_mark(SpiceChannel *channel, gint mark, SpiceWindow *win)
     if (mark == TRUE) {
         gtk_widget_show(win->toplevel);
 #ifdef USE_VA
-        va_x11_set_toplevel_window(gtk_widget_get_window(win->toplevel));
+        va_x11_set_toplevel_window(win->toplevel);
 #endif
     } else {
         gtk_widget_hide(win->toplevel);
