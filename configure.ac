@@ -677,18 +677,7 @@ if test "x$enable_dbus" != "xno"; then
   fi
 fi
 
-AC_ARG_ENABLE([lz4],
-  AS_HELP_STRING([--enable-lz4=@<:@yes/no@:>@],
-                 [Enable lz4 compression algorithm @<:@default=no@:>@]),
-  [],
-  [enable_lz4="no"])
-
-if test "x$enable_lz4" = "xyes"; then
-    PKG_CHECK_MODULES(LZ4, liblz4)
-    AC_DEFINE([USE_LZ4], [1], [Define to build with Lz4 support])
-fi
-AC_SUBST(LZ4_CFLAGS)
-AC_SUBST(LZ4_LIBS)
+SPICE_CHECK_LZ4([LZ4])
 
 dnl ===========================================================================
 dnl check compiler flags
