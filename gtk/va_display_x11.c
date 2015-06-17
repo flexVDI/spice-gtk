@@ -1,3 +1,7 @@
+/*
+ * Copyright Flexible Software Solutions S.L. 2014
+ */
+
 #include <stdlib.h>
 #include <string.h>
 #include "tinyjpeg.h"
