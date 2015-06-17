@@ -137,7 +137,6 @@ spice_util_set_debug;
 spice_uuid_to_string;
 spice_webdav_channel_get_type;
 set_va_display_hooks;
-va_x11_set_toplevel_window;
 local:
 *;
 };

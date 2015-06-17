@@ -76,10 +76,10 @@ struct _SpiceWindow {
     bool             fullscreen;
     bool             mouse_grabbed;
     SpiceChannel     *display_channel;
+#ifdef G_OS_WIN32
     gint             win_x;
     gint             win_y;
-    gint             win_width;
-    gint             win_height;
+#endif
     bool             enable_accels_save;
     bool             enable_mnemonics_save;
 };
@@ -1405,6 +1405,10 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
 #endif
     gtk_container_add(GTK_CONTAINER(win->toplevel), overlay);
 
+    /* show window */
+    if (fullscreen || kiosk_mode)
+        gtk_window_fullscreen(GTK_WINDOW(win->toplevel));
+
     gtk_widget_show_all(overlay);
     gtk_widget_hide(win->fullscreen_menubar);
     restore_configuration(win);
@@ -1468,10 +1472,6 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
 #endif
 
     gtk_widget_grab_focus(win->spice);
-
-    /* show window */
-    if (fullscreen || kiosk_mode)
-        window_set_fullscreen(win, TRUE);
 
 #ifdef WITH_FLEXVDI
     // Printers menu
