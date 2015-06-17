@@ -507,7 +507,6 @@ tinyjpeg_session * tinyjpeg_open_display(void)
 
     VAStatus va_status;
     VAEntrypoint entrypoints[5];
-    VAConfigAttrib attrib;
     int num_entrypoints;
     int vld_entrypoint;
     tinyjpeg_session *session = malloc(sizeof(tinyjpeg_session));
@@ -532,16 +531,16 @@ tinyjpeg_session * tinyjpeg_open_display(void)
     }
 
     /* Assuming finding VLD, find out the format for the render target */
-    attrib.type = VAConfigAttribRTFormat;
+    session->attrib.type = VAConfigAttribRTFormat;
     vaGetConfigAttributes(session->va_dpy, VAProfileJPEGBaseline, VAEntrypointVLD,
                           &session->attrib, 1);
-    if ((attrib.value & VA_RT_FORMAT_YUV420) == 0) {
+    if ((session->attrib.value & VA_RT_FORMAT_YUV420) == 0) {
         /* not find desired YUV420 RT format */
         CHECK_VASTATUS_RETURN_NULL(va_status, "not find desired YUV420 RT format");
     }
     
     va_status = vaCreateConfig(session->va_dpy, VAProfileJPEGBaseline, VAEntrypointVLD,
-                               &session->attrib, 1,&session->config_id);
+                               &session->attrib, 1, &session->config_id);
     CHECK_VASTATUS_RETURN_NULL(va_status, "vaQueryConfigEntrypoints");
 
     session->jdec = tinyjpeg_init();

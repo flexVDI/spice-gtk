@@ -128,6 +128,7 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
             tinyjpeg_session *session = (tinyjpeg_session *)v->data;
             va_x11_draw_frame(session, cr);
         }
+        g_slist_free(va_sessions);
 #endif
 
         if (d->mouse_mode == SPICE_MOUSE_MODE_SERVER &&
