@@ -67,18 +67,12 @@ void set_va_display_hooks(VADisplayHooks *hooks);
 /* Flags that can be set by any applications */
 #define TINYJPEG_FLAGS_MJPEG_TABLE	(1<<1)
 
-/* Format accepted in outout */
-enum tinyjpeg_fmt {
-   TINYJPEG_FMT_GREY = 1,
-   TINYJPEG_FMT_BGR24,
-   TINYJPEG_FMT_RGB24,
-   TINYJPEG_FMT_YUV420P,
-};
-
-struct jdec_private *tinyjpeg_init(void);
-void tinyjpeg_free(struct jdec_private *priv);
-
 int tinyjpeg_parse_header(tinyjpeg_session *session, const unsigned char *buf, unsigned int size);
+/**
+ * tinyjpeg_open_display:
+ *
+ * Returns: (skip) (transfer full)
+ */
 tinyjpeg_session * tinyjpeg_open_display(void);
 void tinyjpeg_close_display(tinyjpeg_session *session);
 int tinyjpeg_decode(tinyjpeg_session *session);

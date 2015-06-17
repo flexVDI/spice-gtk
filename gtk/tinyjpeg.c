@@ -455,7 +455,7 @@ void set_va_display_hooks(VADisplayHooks *hooks)
  *
  * Before calling any other functions, an object need to be called.
  */
-struct jdec_private *tinyjpeg_init(void)
+static struct jdec_private *tinyjpeg_init(void)
 {
   struct jdec_private *priv;
  
