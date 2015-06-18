@@ -551,7 +551,6 @@ tinyjpeg_session * tinyjpeg_open_display(void)
 void tinyjpeg_close_display(tinyjpeg_session *session)
 {
     vaDestroyConfig(session->va_dpy, session->config_id);
-    vaTerminate(session->va_dpy);
     if (va_display_hooks)
         va_display_hooks->close_display(session);
     free(session->jdec);

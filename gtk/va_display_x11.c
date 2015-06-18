@@ -10,44 +10,48 @@
 #include <cairo/cairo-xlib.h>
 #include "spice-util.h"
 
+static Display *x11_dpy;
+static Window root;
+static Visual *visual;
+static int depth;
+static VADisplay va_dpy;
+
 struct display_private {
-    Display *x11_dpy;
-    Window root;
-    Visual *visual;
-    int depth;
     Pixmap pixmap;
     VARectangle dst_rect;
 };
 
 static VAStatus va_x11_open_display(tinyjpeg_session *session)
 {
-    Display *x11_dpy = XOpenDisplay(NULL);
-    VAStatus va_status = VA_STATUS_ERROR_UNKNOWN;
-    if (x11_dpy) {
-        session->va_dpy = vaGetDisplay(x11_dpy);
-        int major, minor;
-        va_status = vaInitialize(session->va_dpy, &major, &minor);
-        if (va_status == VA_STATUS_SUCCESS) {
-            display_private *d = session->dpy_priv = malloc(sizeof(struct display_private));
-            memset(d, 0, sizeof(struct display_private));
-            d->x11_dpy = x11_dpy;
-            int screen = XDefaultScreen(d->x11_dpy);
-            d->depth = XDefaultDepth(d->x11_dpy, screen);
-            d->root = XRootWindow(d->x11_dpy, screen); // TODO: Is this correct?
-            d->visual = XDefaultVisual(d->x11_dpy, screen);
-            d->pixmap = XCreatePixmap(d->x11_dpy, d->root, 1, 1, d->depth);
-            d->dst_rect.width = d->dst_rect.height = 1;
-        } else XCloseDisplay(x11_dpy);
+    VAStatus va_status = VA_STATUS_SUCCESS;
+    if (!x11_dpy) {
+        x11_dpy = XOpenDisplay(NULL);
+        if (x11_dpy) {
+            va_dpy = vaGetDisplay(x11_dpy);
+            int major, minor;
+            va_status = vaInitialize(va_dpy, &major, &minor);
+            int screen = XDefaultScreen(x11_dpy);
+            depth = XDefaultDepth(x11_dpy, screen);
+            root = XRootWindow(x11_dpy, screen);
+            visual = XDefaultVisual(x11_dpy, screen);
+        } else va_status = VA_STATUS_ERROR_UNKNOWN;
     }
+
+    if (va_status == VA_STATUS_SUCCESS) {
+        session->va_dpy = va_dpy;
+        display_private *d = session->dpy_priv = malloc(sizeof(struct display_private));
+        memset(d, 0, sizeof(struct display_private));
+        d->pixmap = XCreatePixmap(x11_dpy, root, 1, 1, depth);
+        d->dst_rect.width = d->dst_rect.height = 1;
+    } else XCloseDisplay(x11_dpy);
     return va_status;
 }
 
 static void va_x11_close_display(tinyjpeg_session *session)
 {
     display_private *d = session->dpy_priv;
-    if (d) {
-        XFreePixmap(d->x11_dpy, d->pixmap);
-        XCloseDisplay(d->x11_dpy);
+    if (d && x11_dpy) {
+        XFreePixmap(x11_dpy, d->pixmap);
         free(d);
     }
 }
@@ -67,10 +71,8 @@ static VAStatus va_x11_put_surface(tinyjpeg_session *session, VASurfaceID surfac
     VARectangle *cur_rect = &d->dst_rect;
 
     if (memcmp(cur_rect, dst_rect, sizeof(VARectangle)) != 0) {
-        XFreePixmap(d->x11_dpy, d->pixmap);
-        SPICE_DEBUG("Create pixmap for va surface");
-        d->pixmap = XCreatePixmap(d->x11_dpy, d->root,
-                                  dst_rect->width, dst_rect->height, d->depth);
+        XFreePixmap(x11_dpy, d->pixmap);
+        d->pixmap = XCreatePixmap(x11_dpy, root, dst_rect->width, dst_rect->height, depth);
         memcpy(cur_rect, dst_rect, sizeof(VARectangle));
     }
 
@@ -84,7 +86,7 @@ void va_x11_draw_frame(tinyjpeg_session *session, cairo_t *cr)
 {
     display_private *d = session->dpy_priv;
     cairo_surface_t *surface =
-            cairo_xlib_surface_create(d->x11_dpy, d->pixmap, d->visual,
+            cairo_xlib_surface_create(x11_dpy, d->pixmap, visual,
                                       d->dst_rect.width, d->dst_rect.height);
 
     cairo_save(cr);
