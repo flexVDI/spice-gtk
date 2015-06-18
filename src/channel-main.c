@@ -1428,14 +1428,15 @@ static gboolean timer_set_display(gpointer data)
 
     session = spice_channel_get_session(SPICE_CHANNEL(channel));
 
-    /* ensure we have an explicit monitor configuration at least for
-       number of display channels */
-    for (i = 0; i < spice_session_get_n_display_channels(session); i++)
-        if (c->display[i].display_state == DISPLAY_UNDEFINED) {
-            SPICE_DEBUG("Not sending monitors config, missing monitors");
-            return FALSE;
-        }
-
+    if (!spice_main_agent_test_capability(channel, VD_AGENT_CAP_SPARSE_MONITORS_CONFIG)) {
+        /* ensure we have an explicit monitor configuration at least for
+           number of display channels */
+        for (i = 0; i < spice_session_get_n_display_channels(session); i++)
+            if (c->display[i].display_state == DISPLAY_UNDEFINED) {
+                SPICE_DEBUG("Not sending monitors config, missing monitors");
+                return FALSE;
+            }
+    }
     spice_main_send_monitor_config(channel);
 
     return FALSE;
