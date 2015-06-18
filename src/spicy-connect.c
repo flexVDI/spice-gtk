@@ -17,7 +17,6 @@
 */
 
 #include <gtk/gtk.h>
-#include <glib/gi18n.h>
 #include <gdk/gdkkeysyms.h>
 #include "spice-common.h"
 #include "spicy-connect.h"
@@ -34,9 +33,9 @@ static struct {
     const char *prop;
     GtkWidget *entry;
 } connect_entries[] = {
-    { .text = N_("Hostname"),   .prop = "host"      },
-    { .text = N_("Port"),       .prop = "port"      },
-    { .text = N_("TLS Port"),   .prop = "tls-port"  },
+    { .text = "Hostname",   .prop = "host"      },
+    { .text = "Port",       .prop = "port"      },
+    { .text = "TLS Port",   .prop = "tls-port"  },
 };
 
 static gboolean can_connect(void)
@@ -153,7 +152,7 @@ gboolean spicy_connect_dialog(SpiceSession *session)
 
     /* Create the widgets */
     window = GTK_WINDOW(gtk_window_new(GTK_WINDOW_TOPLEVEL));
-    gtk_window_set_title(window, _("Connect to SPICE"));
+    gtk_window_set_title(window, "Connect to SPICE");
     gtk_window_set_resizable(window, FALSE);
     gtk_container_set_border_width(GTK_CONTAINER(window), 5);
 
@@ -186,7 +185,7 @@ gboolean spicy_connect_dialog(SpiceSession *session)
     gtk_box_pack_start(main_box, GTK_WIDGET(recent_box), TRUE, TRUE, 0);
     gtk_container_set_border_width(GTK_CONTAINER(recent_box), 5);
 
-    label = gtk_label_new(_("Recent connections:"));
+    label = gtk_label_new("Recent connections:");
     gtk_box_pack_start(recent_box, label, FALSE, TRUE, 0);
     gtk_misc_set_alignment(GTK_MISC(label), 0, 0.5);
 
@@ -194,8 +193,8 @@ gboolean spicy_connect_dialog(SpiceSession *session)
     gtk_button_box_set_layout(GTK_BUTTON_BOX(button_box), GTK_BUTTONBOX_END);
     gtk_box_set_spacing(button_box, 5);
     gtk_container_set_border_width(GTK_CONTAINER(button_box), 5);
-    connect_button = gtk_button_new_with_label(_("Connect"));
-    cancel_button = gtk_button_new_with_label(_("Cancel"));
+    connect_button = gtk_button_new_with_label("Connect");
+    cancel_button = gtk_button_new_with_label("Cancel");
     gtk_box_pack_start(button_box, cancel_button, FALSE, TRUE, 0);
     gtk_box_pack_start(button_box, connect_button, FALSE, TRUE, 1);
 

@@ -16,7 +16,6 @@
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
 #include "config.h"
-#include <glib/gi18n.h>
 
 #include "spice-client.h"
 #include "spice-common.h"
@@ -56,7 +55,7 @@ static int write_ppm_32(void)
 
     fp = fopen(outf,"w");
     if (NULL == fp) {
-	fprintf(stderr, _("%s: can't open %s: %s\n"), g_get_prgname(), outf, strerror(errno));
+	fprintf(stderr, "%s: can't open %s: %s\n", g_get_prgname(), outf, strerror(errno));
 	return -1;
     }
     fprintf(fp, "P6\n%d %d\n255\n",
@@ -84,12 +83,12 @@ static void invalidate(SpiceChannel *channel,
         rc = write_ppm_32();
         break;
     default:
-        fprintf(stderr, _("unsupported spice surface format %d\n"), d_format);
+        fprintf(stderr, "unsupported spice surface format %d\n", d_format);
         rc = -1;
         break;
     }
     if (rc == 0)
-        fprintf(stderr, _("wrote screen shot to %s\n"), outf);
+        fprintf(stderr, "wrote screen shot to %s\n", outf);
     g_main_loop_quit(mainloop);
 }
 
@@ -137,14 +136,14 @@ static GOptionEntry app_entries[] = {
         .short_name       = 'o',
         .arg              = G_OPTION_ARG_FILENAME,
         .arg_data         = &outf,
-        .description      = N_("Output file name (default spicy-screenshot.ppm)"),
-        .arg_description  = N_("<filename>"),
+        .description      = "Output file name (default spicy-screenshot.ppm)",
+        .arg_description  = "<filename>",
     },
     {
         .long_name        = "version",
         .arg              = G_OPTION_ARG_NONE,
         .arg_data         = &version,
-        .description      = N_("Display version and quit"),
+        .description      = "Display version and quit",
     },
     {
         /* end of list */
@@ -156,18 +155,14 @@ int main(int argc, char *argv[])
     GError *error = NULL;
     GOptionContext *context;
 
-    bindtextdomain(GETTEXT_PACKAGE, SPICE_GTK_LOCALEDIR);
-    bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
-    textdomain(GETTEXT_PACKAGE);
-
     /* parse opts */
-    context = g_option_context_new(_(" - make screen shots"));
-    g_option_context_set_summary(context, _("A Spice server client to take screenshots in ppm format."));
-    g_option_context_set_description(context, _("Report bugs to " PACKAGE_BUGREPORT "."));
+    context = g_option_context_new(" - make screen shots");
+    g_option_context_set_summary(context, "A Spice server client to take screenshots in ppm format.");
+    g_option_context_set_description(context, "Report bugs to " PACKAGE_BUGREPORT ".");
     g_option_context_set_main_group(context, spice_cmdline_get_option_group());
     g_option_context_add_main_entries(context, app_entries, NULL);
     if (!g_option_context_parse (context, &argc, &argv, &error)) {
-        g_print(_("option parsing failed: %s\n"), error->message);
+        g_print("option parsing failed: %s\n", error->message);
         exit(1);
     }
 
@@ -187,7 +182,7 @@ int main(int argc, char *argv[])
     spice_cmdline_session_setup(session);
 
     if (!spice_session_connect(session)) {
-        fprintf(stderr, _("spice_session_connect failed\n"));
+        fprintf(stderr, "spice_session_connect failed\n");
         exit(1);
     }
 
