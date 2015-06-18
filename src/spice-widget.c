@@ -364,7 +364,15 @@ static void spice_display_set_property(GObject      *object,
         scaling_updated(display);
         break;
     case PROP_KEYPRESS_DELAY:
-        d->keypress_delay = g_value_get_uint(value);
+        {
+            const gchar *env = g_getenv("SPICE_KEYPRESS_DELAY");
+            guint delay = g_value_get_uint(value);
+            if (env != NULL)
+                delay = strtoul(env, NULL, 10);
+
+            SPICE_DEBUG("keypress-delay is set to %u ms", delay);
+            d->keypress_delay = delay;
+        }
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
