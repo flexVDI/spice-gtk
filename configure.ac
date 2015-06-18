@@ -3,7 +3,7 @@ AC_PREREQ([2.57])
 AC_INIT([spice-gtk], [m4_esyscmd(build-aux/git-version-gen .tarball-version)],
         [spice-devel@lists.freedesktop.org])
 
-AC_CONFIG_MACRO_DIR([m4])
+AC_CONFIG_MACRO_DIRS([m4 spice-common/m4])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_AUX_DIR([build-aux])
 
@@ -352,22 +352,7 @@ AC_SUBST(JPEG_LIBS)
 AC_CHECK_LIB(z, deflate, Z_LIBS='-lz', AC_MSG_ERROR([zlib not found]))
 AC_SUBST(Z_LIBS)
 
-AC_ARG_ENABLE([smartcard],
-  AS_HELP_STRING([--enable-smartcard=@<:@auto/yes/no@:>@],
-                 [Enable smartcard support @<:@default=auto@:>@]),
-  [],
-  [enable_smartcard="auto"])
-
-have_smartcard=no
-if test "x$enable_smartcard" != "xno"; then
-  PKG_CHECK_MODULES(SMARTCARD, libcacard >= 0.1.2, [have_smartcard=yes], [have_smartcard=no])
-  if test "x$enable_smartcard" != "xauto" && test "x$have_smartcard" = "xno"; then
-    AC_MSG_ERROR("Smartcard support requested but libcacard could not be found")
-  fi
-  if test "x$have_smartcard" = "xyes"; then
-    AC_DEFINE([USE_SMARTCARD], [1], [Define if supporting smartcard proxying])
-  fi
-fi
+SPICE_CHECK_SMARTCARD([SMARTCARD])
 AM_CONDITIONAL([WITH_SMARTCARD], [test "x$have_smartcard" = "xyes"])
 
 AC_ARG_ENABLE([usbredir],
