@@ -21,6 +21,6 @@
 
 #include "spice-widget.h"
 
-int spicy_connect_dialog(SpiceSession *session);
+gboolean spicy_connect_dialog(SpiceSession *session);
 
 #endif

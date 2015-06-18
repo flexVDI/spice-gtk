@@ -1119,8 +1119,7 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
             g_message("channel error: %s", error->message);
         }
 
-        rc = spicy_connect_dialog(conn->session);
-        if (rc == 0) {
+        if (spicy_connect_dialog(conn->session)) {
             connection_connect(conn);
         } else {
             connection_disconnect(conn);
@@ -1699,8 +1698,7 @@ int main(int argc, char *argv[])
     /* If user doesn't provide hostname and port, show the dialog window
        instead of connecting to server automatically */
     if ((host == NULL || (port == NULL && tls_port == NULL)) && unix_path == NULL) {
-        int ret = spicy_connect_dialog(conn->session);
-        if (ret != 0) {
+        if (!spicy_connect_dialog(conn->session)) {
             exit(0);
         }
     }
