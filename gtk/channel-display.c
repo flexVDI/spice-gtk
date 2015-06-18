@@ -1036,6 +1036,13 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
         stream_mjpeg_init(st);
         break;
     }
+
+    char *str = g_strdup_printf(
+                    "HW accel %s, decode: 0ms, dropped 0, in rate 0, out rate 0",
+                    st->hw_accel ? "on" : "off");
+    g_free(c->report);
+    c->report = str;
+    g_coroutine_object_notify(G_OBJECT(channel), "stream-report");
 }
 
 /* coroutine or main context */
@@ -1302,14 +1309,13 @@ static void display_update_stream_report(SpiceDisplayChannel *channel, uint32_t 
         guint64 elapsed = now - st->report_start_time;
         int in_fps = st->report_num_frames * 1000000 / elapsed;
         int out_fps = (st->report_num_frames - st-> report_num_drops) * 1000000 / elapsed;
-        int hw_accel = st->hw_accel;
         g_free(channel->priv->report);
         char *str = g_strdup_printf(
             "HW accel %s, decode: %-3ums, dropped %-2d, in rate %-2d, out rate %-2d",
-                                    hw_accel ? "on" : "off",
-                                    dec_time,
-                                    st->report_num_drops,
-                                    in_fps, out_fps);
+            st->hw_accel ? "on" : "off",
+            dec_time,
+            st->report_num_drops,
+            in_fps, out_fps);
         channel->priv->report = str;
         SPICE_DEBUG("Reporting stream %d, elapsed %u: %s", stream_id, (unsigned int)elapsed, str);
         g_coroutine_object_notify(G_OBJECT(channel), "stream-report");
