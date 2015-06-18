@@ -30,6 +30,17 @@ static VAStatus va_x11_open_display(tinyjpeg_session *session)
             va_dpy = vaGetDisplay(x11_dpy);
             int major, minor;
             va_status = vaInitialize(va_dpy, &major, &minor);
+
+            // FIXME: I got brightness and contrast by trial and error,
+            // since I dunno how to find them
+            int numAttr = vaMaxNumDisplayAttributes(va_dpy);
+            VADisplayAttribute *attribs = malloc(numAttr * sizeof(VADisplayAttribute));
+            vaQueryDisplayAttributes(va_dpy, attribs, &numAttr);
+            attribs[VADisplayAttribBrightness].value = 12;
+            attribs[VADisplayAttribContrast].value = 44;
+            vaSetDisplayAttributes(va_dpy, attribs, 2);
+            free(attribs);
+
             int screen = XDefaultScreen(x11_dpy);
             depth = XDefaultDepth(x11_dpy, screen);
             root = XRootWindow(x11_dpy, screen);
