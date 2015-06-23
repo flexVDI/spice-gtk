@@ -3,7 +3,8 @@ AC_PREREQ([2.57])
 AC_INIT([spice-gtk], [m4_esyscmd(build-aux/git-version-gen .tarball-version)],
         [spice-devel@lists.freedesktop.org])
 
-AC_CONFIG_MACRO_DIRS([m4 spice-common/m4])
+AC_CONFIG_MACRO_DIR([m4])
+m4_include([spice-common/m4/spice-deps.m4])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_AUX_DIR([build-aux])
 
