@@ -293,7 +293,12 @@ static void update_monitor_area(SpiceDisplay *display)
         goto whole;
     }
 
-    update_area(display, c->x, c->y, c->width, c->height);
+    /* If only one head on this monitor, update the whole area */
+    if(monitors->len == 1) {
+        update_area(display, 0, 0, c->width, c->height);
+    } else {
+        update_area(display, c->x, c->y, c->width, c->height);
+    }
     g_clear_pointer(&monitors, g_array_unref);
     return;
 
