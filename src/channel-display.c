@@ -1724,7 +1724,7 @@ static void display_handle_monitors_config(SpiceChannel *channel, SpiceMsgIn *in
     g_return_if_fail(config != NULL);
     g_return_if_fail(config->count > 0);
 
-    CHANNEL_DEBUG(channel, "monitors config: n: %d/%d", config->count, config->max_allowed);
+    CHANNEL_DEBUG(channel, "received new monitors config from guest: n: %d/%d", config->count, config->max_allowed);
 
     c->monitors_max = config->max_allowed;
     if (CLAMP_CHECK(c->monitors_max, 1, MONITORS_MAX)) {

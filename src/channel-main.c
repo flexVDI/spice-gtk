@@ -1076,6 +1076,7 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
         c->disable_display_align == FALSE)
         mon->flags |= VD_AGENT_CONFIG_MONITORS_FLAG_USE_POS;
 
+    CHANNEL_DEBUG(channel, "sending new monitors config to guest");
     j = 0;
     for (i = 0; i < SPICE_N_ELEMENTS(c->display); i++) {
         if (c->display[i].display_state != DISPLAY_ENABLED) {
@@ -1089,7 +1090,7 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
         mon->monitors[j].height = c->display[i].height;
         mon->monitors[j].x = c->display[i].x;
         mon->monitors[j].y = c->display[i].y;
-        CHANNEL_DEBUG(channel, "monitor config: #%d %dx%d+%d+%d @ %d bpp", j,
+        CHANNEL_DEBUG(channel, "monitor #%d: %dx%d+%d+%d @ %d bpp", j,
                       mon->monitors[j].width, mon->monitors[j].height,
                       mon->monitors[j].x, mon->monitors[j].y,
                       mon->monitors[j].depth);
