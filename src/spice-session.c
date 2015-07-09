@@ -291,7 +291,7 @@ static void spice_session_init(SpiceSession *session)
     g_free(channels);
 
     ring_init(&s->channels);
-    s->images = cache_new((GDestroyNotify)pixman_image_unref);
+    s->images = cache_image_new((GDestroyNotify)pixman_image_unref);
     s->glz_window = glz_decoder_window_new();
     update_proxy(session, NULL);
 }

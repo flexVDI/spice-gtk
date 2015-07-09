@@ -27,15 +27,20 @@ G_BEGIN_DECLS
 typedef struct display_cache_item {
     guint64                     id;
     gboolean                    lossy;
+    guint32                     ref_count;
 } display_cache_item;
 
-typedef GHashTable display_cache;
+typedef struct display_cache {
+    GHashTable  *table;
+    gboolean    ref_counted;
+}display_cache;
 
 static inline display_cache_item* cache_item_new(guint64 id, gboolean lossy)
 {
     display_cache_item *self = g_slice_new(display_cache_item);
     self->id = id;
     self->lossy = lossy;
+    self->ref_count = 1;
     return self;
 }
 
@@ -46,18 +51,24 @@ static inline void cache_item_free(display_cache_item *self)
 
 static inline display_cache* cache_new(GDestroyNotify value_destroy)
 {
-    GHashTable* self;
-
-    self = g_hash_table_new_full(g_int64_hash, g_int64_equal,
-                                 (GDestroyNotify)cache_item_free,
-                                 value_destroy);
-
+    display_cache * self = g_slice_new(display_cache);
+    self->table = g_hash_table_new_full(g_int64_hash, g_int64_equal,
+                                       (GDestroyNotify) cache_item_free,
+                                       value_destroy);
+    self->ref_counted = FALSE;
     return self;
 }
 
+static inline display_cache * cache_image_new(GDestroyNotify value_destroy)
+{
+    display_cache * self = cache_new(value_destroy);
+    self->ref_counted = TRUE;
+    return self;
+};
+
 static inline gpointer cache_find(display_cache *cache, uint64_t id)
 {
-    return g_hash_table_lookup(cache, &id);
+    return g_hash_table_lookup(cache->table, &id);
 }
 
 static inline gpointer cache_find_lossy(display_cache *cache, uint64_t id, gboolean *lossy)
@@ -65,7 +76,7 @@ static inline gpointer cache_find_lossy(display_cache *cache, uint64_t id, gbool
     gpointer value;
     display_cache_item *item;
 
-    if (!g_hash_table_lookup_extended(cache, &id, (gpointer*)&item, &value))
+    if (!g_hash_table_lookup_extended(cache->table, &id, (gpointer*)&item, &value))
         return NULL;
 
     *lossy = item->lossy;
@@ -77,8 +88,17 @@ static inline void cache_add_lossy(display_cache *cache, uint64_t id,
                                    gpointer value, gboolean lossy)
 {
     display_cache_item *item = cache_item_new(id, lossy);
+    display_cache_item *current_item;
+    gpointer            current_image;
 
-    g_hash_table_replace(cache, item, value);
+    //If image is currently in the table add its reference count before replacing it
+    if(cache->ref_counted) {
+        if(g_hash_table_lookup_extended(cache->table, &id, (gpointer*) &current_item,
+                                        (gpointer*) &current_image)) {
+            item->ref_count = current_item->ref_count + 1;
+        }
+    }
+    g_hash_table_replace(cache->table, item, value);
 }
 
 static inline void cache_add(display_cache *cache, uint64_t id, gpointer value)
@@ -88,17 +108,29 @@ static inline void cache_add(display_cache *cache, uint64_t id, gpointer value)
 
 static inline gboolean cache_remove(display_cache *cache, uint64_t id)
 {
-    return g_hash_table_remove(cache, &id);
+    display_cache_item * item;
+    gpointer value;
+
+    if( g_hash_table_lookup_extended(cache->table, &id, (gpointer*) &item, &value)) {
+        --item->ref_count;
+        if(!cache->ref_counted || item->ref_count == 0 ) {
+            return g_hash_table_remove(cache->table, &id);
+        }
+    }
+    else {
+        return FALSE;
+    }
+    return TRUE;
 }
 
 static inline void cache_clear(display_cache *cache)
 {
-    g_hash_table_remove_all(cache);
+    g_hash_table_remove_all(cache->table);
 }
 
 static inline void cache_unref(display_cache *cache)
 {
-    g_hash_table_unref(cache);
+    g_hash_table_unref(cache->table);
 }
 
 G_END_DECLS
