@@ -1415,6 +1415,22 @@ static void agent_clipboard_release(SpiceMainChannel *channel, guint selection)
     agent_msg_queue(channel, VD_AGENT_CLIPBOARD_RELEASE, msgsize, msg);
 }
 
+static gboolean any_display_has_dimensions(SpiceMainChannel *channel)
+{
+    SpiceMainChannelPrivate *c;
+    guint i;
+
+    g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
+    c = channel->priv;
+
+    for (i = 0; i < MAX_DISPLAY; i++) {
+        if (c->display[i].width > 0 && c->display[i].height > 0)
+            return TRUE;
+    }
+
+    return FALSE;
+}
+
 /* main context*/
 static gboolean timer_set_display(gpointer data)
 {
@@ -1426,6 +1442,11 @@ static gboolean timer_set_display(gpointer data)
     c->timer_id = 0;
     if (!c->agent_connected)
         return FALSE;
+
+    if (!any_display_has_dimensions(channel)) {
+        SPICE_DEBUG("Not sending monitors config, at least one monitor must have dimensions");
+        return FALSE;
+    }
 
     session = spice_channel_get_session(SPICE_CHANNEL(channel));
 
