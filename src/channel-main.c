@@ -1420,7 +1420,7 @@ static gboolean any_display_has_dimensions(SpiceMainChannel *channel)
     SpiceMainChannelPrivate *c;
     guint i;
 
-    g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
+    g_return_val_if_fail(SPICE_IS_MAIN_CHANNEL(channel), FALSE);
     c = channel->priv;
 
     for (i = 0; i < MAX_DISPLAY; i++) {
