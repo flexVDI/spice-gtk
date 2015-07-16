@@ -2788,19 +2788,24 @@ void spice_main_clipboard_selection_request(SpiceMainChannel *channel, guint sel
 }
 
 /**
- * spice_main_set_display_enabled:
+ * spice_main_update_display_enabled:
  * @channel: a #SpiceMainChannel
  * @id: display ID (if -1: set all displays)
  * @enabled: wether display @id is enabled
+ * @update: if %TRUE, update guest display state after 1sec.
  *
- * When sending monitor configuration to agent guest, don't set
- * display @id, which the agent translates to disabling the display
- * id. Note: this will take effect next time the monitor
- * configuration is sent.
+ * When sending monitor configuration to agent guest, if @enabled is %FALSE,
+ * don't set display @id, which the agent translates to disabling the display
+ * id. If @enabled is %TRUE, the monitor will be included in the next monitor
+ * update. Note: this will take effect next time the monitor configuration is
+ * sent.
  *
- * Since: 0.6
+ * If @update is %FALSE, no server update will be triggered by this call, but
+ * the value will be saved and used in the next configuration update.
+ *
+ * Since: 0.30
  **/
-void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled)
+void spice_main_update_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled, gboolean update)
 {
     SpiceDisplayState display_state = enabled ? DISPLAY_ENABLED : DISPLAY_DISABLED;
     g_return_if_fail(channel != NULL);
@@ -2821,7 +2826,26 @@ void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean 
         c->display[id].display_state = display_state;
     }
 
-    update_display_timer(channel, 1);
+    if (update)
+        update_display_timer(channel, 1);
+}
+
+/**
+ * spice_main_set_display_enabled:
+ * @channel: a #SpiceMainChannel
+ * @id: display ID (if -1: set all displays)
+ * @enabled: wether display @id is enabled
+ *
+ * When sending monitor configuration to agent guest, don't set
+ * display @id, which the agent translates to disabling the display
+ * id. Note: this will take effect next time the monitor
+ * configuration is sent.
+ *
+ * Since: 0.6
+ **/
+void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled)
+{
+    spice_main_update_display_enabled(channel, id, enabled, TRUE);
 }
 
 static void file_xfer_completed(SpiceFileXferTask *task, GError *error)

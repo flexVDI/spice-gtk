@@ -72,6 +72,7 @@ void spice_main_set_display(SpiceMainChannel *channel, int id,
 void spice_main_update_display(SpiceMainChannel *channel, int id,
                                int x, int y, int width, int height, gboolean update);
 void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled);
+void spice_main_update_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled, gboolean update);
 gboolean spice_main_send_monitor_config(SpiceMainChannel *channel);
 
 void spice_main_clipboard_selection_grab(SpiceMainChannel *channel, guint selection, guint32 *types, int ntypes);
