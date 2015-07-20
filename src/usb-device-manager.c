@@ -425,6 +425,7 @@ static void spice_usb_device_manager_set_property(GObject       *gobject,
             break;
         }
 
+        SPICE_DEBUG("auto-connect filter set to %s", filter);
         free(priv->auto_conn_filter_rules);
         priv->auto_conn_filter_rules = rules;
         priv->auto_conn_filter_rules_count = count;
@@ -449,6 +450,7 @@ static void spice_usb_device_manager_set_property(GObject       *gobject,
             break;
         }
 
+        SPICE_DEBUG("redirect-on-connect filter set to %s", filter);
         free(priv->redirect_on_connect_rules);
         priv->redirect_on_connect_rules = rules;
         priv->redirect_on_connect_rules_count = count;
@@ -885,7 +887,10 @@ static void spice_usb_device_manager_add_dev(SpiceUsbDeviceManager  *self,
                                    spice_usb_device_ref(device));
     }
 
-    SPICE_DEBUG("device added %p", device);
+    SPICE_DEBUG("device added %04x:%04x (%p)",
+                spice_usb_device_get_vid(device),
+                spice_usb_device_get_pid(device),
+                device);
     g_signal_emit(self, signals[DEVICE_ADDED], 0, device);
 }
 
@@ -914,7 +919,10 @@ static void spice_usb_device_manager_remove_dev(SpiceUsbDeviceManager *self,
 
     spice_usb_device_manager_disconnect_device(self, device);
 
-    SPICE_DEBUG("device removed %p", device);
+    SPICE_DEBUG("device removed %04x:%04x (%p)",
+                spice_usb_device_get_vid(device),
+                spice_usb_device_get_pid(device),
+                device);
     spice_usb_device_ref(device);
     g_ptr_array_remove(priv->devices, device);
     g_signal_emit(self, signals[DEVICE_REMOVED], 0, device);

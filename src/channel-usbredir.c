@@ -326,7 +326,10 @@ void spice_usbredir_channel_connect_device_async(
     g_return_if_fail(SPICE_IS_USBREDIR_CHANNEL(channel));
     g_return_if_fail(device != NULL);
 
-    CHANNEL_DEBUG(channel, "connecting usb channel %p", channel);
+    CHANNEL_DEBUG(channel, "connecting device %04x:%04x (%p) to channel %p",
+                  spice_usb_device_get_vid(spice_device),
+                  spice_usb_device_get_pid(spice_device),
+                  spice_device, channel);
 
     result = g_simple_async_result_new(G_OBJECT(channel), callback, user_data,
                                  spice_usbredir_channel_connect_device_async);
