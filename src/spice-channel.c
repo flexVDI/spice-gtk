@@ -858,6 +858,7 @@ static void spice_channel_write_msg(SpiceChannel *channel, SpiceMsgOut *out)
         return;
     }
 
+    spice_marshaller_flush(out->marshaller);
     msg_size = spice_marshaller_get_total_size(out->marshaller) -
                spice_header_get_header_size(channel->priv->use_mini_header);
     spice_header_set_msg_size(out->header, channel->priv->use_mini_header, msg_size);
