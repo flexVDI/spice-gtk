@@ -266,6 +266,29 @@ AS_IF([test "x$enable_pulse$have_gstaudio" = "xnono"],
       [SPICE_WARNING([No PulseAudio or GStreamer 1.0 audio decoder, audio will not be streamed])
 ])
 
+AC_ARG_ENABLE([gstvideo],
+  AS_HELP_STRING([--enable-gstvideo=@<:@auto/yes/no@:>@],
+                 [Enable GStreamer video support @<:@default=auto@:>@]),
+  [],
+  [enable_gstvideo="auto"])
+AS_IF([test "x$enable_gstvideo" != "xno"],
+      [SPICE_CHECK_GSTREAMER(GSTVIDEO, 1.0,
+         [gstreamer-1.0 gstreamer-base-1.0 gstreamer-app-1.0 gstreamer-video-1.0],
+         [missing_gstreamer_elements=""
+          SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-base 1.0], [appsrc videoconvert appsink])
+          SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-good 1.0], [jpegdec vp8dec])
+          SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-bad 1.0], [h264parse])
+          SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gstreamer-libav 1.0], [avdec_h264])
+          AS_IF([test x"$missing_gstreamer_elements" = "xyes"],
+                SPICE_WARNING([The GStreamer video decoder can be built but may not work.]))
+         ],
+         [AS_IF([test "x$enable_gstvideo" = "xyes"],
+                AC_MSG_ERROR([GStreamer 1.0 video requested but not found]))
+         ])
+      ], [have_gstvideo="no"]
+)
+AM_CONDITIONAL([HAVE_GSTVIDEO], [test "x$have_gstvideo" = "xyes"])
+
 AC_CHECK_LIB(jpeg, jpeg_destroy_decompress,
     AC_MSG_CHECKING([for jpeglib.h])
     AC_TRY_CPP(
@@ -552,7 +575,7 @@ SPICE_CFLAGS="$SPICE_CFLAGS $WARN_CFLAGS"
 
 AC_SUBST(SPICE_CFLAGS)
 
-SPICE_GLIB_CFLAGS="$PIXMAN_CFLAGS $PULSE_CFLAGS $GSTAUDIO_CFLAGS $GLIB2_CFLAGS $GIO_CFLAGS $GOBJECT2_CFLAGS $SSL_CFLAGS $SASL_CFLAGS"
+SPICE_GLIB_CFLAGS="$PIXMAN_CFLAGS $PULSE_CFLAGS $GSTAUDIO_CFLAGS $GSTVIDEO_CFLAGS $GLIB2_CFLAGS $GIO_CFLAGS $GOBJECT2_CFLAGS $SSL_CFLAGS $SASL_CFLAGS"
 SPICE_GTK_CFLAGS="$SPICE_GLIB_CFLAGS $GTK_CFLAGS "
 
 AC_SUBST(SPICE_GLIB_CFLAGS)
@@ -596,6 +619,7 @@ AC_MSG_NOTICE([
         Coroutine:                ${with_coroutine}
         PulseAudio:               ${enable_pulse}
         GStreamer Audio:          ${have_gstaudio}
+        GStreamer Video:          ${have_gstvideo}
         SASL support:             ${have_sasl}
         Smartcard support:        ${have_smartcard}
         USB redirection support:  ${have_usbredir} ${with_usbredir_hotplug}

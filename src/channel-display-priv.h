@@ -69,6 +69,12 @@ struct VideoDecoder {
  * @return:     A pointer to a structure implementing the VideoDecoder methods.
  */
 VideoDecoder* create_mjpeg_decoder(int codec_type, display_stream *stream);
+#ifdef HAVE_GSTVIDEO
+VideoDecoder* create_gstreamer_decoder(int codec_type, display_stream *stream);
+gboolean gstvideo_init(void);
+#else
+# define gstvideo_init() FALSE
+#endif
 
 
 typedef struct display_surface {

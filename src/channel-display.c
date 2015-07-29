@@ -716,6 +716,12 @@ static void spice_display_channel_reset_capabilities(SpiceChannel *channel)
 #ifdef G_OS_UNIX
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_GL_SCANOUT);
 #endif
+    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_MULTI_CODEC);
+    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_CODEC_MJPEG);
+    if (gstvideo_init()) {
+        spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_CODEC_VP8);
+        spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_CODEC_H264);
+    }
 }
 
 static void destroy_surface(gpointer data)
@@ -1096,7 +1102,11 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
         st->video_decoder = create_mjpeg_decoder(op->codec_type, st);
         break;
     default:
+#ifdef HAVE_GSTVIDEO
+        st->video_decoder = create_gstreamer_decoder(op->codec_type, st);
+#else
         st->video_decoder = NULL;
+#endif
     }
     if (st->video_decoder == NULL) {
         spice_printerr("could not create a video decoder for codec %d", op->codec_type);
