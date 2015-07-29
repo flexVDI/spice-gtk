@@ -2947,12 +2947,14 @@ static void agent_send_port_redirections(SpiceMainChannel *channel)
 }
 
 /**
- * spice_main_port_forward:
+ * spice_main_port_forward_remote:
+ * @bind_address: the address to bind to in the agent side.
  * @rport: the port forwarded in the agent side.
+ * @host: the address to connect to in the local side.
  * @lport: the target port in the local side.
  *
  * Instructs the agent to start forwarding a port, and associate it with a
- * local port.
+ * local port and address.
  *
  * Returns: a %TRUE on success, %FALSE on error.
  **/
@@ -2968,7 +2970,7 @@ gboolean spice_main_port_forward_remote(SpiceMainChannel *channel,
 }
 
 /**
- * spice_main_port_forward_disassociate:
+ * spice_main_port_forward_disassociate_remote:
  * @rport: the port forwarded in the agent side.
  *
  * Instructs the agent to stop forwarding a port.
@@ -2985,9 +2987,11 @@ gboolean spice_main_port_forward_disassociate_remote(SpiceMainChannel *channel,
 }
 
 /**
- * spice_main_port_forward:
- * @rport: the port forwarded in the agent side.
- * @lport: the target port in the local side.
+ * spice_main_port_forward_local:
+ * @bind_address: the address to bind to in the local side.
+ * @lport: the local port to listen on.
+ * @host: the address to connect to in the agent side.
+ * @rport: the port to connect to in the agent side.
  *
  * Instructs the agent to start forwarding a port, and associate it with a
  * local port.
@@ -3006,8 +3010,8 @@ gboolean spice_main_port_forward_local(SpiceMainChannel *channel,
 }
 
 /**
- * spice_main_port_forward_disassociate:
- * @rport: the port forwarded in the agent side.
+ * spice_main_port_forward_disassociate_local:
+ * @lport: the port forwarded in the local side.
  *
  * Instructs the agent to stop forwarding a port.
  *

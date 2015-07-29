@@ -1160,12 +1160,9 @@ static gboolean display_stream_render(display_stream *st)
     st->timeout = 0;
     do {
         in = g_queue_pop_head(st->msgq);
+        g_return_val_if_fail(in != NULL, FALSE);
+
         if (st->fskip_frame == 0) {
-            if (st->fskip_level)
-                st->fskip_frame++;
-
-            g_return_val_if_fail(in != NULL, FALSE);
-
             gettimeofday(&time1, NULL);
 
             SpiceRect last_frame_dest;
@@ -1218,27 +1215,22 @@ static gboolean display_stream_render(display_stream *st)
             delta = ((time2.tv_sec * 1000) + (time2.tv_usec / 1000)) - ((time1.tv_sec * 1000) + (time1.tv_usec / 1000));
             st->acum_decode_time += delta;
             st->decoded_frames++;
-            SPICE_DEBUG("FSkip delta: %llu ms", (unsigned long long int) delta);
-            if (st->fskip_level < 3 && delta > 120) {
-                SPICE_DEBUG("FSkip level: 3 - MJPEG process time: %llu ms\n",
-                    (unsigned long long int) delta);
-                st->fskip_level = 3;
-                st->fskip_frame = 1;
-            } else if (st->fskip_level < 2 && delta > 80) {
-                SPICE_DEBUG("FSkip level: 2 - MJPEG process time: %llu ms\n",
-                    (unsigned long long int) delta);
-                st->fskip_level = 2;
-                st->fskip_frame = 1;
-            } else if (!st->fskip_level && delta > 40) {
-                SPICE_DEBUG("FSkip level: 1 - MJPEG process time: %llu ms\n",
-                    (unsigned long long int) delta);
-                st->fskip_level = 1;
-                st->fskip_frame = 1;
+            uint8_t new_fskip_level = 0;
+            if (delta > 120) {
+                new_fskip_level = 3;
+            } else if (delta > 80) {
+                new_fskip_level = 2;
+            } else if (delta > 40) {
+                new_fskip_level = 1;
             }
-        } else if (st->fskip_frame == st->fskip_level) {
-            st->fskip_frame = 0;
+            if (st->fskip_level != new_fskip_level) {
+                SPICE_DEBUG("FSkip level: %u - MJPEG process time: %llu ms\n", new_fskip_level,
+                            (unsigned long long int) delta);
+                st->fskip_level = new_fskip_level;
+            }
+            st->fskip_frame = st->fskip_level;
         } else {
-            (st->fskip_frame)++;
+            --st->fskip_frame;
         }
 
         st->msg_data = NULL;
