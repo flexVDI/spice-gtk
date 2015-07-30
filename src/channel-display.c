@@ -809,10 +809,8 @@ static void spice_display_channel_up(SpiceChannel *channel)
     out->marshallers->msgc_display_init(out->marshaller, &init);
     spice_msg_out_send_internal(out);
 
-    /* if we are not using monitors config, notify of existence of
-       this monitor */
-    if (channel->priv->channel_id != 0)
-        g_coroutine_object_notify(G_OBJECT(channel), "monitors");
+    /* notify of existence of this monitor */
+    g_coroutine_object_notify(G_OBJECT(channel), "monitors");
 
     if (spice_channel_test_capability(channel, SPICE_DISPLAY_CAP_PREF_COMPRESSION) &&
             preferred_compression > SPICE_IMAGE_COMPRESS_INVALID) {
