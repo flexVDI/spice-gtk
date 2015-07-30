@@ -31,6 +31,7 @@
 
 #ifdef WITH_FLEXVDI
 #include <flexvdi-port.h>
+#include "flexvdi_client_icon.h"
 #endif
 
 #include "glib-compat.h"
@@ -1272,6 +1273,11 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
                      G_CALLBACK(window_state_cb), win);
     g_signal_connect(G_OBJECT(win->toplevel), "delete-event",
                      G_CALLBACK(delete_cb), win);
+
+#ifdef WITH_FLEXVDI
+    gtk_window_set_icon(GTK_WINDOW(win->toplevel),
+                        gdk_pixbuf_new_from_inline(-1, flexvdi_icon_data, FALSE, NULL));
+#endif
 
     /* menu + toolbar */
     win->ui = gtk_ui_manager_new();
