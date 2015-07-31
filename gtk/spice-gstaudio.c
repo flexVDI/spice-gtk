@@ -208,7 +208,9 @@ static void record_start(SpiceRecordChannel *channel, gint format, gint channels
                             "layout=interleaved", channels, frequency);
         gchar *pipeline =
             g_strdup_printf("autoaudiosrc name=audiosrc ! queue ! audioconvert ! audioresample ! "
-                            "appsink caps=\"%s\" name=appsink", audio_caps);
+                            "appsink caps=\"%s\" name=appsink sync=false", audio_caps);
+
+        SPICE_DEBUG("record pipeline: %s", pipeline);
 
         p->record.pipe = gst_parse_launch(pipeline, &error);
         if (error != NULL) {
