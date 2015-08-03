@@ -2242,7 +2242,6 @@ static int spice_channel_load_ca(SpiceChannel *channel)
     spice_session_get_ca(c->session, &ca, &size);
 
     CHANNEL_DEBUG(channel, "Load CA, file: %s, data: %p", ca_file, ca);
-    g_warn_if_fail(ca_file || ca);
 
     if (ca != NULL) {
         in = BIO_new_mem_buf(ca, size);
