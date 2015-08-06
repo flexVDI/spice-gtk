@@ -219,12 +219,35 @@ static void update_keyboard_focus(SpiceDisplay *display, gboolean state)
     spice_gtk_session_request_auto_usbredir(d->gtk_session, state);
 }
 
+static gint get_display_id(SpiceDisplay *display)
+{
+    SpiceDisplayPrivate *d = display->priv;
+
+    /* supported monitor_id only with display channel #0 */
+    if (d->channel_id == 0 && d->monitor_id >= 0)
+        return d->monitor_id;
+
+    g_return_val_if_fail(d->monitor_id <= 0, -1);
+
+    return d->channel_id;
+}
+
 static void update_ready(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
     gboolean ready;
 
     ready = d->mark != 0 && d->monitor_ready;
+
+    /* If the 'resize-guest' property is set, the application expects spice-gtk
+     * to manage the size and state of the displays, so update the 'enabled'
+     * state here. If 'resize-guest' is false, we can assume that the
+     * application will manage the state of the displays.
+     */
+    if (d->resize_guest_enable) {
+        spice_main_update_display_enabled(d->main, get_display_id(display),
+                                          ready, TRUE);
+    }
 
     if (d->ready == ready)
         return;
@@ -242,19 +265,6 @@ static void set_monitor_ready(SpiceDisplay *self, gboolean ready)
 
     d->monitor_ready = ready;
     update_ready(self);
-}
-
-static gint get_display_id(SpiceDisplay *display)
-{
-    SpiceDisplayPrivate *d = display->priv;
-
-    /* supported monitor_id only with display channel #0 */
-    if (d->channel_id == 0 && d->monitor_id >= 0)
-        return d->monitor_id;
-
-    g_return_val_if_fail(d->monitor_id <= 0, -1);
-
-    return d->channel_id;
 }
 
 static void update_monitor_area(SpiceDisplay *display)
@@ -344,6 +354,7 @@ static void spice_display_set_property(GObject      *object,
         break;
     case PROP_RESIZE_GUEST:
         d->resize_guest_enable = g_value_get_boolean(value);
+        update_ready(display);
         update_size_request(display);
         break;
     case PROP_SCALING:
@@ -2439,7 +2450,6 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
             mark(display, primary.marked);
         }
         spice_channel_connect(channel);
-        spice_main_set_display_enabled(d->main, get_display_id(display), TRUE);
         return;
     }
 
