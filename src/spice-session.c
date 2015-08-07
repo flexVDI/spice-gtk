@@ -117,7 +117,7 @@ struct _SpiceSessionPrivate {
     uint32_t          n_display_channels;
     guint8            uuid[16];
     gchar             *name;
-    SpiceImageCompress preferred_compression;
+    SpiceImageCompression preferred_compression;
 
     /* associated objects */
     SpiceAudio        *audio_manager;
@@ -204,7 +204,7 @@ enum {
     PROP_SHARE_DIR_RO,
     PROP_USERNAME,
     PROP_UNIX_PATH,
-    PROP_PREF_COMPRESS,
+    PROP_PREF_COMPRESSION,
 };
 
 /* signals */
@@ -216,22 +216,22 @@ enum {
 };
 
 /* Register SpiceImageCompress */
-#define SPICE_TYPE_IMAGE_COMPRESS spice_image_compress_get_type()
+#define SPICE_TYPE_IMAGE_COMPRESSION spice_image_compress_get_type()
 GType spice_image_compress_get_type (void);
 
 static const GEnumValue _spice_image_compress_values[] = {
-  { SPICE_IMAGE_COMPRESS_INVALID, "SPICE_IMAGE_COMPRESS_INVALID", "invalid" },
-  { SPICE_IMAGE_COMPRESS_OFF, "SPICE_IMAGE_COMPRESS_OFF", "off" },
-  { SPICE_IMAGE_COMPRESS_AUTO_GLZ, "SPICE_IMAGE_COMPRESS_AUTO_GLZ", "auto-glz" },
-  { SPICE_IMAGE_COMPRESS_AUTO_LZ, "SPICE_IMAGE_COMPRESS_AUTO_LZ", "auto-lz" },
-  { SPICE_IMAGE_COMPRESS_QUIC, "SPICE_IMAGE_COMPRESS_QUIC", "quic" },
-  { SPICE_IMAGE_COMPRESS_GLZ, "SPICE_IMAGE_COMPRESS_GLZ", "glz" },
-  { SPICE_IMAGE_COMPRESS_LZ, "SPICE_IMAGE_COMPRESS_LZ", "lz" },
-  { SPICE_IMAGE_COMPRESS_LZ4, "SPICE_IMAGE_COMPRESS_LZ4", "lz4" },
+  { SPICE_IMAGE_COMPRESSION_INVALID, "SPICE_IMAGE_COMPRESSION_INVALID", "invalid" },
+  { SPICE_IMAGE_COMPRESSION_OFF, "SPICE_IMAGE_COMPRESSION_OFF", "off" },
+  { SPICE_IMAGE_COMPRESSION_AUTO_GLZ, "SPICE_IMAGE_COMPRESSION_AUTO_GLZ", "auto-glz" },
+  { SPICE_IMAGE_COMPRESSION_AUTO_LZ, "SPICE_IMAGE_COMPRESSION_AUTO_LZ", "auto-lz" },
+  { SPICE_IMAGE_COMPRESSION_QUIC, "SPICE_IMAGE_COMPRESSION_QUIC", "quic" },
+  { SPICE_IMAGE_COMPRESSION_GLZ, "SPICE_IMAGE_COMPRESSION_GLZ", "glz" },
+  { SPICE_IMAGE_COMPRESSION_LZ, "SPICE_IMAGE_COMPRESSION_LZ", "lz" },
+  { SPICE_IMAGE_COMPRESSION_LZ4, "SPICE_IMAGE_COMPRESSION_LZ4", "lz4" },
   { 0, NULL, NULL }
 };
 
-G_STATIC_ASSERT(G_N_ELEMENTS(_spice_image_compress_values) == SPICE_IMAGE_COMPRESS_ENUM_END + 1);
+G_STATIC_ASSERT(G_N_ELEMENTS(_spice_image_compress_values) == SPICE_IMAGE_COMPRESSION_ENUM_END + 1);
 
 GType
 spice_image_compress_get_type (void)
@@ -692,7 +692,7 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_SHARE_DIR_RO:
         g_value_set_boolean(value, s->share_dir_ro);
         break;
-    case PROP_PREF_COMPRESS:
+    case PROP_PREF_COMPRESSION:
         g_value_set_enum(value, s->preferred_compression);
         break;
     default:
@@ -831,7 +831,7 @@ static void spice_session_set_property(GObject      *gobject,
     case PROP_SHARE_DIR_RO:
         s->share_dir_ro = g_value_get_boolean(value);
         break;
-    case PROP_PREF_COMPRESS:
+    case PROP_PREF_COMPRESSION:
         s->preferred_compression = g_value_get_enum(value);
         break;
     default:
@@ -1452,12 +1452,12 @@ static void spice_session_class_init(SpiceSessionClass *klass)
      * Since: 0.29
      **/
     g_object_class_install_property
-        (gobject_class, PROP_PREF_COMPRESS,
+        (gobject_class, PROP_PREF_COMPRESSION,
          g_param_spec_enum("preferred-compression",
                            "Preferred image compression algorithm",
                            "Preferred image compression algorithm",
-                           SPICE_TYPE_IMAGE_COMPRESS,
-                           SPICE_IMAGE_COMPRESS_INVALID,
+                           SPICE_TYPE_IMAGE_COMPRESSION,
+                           SPICE_IMAGE_COMPRESSION_INVALID,
                            G_PARAM_READWRITE |
                            G_PARAM_STATIC_STRINGS));
 

@@ -792,7 +792,7 @@ static void spice_display_channel_up(SpiceChannel *channel)
     SpiceMsgcDisplayPreferredCompression pref_comp_msg;
     int cache_size;
     int glz_window_size;
-    SpiceImageCompress preferred_compression = SPICE_IMAGE_COMPRESS_INVALID;
+    SpiceImageCompression preferred_compression = SPICE_IMAGE_COMPRESSION_INVALID;
 
     g_object_get(s,
                  "cache-size", &cache_size,
@@ -813,7 +813,7 @@ static void spice_display_channel_up(SpiceChannel *channel)
     g_coroutine_object_notify(G_OBJECT(channel), "monitors");
 
     if (spice_channel_test_capability(channel, SPICE_DISPLAY_CAP_PREF_COMPRESSION) &&
-            preferred_compression > SPICE_IMAGE_COMPRESS_INVALID) {
+            preferred_compression > SPICE_IMAGE_COMPRESSION_INVALID) {
         pref_comp_msg.image_compression = preferred_compression;
         out = spice_msg_out_new(channel, SPICE_MSGC_DISPLAY_PREFERRED_COMPRESSION);
         out->marshallers->msgc_display_preferred_compression(out->marshaller, &pref_comp_msg);
