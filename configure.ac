@@ -101,7 +101,7 @@ if test ! -e "$srcdir/src/vncdisplaykeymap_osx2xtkbd.c"; then
   AC_MSG_RESULT([found])
 fi
 
-SPICE_GLIB_REQUIRES="spice-protocol >= 0.12.10"
+SPICE_GLIB_REQUIRES=""
 SPICE_GTK_REQUIRES=""
 
 PKG_CHECK_MODULES(PIXMAN, pixman-1 >= 0.17.7)
