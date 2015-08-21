@@ -1547,7 +1547,11 @@ SpiceSession *spice_session_new_from_session(SpiceSession *session)
  * Open the session using the #SpiceSession:host and
  * #SpiceSession:port.
  *
- * Returns: %FALSE if the connection failed.
+ * Returns: %FALSE if the session state is invalid for connection
+ * request. %TRUE if the connection is initiated. To know whether the
+ * connection is established, you must watch for channels creation
+ * (#SpiceSession::channel-new) and the channels state
+ * (#SpiceChannel::channel-event).
  **/
 gboolean spice_session_connect(SpiceSession *session)
 {
