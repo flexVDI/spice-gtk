@@ -28,6 +28,7 @@
 #if !GLIB_CHECK_VERSION(2,30,0)
 #define G_TYPE_MAIN_CONTEXT (spice_main_context_get_type ())
 GType spice_main_context_get_type (void) G_GNUC_CONST;
+gchar *g_format_size (guint64 size);
 #endif
 
 #if !GLIB_CHECK_VERSION(2,32,0)
