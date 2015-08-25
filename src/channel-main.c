@@ -71,6 +71,8 @@ typedef struct SpiceFileXferTask {
     char                           buffer[FILE_XFER_CHUNK_SIZE];
     uint64_t                       read_bytes;
     uint64_t                       file_size;
+    GDateTime                      *start_time;
+    GDateTime                      *last_update;
     GError                         *error;
 } SpiceFileXferTask;
 
@@ -1695,6 +1697,10 @@ static void file_xfer_task_free(SpiceFileXferTask *task)
     g_clear_object(&task->channel);
     g_clear_object(&task->file);
     g_clear_object(&task->file_stream);
+    if (spice_util_get_debug()) {
+        g_date_time_unref(task->start_time);
+        g_date_time_unref(task->last_update);
+    }
     g_free(task);
 }
 
@@ -1730,6 +1736,23 @@ static void file_xfer_close_cb(GObject      *object,
         g_simple_async_result_set_op_res_gboolean(res, FALSE);
     } else {
         g_simple_async_result_set_op_res_gboolean(res, TRUE);
+        if (spice_util_get_debug()) {
+            GDateTime *now = g_date_time_new_now_local();
+            gchar *basename = g_file_get_basename(task->file);
+            double seconds =
+                (double) g_date_time_difference(now, task->start_time) / G_TIME_SPAN_SECOND;
+            gchar *file_size_str = g_format_size(task->file_size);
+            gchar *transfer_speed_str = g_format_size(task->file_size / seconds);
+
+            g_warn_if_fail(task->read_bytes == task->file_size);
+            SPICE_DEBUG("transferred file %s of %s size in %.1f seconds (%s/s)",
+                        basename, file_size_str, seconds, transfer_speed_str);
+
+            g_free(basename);
+            g_free(file_size_str);
+            g_free(transfer_speed_str);
+            g_date_time_unref(now);
+        }
     }
     g_simple_async_result_complete_in_idle(res);
     g_object_unref(res);
@@ -1750,6 +1773,21 @@ static void file_xfer_data_flushed_cb(GObject *source_object,
     if (error || task->error) {
         file_xfer_completed(task, error);
         return;
+    }
+
+    if (spice_util_get_debug()) {
+        const GTimeSpan interval = 20 * G_TIME_SPAN_SECOND;
+        GDateTime *now = g_date_time_new_now_local();
+
+        if (interval < g_date_time_difference(now, task->last_update)) {
+            gchar *basename = g_file_get_basename(task->file);
+            g_date_time_unref(task->last_update);
+            task->last_update = g_date_time_ref(now);
+            SPICE_DEBUG("transferred %.2f%% of the file %s",
+                        100.0 * task->read_bytes / task->file_size, basename);
+            g_free(basename);
+        }
+        g_date_time_unref(now);
     }
 
     if (task->progress_callback)
@@ -2916,6 +2954,14 @@ static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
         task->callback = callback;
         task->user_data = user_data;
 
+        if (spice_util_get_debug()) {
+            gchar *basename = g_file_get_basename(task->file);
+            task->start_time = g_date_time_new_now_local();
+            task->last_update = g_date_time_ref(task->start_time);
+
+            SPICE_DEBUG("transfer of file %s has started", basename);
+            g_free(basename);
+        }
         CHANNEL_DEBUG(task->channel, "Insert a xfer task:%d to task list", task->id);
         g_hash_table_insert(c->file_xfer_tasks, GUINT_TO_POINTER(task->id), task);
 
