@@ -197,6 +197,7 @@ void spice_audio_get_playback_volume_info_async(SpiceAudio *audio,
                                                 GAsyncReadyCallback callback,
                                                 gpointer user_data)
 {
+    g_return_if_fail(audio != NULL);
     SPICE_AUDIO_GET_CLASS(audio)->get_playback_volume_info_async(audio,
             cancellable, main_channel, callback, user_data);
 }
@@ -208,6 +209,7 @@ gboolean spice_audio_get_playback_volume_info_finish(SpiceAudio *audio,
                                                      guint16 **volume,
                                                      GError **error)
 {
+    g_return_val_if_fail(audio != NULL, FALSE);
     return SPICE_AUDIO_GET_CLASS(audio)->get_playback_volume_info_finish(audio,
             res, mute, nchannels, volume, error);
 }
@@ -218,6 +220,7 @@ void spice_audio_get_record_volume_info_async(SpiceAudio *audio,
                                               GAsyncReadyCallback callback,
                                               gpointer user_data)
 {
+    g_return_if_fail(audio != NULL);
     SPICE_AUDIO_GET_CLASS(audio)->get_record_volume_info_async(audio,
             cancellable, main_channel, callback, user_data);
 }
@@ -229,6 +232,7 @@ gboolean spice_audio_get_record_volume_info_finish(SpiceAudio *audio,
                                                    guint16 **volume,
                                                    GError **error)
 {
+    g_return_val_if_fail(audio != NULL, FALSE);
     return SPICE_AUDIO_GET_CLASS(audio)->get_record_volume_info_finish(audio,
             res, mute, nchannels, volume, error);
 }

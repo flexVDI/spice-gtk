@@ -1159,7 +1159,8 @@ static void agent_sync_audio_playback(SpiceMainChannel *main_channel)
     SpiceAudio *audio = spice_audio_get(session, NULL);
     SpiceMainChannelPrivate *c = main_channel->priv;
 
-    if (!test_agent_cap(main_channel, VD_AGENT_CAP_AUDIO_VOLUME_SYNC) ||
+    if (audio == NULL ||
+        !test_agent_cap(main_channel, VD_AGENT_CAP_AUDIO_VOLUME_SYNC) ||
         c->agent_volume_playback_sync == TRUE) {
         SPICE_DEBUG("%s - is not going to sync audio with guest", __func__);
         return;
@@ -1215,7 +1216,8 @@ static void agent_sync_audio_record(SpiceMainChannel *main_channel)
     SpiceAudio *audio = spice_audio_get(session, NULL);
     SpiceMainChannelPrivate *c = main_channel->priv;
 
-    if (!test_agent_cap(main_channel, VD_AGENT_CAP_AUDIO_VOLUME_SYNC) ||
+    if (audio == NULL ||
+        !test_agent_cap(main_channel, VD_AGENT_CAP_AUDIO_VOLUME_SYNC) ||
         c->agent_volume_record_sync == TRUE) {
         SPICE_DEBUG("%s - is not going to sync audio with guest", __func__);
         return;
