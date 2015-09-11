@@ -1788,9 +1788,25 @@ static void file_xfer_data_flushed_cb(GObject *source_object,
         }
     }
 
-    if (task->progress_callback)
-        task->progress_callback(task->read_bytes, task->file_size,
-                                task->progress_callback_data);
+    if (task->progress_callback) {
+        goffset read = 0;
+        goffset total = 0;
+        SpiceMainChannel *main_channel = task->channel;
+        GHashTableIter iter;
+        gpointer key, value;
+
+        /* since the progress_callback does not have a parameter to indicate
+         * which file the progress is associated with, report progress on all
+         * current transfers */
+        g_hash_table_iter_init(&iter, main_channel->priv->file_xfer_tasks);
+        while (g_hash_table_iter_next(&iter, &key, &value)) {
+            SpiceFileXferTask *t = (SpiceFileXferTask *)value;
+            read += t->read_bytes;
+            total += t->file_size;
+        }
+
+        task->progress_callback(read, total, task->progress_callback_data);
+    }
 
     /* Read more data */
     file_xfer_continue_read(task);
@@ -3018,7 +3034,11 @@ static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
  * setting this to a #GFileProgressCallback function. @progress_callback_data
  * will be passed to this function. It is guaranteed that this callback will
  * be called after all data has been transferred with the total number of bytes
- * copied during the operation.
+ * copied during the operation. Note that before release 0.31, progress_callback
+ * was broken since it only provided status for a single file transfer, but did
+ * not provide a way to determine which file it referred to. In release 0.31,
+ * this behavior was changed so that progress_callback provides the status of
+ * all ongoing file transfers.
  *
  * When the operation is finished, callback will be called. You can then call
  * spice_main_file_copy_finish() to get the result of the operation.
