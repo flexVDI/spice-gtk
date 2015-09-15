@@ -20,6 +20,7 @@
 #include "smartcard-manager.h"
 #include "usb-device-manager.h"
 #include "usb-device-widget.h"
+#include "spice-file-transfer-task.h"
 
 spice_audio_get_type
 spice_channel_event_get_type
@@ -45,3 +46,4 @@ spice_usb_device_manager_get_type
 spice_usb_device_widget_get_type
 spice_port_channel_get_type
 spice_webdav_channel_get_type
+spice_file_transfer_task_get_type

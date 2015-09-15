@@ -31,6 +31,7 @@
 #include "spice-channel-priv.h"
 #include "spice-session-priv.h"
 #include "spice-audio-priv.h"
+#include "spice-file-transfer-task.h"
 
 /**
  * SECTION:channel-main
@@ -55,8 +56,33 @@
 
 typedef struct spice_migrate spice_migrate;
 
+/**
+ * SECTION:file-transfer-task
+ * @short_description: Monitoring file transfers
+ * @title: File Transfer Task
+ * @section_id:
+ * @see_also: #SpiceMainChannel
+ * @stability: Stable
+ * @include: spice-client.h
+ *
+ * SpiceFileTransferTask is an object that represents a particular file
+ * transfer between the client and the guest. The properties and signals of the
+ * object can be used to monitor the status and result of the transfer. The
+ * Main Channel's #SpiceMainChannel::new-file-transfer signal will be emitted
+ * whenever a new file transfer task is initiated.
+ *
+ * Since: 0.31
+ */
+G_DEFINE_TYPE(SpiceFileTransferTask, spice_file_transfer_task, G_TYPE_OBJECT)
+
+#define FILE_TRANSFER_TASK_PRIVATE(o) \
+        (G_TYPE_INSTANCE_GET_PRIVATE((o), SPICE_TYPE_FILE_TRANSFER_TASK, SpiceFileTransferTaskPrivate))
+
 #define FILE_XFER_CHUNK_SIZE (VD_AGENT_MAX_DATA_SIZE * 32)
-typedef struct SpiceFileXferTask {
+struct _SpiceFileTransferTaskPrivate
+
+/* private */
+{
     uint32_t                       id;
     gboolean                       pending;
     GFile                          *file;
@@ -68,13 +94,28 @@ typedef struct SpiceFileXferTask {
     gpointer                       progress_callback_data;
     GAsyncReadyCallback            callback;
     gpointer                       user_data;
-    char                           buffer[FILE_XFER_CHUNK_SIZE];
+    char                           *buffer;
     uint64_t                       read_bytes;
     uint64_t                       file_size;
     gint64                         start_time;
     gint64                         last_update;
     GError                         *error;
-} SpiceFileXferTask;
+};
+
+enum {
+    PROP_TASK_ID = 1,
+    PROP_TASK_CHANNEL,
+    PROP_TASK_CANCELLABLE,
+    PROP_TASK_FILE,
+    PROP_TASK_PROGRESS,
+};
+
+enum {
+    SIGNAL_FINISHED,
+    LAST_TASK_SIGNAL
+};
+
+static guint task_signals[LAST_TASK_SIGNAL];
 
 typedef enum {
     DISPLAY_UNDEFINED,
@@ -168,6 +209,7 @@ enum {
     SPICE_MAIN_CLIPBOARD_SELECTION_REQUEST,
     SPICE_MAIN_CLIPBOARD_SELECTION_RELEASE,
     SPICE_MIGRATION_STARTED,
+    SPICE_MAIN_NEW_FILE_TRANSFER,
     SPICE_MAIN_LAST_SIGNAL,
 };
 
@@ -181,8 +223,8 @@ static void migrate_channel_event_cb(SpiceChannel *channel, SpiceChannelEvent ev
                                      gpointer data);
 static gboolean main_migrate_handshake_done(gpointer data);
 static void spice_main_channel_send_migration_handshake(SpiceChannel *channel);
-static void file_xfer_continue_read(SpiceFileXferTask *task);
-static void file_xfer_completed(SpiceFileXferTask *task, GError *error);
+static void file_xfer_continue_read(SpiceFileTransferTask *task);
+static void spice_file_transfer_task_completed(SpiceFileTransferTask *self, GError *error);
 static void file_xfer_flushed(SpiceMainChannel *channel, gboolean success);
 static void spice_main_set_max_clipboard(SpiceMainChannel *self, gint max);
 static void set_agent_connected(SpiceMainChannel *channel, gboolean connected);
@@ -245,7 +287,8 @@ static void spice_main_channel_init(SpiceMainChannel *channel)
 
     c = channel->priv = SPICE_MAIN_CHANNEL_GET_PRIVATE(channel);
     c->agent_msg_queue = g_queue_new();
-    c->file_xfer_tasks = g_hash_table_new(g_direct_hash, g_direct_equal);
+    c->file_xfer_tasks = g_hash_table_new_full(g_direct_hash, g_direct_equal,
+                                               NULL, g_object_unref);
     c->cancellable_volume_info = g_cancellable_new();
 
     spice_main_channel_reset_capabilties(SPICE_CHANNEL(channel));
@@ -409,11 +452,11 @@ static void spice_main_channel_reset_agent(SpiceMainChannel *channel)
 
     tasks = g_hash_table_get_values(c->file_xfer_tasks);
     for (l = tasks; l != NULL; l = l->next) {
-        SpiceFileXferTask *task = (SpiceFileXferTask *)l->data;
+        SpiceFileTransferTask *task = (SpiceFileTransferTask *)l->data;
 
         error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                             "Agent connection closed");
-        file_xfer_completed(task, error);
+        spice_file_transfer_task_completed(task, error);
     }
     g_list_free(tasks);
     file_xfer_flushed(channel, FALSE);
@@ -819,6 +862,28 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
      **/
     signals[SPICE_MIGRATION_STARTED] =
         g_signal_new("migration-started",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_LAST,
+                     0,
+                     NULL, NULL,
+                     g_cclosure_marshal_VOID__OBJECT,
+                     G_TYPE_NONE,
+                     1,
+                     G_TYPE_OBJECT);
+
+    /**
+     * SpiceMainChannel::new-file-transfer:
+     * @main: the #SpiceMainChannel that emitted the signal
+     * @task: a #SpiceFileTransferTask
+     *
+     * This signal is emitted when a new file transfer task has been initiated
+     * on this channel. Client applications may take a reference on the @task
+     * object and use it to monitor the status of the file transfer task.
+     *
+     * Since: 0.31
+     **/
+    signals[SPICE_MAIN_NEW_FILE_TRANSFER] =
+        g_signal_new("new-file-transfer",
                      G_OBJECT_CLASS_TYPE(gobject_class),
                      G_SIGNAL_RUN_LAST,
                      0,
@@ -1691,31 +1756,16 @@ static void main_handle_agent_disconnected(SpiceChannel *channel, SpiceMsgIn *in
     agent_stopped(SPICE_MAIN_CHANNEL(channel));
 }
 
-static void file_xfer_task_free(SpiceFileXferTask *task)
-{
-    SpiceMainChannelPrivate *c;
-
-    g_return_if_fail(task != NULL);
-
-    c = task->channel->priv;
-    g_hash_table_remove(c->file_xfer_tasks, GUINT_TO_POINTER(task->id));
-
-    g_clear_object(&task->channel);
-    g_clear_object(&task->file);
-    g_clear_object(&task->file_stream);
-    g_free(task);
-}
-
 /* main context */
 static void file_xfer_close_cb(GObject      *object,
                                GAsyncResult *close_res,
                                gpointer      user_data)
 {
     GSimpleAsyncResult *res;
-    SpiceFileXferTask *task;
+    SpiceFileTransferTask *self;
     GError *error = NULL;
 
-    task = user_data;
+    self = user_data;
 
     if (object) {
         GInputStream *stream = G_INPUT_STREAM(object);
@@ -1729,23 +1779,23 @@ static void file_xfer_close_cb(GObject      *object,
 
     /* Notify to user that files have been transferred or something error
        happened. */
-    res = g_simple_async_result_new(G_OBJECT(task->channel),
-                                    task->callback,
-                                    task->user_data,
+    res = g_simple_async_result_new(G_OBJECT(self->priv->channel),
+                                    self->priv->callback,
+                                    self->priv->user_data,
                                     spice_main_file_copy_async);
-    if (task->error) {
-        g_simple_async_result_take_error(res, task->error);
+    if (self->priv->error) {
+        g_simple_async_result_take_error(res, self->priv->error);
         g_simple_async_result_set_op_res_gboolean(res, FALSE);
     } else {
         g_simple_async_result_set_op_res_gboolean(res, TRUE);
         if (spice_util_get_debug()) {
             gint64 now = g_get_monotonic_time();
-            gchar *basename = g_file_get_basename(task->file);
-            double seconds = (double) (now - task->start_time) / G_TIME_SPAN_SECOND;
-            gchar *file_size_str = g_format_size(task->file_size);
-            gchar *transfer_speed_str = g_format_size(task->file_size / seconds);
+            gchar *basename = g_file_get_basename(self->priv->file);
+            double seconds = (double) (now - self->priv->start_time) / G_TIME_SPAN_SECOND;
+            gchar *file_size_str = g_format_size(self->priv->file_size);
+            gchar *transfer_speed_str = g_format_size(self->priv->file_size / seconds);
 
-            g_warn_if_fail(task->read_bytes == task->file_size);
+            g_warn_if_fail(self->priv->read_bytes == self->priv->file_size);
             SPICE_DEBUG("transferred file %s of %s size in %.1f seconds (%s/s)",
                         basename, file_size_str, seconds, transfer_speed_str);
 
@@ -1757,21 +1807,21 @@ static void file_xfer_close_cb(GObject      *object,
     g_simple_async_result_complete_in_idle(res);
     g_object_unref(res);
 
-    file_xfer_task_free(task);
+    g_object_unref(self);
 }
 
 static void file_xfer_data_flushed_cb(GObject *source_object,
                                       GAsyncResult *res,
                                       gpointer user_data)
 {
-    SpiceFileXferTask *task = user_data;
+    SpiceFileTransferTask *self = user_data;
     SpiceMainChannel *channel = (SpiceMainChannel *)source_object;
     GError *error = NULL;
 
-    task->pending = FALSE;
+    self->priv->pending = FALSE;
     file_xfer_flush_finish(channel, res, &error);
-    if (error || task->error) {
-        file_xfer_completed(task, error);
+    if (error || self->priv->error) {
+        spice_file_transfer_task_completed(self, error);
         return;
     }
 
@@ -1779,19 +1829,19 @@ static void file_xfer_data_flushed_cb(GObject *source_object,
         const GTimeSpan interval = 20 * G_TIME_SPAN_SECOND;
         gint64 now = g_get_monotonic_time();
 
-        if (interval < now - task->last_update) {
-            gchar *basename = g_file_get_basename(task->file);
-            task->last_update = now;
+        if (interval < now - self->priv->last_update) {
+            gchar *basename = g_file_get_basename(self->priv->file);
+            self->priv->last_update = now;
             SPICE_DEBUG("transferred %.2f%% of the file %s",
-                        100.0 * task->read_bytes / task->file_size, basename);
+                        100.0 * self->priv->read_bytes / self->priv->file_size, basename);
             g_free(basename);
         }
     }
 
-    if (task->progress_callback) {
+    if (self->priv->progress_callback) {
         goffset read = 0;
         goffset total = 0;
-        SpiceMainChannel *main_channel = task->channel;
+        SpiceMainChannel *main_channel = self->priv->channel;
         GHashTableIter iter;
         gpointer key, value;
 
@@ -1800,28 +1850,28 @@ static void file_xfer_data_flushed_cb(GObject *source_object,
          * current transfers */
         g_hash_table_iter_init(&iter, main_channel->priv->file_xfer_tasks);
         while (g_hash_table_iter_next(&iter, &key, &value)) {
-            SpiceFileXferTask *t = (SpiceFileXferTask *)value;
-            read += t->read_bytes;
-            total += t->file_size;
+            SpiceFileTransferTask *t = (SpiceFileTransferTask *)value;
+            read += t->priv->read_bytes;
+            total += t->priv->file_size;
         }
 
-        task->progress_callback(read, total, task->progress_callback_data);
+        self->priv->progress_callback(read, total, self->priv->progress_callback_data);
     }
 
     /* Read more data */
-    file_xfer_continue_read(task);
+    file_xfer_continue_read(self);
 }
 
-static void file_xfer_queue(SpiceFileXferTask *task, int data_size)
+static void file_xfer_queue(SpiceFileTransferTask *self, int data_size)
 {
     VDAgentFileXferDataMessage msg;
-    SpiceMainChannel *channel = SPICE_MAIN_CHANNEL(task->channel);
+    SpiceMainChannel *channel = SPICE_MAIN_CHANNEL(self->priv->channel);
 
-    msg.id = task->id;
+    msg.id = self->priv->id;
     msg.size = data_size;
     agent_msg_queue_many(channel, VD_AGENT_FILE_XFER_DATA,
                          &msg, sizeof(msg),
-                         task->buffer, data_size, NULL);
+                         self->priv->buffer, data_size, NULL);
     spice_channel_wakeup(SPICE_CHANNEL(channel), FALSE);
 }
 
@@ -1830,52 +1880,53 @@ static void file_xfer_read_cb(GObject *source_object,
                               GAsyncResult *res,
                               gpointer user_data)
 {
-    SpiceFileXferTask *task = user_data;
-    SpiceMainChannel *channel = task->channel;
+    SpiceFileTransferTask *self = user_data;
+    SpiceMainChannel *channel = self->priv->channel;
     gssize count;
     GError *error = NULL;
 
-    task->pending = FALSE;
-    count = g_input_stream_read_finish(G_INPUT_STREAM(task->file_stream),
+    self->priv->pending = FALSE;
+    count = g_input_stream_read_finish(G_INPUT_STREAM(self->priv->file_stream),
                                        res, &error);
     /* Check for pending earlier errors */
-    if (task->error) {
-        file_xfer_completed(task, error);
+    if (self->priv->error) {
+        spice_file_transfer_task_completed(self, error);
         return;
     }
 
-    if (count > 0 || task->file_size == 0) {
-        task->read_bytes += count;
-        file_xfer_queue(task, count);
+    if (count > 0 || self->priv->file_size == 0) {
+        self->priv->read_bytes += count;
+        g_object_notify(G_OBJECT(self), "progress");
+        file_xfer_queue(self, count);
         if (count == 0)
             return;
-        file_xfer_flush_async(channel, task->cancellable,
-                              file_xfer_data_flushed_cb, task);
-        task->pending = TRUE;
+        file_xfer_flush_async(channel, self->priv->cancellable,
+                              file_xfer_data_flushed_cb, self);
+        self->priv->pending = TRUE;
     } else if (error) {
         VDAgentFileXferStatusMessage msg = {
-            .id = task->id,
+            .id = self->priv->id,
             .result = VD_AGENT_FILE_XFER_STATUS_ERROR,
         };
-        agent_msg_queue_many(task->channel, VD_AGENT_FILE_XFER_STATUS,
+        agent_msg_queue_many(self->priv->channel, VD_AGENT_FILE_XFER_STATUS,
                              &msg, sizeof(msg), NULL);
-        spice_channel_wakeup(SPICE_CHANNEL(task->channel), FALSE);
-        file_xfer_completed(task, error);
+        spice_channel_wakeup(SPICE_CHANNEL(self->priv->channel), FALSE);
+        spice_file_transfer_task_completed(self, error);
     }
     /* else EOF, do nothing (wait for VD_AGENT_FILE_XFER_STATUS from agent) */
 }
 
 /* coroutine context */
-static void file_xfer_continue_read(SpiceFileXferTask *task)
+static void file_xfer_continue_read(SpiceFileTransferTask *self)
 {
-    g_input_stream_read_async(G_INPUT_STREAM(task->file_stream),
-                              task->buffer,
+    g_input_stream_read_async(G_INPUT_STREAM(self->priv->file_stream),
+                              self->priv->buffer,
                               FILE_XFER_CHUNK_SIZE,
                               G_PRIORITY_DEFAULT,
-                              task->cancellable,
+                              self->priv->cancellable,
                               file_xfer_read_cb,
-                              task);
-    task->pending = TRUE;
+                              self);
+    self->priv->pending = TRUE;
 }
 
 /* coroutine context */
@@ -1883,9 +1934,8 @@ static void file_xfer_handle_status(SpiceMainChannel *channel,
                                     VDAgentFileXferStatusMessage *msg)
 {
     SpiceMainChannelPrivate *c = channel->priv;
-    SpiceFileXferTask *task;
+    SpiceFileTransferTask *task;
     GError *error = NULL;
-
 
     task = g_hash_table_lookup(c->file_xfer_tasks, GUINT_TO_POINTER(msg->id));
     if (task == NULL) {
@@ -1897,7 +1947,7 @@ static void file_xfer_handle_status(SpiceMainChannel *channel,
 
     switch (msg->result) {
     case VD_AGENT_FILE_XFER_STATUS_CAN_SEND_DATA:
-        if (task->pending) {
+        if (task->priv->pending) {
             error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                            "transfer received CAN_SEND_DATA in pending state");
             break;
@@ -1913,7 +1963,7 @@ static void file_xfer_handle_status(SpiceMainChannel *channel,
                             "some errors occurred in the spice agent");
         break;
     case VD_AGENT_FILE_XFER_STATUS_SUCCESS:
-        if (task->pending)
+        if (task->priv->pending)
             error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                                 "transfer received success in pending state");
         break;
@@ -1924,7 +1974,7 @@ static void file_xfer_handle_status(SpiceMainChannel *channel,
         break;
     }
 
-    file_xfer_completed(task, error);
+    spice_file_transfer_task_completed(task, error);
 }
 
 /* any context: the message is not flushed immediately,
@@ -2868,32 +2918,35 @@ void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean 
     spice_main_update_display_enabled(channel, id, enabled, TRUE);
 }
 
-static void file_xfer_completed(SpiceFileXferTask *task, GError *error)
+static void spice_file_transfer_task_completed(SpiceFileTransferTask *self,
+                                               GError *error)
 {
     /* In case of multiple errors we only report the first error */
-    if (task->error)
+    if (self->priv->error)
         g_clear_error(&error);
     if (error) {
         SPICE_DEBUG("File %s xfer failed: %s",
-                    g_file_get_path(task->file), error->message);
-        task->error = error;
+                    g_file_get_path(self->priv->file), error->message);
+        self->priv->error = error;
     }
 
-    if (task->pending)
+    if (self->priv->pending)
         return;
 
-    if (!task->file_stream) {
-        file_xfer_close_cb(NULL, NULL, task);
+    if (!self->priv->file_stream) {
+        file_xfer_close_cb(NULL, NULL, self);
         return;
     }
 
-    g_input_stream_close_async(G_INPUT_STREAM(task->file_stream),
+    g_input_stream_close_async(G_INPUT_STREAM(self->priv->file_stream),
                                G_PRIORITY_DEFAULT,
-                               task->cancellable,
+                               self->priv->cancellable,
                                file_xfer_close_cb,
-                               task);
-    task->pending = TRUE;
+                               self);
+    self->priv->pending = TRUE;
+    g_signal_emit(self, task_signals[SIGNAL_FINISHED], 0, error);
 }
+
 
 static void file_xfer_info_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
 {
@@ -2905,15 +2958,16 @@ static void file_xfer_info_async_cb(GObject *obj, GAsyncResult *res, gpointer da
     VDAgentFileXferStartMessage msg;
     gsize /*msg_size*/ data_len;
     gchar *string;
-    SpiceFileXferTask *task = (SpiceFileXferTask *)data;
+    SpiceFileTransferTask *self = SPICE_FILE_TRANSFER_TASK(data);
 
-    task->pending = FALSE;
+    self->priv->pending = FALSE;
     info = g_file_query_info_finish(file, res, &error);
-    if (error || task->error)
+    if (error || self->priv->error)
         goto failed;
 
-    task->file_size =
+    self->priv->file_size =
         g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
+    g_object_notify(G_OBJECT(self), "progress");
     keyfile = g_key_file_new();
 
     /* File name */
@@ -2921,7 +2975,7 @@ static void file_xfer_info_async_cb(GObject *obj, GAsyncResult *res, gpointer da
     g_key_file_set_string(keyfile, "vdagent-file-xfer", "name", basename);
     g_free(basename);
     /* File size */
-    g_key_file_set_uint64(keyfile, "vdagent-file-xfer", "size", task->file_size);
+    g_key_file_set_uint64(keyfile, "vdagent-file-xfer", "size", self->priv->file_size);
 
     /* Save keyfile content to memory. TODO: more file attributions
        need to be sent to guest */
@@ -2931,40 +2985,44 @@ static void file_xfer_info_async_cb(GObject *obj, GAsyncResult *res, gpointer da
         goto failed;
 
     /* Create file-xfer start message */
-    msg.id = task->id;
-    agent_msg_queue_many(task->channel, VD_AGENT_FILE_XFER_START,
+    msg.id = self->priv->id;
+    agent_msg_queue_many(self->priv->channel, VD_AGENT_FILE_XFER_START,
                          &msg, sizeof(msg),
                          string, data_len + 1, NULL);
     g_free(string);
-    spice_channel_wakeup(SPICE_CHANNEL(task->channel), FALSE);
+    spice_channel_wakeup(SPICE_CHANNEL(self->priv->channel), FALSE);
     return;
 
 failed:
-    file_xfer_completed(task, error);
+    spice_file_transfer_task_completed(self, error);
 }
 
 static void file_xfer_read_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
 {
     GFile *file = G_FILE(obj);
-    SpiceFileXferTask *task = (SpiceFileXferTask *)data;
+    SpiceFileTransferTask *self = SPICE_FILE_TRANSFER_TASK(data);
     GError *error = NULL;
 
-    task->pending = FALSE;
-    task->file_stream = g_file_read_finish(file, res, &error);
-    if (error || task->error) {
-        file_xfer_completed(task, error);
+    self->priv->pending = FALSE;
+    self->priv->file_stream = g_file_read_finish(file, res, &error);
+    if (error || self->priv->error) {
+        spice_file_transfer_task_completed(self, error);
         return;
     }
 
-    g_file_query_info_async(task->file,
+    g_file_query_info_async(self->priv->file,
                             G_FILE_ATTRIBUTE_STANDARD_SIZE,
                             G_FILE_QUERY_INFO_NONE,
                             G_PRIORITY_DEFAULT,
-                            task->cancellable,
+                            self->priv->cancellable,
                             file_xfer_info_async_cb,
-                            task);
-    task->pending = TRUE;
+                            self);
+    self->priv->pending = TRUE;
 }
+
+static SpiceFileTransferTask *spice_file_transfer_task_new(SpiceMainChannel *channel,
+                                                           GFile *file,
+                                                           GCancellable *cancellable);
 
 static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
                                            GFile **files,
@@ -2976,39 +3034,41 @@ static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
                                            gpointer user_data)
 {
     SpiceMainChannelPrivate *c = channel->priv;
-    SpiceFileXferTask *task;
-    static uint32_t xfer_id;    /* Used to identify task id */
+    SpiceFileTransferTask *task;
     gint i;
 
     for (i = 0; files[i] != NULL && !g_cancellable_is_cancelled(cancellable); i++) {
-        task = g_malloc0(sizeof(SpiceFileXferTask));
-        task->id = ++xfer_id;
-        task->channel = g_object_ref(channel);
-        task->file = g_object_ref(files[i]);
-        task->flags = flags;
-        task->cancellable = cancellable;
-        task->progress_callback = progress_callback;
-        task->progress_callback_data = progress_callback_data;
-        task->callback = callback;
-        task->user_data = user_data;
+        GCancellable *task_cancellable = cancellable;
+        /* if a cancellable object was not provided for the overall operation,
+         * create a separate object for each file so that they can be cancelled
+         * separately  */
+        if (!task_cancellable)
+            task_cancellable = g_cancellable_new();
 
-        if (spice_util_get_debug()) {
-            gchar *basename = g_file_get_basename(task->file);
-            task->start_time = g_get_monotonic_time();
-            task->last_update = task->start_time;
+        task = spice_file_transfer_task_new(channel, files[i], task_cancellable);
+        task->priv->flags = flags;
+        task->priv->progress_callback = progress_callback;
+        task->priv->progress_callback_data = progress_callback_data;
+        task->priv->callback = callback;
+        task->priv->user_data = user_data;
 
-            SPICE_DEBUG("transfer of file %s has started", basename);
-            g_free(basename);
-        }
-        CHANNEL_DEBUG(task->channel, "Insert a xfer task:%d to task list", task->id);
-        g_hash_table_insert(c->file_xfer_tasks, GUINT_TO_POINTER(task->id), task);
+        CHANNEL_DEBUG(channel, "Insert a xfer task:%d to task list",
+                      task->priv->id);
+        g_hash_table_insert(c->file_xfer_tasks,
+                            GUINT_TO_POINTER(task->priv->id),
+                            task);
+        g_signal_emit(channel, signals[SPICE_MAIN_NEW_FILE_TRANSFER], 0, task);
 
         g_file_read_async(files[i],
                           G_PRIORITY_DEFAULT,
                           cancellable,
                           file_xfer_read_async_cb,
                           task);
-        task->pending = TRUE;
+        task->priv->pending = TRUE;
+
+        /* if we created a per-task cancellable above, free it */
+        if (!cancellable)
+            g_object_unref(task_cancellable);
     }
 }
 
@@ -3038,7 +3098,8 @@ static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
  * was broken since it only provided status for a single file transfer, but did
  * not provide a way to determine which file it referred to. In release 0.31,
  * this behavior was changed so that progress_callback provides the status of
- * all ongoing file transfers.
+ * all ongoing file transfers. If you need to monitor the status of individual
+ * files, please connect to the #SpiceMainChannel::new-file-transfer signal.
  *
  * When the operation is finished, callback will be called. You can then call
  * spice_main_file_copy_finish() to get the result of the operation.
@@ -3107,4 +3168,253 @@ gboolean spice_main_file_copy_finish(SpiceMainChannel *channel,
     }
 
     return g_simple_async_result_get_op_res_gboolean(simple);
+}
+
+
+
+static void
+spice_file_transfer_task_get_property(GObject *object,
+                                      guint property_id,
+                                      GValue *value,
+                                      GParamSpec *pspec)
+{
+    SpiceFileTransferTask *self = SPICE_FILE_TRANSFER_TASK(object);
+
+    switch (property_id)
+    {
+        case PROP_TASK_ID:
+            g_value_set_uint(value, self->priv->id);
+            break;
+        case PROP_TASK_FILE:
+            g_value_set_object(value, self->priv->file);
+            break;
+        case PROP_TASK_PROGRESS:
+            g_value_set_double(value, spice_file_transfer_task_get_progress(self));
+            break;
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
+    }
+}
+
+static void
+spice_file_transfer_task_set_property(GObject *object,
+                                      guint property_id,
+                                      const GValue *value,
+                                      GParamSpec *pspec)
+{
+    SpiceFileTransferTask *self = SPICE_FILE_TRANSFER_TASK(object);
+
+    switch (property_id)
+    {
+        case PROP_TASK_ID:
+            self->priv->id = g_value_get_uint(value);
+            break;
+        case PROP_TASK_FILE:
+            self->priv->file = g_value_dup_object(value);
+            break;
+        case PROP_TASK_CHANNEL:
+            self->priv->channel = g_value_dup_object(value);
+            break;
+        case PROP_TASK_CANCELLABLE:
+            self->priv->cancellable = g_value_dup_object(value);
+            break;
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
+    }
+}
+
+static void
+spice_file_transfer_task_dispose(GObject *object)
+{
+    SpiceFileTransferTask *self = SPICE_FILE_TRANSFER_TASK(object);
+
+    g_clear_object(&self->priv->file);
+
+    G_OBJECT_CLASS(spice_file_transfer_task_parent_class)->dispose(object);
+}
+
+static void
+spice_file_transfer_task_finalize(GObject *object)
+{
+    SpiceFileTransferTask *self = SPICE_FILE_TRANSFER_TASK(object);
+
+    g_free(self->priv->buffer);
+
+    G_OBJECT_CLASS(spice_file_transfer_task_parent_class)->finalize(object);
+}
+
+static void
+spice_file_transfer_task_constructed(GObject *object)
+{
+    SpiceFileTransferTask *self = SPICE_FILE_TRANSFER_TASK(object);
+
+    if (spice_util_get_debug()) {
+        gchar *basename = g_file_get_basename(self->priv->file);
+        self->priv->start_time = g_get_monotonic_time();
+        self->priv->last_update = self->priv->start_time;
+
+        SPICE_DEBUG("transfer of file %s has started", basename);
+        g_free(basename);
+    }
+}
+
+static void
+spice_file_transfer_task_class_init(SpiceFileTransferTaskClass *klass)
+{
+    GObjectClass *object_class = G_OBJECT_CLASS(klass);
+
+    g_type_class_add_private(klass, sizeof(SpiceFileTransferTaskPrivate));
+
+    object_class->get_property = spice_file_transfer_task_get_property;
+    object_class->set_property = spice_file_transfer_task_set_property;
+    object_class->finalize = spice_file_transfer_task_finalize;
+    object_class->dispose = spice_file_transfer_task_dispose;
+    object_class->constructed = spice_file_transfer_task_constructed;
+
+    /**
+     * SpiceFileTransferTask:id:
+     *
+     * The ID of the file transfer task
+     **/
+    g_object_class_install_property(object_class, PROP_TASK_ID,
+                                    g_param_spec_uint("id",
+                                                      "id",
+                                                      "The id of the task",
+                                                      0, G_MAXUINT, 0,
+                                                      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+                                                      G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceFileTransferTask:channel:
+     *
+     * The main channel that owns the file transfer task
+     **/
+    g_object_class_install_property(object_class, PROP_TASK_CHANNEL,
+                                    g_param_spec_object("channel",
+                                                        "channel",
+                                                        "The channel transferring the file",
+                                                        SPICE_TYPE_MAIN_CHANNEL,
+                                                        G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+                                                        G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceFileTransferTask:cancellable:
+     *
+     * A cancellable object used to cancel the file transfer
+     **/
+    g_object_class_install_property(object_class, PROP_TASK_CANCELLABLE,
+                                    g_param_spec_object("cancellable",
+                                                        "cancellable",
+                                                        "The object used to cancel the task",
+                                                        G_TYPE_CANCELLABLE,
+                                                        G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+                                                        G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceFileTransferTask:file:
+     *
+     * The file that is being transferred in this file transfer task
+     **/
+    g_object_class_install_property(object_class, PROP_TASK_FILE,
+                                    g_param_spec_object("file",
+                                                        "File",
+                                                        "The file being transferred",
+                                                        G_TYPE_FILE,
+                                                        G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+                                                        G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceFileTransferTask:progress:
+     *
+     * The current state of the file transfer. This value indicates a
+     * percentage, and ranges from 0 to 100. Listen for change notifications on
+     * this property to be updated whenever the file transfer progress changes.
+     **/
+    g_object_class_install_property(object_class, PROP_TASK_PROGRESS,
+                                    g_param_spec_double("progress",
+                                                        "Progress",
+                                                        "The percentage of the file transferred",
+                                                        0.0, 100.0, 0.0,
+                                                        G_PARAM_READABLE |
+                                                        G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceFileTransferTask::finished:
+     * @task: the file transfer task that emitted the signal
+     * @error: (transfer none): the error state of the transfer. Will be %NULL
+     * if the file transfer was successful.
+     *
+     * The #SpiceFileTransferTask::finished signal is emitted when the file
+     * transfer has completed transferring to the guest.
+     **/
+    task_signals[SIGNAL_FINISHED] = g_signal_new("finished", SPICE_TYPE_FILE_TRANSFER_TASK,
+                                            G_SIGNAL_RUN_FIRST,
+                                            0, NULL, NULL,
+                                            g_cclosure_marshal_VOID__BOXED,
+                                            G_TYPE_NONE, 1,
+                                            G_TYPE_ERROR);
+}
+
+static void
+spice_file_transfer_task_init(SpiceFileTransferTask *self)
+{
+    self->priv = FILE_TRANSFER_TASK_PRIVATE(self);
+    self->priv->buffer = g_malloc0(FILE_XFER_CHUNK_SIZE);
+}
+
+SpiceFileTransferTask *
+spice_file_transfer_task_new(SpiceMainChannel *channel, GFile *file, GCancellable *cancellable)
+{
+    static uint32_t xfer_id = 0;    /* Used to identify task id */
+
+    return g_object_new(SPICE_TYPE_FILE_TRANSFER_TASK,
+                        "id", xfer_id++,
+                        "file", file,
+                        "channel", channel,
+                        "cancellable", cancellable,
+                        NULL);
+}
+
+/**
+ * spice_file_transfer_task_get_progress:
+ * @self: a file transfer task
+ *
+ * Convenience function for retrieving the current progress of this file
+ * transfer task.
+ *
+ * Returns: A percentage value between 0 and 100
+ **/
+double spice_file_transfer_task_get_progress(SpiceFileTransferTask *self)
+{
+    if (self->priv->file_size == 0)
+        return 0.0;
+
+    return (double)self->priv->read_bytes / self->priv->file_size;
+}
+
+/**
+ * spice_file_transfer_task_cancel:
+ * @self: a file transfer task
+ *
+ * Cancels the file transfer task. Note that depending on how the file transfer
+ * was initiated, multiple file transfer tasks may share a single
+ * #SpiceFileTransferTask::cancellable object, so canceling one task may result
+ * in the cancellation of other tasks.
+ **/
+void spice_file_transfer_task_cancel(SpiceFileTransferTask *self)
+{
+    g_cancellable_cancel(self->priv->cancellable);
+}
+
+/**
+ * spice_file_transfer_task_get_filename:
+ * @self: a file transfer task
+ *
+ * Gets the name of the file being transferred in this task
+ *
+ * Returns: (transfer none): The basename of the file
+ **/
+char* spice_file_transfer_task_get_filename(SpiceFileTransferTask *self)
+{
+    return g_file_get_basename(self->priv->file);
 }

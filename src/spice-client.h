@@ -50,6 +50,7 @@
 #include "smartcard-manager.h"
 #include "usb-device-manager.h"
 #include "spice-audio.h"
+#include "spice-file-transfer-task.h"
 
 G_BEGIN_DECLS
 

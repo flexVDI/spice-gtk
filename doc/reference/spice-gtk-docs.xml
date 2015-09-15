@@ -55,6 +55,7 @@
       <xi:include href="xml/spice-util.xml"/>
       <xi:include href="xml/spice-version.xml"/>
       <xi:include href="xml/spice-uri.xml"/>
+      <xi:include href="xml/file-transfer-task.xml"/>
     </chapter>
 
   </part>

@@ -135,6 +135,7 @@ SPICE_GTK_SOURCES_COMMON =		\
 	spice-gtk-session-priv.h	\
 	spice-widget.c			\
 	spice-widget-priv.h		\
+	spice-file-transfer-task.h \
 	vncdisplaykeymap.c		\
 	vncdisplaykeymap.h		\
 	spice-grabsequence.c		\
@@ -317,6 +318,7 @@ libspice_client_glibinclude_HEADERS =	\
 	channel-webdav.h		\
 	usb-device-manager.h		\
 	smartcard-manager.h		\
+	spice-file-transfer-task.h	\
 	$(NULL)
 
 nodist_libspice_client_glibinclude_HEADERS =	\

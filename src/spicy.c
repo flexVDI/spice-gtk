@@ -91,6 +91,7 @@ G_DEFINE_TYPE (SpiceWindow, spice_window, G_TYPE_OBJECT);
 #define CHANNELID_MAX 4
 #define MONITORID_MAX 4
 
+
 // FIXME: turn this into an object, get rid of fixed wins array, use
 // signals to replace the various callback that iterate over wins array
 struct spice_connection {
@@ -104,6 +105,10 @@ struct spice_connection {
     gboolean         agent_connected;
     int              channels;
     int              disconnecting;
+
+    /* key: SpiceFileTransferTask, value: TransferTaskWidgets */
+    GHashTable *transfers;
+    GtkWidget *transfer_dialog;
 };
 
 static spice_connection *connection_new(void);
@@ -1386,6 +1391,148 @@ static void port_data(SpicePortChannel *port,
     }
 }
 
+typedef struct {
+    GtkWidget *vbox;
+    GtkWidget *hbox;
+    GtkWidget *progress;
+    GtkWidget *label;
+    GtkWidget *cancel;
+} TransferTaskWidgets;
+
+static void transfer_update_progress(GObject *object,
+                                     GParamSpec *pspec,
+                                     gpointer user_data)
+{
+    spice_connection *conn = user_data;
+    TransferTaskWidgets *widgets = g_hash_table_lookup(conn->transfers, object);
+    g_return_if_fail(widgets);
+    gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(widgets->progress),
+                                  spice_file_transfer_task_get_progress(SPICE_FILE_TRANSFER_TASK(object)));
+}
+
+static void transfer_task_finished(SpiceFileTransferTask *task, GError *error, spice_connection *conn)
+{
+    if (error)
+        g_warning("%s", error->message);
+    g_hash_table_remove(conn->transfers, task);
+    if (!g_hash_table_size(conn->transfers))
+        gtk_widget_hide(conn->transfer_dialog);
+}
+
+static void dialog_response_cb(GtkDialog *dialog,
+                               gint response_id,
+                               gpointer user_data)
+{
+    spice_connection *conn = user_data;
+    g_print("Reponse: %i\n", response_id);
+
+    if (response_id == GTK_RESPONSE_CANCEL) {
+        GHashTableIter iter;
+        gpointer key, value;
+
+        g_hash_table_iter_init(&iter, conn->transfers);
+        while (g_hash_table_iter_next(&iter, &key, &value)) {
+            SpiceFileTransferTask *task = key;
+            spice_file_transfer_task_cancel(task);
+        }
+    }
+}
+
+void task_cancel_cb(GtkButton *button,
+                    gpointer user_data)
+{
+    SpiceFileTransferTask *task = SPICE_FILE_TRANSFER_TASK(user_data);
+    spice_file_transfer_task_cancel(task);
+}
+
+TransferTaskWidgets *transfer_task_widgets_new(SpiceFileTransferTask *task)
+{
+    TransferTaskWidgets *widgets = g_new0(TransferTaskWidgets, 1);
+
+#if GTK_CHECK_VERSION(3,0,0)
+    widgets->vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    widgets->hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
+    widgets->cancel = gtk_button_new_from_icon_name(GTK_STOCK_CANCEL,
+                                                    GTK_ICON_SIZE_SMALL_TOOLBAR);
+#else
+    widgets->vbox = gtk_vbox_new(FALSE, 0);
+    widgets->hbox = gtk_hbox_new(FALSE, 6);
+    widgets->cancel = gtk_button_new_from_stock(GTK_STOCK_CANCEL);
+#endif
+
+    widgets->progress = gtk_progress_bar_new();
+    widgets->label = gtk_label_new(spice_file_transfer_task_get_filename(task));
+
+#if GTK_CHECK_VERSION(3,0,0)
+    gtk_widget_set_halign(widgets->label, GTK_ALIGN_START);
+    gtk_widget_set_valign(widgets->label, GTK_ALIGN_BASELINE);
+    gtk_widget_set_valign(widgets->progress, GTK_ALIGN_CENTER);
+    gtk_widget_set_hexpand(widgets->progress, TRUE);
+    gtk_widget_set_valign(widgets->cancel, GTK_ALIGN_CENTER);
+    gtk_widget_set_hexpand(widgets->progress, FALSE);
+#endif
+
+    gtk_box_pack_start(GTK_BOX(widgets->hbox), widgets->progress,
+                       TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(widgets->hbox), widgets->cancel,
+                       FALSE, TRUE, 0);
+
+    gtk_box_pack_start(GTK_BOX(widgets->vbox), widgets->label,
+                       TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(widgets->vbox), widgets->hbox,
+                       TRUE, TRUE, 0);
+
+    g_signal_connect(widgets->cancel, "clicked",
+                     G_CALLBACK(task_cancel_cb), task);
+
+    gtk_widget_show_all(widgets->vbox);
+
+    return widgets;
+}
+
+void transfer_task_widgets_free(TransferTaskWidgets *widgets)
+{
+    /* child widgets will be destroyed automatically */
+    gtk_widget_destroy(widgets->vbox);
+    g_free(widgets);
+}
+
+static void spice_connection_add_task(spice_connection *conn, SpiceFileTransferTask *task)
+{
+    TransferTaskWidgets *widgets;
+    GtkWidget *content = NULL;
+
+    g_signal_connect(task, "notify::progress",
+                     G_CALLBACK(transfer_update_progress), conn);
+    g_signal_connect(task, "finished",
+                     G_CALLBACK(transfer_task_finished), conn);
+    if (!conn->transfer_dialog) {
+        conn->transfer_dialog = gtk_dialog_new_with_buttons("File Transfers",
+                                                            GTK_WINDOW(conn->wins[0]->toplevel), 0,
+                                                            "Cancel", GTK_RESPONSE_CANCEL, NULL);
+        gtk_dialog_set_default_response(GTK_DIALOG(conn->transfer_dialog),
+                                        GTK_RESPONSE_CANCEL);
+        gtk_window_set_resizable(GTK_WINDOW(conn->transfer_dialog), FALSE);
+        g_signal_connect(conn->transfer_dialog, "response",
+                         G_CALLBACK(dialog_response_cb), conn);
+    }
+    gtk_widget_show(conn->transfer_dialog);
+    content = gtk_dialog_get_content_area(GTK_DIALOG(conn->transfer_dialog));
+    gtk_container_set_border_width(GTK_CONTAINER(content), 12);
+
+    widgets = transfer_task_widgets_new(task);
+    g_hash_table_insert(conn->transfers, g_object_ref(task), widgets);
+    gtk_box_pack_start(GTK_BOX(content),
+                       widgets->vbox, TRUE, TRUE, 6);
+}
+
+static void new_file_transfer(SpiceMainChannel *main, SpiceFileTransferTask *task, gpointer user_data)
+{
+    spice_connection *conn = user_data;
+    g_debug("new file transfer task");
+    spice_connection_add_task(conn, task);
+}
+
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
     spice_connection *conn = data;
@@ -1404,6 +1551,8 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
                          G_CALLBACK(main_mouse_update), conn);
         g_signal_connect(channel, "main-agent-update",
                          G_CALLBACK(main_agent_update), conn);
+        g_signal_connect(channel, "new-file-transfer",
+                         G_CALLBACK(new_file_transfer), conn);
         main_mouse_update(channel, conn);
         main_agent_update(channel, conn);
     }
@@ -1515,6 +1664,9 @@ static spice_connection *connection_new(void)
                          G_CALLBACK(usb_connect_failed), NULL);
     }
 
+    conn->transfers = g_hash_table_new_full(g_direct_hash, g_direct_equal,
+                                            g_object_unref,
+                                            (GDestroyNotify)transfer_task_widgets_free);
     connections++;
     SPICE_DEBUG("%s (%d)", __FUNCTION__, connections);
     return conn;
