@@ -14,6 +14,9 @@ SPICE_IS_PLAYBACK_CHANNEL_CLASS
 SPICE_PLAYBACK_CHANNEL_GET_CLASS
 <SUBSECTION Private>
 SpicePlaybackChannelPrivate
+spice_playback_channel_get_latency
+spice_playback_channel_is_active
+spice_playback_channel_sync_latency
 </SECTION>
 
 <SECTION>
@@ -63,6 +66,7 @@ SpiceMainChannelClass
 <SUBSECTION>
 spice_main_set_display
 spice_main_set_display_enabled
+spice_main_update_display
 spice_main_update_display_enabled
 spice_main_send_monitor_config
 spice_main_agent_test_capability
@@ -74,6 +78,8 @@ spice_main_clipboard_grab
 spice_main_clipboard_release
 spice_main_clipboard_notify
 spice_main_clipboard_request
+spice_main_file_copy_async
+spice_main_file_copy_finish
 <SUBSECTION Standard>
 SPICE_MAIN_CHANNEL
 SPICE_IS_MAIN_CHANNEL
@@ -119,6 +125,7 @@ SPICE_CHANNEL_GET_CLASS
 <SUBSECTION Private>
 SpiceMsgIn
 SpiceMsgOut
+SpiceChannelClassPrivate
 SpiceChannelPrivate
 spice_msg_handler
 spice_msg_in
@@ -150,6 +157,8 @@ SpiceAudioPrivate
 <TITLE>SpiceDisplayChannel</TITLE>
 SpiceDisplayChannel
 SpiceDisplayChannelClass
+<SUBSECTION>
+spice_display_get_primary
 <SUBSECTION Standard>
 SPICE_DISPLAY_CHANNEL
 SPICE_IS_DISPLAY_CHANNEL
@@ -405,6 +414,7 @@ SpiceGtkBoxClass
 <FILE>spice-util</FILE>
 spice_util_set_debug
 spice_util_get_version_string
+spice_uuid_to_string
 SPICE_GTK_CHECK_VERSION
 SPICE_GTK_MAJOR_VERSION
 SPICE_GTK_MICRO_VERSION
