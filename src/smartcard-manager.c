@@ -596,8 +596,7 @@ gboolean spice_smartcard_reader_remove_card(SpiceSmartcardReader *reader)
 
 /**
  * spice_smartcard_manager_get_readers:
- *
- * manager: a #SpiceSmartcardManager
+ * @manager: a #SpiceSmartcardManager
  *
  * Gets the list of smartcard readers that are currently available, they
  * can be either software (emulated) readers, or hardware ones.

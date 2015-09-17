@@ -1147,7 +1147,7 @@ SpiceGtkSession *spice_gtk_session_get(SpiceSession *session)
 
 /**
  * spice_gtk_session_copy_to_guest:
- * @self:
+ * @self: #SpiceGtkSession
  *
  * Copy client-side clipboard to guest clipboard.
  *
@@ -1169,7 +1169,7 @@ void spice_gtk_session_copy_to_guest(SpiceGtkSession *self)
 
 /**
  * spice_gtk_session_paste_from_guest:
- * @self:
+ * @self: #SpiceGtkSession
  *
  * Copy guest clipboard to client-side clipboard.
  *

@@ -2563,7 +2563,7 @@ SpiceDisplay* spice_display_new_with_monitor(SpiceSession *session, gint channel
 
 /**
  * spice_display_mouse_ungrab:
- * @display:
+ * @display: a #SpiceDisplay
  *
  * Ungrab the mouse.
  **/
@@ -2576,7 +2576,7 @@ void spice_display_mouse_ungrab(SpiceDisplay *display)
 
 /**
  * spice_display_copy_to_guest:
- * @display:
+ * @display: a #SpiceDisplay
  *
  * Copy client-side clipboard to guest clipboard.
  *
@@ -2597,7 +2597,7 @@ void spice_display_copy_to_guest(SpiceDisplay *display)
 
 /**
  * spice_display_paste_from_guest:
- * @display:
+ * @display: a #SpiceDisplay
  *
  * Copy guest clipboard to client-side clipboard.
  *
@@ -2618,7 +2618,7 @@ void spice_display_paste_from_guest(SpiceDisplay *display)
 
 /**
  * spice_display_get_pixbuf:
- * @display:
+ * @display: a #SpiceDisplay
  *
  * Take a screenshot of the display.
  *

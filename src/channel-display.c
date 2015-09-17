@@ -392,9 +392,9 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
 
 /**
  * spice_display_get_primary:
- * @channel:
- * @surface_id:
- * @primary:
+ * @channel: a #SpiceDisplayChannel
+ * @surface_id: a surface id
+ * @primary: a #SpiceDisplayPrimary
  *
  * Retrieve primary display surface @surface_id.
  *

@@ -1042,7 +1042,7 @@ static void monitors_align(VDAgentMonConfig *monitors, int nmonitors)
 
 /**
  * spice_main_send_monitor_config:
- * @channel:
+ * @channel: a #SpiceMainChannel
  *
  * Send monitors configuration previously set with
  * spice_main_set_display() and spice_main_set_display_enabled()
@@ -2565,7 +2565,7 @@ static void spice_main_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
 
 /**
  * spice_main_agent_test_capability:
- * @channel:
+ * @channel: a #SpiceMainChannel
  * @cap: an agent capability identifier
  *
  * Test capability of a remote agent.
@@ -2581,7 +2581,7 @@ gboolean spice_main_agent_test_capability(SpiceMainChannel *channel, guint32 cap
 
 /**
  * spice_main_update_display:
- * @channel:
+ * @channel: a #SpiceMainChannel
  * @id: display ID
  * @x: x position
  * @y: y position
@@ -2624,7 +2624,7 @@ void spice_main_update_display(SpiceMainChannel *channel, int id,
 
 /**
  * spice_main_set_display:
- * @channel:
+ * @channel: a #SpiceMainChannel
  * @id: display ID
  * @x: x position
  * @y: y position
@@ -2642,7 +2642,7 @@ void spice_main_set_display(SpiceMainChannel *channel, int id,
 
 /**
  * spice_main_clipboard_grab:
- * @channel:
+ * @channel: a #SpiceMainChannel
  * @types: an array of #VD_AGENT_CLIPBOARD types available in the clipboard
  * @ntypes: the number of @types
  *
@@ -2657,7 +2657,7 @@ void spice_main_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int nt
 
 /**
  * spice_main_clipboard_selection_grab:
- * @channel:
+ * @channel: a #SpiceMainChannel
  * @selection: one of the clipboard #VD_AGENT_CLIPBOARD_SELECTION_*
  * @types: an array of #VD_AGENT_CLIPBOARD types available in the clipboard
  * @ntypes: the number of @types
@@ -2678,7 +2678,7 @@ void spice_main_clipboard_selection_grab(SpiceMainChannel *channel, guint select
 
 /**
  * spice_main_clipboard_release:
- * @channel:
+ * @channel: a #SpiceMainChannel
  *
  * Release the clipboard (for example, when the client loses the
  * clipboard grab): Inform the guest no clipboard data is available.
@@ -2692,7 +2692,7 @@ void spice_main_clipboard_release(SpiceMainChannel *channel)
 
 /**
  * spice_main_clipboard_selection_release:
- * @channel:
+ * @channel: a #SpiceMainChannel
  * @selection: one of the clipboard #VD_AGENT_CLIPBOARD_SELECTION_*
  *
  * Release the clipboard (for example, when the client loses the
@@ -2716,7 +2716,7 @@ void spice_main_clipboard_selection_release(SpiceMainChannel *channel, guint sel
 
 /**
  * spice_main_clipboard_notify:
- * @channel:
+ * @channel: a #SpiceMainChannel
  * @type: a #VD_AGENT_CLIPBOARD type
  * @data: clipboard data
  * @size: data length in bytes
@@ -2734,7 +2734,7 @@ void spice_main_clipboard_notify(SpiceMainChannel *channel,
 
 /**
  * spice_main_clipboard_selection_notify:
- * @channel:
+ * @channel: a #SpiceMainChannel
  * @selection: one of the clipboard #VD_AGENT_CLIPBOARD_SELECTION_*
  * @type: a #VD_AGENT_CLIPBOARD type
  * @data: clipboard data
@@ -2756,7 +2756,7 @@ void spice_main_clipboard_selection_notify(SpiceMainChannel *channel, guint sele
 
 /**
  * spice_main_clipboard_request:
- * @channel:
+ * @channel: a #SpiceMainChannel
  * @type: a #VD_AGENT_CLIPBOARD type
  *
  * Request clipboard data of @type from the guest. The reply is sent
@@ -2771,7 +2771,7 @@ void spice_main_clipboard_request(SpiceMainChannel *channel, guint32 type)
 
 /**
  * spice_main_clipboard_selection_request:
- * @channel:
+ * @channel: a #SpiceMainChannel
  * @selection: one of the clipboard #VD_AGENT_CLIPBOARD_SELECTION_*
  * @type: a #VD_AGENT_CLIPBOARD type
  *
@@ -2996,6 +2996,7 @@ static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
 
 /**
  * spice_main_file_copy_async:
+ * @channel: a #SpiceMainChannel
  * @sources: #GFile to be transfer
  * @flags: set of #GFileCopyFlags
  * @cancellable: (allow-none): optional #GCancellable object, %NULL to ignore
@@ -3058,6 +3059,7 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
 
 /**
  * spice_main_file_copy_finish:
+ * @channel: a #SpiceMainChannel
  * @result: a #GAsyncResult.
  * @error: a #GError, or %NULL
  *

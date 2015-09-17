@@ -1542,7 +1542,7 @@ SpiceSession *spice_session_new_from_session(SpiceSession *session)
 
 /**
  * spice_session_connect:
- * @session:
+ * @session: a #SpiceSession
  *
  * Open the session using the #SpiceSession:host and
  * #SpiceSession:port.
@@ -1575,7 +1575,7 @@ gboolean spice_session_connect(SpiceSession *session)
 
 /**
  * spice_session_open_fd:
- * @session:
+ * @session: a #SpiceSession
  * @fd: a file descriptor (socket) or -1
  *
  * Open the session using the provided @fd socket file
@@ -1593,7 +1593,7 @@ gboolean spice_session_connect(SpiceSession *session)
  * @fd this call since you will have to hook to SpiceChannel::open-fd signal
  * anyway.
  *
- * Returns:
+ * Returns: %TRUE on success.
  **/
 gboolean spice_session_open_fd(SpiceSession *session, int fd)
 {
@@ -1922,7 +1922,7 @@ static gboolean session_disconnect_idle(SpiceSession *self)
 
 /**
  * spice_session_disconnect:
- * @session:
+ * @session: a #SpiceSession
  *
  * Disconnect the @session, and destroy all channels.
  **/
@@ -1975,6 +1975,7 @@ GList *spice_session_get_channels(SpiceSession *session)
 /**
  * spice_session_has_channel_type:
  * @session: a #SpiceSession
+ * @type: a #SpiceChannel:channel-type
  *
  * See if there is a @type channel in the channels associated with this
  * @session.
@@ -2656,6 +2657,7 @@ SpiceAudio *spice_audio_get(SpiceSession *session, GMainContext *context)
 /**
  * spice_usb_device_manager_get:
  * @session: #SpiceSession for which to get the #SpiceUsbDeviceManager
+ * @err: (allow-none): a return location for #GError, or %NULL.
  *
  * Gets the #SpiceUsbDeviceManager associated with the passed in #SpiceSession.
  * A new #SpiceUsbDeviceManager instance will be created the first time this

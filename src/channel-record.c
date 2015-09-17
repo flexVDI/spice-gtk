@@ -309,7 +309,7 @@ static void spice_record_start_mark(SpiceRecordChannel *channel, uint32_t time)
 
 /**
  * spice_record_send_data:
- * @channel:
+ * @channel: a #SpiceRecordChannel
  * @data: PCM data
  * @bytes: size of @data
  * @time: stream timestamp

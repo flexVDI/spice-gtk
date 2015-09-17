@@ -121,7 +121,7 @@ SpiceGrabSequence *spice_grab_sequence_copy(SpiceGrabSequence *srcSequence)
 
 /**
  * spice_grab_sequence_free:
- * @sequence:
+ * @sequence: a #SpiceGrabSequence
  *
  * Free @sequence.
  **/
@@ -134,7 +134,7 @@ void spice_grab_sequence_free(SpiceGrabSequence *sequence)
 
 /**
  * spice_grab_sequence_as_string:
- * @sequence:
+ * @sequence: a #SpiceGrabSequence
  *
  * Returns: (transfer full): a newly allocated string representing the key sequence
  **/

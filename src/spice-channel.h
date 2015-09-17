@@ -39,6 +39,7 @@ typedef struct _SpiceMsgOut SpiceMsgOut;
  * SpiceChannelEvent:
  * @SPICE_CHANNEL_NONE: no event, or ignored event
  * @SPICE_CHANNEL_OPENED: connection is authentified and ready
+ * @SPICE_CHANNEL_SWITCHING: disconnecting from the current host and connecting to the target host.
  * @SPICE_CHANNEL_CLOSED: connection is closed normally (sent if channel was ready)
  * @SPICE_CHANNEL_ERROR_CONNECT: connection error
  * @SPICE_CHANNEL_ERROR_TLS: SSL error

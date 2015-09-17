@@ -278,7 +278,7 @@ static void channel_set_handlers(SpiceChannelClass *klass)
 
 /**
  * spice_inputs_motion:
- * @channel:
+ * @channel: a #SpiceInputsChannel
  * @dx: delta X mouse coordinates
  * @dy: delta Y mouse coordinates
  * @button_state: SPICE_MOUSE_BUTTON_MASK flags
@@ -310,7 +310,7 @@ void spice_inputs_motion(SpiceInputsChannel *channel, gint dx, gint dy,
 
 /**
  * spice_inputs_position:
- * @channel:
+ * @channel: a #SpiceInputsChannel
  * @x: X mouse coordinates
  * @y: Y mouse coordinates
  * @display: display channel id
@@ -343,7 +343,7 @@ void spice_inputs_position(SpiceInputsChannel *channel, gint x, gint y,
 
 /**
  * spice_inputs_button_press:
- * @channel:
+ * @channel: a #SpiceInputsChannel
  * @button: a SPICE_MOUSE_BUTTON
  * @button_state: SPICE_MOUSE_BUTTON_MASK flags
  *
@@ -390,7 +390,7 @@ void spice_inputs_button_press(SpiceInputsChannel *channel, gint button,
 
 /**
  * spice_inputs_button_release:
- * @channel:
+ * @channel: a #SpiceInputsChannel
  * @button: a SPICE_MOUSE_BUTTON
  * @button_state: SPICE_MOUSE_BUTTON_MASK flags
  *
@@ -437,7 +437,7 @@ void spice_inputs_button_release(SpiceInputsChannel *channel, gint button,
 
 /**
  * spice_inputs_key_press:
- * @channel:
+ * @channel: a #SpiceInputsChannel
  * @scancode: a PC XT (set 1) key scancode.  For scancodes with an %0xe0
  *            prefix, drop the prefix and OR the scancode with %0x100.
  *
@@ -463,7 +463,7 @@ void spice_inputs_key_press(SpiceInputsChannel *channel, guint scancode)
 
 /**
  * spice_inputs_key_release:
- * @channel:
+ * @channel: a #SpiceInputsChannel
  * @scancode: a PC XT (set 1) key scancode.  For scancodes with an %0xe0
  *            prefix, drop the prefix and OR the scancode with %0x100.
  *
@@ -489,7 +489,7 @@ void spice_inputs_key_release(SpiceInputsChannel *channel, guint scancode)
 
 /**
  * spice_inputs_key_press_and_release:
- * @channel:
+ * @channel: a #SpiceInputsChannel
  * @scancode: a PC XT (set 1) key scancode.  For scancodes with an %0xe0
  *            prefix, drop the prefix and OR the scancode with %0x100.
  *
@@ -562,7 +562,7 @@ static SpiceMsgOut* set_key_locks(SpiceInputsChannel *channel, guint locks)
 
 /**
  * spice_inputs_set_key_locks:
- * @channel:
+ * @channel: a #SpiceInputsChannel
  * @locks: #SpiceInputsLock modifiers flags
  *
  * Set the keyboard locks on the guest (Caps, Num, Scroll..)

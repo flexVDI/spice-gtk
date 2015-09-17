@@ -61,6 +61,7 @@ struct _SpiceUsbDeviceManager
  * @device_added: Signal class handler for the #SpiceUsbDeviceManager::device-added signal.
  * @device_removed: Signal class handler for the #SpiceUsbDeviceManager::device-removed signal.
  * @auto_connect_failed: Signal class handler for the #SpiceUsbDeviceManager::auto-connect-failed signal.
+ * @device_error: Signal class handler for the #SpiceUsbDeviceManager::device_error signal.
  *
  * Class structure for #SpiceUsbDeviceManager.
  */

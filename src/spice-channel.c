@@ -2060,7 +2060,7 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
 
 /**
  * spice_channel_destroy:
- * @channel:
+ * @channel: a #SpiceChannel
  *
  * Disconnect and unref the @channel.
  *
@@ -2284,7 +2284,7 @@ static int spice_channel_load_ca(SpiceChannel *channel)
 
 /**
  * spice_channel_get_error:
- * @channel:
+ * @channel: a #SpiceChannel
  *
  * Retrieves the #GError currently set on channel, if the #SpiceChannel
  * is in error state and can provide additional error details.
@@ -2527,7 +2527,7 @@ static gboolean channel_connect(SpiceChannel *channel, gboolean tls)
 
 /**
  * spice_channel_connect:
- * @channel:
+ * @channel: a #SpiceChannel
  *
  * Connect the channel, using #SpiceSession connection informations
  *
@@ -2548,7 +2548,7 @@ gboolean spice_channel_connect(SpiceChannel *channel)
 
 /**
  * spice_channel_open_fd:
- * @channel:
+ * @channel: a #SpiceChannel
  * @fd: a file descriptor (socket) or -1.
  * request mechanism
  *
@@ -2661,7 +2661,7 @@ void spice_channel_reset(SpiceChannel *channel, gboolean migrating)
 
 /**
  * spice_channel_disconnect:
- * @channel:
+ * @channel: a #SpiceChannel
  * @reason: a channel event emitted on main context (or #SPICE_CHANNEL_NONE)
  *
  * Close the socket and reset connection specific data. Finally, emit
@@ -2716,8 +2716,8 @@ static gboolean test_capability(GArray *caps, guint32 cap)
 
 /**
  * spice_channel_test_capability:
- * @channel:
- * @cap:
+ * @channel: a #SpiceChannel
+ * @cap: a capability
  *
  * Test availability of remote "channel kind capability".
  *
@@ -2735,8 +2735,8 @@ gboolean spice_channel_test_capability(SpiceChannel *self, guint32 cap)
 
 /**
  * spice_channel_test_common_capability:
- * @channel:
- * @cap:
+ * @channel: a #SpiceChannel
+ * @cap: a capability
  *
  * Test availability of remote "common channel capability".
  *
@@ -2767,7 +2767,7 @@ static void set_capability(GArray *caps, guint32 cap)
 
 /**
  * spice_channel_set_capability:
- * @channel:
+ * @channel: a #SpiceChannel
  * @cap: a capability
  *
  * Enable specific channel-kind capability.

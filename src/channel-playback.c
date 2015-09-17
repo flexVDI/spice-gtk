@@ -449,6 +449,11 @@ static void channel_set_handlers(SpiceChannelClass *klass)
     spice_channel_set_handlers(klass, handlers, G_N_ELEMENTS(handlers));
 }
 
+/**
+ * spice_playback_channel_set_delay:
+ * @channel: a #SpicePlaybackChannel
+ * @delay_ms: the delay in ms
+ **/
 void spice_playback_channel_set_delay(SpicePlaybackChannel *channel, guint32 delay_ms)
 {
     SpicePlaybackChannelPrivate *c;

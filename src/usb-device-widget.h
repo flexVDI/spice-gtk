@@ -53,6 +53,7 @@ struct _SpiceUsbDeviceWidget
 
 /**
  * SpiceUsbDeviceWidgetClass:
+ * @parent_class: Parent class.
  * @connect_failed: Signal class handler for the #SpiceUsbDeviceWidget::connect-failed signal.
  *
  * Class structure for #SpiceUsbDeviceWidget.
