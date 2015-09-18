@@ -215,6 +215,7 @@ static const char *agent_caps[] = {
     [ VD_AGENT_CAP_GUEST_LINEEND_CRLF  ] = "line-end crlf",
     [ VD_AGENT_CAP_MAX_CLIPBOARD       ] = "max-clipboard",
     [ VD_AGENT_CAP_AUDIO_VOLUME_SYNC   ] = "volume-sync",
+    [ VD_AGENT_CAP_MONITORS_CONFIG_POSITION ] = "monitors config position",
 };
 #define NAME(_a, _i) ((_i) < SPICE_N_ELEMENTS(_a) ? (_a[(_i)] ?: "?") : "?")
 
@@ -1279,6 +1280,7 @@ static void agent_announce_caps(SpiceMainChannel *channel)
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_DISPLAY_CONFIG);
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_CLIPBOARD_BY_DEMAND);
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_CLIPBOARD_SELECTION);
+    VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_MONITORS_CONFIG_POSITION);
 
     agent_msg_queue(channel, VD_AGENT_ANNOUNCE_CAPABILITIES, size, caps);
     g_free(caps);
