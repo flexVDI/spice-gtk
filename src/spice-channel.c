@@ -283,7 +283,7 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
         (gobject_class, PROP_SESSION,
          g_param_spec_object("spice-session",
                              "Spice session",
-                             "",
+                             "Spice session",
                              SPICE_TYPE_SESSION,
                              G_PARAM_READWRITE |
                              G_PARAM_CONSTRUCT_ONLY |
@@ -293,7 +293,7 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
         (gobject_class, PROP_CHANNEL_TYPE,
          g_param_spec_int("channel-type",
                           "Channel type",
-                          "",
+                          "Channel type",
                           -1, INT_MAX, -1,
                           G_PARAM_READWRITE |
                           G_PARAM_CONSTRUCT_ONLY |
@@ -303,7 +303,7 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
         (gobject_class, PROP_CHANNEL_ID,
          g_param_spec_int("channel-id",
                           "Channel ID",
-                          "",
+                          "Channel ID",
                           -1, INT_MAX, -1,
                           G_PARAM_READWRITE |
                           G_PARAM_CONSTRUCT_ONLY |
@@ -313,7 +313,7 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
         (gobject_class, PROP_TOTAL_READ_BYTES,
          g_param_spec_ulong("total-read-bytes",
                             "Total read bytes",
-                            "",
+                            "Total read bytes",
                             0, G_MAXULONG, 0,
                             G_PARAM_READABLE |
                             G_PARAM_STATIC_STRINGS));

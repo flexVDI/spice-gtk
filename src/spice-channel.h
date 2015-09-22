@@ -62,6 +62,11 @@ typedef enum
     SPICE_CHANNEL_ERROR_IO,
 } SpiceChannelEvent;
 
+/**
+ * SpiceChannel:
+ *
+ * The #SpiceChannel struct is opaque and should not be accessed directly.
+ */
 struct _SpiceChannel
 {
     GObject parent;
@@ -71,6 +76,14 @@ struct _SpiceChannel
 
 typedef struct _SpiceChannelClassPrivate SpiceChannelClassPrivate;
 
+/**
+ * SpiceChannelClass:
+ * @parent_class: Parent class.
+ * @channel_event: Signal class handler for the #SpiceChannel::channel_event signal.
+ * @open_fd: Signal class handler for the #SpiceChannel::open_fd signal.
+ *
+ * Class structure for #SpiceChannel.
+ */
 struct _SpiceChannelClass
 {
     GObjectClass parent_class;

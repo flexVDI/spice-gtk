@@ -51,6 +51,11 @@
 
 G_BEGIN_DECLS
 
+/**
+ * SPICE_CLIENT_ERROR:
+ *
+ * Error domain for spice client errors.
+ */
 #define SPICE_CLIENT_ERROR spice_client_error_quark()
 
 /**

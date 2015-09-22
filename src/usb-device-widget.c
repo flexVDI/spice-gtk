@@ -334,6 +334,8 @@ static void spice_usb_device_widget_init(SpiceUsbDeviceWidget *self)
  * @device_format_string: (allow-none): String passed to
  * spice_usb_device_get_description()
  *
+ * Creates a new widget to control USB redirection.
+ *
  * Returns: a new #SpiceUsbDeviceWidget instance
  */
 GtkWidget *spice_usb_device_widget_new(SpiceSession    *session,

@@ -692,6 +692,8 @@ static gboolean spice_usb_device_manager_get_device_descriptor(
  * spice_usb_device_get_libusb_device:
  * @device: #SpiceUsbDevice to get the descriptor information of
  *
+ * Finds the %libusb_device associated with the @device.
+ *
  * Returns: (transfer none): the %libusb_device associated to %SpiceUsbDevice.
  *
  * Since: 0.27
@@ -1306,6 +1308,8 @@ static SpiceUsbredirChannel *spice_usb_device_manager_get_channel_for_dev(
  *      see #SpiceUsbDeviceManager:auto-connect-filter for the f ilter
  *      string format
  *
+ * Finds devices associated with the @manager complying with the @filter
+ *
  * Returns: (element-type SpiceUsbDevice) (transfer full): a
  * %GPtrArray array of %SpiceUsbDevice
  *
@@ -1363,6 +1367,8 @@ GPtrArray* spice_usb_device_manager_get_devices_with_filter(
  * spice_usb_device_manager_get_devices:
  * @manager: the #SpiceUsbDeviceManager manager
  *
+ * Finds devices associated with the @manager
+ *
  * Returns: (element-type SpiceUsbDevice) (transfer full): a %GPtrArray array of %SpiceUsbDevice
  */
 GPtrArray* spice_usb_device_manager_get_devices(SpiceUsbDeviceManager *self)
@@ -1375,6 +1381,8 @@ GPtrArray* spice_usb_device_manager_get_devices(SpiceUsbDeviceManager *self)
  * @manager: the #SpiceUsbDeviceManager manager
  * @device: a #SpiceUsbDevice
  *
+ * Finds if the @device is connected.
+ *
  * Returns: %TRUE if @device has an associated USB redirection channel
  */
 gboolean spice_usb_device_manager_is_device_connected(SpiceUsbDeviceManager *self,
@@ -1386,14 +1394,6 @@ gboolean spice_usb_device_manager_is_device_connected(SpiceUsbDeviceManager *sel
     return !!spice_usb_device_manager_get_channel_for_dev(self, device);
 }
 
-/**
- * spice_usb_device_manager_connect_device_async:
- * @manager: the #SpiceUsbDeviceManager manager
- * @device: a #SpiceUsbDevice to redirect
- * @cancellable: a #GCancellable or NULL
- * @callback: a #GAsyncReadyCallback to call when the request is satisfied
- * @user_data: data to pass to callback
- */
 static void
 _spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
                                                SpiceUsbDevice *device,
@@ -1469,7 +1469,18 @@ done:
     g_object_unref(result);
 }
 
-
+/**
+ * spice_usb_device_manager_connect_device_async:
+ * @self: a #SpiceUsbDeviceManager.
+ * @device: a #SpiceUsbDevice to redirect
+ * @cancellable: (allow-none): optional #GCancellable object, %NULL to ignore
+ * @callback: a #GAsyncReadyCallback to call when the request is satisfied
+ * @user_data: the data to pass to callback function
+ *
+ * Asynchronously connects the @device. When completed, @callback will be called.
+ * Then it is possible to call spice_usb_device_manager_connect_device_finish()
+ * to get the result of the operation.
+ */
 void spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
                                              SpiceUsbDevice *device,
                                              GCancellable *cancellable,
@@ -1506,6 +1517,16 @@ void spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
 #endif
 }
 
+/**
+ * spice_usb_device_manager_connect_device_finish:
+ * @self: a #SpiceUsbDeviceManager.
+ * @res: a #GAsyncResult
+ * @err: (allow-none): a return location for a #GError, or %NULL.
+ *
+ * Finishes an async operation. See spice_usb_device_manager_connect_device_async().
+ *
+ * Returns: %TRUE if connection is successful
+ */
 gboolean spice_usb_device_manager_connect_device_finish(
     SpiceUsbDeviceManager *self, GAsyncResult *res, GError **err)
 {
@@ -1525,6 +1546,8 @@ gboolean spice_usb_device_manager_connect_device_finish(
  * spice_usb_device_manager_disconnect_device:
  * @manager: the #SpiceUsbDeviceManager manager
  * @device: a #SpiceUsbDevice to disconnect
+ *
+ * Disconnects the @device.
  *
  * Returns: %TRUE if @device has an associated USB redirection channel
  */
@@ -1573,6 +1596,16 @@ void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
 #endif
 }
 
+/**
+ * spice_usb_device_manager_can_redirect_device:
+ * @self: the #SpiceUsbDeviceManager manager
+ * @device: a #SpiceUsbDevice to disconnect
+ * @err: (allow-none): a return location for a #GError, or %NULL.
+ *
+ * Checks whether it is possible to redirect the @device.
+ *
+ * Returns: %TRUE if @device can be redirected
+ */
 gboolean
 spice_usb_device_manager_can_redirect_device(SpiceUsbDeviceManager  *self,
                                              SpiceUsbDevice         *device,

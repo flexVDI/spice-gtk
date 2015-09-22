@@ -63,6 +63,11 @@ typedef enum {
     SPICE_SESSION_MIGRATION_CONNECTING,
 } SpiceSessionMigration;
 
+/**
+ * SpiceSession:
+ *
+ * The #SpiceSession struct is opaque and should not be accessed directly.
+ */
 struct _SpiceSession
 {
     GObject parent;
@@ -70,6 +75,14 @@ struct _SpiceSession
     /* Do not add fields to this struct */
 };
 
+/**
+ * SpiceSessionClass:
+ * @parent_class: Parent class.
+ * @channel_new: Signal class handler for the #SpiceSession::channel_new signal.
+ * @channel_destroy: Signal class handler for the #SpiceSession::channel_destroy signal.
+ *
+ * Class structure for #SpiceSession.
+ */
 struct _SpiceSessionClass
 {
     GObjectClass parent_class;

@@ -33,6 +33,14 @@ typedef struct _SpiceInputsChannel SpiceInputsChannel;
 typedef struct _SpiceInputsChannelClass SpiceInputsChannelClass;
 typedef struct _SpiceInputsChannelPrivate SpiceInputsChannelPrivate;
 
+/**
+ * SpiceInputsLock:
+ * @SPICE_INPUTS_SCROLL_LOCK: Scroll Lock
+ * @SPICE_INPUTS_NUM_LOCK: Num Lock
+ * @SPICE_INPUTS_CAPS_LOCK: Caps Lock
+ *
+ * Constants used to synchronize modifiers between a client and a guest.
+ **/
 typedef enum {
     SPICE_INPUTS_SCROLL_LOCK = (1 << 0),
     SPICE_INPUTS_NUM_LOCK    = (1 << 1),

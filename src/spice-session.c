@@ -1899,6 +1899,8 @@ void spice_session_migrate_end(SpiceSession *self)
  * spice_session_get_read_only:
  * @session: a #SpiceSession
  *
+ * Checks whether the @session is read-only.
+ *
  * Returns: wether the @session is in read-only mode.
  **/
 gboolean spice_session_get_read_only(SpiceSession *self)
@@ -2605,6 +2607,8 @@ void spice_session_set_shared_dir(SpiceSession *session, const gchar *dir)
 /**
  * spice_session_get_proxy_uri:
  * @session: a #SpiceSession
+ *
+ * Gets the @session proxy uri.
  *
  * Returns: (transfer none): the session proxy #SpiceURI or %NULL.
  * Since: 0.24

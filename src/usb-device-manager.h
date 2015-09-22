@@ -39,6 +39,11 @@ typedef struct _SpiceUsbDeviceManager SpiceUsbDeviceManager;
 typedef struct _SpiceUsbDeviceManagerClass SpiceUsbDeviceManagerClass;
 typedef struct _SpiceUsbDeviceManagerPrivate SpiceUsbDeviceManagerPrivate;
 
+/**
+ * SpiceUsbDevice:
+ *
+ * The #SpiceUsbDevice struct is opaque and cannot be accessed directly.
+ */
 typedef struct _SpiceUsbDevice SpiceUsbDevice;
 
 /**
@@ -102,7 +107,7 @@ GPtrArray* spice_usb_device_manager_get_devices_with_filter(
 gboolean spice_usb_device_manager_is_device_connected(SpiceUsbDeviceManager *manager,
                                                       SpiceUsbDevice *device);
 void spice_usb_device_manager_connect_device_async(
-                                             SpiceUsbDeviceManager *manager,
+                                             SpiceUsbDeviceManager *self,
                                              SpiceUsbDevice *device,
                                              GCancellable *cancellable,
                                              GAsyncReadyCallback callback,

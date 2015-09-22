@@ -69,6 +69,8 @@ SpiceGrabSequence *spice_grab_sequence_new(guint nkeysyms, guint *keysyms)
  * spice_grab_sequence_new_from_string:
  * @str: a string of '+' seperated key names (ex: "Control_L+Alt_L")
  *
+ * Creates a new #SpiceGrabSequence from the string representation.
+ *
  * Returns: a new #SpiceGrabSequence.
  **/
 SpiceGrabSequence *spice_grab_sequence_new_from_string(const gchar *str)
@@ -104,6 +106,8 @@ SpiceGrabSequence *spice_grab_sequence_new_from_string(const gchar *str)
  * spice_grab_sequence_copy:
  * @sequence: sequence to copy
  *
+ * Creates a copy of the @sequence.
+ *
  * Returns: (transfer full): a copy of @sequence
  **/
 SpiceGrabSequence *spice_grab_sequence_copy(SpiceGrabSequence *srcSequence)
@@ -135,6 +139,8 @@ void spice_grab_sequence_free(SpiceGrabSequence *sequence)
 /**
  * spice_grab_sequence_as_string:
  * @sequence: a #SpiceGrabSequence
+ *
+ * Creates a string representing the @sequence.
  *
  * Returns: (transfer full): a newly allocated string representing the key sequence
  **/

@@ -35,8 +35,19 @@ G_BEGIN_DECLS
 typedef struct _SpiceSmartcardManager SpiceSmartcardManager;
 typedef struct _SpiceSmartcardManagerClass SpiceSmartcardManagerClass;
 typedef struct _SpiceSmartcardManagerPrivate SpiceSmartcardManagerPrivate;
+
+/**
+ * SpiceSmartcardReader:
+ *
+ * The #SpiceSmartcardReader struct is opaque and cannot be accessed directly.
+ */
 typedef struct _SpiceSmartcardReader SpiceSmartcardReader;
 
+/**
+ * SpiceSmartcardManager:
+ *
+ * The #SpiceSmartcardManager struct is opaque and should not be accessed directly.
+ */
 struct _SpiceSmartcardManager
 {
     GObject parent;
@@ -46,6 +57,16 @@ struct _SpiceSmartcardManager
     /* Do not add fields to this struct */
 };
 
+/**
+ * SpiceSmartcardManagerClass:
+ * @parent_class: Parent class.
+ * @reader_added: Signal class handler for the #SpiceSmartcardManager::reader_added signal.
+ * @reader_removed: Signal class handler for the #SpiceSmartcardManager::reader_removed signal.
+ * @card_inserted: Signal class handler for the #SpiceSmartcardManager::card_inserted signal.
+ * @card_removed: Signal class handler for the #SpiceSmartcardManager::card_removed signal.
+ *
+ * Class structure for #SpiceSmartcardManager.
+ */
 struct _SpiceSmartcardManagerClass
 {
     GObjectClass parent_class;

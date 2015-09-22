@@ -704,6 +704,8 @@ static LRESULT CALLBACK keyboard_hook_cb(int code, WPARAM wparam, LPARAM lparam)
  * spice_display_get_grab_keys:
  * @display: the display widget
  *
+ * Finds the current grab key combination for the @display.
+ *
  * Returns: (transfer none): the current grab key combination.
  **/
 SpiceGrabSequence *spice_display_get_grab_keys(SpiceDisplay *display)
@@ -2535,6 +2537,8 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
  * @session: a #SpiceSession
  * @channel_id: the display channel ID to associate with #SpiceDisplay
  *
+ * Creates a new #SpiceDisplay widget.
+ *
  * Returns: a new #SpiceDisplay widget.
  **/
 SpiceDisplay *spice_display_new(SpiceSession *session, int channel_id)
@@ -2548,6 +2552,8 @@ SpiceDisplay *spice_display_new(SpiceSession *session, int channel_id)
  * @session: a #SpiceSession
  * @channel_id: the display channel ID to associate with #SpiceDisplay
  * @monitor_id: the monitor id within the display channel
+ *
+ * Creates a new #SpiceDisplay widget associated with the monitor id.
  *
  * Since: 0.13
  * Returns: a new #SpiceDisplay widget.

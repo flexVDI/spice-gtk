@@ -99,6 +99,8 @@ gboolean spice_util_get_debug(void)
 /**
  * spice_util_get_version_string:
  *
+ * Gets the version string
+ *
  * Returns: Spice-GTK version as a const string.
  **/
 const gchar *spice_util_get_version_string(void)

@@ -29,7 +29,19 @@ G_BEGIN_DECLS
 #define SPICE_IS_URI_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), SPICE_TYPE_URI))
 #define SPICE_URI_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), SPICE_TYPE_URI, SpiceURIClass))
 
+/**
+ * SpiceURI:
+ *
+ * The #SpiceURI struct is opaque and cannot be accessed directly.
+ */
 typedef struct _SpiceURI SpiceURI;
+
+/**
+ * SpiceURIClass:
+ *
+ * The #SpiceURIClass struct is opaque and cannot be accessed directly.
+ * It is class structure for #SpiceURI.
+ */
 typedef struct _SpiceURIClass SpiceURIClass;
 typedef struct _SpiceURIPrivate SpiceURIPrivate;
 

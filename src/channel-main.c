@@ -661,6 +661,8 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
      * @data: clipboard data
      * @size: size of @data in bytes
      *
+     * Informs that clipboard selection data are available.
+     *
      * Since: 0.6
      **/
     signals[SPICE_MAIN_CLIPBOARD_SELECTION] =

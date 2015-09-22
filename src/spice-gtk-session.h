@@ -33,6 +33,11 @@ typedef struct _SpiceGtkSession SpiceGtkSession;
 typedef struct _SpiceGtkSessionClass SpiceGtkSessionClass;
 typedef struct _SpiceGtkSessionPrivate SpiceGtkSessionPrivate;
 
+/**
+ * SpiceGtkSession:
+ *
+ * The #SpiceGtkSession struct is opaque and should not be accessed directly.
+ */
 struct _SpiceGtkSession
 {
     GObject parent;
@@ -40,6 +45,12 @@ struct _SpiceGtkSession
     /* Do not add fields to this struct */
 };
 
+/**
+ * SpiceGtkSessionClass:
+ * @parent_class: Parent class.
+ *
+ * Class structure for #SpiceGtkSession.
+ */
 struct _SpiceGtkSessionClass
 {
     GObjectClass parent_class;

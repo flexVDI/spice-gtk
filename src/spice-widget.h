@@ -40,12 +40,25 @@ typedef struct _SpiceDisplay SpiceDisplay;
 typedef struct _SpiceDisplayClass SpiceDisplayClass;
 typedef struct _SpiceDisplayPrivate SpiceDisplayPrivate;
 
+/**
+ * SpiceDisplay:
+ *
+ * The #SpiceDisplay struct is opaque and should not be accessed directly.
+ */
 struct _SpiceDisplay {
     GtkDrawingArea parent;
     SpiceDisplayPrivate *priv;
     /* Do not add fields to this struct */
 };
 
+/**
+ * SpiceDisplayClass:
+ * @parent_class: Parent class.
+ * @mouse_grab: Signal class handler for the #SpiceDisplay::mouse_grab signal.
+ * @keyboard_grab: Signal class handler for the #SpiceDisplay::keyboard_grab signal.
+ *
+ * Class structure for #SpiceDisplay.
+ */
 struct _SpiceDisplayClass {
     GtkDrawingAreaClass parent_class;
 
@@ -61,6 +74,14 @@ struct _SpiceDisplayClass {
     gchar _spice_reserved[SPICE_RESERVED_PADDING];
 };
 
+/**
+ * SpiceDisplayKeyEvent:
+ * @SPICE_DISPLAY_KEY_EVENT_PRESS: key press
+ * @SPICE_DISPLAY_KEY_EVENT_RELEASE: key release
+ * @SPICE_DISPLAY_KEY_EVENT_CLICK: key click (press and release)
+ *
+ * Constants for key events.
+ */
 typedef enum
 {
 	SPICE_DISPLAY_KEY_EVENT_PRESS = 1,

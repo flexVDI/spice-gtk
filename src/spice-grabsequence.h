@@ -31,6 +31,11 @@ G_BEGIN_DECLS
 
 typedef struct _SpiceGrabSequence SpiceGrabSequence;
 
+/**
+ * SpiceGrabSequence:
+ *
+ * The #SpiceGrabSequence struct is opaque and should not be accessed directly.
+ */
 struct _SpiceGrabSequence {
         /*< private >*/
 	guint nkeysyms;
