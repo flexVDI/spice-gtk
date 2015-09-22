@@ -376,7 +376,7 @@ gchar* spice_dos2unix(const gchar *str, gssize len, GError **error)
                                   error);
 }
 
-G_GNUC_INTERNAL
+//G_GNUC_INTERNAL
 gchar* spice_unix2dos(const gchar *str, gssize len, GError **error)
 {
     return spice_convert_newlines(str, len,
