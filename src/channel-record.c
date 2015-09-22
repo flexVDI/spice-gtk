@@ -200,8 +200,8 @@ static void spice_record_channel_class_init(SpiceRecordChannelClass *klass)
     g_object_class_install_property
         (gobject_class, PROP_VOLUME,
          g_param_spec_pointer("volume",
-                              "Playback volume",
-                              "",
+                              "Record volume",
+                              "Record volume",
                               G_PARAM_READWRITE |
                               G_PARAM_STATIC_STRINGS));
 
