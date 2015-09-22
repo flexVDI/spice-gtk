@@ -724,9 +724,9 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
      * @main: the #SpiceMainChannel that emitted the signal
      * @types: the VD_AGENT_CLIPBOARD request type
      *
-     * Return value: %TRUE if the request is successful
-     *
      * Request clipbard data from the client.
+     *
+     * Return value: %TRUE if the request is successful
      *
      * Deprecated: 0.6: use SpiceMainChannel::main-clipboard-selection-request instead.
      **/
@@ -747,9 +747,9 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
      * @selection: a VD_AGENT_CLIPBOARD_SELECTION clipboard
      * @types: the VD_AGENT_CLIPBOARD request type
      *
-     * Return value: %TRUE if the request is successful
-     *
      * Request clipbard data from the client.
+     *
+     * Return value: %TRUE if the request is successful
      *
      * Since: 0.6
      **/
