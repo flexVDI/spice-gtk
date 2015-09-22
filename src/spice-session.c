@@ -1901,7 +1901,7 @@ void spice_session_migrate_end(SpiceSession *self)
  *
  * Checks whether the @session is read-only.
  *
- * Returns: wether the @session is in read-only mode.
+ * Returns: whether the @session is in read-only mode.
  **/
 gboolean spice_session_get_read_only(SpiceSession *self)
 {

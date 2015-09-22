@@ -67,7 +67,7 @@ SpiceGrabSequence *spice_grab_sequence_new(guint nkeysyms, guint *keysyms)
 
 /**
  * spice_grab_sequence_new_from_string:
- * @str: a string of '+' seperated key names (ex: "Control_L+Alt_L")
+ * @str: a string of '+' separated key names (ex: "Control_L+Alt_L")
  *
  * Creates a new #SpiceGrabSequence from the string representation.
  *

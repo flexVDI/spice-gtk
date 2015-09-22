@@ -125,10 +125,10 @@ static void spice_inputs_channel_class_init(SpiceInputsChannelClass *klass)
                           G_PARAM_STATIC_BLURB));
 
     /**
-     * SpiceInputsChannel::inputs-modifier:
+     * SpiceInputsChannel::inputs-modifiers:
      * @display: the #SpiceInputsChannel that emitted the signal
      *
-     * The #SpiceInputsChannel::inputs-modifier signal is emitted when
+     * The #SpiceInputsChannel::inputs-modifiers signal is emitted when
      * the guest keyboard locks are changed. You can read the current
      * state from #SpiceInputsChannel:key-modifiers property.
      **/

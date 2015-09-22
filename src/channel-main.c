@@ -726,7 +726,7 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
      * @main: the #SpiceMainChannel that emitted the signal
      * @types: the VD_AGENT_CLIPBOARD request type
      *
-     * Request clipbard data from the client.
+     * Request clipboard data from the client.
      *
      * Return value: %TRUE if the request is successful
      *
@@ -749,7 +749,7 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
      * @selection: a VD_AGENT_CLIPBOARD_SELECTION clipboard
      * @types: the VD_AGENT_CLIPBOARD request type
      *
-     * Request clipbard data from the client.
+     * Request clipboard data from the client.
      *
      * Return value: %TRUE if the request is successful
      *

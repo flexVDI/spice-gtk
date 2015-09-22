@@ -1305,7 +1305,7 @@ static SpiceUsbredirChannel *spice_usb_device_manager_get_channel_for_dev(
  * spice_usb_device_manager_get_devices_with_filter:
  * @manager: the #SpiceUsbDeviceManager manager
  * @filter: (allow-none): filter string for selecting which devices to return,
- *      see #SpiceUsbDeviceManager:auto-connect-filter for the f ilter
+ *      see #SpiceUsbDeviceManager:auto-connect-filter for the filter
  *      string format
  *
  * Finds devices associated with the @manager complying with the @filter

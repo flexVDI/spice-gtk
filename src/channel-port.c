@@ -151,7 +151,7 @@ static void spice_port_channel_class_init(SpicePortChannelClass *klass)
                               G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
 
     /**
-     * SpicePort::port-data:
+     * SpicePortChannel::port-data:
      * @channel: the channel that emitted the signal
      * @data: the data received
      * @size: number of bytes read
@@ -173,7 +173,7 @@ static void spice_port_channel_class_init(SpicePortChannelClass *klass)
 
 
     /**
-     * SpicePort::port-event:
+     * SpicePortChannel::port-event:
      * @channel: the channel that emitted the signal
      * @event: the event received
      * @size: number of bytes read
