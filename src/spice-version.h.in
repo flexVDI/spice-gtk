@@ -21,6 +21,8 @@
 /**
  * SECTION:spice-version
  * @short_description: Spice-Gtk version checking
+ * @title: Version Information
+ * @include: spice-version.h
  *
  * Spice-Gtk provides macros to check the version of the library
  * at compile-time
