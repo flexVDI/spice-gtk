@@ -22,12 +22,13 @@
 #warning "Only <spice-client.h> can be included directly"
 #endif
 
-G_BEGIN_DECLS
-
 #include <gio/gio.h>
+
 #include "spice-types.h"
 #include "spice-glib-enums.h"
 #include "spice-util.h"
+
+G_BEGIN_DECLS
 
 #define SPICE_TYPE_CHANNEL            (spice_channel_get_type ())
 #define SPICE_CHANNEL(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), SPICE_TYPE_CHANNEL, SpiceChannel))

@@ -22,10 +22,10 @@
 #warning "Only <spice-client.h> can be included directly"
 #endif
 
-G_BEGIN_DECLS
-
 #include "spice-types.h"
 #include "spice-util.h"
+
+G_BEGIN_DECLS
 
 #define SPICE_TYPE_SMARTCARD_MANAGER            (spice_smartcard_manager_get_type ())
 #define SPICE_SMARTCARD_MANAGER(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), SPICE_TYPE_SMARTCARD_MANAGER, SpiceSmartcardManager))

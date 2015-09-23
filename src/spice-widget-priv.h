@@ -18,8 +18,6 @@
 #ifndef __SPICE_WIDGET_PRIV_H__
 #define __SPICE_WIDGET_PRIV_H__
 
-G_BEGIN_DECLS
-
 #include "config.h"
 
 #ifdef WITH_X11
@@ -35,6 +33,8 @@ G_BEGIN_DECLS
 #include "spice-widget.h"
 #include "spice-common.h"
 #include "spice-gtk-session.h"
+
+G_BEGIN_DECLS
 
 #define SPICE_DISPLAY_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_DISPLAY, SpiceDisplayPrivate))
