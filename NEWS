@@ -1,3 +1,19 @@
+v0.30
+=====
+- spice-protocol is no longer bundled with spice-gtk. Requires
+  spice-protocol >= 0.12.10
+- Handle single headed monitors that have a non-zero x, y config
+- various small improvements to 'spicy' test application
+- Fix build with automake < 1.13
+- various bug fixes and improvements
+- New API:
+  - spice_main_update_display_enabled()
+  - Add SpiceSession::preferred-compression property and
+    --spice-preferred-compression commandline switch (requires a
+    yet-to-be-released version of spice server)
+- ability to set the SpiceDisplay::keypress-delay property via a new
+  SPICE_KEYPRESS_DELAY environment variable
+
 v0.29
 =====
 
