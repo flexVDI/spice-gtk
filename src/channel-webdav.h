@@ -18,6 +18,10 @@
 #ifndef __SPICE_WEBDAV_CHANNEL_H__
 #define __SPICE_WEBDAV_CHANNEL_H__
 
+#if !defined(__SPICE_CLIENT_H_INSIDE__) && !defined(SPICE_COMPILATION)
+#warning "Only <spice-client.h> can be included directly"
+#endif
+
 #include <gio/gio.h>
 #include "spice-client.h"
 #include "channel-port.h"

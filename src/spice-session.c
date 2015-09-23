@@ -134,7 +134,7 @@ struct _SpiceSessionPrivate {
  * @section_id:
  * @see_also: #SpiceChannel, and the GTK widget #SpiceDisplay
  * @stability: Stable
- * @include: spice-session.h
+ * @include: spice-client.h
  *
  * The #SpiceSession class handles all the #SpiceChannel connections.
  * It's also the class that contains connections informations, such as

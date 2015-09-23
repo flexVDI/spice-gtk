@@ -33,7 +33,7 @@
  * @section_id:
  * @see_also: #SpiceChannel, and #SpiceAudio
  * @stability: Stable
- * @include: channel-record.h
+ * @include: spice-client.h
  *
  * #SpiceRecordChannel class handles an audio recording stream. The
  * audio stream should start when #SpiceRecordChannel::record-start is

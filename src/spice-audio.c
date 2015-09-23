@@ -26,7 +26,7 @@
  * @section_id:
  * @see_also: #SpiceRecordChannel, and #SpicePlaybackChannel
  * @stability: Stable
- * @include: spice-audio.h
+ * @include: spice-client.h
  *
  * A class that handles the playback and record channels for your
  * application, and connect them to the default sound system.

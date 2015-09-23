@@ -18,6 +18,10 @@
 #ifndef __SPICE_VERSION_H__
 #define __SPICE_VERSION_H__
 
+#if !defined(__SPICE_CLIENT_H_INSIDE__) && !defined(SPICE_COMPILATION)
+#warning "Only <spice-client.h> can be included directly"
+#endif
+
 /**
  * SECTION:spice-version
  * @short_description: Spice-Gtk version checking

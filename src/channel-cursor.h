@@ -18,6 +18,10 @@
 #ifndef __SPICE_CLIENT_CURSOR_CHANNEL_H__
 #define __SPICE_CLIENT_CURSOR_CHANNEL_H__
 
+#if !defined(__SPICE_CLIENT_H_INSIDE__) && !defined(SPICE_COMPILATION)
+#warning "Only <spice-client.h> can be included directly"
+#endif
+
 #include "spice-client.h"
 
 G_BEGIN_DECLS

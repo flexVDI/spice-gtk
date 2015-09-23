@@ -33,7 +33,7 @@
  * @section_id:
  * @see_also: #SpiceChannel, and #SpiceAudio
  * @stability: Stable
- * @include: channel-playback.h
+ * @include: spice-client.h
  *
  * #SpicePlaybackChannel class handles an audio playback stream. The
  * audio data is received via #SpicePlaybackChannel::playback-data

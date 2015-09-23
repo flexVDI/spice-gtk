@@ -64,7 +64,7 @@
  * @section_id:
  * @see_also:
  * @stability: Stable
- * @include: usb-device-manager.h
+ * @include: spice-client.h
  *
  * #SpiceUsbDeviceManager monitors USB redirection channels and USB
  * devices plugging/unplugging. If #SpiceUsbDeviceManager:auto-connect

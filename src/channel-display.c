@@ -46,7 +46,7 @@
  * @section_id:
  * @see_also: #SpiceChannel, and the GTK widget #SpiceDisplay
  * @stability: Stable
- * @include: channel-display.h
+ * @include: spice-client.h
  *
  * A class that handles the rendering of the remote display and inform
  * of its updates.

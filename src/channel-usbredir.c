@@ -44,7 +44,7 @@
  * @title: USB Redirection Channel
  * @section_id:
  * @stability: API Stable (channel in development)
- * @include: channel-usbredir.h
+ * @include: spice-client.h
  *
  * The Spice protocol defines a set of messages to redirect USB devices
  * from the Spice client to the VM. This channel handles these messages.

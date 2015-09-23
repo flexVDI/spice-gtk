@@ -30,7 +30,7 @@
  * @title: SpiceURI
  * @section_id:
  * @stability: Stable
- * @include: spice-uri.h
+ * @include: spice-client.h
  *
  * A SpiceURI represents a (parsed) URI.
  * Since: 0.24

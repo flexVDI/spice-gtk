@@ -40,7 +40,7 @@
  * @section_id:
  * @see_also:
  * @stability: Stable
- * @include: smartcard-manager.h
+ * @include: spice-client.h
  *
  * #SpiceSmartcardManager monitors smartcard reader plugging/unplugging,
  * and smartcard insertions/removals. It also provides methods to handle

@@ -28,7 +28,7 @@
  * @section_id:
  * @see_also: #SpiceChannel, and the GTK widget #SpiceDisplay
  * @stability: Stable
- * @include: channel-inputs.h
+ * @include: spice-client.h
  *
  * Spice supports sending keyboard key events and keyboard leds
  * synchronization. The key events are sent using

@@ -33,7 +33,7 @@
  * @section_id:
  * @see_also: #SpiceChannel
  * @stability: Stable
- * @include: channel-webdav.h
+ * @include: spice-client.h
  *
  * The "webdav" channel exports a directory to the guest for file
  * manipulation (read/write/copy etc). The underlying protocol is

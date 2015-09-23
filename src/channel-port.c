@@ -30,7 +30,7 @@
  * @section_id:
  * @see_also: #SpiceChannel
  * @stability: Stable
- * @include: channel-port.h
+ * @include: spice-client.h
  *
  * A Spice port channel carry arbitrary data between the Spice client
  * and the Spice server. It may be used to provide additional

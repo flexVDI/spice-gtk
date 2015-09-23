@@ -39,7 +39,7 @@
  * @section_id:
  * @see_also: #SpiceChannel, and the GTK widget #SpiceDisplay
  * @stability: Stable
- * @include: channel-main.h
+ * @include: spice-client.h
  *
  * The main channel is the Spice session control channel. It handles
  * communication initialization (channels list), migrations, mouse

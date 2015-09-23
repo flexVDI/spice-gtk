@@ -63,7 +63,7 @@ static gboolean channel_connect(SpiceChannel *channel, gboolean tls);
  * @section_id:
  * @see_also: #SpiceSession, #SpiceMainChannel and other channels
  * @stability: Stable
- * @include: spice-channel.h
+ * @include: spice-client.h
  *
  * #SpiceChannel is the base class for the different kind of Spice
  * channel connections, such as #SpiceMainChannel, or

@@ -32,7 +32,7 @@
  * @section_id:
  * @see_also: #SpiceChannel, and the GTK widget #SpiceDisplay
  * @stability: Stable
- * @include: channel-cursor.h
+ * @include: spice-client.h
  *
  * The Spice protocol defines a set of messages for controlling cursor
  * shape and position on the remote display area. The cursor changes

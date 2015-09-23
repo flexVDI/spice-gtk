@@ -33,7 +33,7 @@
  * @title: Utilities
  * @section_id:
  * @stability: Stable
- * @include: spice-util.h
+ * @include: spice-client.h
  *
  * Various functions for debugging and informational purposes.
  */

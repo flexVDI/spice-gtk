@@ -36,7 +36,7 @@
  * @section_id:
  * @see_also: #SpiceSmartcardManager, #SpiceSession
  * @stability: API Stable (channel in development)
- * @include: channel-smartcard.h
+ * @include: spice-client.h
  *
  * The Spice protocol defines a set of messages to forward smartcard
  * information from the Spice client to the VM. This channel handles

@@ -22,6 +22,8 @@
 #include <glib.h>
 #include <glib-object.h>
 
+#define __SPICE_CLIENT_H_INSIDE__
+
 /* spice-protocol */
 #include <spice/enums.h>
 #include <spice/protocol.h>
@@ -87,5 +89,7 @@ typedef enum
 GQuark spice_client_error_quark(void);
 
 G_END_DECLS
+
+#undef __SPICE_CLIENT_H_INSIDE__
 
 #endif /* __SPICE_CLIENT_CLIENT_H__ */
