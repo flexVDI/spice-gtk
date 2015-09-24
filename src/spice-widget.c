@@ -2537,10 +2537,10 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
  *
  * Returns: a new #SpiceDisplay widget.
  **/
-SpiceDisplay *spice_display_new(SpiceSession *session, int id)
+SpiceDisplay *spice_display_new(SpiceSession *session, int channel_id)
 {
     return g_object_new(SPICE_TYPE_DISPLAY, "session", session,
-                        "channel-id", id, NULL);
+                        "channel-id", channel_id, NULL);
 }
 
 /**
