@@ -302,7 +302,6 @@ SpiceUsbredirChannelPrivate
 <SECTION>
 <FILE>usb-device-manager</FILE>
 <TITLE>SpiceUsbDeviceManager</TITLE>
-SPICE_TYPE_USB_DEVICE
 SpiceUsbDeviceManager
 SpiceUsbDeviceManagerClass
 <SUBSECTION>
@@ -321,6 +320,7 @@ spice_usb_device_get_libusb_device
 <SUBSECTION Standard>
 SPICE_USB_DEVICE_MANAGER
 SPICE_IS_USB_DEVICE_MANAGER
+SPICE_TYPE_USB_DEVICE
 SPICE_TYPE_USB_DEVICE_MANAGER
 spice_usb_device_manager_get_type
 spice_usb_device_get_type
