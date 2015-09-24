@@ -18,6 +18,10 @@
 #ifndef __SPICE_CLIENT_WIDGET_H__
 #define __SPICE_CLIENT_WIDGET_H__
 
+#if !defined(__SPICE_CLIENT_GTK_H_INSIDE__) && !defined(SPICE_COMPILATION)
+#warning "Only <spice-client-gtk.h> can be included directly"
+#endif
+
 #include "spice-client.h"
 
 #include <gtk/gtk.h>

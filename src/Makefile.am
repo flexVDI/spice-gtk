@@ -176,6 +176,7 @@ endif
 
 libspice_client_gtkincludedir = $(includedir)/spice-client-gtk-$(SPICE_GTK_API_VERSION)
 libspice_client_gtkinclude_HEADERS =	\
+	spice-client-gtk.h		\
 	spice-gtk-session.h		\
 	spice-widget.h			\
 	spice-grabsequence.h		\

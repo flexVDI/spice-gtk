@@ -73,7 +73,7 @@ struct _SpiceGtkSessionPrivate {
  * @section_id:
  * @see_also: #SpiceSession, and the GTK widget #SpiceDisplay
  * @stability: Stable
- * @include: spice-gtk-session.h
+ * @include: spice-client-gtk.h
  *
  * The #SpiceGtkSession class is the spice-client-gtk counter part of
  * #SpiceSession. It contains functionality which should be handled per

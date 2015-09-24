@@ -52,7 +52,7 @@
  * @title: Spice Display
  * @section_id:
  * @stability: Stable
- * @include: spice-widget.h
+ * @include: spice-client-gtk.h
  *
  * A GTK widget that displays a SPICE server. It sends keyboard/mouse
  * events and can also share clipboard...

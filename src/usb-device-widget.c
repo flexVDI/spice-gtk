@@ -33,7 +33,7 @@
  * @section_id:
  * @see_also:
  * @stability: Stable
- * @include: usb-device-widget.h
+ * @include: spice-client-gtk.h
  *
  * #SpiceUsbDeviceWidget is a gtk widget which apps can use to easily
  * add an UI to select USB devices to redirect (or unredirect).

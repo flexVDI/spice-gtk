@@ -22,6 +22,10 @@
 #ifndef SPICE_GRAB_SEQUENCE_H
 #define SPICE_GRAB_SEQUENCE_H
 
+#if !defined(__SPICE_CLIENT_GTK_H_INSIDE__) && !defined(SPICE_COMPILATION)
+#warning "Only <spice-client-gtk.h> can be included directly"
+#endif
+
 #include <glib.h>
 #include <glib-object.h>
 
