@@ -2485,6 +2485,13 @@ void spice_main_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int nt
     spice_main_clipboard_selection_grab(channel, VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD, types, ntypes);
 }
 
+/* Single parameter function so that it is a GSourcefunc */
+static gboolean spice_channel_wakeup1(gpointer c)
+{
+	spice_channel_wakeup((SpiceChannel *)c , FALSE);
+	return false;
+}
+
 /**
  * spice_main_clipboard_selection_grab:
  * @channel:
@@ -2503,7 +2510,9 @@ void spice_main_clipboard_selection_grab(SpiceMainChannel *channel, guint select
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
     agent_clipboard_grab(channel, selection, types, ntypes);
-    spice_channel_wakeup(SPICE_CHANNEL(channel), FALSE);
+    g_timeout_add_full(G_PRIORITY_HIGH, 0,
+                       spice_channel_wakeup1,
+                       SPICE_CHANNEL(channel), NULL);
 }
 
 /**
@@ -2541,7 +2550,9 @@ void spice_main_clipboard_selection_release(SpiceMainChannel *channel, guint sel
         return;
 
     agent_clipboard_release(channel, selection);
-    spice_channel_wakeup(SPICE_CHANNEL(channel), FALSE);
+    g_timeout_add_full(G_PRIORITY_HIGH, 0,
+                       spice_channel_wakeup1,
+                       SPICE_CHANNEL(channel), NULL);
 }
 
 /**
@@ -2581,7 +2592,9 @@ void spice_main_clipboard_selection_notify(SpiceMainChannel *channel, guint sele
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
 
     agent_clipboard_notify(channel, selection, type, data, size);
-    spice_channel_wakeup(SPICE_CHANNEL(channel), FALSE);
+    g_timeout_add_full(G_PRIORITY_HIGH, 0,
+                       spice_channel_wakeup1,
+                       SPICE_CHANNEL(channel), NULL);
 }
 
 /**
