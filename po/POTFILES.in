@@ -6,4 +6,3 @@ src/spice-option.c
 src/usb-device-manager.c
 src/usb-device-widget.c
 src/usbutil.c
-src/glib-compat.c
