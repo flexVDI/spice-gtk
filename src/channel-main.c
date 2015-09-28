@@ -2999,7 +2999,7 @@ static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
 /**
  * spice_main_file_copy_async:
  * @channel: a #SpiceMainChannel
- * @sources: #GFile to be transfer
+ * @sources: a %NULL-terminated array of #GFile objects to be transferred
  * @flags: set of #GFileCopyFlags
  * @cancellable: (allow-none): optional #GCancellable object, %NULL to ignore
  * @progress_callback: (allow-none) (scope call): function to callback with
