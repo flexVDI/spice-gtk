@@ -697,10 +697,12 @@ void spice_msg_out_send(SpiceMsgOut *out)
 {
     SpiceChannelPrivate *c;
     gboolean was_empty;
+    guint32 size;
 
     g_return_if_fail(out != NULL);
     g_return_if_fail(out->channel != NULL);
     c = out->channel->priv;
+    size = spice_marshaller_get_total_size(out->marshaller);
 
     STATIC_MUTEX_LOCK(c->xmit_queue_lock);
     if (c->xmit_queue_blocked) {
@@ -710,6 +712,7 @@ void spice_msg_out_send(SpiceMsgOut *out)
 
     was_empty = g_queue_is_empty(&c->xmit_queue);
     g_queue_push_tail(&c->xmit_queue, out);
+    c->xmit_queue_size = (was_empty) ? size : c->xmit_queue_size + size;
 
     /* One wakeup is enough to empty the entire queue -> only do a wakeup
        if the queue was empty, and there isn't one pending already. */
@@ -2104,8 +2107,11 @@ static void spice_channel_iterate_write(SpiceChannel *channel)
         STATIC_MUTEX_LOCK(c->xmit_queue_lock);
         out = g_queue_pop_head(&c->xmit_queue);
         STATIC_MUTEX_UNLOCK(c->xmit_queue_lock);
-        if (out)
+        if (out) {
+            guint32 size = spice_marshaller_get_total_size(out->marshaller);
+            c->xmit_queue_size = (c->xmit_queue_size < size) ? 0 : c->xmit_queue_size - size;
             spice_channel_write_msg(channel, out);
+        }
     } while (out);
 
     spice_channel_flushed(channel, TRUE);
@@ -2811,6 +2817,17 @@ enum spice_channel_state spice_channel_get_state(SpiceChannel *channel)
                          SPICE_CHANNEL_STATE_UNCONNECTED);
 
     return channel->priv->state;
+}
+
+G_GNUC_INTERNAL
+guint64 spice_channel_get_queue_size (SpiceChannel *channel)
+{
+    guint64 size;
+    SpiceChannelPrivate *c = channel->priv;
+    STATIC_MUTEX_LOCK(c->xmit_queue_lock);
+    size = c->xmit_queue_size;
+    STATIC_MUTEX_UNLOCK(c->xmit_queue_lock);
+    return size;
 }
 
 G_GNUC_INTERNAL
