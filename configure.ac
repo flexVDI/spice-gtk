@@ -355,7 +355,7 @@ AC_SUBST(JPEG_LIBS)
 AC_CHECK_LIB(z, deflate, Z_LIBS='-lz', AC_MSG_ERROR([zlib not found]))
 AC_SUBST(Z_LIBS)
 
-SPICE_CHECK_SMARTCARD([SMARTCARD])
+SPICE_CHECK_SMARTCARD
 AM_CONDITIONAL([WITH_SMARTCARD], [test "x$have_smartcard" = "xyes"])
 
 AC_ARG_ENABLE([usbredir],
@@ -680,7 +680,7 @@ if test "x$enable_dbus" != "xno"; then
   fi
 fi
 
-SPICE_CHECK_LZ4([LZ4])
+SPICE_CHECK_LZ4
 
 dnl ===========================================================================
 dnl check compiler flags
