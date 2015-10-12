@@ -372,7 +372,7 @@ spice_session_finalize(GObject *gobject)
     g_strfreev(s->secure_channels);
     g_free(s->shared_dir);
 
-    g_clear_pointer(&s->images, cache_unref);
+    g_clear_pointer(&s->images, cache_free);
     glz_decoder_window_destroy(s->glz_window);
 
     g_clear_pointer(&s->pubkey, g_byte_array_unref);

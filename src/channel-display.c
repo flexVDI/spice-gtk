@@ -142,7 +142,7 @@ static void spice_display_channel_finalize(GObject *object)
     clear_surfaces(SPICE_CHANNEL(object), FALSE);
     g_hash_table_unref(c->surfaces);
     clear_streams(SPICE_CHANNEL(object));
-    g_clear_pointer(&c->palettes, cache_unref);
+    g_clear_pointer(&c->palettes, cache_free);
 
     if (G_OBJECT_CLASS(spice_display_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_display_channel_parent_class)->finalize(object);

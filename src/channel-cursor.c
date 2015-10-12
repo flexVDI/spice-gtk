@@ -91,7 +91,7 @@ static void spice_cursor_channel_finalize(GObject *obj)
     SpiceCursorChannel *channel = SPICE_CURSOR_CHANNEL(obj);
     SpiceCursorChannelPrivate *c = channel->priv;
 
-    g_clear_pointer(&c->cursors, cache_unref);
+    g_clear_pointer(&c->cursors, cache_free);
 
     if (G_OBJECT_CLASS(spice_cursor_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_cursor_channel_parent_class)->finalize(obj);

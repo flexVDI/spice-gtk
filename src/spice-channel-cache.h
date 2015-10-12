@@ -128,7 +128,7 @@ static inline void cache_clear(display_cache *cache)
     g_hash_table_remove_all(cache->table);
 }
 
-static inline void cache_unref(display_cache *cache)
+static inline void cache_free(display_cache *cache)
 {
     g_hash_table_unref(cache->table);
 }
