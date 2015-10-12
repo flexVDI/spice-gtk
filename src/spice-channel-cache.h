@@ -131,6 +131,7 @@ static inline void cache_clear(display_cache *cache)
 static inline void cache_free(display_cache *cache)
 {
     g_hash_table_unref(cache->table);
+    g_slice_free(display_cache, cache);
 }
 
 G_END_DECLS
