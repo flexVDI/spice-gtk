@@ -25,9 +25,6 @@ AC_SUBST(SPICE_GTK_LOCALEDIR)
 
 GTK_DOC_CHECK([1.14],[--flavour no-tmpl])
 
-# no opengl support yet
-AM_CONDITIONAL(SUPPORT_GL, false)
-
 AC_PROG_CC
 AC_PROG_CC_C99
 if test "x$ac_cv_prog_cc_c99" = xno; then
