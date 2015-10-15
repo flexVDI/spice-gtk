@@ -2935,7 +2935,7 @@ static void spice_file_transfer_task_completed(SpiceFileTransferTask *self,
 
     if (!self->priv->file_stream) {
         file_xfer_close_cb(NULL, NULL, self);
-        return;
+        goto signal;
     }
 
     g_input_stream_close_async(G_INPUT_STREAM(self->priv->file_stream),
@@ -2944,6 +2944,7 @@ static void spice_file_transfer_task_completed(SpiceFileTransferTask *self,
                                file_xfer_close_cb,
                                self);
     self->priv->pending = TRUE;
+signal:
     g_signal_emit(self, task_signals[SIGNAL_FINISHED], 0, error);
 }
 
