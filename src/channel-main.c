@@ -405,6 +405,8 @@ static void spice_main_channel_dispose(GObject *obj)
         c->migrate_delayed_id = 0;
     }
 
+    g_clear_pointer(&c->file_xfer_tasks, g_hash_table_unref);
+
     g_cancellable_cancel(c->cancellable_volume_info);
     g_clear_object(&c->cancellable_volume_info);
 
@@ -418,8 +420,6 @@ static void spice_main_channel_finalize(GObject *obj)
 
     g_free(c->agent_msg_data);
     agent_free_msg_queue(SPICE_MAIN_CHANNEL(obj));
-    if (c->file_xfer_tasks)
-        g_hash_table_unref(c->file_xfer_tasks);
 
     if (G_OBJECT_CLASS(spice_main_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_main_channel_parent_class)->finalize(obj);
