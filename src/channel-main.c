@@ -152,7 +152,7 @@ struct _SpiceMainChannelPrivate  {
     gint                        timer_id;
     GQueue                      *agent_msg_queue;
     GHashTable                  *file_xfer_tasks;
-    GSList                      *flushing;
+    GHashTable                  *flushing;
 
     guint                       switch_host_delayed_id;
     guint                       migrate_delayed_id;
@@ -289,6 +289,8 @@ static void spice_main_channel_init(SpiceMainChannel *channel)
     c->agent_msg_queue = g_queue_new();
     c->file_xfer_tasks = g_hash_table_new_full(g_direct_hash, g_direct_equal,
                                                NULL, g_object_unref);
+    c->flushing = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL,
+                                        g_object_unref);
     c->cancellable_volume_info = g_cancellable_new();
 
     spice_main_channel_reset_capabilties(SPICE_CHANNEL(channel));
@@ -406,6 +408,7 @@ static void spice_main_channel_dispose(GObject *obj)
     }
 
     g_clear_pointer(&c->file_xfer_tasks, g_hash_table_unref);
+    g_clear_pointer (&c->flushing, g_hash_table_unref);
 
     g_cancellable_cancel(c->cancellable_volume_info);
     g_clear_object(&c->cancellable_volume_info);
@@ -917,20 +920,22 @@ static void agent_free_msg_queue(SpiceMainChannel *channel)
     c->agent_msg_queue = NULL;
 }
 
-/* Here, flushing algorithm is stolen from spice-channel.c */
+static gboolean flush_foreach_remove(gpointer key G_GNUC_UNUSED,
+                                     gpointer value, gpointer user_data)
+{
+    gboolean success = GPOINTER_TO_UINT(user_data);
+    GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT(value);
+
+    g_simple_async_result_set_op_res_gboolean(result, success);
+    g_simple_async_result_complete_in_idle(result);
+    return TRUE;
+}
+
 static void file_xfer_flushed(SpiceMainChannel *channel, gboolean success)
 {
     SpiceMainChannelPrivate *c = channel->priv;
-    GSList *l;
-
-    for (l = c->flushing; l != NULL; l = l->next) {
-        GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT(l->data);
-        g_simple_async_result_set_op_res_gboolean(result, success);
-        g_simple_async_result_complete_in_idle(result);
-    }
-
-    g_slist_free_full(c->flushing, g_object_unref);
-    c->flushing = NULL;
+    g_hash_table_foreach_remove(c->flushing, flush_foreach_remove,
+                                GUINT_TO_POINTER(success));
 }
 
 static void file_xfer_flush_async(SpiceMainChannel *channel, GCancellable *cancellable,
@@ -951,7 +956,8 @@ static void file_xfer_flush_async(SpiceMainChannel *channel, GCancellable *cance
         return;
     }
 
-    c->flushing = g_slist_append(c->flushing, simple);
+    /* wait until the last message currently in the queue has been sent */
+    g_hash_table_insert(c->flushing, g_queue_peek_tail(c->agent_msg_queue), simple);
 }
 
 static gboolean file_xfer_flush_finish(SpiceMainChannel *channel, GAsyncResult *result,
@@ -978,11 +984,22 @@ static void agent_send_msg_queue(SpiceMainChannel *channel)
 
     while (c->agent_tokens > 0 &&
            !g_queue_is_empty(c->agent_msg_queue)) {
+        GSimpleAsyncResult *simple;
         c->agent_tokens--;
         out = g_queue_pop_head(c->agent_msg_queue);
         spice_msg_out_send_internal(out);
+
+        simple = g_hash_table_lookup(c->flushing, out);
+        if (simple) {
+            /* if there's a flush task waiting for this message, finish it */
+            g_simple_async_result_set_op_res_gboolean(simple, TRUE);
+            g_simple_async_result_complete_in_idle(simple);
+            g_hash_table_remove(c->flushing, out);
+        }
     }
-    if (g_queue_is_empty(c->agent_msg_queue) && c->flushing != NULL) {
+    if (g_queue_is_empty(c->agent_msg_queue) &&
+        g_hash_table_size(c->flushing) != 0) {
+        g_warning("unexpected flush task in list, clearing");
         file_xfer_flushed(channel, TRUE);
     }
 }
