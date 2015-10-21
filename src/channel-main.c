@@ -972,7 +972,6 @@ static gboolean file_xfer_flush_finish(SpiceMainChannel *channel, GAsyncResult *
         return FALSE;
     }
 
-    CHANNEL_DEBUG(channel, "flushed finished!");
     return g_simple_async_result_get_op_res_gboolean(simple);
 }
 
