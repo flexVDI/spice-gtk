@@ -1081,20 +1081,21 @@ uint32_t stream_get_current_frame(display_stream *st, uint8_t **data)
         return 0;
     }
 
-    if (spice_msg_in_type(st->msg_data) == SPICE_MSG_DISPLAY_STREAM_DATA) {
+    switch (spice_msg_in_type(st->msg_data)) {
+    case SPICE_MSG_DISPLAY_STREAM_DATA: {
         SpiceMsgDisplayStreamData *op = spice_msg_in_parsed(st->msg_data);
-
         *data = op->data;
         return op->data_size;
-    } else {
+    }
+    case SPICE_MSG_DISPLAY_STREAM_DATA_SIZED: {
         SpiceMsgDisplayStreamDataSized *op = spice_msg_in_parsed(st->msg_data);
-
-        g_return_val_if_fail(spice_msg_in_type(st->msg_data) ==
-                             SPICE_MSG_DISPLAY_STREAM_DATA_SIZED, 0);
         *data = op->data;
         return op->data_size;
-   }
-
+    }
+    default:
+        *data = NULL;
+        g_return_val_if_reached(0);
+    }
 }
 
 G_GNUC_INTERNAL
