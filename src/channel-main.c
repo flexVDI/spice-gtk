@@ -3041,6 +3041,14 @@ static SpiceFileTransferTask *spice_file_transfer_task_new(SpiceMainChannel *cha
                                                            GFile *file,
                                                            GCancellable *cancellable);
 
+static void task_finished(SpiceFileTransferTask *task,
+                          GError *error,
+                          gpointer data)
+{
+    SpiceMainChannel *channel = SPICE_MAIN_CHANNEL(data);
+    g_hash_table_remove(channel->priv->file_xfer_tasks, GUINT_TO_POINTER(task->priv->id));
+}
+
 static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
                                            GFile **files,
                                            GFileCopyFlags flags,
@@ -3074,13 +3082,14 @@ static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
         g_hash_table_insert(c->file_xfer_tasks,
                             GUINT_TO_POINTER(task->priv->id),
                             task);
+        g_signal_connect(task, "finished", G_CALLBACK(task_finished), channel);
         g_signal_emit(channel, signals[SPICE_MAIN_NEW_FILE_TRANSFER], 0, task);
 
         g_file_read_async(files[i],
                           G_PRIORITY_DEFAULT,
                           cancellable,
                           file_xfer_read_async_cb,
-                          task);
+                          g_object_ref(task));
         task->priv->pending = TRUE;
 
         /* if we created a per-task cancellable above, free it */
