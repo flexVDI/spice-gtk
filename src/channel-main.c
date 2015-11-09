@@ -131,6 +131,7 @@ typedef struct {
 
 struct _SpiceMainChannelPrivate  {
     enum SpiceMouseMode         mouse_mode;
+    enum SpiceMouseMode         requested_mouse_mode;
     bool                        agent_connected;
     bool                        agent_caps_received;
 
@@ -294,6 +295,7 @@ static void spice_main_channel_init(SpiceMainChannel *channel)
     c->cancellable_volume_info = g_cancellable_new();
 
     spice_main_channel_reset_capabilties(SPICE_CHANNEL(channel));
+    c->requested_mouse_mode = SPICE_MOUSE_MODE_CLIENT;
 }
 
 static gint spice_main_get_max_clipboard(SpiceMainChannel *self)
@@ -1619,13 +1621,17 @@ void spice_main_request_mouse_mode(SpiceMainChannel *channel, int mode)
         .mode = mode,
     };
     SpiceMsgOut *out;
+    SpiceMainChannelPrivate *c;
 
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
+    c = channel->priv;
 
     if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
         return;
 
     CHANNEL_DEBUG(channel, "request mouse mode %d", mode);
+    c->requested_mouse_mode = mode;
+
     out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_MOUSE_MODE_REQUEST);
     out->marshallers->msgc_main_mouse_mode_request(out->marshaller, &req);
     spice_msg_out_send(out);
@@ -1642,18 +1648,9 @@ static void set_mouse_mode(SpiceMainChannel *channel, uint32_t supported, uint32
         g_coroutine_object_notify(G_OBJECT(channel), "mouse-mode");
     }
 
-    /* switch to client mode if possible */
-    if (!spice_channel_get_read_only(SPICE_CHANNEL(channel)) &&
-        supported & SPICE_MOUSE_MODE_CLIENT &&
-        current != SPICE_MOUSE_MODE_CLIENT) {
-        SpiceMsgcMainMouseModeRequest req = {
-            .mode = SPICE_MOUSE_MODE_CLIENT,
-        };
-        SpiceMsgOut *out;
-
-        out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_MOUSE_MODE_REQUEST);
-        out->marshallers->msgc_main_mouse_mode_request(out->marshaller, &req);
-        spice_msg_out_send_internal(out);
+    if (c->requested_mouse_mode != c->mouse_mode &&
+        c->requested_mouse_mode & supported) {
+        spice_main_request_mouse_mode(SPICE_MAIN_CHANNEL(channel), c->requested_mouse_mode);
     }
 }
 
