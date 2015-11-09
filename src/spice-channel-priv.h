@@ -205,6 +205,9 @@ void spice_vmc_write_async(SpiceChannel *self,
                            gpointer user_data);
 gssize spice_vmc_write_finish(SpiceChannel *self,
                               GAsyncResult *result, GError **error);
+#ifdef G_OS_UNIX
+gint spice_channel_unix_read_fd(SpiceChannel *channel);
+#endif
 
 G_END_DECLS
 
