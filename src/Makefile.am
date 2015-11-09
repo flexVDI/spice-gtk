@@ -122,7 +122,6 @@ SPICE_GTK_LIBADD_COMMON =		\
 	libspice-client-glib-2.0.la	\
 	$(GTK_LIBS)			\
 	$(CAIRO_LIBS)			\
-	$(XRANDR_LIBS)			\
 	$(LIBM)				\
 	$(NULL)
 
@@ -392,7 +391,6 @@ spicy_SOURCES =					\
 spicy_LDADD =						\
 	libspice-client-gtk-$(SPICE_GTK_API_VERSION).la	\
 	libspice-client-glib-2.0.la			\
-	$(XRANDR_LIBS)					\
 	$(GTHREAD_LIBS)					\
 	$(GTK_LIBS)					\
 	$(LIBM)						\
@@ -400,7 +398,6 @@ spicy_LDADD =						\
 
 spicy_CPPFLAGS =			\
 	$(AM_CPPFLAGS)			\
-	$(XRANDR_CFLAGS)		\
 	$(GTHREAD_CFLAGS)		\
 	-DSPICE_DISABLE_DEPRECATED	\
 	$(NULL)

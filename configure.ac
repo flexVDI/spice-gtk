@@ -164,11 +164,6 @@ AM_CONDITIONAL([WITH_DISPLAY_WINDOWS], [test "x$have_win32" = "xyes"])
 
 if [test "x$have_x11" = "xyes" ]
 then
-  PKG_CHECK_MODULES(XRANDR, x11 xrandr, [have_xrandr=yes], [have_xrandr=no])
-  AC_SUBST(XRANDR_CFLAGS)
-  AC_SUBST(XRANDR_LIBS)
-  AS_IF([test "x$have_xrandr" = "xyes"], [AC_DEFINE([HAVE_RANDR], 1, [Have xrandr?])])
-
   AC_CHECK_HEADERS([X11/XKBlib.h])
 fi
 
