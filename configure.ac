@@ -243,6 +243,31 @@ AS_IF([test "x$have_phodav" = "xyes"],
 
 AM_CONDITIONAL([WITH_PHODAV], [test "x$have_phodav" = "xyes"])
 
+# FIXME: remove with gtk2
+AC_ARG_ENABLE([epoxy],
+  AS_HELP_STRING([--enable-epoxy=@<:@auto/yes/no@:>@],
+  [Enable egl/epoxy support @<:@default=auto@:>@]),
+  [],
+  [enable_epoxy="auto"])
+
+if test "x$enable_epoxy" = "xno"; then
+  have_epoxy="no"
+else
+  PKG_CHECK_MODULES(EPOXY, [epoxy], [have_epoxy=yes], [have_epoxy=no])
+  AC_SUBST(EPOXY_CFLAGS)
+  AC_SUBST(EPOXY_LIBS)
+  if test "x$have_epoxy" = "xyes"; then
+    AC_CHECK_HEADER([epoxy/egl.h],,have_epoxy=no)
+  fi
+  if test "x$have_epoxy" = "xno" && test "x$enable_epoxy" = "xyes"; then
+    AC_MSG_ERROR([epoxy support explicitly requested, but required package is not available])
+  fi
+fi
+AS_IF([test "x$have_epoxy" = "xyes"],
+  AC_DEFINE(USE_EPOXY, [1], [Define if supporting epoxy]))
+
+AM_CONDITIONAL([WITH_EPOXY], [test "x$have_epoxy" = "xyes"])
+
 AC_ARG_WITH([audio],
   AS_HELP_STRING([--with-audio=@<:@gstreamer/pulse/auto/no@:>@], [For legacy compatibility only]),
   [SPICE_WARNING([--with-audio is deprecated. Use --enable-pulse and/or --enable-gstaudio instead])
@@ -705,6 +730,7 @@ AC_MSG_NOTICE([
         DBus:                     ${have_dbus}
         WebDAV support:           ${have_phodav}
         LZ4 support:              ${enable_lz4}
+        epoxy:                    ${have_epoxy}
 
         Now type 'make' to build $PACKAGE
 
