@@ -74,6 +74,7 @@ spice_main_clipboard_selection_release;
 spice_main_clipboard_selection_request;
 spice_main_file_copy_async;
 spice_main_file_copy_finish;
+spice_main_request_mouse_mode;
 spice_main_send_monitor_config;
 spice_main_set_display;
 spice_main_set_display_enabled;

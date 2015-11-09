@@ -1602,6 +1602,35 @@ static void agent_stopped(SpiceMainChannel *channel)
     set_agent_connected(channel, FALSE);
 }
 
+/**
+ * spice_main_request_mouse_mode:
+ * @channel: a %SpiceMainChannel
+ * @mode: a SPICE_MOUSE_MODE
+ *
+ * Request a mouse mode to the server. The server may not be able to
+ * change the mouse mode, but spice-gtk will try to request it
+ * when possible.
+ *
+ * Since: 0.32
+ **/
+void spice_main_request_mouse_mode(SpiceMainChannel *channel, int mode)
+{
+    SpiceMsgcMainMouseModeRequest req = {
+        .mode = mode,
+    };
+    SpiceMsgOut *out;
+
+    g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
+
+    if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
+        return;
+
+    CHANNEL_DEBUG(channel, "request mouse mode %d", mode);
+    out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_MOUSE_MODE_REQUEST);
+    out->marshallers->msgc_main_mouse_mode_request(out->marshaller, &req);
+    spice_msg_out_send(out);
+}
+
 /* coroutine context */
 static void set_mouse_mode(SpiceMainChannel *channel, uint32_t supported, uint32_t current)
 {
