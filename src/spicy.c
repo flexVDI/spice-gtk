@@ -354,6 +354,21 @@ static void menu_cb_remove_smartcard(GtkAction *action, void *data)
 }
 #endif
 
+static void menu_cb_mouse_mode(GtkAction *action, void *data)
+{
+    SpiceWindow *win = data;
+    SpiceMainChannel *cmain = win->conn->main;
+    int mode;
+
+    g_object_get(cmain, "mouse-mode", &mode, NULL);
+    if (mode == SPICE_MOUSE_MODE_CLIENT)
+        mode = SPICE_MOUSE_MODE_SERVER;
+    else
+        mode = SPICE_MOUSE_MODE_CLIENT;
+
+    spice_main_request_mouse_mode(cmain, mode);
+}
+
 #ifdef USE_USBREDIR
 static void remove_cb(GtkContainer *container, GtkWidget *widget, void *data)
 {
@@ -693,6 +708,12 @@ static const GtkActionEntry entries[] = {
     },{
 #endif
 
+        .name        = "MouseMode",
+        .label       = "Toggle _mouse mode",
+        .callback    = G_CALLBACK(menu_cb_mouse_mode),
+        .accelerator = "<shift>F7",
+
+    },{
         /* Help menu */
         .name        = "About",
         .stock_id    = "help-about",
@@ -818,6 +839,7 @@ static char ui_xml[] =
 "    <menu action='OptionMenu'>\n"
 "      <menuitem action='grab-keyboard'/>\n"
 "      <menuitem action='grab-mouse'/>\n"
+"      <menuitem action='MouseMode'/>\n"
 "      <menuitem action='resize-guest'/>\n"
 "      <menuitem action='scaling'/>\n"
 "      <menuitem action='disable-inputs'/>\n"
