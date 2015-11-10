@@ -35,7 +35,6 @@ spice_display_send_keys;
 spice_display_set_grab_keys;
 spice_file_transfer_task_cancel;
 spice_file_transfer_task_get_filename;
-spice_file_transfer_task_get_finished;
 spice_file_transfer_task_get_progress;
 spice_file_transfer_task_get_type;
 spice_get_option_group;
