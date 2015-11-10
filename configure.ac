@@ -671,10 +671,6 @@ have_dbus=no
 if test "x$enable_dbus" != "xno"; then
   AC_DEFINE([USE_GDBUS], [1], [Define if supporting gdbus])
   have_dbus=yes
-
-  if test "x$enable_dbus" = "xyes" && test "x$have_dbus" = "xno"; then
-    AC_MSG_ERROR([D-Bus support explicitly requested, but some required packages are not available])
-  fi
 fi
 
 SPICE_CHECK_LZ4
