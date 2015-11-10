@@ -633,6 +633,9 @@ static const GtkActionEntry entries[] = {
         .name        = "OptionMenu",
         .label       = "_Options",
     },{
+        .name        = "CompressionMenu",
+        .label       = "_Preferred image compression",
+    },{
         .name        = "HelpMenu",
         .label       = "_Help",
     },{
@@ -753,6 +756,40 @@ static const GtkToggleActionEntry tentries[] = {
     }
 };
 
+static const GtkRadioActionEntry compression_entries[] = {
+    {
+        .name  = "auto-glz",
+        .label = "auto-glz",
+        .value = SPICE_IMAGE_COMPRESSION_AUTO_GLZ,
+    },{
+        .name  = "auto-lz",
+        .label = "auto-lz",
+        .value = SPICE_IMAGE_COMPRESSION_AUTO_LZ,
+    },{
+        .name  = "quic",
+        .label = "quic",
+        .value = SPICE_IMAGE_COMPRESSION_QUIC,
+    },{
+        .name  = "glz",
+        .label = "glz",
+        .value = SPICE_IMAGE_COMPRESSION_GLZ,
+    },{
+        .name  = "lz",
+        .label = "lz",
+        .value = SPICE_IMAGE_COMPRESSION_LZ,
+    },{
+#ifdef USE_LZ4
+        .name  = "lz4",
+        .label = "lz4",
+        .value = SPICE_IMAGE_COMPRESSION_LZ4,
+    },{
+#endif
+        .name  = "off",
+        .label = "off",
+        .value = SPICE_IMAGE_COMPRESSION_OFF,
+    }
+};
+
 static char ui_xml[] =
 "<ui>\n"
 "  <menubar action='MainMenu'>\n"
@@ -788,6 +825,17 @@ static char ui_xml[] =
 "      <menuitem action='disable-inputs'/>\n"
 "      <menuitem action='auto-clipboard'/>\n"
 "      <menuitem action='auto-usbredir'/>\n"
+"      <menu action='CompressionMenu'>\n"
+"        <menuitem action='auto-glz'/>\n"
+"        <menuitem action='auto-lz'/>\n"
+"        <menuitem action='quic'/>\n"
+"        <menuitem action='glz'/>\n"
+"        <menuitem action='lz'/>\n"
+#ifdef USE_LZ4
+"        <menuitem action='lz4'/>\n"
+#endif
+"        <menuitem action='off'/>\n"
+"      </menu>\n"
 "    </menu>\n"
 "    <menu action='HelpMenu'>\n"
 "      <menuitem action='About'/>\n"
@@ -849,6 +897,14 @@ static gboolean configure_event_cb(GtkWidget         *widget,
     return FALSE;
 }
 
+static void compression_cb(GtkRadioAction *action G_GNUC_UNUSED,
+                           GtkRadioAction *current,
+                           gpointer user_data)
+{
+    spice_display_change_preferred_compression(SPICE_CHANNEL(user_data),
+                                               gtk_radio_action_get_current_value(current));
+}
+
 static void
 spice_window_class_init (SpiceWindowClass *klass)
 {
@@ -896,6 +952,13 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     gtk_action_group_add_actions(win->ag, entries, G_N_ELEMENTS(entries), win);
     gtk_action_group_add_toggle_actions(win->ag, tentries,
                                         G_N_ELEMENTS(tentries), win);
+    gtk_action_group_add_radio_actions(win->ag, compression_entries,
+                                       G_N_ELEMENTS(compression_entries), -1,
+                                       G_CALLBACK(compression_cb), win->display_channel);
+    if (!spice_channel_test_capability(win->display_channel, SPICE_DISPLAY_CAP_PREF_COMPRESSION)) {
+        GtkAction *compression_menu_action = gtk_action_group_get_action(win->ag, "CompressionMenu");
+        gtk_action_set_sensitive(compression_menu_action, FALSE);
+    }
     gtk_ui_manager_insert_action_group(win->ui, win->ag, 0);
     gtk_window_add_accel_group(GTK_WINDOW(win->toplevel),
                                gtk_ui_manager_get_accel_group(win->ui));
