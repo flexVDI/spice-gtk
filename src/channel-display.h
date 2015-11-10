@@ -100,6 +100,7 @@ struct _SpiceDisplayChannelClass {
 GType	        spice_display_channel_get_type(void);
 gboolean        spice_display_get_primary(SpiceChannel *channel, guint32 surface_id,
                                           SpiceDisplayPrimary *primary);
+void spice_display_change_preferred_compression(SpiceChannel *channel, gint compression);
 
 G_END_DECLS
 

@@ -159,6 +159,7 @@ SpiceDisplayChannel
 SpiceDisplayChannelClass
 <SUBSECTION>
 spice_display_get_primary
+spice_display_change_preferred_compression
 <SUBSECTION Standard>
 SPICE_DISPLAY_CHANNEL
 SPICE_IS_DISPLAY_CHANNEL

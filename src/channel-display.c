@@ -427,6 +427,38 @@ gboolean spice_display_get_primary(SpiceChannel *channel, guint32 surface_id,
     return TRUE;
 }
 
+/**
+ * spice_display_change_preferred_compression:
+ * @channel: a #SpiceDisplayChannel
+ * @compression: a #SpiceImageCompression
+ *
+ * Tells the spice server to change the preferred image compression
+ * for the @channel.
+ *
+ * Since: 0.31
+ */
+void spice_display_change_preferred_compression(SpiceChannel *channel, gint compression)
+{
+    SpiceMsgOut *out;
+    SpiceMsgcDisplayPreferredCompression pref_comp_msg;
+
+    g_return_if_fail(SPICE_IS_DISPLAY_CHANNEL(channel));
+    g_return_if_fail(compression > SPICE_IMAGE_COMPRESSION_INVALID &&
+                     compression < SPICE_IMAGE_COMPRESSION_ENUM_END);
+
+    if (!spice_channel_test_capability(channel, SPICE_DISPLAY_CAP_PREF_COMPRESSION)) {
+        CHANNEL_DEBUG(channel, "does not have capability to change the preferred compression");
+        return;
+    }
+
+    CHANNEL_DEBUG(channel, "changing preferred compression to %d", compression);
+
+    pref_comp_msg.image_compression = compression;
+    out = spice_msg_out_new(channel, SPICE_MSGC_DISPLAY_PREFERRED_COMPRESSION);
+    out->marshallers->msgc_display_preferred_compression(out->marshaller, &pref_comp_msg);
+    spice_msg_out_send_internal(out);
+}
+
 /* ------------------------------------------------------------------ */
 
 static void image_put(SpiceImageCache *cache, uint64_t id, pixman_image_t *image)
@@ -789,7 +821,6 @@ static void spice_display_channel_up(SpiceChannel *channel)
     SpiceMsgOut *out;
     SpiceSession *s = spice_channel_get_session(channel);
     SpiceMsgcDisplayInit init;
-    SpiceMsgcDisplayPreferredCompression pref_comp_msg;
     int cache_size;
     int glz_window_size;
     SpiceImageCompression preferred_compression = SPICE_IMAGE_COMPRESSION_INVALID;
@@ -812,12 +843,8 @@ static void spice_display_channel_up(SpiceChannel *channel)
     /* notify of existence of this monitor */
     g_coroutine_object_notify(G_OBJECT(channel), "monitors");
 
-    if (spice_channel_test_capability(channel, SPICE_DISPLAY_CAP_PREF_COMPRESSION) &&
-            preferred_compression > SPICE_IMAGE_COMPRESSION_INVALID) {
-        pref_comp_msg.image_compression = preferred_compression;
-        out = spice_msg_out_new(channel, SPICE_MSGC_DISPLAY_PREFERRED_COMPRESSION);
-        out->marshallers->msgc_display_preferred_compression(out->marshaller, &pref_comp_msg);
-        spice_msg_out_send_internal(out);
+    if (preferred_compression != SPICE_IMAGE_COMPRESSION_INVALID) {
+        spice_display_change_preferred_compression(channel, preferred_compression);
     }
 }
 
