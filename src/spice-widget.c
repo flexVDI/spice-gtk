@@ -552,6 +552,7 @@ static void spice_display_init(SpiceDisplay *display)
     GtkWidget *widget = GTK_WIDGET(display);
     SpiceDisplayPrivate *d;
     GtkTargetEntry targets = { "text/uri-list", 0, 0 };
+    G_GNUC_UNUSED GError *err = NULL;
 
     d = display->priv = SPICE_DISPLAY_GET_PRIVATE(display);
 
@@ -583,6 +584,13 @@ static void spice_display_init(SpiceDisplay *display)
 
     d->mouse_cursor = get_blank_cursor();
     d->have_mitshm = true;
+
+#ifdef USE_EPOXY
+    if (!spice_egl_init(display, &err)) {
+        g_critical("egl init failed: %s", err->message);
+        g_clear_error(&err);
+    }
+#endif
 }
 
 static GObject *
@@ -1132,6 +1140,20 @@ static gboolean do_color_convert(SpiceDisplay *display, GdkRectangle *r)
     return true;
 }
 
+static void set_egl_enabled(SpiceDisplay *display, bool enabled)
+{
+#ifdef USE_EPOXY
+    SpiceDisplayPrivate *d = display->priv;
+
+    if (d->egl.enabled != enabled) {
+        d->egl.enabled = enabled;
+        /* even though the function is marked as deprecated, it's the
+         * only way I found to prevent glitches when the window is
+         * resized. */
+        gtk_widget_set_double_buffered(GTK_WIDGET(display), !enabled);
+    }
+#endif
+}
 
 #if GTK_CHECK_VERSION (2, 91, 0)
 static gboolean draw_event(GtkWidget *widget, cairo_t *cr)
@@ -1139,6 +1161,13 @@ static gboolean draw_event(GtkWidget *widget, cairo_t *cr)
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = display->priv;
     g_return_val_if_fail(d != NULL, false);
+
+#ifdef USE_EPOXY
+    if (d->egl.enabled) {
+        spice_egl_update_display(display);
+        return false;
+    }
+#endif
 
     if (d->mark == 0 || d->data == NULL ||
         d->area.width == 0 || d->area.height == 0)
@@ -1760,6 +1789,10 @@ static void size_allocate(GtkWidget *widget, GtkAllocation *conf, gpointer data)
         d->ww = conf->width;
         d->wh = conf->height;
         recalc_geometry(widget);
+#ifdef USE_EPOXY
+        if (d->egl.enabled)
+            spice_egl_resize_display(display, conf->width, conf->height);
+#endif
     }
 
     d->mx = conf->x;
@@ -1786,18 +1819,29 @@ static void realize(GtkWidget *widget)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = display->priv;
+    G_GNUC_UNUSED GError *err = NULL;
 
     GTK_WIDGET_CLASS(spice_display_parent_class)->realize(widget);
 
     d->keycode_map =
         vnc_display_keymap_gdk2xtkbd_table(gtk_widget_get_window(widget),
                                            &d->keycode_maplen);
+
+#ifdef USE_EPOXY
+    if (!spice_egl_realize_display(display, gtk_widget_get_window(GTK_WIDGET(display)), &err)) {
+        g_critical("egl realize failed: %s", err->message);
+        g_clear_error(&err);
+    }
+#endif
     update_image(display);
 }
 
 static void unrealize(GtkWidget *widget)
 {
     spicex_image_destroy(SPICE_DISPLAY(widget));
+#ifdef USE_EPOXY
+    spice_egl_unrealize_display(SPICE_DISPLAY(widget));
+#endif
 
     GTK_WIDGET_CLASS(spice_display_parent_class)->unrealize(widget);
 }
@@ -2206,6 +2250,8 @@ static void invalidate(SpiceChannel *channel,
         .height = h
     };
 
+    set_egl_enabled(display, false);
+
     if (!gtk_widget_get_window(GTK_WIDGET(display)))
         return;
 
@@ -2269,6 +2315,9 @@ static void cursor_set(SpiceCursorChannel *channel,
     } else
         g_warn_if_reached();
 
+#ifdef USE_EPOXY
+    spice_egl_cursor_set(display);
+#endif
     if (d->show_cursor) {
         /* unhide */
         gdk_cursor_unref(d->show_cursor);
@@ -2416,6 +2465,38 @@ static void cursor_reset(SpiceCursorChannel *channel, gpointer data)
     gdk_window_set_cursor(window, NULL);
 }
 
+#ifdef USE_EPOXY
+static void gl_scanout(SpiceDisplay *display)
+{
+    SpiceDisplayPrivate *d = display->priv;
+    const SpiceGlScanout *scanout;
+    GError *err = NULL;
+
+    scanout = spice_display_get_gl_scanout(SPICE_DISPLAY_CHANNEL(d->display));
+    g_return_if_fail(scanout != NULL);
+
+    SPICE_DEBUG("%s: got scanout",  __FUNCTION__);
+    set_egl_enabled(display, true);
+
+    if (!spice_egl_update_scanout(display, scanout, &err)) {
+        g_critical("update scanout failed: %s", err->message);
+        g_clear_error(&err);
+    }
+}
+
+static void gl_draw(SpiceDisplay *display,
+                    guint32 x, guint32 y, guint32 w, guint32 h)
+{
+    SpiceDisplayPrivate *d = display->priv;
+
+    SPICE_DEBUG("%s",  __FUNCTION__);
+    set_egl_enabled(display, true);
+
+    spice_egl_update_display(display);
+    spice_display_gl_draw_done(SPICE_DISPLAY_CHANNEL(d->display));
+}
+#endif
+
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
     SpiceDisplay *display = data;
@@ -2451,6 +2532,13 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
                            primary.stride, primary.shmid, primary.data, display);
             mark(display, primary.marked);
         }
+#ifdef USE_EPOXY
+        spice_g_signal_connect_object(channel, "notify::gl-scanout",
+                                      G_CALLBACK(gl_scanout), display, G_CONNECT_SWAPPED);
+        spice_g_signal_connect_object(channel, "gl-draw",
+                                      G_CALLBACK(gl_draw), display, G_CONNECT_SWAPPED);
+#endif
+
         spice_channel_connect(channel);
         return;
     }
@@ -2634,34 +2722,57 @@ GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d;
     GdkPixbuf *pixbuf;
-    int x, y;
-    guchar *src, *data, *dest;
+    guchar *data;
 
     g_return_val_if_fail(SPICE_IS_DISPLAY(display), NULL);
 
     d = display->priv;
 
     g_return_val_if_fail(d != NULL, NULL);
-    /* TODO: ensure d->data has been exposed? */
-    g_return_val_if_fail(d->data != NULL, NULL);
+    g_return_val_if_fail(d->display != NULL, NULL);
 
-    data = g_malloc0(d->area.width * d->area.height * 3);
-    src = d->data;
-    dest = data;
+#ifdef USE_EPOXY
+    if (d->egl.enabled) {
+        GdkPixbuf *tmp;
 
-    src += d->area.y * d->stride + d->area.x * 4;
-    for (y = 0; y < d->area.height; ++y) {
-        for (x = 0; x < d->area.width; ++x) {
-          dest[0] = src[x * 4 + 2];
-          dest[1] = src[x * 4 + 1];
-          dest[2] = src[x * 4 + 0];
-          dest += 3;
+        data = g_malloc0(d->area.width * d->area.height * 4);
+        glReadBuffer(GL_FRONT);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glReadPixels(0, 0, d->area.width, d->area.height,
+                     GL_RGBA, GL_UNSIGNED_BYTE, data);
+        tmp = gdk_pixbuf_new_from_data(data, GDK_COLORSPACE_RGB, true,
+                                       8, d->area.width, d->area.height,
+                                       d->area.width * 4,
+                                       (GdkPixbufDestroyNotify)g_free, NULL);
+        pixbuf = gdk_pixbuf_flip(tmp, false);
+        g_object_unref(tmp);
+    } else
+#endif
+    {
+        guchar *src, *dest;
+        int x, y;
+
+        /* TODO: ensure d->data has been exposed? */
+        g_return_val_if_fail(d->data != NULL, NULL);
+        data = g_malloc0(d->area.width * d->area.height * 3);
+        src = d->data;
+        dest = data;
+
+        src += d->area.y * d->stride + d->area.x * 4;
+        for (y = 0; y < d->area.height; ++y) {
+            for (x = 0; x < d->area.width; ++x) {
+                dest[0] = src[x * 4 + 2];
+                dest[1] = src[x * 4 + 1];
+                dest[2] = src[x * 4 + 0];
+                dest += 3;
+            }
+            src += d->stride;
         }
-        src += d->stride;
+        pixbuf = gdk_pixbuf_new_from_data(data, GDK_COLORSPACE_RGB, false,
+                                          8, d->area.width, d->area.height,
+                                          d->area.width * 3,
+                                          (GdkPixbufDestroyNotify)g_free, NULL);
     }
 
-    pixbuf = gdk_pixbuf_new_from_data(data, GDK_COLORSPACE_RGB, false,
-                                      8, d->area.width, d->area.height, d->area.width * 3,
-                                      (GdkPixbufDestroyNotify)g_free, NULL);
     return pixbuf;
 }

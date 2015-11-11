@@ -122,6 +122,7 @@ SPICE_GTK_LIBADD_COMMON =		\
 	libspice-client-glib-2.0.la	\
 	$(GTK_LIBS)			\
 	$(CAIRO_LIBS)			\
+	$(EPOXY_LIBS)			\
 	$(LIBM)				\
 	$(NULL)
 
@@ -160,17 +161,25 @@ SPICE_GTK_SOURCES_COMMON +=		\
 endif
 
 if WITH_GTK
+if WITH_EPOXY
+SPICE_GTK_SOURCES_COMMON +=		\
+	spice-widget-egl.c		\
+	$(NULL)
+endif
+
 if HAVE_GTK_2
 libspice_client_gtk_2_0_la_DEPEDENCIES = $(GTK_SYMBOLS_FILE)
 libspice_client_gtk_2_0_la_LDFLAGS = $(SPICE_GTK_LDFLAGS_COMMON)
 libspice_client_gtk_2_0_la_LIBADD = $(SPICE_GTK_LIBADD_COMMON)
 libspice_client_gtk_2_0_la_SOURCES = $(SPICE_GTK_SOURCES_COMMON)
+libspice_client_gtk_2_0_la_CFLAGS = $(EPOXY_CFLAGS)
 nodist_libspice_client_gtk_2_0_la_SOURCES = $(nodist_SPICE_GTK_SOURCES_COMMON)
 else
 libspice_client_gtk_3_0_la_DEPEDENCIES = $(GTK_SYMBOLS_FILE)
 libspice_client_gtk_3_0_la_LDFLAGS = $(SPICE_GTK_LDFLAGS_COMMON)
 libspice_client_gtk_3_0_la_LIBADD = $(SPICE_GTK_LIBADD_COMMON)
 libspice_client_gtk_3_0_la_SOURCES = $(SPICE_GTK_SOURCES_COMMON)
+libspice_client_gtk_3_0_la_CFLAGS = $(EPOXY_CFLAGS)
 nodist_libspice_client_gtk_3_0_la_SOURCES = $(nodist_SPICE_GTK_SOURCES_COMMON)
 endif
 

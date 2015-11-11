@@ -30,6 +30,10 @@
 #include <windows.h>
 #endif
 
+#ifdef USE_EPOXY
+#include <epoxy/egl.h>
+#endif
+
 #include "spice-widget.h"
 #include "spice-common.h"
 #include "spice-gtk-session.h"
@@ -124,6 +128,22 @@ struct _SpiceDisplayPrivate {
     int                     x11_accel_denominator;
     int                     x11_threshold;
 #endif
+#ifdef USE_EPOXY
+    struct {
+        gboolean            enabled;
+        EGLSurface          surface;
+        EGLDisplay          display;
+        EGLConfig           conf;
+        EGLContext          ctx;
+        gint                mproj, attr_pos, attr_tex;
+        guint               vbuf_id;
+        guint               tex_id;
+        guint               tex_pointer_id;
+        guint               prog;
+        EGLImageKHR         image;
+        SpiceGlScanout      scanout;
+    } egl;
+#endif
 };
 
 int      spicex_image_create                 (SpiceDisplay *display);
@@ -135,6 +155,16 @@ void     spicex_expose_event                 (SpiceDisplay *display, GdkEventExp
 #endif
 gboolean spicex_is_scaled                    (SpiceDisplay *display);
 void     spice_display_get_scaling           (SpiceDisplay *display, double *s, int *x, int *y, int *w, int *h);
+gboolean spice_egl_init                      (SpiceDisplay *display, GError **err);
+gboolean spice_egl_realize_display           (SpiceDisplay *display, GdkWindow *win,
+                                              GError **err);
+void     spice_egl_unrealize_display         (SpiceDisplay *display);
+void     spice_egl_update_display            (SpiceDisplay *display);
+void     spice_egl_resize_display            (SpiceDisplay *display, int w, int h);
+gboolean spice_egl_update_scanout            (SpiceDisplay *display,
+                                              const SpiceGlScanout *scanout,
+                                              GError **err);
+void     spice_egl_cursor_set                (SpiceDisplay *display);
 
 G_END_DECLS
 

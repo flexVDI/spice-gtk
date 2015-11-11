@@ -25,6 +25,7 @@
 #if !GTK_CHECK_VERSION (2, 91, 0)
 #define GDK_IS_X11_DISPLAY(D) TRUE
 #define gdk_window_get_display(W) gdk_drawable_get_display(GDK_DRAWABLE(W))
+#define GDK_IS_X11_WINDOW(D) TRUE
 #endif
 
 #if GTK_CHECK_VERSION (2, 91, 0)

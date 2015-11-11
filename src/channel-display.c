@@ -1883,7 +1883,8 @@ static void display_handle_monitors_config(SpiceChannel *channel, SpiceMsgIn *in
 /* coroutine context */
 static void display_handle_gl_scanout_unix(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
+    SpiceDisplayChannel *display = SPICE_DISPLAY_CHANNEL(channel);
+    SpiceDisplayChannelPrivate *c = display->priv;
     SpiceMsgDisplayGlScanoutUnix *scanout = spice_msg_in_parsed(in);
 
     scanout->drm_dma_buf_fd = -1;
