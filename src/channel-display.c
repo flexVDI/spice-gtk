@@ -82,6 +82,7 @@ struct _SpiceDisplayChannelPrivate {
 #ifdef G_OS_WIN32
     HDC dc;
 #endif
+    SpiceGlScanout scanout;
 };
 
 G_DEFINE_TYPE(SpiceDisplayChannel, spice_display_channel, SPICE_TYPE_CHANNEL)
@@ -92,7 +93,8 @@ enum {
     PROP_WIDTH,
     PROP_HEIGHT,
     PROP_MONITORS,
-    PROP_MONITORS_MAX
+    PROP_MONITORS_MAX,
+    PROP_GL_SCANOUT,
 };
 
 enum {
@@ -100,6 +102,7 @@ enum {
     SPICE_DISPLAY_PRIMARY_DESTROY,
     SPICE_DISPLAY_INVALIDATE,
     SPICE_DISPLAY_MARK,
+    SPICE_DISPLAY_GL_DRAW,
 
     SPICE_DISPLAY_LAST_SIGNAL,
 };
@@ -118,8 +121,32 @@ static void spice_display_channel_reset_capabilities(SpiceChannel *channel);
 static void destroy_canvas(display_surface *surface);
 static void _msg_in_unref_func(gpointer data, gpointer user_data);
 static void display_session_mm_time_reset_cb(SpiceSession *session, gpointer data);
+static SpiceGlScanout* spice_gl_scanout_copy(const SpiceGlScanout *scanout);
+
+G_DEFINE_BOXED_TYPE(SpiceGlScanout, spice_gl_scanout,
+                    (GBoxedCopyFunc)spice_gl_scanout_copy,
+                    (GBoxedFreeFunc)spice_gl_scanout_free)
 
 /* ------------------------------------------------------------------ */
+
+static SpiceGlScanout*
+spice_gl_scanout_copy(const SpiceGlScanout *scanout)
+{
+    SpiceGlScanout *so = g_new(SpiceGlScanout, 1);
+
+    *so = *scanout;
+    so->fd = dup(so->fd);
+
+    return so;
+}
+
+void
+spice_gl_scanout_free(SpiceGlScanout *scanout)
+{
+    close(scanout->fd);
+
+    g_free(scanout);
+}
 
 static void spice_display_channel_dispose(GObject *object)
 {
@@ -128,6 +155,11 @@ static void spice_display_channel_dispose(GObject *object)
     if (c->mark_false_event_id != 0) {
         g_source_remove(c->mark_false_event_id);
         c->mark_false_event_id = 0;
+    }
+
+    if (c->scanout.fd >= 0) {
+        close(c->scanout.fd);
+        c->scanout.fd = -1;
     }
 
     if (G_OBJECT_CLASS(spice_display_channel_parent_class)->dispose)
@@ -171,13 +203,13 @@ static void spice_display_channel_constructed(GObject *object)
         G_OBJECT_CLASS(spice_display_channel_parent_class)->constructed(object);
 }
 
-
 static void spice_display_get_property(GObject    *object,
                                        guint       prop_id,
                                        GValue     *value,
                                        GParamSpec *pspec)
 {
-    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(object)->priv;
+    SpiceDisplayChannel *channel = SPICE_DISPLAY_CHANNEL(object);
+    SpiceDisplayChannelPrivate *c = channel->priv;
 
     switch (prop_id) {
     case PROP_WIDTH: {
@@ -194,6 +226,10 @@ static void spice_display_get_property(GObject    *object,
     }
     case PROP_MONITORS_MAX: {
         g_value_set_uint(value, c->monitors_max);
+        break;
+    }
+    case PROP_GL_SCANOUT: {
+        g_value_set_static_boxed(value, spice_display_get_gl_scanout(channel));
         break;
     }
     default:
@@ -292,6 +328,23 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
                            G_PARAM_STATIC_STRINGS));
 
     /**
+     * SpiceDisplayChannel:gl-scanout:
+     * @display: the #SpiceDisplayChannel that emitted the signal
+     *
+     * The last #SpiceGlScanout received.
+     *
+     * Since: 0.31
+     */
+    g_object_class_install_property
+        (gobject_class, PROP_GL_SCANOUT,
+         g_param_spec_boxed("gl-scanout",
+                            "GL scanout",
+                            "GL scanout",
+                            SPICE_TYPE_GL_SCANOUT,
+                            G_PARAM_READABLE |
+                            G_PARAM_STATIC_STRINGS));
+
+    /**
      * SpiceDisplayChannel::display-primary-create:
      * @display: the #SpiceDisplayChannel that emitted the signal
      * @format: %SPICE_SURFACE_FMT_32_xRGB or %SPICE_SURFACE_FMT_16_555;
@@ -382,6 +435,31 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
                      1,
                      G_TYPE_INT);
 
+    /**
+     * SpiceDisplayChannel::gl-draw:
+     * @display: the #SpiceDisplayChannel that emitted the signal
+     * @x: x position
+     * @y: y position
+     * @width: width
+     * @height: height
+     *
+     * The #SpiceDisplayChannel::draw signal is emitted when the
+     * rectangular region x/y/w/h of the GL scanout is updated and
+     * must be drawn. When the draw is finished, you must call
+     * spice_display_gl_draw_done() in order to release the GL
+     * resources.
+     *
+     * Since: 0.31
+     **/
+    signals[SPICE_DISPLAY_GL_DRAW] =
+        g_signal_new("gl-draw",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     0, 0, NULL, NULL,
+                     g_cclosure_user_marshal_VOID__UINT_UINT_UINT_UINT,
+                     G_TYPE_NONE,
+                     4,
+                     G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
+
     g_type_class_add_private(klass, sizeof(SpiceDisplayChannelPrivate));
 
     sw_canvas_init();
@@ -457,6 +535,20 @@ void spice_display_change_preferred_compression(SpiceChannel *channel, gint comp
     out = spice_msg_out_new(channel, SPICE_MSGC_DISPLAY_PREFERRED_COMPRESSION);
     out->marshallers->msgc_display_preferred_compression(out->marshaller, &pref_comp_msg);
     spice_msg_out_send_internal(out);
+}
+
+/**
+ * spice_display_get_gl_scanout:
+ * @channel: a #SpiceDisplayChannel
+ *
+ * Returns: the current GL scanout
+ **/
+const SpiceGlScanout *
+spice_display_get_gl_scanout(SpiceDisplayChannel *channel)
+{
+    g_return_val_if_fail(SPICE_IS_DISPLAY_CHANNEL(channel), NULL);
+
+    return &channel->priv->scanout;
 }
 
 /* ------------------------------------------------------------------ */
@@ -628,6 +720,9 @@ static void spice_display_channel_reset_capabilities(SpiceChannel *channel)
     if (SPICE_DISPLAY_CHANNEL(channel)->priv->enable_adaptive_streaming) {
         spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_STREAM_REPORT);
     }
+#ifdef G_OS_UNIX
+    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_GL_SCANOUT);
+#endif
 }
 
 static void destroy_surface(gpointer data)
@@ -652,6 +747,7 @@ static void spice_display_channel_init(SpiceDisplayChannel *channel)
     c->dc = create_compatible_dc();
 #endif
     c->monitors_max = 1;
+    c->scanout.fd = -1;
 
     if (g_getenv("SPICE_DISABLE_ADAPTIVE_STREAMING")) {
         SPICE_DEBUG("adaptive video disabled");
@@ -1782,6 +1878,70 @@ static void display_handle_monitors_config(SpiceChannel *channel, SpiceMsgIn *in
     g_coroutine_object_notify(G_OBJECT(channel), "monitors");
 }
 
+
+#ifdef G_OS_UNIX
+/* coroutine context */
+static void display_handle_gl_scanout_unix(SpiceChannel *channel, SpiceMsgIn *in)
+{
+    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
+    SpiceMsgDisplayGlScanoutUnix *scanout = spice_msg_in_parsed(in);
+
+    scanout->drm_dma_buf_fd = -1;
+    if (scanout->drm_fourcc_format != 0) {
+        scanout->drm_dma_buf_fd = spice_channel_unix_read_fd(channel);
+        CHANNEL_DEBUG(channel, "gl scanout fd: %d", scanout->drm_dma_buf_fd);
+    }
+
+    c->scanout.y0top = scanout->flags & SPICE_GL_SCANOUT_FLAGS_Y0TOP;
+    if (c->scanout.fd >= 0)
+        close(c->scanout.fd);
+    c->scanout.fd = scanout->drm_dma_buf_fd;
+    c->scanout.width = scanout->width;
+    c->scanout.height = scanout->height;
+    c->scanout.stride = scanout->stride;
+    c->scanout.format = scanout->drm_fourcc_format;
+
+    g_coroutine_object_notify(G_OBJECT(channel), "gl-scanout");
+}
+#endif
+
+/* coroutine context */
+static void display_handle_gl_draw(SpiceChannel *channel, SpiceMsgIn *in)
+{
+    SpiceMsgDisplayGlDraw *draw = spice_msg_in_parsed(in);
+
+    CHANNEL_DEBUG(channel, "gl draw %dx%d+%d+%d",
+                  draw->w, draw->h, draw->x, draw->y);
+
+    g_coroutine_signal_emit(channel, signals[SPICE_DISPLAY_GL_DRAW], 0,
+                            draw->x, draw->y,
+                            draw->w, draw->h);
+}
+
+/**
+ * spice_display_gl_draw_done:
+ * @channel: a #SpiceDisplayChannel
+ *
+ * After a SpiceDisplayChannel::gl-draw is emitted, the client should
+ * draw the current display with the current GL scanout, and must
+ * release the GL resource with a call to spice_display_gl_draw_done()
+ * (failing to do so for each gl-draw may result in a frozen display).
+ *
+ * Since: 0.31
+ **/
+void spice_display_gl_draw_done(SpiceDisplayChannel *display)
+{
+    SpiceChannel *channel;
+    SpiceMsgOut *out;
+
+    g_return_if_fail(SPICE_IS_DISPLAY_CHANNEL(display));
+    channel = SPICE_CHANNEL(display);
+
+    out = spice_msg_out_new(channel, SPICE_MSGC_DISPLAY_GL_DRAW_DONE);
+    out->marshallers->msgc_display_gl_draw_done(out->marshaller, NULL);
+    spice_msg_out_send_internal(out);
+}
+
 static void channel_set_handlers(SpiceChannelClass *klass)
 {
     static const spice_msg_handler handlers[] = {
@@ -1820,6 +1980,10 @@ static void channel_set_handlers(SpiceChannelClass *klass)
         [ SPICE_MSG_DISPLAY_SURFACE_DESTROY ]    = display_handle_surface_destroy,
 
         [ SPICE_MSG_DISPLAY_MONITORS_CONFIG ]    = display_handle_monitors_config,
+#ifdef G_OS_UNIX
+        [ SPICE_MSG_DISPLAY_GL_SCANOUT_UNIX ]    = display_handle_gl_scanout_unix,
+#endif
+        [ SPICE_MSG_DISPLAY_GL_DRAW ]            = display_handle_gl_draw,
     };
 
     spice_channel_set_handlers(klass, handlers, G_N_ELEMENTS(handlers));

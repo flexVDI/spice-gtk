@@ -37,6 +37,18 @@ typedef struct _SpiceDisplayChannel SpiceDisplayChannel;
 typedef struct _SpiceDisplayChannelClass SpiceDisplayChannelClass;
 typedef struct _SpiceDisplayChannelPrivate SpiceDisplayChannelPrivate;
 
+#define SPICE_TYPE_GL_SCANOUT (spice_gl_scanout_get_type ())
+
+typedef struct _SpiceGlScanout SpiceGlScanout;
+struct _SpiceGlScanout {
+    gint fd;
+    guint32 width;
+    guint32 height;
+    guint32 stride;
+    guint32 format;
+    gboolean y0top;
+};
+
 typedef struct _SpiceDisplayMonitorConfig SpiceDisplayMonitorConfig;
 struct _SpiceDisplayMonitorConfig {
     guint id;
@@ -100,7 +112,14 @@ struct _SpiceDisplayChannelClass {
 GType	        spice_display_channel_get_type(void);
 gboolean        spice_display_get_primary(SpiceChannel *channel, guint32 surface_id,
                                           SpiceDisplayPrimary *primary);
+
 void spice_display_change_preferred_compression(SpiceChannel *channel, gint compression);
+
+GType           spice_gl_scanout_get_type     (void) G_GNUC_CONST;
+void            spice_gl_scanout_free         (SpiceGlScanout *scanout);
+
+const SpiceGlScanout* spice_display_get_gl_scanout(SpiceDisplayChannel *channel);
+void spice_display_gl_draw_done(SpiceDisplayChannel *channel);
 
 G_END_DECLS
 

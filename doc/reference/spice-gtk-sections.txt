@@ -158,6 +158,7 @@ SpiceAudioPrivate
 SpiceDisplayChannel
 SpiceDisplayChannelClass
 <SUBSECTION>
+spice_display_get_gl_scanout
 spice_display_get_primary
 spice_display_change_preferred_compression
 <SUBSECTION Standard>
