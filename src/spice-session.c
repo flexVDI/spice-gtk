@@ -557,7 +557,6 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
 
 end:
     /* parsed ok -> apply */
-    g_free(uri);
     g_free(unescaped_path);
     g_free(s->unix_path);
     g_free(s->host);
@@ -566,6 +565,7 @@ end:
     g_free(s->username);
     g_free(s->password);
     s->unix_path = g_strdup(path);
+    g_free(uri);
     s->host = host;
     s->port = port;
     s->tls_port = tls_port;
