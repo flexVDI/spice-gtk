@@ -1922,7 +1922,8 @@ static void file_xfer_read_cb(GObject *source_object,
     } else if (error) {
         VDAgentFileXferStatusMessage msg = {
             .id = self->priv->id,
-            .result = VD_AGENT_FILE_XFER_STATUS_ERROR,
+            .result = error->code == G_IO_ERROR_CANCELLED ?
+                    VD_AGENT_FILE_XFER_STATUS_CANCELLED : VD_AGENT_FILE_XFER_STATUS_ERROR,
         };
         agent_msg_queue_many(self->priv->channel, VD_AGENT_FILE_XFER_STATUS,
                              &msg, sizeof(msg), NULL);
