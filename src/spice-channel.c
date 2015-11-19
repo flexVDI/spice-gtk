@@ -110,7 +110,8 @@ static void spice_channel_init(SpiceChannel *channel)
     c->out_serial = 1;
     c->in_serial = 1;
     c->fd = -1;
-    c->auth_needs_username_and_password = FALSE;
+    c->auth_needs_username = FALSE;
+    c->auth_needs_password = FALSE;
     strcpy(c->name, "?");
     c->caps = g_array_new(FALSE, TRUE, sizeof(guint32));
     c->common_caps = g_array_new(FALSE, TRUE, sizeof(guint32));
@@ -1019,11 +1020,21 @@ static void spice_channel_failed_authentication(SpiceChannel *channel,
 {
     SpiceChannelPrivate *c = channel->priv;
 
-    if (c->auth_needs_username_and_password)
+    if (c->auth_needs_username && c->auth_needs_password)
         g_set_error_literal(&c->error,
                             SPICE_CLIENT_ERROR,
                             SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD_AND_USERNAME,
                             _("Authentication failed: password and username are required"));
+    else if (c->auth_needs_username)
+        g_set_error_literal(&c->error,
+                            SPICE_CLIENT_ERROR,
+                            SPICE_CLIENT_ERROR_AUTH_NEEDS_USERNAME,
+                            _("Authentication failed: username is required"));
+    else if (c->auth_needs_password)
+        g_set_error_literal(&c->error,
+                            SPICE_CLIENT_ERROR,
+                            SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD,
+                            _("Authentication failed: password is required"));
     else if (invalidPassword)
         g_set_error_literal(&c->error,
                             SPICE_CLIENT_ERROR,
@@ -1287,7 +1298,18 @@ spice_channel_gather_sasl_credentials(SpiceChannel *channel,
         switch (interact[ninteract].id) {
         case SASL_CB_AUTHNAME:
         case SASL_CB_USER:
-            c->auth_needs_username_and_password = TRUE;
+            c->auth_needs_username = TRUE;
+            break;
+        case SASL_CB_PASS:
+            c->auth_needs_password = TRUE;
+            break;
+        }
+    }
+
+    for (ninteract = 0 ; interact[ninteract].id != 0 ; ninteract++) {
+        switch (interact[ninteract].id) {
+        case SASL_CB_AUTHNAME:
+        case SASL_CB_USER:
             if (spice_session_get_username(c->session) == NULL)
                 return FALSE;
 
@@ -2626,7 +2648,8 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
 
     c->fd = -1;
 
-    c->auth_needs_username_and_password = FALSE;
+    c->auth_needs_username = FALSE;
+    c->auth_needs_password = FALSE;
 
     g_free(c->peer_msg);
     c->peer_msg = NULL;

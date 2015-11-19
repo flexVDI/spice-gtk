@@ -143,7 +143,8 @@ struct _SpiceChannelPrivate {
     GSList                      *flushing;
 
     gboolean                    disable_channel_msg;
-    gboolean                    auth_needs_username_and_password;
+    gboolean                    auth_needs_username;
+    gboolean                    auth_needs_password;
     GError                      *error;
 };
 
