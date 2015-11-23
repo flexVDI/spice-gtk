@@ -97,7 +97,7 @@ SPICE_COMMON_CPPFLAGS =						\
 	$(GOBJECT2_CFLAGS)					\
 	$(SSL_CFLAGS)						\
 	$(SASL_CFLAGS)						\
-	$(GST_CFLAGS)						\
+	$(GSTAUDIO_CFLAGS)					\
 	$(SMARTCARD_CFLAGS)					\
 	$(USBREDIR_CFLAGS)					\
 	$(GUDEV_CFLAGS)						\
@@ -210,7 +210,7 @@ libspice_client_glib_2_0_la_LIBADD =					\
 	$(PIXMAN_LIBS)							\
 	$(SSL_LIBS)							\
 	$(PULSE_LIBS)							\
-	$(GST_LIBS)							\
+	$(GSTAUDIO_LIBS)						\
 	$(SASL_LIBS)							\
 	$(SMARTCARD_LIBS)						\
 	$(USBREDIR_LIBS)						\

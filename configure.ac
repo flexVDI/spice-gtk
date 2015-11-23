@@ -298,7 +298,7 @@ AC_ARG_WITH([audio],
 
 case "$with_audio" in
   gstreamer|pulse|auto*)
-    PKG_CHECK_MODULES(GST, gstreamer-1.0 gstreamer-base-1.0 gstreamer-app-1.0 gstreamer-audio-1.0, [have_gst=yes], [have_gst=no])
+    PKG_CHECK_MODULES(GSTAUDIO, gstreamer-1.0 gstreamer-base-1.0 gstreamer-app-1.0 gstreamer-audio-1.0, [have_gstaudio=yes], [have_gstaudio=no])
     PKG_CHECK_MODULES(PULSE, libpulse libpulse-mainloop-glib, [have_pulse=yes], [have_pulse=no])
     ;;
   no*)
@@ -309,7 +309,7 @@ esac
 AS_IF([test "x$with_audio" = "xauto" && test "x$have_pulse" = "xyes"],
       [with_audio=pulse])
 
-AS_IF([test "x$with_audio" = "xauto" && test "x$have_gst" = "xyes"],
+AS_IF([test "x$with_audio" = "xauto" && test "x$have_gstaudio" = "xyes"],
       [with_audio=gstreamer])
 
 AS_IF([test "x$with_audio" = "xauto"],
@@ -326,14 +326,14 @@ AC_SUBST(PULSE_CFLAGS)
 AC_SUBST(PULSE_LIBS)
 
 AS_IF([test "x$with_audio" = "xgstreamer"],
-      [AS_IF([test "x$have_gst" = "xyes"],
-             [AC_DEFINE([WITH_GSTAUDIO], 1, [Have GStreamer 1.0?])],
-             [AC_MSG_ERROR([GStreamer 1.0 requested but not found])
+      [AS_IF([test "x$have_gstaudio" = "xyes"],
+             [AC_DEFINE([WITH_GSTAUDIO], 1, [Have GStreamer 1.0 audio?])],
+             [AC_MSG_ERROR([GStreamer 1.0 audio requested but not found])
       ])
 ])
-AM_CONDITIONAL([WITH_GSTAUDIO], [test "x$have_gst" = "xyes"])
-AC_SUBST(GST_CFLAGS)
-AC_SUBST(GST_LIBS)
+AM_CONDITIONAL([WITH_GSTAUDIO], [test "x$have_gstaudio" = "xyes"])
+AC_SUBST(GSTAUDIO_CFLAGS)
+AC_SUBST(GSTAUDIO_LIBS)
 
 AC_CHECK_LIB(jpeg, jpeg_destroy_decompress,
     AC_MSG_CHECKING([for jpeglib.h])
@@ -695,7 +695,7 @@ SPICE_CFLAGS="$SPICE_CFLAGS $WARN_CFLAGS"
 
 AC_SUBST(SPICE_CFLAGS)
 
-SPICE_GLIB_CFLAGS="$PIXMAN_CFLAGS $PULSE_CFLAGS $GST_CFLAGS $GLIB2_CFLAGS $GIO_CFLAGS $GOBJECT2_CFLAGS $SSL_CFLAGS $SASL_CFLAGS"
+SPICE_GLIB_CFLAGS="$PIXMAN_CFLAGS $PULSE_CFLAGS $GSTAUDIO_CFLAGS $GLIB2_CFLAGS $GIO_CFLAGS $GOBJECT2_CFLAGS $SSL_CFLAGS $SASL_CFLAGS"
 SPICE_GTK_CFLAGS="$SPICE_GLIB_CFLAGS $GTK_CFLAGS "
 
 AC_SUBST(SPICE_GLIB_CFLAGS)
