@@ -45,13 +45,16 @@ EXTRA_DIST =					\
 
 DISTCLEANFILES = spice-version.h
 
-bin_PROGRAMS = spicy-stats spicy-screenshot
+bin_PROGRAMS =
+if WITH_PROGRAMS
+bin_PROGRAMS += spicy-stats spicy-screenshot
 if WITH_GTK
 bin_PROGRAMS += spicy
 endif
 if WITH_POLKIT
 acldir = $(ACL_HELPER_DIR)
 acl_PROGRAMS = spice-client-glib-usb-acl-helper
+endif
 endif
 
 lib_LTLIBRARIES = libspice-client-glib-2.0.la
