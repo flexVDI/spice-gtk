@@ -671,6 +671,8 @@ have_dbus=no
 if test "x$enable_dbus" != "xno"; then
   AC_DEFINE([USE_GDBUS], [1], [Define if supporting gdbus])
   have_dbus=yes
+else
+  SPICE_WARNING([No D-Bus support, desktop integration and USB redirection may not work properly])
 fi
 
 SPICE_CHECK_LZ4
@@ -750,6 +752,4 @@ AC_MSG_NOTICE([
         Now type 'make' to build $PACKAGE
 
 ])
-if test "x$have_dbus" = "xno"; then
-  AC_MSG_WARN([No D-Bus support, desktop integration and USB redirection may not work properly])
-fi
+SPICE_PRINT_MESSAGES
