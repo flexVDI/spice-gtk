@@ -13,7 +13,7 @@ CFLAGS += -DWITH_FLEXVDI $(spicy_CPPFLAGS)
 CFLAGS += -I$(top_builddir) -I$(top_srcdir)/gtk -I$(top_srcdir)/spice-common
 
 CFLAGS += $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --cflags $(flexvdi_LIBRARIES))
-LDFLAGS += $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --libs $(flexvdi_LIBRARIES)) -lcups
+LDFLAGS += $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --libs $(flexvdi_LIBRARIES))
 
 flexvdi/%.o: $(top_srcdir)/gtk/%.c $(flexvdi_HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
