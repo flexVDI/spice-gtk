@@ -717,7 +717,6 @@ spice-client-gtk-2.0.pc
 spice-client-gtk-3.0.pc
 spice-controller.pc
 data/Makefile
-data/spicy.nsis
 po/Makefile.in
 src/Makefile
 src/spice-version.h
