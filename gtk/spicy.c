@@ -31,6 +31,7 @@
 
 #ifdef WITH_FLEXVDI
 #include <flexvdi-port.h>
+#include "flexvdi_client_icon.h"
 #endif
 
 #include "glib-compat.h"
@@ -130,7 +131,9 @@ static gboolean kiosk_mode = false;
 static GMainLoop     *mainloop = NULL;
 static int           connections = 0;
 static GKeyFile      *keyfile = NULL;
+#ifndef WITH_FLEXVDI
 static SpicePortChannel*stdin_port = NULL;
+#endif
 
 /* ------------------------------------------------------------------ */
 
@@ -1008,7 +1011,7 @@ static char ui_xml[] =
 "      <menuitem action='CAF11'/>\n"
 "      <menuitem action='CAF12'/>\n"
 "    </menu>\n"
-#ifdef WITH_FLEXVDI
+#if defined(WITH_FLEXVDI) && defined(ENABLE_PRINTING)
 "    <menu action='SharePrinterMenu'/>\n"
 #endif
 "    <menu action='OptionMenu'>\n"
@@ -1068,7 +1071,7 @@ static char ui_xml[] =
 "      <menuitem action='CAF11'/>\n"
 "      <menuitem action='CAF12'/>\n"
 "    </menu>\n"
-#ifdef WITH_FLEXVDI
+#if defined(WITH_FLEXVDI) && defined(ENABLE_PRINTING)
 "    <menu action='SharePrinterMenu'/>\n"
 #endif
 "    <menu action='OptionMenu'>\n"
@@ -1197,7 +1200,7 @@ spice_window_init (SpiceWindow *self)
 {
 }
 
-#ifdef WITH_FLEXVDI
+#if defined(WITH_FLEXVDI) && defined(ENABLE_PRINTING)
 void printer_toggled(GtkWidget *widget, gpointer win)
 {
     const char * printer = gtk_menu_item_get_label(GTK_MENU_ITEM(widget));
@@ -1273,6 +1276,11 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
                      G_CALLBACK(window_state_cb), win);
     g_signal_connect(G_OBJECT(win->toplevel), "delete-event",
                      G_CALLBACK(delete_cb), win);
+
+#ifdef WITH_FLEXVDI
+    gtk_window_set_icon(GTK_WINDOW(win->toplevel),
+                        gdk_pixbuf_new_from_inline(-1, flexvdi_icon_data, FALSE, NULL));
+#endif
 
     /* menu + toolbar */
     win->ui = gtk_ui_manager_new();
@@ -1473,7 +1481,7 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
 
     gtk_widget_grab_focus(win->spice);
 
-#ifdef WITH_FLEXVDI
+#if defined(WITH_FLEXVDI) && defined(ENABLE_PRINTING)
     // Printers menu
     GtkWidget * sPMenu = gtk_ui_manager_get_widget(win->ui, "/MainMenu/SharePrinterMenu");
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(sPMenu), get_printers_menu(win));
@@ -1748,6 +1756,7 @@ static void stream_report(SpiceChannel *display, GParamSpec *pspec,
     update_status(conn);
 }
 
+#ifndef WITH_FLEXVDI
 static void port_write_cb(GObject *source_object,
                           GAsyncResult *res,
                           gpointer user_data)
@@ -1794,7 +1803,9 @@ static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
 
     return TRUE;
 }
+#endif
 
+#ifndef WITH_FLEXVDI
 static void port_opened(SpiceChannel *channel, GParamSpec *pspec,
                         spice_connection *conn)
 {
@@ -1841,6 +1852,7 @@ static void port_data(SpicePortChannel *port,
         g_warning("port write failed result %d/%d errno %d", r, size, errno);
     }
 }
+#endif
 
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
@@ -1893,10 +1905,12 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     }
 
     if (SPICE_IS_PORT_CHANNEL(channel)) {
+#ifndef WITH_FLEXVDI
         g_signal_connect(channel, "notify::port-opened",
                          G_CALLBACK(port_opened), conn);
         g_signal_connect(channel, "port-data",
                          G_CALLBACK(port_data), conn);
+#endif
         spice_channel_connect(channel);
     }
 }
@@ -1927,10 +1941,12 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
         update_auto_usbredir_sensitive(conn);
     }
 
+#ifndef WITH_FLEXVDI
     if (SPICE_IS_PORT_CHANNEL(channel)) {
         if (SPICE_PORT_CHANNEL(channel) == stdin_port)
             stdin_port = NULL;
     }
+#endif
 
     conn->channels--;
     if (conn->channels > 0) {
@@ -2092,6 +2108,7 @@ static void usb_connect_failed(GObject               *object,
     gtk_widget_destroy(dialog);
 }
 
+#ifndef WITH_FLEXVDI
 static void setup_terminal(gboolean reset)
 {
     int stdinfd = fileno(stdin);
@@ -2125,6 +2142,7 @@ static void watch_stdin(void)
     g_io_channel_set_flags(gin, G_IO_FLAG_NONBLOCK, NULL);
     g_io_add_watch(gin, G_IO_IN|G_IO_ERR|G_IO_HUP|G_IO_NVAL, input_cb, NULL);
 }
+#endif
 
 int main(int argc, char *argv[])
 {
@@ -2231,7 +2249,9 @@ int main(int argc, char *argv[])
     g_free(ws_port);
     g_free(unix_path);
 
+#ifndef WITH_FLEXVDI
     watch_stdin();
+#endif
 
     connection_connect(conn);
     if (connections > 0)
@@ -2251,6 +2271,8 @@ int main(int argc, char *argv[])
 
     g_free(spicy_title);
 
+#ifndef WITH_FLEXVDI
     setup_terminal(true);
+#endif
     return 0;
 }
