@@ -17,10 +17,6 @@
 */
 #include "config.h"
 
-#ifdef USE_SMARTCARD
-#include <vreader.h>
-#endif
-
 #include "spice-client.h"
 #include "spice-common.h"
 

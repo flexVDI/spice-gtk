@@ -24,11 +24,6 @@
 #include <termios.h>
 #endif
 
-#ifdef USE_SMARTCARD
-#include <vreader.h>
-#include "smartcard-manager.h"
-#endif
-
 #include "glib-compat.h"
 #include "spice-widget.h"
 #include "spice-gtk-session.h"
