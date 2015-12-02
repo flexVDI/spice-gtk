@@ -324,7 +324,11 @@ AC_ARG_ENABLE([gstaudio],
   [enable_gstaudio="auto"])
 AS_IF([test "x$enable_gstaudio" != "xno"],
       [SPICE_CHECK_GSTREAMER(GSTAUDIO, 1.0, [gstreamer-1.0 gstreamer-base-1.0 gstreamer-app-1.0 gstreamer-audio-1.0],
-         [],
+         [SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-base 1.0], [audioconvert audioresample appsink])
+          SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-good 1.0], [autoaudiosrc])
+          AS_IF([test x"$missing_gstreamer_elements" = "xyes"],
+                SPICE_WARNING([The GStreamer 1.0 audio backend can be built but may not work.]))
+         ],
          [AS_IF([test "x$enable_gstaudio" = "xyes"],
                 AC_MSG_ERROR([GStreamer 1.0 audio requested but not found]))
          ])
