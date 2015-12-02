@@ -42,10 +42,10 @@
 #include "spice-channel-priv.h"
 #include "spice-audio-priv.h"
 
-#ifdef WITH_PULSE
+#ifdef HAVE_PULSE
 #include "spice-pulse.h"
 #endif
-#if defined(WITH_GSTAUDIO)
+#ifdef HAVE_GST_AUDIO
 #include "spice-gstaudio.h"
 #endif
 
@@ -261,11 +261,12 @@ SpiceAudio *spice_audio_new(SpiceSession *session, GMainContext *context,
     if (name == NULL)
         name = g_get_application_name();
 
-#ifdef WITH_PULSE
+#ifdef HAVE_PULSE
     self = SPICE_AUDIO(spice_pulse_new(session, context, name));
 #endif
-#if defined(WITH_GSTAUDIO)
-    self = SPICE_AUDIO(spice_gstaudio_new(session, context, name));
+#ifdef HAVE_GST_AUDIO
+    if (!self)
+        self = SPICE_AUDIO(spice_gstaudio_new(session, context, name));
 #endif
     if (!self)
         return NULL;

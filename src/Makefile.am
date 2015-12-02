@@ -330,14 +330,14 @@ dist_libspice_client_glibinclude_DATA =	\
 	spice-channel-enums.h		\
 	$(NULL)
 
-if WITH_PULSE
+if HAVE_PULSE
 libspice_client_glib_2_0_la_SOURCES +=	\
 	spice-pulse.c			\
 	spice-pulse.h			\
 	$(NULL)
 endif
 
-if WITH_GSTAUDIO
+if HAVE_GSTAUDIO
 libspice_client_glib_2_0_la_SOURCES +=	\
 	spice-gstaudio.c		\
 	spice-gstaudio.h		\

@@ -292,48 +292,52 @@ AS_IF([test "x$have_phodav" = "xyes"],
 AM_CONDITIONAL([WITH_PHODAV], [test "x$have_phodav" = "xyes"])
 
 AC_ARG_WITH([audio],
-  AS_HELP_STRING([--with-audio=@<:@gstreamer/pulse/auto/no@:>@], [Select audio backend @<:@default=auto@:>@]),
+  AS_HELP_STRING([--with-audio=@<:@gstreamer/pulse/auto/no@:>@], [For legacy compatibility only]),
+  [SPICE_WARNING([--with-audio is deprecated. Use --enable-pulse and/or --enable-gstaudio instead])
+   case "$with_audio" in
+   pulse)     enable_pulse="yes"; enable_gstaudio="no" ;;
+   gstreamer) enable_pulse="no";  enable_gstaudio="yes" ;;
+   no)        enable_pulse="no";  enable_gstaudio="no" ;;
+   esac
+])
+
+AC_ARG_ENABLE([pulse],
+  AS_HELP_STRING([--enable-pulse=@<:@yes/auto/no@:>@], [Enable the PulseAudio backend @<:@default=auto@:>@]),
   [],
-  [with_audio="auto"])
-
-case "$with_audio" in
-  gstreamer|pulse|auto*)
-    PKG_CHECK_MODULES(GSTAUDIO, gstreamer-1.0 gstreamer-base-1.0 gstreamer-app-1.0 gstreamer-audio-1.0, [have_gstaudio=yes], [have_gstaudio=no])
-    PKG_CHECK_MODULES(PULSE, libpulse libpulse-mainloop-glib, [have_pulse=yes], [have_pulse=no])
-    ;;
-  no*)
-    ;;
-  *) AC_MSG_ERROR(Unsupported audio backend)
-esac
-
-AS_IF([test "x$with_audio" = "xauto" && test "x$have_pulse" = "xyes"],
-      [with_audio=pulse])
-
-AS_IF([test "x$with_audio" = "xauto" && test "x$have_gstaudio" = "xyes"],
-      [with_audio=gstreamer])
-
-AS_IF([test "x$with_audio" = "xauto"],
-      [with_audio=no])
-
-AS_IF([test "x$with_audio" = "xpulse"],
-      [AS_IF([test "x$have_pulse" = "xyes"],
-             [AC_DEFINE([WITH_PULSE], 1, [Have pulseaudio?])],
-             [AC_MSG_ERROR([PulseAudio requested but not found])
+  [enable_pulse="auto"])
+AS_IF([test "x$enable_pulse" != "xno"],
+      [PKG_CHECK_MODULES(PULSE, [libpulse libpulse-mainloop-glib],
+         [AC_DEFINE([HAVE_PULSE], 1, [Have PulseAudio support?])
+          enable_pulse="yes"],
+         [AS_IF([test "x$enable_pulse" = "xyes"],
+                AC_MSG_ERROR([PulseAudio requested but not found]))
+          enable_pulse="no"
       ])
 ])
-AM_CONDITIONAL([WITH_PULSE], [test "x$have_pulse" = "xyes"])
+AM_CONDITIONAL([HAVE_PULSE], [test "x$enable_pulse" = "xyes"])
 AC_SUBST(PULSE_CFLAGS)
 AC_SUBST(PULSE_LIBS)
 
-AS_IF([test "x$with_audio" = "xgstreamer"],
-      [AS_IF([test "x$have_gstaudio" = "xyes"],
-             [AC_DEFINE([WITH_GSTAUDIO], 1, [Have GStreamer 1.0 audio?])],
-             [AC_MSG_ERROR([GStreamer 1.0 audio requested but not found])
+AC_ARG_ENABLE([gstaudio],
+  AS_HELP_STRING([--enable-gstaudio=@<:@yes/auto/no@:>@], [Enable the GStreamer 1.0 audio backend @<:@default=auto@:>@]),
+  [],
+  [enable_gstaudio="auto"])
+AS_IF([test "x$enable_gstaudio" != "xno"],
+      [PKG_CHECK_MODULES(GSTAUDIO, [gstreamer-1.0 gstreamer-base-1.0 gstreamer-app-1.0 gstreamer-audio-1.0],
+         [AC_DEFINE([HAVE_GSTAUDIO], 1, [Have GStreamer 1.0 audio support?])
+          enable_gstaudio="yes"],
+         [AS_IF([test "x$enable_gstaudio" = "xyes"],
+                AC_MSG_ERROR([GStreamer 1.0 audio requested but not found]))
+          enable_gstaudio="no"
       ])
 ])
-AM_CONDITIONAL([WITH_GSTAUDIO], [test "x$have_gstaudio" = "xyes"])
+AM_CONDITIONAL([HAVE_GSTAUDIO], [test "x$enable_gstaudio" = "xyes"])
 AC_SUBST(GSTAUDIO_CFLAGS)
 AC_SUBST(GSTAUDIO_LIBS)
+
+AS_IF([test "x$enable_pulse$enable_gstaudio" = "xnono"],
+      [SPICE_WARNING([No PulseAudio or GStreamer 1.0 audio decoder, audio will not be streamed])
+])
 
 AC_CHECK_LIB(jpeg, jpeg_destroy_decompress,
     AC_MSG_CHECKING([for jpeglib.h])
@@ -740,7 +744,8 @@ AC_MSG_NOTICE([
 
         Gtk:                      ${with_gtk}
         Coroutine:                ${with_coroutine}
-        Audio:                    ${with_audio}
+        PulseAudio:               ${enable_pulse}
+        GStreamer Audio:          ${enable_gstaudio}
         SASL support:             ${enable_sasl}
         Smartcard support:        ${have_smartcard}
         USB redirection support:  ${have_usbredir} ${with_usbredir_hotplug}
