@@ -323,19 +323,16 @@ AC_ARG_ENABLE([gstaudio],
   [],
   [enable_gstaudio="auto"])
 AS_IF([test "x$enable_gstaudio" != "xno"],
-      [PKG_CHECK_MODULES(GSTAUDIO, [gstreamer-1.0 gstreamer-base-1.0 gstreamer-app-1.0 gstreamer-audio-1.0],
-         [AC_DEFINE([HAVE_GSTAUDIO], 1, [Have GStreamer 1.0 audio support?])
-          enable_gstaudio="yes"],
+      [SPICE_CHECK_GSTREAMER(GSTAUDIO, 1.0, [gstreamer-1.0 gstreamer-base-1.0 gstreamer-app-1.0 gstreamer-audio-1.0],
+         [],
          [AS_IF([test "x$enable_gstaudio" = "xyes"],
                 AC_MSG_ERROR([GStreamer 1.0 audio requested but not found]))
-          enable_gstaudio="no"
-      ])
-])
-AM_CONDITIONAL([HAVE_GSTAUDIO], [test "x$enable_gstaudio" = "xyes"])
-AC_SUBST(GSTAUDIO_CFLAGS)
-AC_SUBST(GSTAUDIO_LIBS)
+         ])
+      ], [have_gstaudio="no"]
+)
+AM_CONDITIONAL([HAVE_GSTAUDIO], [test "x$have_gstaudio" = "xyes"])
 
-AS_IF([test "x$enable_pulse$enable_gstaudio" = "xnono"],
+AS_IF([test "x$enable_pulse$have_gstaudio" = "xnono"],
       [SPICE_WARNING([No PulseAudio or GStreamer 1.0 audio decoder, audio will not be streamed])
 ])
 
@@ -745,7 +742,7 @@ AC_MSG_NOTICE([
         Gtk:                      ${with_gtk}
         Coroutine:                ${with_coroutine}
         PulseAudio:               ${enable_pulse}
-        GStreamer Audio:          ${enable_gstaudio}
+        GStreamer Audio:          ${have_gstaudio}
         SASL support:             ${enable_sasl}
         Smartcard support:        ${have_smartcard}
         USB redirection support:  ${have_usbredir} ${with_usbredir_hotplug}
