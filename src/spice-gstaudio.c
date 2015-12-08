@@ -551,15 +551,17 @@ static gboolean connect_channel(SpiceAudio *audio, SpiceChannel *channel)
 SpiceGstaudio *spice_gstaudio_new(SpiceSession *session, GMainContext *context,
                                   const char *name)
 {
-    SpiceGstaudio *gstaudio;
-
-    gst_init(NULL, NULL);
-    gstaudio = g_object_new(SPICE_TYPE_GSTAUDIO,
+    GError *err = NULL;
+    if (gst_init_check(NULL, NULL, &err)) {
+        return g_object_new(SPICE_TYPE_GSTAUDIO,
                             "session", session,
                             "main-context", context,
                             NULL);
+    }
 
-    return gstaudio;
+    g_warning("Disabling GStreamer audio support: %s", err->message);
+    g_clear_error(&err);
+    return NULL;
 }
 
 static void spice_gstaudio_get_playback_volume_info_async(SpiceAudio *audio,
