@@ -45,7 +45,7 @@
 #ifdef HAVE_PULSE
 #include "spice-pulse.h"
 #endif
-#ifdef HAVE_GST_AUDIO
+#ifdef HAVE_GSTAUDIO
 #include "spice-gstaudio.h"
 #endif
 
@@ -264,7 +264,7 @@ SpiceAudio *spice_audio_new(SpiceSession *session, GMainContext *context,
 #ifdef HAVE_PULSE
     self = SPICE_AUDIO(spice_pulse_new(session, context, name));
 #endif
-#ifdef HAVE_GST_AUDIO
+#ifdef HAVE_GSTAUDIO
     if (!self)
         self = SPICE_AUDIO(spice_gstaudio_new(session, context, name));
 #endif
