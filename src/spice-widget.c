@@ -81,7 +81,6 @@ enum {
     PROP_KEYBOARD_GRAB,
     PROP_MOUSE_GRAB,
     PROP_RESIZE_GUEST,
-    PROP_AUTO_CLIPBOARD,
     PROP_SCALING,
     PROP_ONLY_DOWNSCALE,
     PROP_DISABLE_INPUTS,
@@ -128,7 +127,6 @@ static void spice_display_get_property(GObject    *object,
 {
     SpiceDisplay *display = SPICE_DISPLAY(object);
     SpiceDisplayPrivate *d = display->priv;
-    gboolean boolean;
 
     switch (prop_id) {
     case PROP_SESSION:
@@ -148,10 +146,6 @@ static void spice_display_get_property(GObject    *object,
         break;
     case PROP_RESIZE_GUEST:
         g_value_set_boolean(value, d->resize_guest_enable);
-        break;
-    case PROP_AUTO_CLIPBOARD:
-        g_object_get(d->gtk_session, "auto-clipboard", &boolean, NULL);
-        g_value_set_boolean(value, boolean);
         break;
     case PROP_SCALING:
         g_value_set_boolean(value, d->allow_scaling);
@@ -367,10 +361,6 @@ static void spice_display_set_property(GObject      *object,
     case PROP_ONLY_DOWNSCALE:
         d->only_downscale = g_value_get_boolean(value);
         scaling_updated(display);
-        break;
-    case PROP_AUTO_CLIPBOARD:
-        g_object_set(d->gtk_session, "auto-clipboard",
-                     g_value_get_boolean(value), NULL);
         break;
     case PROP_DISABLE_INPUTS:
         d->disable_inputs = g_value_get_boolean(value);
@@ -1930,25 +1920,6 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                               G_PARAM_READABLE |
                               G_PARAM_STATIC_STRINGS));
 
-    /**
-     * SpiceDisplay:auto-clipboard:
-     *
-     * When this is true the clipboard gets automatically shared between host
-     * and guest.
-     *
-     * Deprecated: 0.8: Use SpiceGtkSession:auto-clipboard property instead
-     **/
-    g_object_class_install_property
-        (gobject_class, PROP_AUTO_CLIPBOARD,
-         g_param_spec_boolean("auto-clipboard",
-                              "Auto clipboard",
-                              "Automatically relay clipboard changes between "
-                              "host and guest.",
-                              TRUE,
-                              G_PARAM_READWRITE |
-                              G_PARAM_STATIC_STRINGS |
-                              G_PARAM_DEPRECATED));
-
     g_object_class_install_property
         (gobject_class, PROP_SCALING,
          g_param_spec_boolean("scaling", "Scaling",
@@ -2637,48 +2608,6 @@ void spice_display_mouse_ungrab(SpiceDisplay *display)
     g_return_if_fail(SPICE_IS_DISPLAY(display));
 
     try_mouse_ungrab(display);
-}
-
-/**
- * spice_display_copy_to_guest:
- * @display: a #SpiceDisplay
- *
- * Copy client-side clipboard to guest clipboard.
- *
- * Deprecated: 0.8: Use spice_gtk_session_copy_to_guest() instead
- **/
-void spice_display_copy_to_guest(SpiceDisplay *display)
-{
-    SpiceDisplayPrivate *d;
-
-    g_return_if_fail(SPICE_IS_DISPLAY(display));
-
-    d = display->priv;
-
-    g_return_if_fail(d->gtk_session != NULL);
-
-    spice_gtk_session_copy_to_guest(d->gtk_session);
-}
-
-/**
- * spice_display_paste_from_guest:
- * @display: a #SpiceDisplay
- *
- * Copy guest clipboard to client-side clipboard.
- *
- * Deprecated: 0.8: Use spice_gtk_session_paste_from_guest() instead
- **/
-void spice_display_paste_from_guest(SpiceDisplay *display)
-{
-    SpiceDisplayPrivate *d;
-
-    g_return_if_fail(SPICE_IS_DISPLAY(display));
-
-    d = display->priv;
-
-    g_return_if_fail(d->gtk_session != NULL);
-
-    spice_gtk_session_paste_from_guest(d->gtk_session);
 }
 
 /**

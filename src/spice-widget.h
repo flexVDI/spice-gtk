@@ -70,13 +70,6 @@ void spice_display_send_keys(SpiceDisplay *display, const guint *keyvals,
                              int nkeyvals, SpiceDisplayKeyEvent kind);
 GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display);
 
-#ifndef SPICE_DISABLE_DEPRECATED
-SPICE_DEPRECATED_FOR(spice_gtk_session_copy_to_guest)
-void spice_display_copy_to_guest(SpiceDisplay *display);
-SPICE_DEPRECATED_FOR(spice_gtk_session_paste_from_guest)
-void spice_display_paste_from_guest(SpiceDisplay *display);
-#endif
-
 G_END_DECLS
 
 #endif /* __SPICE_CLIENT_WIDGET_H__ */
