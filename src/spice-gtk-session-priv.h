@@ -22,6 +22,19 @@
 
 G_BEGIN_DECLS
 
+typedef struct _SpiceGtkSessionPrivate SpiceGtkSessionPrivate;
+
+struct _SpiceGtkSession
+{
+    GObject parent;
+    SpiceGtkSessionPrivate *priv;
+};
+
+struct _SpiceGtkSessionClass
+{
+    GObjectClass parent_class;
+};
+
 void spice_gtk_session_request_auto_usbredir(SpiceGtkSession *self,
                                              gboolean state);
 gboolean spice_gtk_session_get_read_only(SpiceGtkSession *self);

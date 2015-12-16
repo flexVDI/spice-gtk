@@ -35,39 +35,6 @@ G_BEGIN_DECLS
 
 typedef struct _SpiceGtkSession SpiceGtkSession;
 typedef struct _SpiceGtkSessionClass SpiceGtkSessionClass;
-typedef struct _SpiceGtkSessionPrivate SpiceGtkSessionPrivate;
-
-/**
- * SpiceGtkSession:
- *
- * The #SpiceGtkSession struct is opaque and should not be accessed directly.
- */
-struct _SpiceGtkSession
-{
-    GObject parent;
-    SpiceGtkSessionPrivate *priv;
-    /* Do not add fields to this struct */
-};
-
-/**
- * SpiceGtkSessionClass:
- * @parent_class: Parent class.
- *
- * Class structure for #SpiceGtkSession.
- */
-struct _SpiceGtkSessionClass
-{
-    GObjectClass parent_class;
-
-    /* signals */
-
-    /*< private >*/
-    /*
-     * If adding fields to this struct, remove corresponding
-     * amount of padding to avoid changing overall struct size
-     */
-    gchar _spice_reserved[SPICE_RESERVED_PADDING];
-};
 
 GType spice_gtk_session_get_type(void);
 
