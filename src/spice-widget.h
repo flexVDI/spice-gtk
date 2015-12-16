@@ -42,41 +42,6 @@ G_BEGIN_DECLS
 
 typedef struct _SpiceDisplay SpiceDisplay;
 typedef struct _SpiceDisplayClass SpiceDisplayClass;
-typedef struct _SpiceDisplayPrivate SpiceDisplayPrivate;
-
-/**
- * SpiceDisplay:
- *
- * The #SpiceDisplay struct is opaque and should not be accessed directly.
- */
-struct _SpiceDisplay {
-    GtkDrawingArea parent;
-    SpiceDisplayPrivate *priv;
-    /* Do not add fields to this struct */
-};
-
-/**
- * SpiceDisplayClass:
- * @parent_class: Parent class.
- * @mouse_grab: Signal class handler for the #SpiceDisplay::mouse_grab signal.
- * @keyboard_grab: Signal class handler for the #SpiceDisplay::keyboard_grab signal.
- *
- * Class structure for #SpiceDisplay.
- */
-struct _SpiceDisplayClass {
-    GtkDrawingAreaClass parent_class;
-
-    /* signals */
-    void (*mouse_grab)(SpiceChannel *channel, gint grabbed);
-    void (*keyboard_grab)(SpiceChannel *channel, gint grabbed);
-
-    /*< private >*/
-    /*
-     * If adding fields to this struct, remove corresponding
-     * amount of padding to avoid changing overall struct size
-     */
-    gchar _spice_reserved[SPICE_RESERVED_PADDING];
-};
 
 /**
  * SpiceDisplayKeyEvent:

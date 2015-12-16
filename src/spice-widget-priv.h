@@ -40,6 +40,21 @@
 
 G_BEGIN_DECLS
 
+typedef struct _SpiceDisplayPrivate SpiceDisplayPrivate;
+
+struct _SpiceDisplay {
+    GtkDrawingArea parent;
+    SpiceDisplayPrivate *priv;
+};
+
+struct _SpiceDisplayClass {
+    GtkDrawingAreaClass parent_class;
+
+    /* signals */
+    void (*mouse_grab)(SpiceChannel *channel, gint grabbed);
+    void (*keyboard_grab)(SpiceChannel *channel, gint grabbed);
+};
+
 #define SPICE_DISPLAY_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_DISPLAY, SpiceDisplayPrivate))
 
