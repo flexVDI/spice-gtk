@@ -20,12 +20,6 @@
 
 #include "config.h"
 
-#ifdef WITH_X11
-#include <X11/Xlib.h>
-#include <X11/extensions/XShm.h>
-#include <gdk/gdkx.h>
-#endif
-
 #ifdef WIN32
 #include <windows.h>
 #endif
@@ -73,7 +67,6 @@ struct _SpiceDisplayPrivate {
     gboolean                monitor_ready;
     enum SpiceSurfaceFmt    format;
     gint                    width, height, stride;
-    gint                    shmid;
     gpointer                data_origin; /* the original display image data */
     gpointer                data; /* converted if necessary to 32 bits */
 
@@ -82,21 +75,12 @@ struct _SpiceDisplayPrivate {
     gint                    ww, wh, mx, my;
 
     bool                    convert;
-    bool                    have_mitshm;
     gboolean                allow_scaling;
     gboolean                only_downscale;
     gboolean                disable_inputs;
 
     /* TODO: make a display object instead? */
-#ifdef WITH_X11
-    Display                 *dpy;
-    XVisualInfo             *vi;
-    XImage                  *ximage;
-    XShmSegmentInfo         *shminfo;
-    GC                      gc;
-#else
     cairo_surface_t         *ximage;
-#endif
 
     SpiceSession            *session;
     SpiceGtkSession         *gtk_session;
@@ -163,11 +147,7 @@ struct _SpiceDisplayPrivate {
 
 int      spicex_image_create                 (SpiceDisplay *display);
 void     spicex_image_destroy                (SpiceDisplay *display);
-#if GTK_CHECK_VERSION (2, 91, 0)
 void     spicex_draw_event                   (SpiceDisplay *display, cairo_t *cr);
-#else
-void     spicex_expose_event                 (SpiceDisplay *display, GdkEventExpose *ev);
-#endif
 gboolean spicex_is_scaled                    (SpiceDisplay *display);
 void     spice_display_get_scaling           (SpiceDisplay *display, double *s, int *x, int *y, int *w, int *h);
 gboolean spice_egl_init                      (SpiceDisplay *display, GError **err);

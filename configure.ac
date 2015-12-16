@@ -62,7 +62,6 @@ esac
 AC_MSG_RESULT([$os_win32])
 AM_CONDITIONAL([OS_WIN32],[test "$os_win32" = "yes"])
 
-AC_CHECK_HEADERS([sys/ipc.h sys/shm.h])
 AC_CHECK_HEADERS([sys/socket.h netinet/in.h arpa/inet.h])
 AC_CHECK_HEADERS([termios.h])
 
@@ -115,44 +114,30 @@ SPICE_CHECK_SASL
 
 AC_MSG_CHECKING([which gtk+ version to compile against])
 AC_ARG_WITH([gtk],
-  [AS_HELP_STRING([--with-gtk=@<:@2.0/3.0/no@:>@],[which gtk+ version to compile against @<:@default=3.0@:>@])],
+  [AS_HELP_STRING([--with-gtk=@<:@3.0/no@:>@],[which gtk+ version to compile against @<:@default=3.0@:>@])],
   [case "$with_gtk" in
-     2.0|3.0) AC_MSG_RESULT([$with_gtk]) ;;
+     3.0) AC_MSG_RESULT([$with_gtk]) ;;
      no) AC_MSG_RESULT([none]) ;;
      *) AC_MSG_ERROR([invalid gtk version specified]) ;;
    esac],
   [with_gtk=3.0])
 
 case "$with_gtk" in
-  2.0) GTK_API_VERSION=2.0
-       GTK_REQUIRED=2.18.0
-       SPICE_GTK_API_VERSION=2.0
-       ;;
-  3.0) GTK_API_VERSION=3.0
-       GTK_REQUIRED=2.91.3
-       SPICE_GTK_API_VERSION=3.0
+  3.0) GTK_REQUIRED=2.91.3
        ;;
   no)
        AS_IF([test x$enable_gtk_doc = xyes],
              [AC_MSG_ERROR([Without GTK+, gtk-doc must be disabled])])
 esac
 
-AC_SUBST([GTK_API_VERSION])
 AC_SUBST([GTK_REQUIRED])
-AC_SUBST([SPICE_GTK_API_VERSION])
 AM_CONDITIONAL([WITH_GTK],[test "$with_gtk" != "no"])
-AM_CONDITIONAL([HAVE_GTK_2],[test "$with_gtk" = "2.0"])
-AM_CONDITIONAL([HAVE_GTK_3],[test "$with_gtk" = "3.0"])
 
 AS_IF([test "x$with_gtk" != "xno"],
-      [PKG_CHECK_MODULES(GTK, gtk+-$GTK_API_VERSION >= $GTK_REQUIRED)])
+      [PKG_CHECK_MODULES(GTK, gtk+-3.0 >= $GTK_REQUIRED)])
 AC_SUBST(GTK_CFLAGS)
 AC_SUBST(GTK_LIBS)
-SPICE_GTK_REQUIRES="${SPICE_GTK_REQUIRES} gtk+-$GTK_API_VERSION >= $GTK_REQUIRED"
-
-PKG_CHECK_EXISTS([gtk+-x11-$with_gtk], [have_x11=yes], [have_x11=no])
-AS_IF([test "x$have_x11" = "xyes"], [AC_DEFINE([HAVE_X11], 1, [Have x11?])])
-AM_CONDITIONAL([WITH_DISPLAY_X11], [test "x$have_x11" = "xyes"])
+SPICE_GTK_REQUIRES="${SPICE_GTK_REQUIRES} gtk+-3.0 >= $GTK_REQUIRED"
 
 PKG_CHECK_EXISTS([gtk+-quartz-$with_gtk], [have_quartz=yes], [have_quartz=no])
 AS_IF([test "x$have_quartz" = "xyes"], [AC_DEFINE([HAVE_QUARTZ], 1, [Have Quartz?])])
@@ -162,27 +147,7 @@ PKG_CHECK_EXISTS([gtk+-win32-$with_gtk], [have_win32=yes], [have_win32=no])
 AS_IF([test "x$have_win32" = "xyes"], [AC_DEFINE([HAVE_WINDOWS], 1, [Have Win32?])])
 AM_CONDITIONAL([WITH_DISPLAY_WINDOWS], [test "x$have_win32" = "xyes"])
 
-if [test "x$have_x11" = "xyes" ]
-then
-  AC_CHECK_HEADERS([X11/XKBlib.h])
-fi
-
-AC_ARG_WITH([x11],
-  AS_HELP_STRING([--with-x11], [Use x11/shm display backend instead of cairo @<:@default=no@:>@]))
-
-AC_MSG_CHECKING([What rendering backend to use..])
-if [test "x$with_x11" = "xyes" ]
-then
-  if [test "$GTK_API_VERSION" = "3.0" ]
-  then
-    AC_MSG_ERROR([X11 SHM backend is not compatible with GTK3])
-  fi
-  AC_MSG_RESULT([x11])
-  AC_DEFINE([WITH_X11], 1, [Use X11 backend?])
-else
-  AC_MSG_RESULT([cairo])
-fi
-AM_CONDITIONAL([WITH_X11], [test "x$with_x11" = "xyes"])
+AC_CHECK_HEADERS([X11/XKBlib.h])
 
 AC_ARG_WITH([pnp-ids-path],
   AC_HELP_STRING([--with-pnp-ids-path],
@@ -567,82 +532,6 @@ AM_CONDITIONAL(WITH_VALA, [test "x$enable_vala" = "xyes"])
 VAPIDIR="${datadir}/vala/vapi"
 AC_SUBST(VAPIDIR)
 
-
-AC_ARG_WITH([python],
-  AS_HELP_STRING([--with-python], [build python bindings @<:@default=auto@:>@]),
-  [case "$withval" in
-   yes|no|auto) with_python="$withval";;
-   *) AC_MSG_ERROR([bad value $withval for python option]) ;;
-   esac],
-  [AS_IF([test "$with_gtk" != "2.0" || test "x$os_win32" = "xyes"],
-         [with_python=no],[with_python=auto])]
-)
-
-if test "x$with_python" != "xno"; then
-  PKG_CHECK_MODULES(PYGTK, [pygtk-2.0 >= 2.0.0], [have_pygtk=yes], [have_pygtk=no])
-  AC_SUBST(PYGTK_CFLAGS)
-  AC_SUBST(PYGTK_LIBS)
-  if test "x$have_pygtk" != "xyes"
-  then
-    if test "x$with_python" = "xyes"
-    then
-      AC_MSG_ERROR("No pygtk found")
-    else
-      with_python=no
-    fi
-  fi
-fi
-
-if test "x$with_python" != "xno"; then
-  AM_PATH_PYTHON([], [have_python=yes], [have_python=no])
-  if test "x$have_python" != "xyes"
-  then
-    if test "x$with_python" = "xyes"
-    then
-      AC_MSG_ERROR("No python found")
-    else
-      with_python=no
-    fi
-  fi
-fi
-
-if test "x$with_python" != "xno"; then
-  AC_MSG_CHECKING([whether $PYTHON version >= 2.0])
-  HAVE_PYTHON_REQUIRED=no
-  AM_PYTHON_CHECK_VERSION([$PYTHON], [2.0],
-      [HAVE_PYTHON_REQUIRED="yes"],
-      [HAVE_PYTHON_REQUIRED="no"])
-
-  AC_MSG_RESULT($HAVE_PYTHON_REQUIRED)
-
-  if test "x$HAVE_PYTHON_REQUIRED" != "xyes"
-  then
-    if test "x$with_python" = "xyes"
-    then
-      AC_MSG_ERROR("No suitable python found")
-    else
-      with_python=no
-    fi
-  fi
-fi
-
-if test "x$with_python" != "xno"; then
-  AM_CHECK_PYTHON_HEADERS(have_python_headers=yes,have_python_headers=no)
-
-  if test "x$have_python_headers" != "xyes"
-  then
-    if test "x$with_python" = "xyes"
-    then
-      AC_MSG_ERROR("No python development headers found")
-    else
-      with_python=no
-    fi
-  fi
-fi
-
-AM_CONDITIONAL(WITH_PYTHON, [test "x$with_python" != "xno"])
-
-
 AC_ARG_ENABLE([dbus],
   AS_HELP_STRING([--enable-dbus=@<:@auto/yes/no@:>@],
                  [Enable dbus support for desktop integration (disabling automount) @<:@default=auto@:>@]),
@@ -695,7 +584,6 @@ AM_CONDITIONAL([BUILD_TESTS], [test x"$enable_static" = xyes])
 AC_OUTPUT([
 Makefile
 spice-client-glib-2.0.pc
-spice-client-gtk-2.0.pc
 spice-client-gtk-3.0.pc
 spice-controller.pc
 data/Makefile

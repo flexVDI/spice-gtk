@@ -22,36 +22,12 @@
 
 #include <gtk/gtk.h>
 
-#if !GTK_CHECK_VERSION (2, 91, 0)
-#define GDK_IS_X11_DISPLAY(D) TRUE
-#define gdk_window_get_display(W) gdk_drawable_get_display(GDK_DRAWABLE(W))
-#define GDK_IS_X11_WINDOW(D) TRUE
-#endif
-
 #if GTK_CHECK_VERSION (2, 91, 0)
 static inline void gdk_drawable_get_size(GdkWindow *w, gint *ww, gint *wh)
 {
     *ww = gdk_window_get_width(w);
     *wh = gdk_window_get_height(w);
 }
-#endif
-
-#if !GTK_CHECK_VERSION(2, 20, 0)
-static inline gboolean gtk_widget_get_realized(GtkWidget *widget)
-{
-    g_return_val_if_fail (GTK_IS_WIDGET (widget), FALSE);
-    return GTK_WIDGET_REALIZED(widget);
-}
-#endif
-
-#if !GTK_CHECK_VERSION (3, 0, 0)
-#define cairo_rectangle_int_t GdkRectangle
-#define cairo_region_t GdkRegion
-#define cairo_region_create_rectangle gdk_region_rectangle
-#define cairo_region_subtract_rectangle(_dest,_rect) { GdkRegion *_region = gdk_region_rectangle (_rect); gdk_region_subtract (_dest, _region); gdk_region_destroy (_region); }
-#define cairo_region_destroy gdk_region_destroy
-
-#define gdk_window_get_display(W) gdk_drawable_get_display(GDK_DRAWABLE(W))
 #endif
 
 #endif /* GTK_COMPAT_H */

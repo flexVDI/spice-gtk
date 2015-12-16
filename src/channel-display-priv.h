@@ -40,7 +40,6 @@ typedef struct display_surface {
     bool                        primary;
     enum SpiceSurfaceFmt        format;
     int                         width, height, stride, size;
-    int                         shmid;
     uint8_t                     *data;
     SpiceCanvas                 *canvas;
     SpiceGlzDecoder             *glz_decoder;

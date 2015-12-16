@@ -574,17 +574,12 @@ static void spice_display_init(SpiceDisplay *display)
                           GDK_LEAVE_NOTIFY_MASK |
                           GDK_KEY_PRESS_MASK |
                           GDK_SCROLL_MASK);
-#ifdef WITH_X11
-    gtk_widget_set_double_buffered(widget, false);
-#else
     gtk_widget_set_double_buffered(widget, true);
-#endif
     gtk_widget_set_can_focus(widget, true);
     d->grabseq = spice_grab_sequence_new_from_string("Control_L+Alt_L");
     d->activeseq = g_new0(gboolean, d->grabseq->nkeysyms);
 
     d->mouse_cursor = get_blank_cursor();
-    d->have_mitshm = true;
 
 #ifdef USE_EPOXY
     if (!spice_egl_init(display, &err)) {
@@ -1156,7 +1151,6 @@ static void set_egl_enabled(SpiceDisplay *display, bool enabled)
 #endif
 }
 
-#if GTK_CHECK_VERSION (2, 91, 0)
 static gboolean draw_event(GtkWidget *widget, cairo_t *cr)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
@@ -1180,24 +1174,6 @@ static gboolean draw_event(GtkWidget *widget, cairo_t *cr)
 
     return true;
 }
-#else
-static gboolean expose_event(GtkWidget *widget, GdkEventExpose *expose)
-{
-    SpiceDisplay *display = SPICE_DISPLAY(widget);
-    SpiceDisplayPrivate *d = display->priv;
-    g_return_val_if_fail(d != NULL, false);
-
-    if (d->mark == 0 || d->data == NULL ||
-        d->area.width == 0 || d->area.height == 0)
-        return false;
-    g_return_val_if_fail(d->ximage != NULL, false);
-
-    spicex_expose_event(display, expose);
-    update_mouse_pointer(display);
-
-    return true;
-}
-#endif
 
 /* ---------------------------------------------------------------- */
 typedef enum {
@@ -1855,11 +1831,7 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
     GtkWidgetClass *gtkwidget_class = GTK_WIDGET_CLASS(klass);
 
-#if GTK_CHECK_VERSION (2, 91, 0)
     gtkwidget_class->draw = draw_event;
-#else
-    gtkwidget_class->expose_event = expose_event;
-#endif
     gtkwidget_class->key_press_event = key_event;
     gtkwidget_class->key_release_event = key_event;
     gtkwidget_class->enter_notify_event = enter_event;
@@ -2213,7 +2185,6 @@ static void primary_create(SpiceChannel *channel, gint format,
 
     d->format = format;
     d->stride = stride;
-    d->shmid = shmid;
     d->width = width;
     d->height = height;
     d->data_origin = d->data = imgdata;
@@ -2230,7 +2201,6 @@ static void primary_destroy(SpiceChannel *channel, gpointer data)
     d->width  = 0;
     d->height = 0;
     d->stride = 0;
-    d->shmid  = 0;
     d->data = NULL;
     d->data_origin = NULL;
     set_monitor_ready(display, false);

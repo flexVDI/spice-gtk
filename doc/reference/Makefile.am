@@ -55,7 +55,7 @@ IGNORE_HFILES=					\
 
 # CFLAGS and LDFLAGS for compiling gtkdoc-scangobj with your library.
 GTKDOC_CFLAGS = -I$(top_srcdir) -I$(top_builddir) -I$(top_srcdir)/src -I$(top_builddir)/src $(SPICE_GLIB_CFLAGS) $(SPICE_GTK_CFLAGS) $(COMMON_CFLAGS) -DSPICE_COMPILATION
-GTKDOC_LIBS = $(top_builddir)/src/libspice-client-glib-2.0.la $(top_builddir)/src/libspice-client-gtk-$(SPICE_GTK_API_VERSION).la $(GTK_LIBS)
+GTKDOC_LIBS = $(top_builddir)/src/libspice-client-glib-2.0.la $(top_builddir)/src/libspice-client-gtk-3.0.la $(GTK_LIBS)
 
 include $(top_srcdir)/gtk-doc.make
 

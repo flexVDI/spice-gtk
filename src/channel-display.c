@@ -21,14 +21,6 @@
 #include <sys/types.h>
 #endif
 
-#ifdef HAVE_SYS_SHM_H
-#include <sys/shm.h>
-#endif
-
-#ifdef HAVE_SYS_IPC_H
-#include <sys/ipc.h>
-#endif
-
 #include "glib-compat.h"
 #include "spice-client.h"
 #include "spice-common.h"
@@ -497,7 +489,7 @@ gboolean spice_display_get_primary(SpiceChannel *channel, guint32 surface_id,
     primary->width = surface->width;
     primary->height = surface->height;
     primary->stride = surface->stride;
-    primary->shmid = surface->shmid;
+    primary->shmid = -1;
     primary->data = surface->data;
     primary->marked = c->mark;
     CHANNEL_DEBUG(channel, "get primary %p", primary->data);
@@ -780,27 +772,11 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
         }
 
         CHANNEL_DEBUG(channel, "Create primary canvas");
-#if defined(WITH_X11) && defined(HAVE_SYS_SHM_H)
-        surface->shmid = shmget(IPC_PRIVATE, surface->size, IPC_CREAT | 0777);
-        if (surface->shmid >= 0) {
-            surface->data = shmat(surface->shmid, 0, 0);
-            if (surface->data == NULL) {
-                shmctl(surface->shmid, IPC_RMID, 0);
-                surface->shmid = -1;
-            }
-        }
-#else
-        surface->shmid = -1;
-#endif
-    } else {
-        surface->shmid = -1;
     }
 
-    if (surface->shmid == -1)
-        surface->data = g_malloc0(surface->size);
+    surface->data = g_malloc0(surface->size);
 
     g_return_val_if_fail(c->glz_window, 0);
-
     g_warn_if_fail(surface->canvas == NULL);
     g_warn_if_fail(surface->glz_decoder == NULL);
     g_warn_if_fail(surface->zlib_decoder == NULL);
@@ -830,7 +806,7 @@ static int create_canvas(SpiceChannel *channel, display_surface *surface)
         c->primary = surface;
         g_coroutine_signal_emit(channel, signals[SPICE_DISPLAY_PRIMARY_CREATE], 0,
                                 surface->format, surface->width, surface->height,
-                                surface->stride, surface->shmid, surface->data);
+                                surface->stride, -1, surface->data);
 
         if (!spice_channel_test_capability(channel, SPICE_DISPLAY_CAP_MONITORS_CONFIG)) {
             g_array_set_size(c->monitors, 1);
@@ -854,16 +830,7 @@ static void destroy_canvas(display_surface *surface)
     zlib_decoder_destroy(surface->zlib_decoder);
     jpeg_decoder_destroy(surface->jpeg_decoder);
 
-    if (surface->shmid == -1) {
-        g_free(surface->data);
-    }
-#ifdef HAVE_SYS_SHM_H
-    else {
-        shmdt(surface->data);
-        shmctl(surface->shmid, IPC_RMID, 0);
-    }
-#endif
-    surface->shmid = -1;
+    g_free(surface->data);
     surface->data = NULL;
 
     surface->canvas->ops->destroy(surface->canvas);

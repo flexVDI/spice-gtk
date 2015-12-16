@@ -19,7 +19,7 @@ pkgconfig_DATA =					\
 	$(NULL)
 
 if WITH_GTK
-pkgconfig_DATA += spice-client-gtk-$(SPICE_GTK_API_VERSION).pc
+pkgconfig_DATA += spice-client-gtk-3.0.pc
 endif
 
 if WITH_CONTROLLER

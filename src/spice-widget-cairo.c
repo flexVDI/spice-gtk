@@ -132,26 +132,6 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
     }
 }
 
-#if ! GTK_CHECK_VERSION (2, 91, 0)
-G_GNUC_INTERNAL
-void spicex_expose_event(SpiceDisplay *display, GdkEventExpose *expose)
-{
-    cairo_t *cr;
-
-    cr = gdk_cairo_create(gtk_widget_get_window(GTK_WIDGET(display)));
-    cairo_rectangle(cr,
-                    expose->area.x,
-                    expose->area.y,
-                    expose->area.width,
-                    expose->area.height);
-    cairo_clip(cr);
-
-    spicex_draw_event(display, cr);
-
-    cairo_destroy(cr);
-}
-#endif
-
 G_GNUC_INTERNAL
 gboolean spicex_is_scaled(SpiceDisplay *display)
 {

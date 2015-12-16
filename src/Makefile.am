@@ -57,11 +57,7 @@ endif
 lib_LTLIBRARIES = libspice-client-glib-2.0.la
 
 if WITH_GTK
-if HAVE_GTK_2
-lib_LTLIBRARIES += libspice-client-gtk-2.0.la
-else
 lib_LTLIBRARIES += libspice-client-gtk-3.0.la
-endif
 endif
 
 if HAVE_LD_VERSION_SCRIPT
@@ -151,15 +147,9 @@ nodist_SPICE_GTK_SOURCES_COMMON =	\
 	spice-marshal.c			\
 	$(NULL)
 
-if WITH_X11
-SPICE_GTK_SOURCES_COMMON +=		\
-	spice-widget-x11.c		\
-	$(NULL)
-else
 SPICE_GTK_SOURCES_COMMON +=		\
 	spice-widget-cairo.c		\
 	$(NULL)
-endif
 
 if WITH_GTK
 if WITH_EPOXY
@@ -168,23 +158,14 @@ SPICE_GTK_SOURCES_COMMON +=		\
 	$(NULL)
 endif
 
-if HAVE_GTK_2
-libspice_client_gtk_2_0_la_DEPEDENCIES = $(GTK_SYMBOLS_FILE)
-libspice_client_gtk_2_0_la_LDFLAGS = $(SPICE_GTK_LDFLAGS_COMMON)
-libspice_client_gtk_2_0_la_LIBADD = $(SPICE_GTK_LIBADD_COMMON)
-libspice_client_gtk_2_0_la_SOURCES = $(SPICE_GTK_SOURCES_COMMON)
-libspice_client_gtk_2_0_la_CFLAGS = $(EPOXY_CFLAGS)
-nodist_libspice_client_gtk_2_0_la_SOURCES = $(nodist_SPICE_GTK_SOURCES_COMMON)
-else
 libspice_client_gtk_3_0_la_DEPEDENCIES = $(GTK_SYMBOLS_FILE)
 libspice_client_gtk_3_0_la_LDFLAGS = $(SPICE_GTK_LDFLAGS_COMMON)
 libspice_client_gtk_3_0_la_LIBADD = $(SPICE_GTK_LIBADD_COMMON)
 libspice_client_gtk_3_0_la_SOURCES = $(SPICE_GTK_SOURCES_COMMON)
 libspice_client_gtk_3_0_la_CFLAGS = $(EPOXY_CFLAGS)
 nodist_libspice_client_gtk_3_0_la_SOURCES = $(nodist_SPICE_GTK_SOURCES_COMMON)
-endif
 
-libspice_client_gtkincludedir = $(includedir)/spice-client-gtk-$(SPICE_GTK_API_VERSION)
+libspice_client_gtkincludedir = $(includedir)/spice-client-gtk-3.0
 libspice_client_gtkinclude_HEADERS =	\
 	spice-client-gtk.h		\
 	spice-gtk-session.h		\
@@ -399,7 +380,7 @@ spicy_SOURCES =					\
 	$(NULL)
 
 spicy_LDADD =						\
-	libspice-client-gtk-$(SPICE_GTK_API_VERSION).la	\
+	libspice-client-gtk-3.0.la			\
 	libspice-client-glib-2.0.la			\
 	$(GTHREAD_LIBS)					\
 	$(GTK_LIBS)					\
@@ -470,11 +451,7 @@ spicy_stats_LDADD =				\
 $(libspice_client_glib_2_0_la_SOURCES): spice-glib-enums.h spice-marshal.h
 
 if WITH_GTK
-if HAVE_GTK_2
-$(libspice_client_gtk_2_0_la_SOURCES): spice-glib-enums.h spice-widget-enums.h
-else
 $(libspice_client_gtk_3_0_la_SOURCES): spice-glib-enums.h spice-widget-enums.h
-endif
 endif
 
 spice-marshal.c: spice-marshal.h
@@ -576,40 +553,6 @@ vncdisplaykeymap_win322xtkbd.c:
 vncdisplaykeymap_x112xtkbd.c:
 	$(AM_V_GEN)$(KEYMAP_GEN) $(srcdir)/keymaps.csv x11 xtkbd > $@ || rm $@
 
-if WITH_PYTHON
-pyexec_LTLIBRARIES = SpiceClientGtk.la
-
-# workaround for broken parallel install support in automake with LTLIBRARIES
-# http://debbugs.gnu.org/cgi/bugreport.cgi?bug=7328
-install_pyexecLTLIBRARIES = install-pyexecLTLIBRARIES
-$(install_pyexecLTLIBRARIES): install-libLTLIBRARIES
-
-SpiceClientGtk_la_LIBADD = libspice-client-gtk-2.0.la libspice-client-glib-2.0.la $(PYGTK_LIBS)
-SpiceClientGtk_la_CFLAGS = $(GTK_CFLAGS) $(PYTHON_INCLUDES) $(PYGTK_CFLAGS) $(WARN_PYFLAGS)
-SpiceClientGtk_la_LDFLAGS = -module -avoid-version -fPIC
-SpiceClientGtk_la_SOURCES = spice-client-gtk-module.c
-nodist_SpiceClientGtk_la_SOURCES = spice-client-gtk-module.defs.c
-
-CODEGENDIR = `pkg-config --variable=codegendir pygtk-2.0`
-DEFSDIR = `pkg-config --variable=defsdir pygtk-2.0`
-
-spice-client-gtk.defs: $(libspice_client_gtkinclude_HEADERS) $(nodist_libspice_client_gtkinclude_HEADERS) $(libspice_client_glibinclude_HEADERS) $(nodist_libspice_client_glibinclude_HEADERS)
-	$(AM_V_GEN)$(PYTHON) $(CODEGENDIR)/h2def.py \
-		-f $(srcdir)/spice-client-gtk-manual.defs \
-		$^ > $@
-
-spice-client-gtk-module.defs.c: spice-client-gtk.override spice-client-gtk.defs spice-client-gtk-manual.defs
-	@cat spice-client-gtk.defs $(srcdir)/spice-client-gtk-manual.defs > tmp.defs
-	$(AM_V_GEN)pygobject-codegen-2.0 --prefix spice \
-			  --register $(DEFSDIR)/gdk-types.defs \
-			  --register $(DEFSDIR)/gtk-types.defs \
-			  --override $(srcdir)/spice-client-gtk.override \
-			  tmp.defs > $@
-	@rm tmp.defs
-
-CLEANFILES += spice-client-gtk-module.defs.c spice-client-gtk.defs
-endif
-
 -include $(INTROSPECTION_MAKEFILE)
 
 if G_IR_SCANNER_SYMBOL_PREFIX
@@ -666,15 +609,6 @@ SpiceClientGLib_2_0_gir_SCANNERFLAGS = --c-include="spice-client.h"
 INTROSPECTION_GIRS += SpiceClientGLib-2.0.gir
 
 if WITH_GTK
-if HAVE_GTK_2
-SpiceClientGtk-2.0.gir: libspice-client-gtk-2.0.la SpiceClientGLib-2.0.gir
-SpiceClientGtk_2_0_gir_INCLUDES = GObject-2.0 Gtk-2.0 SpiceClientGLib-2.0
-SpiceClientGtk_2_0_gir_CFLAGS = $(SPICE_COMMON_CPPFLAGS)
-SpiceClientGtk_2_0_gir_LIBS = libspice-client-gtk-2.0.la libspice-client-glib-2.0.la
-SpiceClientGtk_2_0_gir_FILES = $(gtk_introspection_files)
-SpiceClientGtk_2_0_gir_EXPORT_PACKAGES = spice-client-gtk-2.0
-SpiceClientGtk_2_0_gir_SCANNERFLAGS = --c-include="spice-widget.h"
-else
 SpiceClientGtk-3.0.gir: libspice-client-gtk-3.0.la SpiceClientGLib-2.0.gir
 SpiceClientGtk_3_0_gir_INCLUDES = GObject-2.0 Gtk-3.0 SpiceClientGLib-2.0
 SpiceClientGtk_3_0_gir_CFLAGS = $(SPICE_COMMON_CPPFLAGS)
@@ -682,8 +616,7 @@ SpiceClientGtk_3_0_gir_LIBS = libspice-client-gtk-3.0.la libspice-client-glib-2.
 SpiceClientGtk_3_0_gir_FILES = $(gtk_introspection_files)
 SpiceClientGtk_3_0_gir_EXPORT_PACKAGES = spice-client-gtk-3.0
 SpiceClientGtk_3_0_gir_SCANNERFLAGS = --c-include="spice-widget.h"
-endif
-INTROSPECTION_GIRS += SpiceClientGtk-$(SPICE_GTK_API_VERSION).gir
+INTROSPECTION_GIRS += SpiceClientGtk-3.0.gir
 endif
 
 girdir = $(datadir)/gir-1.0
