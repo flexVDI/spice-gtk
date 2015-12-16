@@ -140,6 +140,7 @@ SPICE_GTK_SOURCES_COMMON =		\
 	vncdisplaykeymap.h		\
 	spice-grabsequence.c		\
 	spice-grabsequence.h		\
+	spice-grabsequence-priv.h	\
 	desktop-integration.c		\
 	desktop-integration.h		\
 	usb-device-widget.c		\

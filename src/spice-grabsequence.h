@@ -35,19 +35,6 @@ G_BEGIN_DECLS
 
 typedef struct _SpiceGrabSequence SpiceGrabSequence;
 
-/**
- * SpiceGrabSequence:
- *
- * The #SpiceGrabSequence struct is opaque and should not be accessed directly.
- */
-struct _SpiceGrabSequence {
-        /*< private >*/
-	guint nkeysyms;
-	guint *keysyms;
-
-	/* Do not add fields to this struct */
-};
-
 GType spice_grab_sequence_get_type(void);
 
 SpiceGrabSequence *spice_grab_sequence_new(guint nkeysyms, guint *keysyms);

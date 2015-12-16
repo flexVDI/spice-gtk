@@ -40,6 +40,7 @@
 #include "spice-widget-priv.h"
 #include "spice-gtk-session-priv.h"
 #include "vncdisplaykeymap.h"
+#include "spice-grabsequence-priv.h"
 
 #include "glib-compat.h"
 #include "gtk-compat.h"

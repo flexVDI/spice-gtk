@@ -24,6 +24,7 @@
 #include <gdk/gdk.h>
 
 #include "spice-grabsequence.h"
+#include "spice-grabsequence-priv.h"
 
 GType spice_grab_sequence_get_type(void)
 {
