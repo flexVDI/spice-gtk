@@ -55,7 +55,7 @@ static struct glz_image *glz_image_new(struct glz_image_hdr *hdr,
     img = g_new0(struct glz_image, 1);
     img->hdr = *hdr;
     img->surface = alloc_lz_image_surface
-        (opaque, type == LZ_IMAGE_TYPE_RGBA ? PIXMAN_a8r8g8b8 : PIXMAN_x8r8g8b8,
+        (opaque, type == LZ_IMAGE_TYPE_RGBA ? PIXMAN_LE_a8r8g8b8 : PIXMAN_LE_x8r8g8b8,
          img->hdr.width, img->hdr.height, img->hdr.gross_pixels, img->hdr.top_down);
     pixman_image_ref(img->surface);
     img->data = (uint8_t *)pixman_image_get_data(img->surface);
