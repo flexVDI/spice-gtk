@@ -1178,35 +1178,39 @@ static void spice_channel_send_link(SpiceChannel *channel)
         return;
     }
 
-    c->link_msg.connection_id = spice_session_get_connection_id(c->session);
+    c->link_hdr.major_version = GUINT32_TO_LE(c->link_hdr.major_version);
+    c->link_hdr.minor_version = GUINT32_TO_LE(c->link_hdr.minor_version);
+
+    c->link_msg.connection_id = GUINT32_TO_LE(spice_session_get_connection_id(c->session));
     c->link_msg.channel_type  = c->channel_type;
     c->link_msg.channel_id    = c->channel_id;
-    c->link_msg.caps_offset   = sizeof(c->link_msg);
+    c->link_msg.caps_offset   = GUINT32_TO_LE(sizeof(c->link_msg));
 
-    c->link_msg.num_common_caps = c->common_caps->len;
-    c->link_msg.num_channel_caps = c->caps->len;
-    c->link_hdr.size += (c->link_msg.num_common_caps +
-                         c->link_msg.num_channel_caps) * sizeof(uint32_t);
+    c->link_msg.num_common_caps = GUINT32_TO_LE(c->common_caps->len);
+    c->link_msg.num_channel_caps = GUINT32_TO_LE(c->caps->len);
+    c->link_hdr.size += (c->common_caps->len + c->caps->len) * sizeof(uint32_t);
 
     buffer = g_malloc0(sizeof(c->link_hdr) + c->link_hdr.size);
     p = buffer;
+
+    c->link_hdr.size = GUINT32_TO_LE(c->link_hdr.size);
 
     memcpy(p, &c->link_hdr, sizeof(c->link_hdr)); p += sizeof(c->link_hdr);
     memcpy(p, &c->link_msg, sizeof(c->link_msg)); p += sizeof(c->link_msg);
 
     for (i = 0; i < c->common_caps->len; i++) {
-        *(uint32_t *)p = g_array_index(c->common_caps, uint32_t, i);
+        *(uint32_t *)p = GUINT32_TO_LE(g_array_index(c->common_caps, uint32_t, i));
         p += sizeof(uint32_t);
     }
     for (i = 0; i < c->caps->len; i++) {
-        *(uint32_t *)p = g_array_index(c->caps, uint32_t, i);
+        *(uint32_t *)p = GUINT32_TO_LE(g_array_index(c->caps, uint32_t, i));
         p += sizeof(uint32_t);
     }
     CHANNEL_DEBUG(channel, "channel type %d id %d num common caps %d num caps %d",
-                  c->link_msg.channel_type,
-                  c->link_msg.channel_id,
-                  c->link_msg.num_common_caps,
-                  c->link_msg.num_channel_caps);
+                  c->channel_type,
+                  c->channel_id,
+                  c->common_caps->len,
+                  c->caps->len);
     spice_channel_write(channel, buffer, p - buffer);
     g_free(buffer);
 }
@@ -1228,12 +1232,18 @@ static gboolean spice_channel_recv_link_hdr(SpiceChannel *channel)
         goto error;
     }
 
-    CHANNEL_DEBUG(channel, "Peer version: %d:%d", c->peer_hdr.major_version, c->peer_hdr.minor_version);
+    CHANNEL_DEBUG(channel, "Peer version: %d:%d",
+                  GUINT32_FROM_LE(c->peer_hdr.major_version),
+                  GUINT32_FROM_LE(c->peer_hdr.minor_version));
     if (c->peer_hdr.major_version != c->link_hdr.major_version) {
         g_warning("major mismatch (got %d, expected %d)",
                   c->peer_hdr.major_version, c->link_hdr.major_version);
         goto error;
     }
+
+    c->peer_hdr.major_version = GUINT32_FROM_LE(c->peer_hdr.major_version);
+    c->peer_hdr.minor_version = GUINT32_FROM_LE(c->peer_hdr.minor_version);
+    c->peer_hdr.size = GUINT32_FROM_LE(c->peer_hdr.size);
 
     c->peer_msg = g_malloc0(c->peer_hdr.size);
     if (c->peer_msg == NULL) {
@@ -1723,7 +1733,7 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c;
     int rc, num_caps, i;
-    uint32_t *caps;
+    uint32_t *caps, num_channel_caps, num_common_caps;
     SpiceChannelEvent event = SPICE_CHANNEL_ERROR_LINK;
 
     g_return_val_if_fail(channel != NULL, FALSE);
@@ -1754,24 +1764,27 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
         goto error;
     }
 
-    num_caps = c->peer_msg->num_channel_caps + c->peer_msg->num_common_caps;
+    num_channel_caps = GUINT32_FROM_LE(c->peer_msg->num_channel_caps);
+    num_common_caps = GUINT32_FROM_LE(c->peer_msg->num_common_caps);
+
+    num_caps = num_channel_caps + num_common_caps;
     CHANNEL_DEBUG(channel, "%s: %d caps", __FUNCTION__, num_caps);
 
     /* see original spice/client code: */
     /* g_return_if_fail(c->peer_msg + c->peer_msg->caps_offset * sizeof(uint32_t) > c->peer_msg + c->peer_hdr.size); */
 
-    caps = (uint32_t *)((uint8_t *)c->peer_msg + c->peer_msg->caps_offset);
+    caps = (uint32_t *)((uint8_t *)c->peer_msg + GUINT32_FROM_LE(c->peer_msg->caps_offset));
 
-    g_array_set_size(c->remote_common_caps, c->peer_msg->num_common_caps);
-    for (i = 0; i < c->peer_msg->num_common_caps; i++, caps++) {
-        g_array_index(c->remote_common_caps, uint32_t, i) = *caps;
-        CHANNEL_DEBUG(channel, "got common caps %u:0x%X", i, *caps);
+    g_array_set_size(c->remote_common_caps, num_common_caps);
+    for (i = 0; i < num_common_caps; i++, caps++) {
+        g_array_index(c->remote_common_caps, uint32_t, i) = GUINT32_FROM_LE(*caps);
+        CHANNEL_DEBUG(channel, "got common caps %u:0x%X", i, GUINT32_FROM_LE(*caps));
     }
 
-    g_array_set_size(c->remote_caps, c->peer_msg->num_channel_caps);
-    for (i = 0; i < c->peer_msg->num_channel_caps; i++, caps++) {
-        g_array_index(c->remote_caps, uint32_t, i) = *caps;
-        CHANNEL_DEBUG(channel, "got channel caps %u:0x%X", i, *caps);
+    g_array_set_size(c->remote_caps, num_channel_caps);
+    for (i = 0; i < num_channel_caps; i++, caps++) {
+        g_array_index(c->remote_caps, uint32_t, i) = GUINT32_FROM_LE(*caps);
+        CHANNEL_DEBUG(channel, "got channel caps %u:0x%X", i, GUINT32_FROM_LE(*caps));
     }
 
     if (!spice_channel_test_common_capability(channel,
