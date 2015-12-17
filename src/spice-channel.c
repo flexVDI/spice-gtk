@@ -373,9 +373,9 @@ static inline void spice_header_set_msg_type(uint8_t *header, gboolean is_mini_h
                                              uint16_t type)
 {
     if (is_mini_header) {
-        ((SpiceMiniDataHeader *)header)->type = type;
+        ((SpiceMiniDataHeader *)header)->type = GUINT16_TO_LE(type);
     } else {
-        ((SpiceDataHeader *)header)->type = type;
+        ((SpiceDataHeader *)header)->type = GUINT16_TO_LE(type);
     }
 }
 
@@ -383,9 +383,9 @@ static inline void spice_header_set_msg_size(uint8_t *header, gboolean is_mini_h
                                              uint32_t size)
 {
     if (is_mini_header) {
-        ((SpiceMiniDataHeader *)header)->size = size;
+        ((SpiceMiniDataHeader *)header)->size = GUINT32_TO_LE(size);
     } else {
-        ((SpiceDataHeader *)header)->size = size;
+        ((SpiceDataHeader *)header)->size = GUINT32_TO_LE(size);
     }
 }
 
@@ -393,9 +393,9 @@ G_GNUC_INTERNAL
 uint16_t spice_header_get_msg_type(uint8_t *header, gboolean is_mini_header)
 {
     if (is_mini_header) {
-        return ((SpiceMiniDataHeader *)header)->type;
+        return GUINT16_FROM_LE(((SpiceMiniDataHeader *)header)->type);
     } else {
-        return ((SpiceDataHeader *)header)->type;
+        return GUINT16_FROM_LE(((SpiceDataHeader *)header)->type);
     }
 }
 
@@ -403,9 +403,9 @@ G_GNUC_INTERNAL
 uint32_t spice_header_get_msg_size(uint8_t *header, gboolean is_mini_header)
 {
     if (is_mini_header) {
-        return ((SpiceMiniDataHeader *)header)->size;
+        return GUINT32_FROM_LE(((SpiceMiniDataHeader *)header)->size);
     } else {
-        return ((SpiceDataHeader *)header)->size;
+        return GUINT32_FROM_LE(((SpiceDataHeader *)header)->size);
     }
 }
 
@@ -418,7 +418,7 @@ static inline void spice_header_set_msg_serial(uint8_t *header, gboolean is_mini
                                                uint64_t serial)
 {
     if (!is_mini_header) {
-        ((SpiceDataHeader *)header)->serial = serial;
+        ((SpiceDataHeader *)header)->serial = GUINT64_TO_LE(serial);
     }
 }
 
@@ -457,7 +457,7 @@ static inline uint32_t spice_header_get_msg_sub_list(uint8_t *header, gboolean i
     if (is_mini_header) {
         return 0;
     } else {
-        return ((SpiceDataHeader *)header)->sub_list;
+        return GUINT32_FROM_LE(((SpiceDataHeader *)header)->sub_list);
     }
 }
 
