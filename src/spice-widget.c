@@ -208,6 +208,7 @@ static void update_keyboard_focus(SpiceDisplay *display, gboolean state)
     SpiceDisplayPrivate *d = display->priv;
 
     d->keyboard_have_focus = state;
+    spice_gtk_session_set_keyboard_has_focus(d->gtk_session, state);
 
     /* keyboard grab gets inhibited by usb-device-manager when it is
        in the process of redirecting a usb-device (as this may show a
@@ -737,9 +738,9 @@ static void try_keyboard_grab(SpiceDisplay *display)
         return;
     if (d->keyboard_grab_active)
         return;
-    if (!d->keyboard_have_focus)
+    if (!spice_gtk_session_get_keyboard_has_focus(d->gtk_session))
         return;
-    if (!d->mouse_have_pointer)
+    if (!spice_gtk_session_get_mouse_has_pointer(d->gtk_session))
         return;
     if (d->keyboard_grab_released)
         return;
@@ -1465,6 +1466,7 @@ static gboolean enter_event(GtkWidget *widget, GdkEventCrossing *crossing G_GNUC
     SPICE_DEBUG("%s", __FUNCTION__);
 
     d->mouse_have_pointer = true;
+    spice_gtk_session_set_mouse_has_pointer(d->gtk_session, true);
     try_keyboard_grab(display);
     update_display(display);
 
@@ -1482,6 +1484,7 @@ static gboolean leave_event(GtkWidget *widget, GdkEventCrossing *crossing G_GNUC
         return true;
 
     d->mouse_have_pointer = false;
+    spice_gtk_session_set_mouse_has_pointer(d->gtk_session, false);
     try_keyboard_ungrab(display);
 
     return true;

@@ -64,6 +64,8 @@ struct _SpiceGtkSessionPrivate {
     gboolean                auto_usbredir_enable;
     int                     auto_usbredir_reqs;
     gboolean                pointer_grabbed;
+    gboolean                keyboard_has_focus;
+    gboolean                mouse_has_pointer;
 };
 
 /**
@@ -1226,4 +1228,37 @@ gboolean spice_gtk_session_get_pointer_grabbed(SpiceGtkSession *self)
     g_return_val_if_fail(SPICE_IS_GTK_SESSION(self), FALSE);
 
     return self->priv->pointer_grabbed;
+}
+
+G_GNUC_INTERNAL
+void spice_gtk_session_set_keyboard_has_focus(SpiceGtkSession *self,
+                                                gboolean keyboard_has_focus)
+{
+    g_return_if_fail(SPICE_IS_GTK_SESSION(self));
+
+    self->priv->keyboard_has_focus = keyboard_has_focus;
+}
+
+G_GNUC_INTERNAL
+void spice_gtk_session_set_mouse_has_pointer(SpiceGtkSession *self,
+                                                gboolean mouse_has_pointer)
+{
+   g_return_if_fail(SPICE_IS_GTK_SESSION(self));
+   self->priv->mouse_has_pointer = mouse_has_pointer;
+}
+
+G_GNUC_INTERNAL
+gboolean spice_gtk_session_get_keyboard_has_focus(SpiceGtkSession *self)
+{
+    g_return_val_if_fail(SPICE_IS_GTK_SESSION(self), FALSE);
+
+    return self->priv->keyboard_has_focus;
+}
+
+G_GNUC_INTERNAL
+gboolean spice_gtk_session_get_mouse_has_pointer(SpiceGtkSession *self)
+{
+    g_return_val_if_fail(SPICE_IS_GTK_SESSION(self), FALSE);
+
+    return self->priv->mouse_has_pointer;
 }
