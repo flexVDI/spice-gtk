@@ -720,10 +720,23 @@ static void spice_display_channel_reset_capabilities(SpiceChannel *channel)
 #ifdef HAVE_BUILTIN_MJPEG
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_CODEC_MJPEG);
 #endif
-    if (gstvideo_init()) {
-        spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_CODEC_MJPEG);
-        spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_CODEC_VP8);
-        spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_CODEC_H264);
+    if (gstvideo_has_codec(SPICE_VIDEO_CODEC_TYPE_MJPEG)) {
+        spice_channel_set_capability(SPICE_CHANNEL(channel),
+                                     SPICE_DISPLAY_CAP_CODEC_MJPEG);
+    } else {
+        spice_info("GStreamer does not support the mjpeg codec");
+    }
+    if (gstvideo_has_codec(SPICE_VIDEO_CODEC_TYPE_VP8)) {
+        spice_channel_set_capability(SPICE_CHANNEL(channel),
+                                     SPICE_DISPLAY_CAP_CODEC_VP8);
+    } else {
+        spice_info("GStreamer does not support the vp8 codec");
+    }
+    if (gstvideo_has_codec(SPICE_VIDEO_CODEC_TYPE_H264)) {
+        spice_channel_set_capability(SPICE_CHANNEL(channel),
+                                     SPICE_DISPLAY_CAP_CODEC_H264);
+    } else {
+        spice_info("GStreamer does not support the h264 codec");
     }
 }
 

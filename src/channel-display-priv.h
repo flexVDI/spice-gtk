@@ -73,9 +73,9 @@ VideoDecoder* create_mjpeg_decoder(int codec_type, display_stream *stream);
 #endif
 #ifdef HAVE_GSTVIDEO
 VideoDecoder* create_gstreamer_decoder(int codec_type, display_stream *stream);
-gboolean gstvideo_init(void);
+gboolean gstvideo_has_codec(int codec_type);
 #else
-# define gstvideo_init() FALSE
+# define gstvideo_has_codec(codec_type) FALSE
 #endif
 
 
