@@ -116,6 +116,7 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
 static void cursor_invalidate(SpiceDisplay *display);
 static void update_area(SpiceDisplay *display, gint x, gint y, gint width, gint height);
 static void release_keys(SpiceDisplay *display);
+static void size_allocate(GtkWidget *widget, GtkAllocation *conf, gpointer data);
 
 /* ---------------------------------------------------------------- */
 
@@ -560,9 +561,9 @@ static void spice_display_init(SpiceDisplay *display)
     gtk_drag_dest_set(widget, GTK_DEST_DEFAULT_ALL, &targets, 1, GDK_ACTION_COPY);
     g_signal_connect(display, "drag-data-received",
                      G_CALLBACK(drag_data_received_callback), NULL);
+    g_signal_connect(display, "size-allocate", G_CALLBACK(size_allocate), NULL);
 
     gtk_widget_add_events(widget,
-                          GDK_STRUCTURE_MASK |
                           GDK_POINTER_MOTION_MASK |
                           GDK_BUTTON_PRESS_MASK |
                           GDK_BUTTON_RELEASE_MASK |
@@ -577,7 +578,6 @@ static void spice_display_init(SpiceDisplay *display)
     gtk_widget_set_double_buffered(widget, true);
 #endif
     gtk_widget_set_can_focus(widget, true);
-    gtk_widget_set_has_window(widget, true);
     d->grabseq = spice_grab_sequence_new_from_string("Control_L+Alt_L");
     d->activeseq = g_new0(gboolean, d->grabseq->nkeysyms);
 
@@ -1746,14 +1746,14 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
     return true;
 }
 
-static gboolean configure_event(GtkWidget *widget, GdkEventConfigure *conf)
+static void size_allocate(GtkWidget *widget, GtkAllocation *conf, gpointer data)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = display->priv;
 
     if (conf->width == d->ww && conf->height == d->wh &&
             conf->x == d->mx && conf->y == d->my) {
-        return true;
+        return;
     }
 
     if (conf->width != d->ww  || conf->height != d->wh) {
@@ -1771,8 +1771,6 @@ static gboolean configure_event(GtkWidget *widget, GdkEventConfigure *conf)
         try_mouse_grab(display);
     }
 #endif
-
-    return true;
 }
 
 static void update_image(SpiceDisplay *display)
@@ -1826,7 +1824,6 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
     gtkwidget_class->motion_notify_event = motion_event;
     gtkwidget_class->button_press_event = button_event;
     gtkwidget_class->button_release_event = button_event;
-    gtkwidget_class->configure_event = configure_event;
     gtkwidget_class->scroll_event = scroll_event;
     gtkwidget_class->realize = realize;
     gtkwidget_class->unrealize = unrealize;
