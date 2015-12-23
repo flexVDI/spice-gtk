@@ -543,7 +543,7 @@ static void spice_display_init(SpiceDisplay *display)
     GtkWidget *widget = GTK_WIDGET(display);
     SpiceDisplayPrivate *d;
     GtkTargetEntry targets = { "text/uri-list", 0, 0 };
-    G_GNUC_UNUSED GError *err = NULL;
+    GError *err = NULL;
 
     d = display->priv = SPICE_DISPLAY_GET_PRIVATE(display);
 
@@ -571,12 +571,10 @@ static void spice_display_init(SpiceDisplay *display)
 
     d->mouse_cursor = get_blank_cursor();
 
-#ifdef USE_EPOXY
     if (!spice_egl_init(display, &err)) {
         g_critical("egl init failed: %s", err->message);
         g_clear_error(&err);
     }
-#endif
 }
 
 static GObject *
@@ -1128,7 +1126,6 @@ static gboolean do_color_convert(SpiceDisplay *display, GdkRectangle *r)
 
 static void set_egl_enabled(SpiceDisplay *display, bool enabled)
 {
-#ifdef USE_EPOXY
     SpiceDisplayPrivate *d = display->priv;
 
     if (d->egl.enabled != enabled) {
@@ -1138,7 +1135,6 @@ static void set_egl_enabled(SpiceDisplay *display, bool enabled)
          * resized. */
         gtk_widget_set_double_buffered(GTK_WIDGET(display), !enabled);
     }
-#endif
 }
 
 static gboolean draw_event(GtkWidget *widget, cairo_t *cr)
@@ -1147,12 +1143,10 @@ static gboolean draw_event(GtkWidget *widget, cairo_t *cr)
     SpiceDisplayPrivate *d = display->priv;
     g_return_val_if_fail(d != NULL, false);
 
-#ifdef USE_EPOXY
     if (d->egl.enabled) {
         spice_egl_update_display(display);
         return false;
     }
-#endif
 
     if (d->mark == 0 || d->data == NULL ||
         d->area.width == 0 || d->area.height == 0)
@@ -1756,10 +1750,8 @@ static void size_allocate(GtkWidget *widget, GtkAllocation *conf, gpointer data)
         d->ww = conf->width;
         d->wh = conf->height;
         recalc_geometry(widget);
-#ifdef USE_EPOXY
         if (d->egl.enabled)
             spice_egl_resize_display(display, conf->width, conf->height);
-#endif
     }
 
     d->mx = conf->x;
@@ -1786,7 +1778,7 @@ static void realize(GtkWidget *widget)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = display->priv;
-    G_GNUC_UNUSED GError *err = NULL;
+    GError *err = NULL;
 
     GTK_WIDGET_CLASS(spice_display_parent_class)->realize(widget);
 
@@ -1794,21 +1786,18 @@ static void realize(GtkWidget *widget)
         vnc_display_keymap_gdk2xtkbd_table(gtk_widget_get_window(widget),
                                            &d->keycode_maplen);
 
-#ifdef USE_EPOXY
     if (!spice_egl_realize_display(display, gtk_widget_get_window(GTK_WIDGET(display)), &err)) {
         g_critical("egl realize failed: %s", err->message);
         g_clear_error(&err);
     }
-#endif
+
     update_image(display);
 }
 
 static void unrealize(GtkWidget *widget)
 {
     spicex_image_destroy(SPICE_DISPLAY(widget));
-#ifdef USE_EPOXY
     spice_egl_unrealize_display(SPICE_DISPLAY(widget));
-#endif
 
     GTK_WIDGET_CLASS(spice_display_parent_class)->unrealize(widget);
 }
@@ -2257,9 +2246,7 @@ static void cursor_set(SpiceCursorChannel *channel,
     } else
         g_warn_if_reached();
 
-#ifdef USE_EPOXY
     spice_egl_cursor_set(display);
-#endif
     if (d->show_cursor) {
         /* unhide */
         gdk_cursor_unref(d->show_cursor);
@@ -2407,7 +2394,6 @@ static void cursor_reset(SpiceCursorChannel *channel, gpointer data)
     gdk_window_set_cursor(window, NULL);
 }
 
-#ifdef USE_EPOXY
 static void gl_scanout(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
@@ -2437,7 +2423,6 @@ static void gl_draw(SpiceDisplay *display,
     spice_egl_update_display(display);
     spice_display_gl_draw_done(SPICE_DISPLAY_CHANNEL(d->display));
 }
-#endif
 
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
@@ -2474,12 +2459,10 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
                            primary.stride, primary.shmid, primary.data, display);
             mark(display, primary.marked);
         }
-#ifdef USE_EPOXY
         spice_g_signal_connect_object(channel, "notify::gl-scanout",
                                       G_CALLBACK(gl_scanout), display, G_CONNECT_SWAPPED);
         spice_g_signal_connect_object(channel, "gl-draw",
                                       G_CALLBACK(gl_draw), display, G_CONNECT_SWAPPED);
-#endif
 
         spice_channel_connect(channel);
         return;
@@ -2631,7 +2614,6 @@ GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
     g_return_val_if_fail(d != NULL, NULL);
     g_return_val_if_fail(d->display != NULL, NULL);
 
-#ifdef USE_EPOXY
     if (d->egl.enabled) {
         GdkPixbuf *tmp;
 
@@ -2646,9 +2628,7 @@ GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
                                        (GdkPixbufDestroyNotify)g_free, NULL);
         pixbuf = gdk_pixbuf_flip(tmp, false);
         g_object_unref(tmp);
-    } else
-#endif
-    {
+    } else {
         guchar *src, *dest;
         int x, y;
 

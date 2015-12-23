@@ -123,7 +123,7 @@ AC_ARG_WITH([gtk],
   [with_gtk=3.0])
 
 case "$with_gtk" in
-  3.0) GTK_REQUIRED=2.91.3
+  3.0) GTK_REQUIRED=3.16
        ;;
   no)
        AS_IF([test x$enable_gtk_doc = xyes],
@@ -137,7 +137,7 @@ AS_IF([test "x$with_gtk" != "xno"],
       [PKG_CHECK_MODULES(GTK, gtk+-3.0 >= $GTK_REQUIRED)])
 AC_SUBST(GTK_CFLAGS)
 AC_SUBST(GTK_LIBS)
-SPICE_GTK_REQUIRES="${SPICE_GTK_REQUIRES} gtk+-3.0 >= $GTK_REQUIRED"
+SPICE_GTK_REQUIRES="${SPICE_GTK_REQUIRES} gtk+-3.0 >= $GTK_REQUIRED epoxy"
 
 PKG_CHECK_EXISTS([gtk+-quartz-$with_gtk], [have_quartz=yes], [have_quartz=no])
 AS_IF([test "x$have_quartz" = "xyes"], [AC_DEFINE([HAVE_QUARTZ], 1, [Have Quartz?])])
@@ -207,31 +207,6 @@ AS_IF([test "x$have_phodav" = "xyes"],
        AC_DEFINE([USE_PHODAV], [1], [Define if supporting phodav]))
 
 AM_CONDITIONAL([WITH_PHODAV], [test "x$have_phodav" = "xyes"])
-
-# FIXME: remove with gtk2
-AC_ARG_ENABLE([epoxy],
-  AS_HELP_STRING([--enable-epoxy=@<:@auto/yes/no@:>@],
-  [Enable egl/epoxy support @<:@default=auto@:>@]),
-  [],
-  [enable_epoxy="auto"])
-
-if test "x$enable_epoxy" = "xno"; then
-  have_epoxy="no"
-else
-  PKG_CHECK_MODULES(EPOXY, [epoxy], [have_epoxy=yes], [have_epoxy=no])
-  AC_SUBST(EPOXY_CFLAGS)
-  AC_SUBST(EPOXY_LIBS)
-  if test "x$have_epoxy" = "xyes"; then
-    AC_CHECK_HEADER([epoxy/egl.h],,have_epoxy=no)
-  fi
-  if test "x$have_epoxy" = "xno" && test "x$enable_epoxy" = "xyes"; then
-    AC_MSG_ERROR([epoxy support explicitly requested, but required package is not available])
-  fi
-fi
-AS_IF([test "x$have_epoxy" = "xyes"],
-  AC_DEFINE(USE_EPOXY, [1], [Define if supporting epoxy]))
-
-AM_CONDITIONAL([WITH_EPOXY], [test "x$have_epoxy" = "xyes"])
 
 AC_ARG_WITH([audio],
   AS_HELP_STRING([--with-audio=@<:@gstreamer/pulse/auto/no@:>@], [For legacy compatibility only]),
