@@ -19,7 +19,6 @@
 
 #include <math.h>
 #include <spice/vd_agent.h>
-#include <common/rect.h>
 #include <glib/gstdio.h>
 
 #include "glib-compat.h"
