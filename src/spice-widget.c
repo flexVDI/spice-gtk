@@ -71,7 +71,7 @@
  * save to disk).
  */
 
-G_DEFINE_TYPE(SpiceDisplay, spice_display, GTK_TYPE_DRAWING_AREA)
+G_DEFINE_TYPE(SpiceDisplay, spice_display, GTK_TYPE_STACK)
 
 /* Properties */
 enum {
@@ -117,6 +117,7 @@ static void cursor_invalidate(SpiceDisplay *display);
 static void update_area(SpiceDisplay *display, gint x, gint y, gint width, gint height);
 static void release_keys(SpiceDisplay *display);
 static void size_allocate(GtkWidget *widget, GtkAllocation *conf, gpointer data);
+static gboolean draw_event(GtkWidget *widget, cairo_t *cr, gpointer data);
 
 /* ---------------------------------------------------------------- */
 
@@ -538,14 +539,40 @@ static void grab_notify(SpiceDisplay *display, gboolean was_grabbed)
         release_keys(display);
 }
 
+static void
+drawing_area_realize(GtkWidget *area, gpointer user_data)
+{
+    SpiceDisplay *display = SPICE_DISPLAY(user_data);
+    GError *err = NULL;
+
+    if (!spice_egl_init(display, &err)) {
+        g_critical("egl init failed: %s", err->message);
+        g_clear_error(&err);
+    }
+
+    if (!spice_egl_realize_display(display, gtk_widget_get_window(area), &err)) {
+        g_critical("egl realize failed: %s", err->message);
+        g_clear_error(&err);
+    }
+}
+
 static void spice_display_init(SpiceDisplay *display)
 {
     GtkWidget *widget = GTK_WIDGET(display);
+    GtkWidget *area;
     SpiceDisplayPrivate *d;
     GtkTargetEntry targets = { "text/uri-list", 0, 0 };
-    GError *err = NULL;
 
     d = display->priv = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    area = gtk_drawing_area_new();
+    g_object_connect(area,
+                     "signal::draw", draw_event, display,
+                     "signal::realize", drawing_area_realize, display,
+                     NULL);
+    gtk_stack_add_named(GTK_STACK(widget), area, "draw-area");
+    gtk_widget_set_double_buffered(area, true);
+    gtk_stack_set_visible_child(GTK_STACK(widget), area);
 
     g_signal_connect(display, "grab-broken-event", G_CALLBACK(grab_broken), NULL);
     g_signal_connect(display, "grab-notify", G_CALLBACK(grab_notify), NULL);
@@ -564,17 +591,10 @@ static void spice_display_init(SpiceDisplay *display)
                           GDK_LEAVE_NOTIFY_MASK |
                           GDK_KEY_PRESS_MASK |
                           GDK_SCROLL_MASK);
-    gtk_widget_set_double_buffered(widget, true);
     gtk_widget_set_can_focus(widget, true);
     d->grabseq = spice_grab_sequence_new_from_string("Control_L+Alt_L");
     d->activeseq = g_new0(gboolean, d->grabseq->nkeysyms);
-
     d->mouse_cursor = get_blank_cursor();
-
-    if (!spice_egl_init(display, &err)) {
-        g_critical("egl init failed: %s", err->message);
-        g_clear_error(&err);
-    }
 }
 
 static GObject *
@@ -1127,19 +1147,27 @@ static gboolean do_color_convert(SpiceDisplay *display, GdkRectangle *r)
 static void set_egl_enabled(SpiceDisplay *display, bool enabled)
 {
     SpiceDisplayPrivate *d = display->priv;
+    GtkWidget *area;
 
-    if (d->egl.enabled != enabled) {
-        d->egl.enabled = enabled;
-        /* even though the function is marked as deprecated, it's the
-         * only way I found to prevent glitches when the window is
-         * resized. */
-        gtk_widget_set_double_buffered(GTK_WIDGET(display), !enabled);
+    if (d->egl.enabled == enabled)
+        return;
+
+    /* even though the function is marked as deprecated, it's the
+     * only way I found to prevent glitches when the window is
+     * resized. */
+    area = gtk_stack_get_child_by_name(GTK_STACK(display), "draw-area");
+    gtk_widget_set_double_buffered(GTK_WIDGET(area), !enabled);
+
+    if (enabled) {
+        spice_egl_resize_display(display, d->ww, d->wh);
     }
+
+    d->egl.enabled = enabled;
 }
 
-static gboolean draw_event(GtkWidget *widget, cairo_t *cr)
+static gboolean draw_event(GtkWidget *widget, cairo_t *cr, gpointer data)
 {
-    SpiceDisplay *display = SPICE_DISPLAY(widget);
+    SpiceDisplay *display = SPICE_DISPLAY(data);
     SpiceDisplayPrivate *d = display->priv;
     g_return_val_if_fail(d != NULL, false);
 
@@ -1778,18 +1806,12 @@ static void realize(GtkWidget *widget)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = display->priv;
-    GError *err = NULL;
 
     GTK_WIDGET_CLASS(spice_display_parent_class)->realize(widget);
 
     d->keycode_map =
         vnc_display_keymap_gdk2xtkbd_table(gtk_widget_get_window(widget),
                                            &d->keycode_maplen);
-
-    if (!spice_egl_realize_display(display, gtk_widget_get_window(GTK_WIDGET(display)), &err)) {
-        g_critical("egl realize failed: %s", err->message);
-        g_clear_error(&err);
-    }
 
     update_image(display);
 }
@@ -1810,7 +1832,6 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
     GtkWidgetClass *gtkwidget_class = GTK_WIDGET_CLASS(klass);
 
-    gtkwidget_class->draw = draw_event;
     gtkwidget_class->key_press_event = key_event;
     gtkwidget_class->key_release_event = key_event;
     gtkwidget_class->enter_notify_event = enter_event;
