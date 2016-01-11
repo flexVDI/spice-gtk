@@ -137,6 +137,7 @@ struct _SpiceDisplayPrivate {
         guint               tex_pointer_id;
         guint               prog;
         EGLImageKHR         image;
+        gboolean            call_draw_done;
         SpiceGlScanout      scanout;
     } egl;
 };

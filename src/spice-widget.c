@@ -539,11 +539,47 @@ static void grab_notify(SpiceDisplay *display, gboolean was_grabbed)
         release_keys(display);
 }
 
+static gboolean
+gl_area_render(GtkGLArea *area, GdkGLContext *context, gpointer user_data)
+{
+    SpiceDisplay *display = SPICE_DISPLAY(user_data);
+    SpiceDisplayPrivate *d = display->priv;
+
+    spice_egl_update_display(display);
+    glFlush();
+    if (d->egl.call_draw_done) {
+        spice_display_gl_draw_done(SPICE_DISPLAY_CHANNEL(d->display));
+        d->egl.call_draw_done = FALSE;
+    }
+
+    return TRUE;
+}
+
 static void
-drawing_area_realize(GtkWidget *area, gpointer user_data)
+gl_area_realize(GtkGLArea *area, gpointer user_data)
 {
     SpiceDisplay *display = SPICE_DISPLAY(user_data);
     GError *err = NULL;
+
+    gtk_gl_area_make_current(area);
+    if (gtk_gl_area_get_error(area) != NULL)
+        return;
+
+    if (!spice_egl_init(display, &err)) {
+        g_critical("egl init failed: %s", err->message);
+        g_clear_error(&err);
+    }
+}
+
+static void
+drawing_area_realize(GtkWidget *area, gpointer user_data)
+{
+#ifdef GDK_WINDOWING_X11
+    SpiceDisplay *display = SPICE_DISPLAY(user_data);
+    GError *err = NULL;
+
+    if (!GDK_IS_X11_DISPLAY(gdk_display_get_default()))
+        return;
 
     if (!spice_egl_init(display, &err)) {
         g_critical("egl init failed: %s", err->message);
@@ -554,6 +590,7 @@ drawing_area_realize(GtkWidget *area, gpointer user_data)
         g_critical("egl realize failed: %s", err->message);
         g_clear_error(&err);
     }
+#endif
 }
 
 static void spice_display_init(SpiceDisplay *display)
@@ -573,6 +610,16 @@ static void spice_display_init(SpiceDisplay *display)
     gtk_stack_add_named(GTK_STACK(widget), area, "draw-area");
     gtk_widget_set_double_buffered(area, true);
     gtk_stack_set_visible_child(GTK_STACK(widget), area);
+
+    area = gtk_gl_area_new();
+    gtk_gl_area_set_required_version(GTK_GL_AREA(area), 3, 2);
+    gtk_gl_area_set_auto_render(GTK_GL_AREA(area), false);
+    g_object_connect(area,
+                     "signal::render", gl_area_render, display,
+                     "signal::realize", gl_area_realize, display,
+                     NULL);
+    gtk_stack_add_named(GTK_STACK(widget), area, "gl-area");
+    gtk_widget_show_all(widget);
 
     g_signal_connect(display, "grab-broken-event", G_CALLBACK(grab_broken), NULL);
     g_signal_connect(display, "grab-notify", G_CALLBACK(grab_notify), NULL);
@@ -1152,11 +1199,20 @@ static void set_egl_enabled(SpiceDisplay *display, bool enabled)
     if (d->egl.enabled == enabled)
         return;
 
-    /* even though the function is marked as deprecated, it's the
-     * only way I found to prevent glitches when the window is
-     * resized. */
-    area = gtk_stack_get_child_by_name(GTK_STACK(display), "draw-area");
-    gtk_widget_set_double_buffered(GTK_WIDGET(area), !enabled);
+#ifdef GDK_WINDOWING_X11
+    if (GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
+        /* even though the function is marked as deprecated, it's the
+         * only way I found to prevent glitches when the window is
+         * resized. */
+        area = gtk_stack_get_child_by_name(GTK_STACK(display), "draw-area");
+        gtk_widget_set_double_buffered(GTK_WIDGET(area), !enabled);
+    } else
+#endif
+    {
+        area = gtk_stack_get_child_by_name(GTK_STACK(display), "gl-area");
+        gtk_stack_set_visible_child_name(GTK_STACK(display),
+                                         enabled ? "gl-area" : "draw-area");
+    }
 
     if (enabled) {
         spice_egl_resize_display(display, d->ww, d->wh);
@@ -1171,7 +1227,8 @@ static gboolean draw_event(GtkWidget *widget, cairo_t *cr, gpointer data)
     SpiceDisplayPrivate *d = display->priv;
     g_return_val_if_fail(d != NULL, false);
 
-    if (d->egl.enabled) {
+    if (d->egl.enabled &&
+        g_str_equal(gtk_stack_get_visible_child_name(GTK_STACK(display)), "draw-area")) {
         spice_egl_update_display(display);
         return false;
     }
@@ -2437,12 +2494,18 @@ static void gl_draw(SpiceDisplay *display,
                     guint32 x, guint32 y, guint32 w, guint32 h)
 {
     SpiceDisplayPrivate *d = display->priv;
+    GtkWidget *gl = gtk_stack_get_child_by_name(GTK_STACK(display), "gl-area");
 
     SPICE_DEBUG("%s",  __FUNCTION__);
     set_egl_enabled(display, true);
 
-    spice_egl_update_display(display);
-    spice_display_gl_draw_done(SPICE_DISPLAY_CHANNEL(d->display));
+    if (gtk_stack_get_visible_child(GTK_STACK(display)) == gl) {
+        gtk_gl_area_queue_render(GTK_GL_AREA(gl));
+        d->egl.call_draw_done = TRUE;
+    } else {
+        spice_egl_update_display(display);
+        spice_display_gl_draw_done(SPICE_DISPLAY_CHANNEL(d->display));
+    }
 }
 
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
