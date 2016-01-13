@@ -37,7 +37,7 @@ typedef struct display_cache {
 
 static inline display_cache_item* cache_item_new(guint64 id, gboolean lossy)
 {
-    display_cache_item *self = g_slice_new(display_cache_item);
+    display_cache_item *self = g_new(display_cache_item, 1);
     self->id = id;
     self->lossy = lossy;
     self->ref_count = 1;
@@ -46,12 +46,12 @@ static inline display_cache_item* cache_item_new(guint64 id, gboolean lossy)
 
 static inline void cache_item_free(display_cache_item *self)
 {
-    g_slice_free(display_cache_item, self);
+    g_free(self);
 }
 
 static inline display_cache* cache_new(GDestroyNotify value_destroy)
 {
-    display_cache * self = g_slice_new(display_cache);
+    display_cache * self = g_new(display_cache, 1);
     self->table = g_hash_table_new_full(g_int64_hash, g_int64_equal,
                                        (GDestroyNotify) cache_item_free,
                                        value_destroy);
@@ -131,7 +131,7 @@ static inline void cache_clear(display_cache *cache)
 static inline void cache_free(display_cache *cache)
 {
     g_hash_table_unref(cache->table);
-    g_slice_free(display_cache, cache);
+    g_free(cache);
 }
 
 G_END_DECLS

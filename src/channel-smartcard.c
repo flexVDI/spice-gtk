@@ -241,7 +241,7 @@ smartcard_message_free(SpiceSmartcardChannelMessage *message)
 {
     if (message->message)
         spice_msg_out_unref(message->message);
-    g_slice_free(SpiceSmartcardChannelMessage, message);
+    g_free(message);
 }
 
 #if USE_SMARTCARD
@@ -301,7 +301,7 @@ smartcard_message_new(VSCMsgType msg_type, SpiceMsgOut *msg_out)
 {
     SpiceSmartcardChannelMessage *message;
 
-    message = g_slice_new0(SpiceSmartcardChannelMessage);
+    message = g_new0(SpiceSmartcardChannelMessage, 1);
     message->message = msg_out;
     message->message_type = msg_type;
 

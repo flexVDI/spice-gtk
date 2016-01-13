@@ -285,7 +285,7 @@ free_connect_data (ConnectAsyncData *data)
   if (data->cancellable != NULL)
     g_object_unref (data->cancellable);
 
-  g_slice_free (ConnectAsyncData, data);
+  g_free (data);
 }
 
 static void
@@ -364,7 +364,7 @@ wocky_http_proxy_connect_async (GProxy *proxy,
                                       callback, user_data,
                                       wocky_http_proxy_connect_async);
 
-  data = g_slice_new0 (ConnectAsyncData);
+  data = g_new0 (ConnectAsyncData, 1);
   if (cancellable != NULL)
     data->cancellable = g_object_ref (cancellable);
   data->simple = simple;

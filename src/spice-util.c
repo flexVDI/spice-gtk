@@ -153,7 +153,7 @@ static WeakHandlerCtx *
 whc_new (GObject *instance,
          GObject *observer)
 {
-    WeakHandlerCtx *ctx = g_slice_new0 (WeakHandlerCtx);
+    WeakHandlerCtx *ctx = g_new0 (WeakHandlerCtx, 1);
 
     ctx->instance = instance;
     ctx->observer = observer;
@@ -164,7 +164,7 @@ whc_new (GObject *instance,
 static void
 whc_free (WeakHandlerCtx *ctx)
 {
-    g_slice_free (WeakHandlerCtx, ctx);
+    g_free (ctx);
 }
 
 static void observer_destroyed_cb (gpointer, GObject *);

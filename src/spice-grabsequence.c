@@ -56,7 +56,7 @@ SpiceGrabSequence *spice_grab_sequence_new(guint nkeysyms, guint *keysyms)
 {
 	SpiceGrabSequence *sequence;
 
-	sequence = g_slice_new0(SpiceGrabSequence);
+	sequence = g_new0(SpiceGrabSequence, 1);
 	sequence->nkeysyms = nkeysyms;
 	sequence->keysyms = g_new0(guint, nkeysyms);
 	memcpy(sequence->keysyms, keysyms, sizeof(guint)*nkeysyms);
@@ -79,7 +79,7 @@ SpiceGrabSequence *spice_grab_sequence_new_from_string(const gchar *str)
 	int i;
 	SpiceGrabSequence *sequence;
 
-	sequence = g_slice_new0(SpiceGrabSequence);
+	sequence = g_new0(SpiceGrabSequence, 1);
 
 	keysymstr = g_strsplit(str, "+", 5);
 
@@ -114,7 +114,8 @@ SpiceGrabSequence *spice_grab_sequence_copy(SpiceGrabSequence *srcSequence)
 {
 	SpiceGrabSequence *sequence;
 
-	sequence = g_slice_dup(SpiceGrabSequence, srcSequence);
+	sequence = g_new0(SpiceGrabSequence, 1);
+	sequence->nkeysyms = srcSequence->nkeysyms;
 	sequence->keysyms = g_new0(guint, srcSequence->nkeysyms);
 	memcpy(sequence->keysyms, srcSequence->keysyms,
 	       sizeof(guint) * sequence->nkeysyms);
@@ -132,7 +133,7 @@ SpiceGrabSequence *spice_grab_sequence_copy(SpiceGrabSequence *srcSequence)
 void spice_grab_sequence_free(SpiceGrabSequence *sequence)
 {
 	g_free(sequence->keysyms);
-	g_slice_free(SpiceGrabSequence, sequence);
+	g_free(sequence);
 }
 
 

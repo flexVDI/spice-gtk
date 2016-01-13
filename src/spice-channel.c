@@ -471,7 +471,7 @@ SpiceMsgIn *spice_msg_in_new(SpiceChannel *channel)
 
     g_return_val_if_fail(channel != NULL, NULL);
 
-    in = g_slice_new0(SpiceMsgIn);
+    in = g_new0(SpiceMsgIn, 1);
     in->refcount = 1;
     in->channel  = channel;
 
@@ -519,7 +519,7 @@ void spice_msg_in_unref(SpiceMsgIn *in)
     } else {
         g_free(in->data);
     }
-    g_slice_free(SpiceMsgIn, in);
+    g_free(in);
 }
 
 G_GNUC_INTERNAL
@@ -624,7 +624,7 @@ SpiceMsgOut *spice_msg_out_new(SpiceChannel *channel, int type)
 
     g_return_val_if_fail(c != NULL, NULL);
 
-    out = g_slice_new0(SpiceMsgOut);
+    out = g_new0(SpiceMsgOut, 1);
     out->refcount = 1;
     out->channel  = channel;
     out->ro_check = msg_check_read_only(c->channel_type, type);
@@ -660,7 +660,7 @@ void spice_msg_out_unref(SpiceMsgOut *out)
     if (out->refcount > 0)
         return;
     spice_marshaller_destroy(out->marshaller);
-    g_slice_free(SpiceMsgOut, out);
+    g_free(out);
 }
 
 /* system context */
