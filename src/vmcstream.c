@@ -27,7 +27,7 @@
 struct _SpiceVmcInputStream
 {
     GInputStream parent_instance;
-    GSimpleAsyncResult *result;
+    GTask *task;
     struct coroutine *coroutine;
 
     SpiceChannel *channel;
@@ -36,7 +36,6 @@ struct _SpiceVmcInputStream
     gsize count;
     gsize pos;
 
-    GCancellable *cancellable;
     gulong cancel_id;
 };
 
@@ -118,11 +117,12 @@ spice_vmc_input_stream_co_data(SpiceVmcInputStream *self,
     self->coroutine = coroutine_self();
 
     while (size > 0) {
-        SPICE_DEBUG("spicevmc co_data %p", self->result);
-        if (!self->result)
+        GCancellable *cancellable;
+        SPICE_DEBUG("spicevmc co_data %p", self->task);
+        if (!self->task)
             coroutine_yield(NULL);
 
-        g_return_if_fail(self->result != NULL);
+        g_return_if_fail(self->task != NULL);
 
         gsize min = MIN(self->count, size);
         memcpy(self->buffer, data, min);
@@ -139,14 +139,13 @@ spice_vmc_input_stream_co_data(SpiceVmcInputStream *self,
         if (self->all && min > 0 && self->pos != self->count)
             continue;
 
-        g_simple_async_result_set_op_res_gssize(self->result, self->pos);
+        g_task_return_int(self->task, self->pos);
 
-        g_simple_async_result_complete_in_idle(self->result);
-        g_clear_object(&self->result);
-        if (self->cancellable) {
-            g_cancellable_disconnect(self->cancellable, self->cancel_id);
-            g_clear_object(&self->cancellable);
-        }
+        cancellable = g_task_get_cancellable(self->task);
+        if (cancellable)
+            g_cancellable_disconnect(cancellable, self->cancel_id);
+
+        g_clear_object(&self->task);
     }
 
     self->coroutine = NULL;
@@ -158,13 +157,12 @@ read_cancelled(GCancellable *cancellable,
 {
     SpiceVmcInputStream *self = SPICE_VMC_INPUT_STREAM(user_data);
 
-    SPICE_DEBUG("read cancelled, %p", self->result);
-    g_simple_async_result_set_error(self->result,
-                                    G_IO_ERROR, G_IO_ERROR_CANCELLED,
-                                    "read cancelled");
-    g_simple_async_result_complete_in_idle(self->result);
+    SPICE_DEBUG("read cancelled, %p", self->task);
+    g_task_return_new_error(self->task,
+                            G_IO_ERROR, G_IO_ERROR_CANCELLED,
+                            "read cancelled");
 
-    g_clear_object(&self->result);
+    g_clear_object(&self->task);
 
     /* See FIXME */
     /* if (self->cancellable) { */
@@ -183,21 +181,20 @@ spice_vmc_input_stream_read_all_async(GInputStream        *stream,
                                       gpointer             user_data)
 {
     SpiceVmcInputStream *self = SPICE_VMC_INPUT_STREAM(stream);
-    GSimpleAsyncResult *result;
+    GTask *task;
 
     /* no concurrent read permitted by ginputstream */
-    g_return_if_fail(self->result == NULL);
-    g_return_if_fail(self->cancellable == NULL);
+    g_return_if_fail(self->task == NULL);
+    g_return_if_fail(g_task_get_cancellable(self->task) == NULL);
     self->all = TRUE;
     self->buffer = buffer;
     self->count = count;
     self->pos = 0;
-    result = g_simple_async_result_new(G_OBJECT(self),
-                                       callback,
-                                       user_data,
-                                       spice_vmc_input_stream_read_async);
-    self->result = result;
-    self->cancellable = g_object_ref(cancellable);
+    task = g_task_new(self,
+                      cancellable,
+                      callback,
+                      user_data);
+    self->task = task;
     if (cancellable)
         self->cancel_id =
             g_cancellable_connect(cancellable, G_CALLBACK(read_cancelled), self, NULL);
@@ -211,27 +208,19 @@ spice_vmc_input_stream_read_all_finish(GInputStream *stream,
                                        GAsyncResult *result,
                                        GError **error)
 {
-    GSimpleAsyncResult *simple;
+    GTask *task = G_TASK(result);
+    GCancellable *cancellable;
     SpiceVmcInputStream *self = SPICE_VMC_INPUT_STREAM(stream);
 
-    g_return_val_if_fail(g_simple_async_result_is_valid(result,
-                                                        G_OBJECT(self),
-                                                        spice_vmc_input_stream_read_async),
-                         -1);
-
-    simple = (GSimpleAsyncResult *)result;
+    g_return_val_if_fail(g_task_is_valid(task, self), -1);
 
     /* FIXME: calling _finish() is required. Disconnecting in
        read_cancelled() causes a deadlock. #705395 */
-    if (self->cancellable) {
-        g_cancellable_disconnect(self->cancellable, self->cancel_id);
-        g_clear_object(&self->cancellable);
-    }
+    cancellable = g_task_get_cancellable(task);
+    if (cancellable)
+        g_cancellable_disconnect(cancellable, self->cancel_id);
 
-    if (g_simple_async_result_propagate_error(simple, error))
-        return -1;
-
-    return g_simple_async_result_get_op_res_gssize(simple);
+    return g_task_propagate_int(task, error);
 }
 
 static void
@@ -244,21 +233,18 @@ spice_vmc_input_stream_read_async(GInputStream        *stream,
                                   gpointer             user_data)
 {
     SpiceVmcInputStream *self = SPICE_VMC_INPUT_STREAM(stream);
-    GSimpleAsyncResult *result;
+    GTask *task;
 
     /* no concurrent read permitted by ginputstream */
-    g_return_if_fail(self->result == NULL);
-    g_return_if_fail(self->cancellable == NULL);
+    g_return_if_fail(self->task == NULL);
+    g_return_if_fail(g_task_get_cancellable(self->task) == NULL);
     self->all = FALSE;
     self->buffer = buffer;
     self->count = count;
     self->pos = 0;
-    result = g_simple_async_result_new(G_OBJECT(self),
-                                       callback,
-                                       user_data,
-                                       spice_vmc_input_stream_read_async);
-    self->result = result;
-    self->cancellable = g_object_ref(cancellable);
+
+    task = g_task_new(self, cancellable, callback, user_data);
+    self->task = task;
     if (cancellable)
         self->cancel_id =
             g_cancellable_connect(cancellable, G_CALLBACK(read_cancelled), self, NULL);
@@ -272,27 +258,19 @@ spice_vmc_input_stream_read_finish(GInputStream *stream,
                                    GAsyncResult *result,
                                    GError **error)
 {
-    GSimpleAsyncResult *simple;
+    GTask *task = G_TASK(result);
+    GCancellable *cancellable;
     SpiceVmcInputStream *self = SPICE_VMC_INPUT_STREAM(stream);
 
-    g_return_val_if_fail(g_simple_async_result_is_valid(result,
-                                                        G_OBJECT(self),
-                                                        spice_vmc_input_stream_read_async),
-                         -1);
-
-    simple = (GSimpleAsyncResult *)result;
+    g_return_val_if_fail(g_task_is_valid(task, self), -1);
 
     /* FIXME: calling _finish() is required. Disconnecting in
        read_cancelled() causes a deadlock. #705395 */
-    if (self->cancellable) {
-        g_cancellable_disconnect(self->cancellable, self->cancel_id);
-        g_clear_object(&self->cancellable);
-    }
+    cancellable = g_task_get_cancellable(task);
+    if (cancellable)
+        g_cancellable_disconnect(cancellable, self->cancel_id);
 
-    if (g_simple_async_result_propagate_error(simple, error))
-        return -1;
-
-    return g_simple_async_result_get_op_res_gssize(simple);
+    return g_task_propagate_int(task, error);
 }
 
 static gssize
@@ -407,11 +385,10 @@ spice_vmc_output_stream_write_finish(GOutputStream *stream,
                                      GError **error)
 {
     SpiceVmcOutputStream *self = SPICE_VMC_OUTPUT_STREAM(stream);
-    GSimpleAsyncResult *res =
-        g_simple_async_result_get_op_res_gpointer(G_SIMPLE_ASYNC_RESULT(simple));
+    GAsyncResult *res = g_task_propagate_pointer(G_TASK(simple), error);
 
     SPICE_DEBUG("spicevmc write finish");
-    return spice_vmc_write_finish(self->channel, G_ASYNC_RESULT(res), error);
+    return spice_vmc_write_finish(self->channel, res, error);
 }
 
 static void
@@ -419,12 +396,11 @@ write_cb(GObject *source_object,
          GAsyncResult *res,
          gpointer user_data)
 {
-    GSimpleAsyncResult *simple = user_data;
+    GTask *task = user_data;
 
-    g_simple_async_result_set_op_res_gpointer(simple, res, NULL);
+    g_task_return_pointer(task, g_object_ref(task), g_object_unref);
 
-    g_simple_async_result_complete(simple);
-    g_object_unref(simple);
+    g_object_unref(task);
 }
 
 static void
@@ -437,16 +413,15 @@ spice_vmc_output_stream_write_async(GOutputStream *stream,
                                     gpointer user_data)
 {
     SpiceVmcOutputStream *self = SPICE_VMC_OUTPUT_STREAM(stream);
-    GSimpleAsyncResult *simple;
+    GTask *task;
 
     SPICE_DEBUG("spicevmc write async");
     /* an AsyncResult to forward async op to channel */
-    simple = g_simple_async_result_new(G_OBJECT(self), callback, user_data,
-                                       spice_vmc_output_stream_write_async);
+    task = g_task_new(self, cancellable, callback, user_data);
 
     spice_vmc_write_async(self->channel, buffer, count,
                           cancellable, write_cb,
-                          simple);
+                          task);
 }
 
 /* STREAM */
