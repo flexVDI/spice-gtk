@@ -44,8 +44,7 @@
 
 struct _SpiceWinUsbDriverPrivate {
     USBClerkReply         reply;
-    GSimpleAsyncResult    *result;
-    GCancellable          *cancellable;
+    GTask                 *task;
     HANDLE                handle;
     SpiceUsbDevice        *device;
 };
@@ -95,7 +94,7 @@ static void spice_win_usb_driver_finalize(GObject *gobject)
     if (priv->handle)
         CloseHandle(priv->handle);
 
-    g_clear_object(&priv->result);
+    g_clear_object(&priv->task);
 
     if (G_OBJECT_CLASS(spice_win_usb_driver_parent_class)->finalize)
         G_OBJECT_CLASS(spice_win_usb_driver_parent_class)->finalize(gobject);
@@ -144,16 +143,16 @@ void win_usb_driver_handle_reply_cb(GObject *gobject,
 
     if (err) {
         g_warning("failed to read reply from usbclerk (%s)", err->message);
-        g_simple_async_result_take_error(priv->result, err);
+        g_task_return_error(priv->task, err);
         goto failed_reply;
     }
 
     if (bytes == 0) {
         g_warning("unexpected EOF from usbclerk");
-        g_simple_async_result_set_error(priv->result,
-                                        SPICE_WIN_USB_DRIVER_ERROR,
-                                        SPICE_WIN_USB_DRIVER_ERROR_FAILED,
-                                        "unexpected EOF from usbclerk");
+        g_task_return_new_error(priv->task,
+                                SPICE_WIN_USB_DRIVER_ERROR,
+                                SPICE_WIN_USB_DRIVER_ERROR_FAILED,
+                                "unexpected EOF from usbclerk");
         goto failed_reply;
     }
 
@@ -167,53 +166,54 @@ void win_usb_driver_handle_reply_cb(GObject *gobject,
     if (priv->reply.hdr.magic != USB_CLERK_MAGIC) {
         g_warning("usbclerk magic mismatch: mine=0x%04x  server=0x%04x",
                   USB_CLERK_MAGIC, priv->reply.hdr.magic);
-        g_simple_async_result_set_error(priv->result,
-                                        SPICE_WIN_USB_DRIVER_ERROR,
-                                        SPICE_WIN_USB_DRIVER_ERROR_MESSAGE,
-                                        "usbclerk magic mismatch");
+        g_task_return_new_error(priv->task,
+                                SPICE_WIN_USB_DRIVER_ERROR,
+                                SPICE_WIN_USB_DRIVER_ERROR_MESSAGE,
+                                "usbclerk magic mismatch");
         goto failed_reply;
     }
 
     if (priv->reply.hdr.version != USB_CLERK_VERSION) {
         g_warning("usbclerk version mismatch: mine=0x%04x  server=0x%04x",
                   USB_CLERK_VERSION, priv->reply.hdr.version);
-        g_simple_async_result_set_error(priv->result,
-                                        SPICE_WIN_USB_DRIVER_ERROR,
-                                        SPICE_WIN_USB_DRIVER_ERROR_MESSAGE,
-                                        "usbclerk version mismatch");
+        g_task_return_new_error(priv->task,
+                                SPICE_WIN_USB_DRIVER_ERROR,
+                                SPICE_WIN_USB_DRIVER_ERROR_MESSAGE,
+                                "usbclerk version mismatch");
     }
 
     if (priv->reply.hdr.type != USB_CLERK_REPLY) {
         g_warning("usbclerk message with unexpected type %d",
                   priv->reply.hdr.type);
-        g_simple_async_result_set_error(priv->result,
-                                        SPICE_WIN_USB_DRIVER_ERROR,
-                                        SPICE_WIN_USB_DRIVER_ERROR_MESSAGE,
-                                        "usbclerk message with unexpected type");
+        g_task_return_new_error(priv->task,
+                                SPICE_WIN_USB_DRIVER_ERROR,
+                                SPICE_WIN_USB_DRIVER_ERROR_MESSAGE,
+                                "usbclerk message with unexpected type");
         goto failed_reply;
     }
 
     if (priv->reply.hdr.size != bytes) {
         g_warning("usbclerk message size mismatch: read %"G_GSSIZE_FORMAT" bytes  hdr.size=%d",
                   bytes, priv->reply.hdr.size);
-        g_simple_async_result_set_error(priv->result,
-                                        SPICE_WIN_USB_DRIVER_ERROR,
-                                        SPICE_WIN_USB_DRIVER_ERROR_MESSAGE,
-                                        "usbclerk message with unexpected size");
+        g_task_return_new_error(priv->task,
+                                SPICE_WIN_USB_DRIVER_ERROR,
+                                SPICE_WIN_USB_DRIVER_ERROR_MESSAGE,
+                                "usbclerk message with unexpected size");
         goto failed_reply;
     }
 
     if (priv->reply.status == 0) {
-        g_simple_async_result_set_error(priv->result,
-                                        SPICE_WIN_USB_DRIVER_ERROR,
-                                        SPICE_WIN_USB_DRIVER_ERROR_MESSAGE,
-                                        "usbclerk error reply");
+        g_task_return_new_error(priv->task,
+                                SPICE_WIN_USB_DRIVER_ERROR,
+                                SPICE_WIN_USB_DRIVER_ERROR_MESSAGE,
+                                "usbclerk error reply");
         goto failed_reply;
     }
 
+    g_task_return_boolean (priv->task, TRUE);
+
  failed_reply:
-    g_simple_async_result_complete_in_idle(priv->result);
-    g_clear_object(&priv->result);
+    g_clear_object(&priv->task);
 }
 
 /* ------------------------------------------------------------------ */
@@ -268,7 +268,8 @@ void spice_win_usb_driver_read_reply_async(SpiceWinUsbDriver *self)
     istream = g_win32_input_stream_new(priv->handle, FALSE);
 
     g_input_stream_read_async(istream, &priv->reply, sizeof(priv->reply),
-                              G_PRIORITY_DEFAULT, priv->cancellable,
+                              G_PRIORITY_DEFAULT,
+                              g_task_get_cancellable(priv->task),
                               win_usb_driver_handle_reply_cb, self);
 }
 
@@ -299,7 +300,7 @@ void spice_win_usb_driver_op(SpiceWinUsbDriver *self,
 {
     guint16 vid, pid;
     GError *err = NULL;
-    GSimpleAsyncResult *result;
+    GTask *task;
     SpiceWinUsbDriverPrivate *priv;
 
     g_return_if_fail(SPICE_IS_WIN_USB_DRIVER(self));
@@ -307,12 +308,11 @@ void spice_win_usb_driver_op(SpiceWinUsbDriver *self,
 
     priv = self->priv;
 
-    result = g_simple_async_result_new(G_OBJECT(self), callback, user_data,
-                                       spice_win_usb_driver_op);
+    task = g_task_new(self, cancellable, callback, user_data);
 
-    if (priv->result) { /* allow one install/uninstall request at a time */
+    if (priv->task) { /* allow one install/uninstall request at a time */
         g_warning("Another request exists -- try later");
-        g_simple_async_result_set_error(result,
+        g_task_return_new_error(task,
                   SPICE_WIN_USB_DRIVER_ERROR, SPICE_WIN_USB_DRIVER_ERROR_FAILED,
                   "Another request exists -- try later");
         goto failed_request;
@@ -325,22 +325,20 @@ void spice_win_usb_driver_op(SpiceWinUsbDriver *self,
     if (!spice_win_usb_driver_send_request(self, op_type,
                                            vid, pid, &err)) {
         g_warning("failed to send a request to usbclerk %s", err->message);
-        g_simple_async_result_take_error(result, err);
+        g_task_return_error(task, err);
         goto failed_request;
     }
 
     /* set up for async read */
-    priv->result = result;
+    priv->task = task;
     priv->device = device;
-    priv->cancellable = cancellable;
 
     spice_win_usb_driver_read_reply_async(self);
 
     return;
 
  failed_request:
-    g_simple_async_result_complete_in_idle(result);
-    g_clear_object(&result);
+    g_clear_object(&task);
 }
 
 /**
@@ -351,16 +349,12 @@ static gboolean
 spice_win_usb_driver_op_finish(SpiceWinUsbDriver *self,
                                GAsyncResult *res, GError **err)
 {
-    GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT(res);
+    GTask *task = G_TASK(res);
 
     g_return_val_if_fail(SPICE_IS_WIN_USB_DRIVER(self), 0);
-    g_return_val_if_fail(g_simple_async_result_is_valid(res, G_OBJECT(self),
-                                                        spice_win_usb_driver_op),
-                         FALSE);
-    if (g_simple_async_result_propagate_error(result, err))
-        return FALSE;
+    g_return_val_if_fail(g_task_is_valid(task, self), FALSE);
 
-    return TRUE;
+    return g_task_propagate_boolean(task, err);
 }
 
 /**
