@@ -34,13 +34,12 @@
 struct async_task {
     SpicePulse                 *pulse;
     SpiceMainChannel           *main_channel;
-    GSimpleAsyncResult         *res;
+    GTask                      *gtask;
     GAsyncReadyCallback        callback;
     gpointer                   user_data;
     gboolean                   is_playback;
     pa_operation               *pa_op;
     gulong                     cancel_id;
-    GCancellable               *cancellable;
 };
 
 struct stream {
@@ -941,19 +940,18 @@ static gboolean free_async_task(gpointer user_data)
         g_object_unref(task->pulse);
     }
 
-    if (task->res)
-        g_object_unref(task->res);
-
     if (task->main_channel)
         g_object_unref(task->main_channel);
 
     if (task->pa_op != NULL)
         pa_operation_unref(task->pa_op);
 
-    if (task->cancel_id != 0) {
-        g_cancellable_disconnect(task->cancellable, task->cancel_id);
-        g_clear_object(&task->cancellable);
-    }
+    if (task->cancel_id != 0)
+        g_cancellable_disconnect(g_task_get_cancellable(task->gtask),
+                                 task->cancel_id);
+
+    if (task->gtask)
+        g_object_unref(task->gtask);
 
     g_free(task);
     return G_SOURCE_REMOVE;
@@ -981,14 +979,6 @@ static void cancel_task(GCancellable *cancellable, gpointer user_data)
         task->pulse->priv->pending_restore_task = NULL;
     }
 
-#if !GLIB_CHECK_VERSION(2,32,0)
-    /* g_simple_async_result_set_check_cancellable is not present. Set an error
-     * in the GSimpleAsyncResult in case of _finish functions is called */
-    g_simple_async_result_set_error(task->res,
-                                    SPICE_CLIENT_ERROR,
-                                    SPICE_CLIENT_ERROR_FAILED,
-                                    "Operation was cancelled");
-#endif
     /* FIXME: https://bugzilla.gnome.org/show_bug.cgi?id=705395
      * Free the memory in idle */
     g_idle_add(free_async_task, task);
@@ -1001,27 +991,21 @@ static void complete_task(SpicePulse *pulse, struct async_task *task, const gcha
 
     /* If we do have any err_msg, we failed */
     if (err_msg != NULL) {
-        g_simple_async_result_set_op_res_gboolean(task->res, FALSE);
-        g_simple_async_result_set_error(task->res,
-                                        SPICE_CLIENT_ERROR,
-                                        SPICE_CLIENT_ERROR_FAILED,
-                                        "restore-info failed due %s",
-                                        err_msg);
+        g_task_return_new_error(task->gtask,
+                                SPICE_CLIENT_ERROR,
+                                SPICE_CLIENT_ERROR_FAILED,
+                                "restore-info failed: %s",
+                                err_msg);
     /* Volume-info does not change if stream is not found */
     } else if ((task->is_playback == TRUE && p->playback.info_updated == FALSE) ||
                (task->is_playback == FALSE && p->record.info_updated == FALSE)) {
-        g_simple_async_result_set_op_res_gboolean(task->res, FALSE);
-        g_simple_async_result_set_error(task->res,
-                                        SPICE_CLIENT_ERROR,
-                                        SPICE_CLIENT_ERROR_FAILED,
-                                        "Stream not found by pulse");
+        g_task_return_new_error(task->gtask,
+                                SPICE_CLIENT_ERROR,
+                                SPICE_CLIENT_ERROR_FAILED,
+                                "Stream not found by pulse");
     } else {
-        g_simple_async_result_set_op_res_gboolean(task->res, TRUE);
+        g_task_return_boolean(task->gtask, TRUE);
     }
-
-    /* As all async calls to PulseAudio are done with glib mainloop, it is
-     * safe to complete the operation synchronously here. */
-    g_simple_async_result_complete(task->res);
 }
 
 static void spice_pulse_complete_async_task(struct async_task *task, const gchar *err_msg)
@@ -1157,19 +1141,13 @@ static void pulse_stream_restore_info_async(gboolean is_playback,
                                             gpointer user_data)
 {
     SpicePulsePrivate *p = SPICE_PULSE(audio)->priv;
-    GSimpleAsyncResult *simple;
+    GTask *gtask;
     struct async_task *task = g_malloc0(sizeof(struct async_task));
     pa_operation *op = NULL;
 
-    simple = g_simple_async_result_new(G_OBJECT(audio),
-                                       callback,
-                                       user_data,
-                                       pulse_stream_restore_info_async);
-#if GLIB_CHECK_VERSION(2,32,0)
-    g_simple_async_result_set_check_cancellable (simple, cancellable);
-#endif
+    gtask = g_task_new(audio, cancellable, callback, user_data);
 
-    task->res = simple;
+    task->gtask = gtask;
     task->pulse = g_object_ref(audio);
     task->callback = callback;
     task->user_data = user_data;
@@ -1177,10 +1155,8 @@ static void pulse_stream_restore_info_async(gboolean is_playback,
     task->main_channel = g_object_ref(main_channel);
     task->pa_op = NULL;
 
-    if (cancellable) {
-        task->cancellable = g_object_ref(cancellable);
+    if (cancellable)
         task->cancel_id = g_cancellable_connect(cancellable, G_CALLBACK(cancel_task), task, NULL);
-    }
 
     /* If Playback/Record stream is created we use pulse API to get volume-info
      * from those streams directly. If the stream is not created, retrieve last
@@ -1257,13 +1233,14 @@ static void pulse_stream_restore_info_async(gboolean is_playback,
 
 fail:
     if (!op) {
-        g_simple_async_report_error_in_idle(G_OBJECT(audio),
-                                            callback,
-                                            user_data,
-                                            SPICE_CLIENT_ERROR,
-                                            SPICE_CLIENT_ERROR_FAILED,
-                                            "Volume-Info failed: %s",
-                                            pa_strerror(pa_context_errno(p->context)));
+        g_task_report_new_error(audio,
+                                callback,
+                                user_data,
+                                pulse_stream_restore_info_async,
+                                SPICE_CLIENT_ERROR,
+                                SPICE_CLIENT_ERROR_FAILED,
+                                "Volume-Info failed: %s",
+                                pa_strerror(pa_context_errno(p->context)));
         free_async_task(task);
     }
 }
@@ -1279,17 +1256,16 @@ static gboolean pulse_stream_restore_info_finish(gboolean is_playback,
 {
     SpicePulsePrivate *p = SPICE_PULSE(audio)->priv;
     struct stream *pstream = (is_playback) ? &p->playback : &p->record;
-    GSimpleAsyncResult *simple = (GSimpleAsyncResult *) res;
+    GTask *task = G_TASK(res);
 
-    g_return_val_if_fail(g_simple_async_result_is_valid(res,
-        G_OBJECT(audio), pulse_stream_restore_info_async), FALSE);
+    g_return_val_if_fail(g_task_is_valid(task, G_OBJECT(audio)), FALSE);
 
-    if (g_simple_async_result_propagate_error(simple, error)) {
+    if (g_task_had_error(task)) {
         /* set out args that should have new alloc'ed memory to NULL */
         if (volume != NULL) {
             *volume = NULL;
         }
-        return FALSE;
+        return g_task_propagate_boolean(task, error);
     }
 
     if (mute != NULL) {
@@ -1310,7 +1286,7 @@ static gboolean pulse_stream_restore_info_finish(gboolean is_playback,
         }
     }
 
-    return g_simple_async_result_get_op_res_gboolean(simple);
+    return g_task_propagate_boolean(task, error);
 }
 
 static void spice_pulse_get_playback_volume_info_async(SpiceAudio *audio,
