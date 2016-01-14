@@ -476,8 +476,9 @@ end:
     return retval;
 }
 
-static void smartcard_manager_init_helper(GSimpleAsyncResult *res,
-                                          GObject *object,
+static void smartcard_manager_init_helper(GTask *task,
+                                          gpointer object,
+                                          gpointer task_data,
                                           GCancellable *cancellable)
 {
     static GOnce smartcard_manager_once = G_ONCE_INIT;
@@ -491,10 +492,11 @@ static void smartcard_manager_init_helper(GSimpleAsyncResult *res,
     g_once(&smartcard_manager_once,
            (GThreadFunc)smartcard_manager_init,
            &args);
-    if (args.err != NULL) {
-        g_simple_async_result_set_from_error(res, args.err);
-        g_error_free(args.err);
-    }
+
+    if (args.err != NULL)
+        g_task_return_error(task, args.err);
+    else
+        g_task_return_boolean(task, TRUE);
 }
 
 
@@ -504,17 +506,10 @@ void spice_smartcard_manager_init_async(SpiceSession *session,
                                         GAsyncReadyCallback callback,
                                         gpointer opaque)
 {
-    GSimpleAsyncResult *res;
+    GTask *task = g_task_new(session, cancellable, callback, opaque);
 
-    res = g_simple_async_result_new(G_OBJECT(session),
-                                    callback,
-                                    opaque,
-                                    spice_smartcard_manager_init);
-    g_simple_async_result_run_in_thread(res,
-                                        smartcard_manager_init_helper,
-                                        G_PRIORITY_DEFAULT,
-                                        cancellable);
-    g_object_unref(res);
+    g_task_run_in_thread(task, smartcard_manager_init_helper);
+    g_object_unref(task);
 }
 
 G_GNUC_INTERNAL
@@ -522,21 +517,16 @@ gboolean spice_smartcard_manager_init_finish(SpiceSession *session,
                                              GAsyncResult *result,
                                              GError **err)
 {
-    GSimpleAsyncResult *simple;
+    GTask *task = G_TASK(result);
 
     g_return_val_if_fail(SPICE_IS_SESSION(session), FALSE);
-    g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(result), FALSE);
+    g_return_val_if_fail(G_IS_TASK(task), FALSE);
 
     SPICE_DEBUG("smartcard_manager_finish");
 
-    simple = G_SIMPLE_ASYNC_RESULT(result);
-    g_return_val_if_fail(g_simple_async_result_get_source_tag(simple) == spice_smartcard_manager_init, FALSE);
-    if (g_simple_async_result_propagate_error(simple, err))
-        return FALSE;
-
     spice_smartcard_manager_update_monitor();
 
-    return TRUE;
+    return g_task_propagate_boolean(task, err);
 }
 
 /**
