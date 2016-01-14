@@ -76,7 +76,7 @@ struct _SpiceUsbredirChannelPrivate {
     int read_buf_size;
     enum SpiceUsbredirChannelState state;
 #ifdef USE_POLKIT
-    GSimpleAsyncResult *result;
+    GTask *task;
     SpiceUsbAclHelper *acl_helper;
 #endif
 };
@@ -297,20 +297,21 @@ static void spice_usbredir_channel_open_acl_cb(
         spice_usbredir_channel_open_device(channel, &err);
     }
     if (err) {
-        g_simple_async_result_take_error(priv->result, err);
+        g_task_return_error(priv->task, err);
         libusb_unref_device(priv->device);
         priv->device = NULL;
         g_boxed_free(spice_usb_device_get_type(), priv->spice_device);
         priv->spice_device = NULL;
         priv->state  = STATE_DISCONNECTED;
+    } else {
+        g_task_return_boolean(priv->task, TRUE);
     }
 
     g_clear_object(&priv->acl_helper);
     g_object_set(spice_channel_get_session(SPICE_CHANNEL(channel)),
                  "inhibit-keyboard-grab", FALSE, NULL);
 
-    g_simple_async_result_complete_in_idle(priv->result);
-    g_clear_object(&priv->result);
+    g_clear_object(&priv->task);
 }
 #endif
 
@@ -324,7 +325,7 @@ void spice_usbredir_channel_connect_device_async(
                                           gpointer              user_data)
 {
     SpiceUsbredirChannelPrivate *priv = channel->priv;
-    GSimpleAsyncResult *result;
+    GTask *task;
 #ifndef USE_POLKIT
     GError *err = NULL;
 #endif
@@ -337,18 +338,17 @@ void spice_usbredir_channel_connect_device_async(
                   spice_usb_device_get_pid(spice_device),
                   spice_device, channel);
 
-    result = g_simple_async_result_new(G_OBJECT(channel), callback, user_data,
-                                 spice_usbredir_channel_connect_device_async);
+    task = g_task_new(channel, cancellable, callback, user_data);
 
     if (!priv->host) {
-        g_simple_async_result_set_error(result,
+        g_task_return_new_error(task,
                             SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                             "Error libusb context not set");
         goto done;
     }
 
     if (priv->state != STATE_DISCONNECTED) {
-        g_simple_async_result_set_error(result,
+        g_task_return_new_error(task,
                             SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                             "Error channel is busy");
         goto done;
@@ -358,7 +358,7 @@ void spice_usbredir_channel_connect_device_async(
     priv->spice_device = g_boxed_copy(spice_usb_device_get_type(),
                                       spice_device);
 #ifdef USE_POLKIT
-    priv->result = result;
+    priv->task = task;
     priv->state  = STATE_WAITING_FOR_ACL_HELPER;
     priv->acl_helper = spice_usb_acl_helper_new();
     g_object_set(spice_channel_get_session(SPICE_CHANNEL(channel)),
@@ -372,17 +372,18 @@ void spice_usbredir_channel_connect_device_async(
     return;
 #else
     if (!spice_usbredir_channel_open_device(channel, &err)) {
-        g_simple_async_result_take_error(result, err);
+        g_task_return_error(task, err);
         libusb_unref_device(priv->device);
         priv->device = NULL;
         g_boxed_free(spice_usb_device_get_type(), priv->spice_device);
         priv->spice_device = NULL;
+    } else {
+        g_task_return_boolean(task, TRUE);
     }
 #endif
 
 done:
-    g_simple_async_result_complete_in_idle(result);
-    g_object_unref(result);
+    g_object_unref(task);
 }
 
 G_GNUC_INTERNAL
@@ -391,16 +392,11 @@ gboolean spice_usbredir_channel_connect_device_finish(
                                                GAsyncResult         *res,
                                                GError              **err)
 {
-    GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT(res);
+    GTask *task = G_TASK(res);
 
-    g_return_val_if_fail(g_simple_async_result_is_valid(res, G_OBJECT(channel),
-                                 spice_usbredir_channel_connect_device_async),
-                         FALSE);
+    g_return_val_if_fail(g_task_is_valid(task, channel), FALSE);
 
-    if (g_simple_async_result_propagate_error(result, err))
-        return FALSE;
-
-    return TRUE;
+    return g_task_propagate_boolean(task, err);
 }
 
 G_GNUC_INTERNAL
