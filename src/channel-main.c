@@ -923,10 +923,9 @@ static gboolean flush_foreach_remove(gpointer key G_GNUC_UNUSED,
                                      gpointer value, gpointer user_data)
 {
     gboolean success = GPOINTER_TO_UINT(user_data);
-    GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT(value);
+    GTask *result = value;
+    g_task_return_boolean(result, success);
 
-    g_simple_async_result_set_op_res_gboolean(result, success);
-    g_simple_async_result_complete_in_idle(result);
     return TRUE;
 }
 
@@ -940,38 +939,31 @@ static void file_xfer_flushed(SpiceMainChannel *channel, gboolean success)
 static void file_xfer_flush_async(SpiceMainChannel *channel, GCancellable *cancellable,
                                   GAsyncReadyCallback callback, gpointer user_data)
 {
-    GSimpleAsyncResult *simple;
+    GTask *task;
     SpiceMainChannelPrivate *c = channel->priv;
     gboolean was_empty;
 
-    simple = g_simple_async_result_new(G_OBJECT(channel), callback, user_data,
-                                       file_xfer_flush_async);
+    task = g_task_new(channel, cancellable, callback, user_data);
 
     was_empty = g_queue_is_empty(c->agent_msg_queue);
     if (was_empty) {
-        g_simple_async_result_set_op_res_gboolean(simple, TRUE);
-        g_simple_async_result_complete_in_idle(simple);
-        g_object_unref(simple);
+        g_task_return_boolean(task, TRUE);
+        g_object_unref(task);
         return;
     }
 
     /* wait until the last message currently in the queue has been sent */
-    g_hash_table_insert(c->flushing, g_queue_peek_tail(c->agent_msg_queue), simple);
+    g_hash_table_insert(c->flushing, g_queue_peek_tail(c->agent_msg_queue), task);
 }
 
 static gboolean file_xfer_flush_finish(SpiceMainChannel *channel, GAsyncResult *result,
                                        GError **error)
 {
-    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
+    GTask *task = G_TASK(result);
 
-    g_return_val_if_fail(g_simple_async_result_is_valid(result,
-        G_OBJECT(channel), file_xfer_flush_async), FALSE);
+    g_return_val_if_fail(g_task_is_valid(result, channel), FALSE);
 
-    if (g_simple_async_result_propagate_error(simple, error)) {
-        return FALSE;
-    }
-
-    return g_simple_async_result_get_op_res_gboolean(simple);
+    return g_task_propagate_boolean(task, error);
 }
 
 /* coroutine context */
@@ -982,16 +974,15 @@ static void agent_send_msg_queue(SpiceMainChannel *channel)
 
     while (c->agent_tokens > 0 &&
            !g_queue_is_empty(c->agent_msg_queue)) {
-        GSimpleAsyncResult *simple;
+        GTask *task;
         c->agent_tokens--;
         out = g_queue_pop_head(c->agent_msg_queue);
         spice_msg_out_send_internal(out);
 
-        simple = g_hash_table_lookup(c->flushing, out);
-        if (simple) {
+        task = g_hash_table_lookup(c->flushing, out);
+        if (task) {
             /* if there's a flush task waiting for this message, finish it */
-            g_simple_async_result_set_op_res_gboolean(simple, TRUE);
-            g_simple_async_result_complete_in_idle(simple);
+            g_task_return_boolean(task, TRUE);
             g_hash_table_remove(c->flushing, out);
         }
     }
@@ -1776,7 +1767,7 @@ static void file_xfer_close_cb(GObject      *object,
                                GAsyncResult *close_res,
                                gpointer      user_data)
 {
-    GSimpleAsyncResult *res;
+    GTask *task;
     SpiceFileTransferTask *self;
     GError *error = NULL;
 
@@ -1794,15 +1785,15 @@ static void file_xfer_close_cb(GObject      *object,
 
     /* Notify to user that files have been transferred or something error
        happened. */
-    res = g_simple_async_result_new(G_OBJECT(self->priv->channel),
-                                    self->priv->callback,
-                                    self->priv->user_data,
-                                    spice_main_file_copy_async);
+    task = g_task_new(self->priv->channel,
+                      self->priv->cancellable,
+                      self->priv->callback,
+                      self->priv->user_data);
+
     if (self->priv->error) {
-        g_simple_async_result_take_error(res, self->priv->error);
-        g_simple_async_result_set_op_res_gboolean(res, FALSE);
+        g_task_return_error(task, self->priv->error);
     } else {
-        g_simple_async_result_set_op_res_gboolean(res, TRUE);
+        g_task_return_boolean(task, TRUE);
         if (spice_util_get_debug()) {
             gint64 now = g_get_monotonic_time();
             gchar *basename = g_file_get_basename(self->priv->file);
@@ -1819,8 +1810,7 @@ static void file_xfer_close_cb(GObject      *object,
             g_free(transfer_speed_str);
         }
     }
-    g_simple_async_result_complete_in_idle(res);
-    g_object_unref(res);
+    g_object_unref(task);
 
     g_object_unref(self);
 }
@@ -3147,12 +3137,13 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
     g_return_if_fail(sources != NULL);
 
     if (!c->agent_connected) {
-        g_simple_async_report_error_in_idle(G_OBJECT(channel),
-                                            callback,
-                                            user_data,
-                                            SPICE_CLIENT_ERROR,
-                                            SPICE_CLIENT_ERROR_FAILED,
-                                            "The agent is not connected");
+        g_task_report_new_error(channel,
+                                callback,
+                                user_data,
+                                spice_main_file_copy_async,
+                                SPICE_CLIENT_ERROR,
+                                SPICE_CLIENT_ERROR_FAILED,
+                                "The agent is not connected");
         return;
     }
 
@@ -3181,19 +3172,12 @@ gboolean spice_main_file_copy_finish(SpiceMainChannel *channel,
                                      GAsyncResult *result,
                                      GError **error)
 {
-    GSimpleAsyncResult *simple;
+    GTask *task = G_TASK(result);;
 
     g_return_val_if_fail(SPICE_IS_MAIN_CHANNEL(channel), FALSE);
-    g_return_val_if_fail(g_simple_async_result_is_valid(result,
-        G_OBJECT(channel), spice_main_file_copy_async), FALSE);
+    g_return_val_if_fail(g_task_is_valid(task, channel), FALSE);
 
-    simple = (GSimpleAsyncResult *)result;
-
-    if (g_simple_async_result_propagate_error(simple, error)) {
-        return FALSE;
-    }
-
-    return g_simple_async_result_get_op_res_gboolean(simple);
+    return g_task_propagate_boolean(task, error);
 }
 
 
