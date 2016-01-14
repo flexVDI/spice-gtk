@@ -2192,9 +2192,7 @@ static void spice_channel_flushed(SpiceChannel *channel, gboolean success)
     GSList *l;
 
     for (l = c->flushing; l != NULL; l = l->next) {
-        GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT(l->data);
-        g_simple_async_result_set_op_res_gboolean(result, success);
-        g_simple_async_result_complete_in_idle(result);
+        g_task_return_boolean(G_TASK(l->data), success);
     }
 
     g_slist_free_full(c->flushing, g_object_unref);
@@ -3038,7 +3036,7 @@ static void spice_channel_send_migration_handshake(SpiceChannel *channel)
 void spice_channel_flush_async(SpiceChannel *self, GCancellable *cancellable,
                                GAsyncReadyCallback callback, gpointer user_data)
 {
-    GSimpleAsyncResult *simple;
+    GTask *task;
     SpiceChannelPrivate *c;
     gboolean was_empty;
 
@@ -3046,26 +3044,25 @@ void spice_channel_flush_async(SpiceChannel *self, GCancellable *cancellable,
     c = self->priv;
 
     if (c->state != SPICE_CHANNEL_STATE_READY) {
-        g_simple_async_report_error_in_idle(G_OBJECT(self), callback, user_data,
+        g_task_report_new_error(self, callback, user_data,
+            spice_channel_flush_async,
             SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
             "The channel is not ready yet");
         return;
     }
 
-    simple = g_simple_async_result_new(G_OBJECT(self), callback, user_data,
-                                       spice_channel_flush_async);
+    task = g_task_new(self, cancellable, callback, user_data);
 
     STATIC_MUTEX_LOCK(c->xmit_queue_lock);
     was_empty = g_queue_is_empty(&c->xmit_queue);
     STATIC_MUTEX_UNLOCK(c->xmit_queue_lock);
     if (was_empty) {
-        g_simple_async_result_set_op_res_gboolean(simple, TRUE);
-        g_simple_async_result_complete_in_idle(simple);
-        g_object_unref(simple);
+        g_task_return_boolean(task, TRUE);
+        g_object_unref(task);
         return;
     }
 
-    c->flushing = g_slist_append(c->flushing, simple);
+    c->flushing = g_slist_append(c->flushing, task);
 }
 
 /**
@@ -3083,19 +3080,16 @@ void spice_channel_flush_async(SpiceChannel *self, GCancellable *cancellable,
 gboolean spice_channel_flush_finish(SpiceChannel *self, GAsyncResult *result,
                                     GError **error)
 {
-    GSimpleAsyncResult *simple;
+    GTask *task;
 
     g_return_val_if_fail(SPICE_IS_CHANNEL(self), FALSE);
     g_return_val_if_fail(result != NULL, FALSE);
 
-    simple = (GSimpleAsyncResult *)result;
+    task = G_TASK(result);
 
-    if (g_simple_async_result_propagate_error(simple, error))
-        return -1;
-
-    g_return_val_if_fail(g_simple_async_result_is_valid(result, G_OBJECT(self),
-                                                        spice_channel_flush_async), FALSE);
+    g_return_val_if_fail(g_task_is_valid(task, self),
+                         FALSE);
 
     CHANNEL_DEBUG(self, "flushed finished!");
-    return g_simple_async_result_get_op_res_gboolean(simple);
+    return g_task_propagate_boolean(task, error);
 }
