@@ -570,16 +570,9 @@ static void spice_gstaudio_get_playback_volume_info_async(SpiceAudio *audio,
                                                           GAsyncReadyCallback callback,
                                                           gpointer user_data)
 {
-    GSimpleAsyncResult *simple;
+    GTask *task = g_task_new(audio, cancellable, callback, user_data);
 
-    simple = g_simple_async_result_new(G_OBJECT(audio),
-                                       callback,
-                                       user_data,
-                                       spice_gstaudio_get_playback_volume_info_async);
-    g_simple_async_result_set_check_cancellable (simple, cancellable);
-
-    g_simple_async_result_set_op_res_gboolean(simple, TRUE);
-    g_simple_async_result_complete_in_idle(simple);
+    g_task_return_boolean(task, TRUE);
 }
 
 static gboolean spice_gstaudio_get_playback_volume_info_finish(SpiceAudio *audio,
@@ -594,17 +587,16 @@ static gboolean spice_gstaudio_get_playback_volume_info_finish(SpiceAudio *audio
     gboolean lmute;
     gdouble vol;
     gboolean fake_channel = FALSE;
-    GSimpleAsyncResult *simple = (GSimpleAsyncResult *) res;
+    GTask *task = G_TASK(res);
 
-    g_return_val_if_fail(g_simple_async_result_is_valid(res,
-        G_OBJECT(audio), spice_gstaudio_get_playback_volume_info_async), FALSE);
+    g_return_val_if_fail(g_task_is_valid(task, audio), FALSE);
 
-    if (g_simple_async_result_propagate_error(simple, error)) {
+    if (g_task_had_error(task)) {
         /* set out args that should have new alloc'ed memory to NULL */
         if (volume != NULL) {
             *volume = NULL;
         }
-        return FALSE;
+        return g_task_propagate_boolean(task, error);
     }
 
     if (p->playback.sink == NULL || p->playback.channels == 0) {
@@ -651,7 +643,7 @@ static gboolean spice_gstaudio_get_playback_volume_info_finish(SpiceAudio *audio
         }
     }
 
-    return g_simple_async_result_get_op_res_gboolean(simple);
+    return g_task_propagate_boolean(task, error);
 }
 
 static void spice_gstaudio_get_record_volume_info_async(SpiceAudio *audio,
@@ -660,16 +652,9 @@ static void spice_gstaudio_get_record_volume_info_async(SpiceAudio *audio,
                                                         GAsyncReadyCallback callback,
                                                         gpointer user_data)
 {
-    GSimpleAsyncResult *simple;
+    GTask *task = g_task_new(audio, cancellable, callback, user_data);
 
-    simple = g_simple_async_result_new(G_OBJECT(audio),
-                                       callback,
-                                       user_data,
-                                       spice_gstaudio_get_record_volume_info_async);
-    g_simple_async_result_set_check_cancellable (simple, cancellable);
-
-    g_simple_async_result_set_op_res_gboolean(simple, TRUE);
-    g_simple_async_result_complete_in_idle(simple);
+    g_task_return_boolean(task, TRUE);
 }
 
 static gboolean spice_gstaudio_get_record_volume_info_finish(SpiceAudio *audio,
@@ -684,17 +669,16 @@ static gboolean spice_gstaudio_get_record_volume_info_finish(SpiceAudio *audio,
     gboolean lmute;
     gdouble vol;
     gboolean fake_channel = FALSE;
-    GSimpleAsyncResult *simple = (GSimpleAsyncResult *) res;
+    GTask *task = G_TASK(res);
 
-    g_return_val_if_fail(g_simple_async_result_is_valid(res,
-        G_OBJECT(audio), spice_gstaudio_get_record_volume_info_async), FALSE);
+    g_return_val_if_fail(g_task_is_valid(task, audio), FALSE);
 
-    if (g_simple_async_result_propagate_error(simple, error)) {
+    if (g_task_had_error(task)) {
         /* set out args that should have new alloc'ed memory to NULL */
         if (volume != NULL) {
             *volume = NULL;
         }
-        return FALSE;
+        return g_task_propagate_boolean(task, error);
     }
 
     if (p->record.src == NULL || p->record.channels == 0) {
@@ -741,5 +725,5 @@ static gboolean spice_gstaudio_get_record_volume_info_finish(SpiceAudio *audio,
         }
     }
 
-    return g_simple_async_result_get_op_res_gboolean(simple);
+    return g_task_propagate_boolean(task, error);
 }
