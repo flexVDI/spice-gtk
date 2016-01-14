@@ -292,7 +292,8 @@ void spice_port_write_async(SpicePortChannel *self,
     c = self->priv;
 
     if (!c->opened) {
-        g_simple_async_report_error_in_idle(G_OBJECT(self), callback, user_data,
+        g_task_report_new_error(self, callback,
+            user_data, spice_port_write_async,
             SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
             "The port is not opened");
         return;
