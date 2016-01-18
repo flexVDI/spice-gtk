@@ -600,6 +600,10 @@ static gboolean spice_gstaudio_get_playback_volume_info_finish(SpiceAudio *audio
         G_OBJECT(audio), spice_gstaudio_get_playback_volume_info_async), FALSE);
 
     if (g_simple_async_result_propagate_error(simple, error)) {
+        /* set out args that should have new alloc'ed memory to NULL */
+        if (volume != NULL) {
+            *volume = NULL;
+        }
         return FALSE;
     }
 
