@@ -72,6 +72,7 @@ struct _SpiceUsbDeviceWidgetPrivate {
     gchar *device_format_string;
     SpiceUsbDeviceManager *manager;
     GtkWidget *info_bar;
+    GtkWidget *label;
     gchar *err_msg;
     gsize device_count;
 };
@@ -181,7 +182,6 @@ static GObject *spice_usb_device_widget_constructor(
     SpiceUsbDeviceWidgetPrivate *priv;
     GPtrArray *devices = NULL;
     GError *err = NULL;
-    GtkWidget *label;
     gchar *str;
     int i;
 
@@ -197,12 +197,12 @@ static GObject *spice_usb_device_widget_constructor(
     if (!priv->session)
         g_error("SpiceUsbDeviceWidget constructed without a session");
 
-    label = gtk_label_new(NULL);
+    priv->label = gtk_label_new(NULL);
     str = g_strdup_printf("<b>%s</b>", _("Select USB devices to redirect"));
-    gtk_label_set_markup(GTK_LABEL (label), str);
+    gtk_label_set_markup(GTK_LABEL (priv->label), str);
     g_free(str);
-    gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.5);
-    gtk_box_pack_start(GTK_BOX(self), label, FALSE, FALSE, 0);
+    gtk_misc_set_alignment(GTK_MISC(priv->label), 0.0, 0.5);
+    gtk_box_pack_start(GTK_BOX(self), priv->label, FALSE, FALSE, 0);
 
     priv->manager = spice_usb_device_manager_get(priv->session, &err);
     if (err) {
@@ -401,6 +401,19 @@ static gboolean spice_usb_device_widget_update_status(gpointer user_data)
 {
     SpiceUsbDeviceWidget *self = SPICE_USB_DEVICE_WIDGET(user_data);
     SpiceUsbDeviceWidgetPrivate *priv = self->priv;
+    gchar *str, *markup_str;
+    const gchar *free_channels_str;
+    int free_channels;
+
+    g_object_get(priv->manager, "free-channels", &free_channels, NULL);
+    free_channels_str = ngettext(_("Select USB devices to redirect (%d free channel)"),
+                                 _("Select USB devices to redirect (%d free channels)"),
+                                 free_channels);
+    str = g_strdup_printf(free_channels_str, free_channels);
+    markup_str = g_strdup_printf("<b>%s</b>", str);
+    gtk_label_set_markup(GTK_LABEL (priv->label), markup_str);
+    g_free(markup_str);
+    g_free(str);
 
     priv->device_count = 0;
     gtk_container_foreach(GTK_CONTAINER(self), check_can_redirect, self);

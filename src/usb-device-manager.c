@@ -89,6 +89,7 @@ enum {
     PROP_AUTO_CONNECT,
     PROP_AUTO_CONNECT_FILTER,
     PROP_REDIRECT_ON_CONNECT,
+    PROP_FREE_CHANNELS,
 };
 
 enum
@@ -390,6 +391,20 @@ static void spice_usb_device_manager_get_property(GObject     *gobject,
     case PROP_REDIRECT_ON_CONNECT:
         g_value_set_string(value, priv->redirect_on_connect);
         break;
+    case PROP_FREE_CHANNELS: {
+        int free_channels = 0;
+#if USE_USBREDIR
+        int i;
+        for (i = 0; i < priv->channels->len; i++) {
+            SpiceUsbredirChannel *channel = g_ptr_array_index(priv->channels, i);
+
+            if (!spice_usbredir_channel_get_device(channel))
+                free_channels++;
+        }
+#endif
+        g_value_set_int(value, free_channels);
+        break;
+    }
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
         break;
@@ -547,6 +562,20 @@ static void spice_usb_device_manager_class_init(SpiceUsbDeviceManagerClass *klas
                "Filter selecting USB devices to redirect on connect", NULL,
                G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
     g_object_class_install_property(gobject_class, PROP_REDIRECT_ON_CONNECT,
+                                    pspec);
+
+    /**
+     * SpiceUsbDeviceManager:n-free-channels:
+     *
+     * Get a list of avaialable channels for redirecting USB devices.
+     */
+    pspec = g_param_spec_int("free-channels", "Free channels",
+               "The number of available channels for redirecting USB devices",
+               0,
+               G_MAXINT,
+               0,
+               G_PARAM_READABLE);
+    g_object_class_install_property(gobject_class, PROP_FREE_CHANNELS,
                                     pspec);
 
     /**
