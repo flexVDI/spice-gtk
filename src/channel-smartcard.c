@@ -244,7 +244,7 @@ smartcard_message_free(SpiceSmartcardChannelMessage *message)
     g_free(message);
 }
 
-#if USE_SMARTCARD
+#ifdef USE_SMARTCARD
 static gboolean is_attached_to_server(VReader *reader)
 {
     return (vreader_get_id(reader) != (vreader_id_t)-1);

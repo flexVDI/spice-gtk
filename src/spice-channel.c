@@ -119,7 +119,7 @@ static void spice_channel_init(SpiceChannel *channel)
     c->remote_common_caps = g_array_new(FALSE, TRUE, sizeof(guint32));
     spice_channel_set_common_capability(channel, SPICE_COMMON_CAP_PROTOCOL_AUTH_SELECTION);
     spice_channel_set_common_capability(channel, SPICE_COMMON_CAP_MINI_HEADER);
-#if HAVE_SASL
+#ifdef HAVE_SASL
     spice_channel_set_common_capability(channel, SPICE_COMMON_CAP_AUTH_SASL);
 #endif
     g_queue_init(&c->xmit_queue);
@@ -802,7 +802,7 @@ static void spice_channel_flush_wire(SpiceChannel *channel,
     }
 }
 
-#if HAVE_SASL
+#ifdef HAVE_SASL
 /*
  * Encode all buffered data, write all encrypted data out
  * to the wire
@@ -830,7 +830,7 @@ static void spice_channel_flush_sasl(SpiceChannel *channel, const void *data, si
 /* coroutine context */
 static void spice_channel_write(SpiceChannel *channel, const void *data, size_t len)
 {
-#if HAVE_SASL
+#ifdef HAVE_SASL
     SpiceChannelPrivate *c = channel->priv;
 
     if (c->sasl_conn)
@@ -932,7 +932,7 @@ reread:
     return ret;
 }
 
-#if HAVE_SASL
+#ifdef HAVE_SASL
 /*
  * Read at least 1 more byte of data out of the SASL decrypted
  * data buffer, into the internal read buffer
@@ -994,7 +994,7 @@ static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
     while (len > 0) {
         if (c->has_error) return 0; /* has_error is set by disconnect(), return no error */
 
-#if HAVE_SASL
+#ifdef HAVE_SASL
         if (c->sasl_conn)
             ret = spice_channel_read_sasl(channel, data, len);
         else
@@ -1268,7 +1268,7 @@ error:
     return FALSE;
 }
 
-#if HAVE_SASL
+#ifdef HAVE_SASL
 /*
  * NB, keep in sync with similar method in spice/server/reds.c
  */
@@ -1795,7 +1795,7 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
     } else {
         SpiceLinkAuthMechanism auth = { 0, };
 
-#if HAVE_SASL
+#ifdef HAVE_SASL
         if (spice_channel_test_common_capability(channel, SPICE_COMMON_CAP_AUTH_SASL)) {
             CHANNEL_DEBUG(channel, "Choosing SASL mechanism");
             auth.auth_mechanism = SPICE_COMMON_CAP_AUTH_SASL;
@@ -2167,7 +2167,7 @@ static void spice_channel_iterate_read(SpiceChannel *channel)
     ) { do
             spice_channel_recv_msg(channel,
                                    (handler_msg_in)SPICE_CHANNEL_GET_CLASS(channel)->handle_msg, NULL);
-#if HAVE_SASL
+#ifdef HAVE_SASL
             /* flush the sasl buffer too */
         while (c->sasl_decoded != NULL);
 #else
@@ -2632,7 +2632,7 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
         c->connect_delayed_id = 0;
     }
 
-#if HAVE_SASL
+#ifdef HAVE_SASL
     if (c->sasl_conn) {
         sasl_dispose(&c->sasl_conn);
         c->sasl_conn = NULL;
@@ -2906,7 +2906,7 @@ void spice_channel_swap(SpiceChannel *channel, SpiceChannel *swap, gboolean swap
     SWAP(common_caps);
     SWAP(remote_caps);
     SWAP(remote_common_caps);
-#if HAVE_SASL
+#ifdef HAVE_SASL
     SWAP(sasl_conn);
     SWAP(sasl_decoded);
     SWAP(sasl_decoded_length);

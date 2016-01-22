@@ -19,7 +19,7 @@
 
 #include <glib.h>
 
-#if HAVE_X11_XKBLIB_H
+#ifdef HAVE_X11_XKBLIB_H
 #include <X11/XKBlib.h>
 #include <gdk/gdkx.h>
 #endif
@@ -139,7 +139,7 @@ static guint32 get_keyboard_lock_modifiers(void)
         modifiers |= SPICE_INPUTS_SCROLL_LOCK;
     }
 #else
-#if HAVE_X11_XKBLIB_H
+#ifdef HAVE_X11_XKBLIB_H
     Display *x_display = NULL;
     XKeyboardState keyboard_state;
 

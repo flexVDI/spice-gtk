@@ -24,7 +24,7 @@
 #ifdef USE_USBREDIR
 #include <glib/gi18n.h>
 #include <usbredirhost.h>
-#if USE_POLKIT
+#ifdef USE_POLKIT
 #include "usb-acl-helper.h"
 #endif
 #include "channel-usbredir-priv.h"
@@ -57,7 +57,7 @@
 
 enum SpiceUsbredirChannelState {
     STATE_DISCONNECTED,
-#if USE_POLKIT
+#ifdef USE_POLKIT
     STATE_WAITING_FOR_ACL_HELPER,
 #endif
     STATE_CONNECTED,
@@ -75,7 +75,7 @@ struct _SpiceUsbredirChannelPrivate {
     const uint8_t *read_buf;
     int read_buf_size;
     enum SpiceUsbredirChannelState state;
-#if USE_POLKIT
+#ifdef USE_POLKIT
     GSimpleAsyncResult *result;
     SpiceUsbAclHelper *acl_helper;
 #endif
@@ -241,7 +241,7 @@ static gboolean spice_usbredir_channel_open_device(
     int rc, status;
 
     g_return_val_if_fail(priv->state == STATE_DISCONNECTED
-#if USE_POLKIT
+#ifdef USE_POLKIT
                          || priv->state == STATE_WAITING_FOR_ACL_HELPER
 #endif
                          , FALSE);
@@ -275,7 +275,7 @@ static gboolean spice_usbredir_channel_open_device(
     return TRUE;
 }
 
-#if USE_POLKIT
+#ifdef USE_POLKIT
 static void spice_usbredir_channel_open_acl_cb(
     GObject *gobject, GAsyncResult *acl_res, gpointer user_data)
 {
@@ -325,8 +325,8 @@ void spice_usbredir_channel_connect_device_async(
                                           gpointer              user_data)
 {
     SpiceUsbredirChannelPrivate *priv = channel->priv;
-    GSimpleAsyncResult *result;
-#if ! USE_POLKIT
+    GTask *task;
+#ifndef USE_POLKIT
     GError *err = NULL;
 #endif
 
@@ -358,7 +358,7 @@ void spice_usbredir_channel_connect_device_async(
     priv->device = libusb_ref_device(device);
     priv->spice_device = g_boxed_copy(spice_usb_device_get_type(),
                                       spice_device);
-#if USE_POLKIT
+#ifdef USE_POLKIT
     priv->result = result;
     priv->state  = STATE_WAITING_FOR_ACL_HELPER;
     priv->acl_helper = spice_usb_acl_helper_new();
@@ -415,7 +415,7 @@ void spice_usbredir_channel_disconnect_device(SpiceUsbredirChannel *channel)
     case STATE_DISCONNECTED:
     case STATE_DISCONNECTING:
         break;
-#if USE_POLKIT
+#ifdef USE_POLKIT
     case STATE_WAITING_FOR_ACL_HELPER:
         priv->state = STATE_DISCONNECTING;
         /* We're still waiting for the acl helper -> cancel it */

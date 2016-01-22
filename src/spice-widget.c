@@ -20,7 +20,7 @@
 #include <math.h>
 #include <glib.h>
 
-#if HAVE_X11_XKBLIB_H
+#ifdef HAVE_X11_XKBLIB_H
 #include <X11/XKBlib.h>
 #include <gdk/gdkx.h>
 #endif

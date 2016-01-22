@@ -161,7 +161,7 @@ static void cleanup(void)
 }
 
 /* Not available in polkit < 0.101 */
-#if !HAVE_POLKIT_AUTHORIZATION_RESULT_GET_DISMISSED
+#ifndef HAVE_POLKIT_AUTHORIZATION_RESULT_GET_DISMISSED
 static gboolean
 polkit_authorization_result_get_dismissed(PolkitAuthorizationResult *result)
 {
@@ -296,7 +296,7 @@ static void stdin_read_complete(GObject *src, GAsyncResult *res, gpointer data)
 }
 
 /* Fix for polkit 0.97 and later */
-#if !HAVE_POLKIT_AUTHORITY_GET_SYNC
+#ifndef HAVE_POLKIT_AUTHORITY_GET_SYNC
 static PolkitAuthority *
 polkit_authority_get_sync (GCancellable *cancellable, GError **error)
 {

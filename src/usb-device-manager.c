@@ -393,7 +393,7 @@ static void spice_usb_device_manager_get_property(GObject     *gobject,
         break;
     case PROP_FREE_CHANNELS: {
         int free_channels = 0;
-#if USE_USBREDIR
+#ifdef USE_USBREDIR
         int i;
         for (i = 0; i < priv->channels->len; i++) {
             SpiceUsbredirChannel *channel = g_ptr_array_index(priv->channels, i);
