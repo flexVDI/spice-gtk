@@ -1935,7 +1935,6 @@ spice_usb_device_manager_device_to_libdev(SpiceUsbDeviceManager *self,
      */
 
     libusb_device *d, **devlist;
-    int bus, addr;
     int i;
 
     g_return_val_if_fail(SPICE_IS_USB_DEVICE_MANAGER(self), NULL);
@@ -1943,16 +1942,12 @@ spice_usb_device_manager_device_to_libdev(SpiceUsbDeviceManager *self,
     g_return_val_if_fail(self->priv != NULL, NULL);
     g_return_val_if_fail(self->priv->context != NULL, NULL);
 
-    /* On windows we match by vid / pid, since the address may change */
-    bus  = spice_usb_device_get_vid(device);
-    addr = spice_usb_device_get_pid(device);
-
     libusb_get_device_list(self->priv->context, &devlist);
     if (!devlist)
         return NULL;
 
     for (i = 0; (d = devlist[i]) != NULL; i++) {
-        if (spice_usb_device_manager_libdev_match(d, bus, addr)) {
+        if (spice_usb_device_equal_libdev(device, d)) {
             libusb_ref_device(d);
             break;
         }
