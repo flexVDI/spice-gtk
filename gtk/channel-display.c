@@ -1154,7 +1154,7 @@ void stream_get_dimensions(display_stream *st, int *width, int *height)
 static gboolean display_stream_render(display_stream *st)
 {
     SpiceMsgIn *in;
-    struct timeval time1, time2;
+    guint64 time1, time2;
     guint64 delta;
 
     st->timeout = 0;
@@ -1163,7 +1163,7 @@ static gboolean display_stream_render(display_stream *st)
         g_return_val_if_fail(in != NULL, FALSE);
 
         if (st->fskip_frame == 0) {
-            gettimeofday(&time1, NULL);
+            time1 = g_get_monotonic_time();
 
             SpiceRect last_frame_dest;
             memcpy(&last_frame_dest, &st->dst_rect, sizeof(SpiceRect));
@@ -1211,8 +1211,8 @@ static gboolean display_stream_render(display_stream *st)
                     dest->right - dest->left,
                     dest->bottom - dest->top);
 
-            gettimeofday(&time2, NULL);
-            delta = ((time2.tv_sec * 1000) + (time2.tv_usec / 1000)) - ((time1.tv_sec * 1000) + (time1.tv_usec / 1000));
+            time2 = g_get_monotonic_time();
+            delta = (time2 - time1) / 1000;
             st->acum_decode_time += delta;
             st->decoded_frames++;
             uint8_t new_fskip_level = 0;
@@ -1224,8 +1224,8 @@ static gboolean display_stream_render(display_stream *st)
                 new_fskip_level = 1;
             }
             if (st->fskip_level != new_fskip_level) {
-                SPICE_DEBUG("FSkip level: %u - MJPEG process time: %llu ms\n", new_fskip_level,
-                            (unsigned long long int) delta);
+                SPICE_DEBUG("FSkip level: %u - MJPEG process time: %u ms\n", new_fskip_level,
+                            (unsigned int) delta);
                 st->fskip_level = new_fskip_level;
             }
             st->fskip_frame = st->fskip_level;
