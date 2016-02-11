@@ -735,6 +735,11 @@ AC_ARG_ENABLE([spicy],
 
 AM_CONDITIONAL(WITH_PROGRAMS, [test "x$enable_spicy" = "xyes"])
 
+AH_BOTTOM([
+#ifdef HAVE_WINDOWS
+    #include <winsock2.h>
+#endif])
+
 dnl ===========================================================================
 dnl check compiler flags
 
