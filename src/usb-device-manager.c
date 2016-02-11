@@ -1205,23 +1205,26 @@ static void spice_usb_device_manager_drv_uninstall_cb(GObject *gobject,
                                                       GAsyncResult *res,
                                                       gpointer user_data)
 {
+    GError *err = NULL;
+
     UsbInstallCbInfo *cbinfo = user_data;
     SpiceUsbDeviceManager *self = cbinfo->manager;
-    GError *err = NULL;
+    SpiceUsbDevice *device = cbinfo->device;
+    SpiceWinUsbDriver *installer = cbinfo->installer;
+
+    g_free(cbinfo);
 
     SPICE_DEBUG("Win USB driver uninstall finished");
     g_return_if_fail(SPICE_IS_USB_DEVICE_MANAGER(self));
     g_return_if_fail(self->priv->use_usbclerk);
 
-    if (!spice_win_usb_driver_uninstall_finish(cbinfo->installer, res, &err)) {
+    if (!spice_win_usb_driver_uninstall_finish(installer, res, &err)) {
         g_warning("win usb driver uninstall failed -- %s", err->message);
         g_clear_error(&err);
     }
 
-    spice_usb_device_set_state(cbinfo->device, SPICE_USB_DEVICE_STATE_NONE);
-
-    spice_usb_device_unref(cbinfo->device);
-    g_free(cbinfo);
+    spice_usb_device_set_state(device, SPICE_USB_DEVICE_STATE_NONE);
+    spice_usb_device_unref(device);
 }
 
 #endif
