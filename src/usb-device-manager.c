@@ -1907,19 +1907,14 @@ static gboolean
 spice_usb_device_equal_libdev(SpiceUsbDevice *device,
                               libusb_device  *libdev)
 {
-    int vid1, vid2, pid1, pid2;
+    int vid, pid;
 
     if ((device == NULL) || (libdev == NULL))
         return FALSE;
 
-    vid1 = spice_usb_device_get_vid(device);
-    pid1 = spice_usb_device_get_pid(device);
-
-    if (!spice_usb_device_manager_get_libdev_vid_pid(libdev, &vid2, &pid2)) {
-        return FALSE;
-    }
-
-    return ((vid1 == vid2) && (pid1 == pid2));
+    vid = spice_usb_device_get_vid(device);
+    pid = spice_usb_device_get_pid(device);
+    return spice_usb_device_manager_libdev_match(libdev, vid, pid);
 }
 #endif
 
