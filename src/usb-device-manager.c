@@ -254,10 +254,12 @@ static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
 #endif
 
 #ifdef G_OS_WIN32
-    priv->installer = spice_win_usb_driver_new(err);
-    if (!priv->installer) {
-        SPICE_DEBUG("failed to initialize winusb driver");
-        return FALSE;
+    if (priv->use_usbclerk) {
+        priv->installer = spice_win_usb_driver_new(err);
+        if (!priv->installer) {
+            SPICE_DEBUG("failed to initialize winusb driver");
+            return FALSE;
+        }
     }
 #endif
 
@@ -364,8 +366,10 @@ static void spice_usb_device_manager_finalize(GObject *gobject)
     free(priv->auto_conn_filter_rules);
     free(priv->redirect_on_connect_rules);
 #ifdef G_OS_WIN32
-    if (priv->installer)
+    if (priv->installer) {
+        g_warn_if_fail(priv->use_usbclerk);
         g_object_unref(priv->installer);
+    }
     if (!priv->use_usbclerk) {
         _usbdk_hider_clear(self);
     }
@@ -963,12 +967,14 @@ static void spice_usb_device_manager_remove_dev(SpiceUsbDeviceManager *self,
     }
 
 #ifdef G_OS_WIN32
-    const guint8 state = spice_usb_device_get_state(device);
-    if ((state == SPICE_USB_DEVICE_STATE_INSTALLING) ||
-        (state == SPICE_USB_DEVICE_STATE_UNINSTALLING)) {
-        SPICE_DEBUG("skipping " DEV_ID_FMT ". It is un/installing its driver",
-                    bus, address);
-        return;
+    if (priv->use_usbclerk) {
+        const guint8 state = spice_usb_device_get_state(device);
+        if ((state == SPICE_USB_DEVICE_STATE_INSTALLING) ||
+            (state == SPICE_USB_DEVICE_STATE_UNINSTALLING)) {
+            SPICE_DEBUG("skipping " DEV_ID_FMT ". It is un/installing its driver",
+                        bus, address);
+            return;
+        }
     }
 #endif
 
@@ -1170,6 +1176,7 @@ static void spice_usb_device_manager_drv_install_cb(GObject *gobject,
     g_free(cbinfo);
 
     g_return_if_fail(SPICE_IS_USB_DEVICE_MANAGER(self));
+    g_return_if_fail(self->priv->use_usbclerk);
     g_return_if_fail(SPICE_IS_WIN_USB_DRIVER(installer));
     g_return_if_fail(device!= NULL);
 
@@ -1202,6 +1209,7 @@ static void spice_usb_device_manager_drv_uninstall_cb(GObject *gobject,
 
     SPICE_DEBUG("Win USB driver uninstall finished");
     g_return_if_fail(SPICE_IS_USB_DEVICE_MANAGER(self));
+    g_return_if_fail(self->priv->use_usbclerk);
 
     if (!spice_win_usb_driver_uninstall_finish(cbinfo->installer, res, &err)) {
         g_warning("win usb driver uninstall failed -- %s", err->message);
@@ -1599,15 +1607,18 @@ void spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
 {
 
 #if defined(USE_USBREDIR) && defined(G_OS_WIN32)
-    _spice_usb_device_manager_install_driver_async(self, device, cancellable,
-                                                   callback, user_data);
-#else
+    if (self->priv->use_usbclerk) {
+        _spice_usb_device_manager_install_driver_async(self, device, cancellable,
+                                                       callback, user_data);
+        return;
+    }
+#endif
+
     _spice_usb_device_manager_connect_device_async(self,
                                                    device,
                                                    cancellable,
                                                    callback,
                                                    user_data);
-#endif
 }
 
 /**
@@ -1654,7 +1665,8 @@ void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
         spice_usbredir_channel_disconnect_device(channel);
 
 #ifdef G_OS_WIN32
-    _spice_usb_device_manager_uninstall_driver_async(self, device);
+    if(self->priv->use_usbclerk)
+        _spice_usb_device_manager_uninstall_driver_async(self, device);
 #endif
 
 #endif
