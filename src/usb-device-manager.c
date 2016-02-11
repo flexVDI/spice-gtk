@@ -1444,6 +1444,68 @@ gboolean spice_usb_device_manager_is_device_connected(SpiceUsbDeviceManager *sel
     return !!spice_usb_device_manager_get_channel_for_dev(self, device);
 }
 
+#if defined(USE_USBREDIR) && defined(G_OS_WIN32)
+
+static void
+_spice_usb_device_manager_install_driver_async(SpiceUsbDeviceManager *self,
+                                               SpiceUsbDevice *device,
+                                               GCancellable *cancellable,
+                                               GAsyncReadyCallback callback,
+                                               gpointer user_data)
+{
+    SpiceWinUsbDriver *installer;
+    UsbInstallCbInfo *cbinfo;
+
+    g_return_if_fail(self->priv->installer);
+
+    spice_usb_device_set_state(device, SPICE_USB_DEVICE_STATE_INSTALLING);
+
+    installer = self->priv->installer;
+    cbinfo = g_new0(UsbInstallCbInfo, 1);
+    cbinfo->manager     = self;
+    cbinfo->device      = spice_usb_device_ref(device);
+    cbinfo->installer   = installer;
+    cbinfo->cancellable = cancellable;
+    cbinfo->callback    = callback;
+    cbinfo->user_data   = user_data;
+
+    spice_win_usb_driver_install_async(installer, device, cancellable,
+                                       spice_usb_device_manager_drv_install_cb,
+                                       cbinfo);
+}
+
+static void
+_spice_usb_device_manager_uninstall_driver_async(SpiceUsbDeviceManager *self,
+                                                 SpiceUsbDevice *device)
+{
+    SpiceWinUsbDriver *installer;
+    UsbInstallCbInfo *cbinfo;
+    guint8 state;
+
+    g_warn_if_fail(device != NULL);
+    g_return_if_fail(self->priv->installer);
+
+    state = spice_usb_device_get_state(device);
+    if ((state != SPICE_USB_DEVICE_STATE_INSTALLED) &&
+        (state != SPICE_USB_DEVICE_STATE_CONNECTED)) {
+        return;
+    }
+
+    spice_usb_device_set_state(device, SPICE_USB_DEVICE_STATE_UNINSTALLING);
+
+    installer = self->priv->installer;
+    cbinfo = g_new0(UsbInstallCbInfo, 1);
+    cbinfo->manager     = self;
+    cbinfo->device      = spice_usb_device_ref(device);
+    cbinfo->installer   = installer;
+
+    spice_win_usb_driver_uninstall_async(installer, device, NULL,
+                                         spice_usb_device_manager_drv_uninstall_cb,
+                                         cbinfo);
+}
+
+#endif
+
 static void
 _spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
                                                SpiceUsbDevice *device,
@@ -1537,25 +1599,8 @@ void spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
 {
 
 #if defined(USE_USBREDIR) && defined(G_OS_WIN32)
-    SpiceWinUsbDriver *installer;
-    UsbInstallCbInfo *cbinfo;
-
-    g_return_if_fail(self->priv->installer);
-
-    spice_usb_device_set_state(device, SPICE_USB_DEVICE_STATE_INSTALLING);
-
-    installer = self->priv->installer;
-    cbinfo = g_new0(UsbInstallCbInfo, 1);
-    cbinfo->manager     = self;
-    cbinfo->device      = spice_usb_device_ref(device);
-    cbinfo->installer   = installer;
-    cbinfo->cancellable = cancellable;
-    cbinfo->callback    = callback;
-    cbinfo->user_data   = user_data;
-
-    spice_win_usb_driver_install_async(installer, device, cancellable,
-                                       spice_usb_device_manager_drv_install_cb,
-                                       cbinfo);
+    _spice_usb_device_manager_install_driver_async(self, device, cancellable,
+                                                   callback, user_data);
 #else
     _spice_usb_device_manager_connect_device_async(self,
                                                    device,
@@ -1609,30 +1654,7 @@ void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
         spice_usbredir_channel_disconnect_device(channel);
 
 #ifdef G_OS_WIN32
-    SpiceWinUsbDriver *installer;
-    UsbInstallCbInfo *cbinfo;
-    guint8 state;
-
-    g_warn_if_fail(device != NULL);
-    g_return_if_fail(self->priv->installer);
-
-    state = spice_usb_device_get_state(device);
-    if ((state != SPICE_USB_DEVICE_STATE_INSTALLED) &&
-        (state != SPICE_USB_DEVICE_STATE_CONNECTED)) {
-        return;
-    }
-
-    spice_usb_device_set_state(device, SPICE_USB_DEVICE_STATE_UNINSTALLING);
-
-    installer = self->priv->installer;
-    cbinfo = g_new0(UsbInstallCbInfo, 1);
-    cbinfo->manager     = self;
-    cbinfo->device      = spice_usb_device_ref(device);
-    cbinfo->installer   = installer;
-
-    spice_win_usb_driver_uninstall_async(installer, device, NULL,
-                                         spice_usb_device_manager_drv_uninstall_cb,
-                                         cbinfo);
+    _spice_usb_device_manager_uninstall_driver_async(self, device);
 #endif
 
 #endif
