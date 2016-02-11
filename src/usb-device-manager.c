@@ -122,6 +122,7 @@ struct _SpiceUsbDeviceManagerPrivate {
 #ifdef G_OS_WIN32
     SpiceWinUsbDriver     *installer;
 #endif
+    gboolean               use_usbclerk;
 #endif
     GPtrArray *devices;
     GPtrArray *channels;
@@ -219,6 +220,9 @@ static void spice_usb_device_manager_init(SpiceUsbDeviceManager *self)
     priv = SPICE_USB_DEVICE_MANAGER_GET_PRIVATE(self);
     self->priv = priv;
 
+#if defined(G_OS_WIN32) && defined(USE_USBREDIR)
+    priv->use_usbclerk = TRUE;
+#endif
     priv->channels = g_ptr_array_new();
 #ifdef USE_USBREDIR
     priv->devices  = g_ptr_array_new_with_free_func((GDestroyNotify)
@@ -678,13 +682,15 @@ static gboolean spice_usb_device_manager_get_udev_bus_n_address(
 
     *bus = *address = 0;
 
-#ifndef G_OS_WIN32
-    bus_str = g_udev_device_get_property(udev, "BUSNUM");
-    address_str = g_udev_device_get_property(udev, "DEVNUM");
-#else /* Windows -- request vid:pid instead */
-    bus_str = g_udev_device_get_property(udev, "VID");
-    address_str = g_udev_device_get_property(udev, "PID");
-#endif
+    if (manager->priv->use_usbclerk) {
+       /* Windows WinUsb/UsbClerk -- request vid:pid instead */
+        bus_str = g_udev_device_get_property(udev, "VID");
+        address_str = g_udev_device_get_property(udev, "PID");
+    } else {
+       /* Linux or UsbDk backend on Windows*/
+        bus_str = g_udev_device_get_property(udev, "BUSNUM");
+        address_str = g_udev_device_get_property(udev, "DEVNUM");
+    }
     if (bus_str)
         *bus = atoi(bus_str);
     if (address_str)
@@ -823,13 +829,17 @@ static void spice_usb_device_manager_auto_connect_cb(GObject      *gobject,
     spice_usb_device_unref(device);
 }
 
-#ifndef G_OS_WIN32 /* match functions for Linux -- match by bus.addr */
 static gboolean
 spice_usb_device_manager_device_match(SpiceUsbDeviceManager *self, SpiceUsbDevice *device,
                                       const int bus, const int address)
 {
-    return (spice_usb_device_get_busnum(device) == bus &&
-            spice_usb_device_get_devaddr(device) == address);
+   if (self->priv->use_usbclerk) {
+        return (spice_usb_device_get_vid(device) == bus &&
+                spice_usb_device_get_pid(device) == address);
+    } else {
+        return (spice_usb_device_get_busnum(device) == bus &&
+                spice_usb_device_get_devaddr(device) == address);
+    }
 }
 
 #ifdef USE_GUDEV
@@ -837,32 +847,21 @@ static gboolean
 spice_usb_device_manager_libdev_match(SpiceUsbDeviceManager *self, libusb_device *libdev,
                                       const int bus, const int address)
 {
-    return (libusb_get_bus_number(libdev) == bus &&
-            libusb_get_device_address(libdev) == address);
+    if (self->priv->use_usbclerk) {
+        /* WinUSB -- match functions for Windows -- match by vid:pid */
+        int vid, pid;
+
+        if (!spice_usb_device_manager_get_libdev_vid_pid(libdev, &vid, &pid)) {
+            return FALSE;
+        }
+        return (bus == vid && address == pid);
+    } else {
+        /* match functions for Linux/UsbDk -- match by bus.addr */
+        return (libusb_get_bus_number(libdev) == bus &&
+                libusb_get_device_address(libdev) == address);
+    }
 }
 #endif
-
-#else /* Win32 -- match functions for Windows -- match by vid:pid */
-static gboolean
-spice_usb_device_manager_device_match(SpiceUsbDeviceManager *self, SpiceUsbDevice *device,
-                                      const int vid, const int pid)
-{
-    return (spice_usb_device_get_vid(device) == vid &&
-            spice_usb_device_get_pid(device) == pid);
-}
-
-static gboolean
-spice_usb_device_manager_libdev_match(SpiceUsbDeviceManager *self, libusb_device *libdev,
-                                      const int vid, const int pid)
-{
-    int vid2, pid2;
-
-    if (!spice_usb_device_manager_get_libdev_vid_pid(libdev, &vid2, &pid2)) {
-        return FALSE;
-    }
-    return (vid == vid2 && pid == pid2);
-}
-#endif /* of Win32 -- match functions */
 
 static SpiceUsbDevice*
 spice_usb_device_manager_find_device(SpiceUsbDeviceManager *self,
@@ -1900,14 +1899,21 @@ spice_usb_manager_device_equal_libdev(SpiceUsbDeviceManager *manager,
                                       SpiceUsbDevice *device,
                                       libusb_device  *libdev)
 {
-    int vid, pid;
+    int busnum, devaddr;
 
     if ((device == NULL) || (libdev == NULL))
         return FALSE;
 
-    vid = spice_usb_device_get_vid(device);
-    pid = spice_usb_device_get_pid(device);
-    return spice_usb_device_manager_libdev_match(manager, libdev, vid, pid);
+    if (manager->priv->use_usbclerk) {
+        busnum = spice_usb_device_get_vid(device);
+        devaddr = spice_usb_device_get_pid(device);
+    } else {
+        busnum = spice_usb_device_get_busnum(device);
+        devaddr = spice_usb_device_get_devaddr(device);
+    }
+
+    return spice_usb_device_manager_libdev_match(manager, libdev,
+                                                 busnum, devaddr);
 }
 #endif
 
