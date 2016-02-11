@@ -27,6 +27,10 @@
 #include <errno.h>
 #include <libusb.h>
 
+#ifdef G_OS_WIN32
+#include "usbdk_api.h"
+#endif
+
 #if defined(USE_GUDEV)
 #include <gudev/gudev.h>
 #elif defined(G_OS_WIN32)
@@ -120,6 +124,8 @@ struct _SpiceUsbDeviceManagerPrivate {
     libusb_hotplug_callback_handle hp_handle;
 #endif
 #ifdef G_OS_WIN32
+    usbdk_api_wrapper     *usbdk_api;
+    HANDLE                 usbdk_hider_handle;
     SpiceWinUsbDriver     *installer;
 #endif
     gboolean               use_usbclerk;
@@ -182,6 +188,9 @@ static void spice_usb_device_unref(SpiceUsbDevice *device);
 #ifdef G_OS_WIN32
 static guint8 spice_usb_device_get_state(SpiceUsbDevice *device);
 static void  spice_usb_device_set_state(SpiceUsbDevice *device, guint8 s);
+
+static void _usbdk_hider_update(SpiceUsbDeviceManager *manager);
+static void _usbdk_hider_clear(SpiceUsbDeviceManager *manager);
 #endif
 
 static gboolean spice_usb_manager_device_equal_libdev(SpiceUsbDeviceManager *manager,
@@ -357,6 +366,9 @@ static void spice_usb_device_manager_finalize(GObject *gobject)
 #ifdef G_OS_WIN32
     if (priv->installer)
         g_object_unref(priv->installer);
+    if (!priv->use_usbclerk) {
+        _usbdk_hider_clear(self);
+    }
 #endif
 #endif
 
@@ -428,6 +440,11 @@ static void spice_usb_device_manager_set_property(GObject       *gobject,
         break;
     case PROP_AUTO_CONNECT:
         priv->auto_connect = g_value_get_boolean(value);
+#if defined(G_OS_WIN32) && defined(USE_USBREDIR)
+        if (!priv->use_usbclerk) {
+            _usbdk_hider_update(self);
+        }
+#endif
         break;
     case PROP_AUTO_CONNECT_FILTER: {
         const gchar *filter = g_value_get_string(value);
@@ -450,6 +467,12 @@ static void spice_usb_device_manager_set_property(GObject       *gobject,
 #endif
         g_free(priv->auto_connect_filter);
         priv->auto_connect_filter = g_strdup(filter);
+
+#if defined(G_OS_WIN32) && defined(USE_USBREDIR)
+        if (!priv->use_usbclerk) {
+            _usbdk_hider_update(self);
+        }
+#endif
         break;
     }
     case PROP_REDIRECT_ON_CONNECT: {
@@ -1852,6 +1875,65 @@ guint8 spice_usb_device_get_state(SpiceUsbDevice *device)
 
     return info->state;
 }
+
+static
+gboolean _usbdk_hider_prepare(SpiceUsbDeviceManager *manager)
+{
+    SpiceUsbDeviceManagerPrivate *priv = manager->priv;
+
+    g_return_val_if_fail(!priv->use_usbclerk, FALSE);
+
+    if (priv->usbdk_hider_handle == NULL) {
+        priv->usbdk_hider_handle = usbdk_create_hider_handle(priv->usbdk_api);
+        if (priv->usbdk_hider_handle == NULL) {
+            g_warning("Failed to instantiate UsbDk hider interface");
+            return FALSE;
+        }
+    }
+
+    return TRUE;
+}
+
+static
+void _usbdk_hider_clear(SpiceUsbDeviceManager *manager)
+{
+    SpiceUsbDeviceManagerPrivate *priv = manager->priv;
+
+    g_return_if_fail(!priv->use_usbclerk);
+
+    if (priv->usbdk_hider_handle != NULL) {
+        usbdk_clear_hide_rules(priv->usbdk_api, priv->usbdk_hider_handle);
+        usbdk_close_hider_handle(priv->usbdk_api, priv->usbdk_hider_handle);
+        priv->usbdk_hider_handle = NULL;
+    }
+}
+
+static
+void _usbdk_hider_update(SpiceUsbDeviceManager *manager)
+{
+    SpiceUsbDeviceManagerPrivate *priv = manager->priv;
+
+    g_return_if_fail(!priv->use_usbclerk);
+
+    if (priv->auto_connect_filter == NULL) {
+        SPICE_DEBUG("No autoredirect rules, no hider setup needed");
+        _usbdk_hider_clear(manager);
+        return;
+    }
+
+    if (!priv->auto_connect) {
+        SPICE_DEBUG("Auto-connect disabled, no hider setup needed");
+        _usbdk_hider_clear(manager);
+        return;
+    }
+
+    if(_usbdk_hider_prepare(manager)) {
+        usbdk_api_set_hide_rules(priv->usbdk_api,
+                                 priv->usbdk_hider_handle,
+                                 priv->auto_connect_filter);
+    }
+}
+
 #endif
 
 static SpiceUsbDevice *spice_usb_device_ref(SpiceUsbDevice *device)
