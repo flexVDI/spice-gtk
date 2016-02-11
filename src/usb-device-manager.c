@@ -230,7 +230,8 @@ static void spice_usb_device_manager_init(SpiceUsbDeviceManager *self)
     self->priv = priv;
 
 #if defined(G_OS_WIN32) && defined(USE_USBREDIR)
-    priv->use_usbclerk = TRUE;
+    priv->use_usbclerk = !usbdk_is_driver_installed() ||
+                         !(priv->usbdk_api = usbdk_api_load());
 #endif
     priv->channels = g_ptr_array_new();
 #ifdef USE_USBREDIR
@@ -372,6 +373,7 @@ static void spice_usb_device_manager_finalize(GObject *gobject)
     }
     if (!priv->use_usbclerk) {
         _usbdk_hider_clear(self);
+        usbdk_api_unload(priv->usbdk_api);
     }
 #endif
 #endif
