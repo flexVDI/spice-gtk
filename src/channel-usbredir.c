@@ -325,7 +325,7 @@ void spice_usbredir_channel_connect_device_async(
                                           gpointer              user_data)
 {
     SpiceUsbredirChannelPrivate *priv = channel->priv;
-    GTask *task;
+    GSimpleAsyncResult *result;
 #ifndef USE_POLKIT
     GError *err = NULL;
 #endif
