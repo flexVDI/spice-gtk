@@ -39,6 +39,22 @@
  * add an UI to select USB devices to redirect (or unredirect).
  */
 
+struct _SpiceUsbDeviceWidget
+{
+    GtkVBox parent;
+
+    SpiceUsbDeviceWidgetPrivate *priv;
+};
+
+struct _SpiceUsbDeviceWidgetClass
+{
+    GtkVBoxClass parent_class;
+
+    /* signals */
+    void (*connect_failed) (SpiceUsbDeviceWidget *widget,
+                            SpiceUsbDevice *device, GError *error);
+};
+
 /* ------------------------------------------------------------------ */
 /* Prototypes for callbacks  */
 static void device_added_cb(SpiceUsbDeviceManager *manager,

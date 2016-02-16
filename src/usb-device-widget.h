@@ -41,42 +41,6 @@ typedef struct _SpiceUsbDeviceWidget SpiceUsbDeviceWidget;
 typedef struct _SpiceUsbDeviceWidgetClass SpiceUsbDeviceWidgetClass;
 typedef struct _SpiceUsbDeviceWidgetPrivate SpiceUsbDeviceWidgetPrivate;
 
-/**
- * SpiceUsbDeviceWidget:
- *
- * The #SpiceUsbDeviceWidget struct is opaque and should not be accessed directly.
- */
-struct _SpiceUsbDeviceWidget
-{
-    GtkVBox parent;
-
-    /*< private >*/
-    SpiceUsbDeviceWidgetPrivate *priv;
-    /* Do not add fields to this struct */
-};
-
-/**
- * SpiceUsbDeviceWidgetClass:
- * @parent_class: Parent class.
- * @connect_failed: Signal class handler for the #SpiceUsbDeviceWidget::connect-failed signal.
- *
- * Class structure for #SpiceUsbDeviceWidget.
- */
-struct _SpiceUsbDeviceWidgetClass
-{
-    GtkVBoxClass parent_class;
-
-    /* signals */
-    void (*connect_failed) (SpiceUsbDeviceWidget *widget,
-                            SpiceUsbDevice *device, GError *error);
-    /*< private >*/
-    /*
-     * If adding fields to this struct, remove corresponding
-     * amount of padding to avoid changing overall struct size
-     */
-    gchar _spice_reserved[SPICE_RESERVED_PADDING];
-};
-
 GType spice_usb_device_widget_get_type(void);
 GtkWidget *spice_usb_device_widget_new(SpiceSession    *session,
                                        const gchar     *device_format_string);
