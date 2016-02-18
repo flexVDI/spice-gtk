@@ -41,6 +41,9 @@ struct VideoDecoder {
     /* Releases the video decoder's resources */
     void (*destroy)(VideoDecoder *decoder);
 
+    /* Notifies the decoder that the mm-time clock changed. */
+    void (*reschedule)(VideoDecoder *video_decoder);
+
     /* Decompresses the specified frame.
      *
      * @decoder:   The video decoder.
@@ -49,7 +52,7 @@ struct VideoDecoder {
      *             buffer will be invalidated by the next call to
      *             decode_frame().
      */
-    uint8_t* (*decode_frame)(VideoDecoder *decoder, SpiceMsgIn *frame_msg);
+    void (*queue_frame)(VideoDecoder *decoder, SpiceMsgIn *frame_msg, int32_t latency);
 
     /* The format of the encoded video. */
     int codec_type;
@@ -98,8 +101,6 @@ struct display_stream {
 
     VideoDecoder                *video_decoder;
 
-    GQueue                      *msgq;
-    guint                       timeout;
     SpiceChannel                *channel;
 
     /* stats */
@@ -127,6 +128,9 @@ struct display_stream {
 };
 
 void stream_get_dimensions(display_stream *st, SpiceMsgIn *frame_msg, int *width, int *height);
+guint32 stream_get_time(display_stream *st);
+void stream_dropped_frame_on_playback(display_stream *st);
+void stream_display_frame(display_stream *st, SpiceMsgIn *frame_msg, uint8_t* data);
 uint32_t spice_msg_in_frame_data(SpiceMsgIn *frame_msg, uint8_t **data);
 
 
