@@ -309,7 +309,7 @@ static void playback_handle_data(SpiceChannel *channel, SpiceMsgIn *in)
     SpiceMsgPlaybackPacket *packet = spice_msg_in_parsed(in);
 
 #ifdef DEBUG
-    CHANNEL_DEBUG(channel, "%s: time %d data %p size %d", __FUNCTION__,
+    CHANNEL_DEBUG(channel, "%s: time %u data %p size %d", __FUNCTION__,
                   packet->time, packet->data, packet->data_size);
 #endif
 
@@ -346,7 +346,7 @@ static void playback_handle_mode(SpiceChannel *channel, SpiceMsgIn *in)
     SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackMode *mode = spice_msg_in_parsed(in);
 
-    CHANNEL_DEBUG(channel, "%s: time %d mode %d data %p size %d", __FUNCTION__,
+    CHANNEL_DEBUG(channel, "%s: time %u mode %d data %p size %d", __FUNCTION__,
                   mode->time, mode->mode, mode->data, mode->data_size);
 
     c->mode = mode->mode;
