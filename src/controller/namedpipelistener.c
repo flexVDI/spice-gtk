@@ -126,6 +126,7 @@ connect_ready (gpointer user_data)
                                        G_IO_ERROR_INVALID_ARGUMENT,
                                        "GetOverlappedResult(): %s %d",
                                        emsg, errsv);
+      g_free (emsg);
     }
 
   g_simple_async_result_complete (c->async_result);
