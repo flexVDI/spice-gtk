@@ -111,9 +111,16 @@ struct spice_connection {
     int              disconnecting;
 };
 
+static enum {
+    DISCONNECT_NO_ERROR = 0,
+    DISCONNECT_CONN_ERROR,
+    DISCONNECT_IO_ERROR,
+    DISCONNECT_AUTH_ERROR,
+} disconnect_reason;
+
 static spice_connection *connection_new(void);
 static void connection_connect(spice_connection *conn);
-static void connection_disconnect(spice_connection *conn);
+static void connection_disconnect(spice_connection *conn, int reason);
 static void connection_destroy(spice_connection *conn);
 static void usb_connect_failed(GObject               *object,
                                SpiceUsbDevice        *device,
@@ -385,7 +392,7 @@ static void menu_cb_close(GtkAction *action, void *data)
 {
     SpiceWindow *win = data;
 
-    connection_disconnect(win->conn);
+    connection_disconnect(win->conn, DISCONNECT_NO_ERROR);
 }
 
 static void menu_cb_copy(GtkAction *action, void *data)
@@ -640,7 +647,7 @@ static gboolean delete_cb(GtkWidget *widget, GdkEvent *event, gpointer data)
     SpiceWindow *win = data;
 
     if (win->monitor_id == 0)
-        connection_disconnect(win->conn);
+        connection_disconnect(win->conn, DISCONNECT_NO_ERROR);
     else
         del_window(win->conn, win);
 
@@ -683,7 +690,7 @@ static void grab_keys_pressed_cb(GtkWidget *widget, gpointer data)
        ungrabbing mouse. Perhaps we should have a different handling
        of fullscreen key, or simply use a UI, like vinagre */
     if (kiosk_mode) {
-        connection_disconnect(win->conn);
+        connection_disconnect(win->conn, DISCONNECT_NO_ERROR);
     } else {
         window_set_fullscreen(win, FALSE);
     }
@@ -1553,10 +1560,10 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
     case SPICE_CHANNEL_CLOSED:
         /* this event is only sent if the channel was succesfully opened before */
         g_message("main channel: closed");
-        connection_disconnect(conn);
+        connection_disconnect(conn, DISCONNECT_NO_ERROR);
         break;
     case SPICE_CHANNEL_ERROR_IO:
-        connection_disconnect(conn);
+        connection_disconnect(conn, DISCONNECT_IO_ERROR);
         break;
     case SPICE_CHANNEL_ERROR_TLS:
     case SPICE_CHANNEL_ERROR_LINK:
@@ -1574,7 +1581,7 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
             if (rc == 0) {
                 connection_connect(conn);
             } else {
-                connection_disconnect(conn);
+                connection_disconnect(conn, DISCONNECT_CONN_ERROR);
             }
         }
         break;
@@ -1589,7 +1596,7 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
             g_object_set(conn->session, "password", password, NULL);
             connection_connect(conn);
         } else {
-            connection_disconnect(conn);
+            connection_disconnect(conn, DISCONNECT_AUTH_ERROR);
         }
         break;
     default:
@@ -2002,11 +2009,12 @@ static void connection_connect(spice_connection *conn)
     spice_session_connect(conn->session);
 }
 
-static void connection_disconnect(spice_connection *conn)
+static void connection_disconnect(spice_connection *conn, int reason)
 {
     if (conn->disconnecting)
         return;
     conn->disconnecting = true;
+    disconnect_reason = reason;
     spice_session_disconnect(conn->session);
 }
 
@@ -2151,6 +2159,7 @@ int main(int argc, char *argv[])
     spice_connection *conn;
     gchar *conf_file, *conf;
     char *host = NULL, *port = NULL, *tls_port = NULL, *ws_port = NULL, *unix_path = NULL;
+    disconnect_reason = DISCONNECT_NO_ERROR;
 
 #if !GLIB_CHECK_VERSION(2,31,18)
     g_thread_init(NULL);
@@ -2274,5 +2283,5 @@ int main(int argc, char *argv[])
 #ifndef WITH_FLEXVDI
     setup_terminal(true);
 #endif
-    return 0;
+    return disconnect_reason;
 }
