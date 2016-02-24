@@ -1574,16 +1574,7 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
             g_message("channel error: %s", error->message);
         }
 
-        if (kiosk_mode) {
-            exit(2);
-        } else {
-            rc = connect_dialog(conn->session);
-            if (rc == 0) {
-                connection_connect(conn);
-            } else {
-                connection_disconnect(conn, DISCONNECT_CONN_ERROR);
-            }
-        }
+        connection_disconnect(conn, DISCONNECT_CONN_ERROR);
         break;
     case SPICE_CHANNEL_ERROR_AUTH:
         g_warning("main channel: auth failure (wrong password?)");
