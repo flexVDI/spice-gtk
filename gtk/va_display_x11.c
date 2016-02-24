@@ -23,29 +23,36 @@ struct display_private {
 
 static VAStatus va_x11_open_display(tinyjpeg_session *session)
 {
+    int major, minor, numAttr, screen;
     VAStatus va_status = VA_STATUS_SUCCESS;
     if (!x11_dpy) {
+        va_status = VA_STATUS_ERROR_UNKNOWN;
         x11_dpy = XOpenDisplay(NULL);
         if (x11_dpy) {
             va_dpy = vaGetDisplay(x11_dpy);
-            int major, minor;
-            va_status = vaInitialize(va_dpy, &major, &minor);
+            if (va_dpy) {
+                va_status = vaInitialize(va_dpy, &major, &minor);
+                if (va_status == VA_STATUS_SUCCESS) {
+                    // FIXME: I got brightness and contrast by trial and error,
+                    // since I dunno how to find them
+                    numAttr = vaMaxNumDisplayAttributes(va_dpy);
+                    VADisplayAttribute *attribs = malloc(numAttr * sizeof(VADisplayAttribute));
+                    vaQueryDisplayAttributes(va_dpy, attribs, &numAttr);
+                    if (numAttr > VADisplayAttribBrightness &&
+                        numAttr > VADisplayAttribContrast) {
+                        attribs[VADisplayAttribBrightness].value = 12;
+                        attribs[VADisplayAttribContrast].value = 44;
+                        vaSetDisplayAttributes(va_dpy, attribs, numAttr);
+                    }
+                    free(attribs);
 
-            // FIXME: I got brightness and contrast by trial and error,
-            // since I dunno how to find them
-            int numAttr = vaMaxNumDisplayAttributes(va_dpy);
-            VADisplayAttribute *attribs = malloc(numAttr * sizeof(VADisplayAttribute));
-            vaQueryDisplayAttributes(va_dpy, attribs, &numAttr);
-            attribs[VADisplayAttribBrightness].value = 12;
-            attribs[VADisplayAttribContrast].value = 44;
-            vaSetDisplayAttributes(va_dpy, attribs, 2);
-            free(attribs);
-
-            int screen = XDefaultScreen(x11_dpy);
-            depth = XDefaultDepth(x11_dpy, screen);
-            root = XRootWindow(x11_dpy, screen);
-            visual = XDefaultVisual(x11_dpy, screen);
-        } else va_status = VA_STATUS_ERROR_UNKNOWN;
+                    screen = XDefaultScreen(x11_dpy);
+                    depth = XDefaultDepth(x11_dpy, screen);
+                    root = XRootWindow(x11_dpy, screen);
+                    visual = XDefaultVisual(x11_dpy, screen);
+                }
+            }
+        }
     }
 
     if (va_status == VA_STATUS_SUCCESS) {
@@ -54,7 +61,10 @@ static VAStatus va_x11_open_display(tinyjpeg_session *session)
         memset(d, 0, sizeof(struct display_private));
         d->pixmap = XCreatePixmap(x11_dpy, root, 1, 1, depth);
         d->dst_rect.width = d->dst_rect.height = 1;
-    } else XCloseDisplay(x11_dpy);
+    } else {
+        XCloseDisplay(x11_dpy);
+        x11_dpy = NULL;
+    }
     return va_status;
 }
 
