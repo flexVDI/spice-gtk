@@ -2258,6 +2258,10 @@ int main(int argc, char *argv[])
         g_main_loop_run(mainloop);
     g_main_loop_unref(mainloop);
 
+#ifdef WITH_FLEXVDI
+    flexvdi_cleanup();
+#endif
+
     if ((conf = g_key_file_to_data(keyfile, NULL, &error)) == NULL ||
         !g_file_set_contents(conf_file, conf, -1, &error)) {
         SPICE_DEBUG("Couldn't save configuration: %s", error->message);
