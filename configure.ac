@@ -740,6 +740,8 @@ AH_BOTTOM([
     #include <winsock2.h>
 #endif])
 
+AC_CONFIG_FILES([gtk/Makefile.flexVDI])
+
 dnl ===========================================================================
 dnl check compiler flags
 
