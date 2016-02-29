@@ -66,22 +66,21 @@ struct _SpiceDisplayPrivate {
     /* state */
     gboolean                ready;
     gboolean                monitor_ready;
-    enum SpiceSurfaceFmt    format;
-    gint                    width, height, stride;
-    gpointer                data_origin; /* the original display image data */
-    gpointer                data; /* converted if necessary to 32 bits */
-
+    struct {
+        enum SpiceSurfaceFmt    format;
+        gint                    width, height, stride;
+        gpointer                data_origin; /* the original display image data */
+        gpointer                data; /* converted if necessary to 32 bits */
+        bool                    convert;
+        cairo_surface_t         *surface;
+    } canvas;
     GdkRectangle            area;
     /* window border */
     gint                    ww, wh, mx, my;
 
-    bool                    convert;
     gboolean                allow_scaling;
     gboolean                only_downscale;
     gboolean                disable_inputs;
-
-    /* TODO: make a display object instead? */
-    cairo_surface_t         *ximage;
 
     SpiceSession            *session;
     SpiceGtkSession         *gtk_session;

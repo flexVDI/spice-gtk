@@ -178,7 +178,7 @@ static void scaling_updated(SpiceDisplay *display)
     GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(display));
 
     recalc_geometry(GTK_WIDGET(display));
-    if (d->ximage && window) { /* if not yet shown */
+    if (d->canvas.surface && window) { /* if not yet shown */
         gtk_widget_queue_draw(GTK_WIDGET(display));
     }
     update_size_request(display);
@@ -320,7 +320,7 @@ void spice_display_widget_update_monitor_area(SpiceDisplay *display)
 whole:
     g_clear_pointer(&monitors, g_array_unref);
     /* by display whole surface */
-    update_area(display, 0, 0, d->width, d->height);
+    update_area(display, 0, 0, d->canvas.width, d->canvas.height);
     set_monitor_ready(display, true);
 }
 
@@ -1144,34 +1144,34 @@ static void recalc_geometry(GtkWidget *widget)
 static gboolean do_color_convert(SpiceDisplay *display, GdkRectangle *r)
 {
     SpiceDisplayPrivate *d = display->priv;
-    guint32 *dest = d->data;
-    guint16 *src = d->data_origin;
+    guint32 *dest = d->canvas.data;
+    guint16 *src = d->canvas.data_origin;
     gint x, y;
 
     g_return_val_if_fail(r != NULL, false);
-    g_return_val_if_fail(d->format == SPICE_SURFACE_FMT_16_555 ||
-                         d->format == SPICE_SURFACE_FMT_16_565, false);
+    g_return_val_if_fail(d->canvas.format == SPICE_SURFACE_FMT_16_555 ||
+                         d->canvas.format == SPICE_SURFACE_FMT_16_565, false);
 
-    src += (d->stride / 2) * r->y + r->x;
+    src += (d->canvas.stride / 2) * r->y + r->x;
     dest += d->area.width * (r->y - d->area.y) + (r->x - d->area.x);
 
-    if (d->format == SPICE_SURFACE_FMT_16_555) {
+    if (d->canvas.format == SPICE_SURFACE_FMT_16_555) {
         for (y = 0; y < r->height; y++) {
             for (x = 0; x < r->width; x++) {
                 dest[x] = CONVERT_0555_TO_0888(src[x]);
             }
 
             dest += d->area.width;
-            src += d->stride / 2;
+            src += d->canvas.stride / 2;
         }
-    } else if (d->format == SPICE_SURFACE_FMT_16_565) {
+    } else if (d->canvas.format == SPICE_SURFACE_FMT_16_565) {
         for (y = 0; y < r->height; y++) {
             for (x = 0; x < r->width; x++) {
                 dest[x] = CONVERT_0565_TO_0888(src[x]);
             }
 
             dest += d->area.width;
-            src += d->stride / 2;
+            src += d->canvas.stride / 2;
         }
     }
 
@@ -1224,10 +1224,10 @@ static gboolean draw_event(GtkWidget *widget, cairo_t *cr, gpointer data)
     }
 #endif
 
-    if (d->mark == 0 || d->data == NULL ||
+    if (d->mark == 0 || d->canvas.data == NULL ||
         d->area.width == 0 || d->area.height == 0)
         return false;
-    g_return_val_if_fail(d->ximage != NULL, false);
+    g_return_val_if_fail(d->canvas.surface != NULL, false);
 
     spicex_draw_event(display, cr);
     update_mouse_pointer(display);
@@ -1957,7 +1957,7 @@ static void update_image(SpiceDisplay *display)
     SpiceDisplayPrivate *d = display->priv;
 
     spicex_image_create(display);
-    if (d->convert)
+    if (d->canvas.convert)
         do_color_convert(display, &d->area);
 }
 
@@ -2306,8 +2306,8 @@ static void update_area(SpiceDisplay *display,
 #endif
     {
         primary = (GdkRectangle) {
-            .width = d->width,
-            .height = d->height
+            .width = d->canvas.width,
+            .height = d->canvas.height
         };
     }
 
@@ -2340,11 +2340,11 @@ static void primary_create(SpiceChannel *channel, gint format,
     SpiceDisplay *display = data;
     SpiceDisplayPrivate *d = display->priv;
 
-    d->format = format;
-    d->stride = stride;
-    d->width = width;
-    d->height = height;
-    d->data_origin = d->data = imgdata;
+    d->canvas.format = format;
+    d->canvas.stride = stride;
+    d->canvas.width = width;
+    d->canvas.height = height;
+    d->canvas.data_origin = d->canvas.data = imgdata;
 
     spice_display_widget_update_monitor_area(display);
 }
@@ -2355,11 +2355,11 @@ static void primary_destroy(SpiceChannel *channel, gpointer data)
     SpiceDisplayPrivate *d = display->priv;
 
     spicex_image_destroy(display);
-    d->width  = 0;
-    d->height = 0;
-    d->stride = 0;
-    d->data = NULL;
-    d->data_origin = NULL;
+    d->canvas.width  = 0;
+    d->canvas.height = 0;
+    d->canvas.stride = 0;
+    d->canvas.data = NULL;
+    d->canvas.data_origin = NULL;
     set_monitor_ready(display, false);
 }
 
@@ -2403,7 +2403,7 @@ static void invalidate(SpiceChannel *channel,
     if (!gdk_rectangle_intersect(&rect, &d->area, &rect))
         return;
 
-    if (d->convert)
+    if (d->canvas.convert)
         do_color_convert(display, &rect);
 
     spice_display_get_scaling(display, &s,
@@ -2874,12 +2874,12 @@ GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
         int x, y;
 
         /* TODO: ensure d->data has been exposed? */
-        g_return_val_if_fail(d->data != NULL, NULL);
+        g_return_val_if_fail(d->canvas.data != NULL, NULL);
         data = g_malloc0(d->area.width * d->area.height * 3);
-        src = d->data;
+        src = d->canvas.data;
         dest = data;
 
-        src += d->area.y * d->stride + d->area.x * 4;
+        src += d->area.y * d->canvas.stride + d->area.x * 4;
         for (y = 0; y < d->area.height; ++y) {
             for (x = 0; x < d->area.width; ++x) {
                 dest[0] = src[x * 4 + 2];
@@ -2887,7 +2887,7 @@ GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
                 dest[2] = src[x * 4 + 0];
                 dest += 3;
             }
-            src += d->stride;
+            src += d->canvas.stride;
         }
         pixbuf = gdk_pixbuf_new_from_data(data, GDK_COLORSPACE_RGB, false,
                                           8, d->area.width, d->area.height,

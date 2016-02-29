@@ -27,22 +27,24 @@ int spicex_image_create(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
 
-    if (d->ximage != NULL)
+    if (d->canvas.surface != NULL)
         return 0;
 
-    if (d->format == SPICE_SURFACE_FMT_16_555 ||
-        d->format == SPICE_SURFACE_FMT_16_565) {
-        d->convert = TRUE;
-        d->data = g_malloc0(d->area.width * d->area.height * 4);
+    if (d->canvas.format == SPICE_SURFACE_FMT_16_555 ||
+        d->canvas.format == SPICE_SURFACE_FMT_16_565) {
+        d->canvas.convert = TRUE;
+        d->canvas.data = g_malloc0(d->area.width * d->area.height * 4);
 
-        d->ximage = cairo_image_surface_create_for_data
-            (d->data, CAIRO_FORMAT_RGB24, d->area.width, d->area.height, d->area.width * 4);
+        d->canvas.surface = cairo_image_surface_create_for_data
+            (d->canvas.data, CAIRO_FORMAT_RGB24,
+             d->area.width, d->area.height, d->area.width * 4);
 
     } else {
-        d->convert = FALSE;
+        d->canvas.convert = FALSE;
 
-        d->ximage = cairo_image_surface_create_for_data
-            (d->data, CAIRO_FORMAT_RGB24, d->width, d->height, d->stride);
+        d->canvas.surface = cairo_image_surface_create_for_data
+            (d->canvas.data, CAIRO_FORMAT_RGB24,
+             d->canvas.width, d->canvas.height, d->canvas.stride);
     }
 
     return 0;
@@ -53,10 +55,10 @@ void spicex_image_destroy(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
 
-    g_clear_pointer(&d->ximage, cairo_surface_destroy);
-    if (d->convert)
-        g_clear_pointer(&d->data, g_free);
-    d->convert = FALSE;
+    g_clear_pointer(&d->canvas.surface, cairo_surface_destroy);
+    if (d->canvas.convert)
+        g_clear_pointer(&d->canvas.data, g_free);
+    d->canvas.convert = FALSE;
 }
 
 G_GNUC_INTERNAL
@@ -85,7 +87,7 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
     /* Optionally cut out the inner area where the pixmap
        will be drawn. This avoids 'flashing' since we're
        not double-buffering. */
-    if (d->ximage) {
+    if (d->canvas.surface) {
         rect.x = x;
         rect.y = y;
         rect.width = w;
@@ -103,13 +105,13 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
     cairo_fill(cr);
 
     /* Draw the display */
-    if (d->ximage) {
+    if (d->canvas.surface) {
         cairo_translate(cr, x, y);
         cairo_rectangle(cr, 0, 0, w, h);
         cairo_scale(cr, s, s);
-        if (!d->convert)
+        if (!d->canvas.convert)
             cairo_translate(cr, -d->area.x, -d->area.y);
-        cairo_set_source_surface(cr, d->ximage, 0, 0);
+        cairo_set_source_surface(cr, d->canvas.surface, 0, 0);
         cairo_fill(cr);
 
         if (d->mouse_mode == SPICE_MOUSE_MODE_SERVER &&
