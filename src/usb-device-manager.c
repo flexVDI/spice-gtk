@@ -1757,15 +1757,16 @@ void _disconnect_device_async_cb(GObject *gobject,
     SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(gobject);
     GTask *task = user_data;
     GError *err = NULL;
-
-#ifdef G_OS_WIN32
     disconnect_cb_data *data = g_task_get_task_data(task);
     SpiceUsbDeviceManager *self = SPICE_USB_DEVICE_MANAGER(data->self);
 
+#ifdef G_OS_WIN32
     if (self->priv->use_usbclerk) {
         _spice_usb_device_manager_uninstall_driver_async(self, data->device);
     }
 #endif
+
+    _set_redirecting(self, FALSE);
 
     spice_usbredir_channel_disconnect_device_finish(channel, channel_res, &err);
     if (err)
@@ -1792,6 +1793,8 @@ void spice_usb_device_manager_disconnect_device_async(SpiceUsbDeviceManager *sel
     SPICE_DEBUG("disconnecting device %p", device);
 
     SpiceUsbredirChannel *channel;
+
+    _set_redirecting(self, TRUE);
 
     channel = spice_usb_device_manager_get_channel_for_dev(self, device);
     nested  = g_task_new(G_OBJECT(self), cancellable, callback, user_data);
