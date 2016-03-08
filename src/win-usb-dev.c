@@ -34,7 +34,6 @@
 
 struct _GUdevClientPrivate {
     libusb_context *ctx;
-    gssize udev_list_size;
     GList *udev_list;
     HWND hwnd;
 };
@@ -196,9 +195,7 @@ g_udev_client_initable_init(GInitable *initable, GCancellable *cancellable,
     }
 
     /* get initial device list */
-    priv->udev_list_size = g_udev_client_list_devices(self, &priv->udev_list,
-                                                      err, __FUNCTION__);
-    if (priv->udev_list_size < 0) {
+    if (g_udev_client_list_devices(self, &priv->udev_list, err, __FUNCTION__) < 0) {
         goto g_udev_client_init_failed;
     }
 
@@ -319,94 +316,60 @@ static gboolean get_usb_dev_info(libusb_device *dev, GUdevDeviceInfo *udevinfo)
 }
 
 /* Only vid:pid are compared */
-static gboolean gudev_devices_are_equal(GUdevDevice *a, GUdevDevice *b)
+static gint gudev_devices_differ(gconstpointer a, gconstpointer b)
 {
     GUdevDeviceInfo *ai, *bi;
     gboolean same_vid;
     gboolean same_pid;
 
-    ai = a->priv->udevinfo;
-    bi = b->priv->udevinfo;
+    ai = G_UDEV_DEVICE(a)->priv->udevinfo;
+    bi = G_UDEV_DEVICE(b)->priv->udevinfo;
 
     same_vid  = (ai->vid == bi->vid);
     same_pid  = (ai->pid == bi->pid);
 
-    return (same_pid && same_vid);
+    return (same_pid && same_vid) ? 0 : -1;
 }
 
+static void notify_dev_state_change(GUdevClient *self,
+                                    GList *old_list,
+                                    GList *new_list,
+                                    const gchar *action)
+{
+    GList *dev;
 
-/* Assumes each event stands for a single device change (at most) */
+    for (dev = g_list_first(old_list); dev != NULL; dev = g_list_next(dev)) {
+        if (g_list_find_custom(new_list, dev->data, gudev_devices_differ) == NULL) {
+            /* Found a device that changed its state */
+            g_udev_device_print(dev->data, action);
+            g_signal_emit(self, signals[UEVENT_SIGNAL], 0, action, dev->data);
+        }
+    }
+}
+
 static void handle_dev_change(GUdevClient *self)
 {
     GUdevClientPrivate *priv = self->priv;
-    GUdevDevice *changed_dev = NULL;
-    ssize_t dev_count;
-    int is_dev_change;
     GError *err = NULL;
     GList *now_devs = NULL;
-    GList *llist, *slist; /* long-list and short-list*/
-    GList *lit, *sit; /* iterators for long-list and short-list */
-    GUdevDevice *ldev, *sdev; /* devices on long-list and short-list */
 
-    dev_count = g_udev_client_list_devices(self, &now_devs, &err,
-                                           __FUNCTION__);
-    g_return_if_fail(dev_count >= 0);
-
-    SPICE_DEBUG("number of current devices %"G_GSSIZE_FORMAT
-                ", I know about %"G_GSSIZE_FORMAT" devices",
-                dev_count, priv->udev_list_size);
-
-    is_dev_change = dev_count - priv->udev_list_size;
-    if (is_dev_change == 0) {
-        g_udev_client_free_device_list(&now_devs);
+    if(g_udev_client_list_devices(self, &now_devs, &err, __FUNCTION__) < 0) {
+        g_warning("could not retrieve device list");
         return;
     }
 
-    if (is_dev_change > 0) {
-        llist  = now_devs;
-        slist = priv->udev_list;
-    } else {
-        llist = priv->udev_list;
-        slist  = now_devs;
-    }
+    g_udev_device_print_list(now_devs, "handle_dev_change: current list:");
+    g_udev_device_print_list(priv->udev_list, "handle_dev_change: previous list:");
 
-    g_udev_device_print_list(llist, "handle_dev_change: long list:");
-    g_udev_device_print_list(slist, "handle_dev_change: short list:");
+    /* Unregister devices that are not present anymore */
+    notify_dev_state_change(self, priv->udev_list, now_devs, "remove");
 
-    /* Go over the longer list */
-    for (lit = g_list_first(llist); lit != NULL; lit=g_list_next(lit)) {
-        ldev = lit->data;
-        /* Look for dev in the shorther list */
-        for (sit = g_list_first(slist); sit != NULL; sit=g_list_next(sit)) {
-            sdev = sit->data;
-            if (gudev_devices_are_equal(ldev, sdev))
-                break;
-        }
-        if (sit == NULL) {
-            /* Found a device which appears only in the longer list */
-            changed_dev = ldev;
-            break;
-        }
-    }
+    /* Register newly inserted devices */
+    notify_dev_state_change(self, now_devs, priv->udev_list, "add");
 
-    if (!changed_dev) {
-        g_warning("couldn't find any device change");
-        goto leave;
-    }
-
-    if (is_dev_change > 0) {
-        g_udev_device_print(changed_dev, ">>> USB device inserted");
-        g_signal_emit(self, signals[UEVENT_SIGNAL], 0, "add", changed_dev);
-    } else {
-        g_udev_device_print(changed_dev, "<<< USB device removed");
-        g_signal_emit(self, signals[UEVENT_SIGNAL], 0, "remove", changed_dev);
-    }
-
-leave:
     /* keep most recent info: free previous list, and keep current list */
     g_udev_client_free_device_list(&priv->udev_list);
     priv->udev_list = now_devs;
-    priv->udev_list_size = dev_count;
 }
 
 static LRESULT CALLBACK wnd_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
