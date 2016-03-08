@@ -32,10 +32,16 @@
 #define G_UDEV_CLIENT_GET_PRIVATE(obj) \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), G_UDEV_TYPE_CLIENT, GUdevClientPrivate))
 
+enum {
+    PROP_0,
+    PROP_REDIRECTING
+};
+
 struct _GUdevClientPrivate {
     libusb_context *ctx;
     GList *udev_list;
     HWND hwnd;
+    gboolean redirecting;
 };
 
 #define G_UDEV_CLIENT_WINCLASS_NAME  TEXT("G_UDEV_CLIENT")
@@ -269,11 +275,50 @@ static void g_udev_client_finalize(GObject *gobject)
         G_OBJECT_CLASS(g_udev_client_parent_class)->finalize(gobject);
 }
 
+static void g_udev_client_get_property(GObject     *gobject,
+                                       guint        prop_id,
+                                       GValue      *value,
+                                       GParamSpec  *pspec)
+{
+    GUdevClient *self = G_UDEV_CLIENT(gobject);
+    GUdevClientPrivate *priv = self->priv;
+
+    switch (prop_id) {
+    case PROP_REDIRECTING:
+        g_value_set_boolean(value, priv->redirecting);
+        break;
+    default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
+        break;
+    }
+}
+
+static void g_udev_client_set_property(GObject       *gobject,
+                                       guint          prop_id,
+                                       const GValue  *value,
+                                       GParamSpec    *pspec)
+{
+    GUdevClient *self = G_UDEV_CLIENT(gobject);
+    GUdevClientPrivate *priv = self->priv;
+
+    switch (prop_id) {
+    case PROP_REDIRECTING:
+        priv->redirecting = g_value_get_boolean(value);
+        break;
+    default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
+        break;
+    }
+}
+
 static void g_udev_client_class_init(GUdevClientClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+    GParamSpec *pspec;
 
     gobject_class->finalize = g_udev_client_finalize;
+    gobject_class->get_property = g_udev_client_get_property;
+    gobject_class->set_property = g_udev_client_set_property;
 
     signals[UEVENT_SIGNAL] =
         g_signal_new("uevent",
@@ -286,6 +331,20 @@ static void g_udev_client_class_init(GUdevClientClass *klass)
                      2,
                      G_TYPE_STRING,
                      G_UDEV_TYPE_DEVICE);
+
+    /**
+    * GUdevClient::redirecting:
+    *
+    * This property indicates when a redirection operation
+    * is in progress on a device. It's set back to FALSE
+    * once the device is fully redirected to the guest.
+    */
+    pspec = g_param_spec_boolean("redirecting", "Redirecting",
+                                 "USB redirection operation is in progress",
+                                 FALSE,
+                                 G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+
+    g_object_class_install_property(gobject_class, PROP_REDIRECTING, pspec);
 
     g_type_class_add_private(klass, sizeof(GUdevClientPrivate));
 }
