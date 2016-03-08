@@ -319,6 +319,36 @@ static void spice_usbredir_channel_open_acl_cb(
 }
 #endif
 
+#ifndef USE_POLKIT
+static void
+_open_device_async_cb(GTask *task,
+                      gpointer object,
+                      gpointer task_data,
+                      GCancellable *cancellable)
+{
+    GError *err = NULL;
+    SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(object);
+    SpiceUsbredirChannelPrivate *priv = channel->priv;
+
+    spice_usbredir_channel_lock(channel);
+
+    if (!spice_usbredir_channel_open_device(channel, &err)) {
+        libusb_unref_device(priv->device);
+        priv->device = NULL;
+        g_boxed_free(spice_usb_device_get_type(), priv->spice_device);
+        priv->spice_device = NULL;
+    }
+
+    spice_usbredir_channel_unlock(channel);
+
+    if (err) {
+        g_task_return_error(task, err);
+    } else {
+        g_task_return_boolean(task, TRUE);
+    }
+}
+#endif
+
 G_GNUC_INTERNAL
 void spice_usbredir_channel_connect_device_async(
                                           SpiceUsbredirChannel *channel,
@@ -330,9 +360,6 @@ void spice_usbredir_channel_connect_device_async(
 {
     SpiceUsbredirChannelPrivate *priv = channel->priv;
     GTask *task;
-#ifndef USE_POLKIT
-    GError *err = NULL;
-#endif
 
     g_return_if_fail(SPICE_IS_USBREDIR_CHANNEL(channel));
     g_return_if_fail(device != NULL);
@@ -375,15 +402,7 @@ void spice_usbredir_channel_connect_device_async(
                                         channel);
     return;
 #else
-    if (!spice_usbredir_channel_open_device(channel, &err)) {
-        g_task_return_error(task, err);
-        libusb_unref_device(priv->device);
-        priv->device = NULL;
-        g_boxed_free(spice_usb_device_get_type(), priv->spice_device);
-        priv->spice_device = NULL;
-    } else {
-        g_task_return_boolean(task, TRUE);
-    }
+    g_task_run_in_thread(task, _open_device_async_cb);
 #endif
 
 done:
