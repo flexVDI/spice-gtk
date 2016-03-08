@@ -1,18 +1,21 @@
 NULL =
 
-noinst_PROGRAMS =				\
-	coroutine				\
+TESTS = coroutine				\
 	util					\
 	session					\
+	usb-acl-helper				\
 	$(NULL)
 
 if WITH_PHODAV
-noinst_PROGRAMS += pipe
+TESTS += pipe
 endif
 
-TESTS = $(noinst_PROGRAMS)
+noinst_PROGRAMS = $(TESTS) \
+		  mock-acl-helper \
+		  $(NULL)
 
 AM_CPPFLAGS =					\
+	$(COMMON_CFLAGS)			\
 	$(GIO_CFLAGS)				\
 	-I$(top_srcdir)/src			\
 	-I$(top_builddir)/src			\
@@ -29,6 +32,8 @@ util_SOURCES = util.c
 coroutine_SOURCES = coroutine.c
 session_SOURCES = session.c
 pipe_SOURCES = pipe.c
-
+usb_acl_helper_SOURCES = usb-acl-helper.c
+usb_acl_helper_CFLAGS = -DTESTDIR=\"$(abs_builddir)\"
+mock_acl_helper_SOURCES = mock-acl-helper.c
 
 -include $(top_srcdir)/git.mk
