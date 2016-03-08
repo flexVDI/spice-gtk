@@ -162,7 +162,7 @@ static void cancelled_cb(GCancellable *cancellable, gpointer user_data)
 {
     SpiceUsbAclHelper *self = SPICE_USB_ACL_HELPER(user_data);
 
-    spice_usb_acl_helper_close_acl(self);
+    spice_usb_acl_helper_cancel(self);
 }
 
 static void helper_child_watch_cb(GPid pid, gint status, gpointer user_data)
