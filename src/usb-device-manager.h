@@ -138,6 +138,8 @@ spice_usb_device_manager_can_redirect_device(SpiceUsbDeviceManager  *self,
                                              SpiceUsbDevice         *device,
                                              GError                **err);
 
+gboolean spice_usb_device_manager_is_redirecting(SpiceUsbDeviceManager *self);
+
 G_END_DECLS
 
 #endif /* __SPICE_USB_DEVICE_MANAGER_H__ */

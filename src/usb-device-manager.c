@@ -231,6 +231,29 @@ _set_redirecting(SpiceUsbDeviceManager *self, gboolean is_redirecting)
 G_DEFINE_BOXED_TYPE(SpiceUsbDevice, spice_usb_device, g_object_ref, g_object_unref)
 #endif
 
+/**
+* spice_usb_device_manager_is_redirecting:
+* @manager: the #SpiceUsbDeviceManager manager
+*
+* Returns: %TRUE if device redirection negotiation flow is in progress
+*/
+gboolean spice_usb_device_manager_is_redirecting(SpiceUsbDeviceManager *self)
+{
+#ifdef USE_USBREDIR
+
+#ifdef USE_GUDEV
+    gboolean redirecting;
+    g_object_get(self->priv->udev, "redirecting", &redirecting, NULL);
+    return redirecting;
+#else
+    return self->priv->redirecting;
+#endif
+
+#else
+    return FALSE;
+#endif
+}
+
 static void spice_usb_device_manager_initable_iface_init(GInitableIface *iface);
 
 static guint signals[LAST_SIGNAL] = { 0, };

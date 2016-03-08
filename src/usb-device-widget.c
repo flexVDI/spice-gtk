@@ -410,6 +410,9 @@ static gboolean spice_usb_device_widget_update_status(gpointer user_data)
     gchar *str, *markup_str;
     const gchar *free_channels_str;
     int free_channels;
+    gboolean redirecting;
+
+    redirecting = spice_usb_device_manager_is_redirecting(priv->manager);
 
     g_object_get(priv->manager, "free-channels", &free_channels, NULL);
     free_channels_str = ngettext(_("Select USB devices to redirect (%d free channel)"),
@@ -430,6 +433,10 @@ static gboolean spice_usb_device_widget_update_status(gpointer user_data)
                                               GTK_STOCK_DIALOG_WARNING);
         g_free(priv->err_msg);
         priv->err_msg = NULL;
+    } else if (redirecting) {
+        spice_usb_device_widget_show_info_bar(self, _("Redirecting USB Device..."),
+                                              GTK_MESSAGE_INFO,
+                                              GTK_STOCK_DIALOG_INFO);
     } else {
         spice_usb_device_widget_hide_info_bar(self);
     }
