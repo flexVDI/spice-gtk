@@ -455,6 +455,29 @@ typedef struct _connect_cb_data {
     SpiceUsbDeviceWidget *self;
 } connect_cb_data;
 
+static void connect_cb_data_free(connect_cb_data *data)
+{
+    spice_usb_device_widget_update_status(data->self);
+    g_object_unref(data->check);
+    g_object_unref(data->self);
+    g_free(data);
+}
+
+static void _disconnect_cb(GObject *gobject, GAsyncResult *res, gpointer user_data)
+{
+    SpiceUsbDeviceManager *manager = SPICE_USB_DEVICE_MANAGER(gobject);
+    connect_cb_data *data = user_data;
+    GError *err = NULL;
+
+    spice_usb_device_manager_disconnect_device_finish(manager, res, &err);
+    if (err) {
+        SPICE_DEBUG("Device disconnection failed");
+        g_error_free(err);
+    }
+
+    connect_cb_data_free(data);
+}
+
 static void connect_cb(GObject *gobject, GAsyncResult *res, gpointer user_data)
 {
     SpiceUsbDeviceManager *manager = SPICE_USB_DEVICE_MANAGER(gobject);
@@ -480,10 +503,7 @@ static void connect_cb(GObject *gobject, GAsyncResult *res, gpointer user_data)
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(data->check), FALSE);
     }
 
-    spice_usb_device_widget_update_status(self);
-    g_object_unref(data->check);
-    g_object_unref(data->self);
-    g_free(data);
+    connect_cb_data_free(data);
 }
 
 static void checkbox_clicked_cb(GtkWidget *check, gpointer user_data)
@@ -493,19 +513,23 @@ static void checkbox_clicked_cb(GtkWidget *check, gpointer user_data)
     SpiceUsbDevice *device;
 
     device = g_object_get_data(G_OBJECT(check), "usb-device");
+    connect_cb_data *data = g_new(connect_cb_data, 1);
+    data->check = g_object_ref(check);
+    data->self  = g_object_ref(self);
 
     if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(check))) {
-        connect_cb_data *data = g_new(connect_cb_data, 1);
-        data->check = g_object_ref(check);
-        data->self  = g_object_ref(self);
         spice_usb_device_manager_connect_device_async(priv->manager,
                                                       device,
                                                       NULL,
                                                       connect_cb,
                                                       data);
     } else {
-        spice_usb_device_manager_disconnect_device(priv->manager,
-                                                   device);
+        spice_usb_device_manager_disconnect_device_async(priv->manager,
+                                                         device,
+                                                         NULL,
+                                                         _disconnect_cb,
+                                                         data);
+
     }
     spice_usb_device_widget_update_status(self);
 }
