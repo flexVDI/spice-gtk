@@ -115,20 +115,54 @@ static void spice_usbredir_channel_init(SpiceUsbredirChannel *channel)
 }
 
 #ifdef USE_USBREDIR
+
+static void _channel_reset_finish(SpiceUsbredirChannel *channel)
+{
+    SpiceUsbredirChannelPrivate *priv = channel->priv;
+
+    spice_usbredir_channel_lock(channel);
+
+    usbredirhost_close(priv->host);
+    priv->host = NULL;
+
+    /* Call set_context to re-create the host */
+    spice_usbredir_channel_set_context(channel, priv->context);
+
+    spice_usbredir_channel_unlock(channel);
+}
+
+static void _channel_reset_cb(GObject *gobject,
+                              GAsyncResult *result,
+                              gpointer user_data)
+{
+    SpiceChannel *spice_channel =  SPICE_CHANNEL(gobject);
+    SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(spice_channel);
+    gboolean migrating = GPOINTER_TO_UINT(user_data);
+    GError *err = NULL;
+
+    _channel_reset_finish(channel);
+
+    SPICE_CHANNEL_CLASS(spice_usbredir_channel_parent_class)->channel_reset(spice_channel, migrating);
+
+    spice_usbredir_channel_disconnect_device_finish(channel, result, &err);
+    g_object_unref(result);
+}
+
 static void spice_usbredir_channel_reset(SpiceChannel *c, gboolean migrating)
 {
     SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(c);
     SpiceUsbredirChannelPrivate *priv = channel->priv;
 
     if (priv->host) {
-        if (priv->state == STATE_CONNECTED)
-            spice_usbredir_channel_disconnect_device(channel);
-        usbredirhost_close(priv->host);
-        priv->host = NULL;
-        /* Call set_context to re-create the host */
-        spice_usbredir_channel_set_context(channel, priv->context);
+        if (priv->state == STATE_CONNECTED) {
+            spice_usbredir_channel_disconnect_device_async(channel, NULL,
+                _channel_reset_cb, GUINT_TO_POINTER(migrating));
+        } else {
+            _channel_reset_finish(channel);
+        }
+    } else {
+        SPICE_CHANNEL_CLASS(spice_usbredir_channel_parent_class)->channel_reset(c, migrating);
     }
-    SPICE_CHANNEL_CLASS(spice_usbredir_channel_parent_class)->channel_reset(c, migrating);
 }
 #endif
 
