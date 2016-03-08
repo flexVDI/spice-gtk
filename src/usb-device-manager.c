@@ -1676,6 +1676,26 @@ gboolean spice_usb_device_manager_connect_device_finish(
     return g_task_propagate_boolean(task, err);
 }
 
+/**
+ * spice_usb_device_manager_disconnect_device_finish:
+ * @self: a #SpiceUsbDeviceManager.
+ * @res: a #GAsyncResult
+ * @err: (allow-none): a return location for a #GError, or %NULL.
+ *
+ * Finishes an async operation. See spice_usb_device_manager_disconnect_device_async().
+ *
+ * Returns: %TRUE if disconnection is successful
+ */
+gboolean spice_usb_device_manager_disconnect_device_finish(
+    SpiceUsbDeviceManager *self, GAsyncResult *res, GError **err)
+{
+    GTask *task = G_TASK(res);
+
+    g_return_val_if_fail(g_task_is_valid(task, G_OBJECT(self)), FALSE);
+
+    return g_task_propagate_boolean(task, err);
+}
+
 #ifdef USE_USBREDIR
 static
 void _connect_device_async_cb(GObject *gobject,
@@ -1719,6 +1739,70 @@ void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
         _spice_usb_device_manager_uninstall_driver_async(self, device);
 #endif
 
+#endif
+}
+
+typedef struct _disconnect_cb_data
+{
+    SpiceUsbDeviceManager  *self;
+    SpiceUsbDevice         *device;
+} disconnect_cb_data;
+
+#ifdef USE_USBREDIR
+static
+void _disconnect_device_async_cb(GObject *gobject,
+                                 GAsyncResult *channel_res,
+                                 gpointer user_data)
+{
+    SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(gobject);
+    GTask *task = user_data;
+    GError *err = NULL;
+
+#ifdef G_OS_WIN32
+    disconnect_cb_data *data = g_task_get_task_data(task);
+    SpiceUsbDeviceManager *self = SPICE_USB_DEVICE_MANAGER(data->self);
+
+    if (self->priv->use_usbclerk) {
+        _spice_usb_device_manager_uninstall_driver_async(self, data->device);
+    }
+#endif
+
+    spice_usbredir_channel_disconnect_device_finish(channel, channel_res, &err);
+    if (err)
+        g_task_return_error(task, err);
+    else
+        g_task_return_boolean(task, TRUE);
+
+    g_object_unref(task);
+}
+#endif
+
+void spice_usb_device_manager_disconnect_device_async(SpiceUsbDeviceManager *self,
+                                                      SpiceUsbDevice *device,
+                                                      GCancellable *cancellable,
+                                                      GAsyncReadyCallback callback,
+                                                      gpointer user_data)
+{
+#ifdef USE_USBREDIR
+    GTask *nested;
+    g_return_if_fail(SPICE_IS_USB_DEVICE_MANAGER(self));
+
+    g_return_if_fail(device != NULL);
+
+    SPICE_DEBUG("disconnecting device %p", device);
+
+    SpiceUsbredirChannel *channel;
+
+    channel = spice_usb_device_manager_get_channel_for_dev(self, device);
+    nested  = g_task_new(G_OBJECT(self), cancellable, callback, user_data);
+    disconnect_cb_data *data = g_new(disconnect_cb_data, 1);
+    data->self = self;
+    data->device = device;
+    g_task_set_task_data(nested, data, g_free);
+
+    spice_usbredir_channel_disconnect_device_async(channel, cancellable,
+                                                   _disconnect_device_async_cb,
+                                                   nested);
 #endif
 }
 

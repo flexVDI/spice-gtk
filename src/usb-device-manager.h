@@ -116,7 +116,18 @@ void spice_usb_device_manager_connect_device_async(
                                              GCancellable *cancellable,
                                              GAsyncReadyCallback callback,
                                              gpointer user_data);
+
+void spice_usb_device_manager_disconnect_device_async(
+                                             SpiceUsbDeviceManager *manager,
+                                             SpiceUsbDevice *device,
+                                             GCancellable *cancellable,
+                                             GAsyncReadyCallback callback,
+                                             gpointer user_data);
+
 gboolean spice_usb_device_manager_connect_device_finish(
+    SpiceUsbDeviceManager *self, GAsyncResult *res, GError **err);
+
+gboolean spice_usb_device_manager_disconnect_device_finish(
     SpiceUsbDeviceManager *self, GAsyncResult *res, GError **err);
 
 void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *manager,

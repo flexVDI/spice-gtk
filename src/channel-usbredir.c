@@ -429,6 +429,8 @@ void spice_usbredir_channel_disconnect_device(SpiceUsbredirChannel *channel)
 
     CHANNEL_DEBUG(channel, "disconnecting device from usb channel %p", channel);
 
+    spice_usbredir_channel_lock(channel);
+
     switch (priv->state) {
     case STATE_DISCONNECTED:
     case STATE_DISCONNECTING:
@@ -462,6 +464,38 @@ void spice_usbredir_channel_disconnect_device(SpiceUsbredirChannel *channel)
         priv->state  = STATE_DISCONNECTED;
         break;
     }
+
+    spice_usbredir_channel_unlock(channel);
+}
+
+static void
+_disconnect_device_thread(GTask *task,
+                          gpointer object,
+                          gpointer task_data,
+                          GCancellable *cancellable)
+{
+    spice_usbredir_channel_disconnect_device(SPICE_USBREDIR_CHANNEL(object));
+    g_task_return_boolean(task, TRUE);
+}
+
+G_GNUC_INTERNAL
+gboolean spice_usbredir_channel_disconnect_device_finish(
+                                               SpiceUsbredirChannel *channel,
+                                               GAsyncResult         *res,
+                                               GError              **err)
+{
+    return g_task_propagate_boolean(G_TASK(res), err);
+}
+
+void spice_usbredir_channel_disconnect_device_async(SpiceUsbredirChannel *channel,
+                                                    GCancellable *cancellable,
+                                                    GAsyncReadyCallback callback,
+                                                    gpointer user_data)
+{
+    GTask* task = g_task_new(channel, cancellable, callback, user_data);
+
+    g_return_if_fail(channel != NULL);
+    g_task_run_in_thread(task, _disconnect_device_thread);
 }
 
 G_GNUC_INTERNAL
