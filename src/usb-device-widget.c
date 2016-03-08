@@ -380,27 +380,29 @@ static void check_can_redirect(GtkWidget *widget, gpointer user_data)
         return; /* Non device widget, ie the info_bar */
 
     priv->device_count++;
-    can_redirect = spice_usb_device_manager_can_redirect_device(priv->manager,
-                                                                device, &err);
-    gtk_widget_set_sensitive(widget, can_redirect);
 
-    /* If we cannot redirect this device, append the error message to
-       err_msg, but only if it is *not* already there! */
-    if (!can_redirect) {
-        if (priv->err_msg) {
-            if (!strstr(priv->err_msg, err->message)) {
-                gchar *old_err_msg = priv->err_msg;
-
-                priv->err_msg = g_strdup_printf("%s\n%s", priv->err_msg,
-                                                err->message);
-                g_free(old_err_msg);
+    if (spice_usb_device_manager_is_redirecting(priv->manager)) {
+        can_redirect = FALSE;
+    } else {
+        can_redirect = spice_usb_device_manager_can_redirect_device(priv->manager,
+                                                                    device, &err);
+        /* If we cannot redirect this device, append the error message to
+           err_msg, but only if it is *not* already there! */
+        if (!can_redirect) {
+            if (priv->err_msg) {
+                if (!strstr(priv->err_msg, err->message)) {
+                    gchar *old_err_msg = priv->err_msg;
+                    priv->err_msg = g_strdup_printf("%s\n%s", priv->err_msg,
+                                                    err->message);
+                    g_free(old_err_msg);
+                }
+            } else {
+                priv->err_msg = g_strdup(err->message);
             }
-        } else {
-            priv->err_msg = g_strdup(err->message);
         }
+        g_clear_error(&err);
     }
-
-    g_clear_error(&err);
+    gtk_widget_set_sensitive(widget, can_redirect);
 }
 
 static gboolean spice_usb_device_widget_update_status(gpointer user_data)
@@ -476,9 +478,9 @@ static void connect_cb(GObject *gobject, GAsyncResult *res, gpointer user_data)
         g_error_free(err);
 
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(data->check), FALSE);
-        spice_usb_device_widget_update_status(self);
     }
 
+    spice_usb_device_widget_update_status(self);
     g_object_unref(data->check);
     g_object_unref(data->self);
     g_free(data);
