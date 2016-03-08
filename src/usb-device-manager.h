@@ -130,8 +130,11 @@ gboolean spice_usb_device_manager_connect_device_finish(
 gboolean spice_usb_device_manager_disconnect_device_finish(
     SpiceUsbDeviceManager *self, GAsyncResult *res, GError **err);
 
+#ifndef SPICE_DISABLE_DEPRECATED
+SPICE_DEPRECATED
 void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *manager,
                                                 SpiceUsbDevice *device);
+#endif
 
 gboolean
 spice_usb_device_manager_can_redirect_device(SpiceUsbDeviceManager  *self,
