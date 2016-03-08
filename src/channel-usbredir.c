@@ -656,6 +656,8 @@ static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
     priv->read_buf = buf;
     priv->read_buf_size = size;
 
+    spice_usbredir_channel_lock(channel);
+
     r = usbredirhost_read_guest_data(priv->host);
     if (r != 0) {
         SpiceUsbDevice *spice_device = priv->spice_device;
@@ -663,7 +665,10 @@ static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
         gchar *desc;
         GError *err;
 
-        g_return_if_fail(spice_device != NULL);
+        if (spice_device == NULL) {
+            spice_usbredir_channel_unlock(channel);
+            return;
+        }
 
         desc = spice_usb_device_get_description(spice_device, NULL);
         switch (r) {
@@ -700,6 +705,8 @@ static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
 
         g_error_free(err);
     }
+
+    spice_usbredir_channel_unlock(channel);
 }
 
 #endif /* USE_USBREDIR */

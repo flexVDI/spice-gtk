@@ -1353,9 +1353,13 @@ static SpiceUsbredirChannel *spice_usb_device_manager_get_channel_for_dev(
 
     for (i = 0; i < priv->channels->len; i++) {
         SpiceUsbredirChannel *channel = g_ptr_array_index(priv->channels, i);
+        spice_usbredir_channel_lock(channel);
         libusb_device *libdev = spice_usbredir_channel_get_device(channel);
-        if (spice_usb_manager_device_equal_libdev(manager, device, libdev))
+        if (spice_usb_manager_device_equal_libdev(manager, device, libdev)) {
+            spice_usbredir_channel_unlock(channel);
             return channel;
+        }
+        spice_usbredir_channel_unlock(channel);
     }
 #endif
     return NULL;
@@ -1749,9 +1753,13 @@ spice_usb_device_manager_can_redirect_device(SpiceUsbDeviceManager  *self,
     /* Check if there are free channels */
     for (i = 0; i < priv->channels->len; i++) {
         SpiceUsbredirChannel *channel = g_ptr_array_index(priv->channels, i);
+        spice_usbredir_channel_lock(channel);
 
-        if (!spice_usbredir_channel_get_device(channel))
+        if (!spice_usbredir_channel_get_device(channel)){
+            spice_usbredir_channel_unlock(channel);
             break;
+        }
+        spice_usbredir_channel_unlock(channel);
     }
     if (i == priv->channels->len) {
         g_set_error_literal(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
