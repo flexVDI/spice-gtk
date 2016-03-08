@@ -293,6 +293,8 @@ static void g_udev_client_get_property(GObject     *gobject,
     }
 }
 
+static void handle_dev_change(GUdevClient *self);
+
 static void g_udev_client_set_property(GObject       *gobject,
                                        guint          prop_id,
                                        const GValue  *value,
@@ -300,10 +302,18 @@ static void g_udev_client_set_property(GObject       *gobject,
 {
     GUdevClient *self = G_UDEV_CLIENT(gobject);
     GUdevClientPrivate *priv = self->priv;
+    gboolean old_val;
 
     switch (prop_id) {
     case PROP_REDIRECTING:
+        old_val = priv->redirecting;
         priv->redirecting = g_value_get_boolean(value);
+        if (old_val && !priv->redirecting) {
+            /* This is a redirection completion case.
+               Inject hotplug event in case we missed device changes
+               during redirection processing. */
+            handle_dev_change(self);
+        }
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -411,6 +421,15 @@ static void handle_dev_change(GUdevClient *self)
     GUdevClientPrivate *priv = self->priv;
     GError *err = NULL;
     GList *now_devs = NULL;
+
+    if (priv->redirecting == TRUE) {
+        /* On Windows, querying USB device list may return inconsistent results
+           if performed in parallel to redirection flow.
+           A simulated hotplug event will be injected after redirection
+           completion in order to process real device list changes that may
+           had taken place during redirection process. */
+        return;
+    }
 
     if(g_udev_client_list_devices(self, &now_devs, &err, __FUNCTION__) < 0) {
         g_warning("could not retrieve device list");
