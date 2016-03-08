@@ -51,6 +51,10 @@ void spice_usbredir_channel_disconnect_device(SpiceUsbredirChannel *channel);
 
 libusb_device *spice_usbredir_channel_get_device(SpiceUsbredirChannel *channel);
 
+void spice_usbredir_channel_lock(SpiceUsbredirChannel *channel);
+
+void spice_usbredir_channel_unlock(SpiceUsbredirChannel *channel);
+
 void spice_usbredir_channel_get_guest_filter(
                           SpiceUsbredirChannel               *channel,
                           const struct usbredirfilter_rule  **rules_ret,

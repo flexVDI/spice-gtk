@@ -78,6 +78,7 @@ struct _SpiceUsbredirChannelPrivate {
     GTask *task;
     SpiceUsbAclHelper *acl_helper;
 #endif
+    STATIC_MUTEX device_connect_mutex;
 };
 
 static void channel_set_handlers(SpiceChannelClass *klass);
@@ -109,6 +110,7 @@ static void spice_usbredir_channel_init(SpiceUsbredirChannel *channel)
 {
 #ifdef USE_USBREDIR
     channel->priv = SPICE_USBREDIR_CHANNEL_GET_PRIVATE(channel);
+    STATIC_MUTEX_INIT(channel->priv->device_connect_mutex);
 #endif
 }
 
@@ -184,6 +186,9 @@ static void spice_usbredir_channel_finalize(GObject *obj)
 
     if (channel->priv->host)
         usbredirhost_close(channel->priv->host);
+#ifdef USE_USBREDIR
+    STATIC_MUTEX_CLEAR(channel->priv->device_connect_mutex);
+#endif
 
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_usbredir_channel_parent_class)->finalize)
@@ -564,6 +569,16 @@ static void *usbredir_alloc_lock(void) {
     g_mutex_init(mutex);
 
     return mutex;
+}
+
+void spice_usbredir_channel_lock(SpiceUsbredirChannel *channel)
+{
+    STATIC_MUTEX_LOCK(channel->priv->device_connect_mutex);
+}
+
+void spice_usbredir_channel_unlock(SpiceUsbredirChannel *channel)
+{
+    STATIC_MUTEX_UNLOCK(channel->priv->device_connect_mutex);
 }
 
 static void usbredir_lock_lock(void *user_data) {
