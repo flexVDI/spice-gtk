@@ -121,6 +121,7 @@ struct _SpiceUsbDeviceManagerPrivate {
     GUdevClient *udev;
     libusb_device **coldplug_list; /* Avoid needless reprobing during init */
 #else
+    gboolean redirecting; /* Handled by GUdevClient in the gudev case */
     libusb_hotplug_callback_handle hp_handle;
 #endif
 #ifdef G_OS_WIN32
@@ -207,9 +208,24 @@ _spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
                                                GAsyncReadyCallback callback,
                                                gpointer user_data);
 
+static
+void _connect_device_async_cb(GObject *gobject,
+                              GAsyncResult *channel_res,
+                              gpointer user_data);
+
 G_DEFINE_BOXED_TYPE(SpiceUsbDevice, spice_usb_device,
                     (GBoxedCopyFunc)spice_usb_device_ref,
                     (GBoxedFreeFunc)spice_usb_device_unref)
+
+static void
+_set_redirecting(SpiceUsbDeviceManager *self, gboolean is_redirecting)
+{
+#ifdef USE_GUDEV
+    g_object_set(self->priv->udev, "redirecting", is_redirecting, NULL);
+#else
+    self->priv->redirecting = is_redirecting;
+#endif
+}
 
 #else
 G_DEFINE_BOXED_TYPE(SpiceUsbDevice, spice_usb_device, g_object_ref, g_object_unref)
@@ -1163,7 +1179,7 @@ static void spice_usb_device_manager_drv_install_cb(GObject *gobject,
     SpiceUsbDevice *device;
     UsbInstallCbInfo *cbinfo;
     GCancellable *cancellable;
-    GAsyncReadyCallback callback;
+    gpointer data;
 
     g_return_if_fail(user_data != NULL);
 
@@ -1172,8 +1188,7 @@ static void spice_usb_device_manager_drv_install_cb(GObject *gobject,
     device      = cbinfo->device;
     installer   = cbinfo->installer;
     cancellable = cbinfo->cancellable;
-    callback    = cbinfo->callback;
-    user_data   = cbinfo->user_data;
+    data        = cbinfo->user_data;
 
     g_free(cbinfo);
 
@@ -1195,8 +1210,8 @@ static void spice_usb_device_manager_drv_install_cb(GObject *gobject,
     _spice_usb_device_manager_connect_device_async(self,
                                                    device,
                                                    cancellable,
-                                                   callback,
-                                                   user_data);
+                                                   _connect_device_async_cb,
+                                                   data);
 
     spice_usb_device_unref(device);
 }
@@ -1523,6 +1538,8 @@ _spice_usb_device_manager_uninstall_driver_async(SpiceUsbDeviceManager *self,
 
 #endif
 
+#ifdef USE_USBREDIR
+
 static void
 _spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
                                                SpiceUsbDevice *device,
@@ -1539,7 +1556,6 @@ _spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
 
     task = g_task_new(self, cancellable, callback, user_data);
 
-#ifdef USE_USBREDIR
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
     libusb_device *libdev;
     guint i;
@@ -1585,16 +1601,15 @@ _spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
         libusb_unref_device(libdev);
         return;
     }
-#endif
 
     g_task_return_new_error(task,
                             SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                             _("No free USB channel"));
-#ifdef USE_USBREDIR
 done:
-#endif
     g_object_unref(task);
 }
+
+#endif
 
 /**
  * spice_usb_device_manager_connect_device_async:
@@ -1614,11 +1629,19 @@ void spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
                                              GAsyncReadyCallback callback,
                                              gpointer user_data)
 {
+    g_return_if_fail(SPICE_IS_USB_DEVICE_MANAGER(self));
 
-#if defined(USE_USBREDIR) && defined(G_OS_WIN32)
+#ifdef USE_USBREDIR
+
+    GTask *task =
+        g_task_new(G_OBJECT(self), cancellable, callback, user_data);
+
+    _set_redirecting(self, TRUE);
+
+#ifdef G_OS_WIN32
     if (self->priv->use_usbclerk) {
         _spice_usb_device_manager_install_driver_async(self, device, cancellable,
-                                                       callback, user_data);
+                                                       callback, task);
         return;
     }
 #endif
@@ -1626,8 +1649,10 @@ void spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
     _spice_usb_device_manager_connect_device_async(self,
                                                    device,
                                                    cancellable,
-                                                   callback,
-                                                   user_data);
+                                                   _connect_device_async_cb,
+                                                   task);
+
+#endif
 }
 
 /**
@@ -1650,6 +1675,22 @@ gboolean spice_usb_device_manager_connect_device_finish(
 
     return g_task_propagate_boolean(task, err);
 }
+
+#ifdef USE_USBREDIR
+static
+void _connect_device_async_cb(GObject *gobject,
+                              GAsyncResult *channel_res,
+                              gpointer user_data)
+{
+    SpiceUsbDeviceManager *self = SPICE_USB_DEVICE_MANAGER(gobject);
+    GTask *task = user_data;
+
+    _set_redirecting(self, FALSE);
+
+    g_task_return_boolean(task, TRUE);
+    g_object_unref(task);
+}
+#endif
 
 /**
  * spice_usb_device_manager_disconnect_device:
