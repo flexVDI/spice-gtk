@@ -538,7 +538,20 @@ static void send_keystroke_cb(GtkAction *action, void *data)
         GDK_KEY_Alt_L,
         GDK_KEY_F1
     };
-    if (!strcmp(gtk_action_get_name(action), "CAF1")) {
+    int numKeys = 3;
+    if (!strcmp(gtk_action_get_name(action), "CAD")) {
+        keyvals[2] = GDK_KEY_Delete;
+    } else if (!strcmp(gtk_action_get_name(action), "WCR")) {
+        keyvals[1] = GDK_KEY_Meta_L;
+        keyvals[2] = GDK_KEY_Right;
+    } else if (!strcmp(gtk_action_get_name(action), "WCL")) {
+        keyvals[1] = GDK_KEY_Meta_L;
+        keyvals[2] = GDK_KEY_Left;
+    } else if (!strcmp(gtk_action_get_name(action), "WL")) {
+        keyvals[0] = GDK_KEY_Meta_L;
+        keyvals[1] = GDK_KEY_l;
+        numKeys = 2;
+    } else if (!strcmp(gtk_action_get_name(action), "CAF1")) {
         keyvals[2] = GDK_KEY_F1;
     } else if (!strcmp(gtk_action_get_name(action), "CAF2")) {
         keyvals[2] = GDK_KEY_F2;
@@ -564,7 +577,7 @@ static void send_keystroke_cb(GtkAction *action, void *data)
         keyvals[2] = GDK_KEY_F12;
     } else return;
 
-    spice_display_send_keys(SPICE_DISPLAY(win->spice), keyvals, 3,
+    spice_display_send_keys(SPICE_DISPLAY(win->spice), keyvals, numKeys,
                             SPICE_DISPLAY_KEY_EVENT_PRESS | SPICE_DISPLAY_KEY_EVENT_RELEASE);
 }
 
@@ -870,6 +883,25 @@ static const GtkActionEntry entries[] = {
         .accelerator = "<shift>F10",
     },{
 #endif
+        .name        = "CAD",
+        .label       = "Ctrl+Alt+Supr",
+        .callback    = G_CALLBACK(send_keystroke_cb),
+    },{
+
+#ifdef G_OS_WIN32
+        .name        = "WCR",
+        .label       = "Ctrl+Win+Right",
+        .callback    = G_CALLBACK(send_keystroke_cb),
+    },{
+        .name        = "WCL",
+        .label       = "Ctrl+Win+Left",
+        .callback    = G_CALLBACK(send_keystroke_cb),
+    },{
+        .name        = "WL",
+        .label       = "Win+L",
+        .callback    = G_CALLBACK(send_keystroke_cb),
+    },{
+#else
         .name        = "CAF1",
         .label       = "Ctrl+Alt+F1",
         .callback    = G_CALLBACK(send_keystroke_cb),
@@ -918,6 +950,8 @@ static const GtkActionEntry entries[] = {
         .label       = "Ctrl+Alt+F12",
         .callback    = G_CALLBACK(send_keystroke_cb),
     },{
+#endif
+
         /* Help menu */
         .name        = "About",
         .stock_id    = GTK_STOCK_ABOUT,
@@ -1005,6 +1039,12 @@ static char ui_xml[] =
 #ifdef USE_USBREDIR
 "      <menuitem action='SelectUsbDevices'/>\n"
 #endif
+"      <menuitem action='CAD'/>\n"
+#ifdef G_OS_WIN32
+"      <menuitem action='WCR'/>\n"
+"      <menuitem action='WCL'/>\n"
+"      <menuitem action='WL'/>\n"
+#else
 "      <menuitem action='CAF1'/>\n"
 "      <menuitem action='CAF2'/>\n"
 "      <menuitem action='CAF3'/>\n"
@@ -1017,6 +1057,7 @@ static char ui_xml[] =
 "      <menuitem action='CAF10'/>\n"
 "      <menuitem action='CAF11'/>\n"
 "      <menuitem action='CAF12'/>\n"
+#endif
 "    </menu>\n"
 #if defined(WITH_FLEXVDI) && defined(ENABLE_PRINTING)
 "    <menu action='SharePrinterMenu'/>\n"
@@ -1065,6 +1106,12 @@ static char ui_xml[] =
 #ifdef USE_USBREDIR
 "      <menuitem action='SelectUsbDevices'/>\n"
 #endif
+"      <menuitem action='CAD'/>\n"
+#ifdef G_OS_WIN32
+"      <menuitem action='WCR'/>\n"
+"      <menuitem action='WCL'/>\n"
+"      <menuitem action='WL'/>\n"
+#else
 "      <menuitem action='CAF1'/>\n"
 "      <menuitem action='CAF2'/>\n"
 "      <menuitem action='CAF3'/>\n"
@@ -1077,6 +1124,7 @@ static char ui_xml[] =
 "      <menuitem action='CAF10'/>\n"
 "      <menuitem action='CAF11'/>\n"
 "      <menuitem action='CAF12'/>\n"
+#endif
 "    </menu>\n"
 #if defined(WITH_FLEXVDI) && defined(ENABLE_PRINTING)
 "    <menu action='SharePrinterMenu'/>\n"
