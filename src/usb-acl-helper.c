@@ -198,7 +198,10 @@ void spice_usb_acl_helper_open_acl_async(SpiceUsbAclHelper *self,
     GIOStatus status;
     GPid helper_pid;
     gsize bytes_written;
-    gchar *argv[] = { (char*) ACL_HELPER_PATH"/spice-client-glib-usb-acl-helper", NULL };
+    const gchar *acl_helper = g_getenv("SPICE_USB_ACL_BINARY");
+    if (acl_helper == NULL)
+        acl_helper = ACL_HELPER_PATH"/spice-client-glib-usb-acl-helper";
+    gchar *argv[] = { (char*)acl_helper, NULL };
     gint in, out;
     gchar buf[128];
 
