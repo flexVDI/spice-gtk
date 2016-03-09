@@ -28,6 +28,7 @@
 #include "spice-marshal.h"
 #include "spice-util.h"
 #include "usbutil.h"
+#include <gio/gio.h>
 
 #define G_UDEV_CLIENT_GET_PRIVATE(obj) \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), G_UDEV_TYPE_CLIENT, GUdevClientPrivate))
