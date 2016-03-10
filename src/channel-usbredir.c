@@ -419,7 +419,7 @@ void spice_usbredir_channel_disconnect_device(SpiceUsbredirChannel *channel)
     case STATE_WAITING_FOR_ACL_HELPER:
         priv->state = STATE_DISCONNECTING;
         /* We're still waiting for the acl helper -> cancel it */
-        spice_usb_acl_helper_close_acl(priv->acl_helper);
+        spice_usb_acl_helper_cancel(priv->acl_helper);
         break;
 #endif
     case STATE_CONNECTED:

@@ -297,3 +297,16 @@ void spice_usb_acl_helper_close_acl(SpiceUsbAclHelper *self)
 
     spice_usb_acl_helper_cleanup(self);
 }
+
+G_GNUC_INTERNAL
+void spice_usb_acl_helper_cancel(SpiceUsbAclHelper *self)
+{
+    g_return_if_fail(SPICE_IS_USB_ACL_HELPER(self));
+
+    SpiceUsbAclHelperPrivate *priv = self->priv;
+    g_return_if_fail(priv->result != NULL);
+
+    async_result_set_cancelled(priv->result);
+    g_simple_async_result_complete_in_idle(priv->result);
+    g_clear_object(&priv->result);
+}
