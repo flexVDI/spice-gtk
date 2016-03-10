@@ -1,3 +1,22 @@
+v0.31
+=====
+
+- NOTE: this is the last release to support gtk+ 2.0
+- add local GL scanout support for virtio-gpu/virgl guests
+- new file-transfer API, to be able to monitor transfers etc
+- new spice_display_change_preferred_compression() API
+- better authentication error reports
+- usbredir: drop isoc packets on low bandwidth (rhbz#1264156)
+- usbredir: add counter of free channels (rhbz#1298772)
+- add a toplevel include header spice-client-gtk.h
+- grab keyboard based on session focus (rhbz#1275231)
+- don't print error message on successful file transfer (rhbz#1265562)
+- allow simultaneous support for Pulse and GStreamer audio
+- remove GSlice usage
+- some BE endianness fixes
+- misc leak and use after-free fixes
+- documentation fixes
+
 v0.30
 =====
 - spice-protocol is no longer bundled with spice-gtk. Requires
