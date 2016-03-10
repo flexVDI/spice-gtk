@@ -283,22 +283,6 @@ gboolean spice_usb_acl_helper_open_acl_finish(
 }
 
 G_GNUC_INTERNAL
-void spice_usb_acl_helper_close_acl(SpiceUsbAclHelper *self)
-{
-    g_return_if_fail(SPICE_IS_USB_ACL_HELPER(self));
-
-    SpiceUsbAclHelperPrivate *priv = self->priv;
-
-    /* If the acl open has not completed yet report it as cancelled */
-    if (priv->result) {
-        async_result_set_cancelled(priv->result);
-        g_simple_async_result_complete_in_idle(priv->result);
-    }
-
-    spice_usb_acl_helper_cleanup(self);
-}
-
-G_GNUC_INTERNAL
 void spice_usb_acl_helper_cancel(SpiceUsbAclHelper *self)
 {
     g_return_if_fail(SPICE_IS_USB_ACL_HELPER(self));

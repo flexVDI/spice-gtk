@@ -305,7 +305,6 @@ static void spice_usbredir_channel_open_acl_cb(
         priv->state  = STATE_DISCONNECTED;
     }
 
-    spice_usb_acl_helper_close_acl(priv->acl_helper);
     g_clear_object(&priv->acl_helper);
     g_object_set(spice_channel_get_session(SPICE_CHANNEL(channel)),
                  "inhibit-keyboard-grab", FALSE, NULL);
