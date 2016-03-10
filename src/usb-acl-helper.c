@@ -184,11 +184,11 @@ SpiceUsbAclHelper *spice_usb_acl_helper_new(void)
 }
 
 G_GNUC_INTERNAL
-void spice_usb_acl_helper_open_acl(SpiceUsbAclHelper *self,
-                                   gint busnum, gint devnum,
-                                   GCancellable *cancellable,
-                                   GAsyncReadyCallback callback,
-                                   gpointer user_data)
+void spice_usb_acl_helper_open_acl_async(SpiceUsbAclHelper *self,
+                                         gint busnum, gint devnum,
+                                         GCancellable *cancellable,
+                                         GAsyncReadyCallback callback,
+                                         gpointer user_data)
 {
     g_return_if_fail(SPICE_IS_USB_ACL_HELPER(self));
 
@@ -203,7 +203,7 @@ void spice_usb_acl_helper_open_acl(SpiceUsbAclHelper *self,
     gchar buf[128];
 
     result = g_simple_async_result_new(G_OBJECT(self), callback, user_data,
-                                       spice_usb_acl_helper_open_acl);
+                                       spice_usb_acl_helper_open_acl_async);
 
     if (priv->out_ch) {
         g_simple_async_result_set_error(result,
@@ -273,7 +273,7 @@ gboolean spice_usb_acl_helper_open_acl_finish(
     GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT(res);
 
     g_return_val_if_fail(g_simple_async_result_is_valid(res, G_OBJECT(self),
-                                               spice_usb_acl_helper_open_acl),
+                                               spice_usb_acl_helper_open_acl_async),
                          FALSE);
 
     if (g_simple_async_result_propagate_error(result, err))

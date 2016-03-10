@@ -363,12 +363,12 @@ void spice_usbredir_channel_connect_device_async(
     priv->acl_helper = spice_usb_acl_helper_new();
     g_object_set(spice_channel_get_session(SPICE_CHANNEL(channel)),
                  "inhibit-keyboard-grab", TRUE, NULL);
-    spice_usb_acl_helper_open_acl(priv->acl_helper,
-                                  libusb_get_bus_number(device),
-                                  libusb_get_device_address(device),
-                                  cancellable,
-                                  spice_usbredir_channel_open_acl_cb,
-                                  channel);
+    spice_usb_acl_helper_open_acl_async(priv->acl_helper,
+                                        libusb_get_bus_number(device),
+                                        libusb_get_device_address(device),
+                                        cancellable,
+                                        spice_usbredir_channel_open_acl_cb,
+                                        channel);
     return;
 #else
     if (!spice_usbredir_channel_open_device(channel, &err)) {
