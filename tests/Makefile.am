@@ -1,18 +1,21 @@
 NULL =
 
+noinst_PROGRAMS =
 TESTS = coroutine				\
 	util					\
 	session					\
-	usb-acl-helper				\
 	$(NULL)
 
 if WITH_PHODAV
 TESTS += pipe
 endif
 
-noinst_PROGRAMS = $(TESTS) \
-		  mock-acl-helper \
-		  $(NULL)
+if WITH_POLKIT
+TESTS += usb-acl-helper
+noinst_PROGRAMS += mock-acl-helper
+endif
+
+noinst_PROGRAMS += $(TESTS)
 
 AM_CPPFLAGS =					\
 	$(COMMON_CFLAGS)			\
