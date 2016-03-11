@@ -3301,6 +3301,8 @@ spice_file_transfer_task_class_init(SpiceFileTransferTaskClass *klass)
      * SpiceFileTransferTask:id:
      *
      * The ID of the file transfer task
+     *
+     * Since: 0.31
      **/
     g_object_class_install_property(object_class, PROP_TASK_ID,
                                     g_param_spec_uint("id",
@@ -3314,6 +3316,8 @@ spice_file_transfer_task_class_init(SpiceFileTransferTaskClass *klass)
      * SpiceFileTransferTask:channel:
      *
      * The main channel that owns the file transfer task
+     *
+     * Since: 0.31
      **/
     g_object_class_install_property(object_class, PROP_TASK_CHANNEL,
                                     g_param_spec_object("channel",
@@ -3327,6 +3331,8 @@ spice_file_transfer_task_class_init(SpiceFileTransferTaskClass *klass)
      * SpiceFileTransferTask:cancellable:
      *
      * A cancellable object used to cancel the file transfer
+     *
+     * Since: 0.31
      **/
     g_object_class_install_property(object_class, PROP_TASK_CANCELLABLE,
                                     g_param_spec_object("cancellable",
@@ -3340,6 +3346,8 @@ spice_file_transfer_task_class_init(SpiceFileTransferTaskClass *klass)
      * SpiceFileTransferTask:file:
      *
      * The file that is being transferred in this file transfer task
+     *
+     * Since: 0.31
      **/
     g_object_class_install_property(object_class, PROP_TASK_FILE,
                                     g_param_spec_object("file",
@@ -3355,6 +3363,8 @@ spice_file_transfer_task_class_init(SpiceFileTransferTaskClass *klass)
      * The current state of the file transfer. This value indicates a
      * percentage, and ranges from 0 to 100. Listen for change notifications on
      * this property to be updated whenever the file transfer progress changes.
+     *
+     * Since: 0.31
      **/
     g_object_class_install_property(object_class, PROP_TASK_PROGRESS,
                                     g_param_spec_double("progress",
@@ -3372,6 +3382,8 @@ spice_file_transfer_task_class_init(SpiceFileTransferTaskClass *klass)
      *
      * The #SpiceFileTransferTask::finished signal is emitted when the file
      * transfer has completed transferring to the guest.
+     *
+     * Since: 0.31
      **/
     task_signals[SIGNAL_FINISHED] = g_signal_new("finished", SPICE_TYPE_FILE_TRANSFER_TASK,
                                             G_SIGNAL_RUN_FIRST,
@@ -3388,7 +3400,7 @@ spice_file_transfer_task_init(SpiceFileTransferTask *self)
     self->priv->buffer = g_malloc0(FILE_XFER_CHUNK_SIZE);
 }
 
-SpiceFileTransferTask *
+static SpiceFileTransferTask *
 spice_file_transfer_task_new(SpiceMainChannel *channel, GFile *file, GCancellable *cancellable)
 {
     static uint32_t xfer_id = 0;    /* Used to identify task id */
@@ -3409,6 +3421,8 @@ spice_file_transfer_task_new(SpiceMainChannel *channel, GFile *file, GCancellabl
  * transfer task.
  *
  * Returns: A percentage value between 0 and 100
+ *
+ * Since: 0.31
  **/
 double spice_file_transfer_task_get_progress(SpiceFileTransferTask *self)
 {
@@ -3426,6 +3440,8 @@ double spice_file_transfer_task_get_progress(SpiceFileTransferTask *self)
  * was initiated, multiple file transfer tasks may share a single
  * #SpiceFileTransferTask::cancellable object, so canceling one task may result
  * in the cancellation of other tasks.
+ *
+ * Since: 0.31
  **/
 void spice_file_transfer_task_cancel(SpiceFileTransferTask *self)
 {
@@ -3439,6 +3455,8 @@ void spice_file_transfer_task_cancel(SpiceFileTransferTask *self)
  * Gets the name of the file being transferred in this task
  *
  * Returns: (transfer none): The basename of the file
+ *
+ * Since: 0.31
  **/
 char* spice_file_transfer_task_get_filename(SpiceFileTransferTask *self)
 {

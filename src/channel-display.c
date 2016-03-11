@@ -542,6 +542,8 @@ void spice_display_change_preferred_compression(SpiceChannel *channel, gint comp
  * @channel: a #SpiceDisplayChannel
  *
  * Returns: the current GL scanout
+ *
+ * Since: 0.31
  **/
 const SpiceGlScanout *
 spice_display_get_gl_scanout(SpiceDisplayChannel *channel)
