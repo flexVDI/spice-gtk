@@ -512,7 +512,7 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
 
         query += len;
         if (*query == '\0') {
-            spice_warning ("key '%s' without value", key);
+            SPICE_DEBUG("key '%s' without value", key);
             break;
         } else if (*query == ';' || *query == '&') {
             /* another argument */
