@@ -2116,7 +2116,7 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
     case SPICE_CHANNEL_PLAYBACK:
     case SPICE_CHANNEL_RECORD: {
         if (!spice_session_get_audio_enabled(s)) {
-            g_debug("audio channel is disabled, not creating it");
+            SPICE_DEBUG("audio channel is disabled, not creating it");
             return NULL;
         }
         gtype = type == SPICE_CHANNEL_RECORD ?
@@ -2126,7 +2126,7 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
 #ifdef USE_SMARTCARD
     case SPICE_CHANNEL_SMARTCARD: {
         if (!spice_session_get_smartcard_enabled(s)) {
-            g_debug("smartcard channel is disabled, not creating it");
+            SPICE_DEBUG("smartcard channel is disabled, not creating it");
             return NULL;
         }
         gtype = SPICE_TYPE_SMARTCARD_CHANNEL;
@@ -2136,7 +2136,7 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
 #ifdef USE_USBREDIR
     case SPICE_CHANNEL_USBREDIR: {
         if (!spice_session_get_usbredir_enabled(s)) {
-            g_debug("usbredir channel is disabled, not creating it");
+            SPICE_DEBUG("usbredir channel is disabled, not creating it");
             return NULL;
         }
         gtype = SPICE_TYPE_USBREDIR_CHANNEL;
@@ -2153,7 +2153,7 @@ SpiceChannel *spice_channel_new(SpiceSession *s, int type, int id)
         gtype = SPICE_TYPE_PORT_CHANNEL;
         break;
     default:
-        g_debug("unsupported channel kind: %s: %d",
+        SPICE_DEBUG("unsupported channel kind: %s: %d",
                 spice_channel_type_to_string(type), type);
         return NULL;
     }

@@ -506,7 +506,7 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
 
         int len;
         if (sscanf(query, "%31[-a-zA-Z0-9]=%n", key, &len) != 1) {
-            spice_warning("Failed to parse key in URI '%s'", query);
+            g_warning("Failed to parse key in URI '%s'", query);
             goto fail;
         }
 
@@ -521,7 +521,7 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
         }
 
         if (sscanf(query, "%127[^;&]%n", value, &len) != 1) {
-            spice_warning("Failed to parse value of key '%s' in URI '%s'", key, query);
+            g_warning("Failed to parse value of key '%s' in URI '%s'", key, query);
             goto fail;
         }
 
@@ -2178,7 +2178,7 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
     } else {
         port = *use_tls ? s->tls_port : s->port;
         if (port == NULL) {
-            g_debug("Missing port value, not attempting %s connection.",
+            SPICE_DEBUG("Missing port value, not attempting %s connection.",
                     *use_tls?"TLS":"unencrypted");
             return NULL;
         }
@@ -2730,7 +2730,7 @@ PhodavServer* spice_session_get_webdav_server(SpiceSession *session)
 
     const gchar *shared_dir = spice_session_get_shared_dir(session);
     if (shared_dir == NULL) {
-        g_debug("No shared dir set, not creating webdav server");
+        SPICE_DEBUG("No shared dir set, not creating webdav server");
         return NULL;
     }
 

@@ -690,11 +690,11 @@ static void playback_min_latency_changed(GObject *object, GParamSpec *pspec, gpo
     p->target_delay = min_latency;
 
     if (p->last_delay < p->target_delay) {
-        spice_debug("%s: corking", __FUNCTION__);
+        SPICE_DEBUG("%s: corking", __FUNCTION__);
         if (p->playback.stream)
             stream_cork(pulse, &p->playback, FALSE);
     } else {
-        spice_debug("%s: not corking. The current delay satisfies the requirement", __FUNCTION__);
+        SPICE_DEBUG("%s: not corking. The current delay satisfies the requirement", __FUNCTION__);
     }
 }
 

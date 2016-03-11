@@ -1213,8 +1213,8 @@ static void audio_playback_volume_info_cb(GObject *object, GAsyncResult *res, gp
                                                       &volume, &error);
     if (ret == FALSE || volume == NULL || nchannels == 0) {
         if (error != NULL) {
-            spice_warning("Failed to get playback async volume info: %s", error->message);
-            g_error_free (error);
+            g_warning("Failed to get playback async volume info: %s", error->message);
+            g_error_free(error);
         } else {
             SPICE_DEBUG("Failed to get playback async volume info");
         }
@@ -1270,8 +1270,8 @@ static void audio_record_volume_info_cb(GObject *object, GAsyncResult *res, gpoi
     ret = spice_audio_get_record_volume_info_finish(audio, res, &mute, &nchannels, &volume, &error);
     if (ret == FALSE || volume == NULL || nchannels == 0) {
         if (error != NULL) {
-            spice_warning ("Failed to get record async volume info: %s", error->message);
-            g_error_free (error);
+            g_warning("Failed to get record async volume info: %s", error->message);
+            g_error_free(error);
         } else {
             SPICE_DEBUG("Failed to get record async volume info");
         }

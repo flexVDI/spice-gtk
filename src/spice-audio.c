@@ -169,7 +169,7 @@ static void update_audio_channels(SpiceAudio *self, SpiceSession *session)
     GList *list, *tmp;
 
     if (!spice_session_get_audio_enabled(session)) {
-        g_debug("FIXME: disconnect audio channels");
+        SPICE_DEBUG("FIXME: disconnect audio channels");
         return;
     }
 
