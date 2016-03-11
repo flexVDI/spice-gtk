@@ -21,7 +21,13 @@
 #include <pixman.h>
 #ifdef WIN32
 /* We need some hacks to avoid warnings from the jpeg headers */
-#define HAVE_BOOLEAN
+/*#define HAVE_BOOLEAN
+ * HAVE_BOOLEAN is supposed to avoid problems with boolean being typedefed differently 
+ * - in libjpeg jmorecfg.h
+ * - in windows rpcndr.h
+ * making boolean being two different types in the same project is a BAD idea.
+ * It is better to just define WIN32_LEAN_AND_MEAN in configure so that rpcndr.h is not included when compiling spice-gtk
+ */
 #define XMD_H
 #endif
 #include <jpeglib.h>
