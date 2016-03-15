@@ -29,7 +29,9 @@
 #include <libdrm/drm_fourcc.h>
 
 #include <gdk/gdkx.h>
+#if GTK_CHECK_VERSION(3,16,0)
 #include <gdk/gdkwayland.h>
+#endif
 
 #define VERTS_ARRAY_SIZE (sizeof(GLfloat) * 4 * 4)
 #define TEX_ARRAY_SIZE (sizeof(GLfloat) * 4 * 2)

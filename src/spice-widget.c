@@ -539,6 +539,7 @@ static void grab_notify(SpiceDisplay *display, gboolean was_grabbed)
         release_keys(display);
 }
 
+#if GTK_CHECK_VERSION(3,16,0)
 static gboolean
 gl_area_render(GtkGLArea *area, GdkGLContext *context, gpointer user_data)
 {
@@ -570,6 +571,7 @@ gl_area_realize(GtkGLArea *area, gpointer user_data)
         g_clear_error(&err);
     }
 }
+#endif
 
 static void
 drawing_area_realize(GtkWidget *area, gpointer user_data)
@@ -611,6 +613,7 @@ static void spice_display_init(SpiceDisplay *display)
     gtk_widget_set_double_buffered(area, true);
     gtk_stack_set_visible_child(GTK_STACK(widget), area);
 
+#if GTK_CHECK_VERSION(3,16,0)
     area = gtk_gl_area_new();
     gtk_gl_area_set_required_version(GTK_GL_AREA(area), 3, 2);
     gtk_gl_area_set_auto_render(GTK_GL_AREA(area), false);
@@ -620,6 +623,7 @@ static void spice_display_init(SpiceDisplay *display)
                      NULL);
     gtk_stack_add_named(GTK_STACK(widget), area, "gl-area");
     gtk_widget_show_all(widget);
+#endif
 
     g_signal_connect(display, "grab-broken-event", G_CALLBACK(grab_broken), NULL);
     g_signal_connect(display, "grab-notify", G_CALLBACK(grab_notify), NULL);
@@ -2494,15 +2498,19 @@ static void gl_draw(SpiceDisplay *display,
                     guint32 x, guint32 y, guint32 w, guint32 h)
 {
     SpiceDisplayPrivate *d = display->priv;
-    GtkWidget *gl = gtk_stack_get_child_by_name(GTK_STACK(display), "gl-area");
 
     SPICE_DEBUG("%s",  __FUNCTION__);
     set_egl_enabled(display, true);
 
+#if GTK_CHECK_VERSION(3,16,0)
+    GtkWidget *gl = gtk_stack_get_child_by_name(GTK_STACK(display), "gl-area");
+
     if (gtk_stack_get_visible_child(GTK_STACK(display)) == gl) {
         gtk_gl_area_queue_render(GTK_GL_AREA(gl));
         d->egl.call_draw_done = TRUE;
-    } else {
+    } else
+#endif
+    {
         spice_egl_update_display(display);
         spice_display_gl_draw_done(SPICE_DISPLAY_CHANNEL(d->display));
     }
