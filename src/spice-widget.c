@@ -1615,7 +1615,7 @@ static gboolean focus_out_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_U
     return true;
 }
 
-static int button_gdk_to_spice(int gdk)
+static int button_gdk_to_spice(guint gdk)
 {
     static const int map[] = {
         [ 1 ] = SPICE_MOUSE_BUTTON_LEFT,
