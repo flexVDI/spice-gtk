@@ -1,6 +1,4 @@
-#include <glib.h>
-
-#include "spice-session.h"
+#include <spice-client.h>
 
 static void test_session_uri(void)
 {
