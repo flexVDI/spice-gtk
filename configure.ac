@@ -137,7 +137,7 @@ AS_IF([test "x$with_gtk" != "xno"],
       [PKG_CHECK_MODULES(GTK, gtk+-3.0 >= $GTK_REQUIRED)])
 AC_SUBST(GTK_CFLAGS)
 AC_SUBST(GTK_LIBS)
-SPICE_GTK_REQUIRES="${SPICE_GTK_REQUIRES} gtk+-3.0 >= $GTK_REQUIRED epoxy"
+SPICE_GTK_REQUIRES="${SPICE_GTK_REQUIRES} gtk+-3.0 >= $GTK_REQUIRED"
 
 PKG_CHECK_EXISTS([gtk+-quartz-$with_gtk], [have_quartz=yes], [have_quartz=no])
 AS_IF([test "x$have_quartz" = "xyes"], [AC_DEFINE([HAVE_QUARTZ], 1, [Have Quartz?])])
