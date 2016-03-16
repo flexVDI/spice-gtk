@@ -635,21 +635,25 @@ static void menu_cb_statusbar(GtkToggleAction *action, gpointer data)
 
 static void menu_cb_about(GtkAction *action, void *data)
 {
-    char *comments = _("gtk test client app for the\n"
-        "spice remote desktop protocol");
-    static const char *copyright = "(c) 2010 Red Hat";
-    static const char *website = "http://www.spice-space.org";
-    static const char *authors[] = { "Gerd Hoffmann <kraxel@redhat.com>",
-                               "Marc-André Lureau <marcandre.lureau@redhat.com>",
-                               NULL };
+    char *comments = _("Based on spicy,\nSPICE remote desktop protocol");
+    static const char *program_name = "flexVDI Client";
+    static const char *copyright = "(c) 2010 Red Hat, (c) 2014-2016 flexVDI";
+    static const char *website = "http://www.flexvdi.com";
+    static const char *authors[] = { "Javier Celaya <javier.celaya@flexvdi.com>",
+                                     "Sergio L. Pascual <sergiolpascual@flexvdi.com>",
+                                     "Gerd Hoffmann <kraxel@redhat.com>",
+                                     "Marc-André Lureau <marcandre.lureau@redhat.com>",
+                                     NULL };
     SpiceWindow *win = data;
 
     gtk_show_about_dialog(GTK_WINDOW(win->toplevel),
+                          "program-name",    program_name,
                           "authors",         authors,
                           "comments",        comments,
                           "copyright",       copyright,
                           "logo-icon-name",  GTK_STOCK_ABOUT,
                           "website",         website,
+                          "website-label",   website,
                           "version",         PACKAGE_VERSION,
                           "license",         "LGPLv2.1",
                           NULL);
