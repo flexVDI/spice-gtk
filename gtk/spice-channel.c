@@ -898,6 +898,9 @@ reread:
 #endif
                 ) {
                 cond = G_IO_IN;
+            } else if (ret == -3) {
+                /* nopoll is telling us he got a WS PING, and we should ignore it */
+                c->error_was_ping = TRUE;
             }
             ret = -1;
         }
@@ -1823,8 +1826,13 @@ void spice_channel_recv_msg(SpiceChannel *channel,
     /* receive message */
     spice_channel_read(channel, in->header,
                        spice_header_get_header_size(c->use_mini_header));
-    if (c->has_error)
+    if (c->has_error) {
+        if (c->error_was_ping) {
+            c->has_error = FALSE;
+            c->error_was_ping = FALSE;
+        }
         goto end;
+    }
 
     msg_size = spice_header_get_msg_size(in->header, c->use_mini_header);
     /* FIXME: do not allow others to take ref on in, and use realloc here?
@@ -2367,6 +2375,7 @@ reconnect:
     c->sock = g_object_ref(g_socket_connection_get_socket(c->conn));
 
     c->has_error = FALSE;
+    c->error_was_ping = FALSE;
 
     if (ws_token != NULL) {
         c->ws = TRUE;

@@ -101,6 +101,7 @@ struct _SpiceChannelPrivate {
     GCoroutine                  coroutine;
     int                         fd;
     gboolean                    has_error;
+    gboolean                    error_was_ping;
     guint                       connect_delayed_id;
 
     GQueue                      xmit_queue;
