@@ -738,7 +738,7 @@ static const GtkToggleActionEntry tentries[] = {
         .callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
         .name        = "auto-clipboard",
-        .label       = "Automagic clipboard sharing between host and guest",
+        .label       = "Automatic clipboard sharing between host and guest",
         .callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
         .name        = "auto-usbredir",
