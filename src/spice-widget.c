@@ -390,15 +390,6 @@ static void spice_display_set_property(GObject      *object,
     }
 }
 
-static void gtk_session_property_changed(GObject    *gobject,
-                                         GParamSpec *pspec,
-                                         gpointer    user_data)
-{
-    SpiceDisplay *display = user_data;
-
-    g_object_notify(G_OBJECT(display), g_param_spec_get_name(pspec));
-}
-
 static void session_inhibit_keyboard_grab_changed(GObject    *gobject,
                                                   GParamSpec *pspec,
                                                   gpointer    user_data)
@@ -688,9 +679,6 @@ spice_display_constructor(GType                  gtype,
             channel_new(d->session, it->data, (gpointer*)display);
     }
     g_list_free(list);
-
-    spice_g_signal_connect_object(d->gtk_session, "notify::auto-clipboard",
-                                  G_CALLBACK(gtk_session_property_changed), display, 0);
 
     spice_g_signal_connect_object(d->session, "notify::inhibit-keyboard-grab",
                                   G_CALLBACK(session_inhibit_keyboard_grab_changed),
