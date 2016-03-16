@@ -2397,7 +2397,7 @@ reconnect:
 
         iaddr = G_INET_SOCKET_ADDRESS(addr);
         host = g_inet_socket_address_get_address(iaddr);
-        snprintf(&wsportstr[0], 32, "/?token=%s", ws_token);
+        snprintf(&wsportstr[0], 32, "/?ver=2&token=%s", ws_token);
 
         c->np_conn = nopoll_conn_tls_new_with_socket(c->np_ctx, NULL, g_socket_get_fd(c->sock),
                                                      g_inet_address_to_string(host), NULL, NULL,
