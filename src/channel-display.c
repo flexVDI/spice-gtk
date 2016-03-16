@@ -1813,7 +1813,11 @@ static void display_handle_monitors_config(SpiceChannel *channel, SpiceMsgIn *in
     guint i;
 
     g_return_if_fail(config != NULL);
-    g_return_if_fail(config->count > 0);
+
+    if (config->count == 0) {
+        CHANNEL_DEBUG(channel, "received empty monitor config");
+        return;
+    }
 
     CHANNEL_DEBUG(channel, "received new monitors config from guest: n: %d/%d", config->count, config->max_allowed);
 
