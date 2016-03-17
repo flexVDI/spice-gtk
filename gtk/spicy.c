@@ -844,6 +844,7 @@ static const GtkActionEntry entries[] = {
         .label       = N_("_Close"),
         .callback    = G_CALLBACK(menu_cb_close),
         .accelerator = "", /* none (disable default "<control>W") */
+        .tooltip     = N_("Exit the client"),
     },{
 
         /* Edit menu */
@@ -852,12 +853,14 @@ static const GtkActionEntry entries[] = {
         .label       = N_("_Copy to guest"),
         .callback    = G_CALLBACK(menu_cb_copy),
         .accelerator = "", /* none (disable default "<control>C") */
+        .tooltip     = N_("Copy to guest"),
     },{
         .name        = "PasteFromGuest",
         .stock_id    = GTK_STOCK_PASTE,
         .label       = N_("_Paste from guest"),
         .callback    = G_CALLBACK(menu_cb_paste),
         .accelerator = "", /* none (disable default "<control>V") */
+        .tooltip     = N_("Paste from guest"),
     },{
 
         /* View menu */
@@ -866,6 +869,14 @@ static const GtkActionEntry entries[] = {
         .label       = N_("_Fullscreen"),
         .callback    = G_CALLBACK(menu_cb_fullscreen),
         .accelerator = "<shift>F11",
+        .tooltip     = N_("Go fullscreen"),
+    },{
+        .name        = "Restore",
+        .stock_id    = "view-restore",
+        .label       = N_("_Restore"),
+        .callback    = G_CALLBACK(menu_cb_fullscreen),
+        .accelerator = "<shift>F11",
+        .tooltip     = N_("Leave fullscreen"),
     },{
 #ifdef USE_SMARTCARD
 	.name        = "InsertSmartcard",
@@ -1099,7 +1110,7 @@ static char ui_xml[] =
 "    <toolitem action='CopyToGuest'/>\n"
 "    <toolitem action='PasteFromGuest'/>\n"
 "    <separator/>\n"
-"    <toolitem action='Fullscreen'/>\n"
+"    <toolitem action='Restore'/>\n"
 "  </toolbar>\n"
 "  <menubar action='FullscreenMenu'>\n"
 "    <menu action='InputMenu'>\n"
