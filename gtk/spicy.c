@@ -659,6 +659,19 @@ static void menu_cb_about(GtkAction *action, void *data)
                           NULL);
 }
 
+static void power_event_cb(GtkAction *action, void *data)
+{
+    SpiceWindow *win = data;
+
+    if (!strcmp(gtk_action_get_name(action), "Reboot")) {
+        spice_main_power_event_request(win->conn->main, SPICE_POWER_EVENT_RESET);
+    } else if (!strcmp(gtk_action_get_name(action), "Powerdown")) {
+        spice_main_power_event_request(win->conn->main, SPICE_POWER_EVENT_POWERDOWN);
+    } else if (!strcmp(gtk_action_get_name(action), "Shutdown")) {
+        spice_main_power_event_request(win->conn->main, SPICE_POWER_EVENT_SHUTDOWN);
+    }
+}
+
 static gboolean delete_cb(GtkWidget *widget, GdkEvent *event, gpointer data)
 {
     SpiceWindow *win = data;
@@ -826,6 +839,9 @@ static const GtkActionEntry entries[] = {
         .name        = "SharePrinterMenu",
         .label       = "_Printers",
     },{
+        .name        = "PowerMenu",
+        .label       = "_Power",
+    },{
         .name        = "OptionMenu",
         .label       = "_Options",
     },{
@@ -967,6 +983,26 @@ static const GtkActionEntry entries[] = {
     },{
 #endif
 
+        /* Power events */
+        .name        = "Reboot",
+        .stock_id    = "system-reboot",
+        .label       = N_("_Reboot"),
+        .callback    = G_CALLBACK(power_event_cb),
+        .tooltip     = N_("Reboot immediately"),
+    },{
+        .name        = "Powerdown",
+        .stock_id    = "system-log-out",
+        .label       = N_("_Powerdown"),
+        .callback    = G_CALLBACK(power_event_cb),
+        .tooltip     = N_("Powerdown cycle"),
+    },{
+        .name        = "Shutdown",
+        .stock_id    = "system-shutdown",
+        .label       = N_("_Shutdown"),
+        .callback    = G_CALLBACK(power_event_cb),
+        .tooltip     = N_("Shutdown immediately"),
+    },{
+
         /* Help menu */
         .name        = "About",
         .stock_id    = GTK_STOCK_ABOUT,
@@ -1074,6 +1110,11 @@ static char ui_xml[] =
 "      <menuitem action='CAF12'/>\n"
 #endif
 "    </menu>\n"
+"    <menu action='PowerMenu'>\n"
+"      <menuitem action='Reboot'/>\n"
+"      <menuitem action='Powerdown'/>\n"
+"      <menuitem action='Shutdown'/>\n"
+"    </menu>\n"
 #if defined(WITH_FLEXVDI) && defined(ENABLE_PRINTING)
 "    <menu action='SharePrinterMenu'/>\n"
 #endif
@@ -1097,6 +1138,10 @@ static char ui_xml[] =
 "    <toolitem action='PasteFromGuest'/>\n"
 "    <separator/>\n"
 "    <toolitem action='Fullscreen'/>\n"
+"    <separator/>\n"
+"    <toolitem action='Reboot'/>\n"
+"    <toolitem action='Powerdown'/>\n"
+"    <toolitem action='Shutdown'/>\n"
 "  </toolbar>\n"
 "  <toolbar action='KioskBar'>\n"
 "    <toolitem action='Close'/>\n"
@@ -1111,6 +1156,9 @@ static char ui_xml[] =
 "    <toolitem action='PasteFromGuest'/>\n"
 "    <separator/>\n"
 "    <toolitem action='Restore'/>\n"
+"    <toolitem action='Reboot'/>\n"
+"    <toolitem action='Powerdown'/>\n"
+"    <toolitem action='Shutdown'/>\n"
 "  </toolbar>\n"
 "  <menubar action='FullscreenMenu'>\n"
 "    <menu action='InputMenu'>\n"
