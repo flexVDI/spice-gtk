@@ -26,7 +26,6 @@
 #include <string.h>
 
 #include "usb-acl-helper.h"
-#include "glib-compat.h"
 
 /* ------------------------------------------------------------------ */
 /* gobject glue                                                       */

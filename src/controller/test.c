@@ -212,9 +212,6 @@ int main (int argc, char *argv[])
     ControllerValue msg;
     ssize_t read;
 
-#if !GLIB_CHECK_VERSION(2,36,0)
-    g_type_init ();
-#endif
     ctrl = spice_ctrl_controller_new ();
     loop = g_main_loop_new (NULL, FALSE);
     g_signal_connect (ctrl, "notify", G_CALLBACK (notified), NULL);

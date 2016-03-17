@@ -23,8 +23,6 @@
 
 #include <glib-object.h>
 
-#include "glib-compat.h"
-
 #ifdef USE_USBREDIR
 #include <errno.h>
 #include <libusb.h>
@@ -1234,14 +1232,9 @@ gboolean spice_usb_device_manager_start_event_listening(
          priv->event_thread = NULL;
     }
     priv->event_thread_run = TRUE;
-#if GLIB_CHECK_VERSION(2,31,19)
     priv->event_thread = g_thread_new("usb_ev_thread",
                                       spice_usb_device_manager_usb_ev_thread,
                                       self);
-#else
-    priv->event_thread = g_thread_create(spice_usb_device_manager_usb_ev_thread,
-                                         self, TRUE, err);
-#endif
     return priv->event_thread != NULL;
 }
 

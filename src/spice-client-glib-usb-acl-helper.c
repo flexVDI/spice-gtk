@@ -34,8 +34,6 @@
 #include <polkit/polkit.h>
 #include <acl/libacl.h>
 
-#include "glib-compat.h"
-
 #define FATAL_ERROR(...) \
     do { \
         /* We print the error both to stdout, for the app invoking us and \
@@ -334,10 +332,6 @@ int main(void)
         FATAL_ERROR("Error clearing environment: %s\n", g_strerror (errno));
         return 1;
     }
-
-#if !GLIB_CHECK_VERSION(2,36,0)
-    g_type_init();
-#endif
 
     loop = g_main_loop_new(NULL, FALSE);
 

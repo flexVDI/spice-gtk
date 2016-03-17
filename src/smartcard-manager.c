@@ -20,8 +20,6 @@
 #include <glib-object.h>
 #include <string.h>
 
-#include "glib-compat.h"
-
 #ifdef USE_SMARTCARD_012
 #include <vcard_emul.h>
 #include <vevent.h>

@@ -42,7 +42,6 @@ static GOnce debug_once = G_ONCE_INIT;
 
 static void spice_util_enable_debug_messages(void)
 {
-#if GLIB_CHECK_VERSION(2, 31, 0)
     const gchar *doms = g_getenv("G_MESSAGES_DEBUG");
     if (!doms) {
         g_setenv("G_MESSAGES_DEBUG", G_LOG_DOMAIN, 1);
@@ -53,7 +52,6 @@ static void spice_util_enable_debug_messages(void)
         g_setenv("G_MESSAGES_DEBUG", newdoms, 1);
         g_free(newdoms);
     }
-#endif
 }
 
 /**

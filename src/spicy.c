@@ -28,7 +28,6 @@
 #include <vreader.h>
 #endif
 
-#include "glib-compat.h"
 #include "spice-widget.h"
 #include "spice-gtk-session.h"
 #include "spice-audio.h"
@@ -1848,9 +1847,6 @@ int main(int argc, char *argv[])
     gchar *conf_file, *conf;
     char *host = NULL, *port = NULL, *tls_port = NULL, *unix_path = NULL;
 
-#if !GLIB_CHECK_VERSION(2,31,18)
-    g_thread_init(NULL);
-#endif
     keyfile = g_key_file_new();
 
     int mode = S_IRWXU;
@@ -1886,9 +1882,6 @@ int main(int argc, char *argv[])
         exit(0);
     }
 
-#if !GLIB_CHECK_VERSION(2,36,0)
-    g_type_init();
-#endif
     mainloop = g_main_loop_new(NULL, false);
 
     conn = connection_new();

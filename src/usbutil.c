@@ -26,8 +26,6 @@
 #include <ctype.h>
 #include <stdlib.h>
 
-#include "glib-compat.h"
-
 #ifdef USE_USBREDIR
 #ifdef __linux__
 #include <stdio.h>

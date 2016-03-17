@@ -42,7 +42,6 @@
 #include "vncdisplaykeymap.h"
 #include "spice-grabsequence-priv.h"
 
-#include "glib-compat.h"
 #include "gtk-compat.h"
 
 /* Some compatibility defines to let us build on both Gtk2 and Gtk3 */

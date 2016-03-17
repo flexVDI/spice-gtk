@@ -88,9 +88,6 @@ void connect_signals (gpointer obj)
 
 int main (int argc, char *argv[])
 {
-#if !GLIB_CHECK_VERSION(2,36,0)
-    g_type_init ();
-#endif
     loop = g_main_loop_new (NULL, FALSE);
 
     if (argc > 1 && g_str_equal(argv[1], "--menu")) {

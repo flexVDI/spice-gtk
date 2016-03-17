@@ -122,7 +122,6 @@ SPICE_GTK_LIBADD_COMMON =		\
 	$(NULL)
 
 SPICE_GTK_SOURCES_COMMON =		\
-	glib-compat.h			\
 	gtk-compat.h			\
 	spice-util.c			\
 	spice-util-priv.h		\
@@ -214,8 +213,6 @@ endif
 libspice_client_glib_2_0_la_SOURCES =			\
 	bio-gio.c					\
 	bio-gio.h					\
-	glib-compat.c					\
-	glib-compat.h					\
 	spice-audio.c					\
 	spice-audio-priv.h				\
 	spice-common.h					\
@@ -389,8 +386,6 @@ spicy_CPPFLAGS =			\
 
 if WITH_POLKIT
 spice_client_glib_usb_acl_helper_SOURCES =	\
-	glib-compat.c				\
-	glib-compat.h				\
 	spice-client-glib-usb-acl-helper.c	\
 	$(NULL)
 

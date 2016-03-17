@@ -40,7 +40,7 @@ gchar* spice_uuid_to_string(const guint8 uuid[16]);
 
 #define SPICE_RESERVED_PADDING (10 * sizeof(void*))
 
-/* need to be in a public header, glib-compat.h is private */
+/* need to be in a public header */
 #ifndef SPICE_GNUC_DEPRECATED_FOR
 #if    __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 5)
 #define SPICE_GNUC_DEPRECATED_FOR(f)                        \

@@ -23,7 +23,6 @@
 
 #include <glib-object.h>
 
-#include "glib-compat.h"
 #include "spice-session-priv.h"
 #include "desktop-integration.h"
 

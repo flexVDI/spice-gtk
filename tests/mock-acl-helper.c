@@ -71,10 +71,6 @@ int main(void)
 {
     GInputStream *stdin_unix_stream;
 
-#if !GLIB_CHECK_VERSION(2,36,0)
-    g_type_init();
-#endif
-
     loop = g_main_loop_new(NULL, FALSE);
 
     stdin_unix_stream = g_unix_input_stream_new(STDIN_FILENO, 0);

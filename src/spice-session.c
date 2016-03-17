@@ -30,7 +30,6 @@
 #include "spice-util-priv.h"
 #include "spice-session-priv.h"
 #include "gio-coroutine.h"
-#include "glib-compat.h"
 #include "wocky-http-proxy.h"
 #include "spice-uri-priv.h"
 #include "channel-playback-priv.h"

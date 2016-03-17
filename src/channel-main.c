@@ -21,7 +21,6 @@
 #include <spice/vd_agent.h>
 #include <glib/gstdio.h>
 
-#include "glib-compat.h"
 #include "spice-client.h"
 #include "spice-common.h"
 #include "spice-marshal.h"

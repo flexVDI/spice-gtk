@@ -17,7 +17,6 @@
 */
 #include "config.h"
 
-#include "glib-compat.h"
 #include "spice-client.h"
 #include "spice-common.h"
 

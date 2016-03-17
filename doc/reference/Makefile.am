@@ -32,7 +32,6 @@ IGNORE_HFILES=					\
 	decode.h				\
 	display					\
 	gio-coroutine.h				\
-	glib-compat.h				\
 	smartcard-manager-priv.h		\
 	spice-audio-priv.h			\
 	spice-channel-cache.h			\

@@ -22,7 +22,6 @@
 #include "vmcstream.h"
 #include "spice-channel-priv.h"
 #include "gio-coroutine.h"
-#include "glib-compat.h"
 
 struct _SpiceVmcInputStream
 {

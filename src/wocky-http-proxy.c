@@ -22,7 +22,6 @@
 
 #include "config.h"
 
-#include "glib-compat.h"
 #include "wocky-http-proxy.h"
 
 #include <string.h>

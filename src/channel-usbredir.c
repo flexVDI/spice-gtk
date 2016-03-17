@@ -36,7 +36,6 @@
 #include "spice-common.h"
 
 #include "spice-channel-priv.h"
-#include "glib-compat.h"
 
 /**
  * SECTION:channel-usbredir
@@ -559,16 +558,12 @@ static int usbredir_write_callback(void *user_data, uint8_t *data, int count)
 }
 
 static void *usbredir_alloc_lock(void) {
-#if GLIB_CHECK_VERSION(2,32,0)
     GMutex *mutex;
 
     mutex = g_new0(GMutex, 1);
     g_mutex_init(mutex);
 
     return mutex;
-#else
-    return g_mutex_new();
-#endif
 }
 
 static void usbredir_lock_lock(void *user_data) {
@@ -586,12 +581,8 @@ static void usbredir_unlock_lock(void *user_data) {
 static void usbredir_free_lock(void *user_data) {
     GMutex *mutex = user_data;
 
-#if GLIB_CHECK_VERSION(2,32,0)
     g_mutex_clear(mutex);
     g_free(mutex);
-#else
-    g_mutex_free(mutex);
-#endif
 }
 
 /* --------------------------------------------------------------------- */

@@ -20,7 +20,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "glib-compat.h"
 #include "spice-client.h"
 #include "spice-uri.h"
 

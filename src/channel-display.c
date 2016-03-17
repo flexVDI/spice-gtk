@@ -21,7 +21,6 @@
 #include <sys/types.h>
 #endif
 
-#include "glib-compat.h"
 #include "spice-client.h"
 #include "spice-common.h"
 
