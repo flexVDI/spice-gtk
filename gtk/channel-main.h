@@ -102,6 +102,8 @@ gboolean spice_main_port_forward_local(SpiceMainChannel *channel, const char *bi
 gboolean spice_main_port_forward_disassociate_local(SpiceMainChannel *channel,
                                                     uint16_t lport);
 
+void spice_main_power_event_request(SpiceMainChannel *channel, SpicePowerEvent event_id);
+
 #ifndef SPICE_DISABLE_DEPRECATED
 SPICE_DEPRECATED_FOR(spice_main_clipboard_selection_grab)
 void spice_main_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int ntypes);

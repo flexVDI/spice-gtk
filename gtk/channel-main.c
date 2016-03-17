@@ -3038,3 +3038,24 @@ gboolean spice_main_port_forward_disassociate_local(SpiceMainChannel *channel,
     if (!test_agent_cap(channel, VD_AGENT_CAP_PORT_FORWARDING)) return FALSE;
     return port_forwarder_disassociate_local(c->port_forwarder, lport);
 }
+
+/**
+ * spice_main_power_event_request:
+ * @event_id: Power event being requested, of enum SpicePowerEvent
+ *
+ * Sends a power event request to the server, to perform a power action on the guest
+ * (reset, shutdown, powerdown, ...)
+ *
+ **/
+void spice_main_power_event_request(SpiceMainChannel *channel, SpicePowerEvent event_id) {
+    if (spice_channel_test_capability(SPICE_CHANNEL(channel), SPICE_MAIN_CAP_POWER_REQUEST)) {
+        SpiceMsgcMainPowerEventRequest msg_data;
+        SpiceMsgOut *msg_out;
+
+        msg_data.event_id = event_id;
+
+        msg_out = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_MAIN_POWER_EVENT_REQUEST);
+        msg_out->marshallers->msgc_main_power_event_request(msg_out->marshaller, &msg_data);
+        spice_msg_out_send_internal(msg_out);
+    }
+}
