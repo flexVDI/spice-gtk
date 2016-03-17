@@ -150,8 +150,7 @@ out:
 
 static void cleanup(void)
 {
-    if (polkit_cancellable)
-        g_cancellable_cancel(polkit_cancellable);
+    g_cancellable_cancel(polkit_cancellable);
 
     if (state == STATE_WAITING_FOR_STDIN_EOF)
         set_facl(path, getuid(), 0);
@@ -361,8 +360,7 @@ int main(void)
 
     g_main_loop_run(loop);
 
-    if (polkit_cancellable)
-        g_clear_object(&polkit_cancellable);
+    g_clear_object(&polkit_cancellable);
     g_object_unref(stdin_stream);
     g_object_unref(authority);
     g_object_unref(subject);
