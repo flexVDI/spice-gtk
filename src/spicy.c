@@ -1001,11 +1001,7 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
                      G_CALLBACK(grab_keys_pressed_cb), win);
 
     /* status line */
-#if GTK_CHECK_VERSION(3,0,0)
     win->statusbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-#else
-    win->statusbar = gtk_hbox_new(FALSE, 1);
-#endif
 
     win->status = gtk_label_new("status line");
     gtk_misc_set_alignment(GTK_MISC(win->status), 0, 0.5);
@@ -1025,11 +1021,7 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     }
 
     /* Make a vbox and put stuff in */
-#if GTK_CHECK_VERSION(3,0,0)
     vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
-#else
-    vbox = gtk_vbox_new(FALSE, 1);
-#endif
     gtk_container_set_border_width(GTK_CONTAINER(vbox), 0);
     gtk_container_add(GTK_CONTAINER(win->toplevel), vbox);
     gtk_box_pack_start(GTK_BOX(vbox), win->menubar, FALSE, FALSE, 0);
@@ -1510,28 +1502,20 @@ TransferTaskWidgets *transfer_task_widgets_new(SpiceFileTransferTask *task)
 {
     TransferTaskWidgets *widgets = g_new0(TransferTaskWidgets, 1);
 
-#if GTK_CHECK_VERSION(3,0,0)
     widgets->vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     widgets->hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
     widgets->cancel = gtk_button_new_from_icon_name(GTK_STOCK_CANCEL,
                                                     GTK_ICON_SIZE_SMALL_TOOLBAR);
-#else
-    widgets->vbox = gtk_vbox_new(FALSE, 0);
-    widgets->hbox = gtk_hbox_new(FALSE, 6);
-    widgets->cancel = gtk_button_new_from_stock(GTK_STOCK_CANCEL);
-#endif
 
     widgets->progress = gtk_progress_bar_new();
     widgets->label = gtk_label_new(spice_file_transfer_task_get_filename(task));
 
-#if GTK_CHECK_VERSION(3,0,0)
     gtk_widget_set_halign(widgets->label, GTK_ALIGN_START);
     gtk_widget_set_valign(widgets->label, GTK_ALIGN_BASELINE);
     gtk_widget_set_valign(widgets->progress, GTK_ALIGN_CENTER);
     gtk_widget_set_hexpand(widgets->progress, TRUE);
     gtk_widget_set_valign(widgets->cancel, GTK_ALIGN_CENTER);
     gtk_widget_set_hexpand(widgets->progress, FALSE);
-#endif
 
     gtk_box_pack_start(GTK_BOX(widgets->hbox), widgets->progress,
                        TRUE, TRUE, 0);

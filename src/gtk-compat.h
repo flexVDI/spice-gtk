@@ -22,12 +22,10 @@
 
 #include <gtk/gtk.h>
 
-#if GTK_CHECK_VERSION (2, 91, 0)
 static inline void gdk_drawable_get_size(GdkWindow *w, gint *ww, gint *wh)
 {
     *ww = gdk_window_get_width(w);
     *wh = gdk_window_get_height(w);
 }
-#endif
 
 #endif /* GTK_COMPAT_H */
