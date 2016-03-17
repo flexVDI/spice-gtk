@@ -62,8 +62,4 @@ g_queue_free_full (GQueue        *queue,
   } G_STMT_END
 #endif
 
-#ifndef HAVE_STRTOK_R
-char* strtok_r(char *s, const char *delim, char **save_ptr);
-#endif
-
 #endif /* GLIB_COMPAT_H */
