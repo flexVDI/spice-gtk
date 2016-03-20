@@ -629,7 +629,6 @@ static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
 {
     SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(c);
     SpiceUsbredirChannelPrivate *priv = channel->priv;
-    device_error_data data;
     int r, size;
     uint8_t *buf;
 
@@ -645,6 +644,7 @@ static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
     r = usbredirhost_read_guest_data(priv->host);
     if (r != 0) {
         SpiceUsbDevice *spice_device = priv->spice_device;
+        device_error_data err_data;
         gchar *desc;
         GError *err;
 
@@ -674,14 +674,14 @@ static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
 
         CHANNEL_DEBUG(c, "%s", err->message);
 
-        data.channel = channel;
-        data.caller = coroutine_self();
-        data.spice_device = g_boxed_copy(spice_usb_device_get_type(), spice_device);
-        data.error = err;
-        g_idle_add(device_error, &data);
+        err_data.channel = channel;
+        err_data.caller = coroutine_self();
+        err_data.spice_device = g_boxed_copy(spice_usb_device_get_type(), spice_device);
+        err_data.error = err;
+        g_idle_add(device_error, &err_data);
         coroutine_yield(NULL);
 
-        g_boxed_free(spice_usb_device_get_type(), data.spice_device);
+        g_boxed_free(spice_usb_device_get_type(), err_data.spice_device);
 
         g_error_free(err);
     }
