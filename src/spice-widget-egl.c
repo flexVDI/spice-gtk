@@ -272,6 +272,12 @@ end:
 
     d->egl.context_ready = TRUE;
 
+    if (spice_display_get_gl_scanout(SPICE_DISPLAY_CHANNEL(d->display)) != NULL) {
+        SPICE_DEBUG("scanout present during egl init, updating widget");
+        spice_display_widget_gl_scanout(display);
+        spice_display_widget_update_monitor_area(display);
+    }
+
     return TRUE;
 }
 
