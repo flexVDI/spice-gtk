@@ -2506,6 +2506,7 @@ static void gl_scanout(SpiceDisplay *display)
     g_return_if_fail(d->egl.context_ready);
 
     scanout = spice_display_get_gl_scanout(SPICE_DISPLAY_CHANNEL(d->display));
+    /* should only be called when the display has a scanout */
     g_return_if_fail(scanout != NULL);
 
     if (!spice_egl_update_scanout(display, scanout, &err)) {

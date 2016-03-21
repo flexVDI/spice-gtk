@@ -532,7 +532,7 @@ void spice_display_change_preferred_compression(SpiceChannel *channel, gint comp
  * spice_display_get_gl_scanout:
  * @channel: a #SpiceDisplayChannel
  *
- * Returns: the current GL scanout
+ * Returns: the current GL scanout, or %NULL if none or not valid
  *
  * Since: 0.31
  **/
@@ -541,7 +541,7 @@ spice_display_get_gl_scanout(SpiceDisplayChannel *channel)
 {
     g_return_val_if_fail(SPICE_IS_DISPLAY_CHANNEL(channel), NULL);
 
-    return &channel->priv->scanout;
+    return channel->priv->scanout.fd != -1 ? &channel->priv->scanout : NULL;
 }
 
 /* ------------------------------------------------------------------ */
