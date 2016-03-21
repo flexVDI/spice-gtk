@@ -24,7 +24,9 @@
 #include <windows.h>
 #endif
 
+#ifndef G_OS_WIN32
 #include <epoxy/egl.h>
+#endif
 
 #include "spice-widget.h"
 #include "spice-common.h"
@@ -125,6 +127,7 @@ struct _SpiceDisplayPrivate {
     int                     x11_accel_denominator;
     int                     x11_threshold;
 #endif
+#ifndef G_OS_WIN32
     struct {
         gboolean            enabled;
         EGLSurface          surface;
@@ -140,6 +143,7 @@ struct _SpiceDisplayPrivate {
         gboolean            call_draw_done;
         SpiceGlScanout      scanout;
     } egl;
+#endif
 };
 
 int      spicex_image_create                 (SpiceDisplay *display);

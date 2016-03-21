@@ -147,8 +147,13 @@ nodist_SPICE_GTK_SOURCES_COMMON =	\
 
 SPICE_GTK_SOURCES_COMMON +=		\
 	spice-widget-cairo.c		\
+	$(NULL)
+
+if !OS_WIN32
+SPICE_GTK_SOURCES_COMMON +=		\
 	spice-widget-egl.c		\
 	$(NULL)
+endif
 
 if WITH_GTK
 libspice_client_gtk_3_0_la_DEPEDENCIES = $(GTK_SYMBOLS_FILE)

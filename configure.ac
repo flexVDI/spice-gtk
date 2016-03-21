@@ -593,7 +593,6 @@ AC_MSG_NOTICE([
         DBus:                     ${have_dbus}
         WebDAV support:           ${have_phodav}
         LZ4 support:              ${enable_lz4}
-        epoxy:                    ${have_epoxy}
 
         Now type 'make' to build $PACKAGE
 
