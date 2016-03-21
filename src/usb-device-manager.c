@@ -1568,8 +1568,6 @@ gboolean spice_usb_device_manager_connect_device_finish(
  * @device: a #SpiceUsbDevice to disconnect
  *
  * Disconnects the @device.
- *
- * Returns: %TRUE if @device has an associated USB redirection channel
  */
 void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
                                                 SpiceUsbDevice *device)
