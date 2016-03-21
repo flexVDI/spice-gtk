@@ -2188,32 +2188,47 @@ static void update_area(SpiceDisplay *display,
                         gint x, gint y, gint width, gint height)
 {
     SpiceDisplayPrivate *d = display->priv;
-    GdkRectangle primary = {
-        .x = 0,
-        .y = 0,
-        .width = d->width,
-        .height = d->height
-    };
-    GdkRectangle area = {
+    GdkRectangle primary;
+
+    SPICE_DEBUG("update area +%d+%d %dx%d", x, y, width, height);
+    d->area = (GdkRectangle) {
         .x = x,
         .y = y,
         .width = width,
         .height = height
     };
 
-    SPICE_DEBUG("update area, primary: %dx%d, area: +%d+%d %dx%d", d->width, d->height, area.x, area.y, area.width, area.height);
+#ifndef G_OS_WIN32
+    if (d->egl.enabled) {
+        primary = (GdkRectangle) {
+            .width = d->egl.scanout.width,
+            .height = d->egl.scanout.height
+        };
+    } else
+#endif
+    {
+        primary = (GdkRectangle) {
+            .width = d->width,
+            .height = d->height
+        };
+    }
 
-    if (!gdk_rectangle_intersect(&primary, &area, &area)) {
+    SPICE_DEBUG("primary: %dx%d", primary.width, primary.height);
+    if (!gdk_rectangle_intersect(&primary, &d->area, &d->area)) {
         SPICE_DEBUG("The monitor area is not intersecting primary surface");
         memset(&d->area, '\0', sizeof(d->area));
         set_monitor_ready(display, false);
         return;
     }
 
-    spicex_image_destroy(display);
-    d->area = area;
-    if (gtk_widget_get_realized(GTK_WIDGET(display)))
-        update_image(display);
+#ifndef G_OS_WIN32
+    if (!d->egl.enabled)
+#endif
+    {
+        spicex_image_destroy(display);
+        if (gtk_widget_get_realized(GTK_WIDGET(display)))
+            update_image(display);
+    }
 
     update_size_request(display);
 
