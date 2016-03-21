@@ -181,7 +181,6 @@ spice_vmc_input_stream_read_all_async(GInputStream        *stream,
 
     /* no concurrent read permitted by ginputstream */
     g_return_if_fail(self->task == NULL);
-    g_return_if_fail(g_task_get_cancellable(self->task) == NULL);
     self->all = TRUE;
     self->buffer = buffer;
     self->count = count;
@@ -230,7 +229,6 @@ spice_vmc_input_stream_read_async(GInputStream        *stream,
 
     /* no concurrent read permitted by ginputstream */
     g_return_if_fail(self->task == NULL);
-    g_return_if_fail(g_task_get_cancellable(self->task) == NULL);
     self->all = FALSE;
     self->buffer = buffer;
     self->count = count;
