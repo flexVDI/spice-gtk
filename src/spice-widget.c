@@ -578,12 +578,10 @@ drawing_area_realize(GtkWidget *area, gpointer user_data)
         g_clear_error(&err);
     }
 
-#ifndef G_OS_WIN32
     if (!spice_egl_realize_display(display, gtk_widget_get_window(area), &err)) {
         g_critical("egl realize failed: %s", err->message);
         g_clear_error(&err);
     }
-#endif
 #endif
 }
 
