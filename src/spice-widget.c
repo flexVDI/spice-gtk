@@ -232,7 +232,11 @@ static void update_ready(SpiceDisplay *display)
     SpiceDisplayPrivate *d = display->priv;
     gboolean ready;
 
-    ready = d->mark != 0 && d->monitor_ready;
+    ready = d->monitor_ready &&
+#ifndef G_OS_WIN32
+        d->egl.enabled ? d->egl.image != NULL :
+#endif
+        d->mark;
 
     /* If the 'resize-guest' property is set, the application expects spice-gtk
      * to manage the size and state of the displays, so update the 'enabled'

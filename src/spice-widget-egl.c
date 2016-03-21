@@ -396,7 +396,7 @@ void spice_egl_resize_display(SpiceDisplay *display, int w, int h)
     apply_ortho(d->egl.mproj, 0, w, 0, h, -1, 1);
     glViewport(0, 0, w, h);
 
-    if (d->egl.image)
+    if (d->ready)
         spice_egl_update_display(display);
 
     glUseProgram(prog);
@@ -506,9 +506,7 @@ void spice_egl_update_display(SpiceDisplay *display)
     gdouble tx, ty, tw, th;
     int prog;
 
-    g_return_if_fail(d->egl.image != NULL);
-    if (d->egl.surface == EGL_NO_SURFACE)
-        return;
+    g_return_if_fail(d->ready);
 
     spice_display_get_scaling(display, &s, &x, &y, &w, &h);
 
