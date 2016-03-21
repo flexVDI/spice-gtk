@@ -129,6 +129,7 @@ struct _SpiceDisplayPrivate {
 #endif
 #ifndef G_OS_WIN32
     struct {
+        gboolean            context_ready;
         gboolean            enabled;
         EGLSurface          surface;
         EGLDisplay          display;

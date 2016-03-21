@@ -2500,6 +2500,8 @@ static void gl_scanout(SpiceDisplay *display)
     const SpiceGlScanout *scanout;
     GError *err = NULL;
 
+    g_return_if_fail(d->egl.context_ready);
+
     scanout = spice_display_get_gl_scanout(SPICE_DISPLAY_CHANNEL(d->display));
     g_return_if_fail(scanout != NULL);
 
@@ -2518,7 +2520,10 @@ static void gl_draw(SpiceDisplay *display,
     SpiceDisplayPrivate *d = display->priv;
 
     SPICE_DEBUG("%s",  __FUNCTION__);
+
     set_egl_enabled(display, true);
+
+    g_return_if_fail(d->egl.context_ready);
 
 #if GTK_CHECK_VERSION(3,16,0)
     GtkWidget *gl = gtk_stack_get_child_by_name(GTK_STACK(display), "gl-area");

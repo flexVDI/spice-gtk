@@ -207,7 +207,7 @@ gboolean spice_egl_init(SpiceDisplay *display, GError **err)
         d->egl.ctx = eglGetCurrentContext();
         dpy = (EGLNativeDisplayType)gdk_wayland_display_get_wl_display(gdk_dpy);
         d->egl.display = eglGetDisplay(dpy);
-        return spice_egl_init_shaders(display, err);
+        goto end;
     }
 #endif
 #ifdef GDK_WINDOWING_X11
@@ -266,7 +266,13 @@ gboolean spice_egl_init(SpiceDisplay *display, GError **err)
     eglMakeCurrent(d->egl.display, EGL_NO_SURFACE, EGL_NO_SURFACE,
                    d->egl.ctx);
 
-    return spice_egl_init_shaders(display, err);
+end:
+    if (!spice_egl_init_shaders(display, err))
+        return FALSE;
+
+    d->egl.context_ready = TRUE;
+
+    return TRUE;
 }
 
 static gboolean spice_widget_init_egl_win(SpiceDisplay *display, GdkWindow *win,
