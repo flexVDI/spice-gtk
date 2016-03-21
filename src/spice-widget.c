@@ -262,7 +262,8 @@ static void set_monitor_ready(SpiceDisplay *self, gboolean ready)
     update_ready(self);
 }
 
-static void update_monitor_area(SpiceDisplay *display)
+G_GNUC_INTERNAL
+void spice_display_widget_update_monitor_area(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
     SpiceDisplayMonitorConfig *cfg, *c = NULL;
@@ -337,7 +338,7 @@ static void spice_display_set_property(GObject      *object,
     case PROP_MONITOR_ID:
         d->monitor_id = g_value_get_int(value);
         if (d->display) /* if constructed */
-            update_monitor_area(display);
+            spice_display_widget_update_monitor_area(display);
         break;
     case PROP_KEYBOARD_GRAB:
         d->keyboard_grab_enable = g_value_get_boolean(value);
@@ -2228,7 +2229,7 @@ static void primary_create(SpiceChannel *channel, gint format,
     d->height = height;
     d->data_origin = d->data = imgdata;
 
-    update_monitor_area(display);
+    spice_display_widget_update_monitor_area(display);
 }
 
 static void primary_destroy(SpiceChannel *channel, gpointer data)
@@ -2494,7 +2495,8 @@ static void cursor_reset(SpiceCursorChannel *channel, gpointer data)
 }
 
 #ifndef G_OS_WIN32
-static void gl_scanout(SpiceDisplay *display)
+G_GNUC_INTERNAL
+void spice_display_widget_gl_scanout(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
     const SpiceGlScanout *scanout;
@@ -2570,15 +2572,18 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         spice_g_signal_connect_object(channel, "display-mark",
                                       G_CALLBACK(mark), display, G_CONNECT_AFTER | G_CONNECT_SWAPPED);
         spice_g_signal_connect_object(channel, "notify::monitors",
-                                      G_CALLBACK(update_monitor_area), display, G_CONNECT_AFTER | G_CONNECT_SWAPPED);
+                                      G_CALLBACK(spice_display_widget_update_monitor_area),
+                                      display, G_CONNECT_AFTER | G_CONNECT_SWAPPED);
         if (spice_display_get_primary(channel, 0, &primary)) {
             primary_create(channel, primary.format, primary.width, primary.height,
                            primary.stride, primary.shmid, primary.data, display);
             mark(display, primary.marked);
         }
+
 #ifndef G_OS_WIN32
         spice_g_signal_connect_object(channel, "notify::gl-scanout",
-                                      G_CALLBACK(gl_scanout), display, G_CONNECT_SWAPPED);
+                                      G_CALLBACK(spice_display_widget_gl_scanout),
+                                      display, G_CONNECT_SWAPPED);
         spice_g_signal_connect_object(channel, "gl-draw",
                                       G_CALLBACK(gl_draw), display, G_CONNECT_SWAPPED);
 #endif
