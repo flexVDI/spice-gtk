@@ -945,9 +945,7 @@ static gboolean free_async_task(gpointer user_data)
     if (task->pa_op != NULL)
         pa_operation_unref(task->pa_op);
 
-    if (task->cancel_id != 0)
-        g_cancellable_disconnect(g_task_get_cancellable(task->gtask),
-                                 task->cancel_id);
+    g_cancellable_disconnect(g_task_get_cancellable(task->gtask), task->cancel_id);
 
     if (task->gtask)
         g_object_unref(task->gtask);

@@ -116,7 +116,6 @@ spice_vmc_input_stream_co_data(SpiceVmcInputStream *self,
     self->coroutine = coroutine_self();
 
     while (size > 0) {
-        GCancellable *cancellable;
         SPICE_DEBUG("spicevmc co_data %p", self->task);
         if (!self->task)
             coroutine_yield(NULL);
@@ -140,9 +139,7 @@ spice_vmc_input_stream_co_data(SpiceVmcInputStream *self,
 
         g_task_return_int(self->task, self->pos);
 
-        cancellable = g_task_get_cancellable(self->task);
-        if (cancellable)
-            g_cancellable_disconnect(cancellable, self->cancel_id);
+        g_cancellable_disconnect(g_task_get_cancellable(self->task), self->cancel_id);
 
         g_clear_object(&self->task);
     }
@@ -208,16 +205,13 @@ spice_vmc_input_stream_read_all_finish(GInputStream *stream,
                                        GError **error)
 {
     GTask *task = G_TASK(result);
-    GCancellable *cancellable;
     SpiceVmcInputStream *self = SPICE_VMC_INPUT_STREAM(stream);
 
     g_return_val_if_fail(g_task_is_valid(task, self), -1);
 
     /* FIXME: calling _finish() is required. Disconnecting in
        read_cancelled() causes a deadlock. #705395 */
-    cancellable = g_task_get_cancellable(task);
-    if (cancellable)
-        g_cancellable_disconnect(cancellable, self->cancel_id);
+    g_cancellable_disconnect(g_task_get_cancellable(task), self->cancel_id);
 
     return g_task_propagate_int(task, error);
 }
@@ -258,16 +252,13 @@ spice_vmc_input_stream_read_finish(GInputStream *stream,
                                    GError **error)
 {
     GTask *task = G_TASK(result);
-    GCancellable *cancellable;
     SpiceVmcInputStream *self = SPICE_VMC_INPUT_STREAM(stream);
 
     g_return_val_if_fail(g_task_is_valid(task, self), -1);
 
     /* FIXME: calling _finish() is required. Disconnecting in
        read_cancelled() causes a deadlock. #705395 */
-    cancellable = g_task_get_cancellable(task);
-    if (cancellable)
-        g_cancellable_disconnect(cancellable, self->cancel_id);
+    g_cancellable_disconnect(g_task_get_cancellable(task), self->cancel_id);
 
     return g_task_propagate_int(task, error);
 }
