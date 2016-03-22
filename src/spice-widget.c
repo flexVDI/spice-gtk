@@ -2249,6 +2249,21 @@ static void primary_destroy(SpiceChannel *channel, gpointer data)
     set_monitor_ready(display, false);
 }
 
+static void queue_draw_area(SpiceDisplay *display, gint x, gint y,
+                            gint width, gint height)
+{
+    if (!gtk_widget_get_has_window(GTK_WIDGET(display))) {
+        GtkAllocation allocation;
+
+        gtk_widget_get_allocation(GTK_WIDGET(display), &allocation);
+        x += allocation.x;
+        y += allocation.y;
+    }
+
+    gtk_widget_queue_draw_area(GTK_WIDGET(display),
+                               x, y, width, height);
+}
+
 static void invalidate(SpiceChannel *channel,
                        gint x, gint y, gint w, gint h, gpointer data)
 {
@@ -2286,9 +2301,9 @@ static void invalidate(SpiceChannel *channel,
     x2 = ceil ((rect.x - d->area.x + rect.width) * s);
     y2 = ceil ((rect.y - d->area.y + rect.height) * s);
 
-    gtk_widget_queue_draw_area(GTK_WIDGET(display),
-                               display_x + x1, display_y + y1,
-                               x2 - x1, y2-y1);
+    queue_draw_area(display,
+                    display_x + x1, display_y + y1,
+                    x2 - x1, y2 - y1);
 }
 
 static void mark(SpiceDisplay *display, gint mark)
@@ -2439,11 +2454,11 @@ static void cursor_invalidate(SpiceDisplay *display)
 
     spice_display_get_scaling(display, &s, &x, &y, NULL, NULL);
 
-    gtk_widget_queue_draw_area(GTK_WIDGET(display),
-                               floor ((d->mouse_guest_x - d->mouse_hotspot.x - d->area.x) * s) + x,
-                               floor ((d->mouse_guest_y - d->mouse_hotspot.y - d->area.y) * s) + y,
-                               ceil (gdk_pixbuf_get_width(d->mouse_pixbuf) * s),
-                               ceil (gdk_pixbuf_get_height(d->mouse_pixbuf) * s));
+    queue_draw_area(display,
+                    floor ((d->mouse_guest_x - d->mouse_hotspot.x - d->area.x) * s) + x,
+                    floor ((d->mouse_guest_y - d->mouse_hotspot.y - d->area.y) * s) + y,
+                    ceil (gdk_pixbuf_get_width(d->mouse_pixbuf) * s),
+                    ceil (gdk_pixbuf_get_height(d->mouse_pixbuf) * s));
 }
 
 static void cursor_move(SpiceCursorChannel *channel, gint x, gint y, gpointer data)
