@@ -29,7 +29,7 @@
 #include <libdrm/drm_fourcc.h>
 
 #include <gdk/gdkx.h>
-#if GTK_CHECK_VERSION(3,16,0)
+#ifdef GDK_WINDOWING_WAYLAND
 #include <gdk/gdkwayland.h>
 #endif
 
