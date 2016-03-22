@@ -22,7 +22,6 @@
 #define EGL_EGLEXT_PROTOTYPES
 #define GL_GLEXT_PROTOTYPES
 
-#include "gtk-compat.h"
 #include "spice-widget.h"
 #include "spice-widget-priv.h"
 #include "spice-gtk-session-priv.h"

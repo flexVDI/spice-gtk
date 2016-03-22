@@ -42,8 +42,6 @@
 #include "vncdisplaykeymap.h"
 #include "spice-grabsequence-priv.h"
 
-#include "gtk-compat.h"
-
 /* Some compatibility defines to let us build on both Gtk2 and Gtk3 */
 
 /**
@@ -2393,9 +2391,10 @@ void spice_display_get_scaling(SpiceDisplay *display,
     int x, y, w, h;
     double s;
 
-    if (gtk_widget_get_realized (GTK_WIDGET(display)))
-        gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
-    else {
+    if (gtk_widget_get_realized (GTK_WIDGET(display))) {
+        ww = gtk_widget_get_allocated_width(GTK_WIDGET(display));
+        wh = gtk_widget_get_allocated_height(GTK_WIDGET(display));
+    } else {
         ww = fbw;
         wh = fbh;
     }

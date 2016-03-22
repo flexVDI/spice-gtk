@@ -38,7 +38,6 @@
 #include <gtk/gtk.h>
 #include <spice/vd_agent.h>
 #include "desktop-integration.h"
-#include "gtk-compat.h"
 #include "spice-common.h"
 #include "spice-gtk-session.h"
 #include "spice-gtk-session-priv.h"

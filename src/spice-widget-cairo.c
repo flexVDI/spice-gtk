@@ -17,7 +17,6 @@
 */
 #include "config.h"
 
-#include "gtk-compat.h"
 #include "spice-widget.h"
 #include "spice-widget-priv.h"
 #include "spice-gtk-session-priv.h"
@@ -78,7 +77,8 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
 
     spice_display_get_scaling(display, &s, &x, &y, &w, &h);
 
-    gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
+    ww = gtk_widget_get_allocated_width(GTK_WIDGET(display));
+    wh = gtk_widget_get_allocated_height(GTK_WIDGET(display));
 
     /* We need to paint the bg color around the image */
     rect.x = 0;

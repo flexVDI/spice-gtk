@@ -12,7 +12,6 @@
 #include <gtk/gtk.h>
 #include <gdk/gdk.h>
 #include <gdk/gdkkeysyms.h>
-#include "gtk-compat.h"
 #include "vncdisplaykeymap.h"
 
 #include "spice-util.h"
