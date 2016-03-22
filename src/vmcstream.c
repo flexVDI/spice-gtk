@@ -97,6 +97,24 @@ spice_vmc_input_stream_new(void)
     return self;
 }
 
+typedef struct _complete_in_idle_cb_data {
+    GTask *task;
+    gssize pos;
+} complete_in_idle_cb_data;
+
+static gboolean
+complete_in_idle_cb(gpointer user_data)
+{
+    complete_in_idle_cb_data *data = user_data;
+
+    g_task_return_int(data->task, data->pos);
+
+    g_object_unref (data->task);
+    g_free (data);
+
+    return FALSE;
+}
+
 /* coroutine */
 /**
  * Feed a SpiceVmc stream with new data from a coroutine
@@ -116,6 +134,8 @@ spice_vmc_input_stream_co_data(SpiceVmcInputStream *self,
     self->coroutine = coroutine_self();
 
     while (size > 0) {
+        complete_in_idle_cb_data *cb_data;
+
         SPICE_DEBUG("spicevmc co_data %p", self->task);
         if (!self->task)
             coroutine_yield(NULL);
@@ -137,10 +157,15 @@ spice_vmc_input_stream_co_data(SpiceVmcInputStream *self,
         if (self->all && min > 0 && self->pos != self->count)
             continue;
 
-        g_task_return_int(self->task, self->pos);
+        /* Let's deal with the task complete in idle by ourselves, as GTask
+         * heuristic only makes sense in a non-coroutine case.
+         */
+        cb_data = g_new(complete_in_idle_cb_data , 1);
+        cb_data->task = g_object_ref(self->task);
+        cb_data->pos = self->pos;
+        g_idle_add(complete_in_idle_cb, cb_data);
 
         g_cancellable_disconnect(g_task_get_cancellable(self->task), self->cancel_id);
-
         g_clear_object(&self->task);
     }
 
