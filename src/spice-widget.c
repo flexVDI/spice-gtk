@@ -2500,13 +2500,13 @@ static void gl_scanout(SpiceDisplay *display)
     const SpiceGlScanout *scanout;
     GError *err = NULL;
 
+    SPICE_DEBUG("%s: got scanout",  __FUNCTION__);
+    set_egl_enabled(display, true);
+
     g_return_if_fail(d->egl.context_ready);
 
     scanout = spice_display_get_gl_scanout(SPICE_DISPLAY_CHANNEL(d->display));
     g_return_if_fail(scanout != NULL);
-
-    SPICE_DEBUG("%s: got scanout",  __FUNCTION__);
-    set_egl_enabled(display, true);
 
     if (!spice_egl_update_scanout(display, scanout, &err)) {
         g_critical("update scanout failed: %s", err->message);
