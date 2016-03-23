@@ -1224,6 +1224,7 @@ static void audio_playback_volume_info_cb(GObject *object, GAsyncResult *res, gp
     g_free(volume);
     agent_msg_queue(main_channel, VD_AGENT_AUDIO_VOLUME_SYNC,
                     sizeof(VDAgentAudioVolumeSync) + array_size, avs);
+    g_free (avs);
 }
 
 static void agent_sync_audio_playback(SpiceMainChannel *main_channel)
@@ -1281,6 +1282,7 @@ static void audio_record_volume_info_cb(GObject *object, GAsyncResult *res, gpoi
     g_free(volume);
     agent_msg_queue(main_channel, VD_AGENT_AUDIO_VOLUME_SYNC,
                     sizeof(VDAgentAudioVolumeSync) + array_size, avs);
+    g_free (avs);
 }
 
 static void agent_sync_audio_record(SpiceMainChannel *main_channel)
