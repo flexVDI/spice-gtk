@@ -1352,12 +1352,24 @@ static GtkWidget * get_printers_menu(SpiceWindow *win)
 
 static void share_current_printers(gpointer data)
 {
-    GtkWidget *subMenu = gtk_menu_item_get_submenu(GTK_MENU_ITEM(data));
-    GList *children = gtk_container_get_children(GTK_CONTAINER(subMenu)), *child;
-    for (child = children; child != NULL; child = g_list_next(child)) {
-        if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(child->data))) {
-            const char * printer = gtk_menu_item_get_label(GTK_MENU_ITEM(child->data));
-            flexvdi_share_printer(printer);
+    SpiceWindow *win = data;
+    if (!flexvdi_agent_supports_capability(FLEXVDI_CAP_PRINTING)) {
+        GtkWidget *sPMenu = gtk_ui_manager_get_widget(win->ui, "/MainMenu/SharePrinterMenu");
+        gtk_widget_hide(sPMenu);
+        sPMenu = gtk_ui_manager_get_widget(win->ui, "/FullscreenMenu/SharePrinterMenu");
+        gtk_widget_hide(sPMenu);
+    } else {
+        GtkWidget *sPMenu = gtk_ui_manager_get_widget(win->ui, "/MainMenu/SharePrinterMenu");
+        gtk_widget_show(sPMenu);
+        sPMenu = gtk_ui_manager_get_widget(win->ui, "/FullscreenMenu/SharePrinterMenu");
+        gtk_widget_show(sPMenu);
+        GtkWidget *subMenu = gtk_menu_item_get_submenu(GTK_MENU_ITEM(sPMenu));
+        GList *children = gtk_container_get_children(GTK_CONTAINER(subMenu)), *child;
+        for (child = children; child != NULL; child = g_list_next(child)) {
+            if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(child->data))) {
+                const char * printer = gtk_menu_item_get_label(GTK_MENU_ITEM(child->data));
+                flexvdi_share_printer(printer);
+            }
         }
     }
 }
@@ -1603,9 +1615,11 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     // Printers menu
     GtkWidget * sPMenu = gtk_ui_manager_get_widget(win->ui, "/MainMenu/SharePrinterMenu");
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(sPMenu), get_printers_menu(win));
+    gtk_widget_hide(sPMenu);
     sPMenu = gtk_ui_manager_get_widget(win->ui, "/FullscreenMenu/SharePrinterMenu");
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(sPMenu), get_printers_menu(win));
-    flexvdi_on_agent_connected(share_current_printers, sPMenu);
+    gtk_widget_hide(sPMenu);
+    flexvdi_on_agent_connected(share_current_printers, win);
 #endif
 
     return win;
