@@ -121,6 +121,14 @@ typedef enum {
     DISPLAY_ENABLED,
 } SpiceDisplayState;
 
+typedef struct {
+    int                     x;
+    int                     y;
+    int                     width;
+    int                     height;
+    SpiceDisplayState       display_state;
+} SpiceDisplayConfig;
+
 struct _SpiceMainChannelPrivate  {
     enum SpiceMouseMode         mouse_mode;
     bool                        agent_connected;
@@ -140,13 +148,7 @@ struct _SpiceMainChannelPrivate  {
     guint                       agent_msg_pos;
     uint8_t                     agent_msg_size;
     uint32_t                    agent_caps[VD_AGENT_CAPS_SIZE];
-    struct {
-        int                     x;
-        int                     y;
-        int                     width;
-        int                     height;
-        SpiceDisplayState       display_state;
-    } display[MAX_DISPLAY];
+    SpiceDisplayConfig          display[MAX_DISPLAY];
     gint                        timer_id;
     GQueue                      *agent_msg_queue;
     GHashTable                  *file_xfer_tasks;
@@ -2688,10 +2690,15 @@ void spice_main_update_display(SpiceMainChannel *channel, int id,
 
     g_return_if_fail(id < SPICE_N_ELEMENTS(c->display));
 
-    c->display[id].x      = x;
-    c->display[id].y      = y;
-    c->display[id].width  = width;
-    c->display[id].height = height;
+    SpiceDisplayConfig display = {
+        .x = x, .y = y, .width = width, .height = height,
+        .display_state = c->display[id].display_state
+    };
+
+    if (memcmp(&display, &c->display[id], sizeof(SpiceDisplayConfig)) == 0)
+        return;
+
+    c->display[id] = display;
 
     if (update)
         update_display_timer(channel, 1);
