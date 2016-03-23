@@ -878,23 +878,6 @@ static void recent_item_activated_cb(GtkRecentChooser *chooser, gpointer data)
     connection_connect(conn);
 }
 
-static gboolean configure_event_cb(GtkWidget         *widget,
-                                   GdkEventConfigure *event,
-                                   gpointer           data)
-{
-    gboolean resize_guest;
-    SpiceWindow *win = data;
-
-    g_return_val_if_fail(win != NULL, FALSE);
-    g_return_val_if_fail(win->conn != NULL, FALSE);
-
-    g_object_get(win->spice, "resize-guest", &resize_guest, NULL);
-    if (resize_guest && win->conn->agent_connected)
-        return FALSE;
-
-    return FALSE;
-}
-
 static void compression_cb(GtkRadioAction *action G_GNUC_UNUSED,
                            GtkRadioAction *current,
                            gpointer user_data)
@@ -988,7 +971,6 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
 
     /* spice display */
     win->spice = GTK_WIDGET(spice_display_new_with_monitor(conn->session, id, monitor_id));
-    g_signal_connect(win->spice, "configure-event", G_CALLBACK(configure_event_cb), win);
     seq = spice_grab_sequence_new_from_string("Shift_L+F12");
     spice_display_set_grab_keys(SPICE_DISPLAY(win->spice), seq);
     spice_grab_sequence_free(seq);
