@@ -478,6 +478,7 @@ static void _disconnect_cb(GObject *gobject, GAsyncResult *res, gpointer user_da
     connect_cb_data_free(data);
 }
 
+static void checkbox_clicked_cb(GtkWidget *check, gpointer user_data);
 static void connect_cb(GObject *gobject, GAsyncResult *res, gpointer user_data)
 {
     SpiceUsbDeviceManager *manager = SPICE_USB_DEVICE_MANAGER(gobject);
@@ -500,7 +501,12 @@ static void connect_cb(GObject *gobject, GAsyncResult *res, gpointer user_data)
         g_signal_emit(self, signals[CONNECT_FAILED], 0, device, err);
         g_error_free(err);
 
+        /* don't trigger a disconnect if connect failed */
+        g_signal_handlers_block_by_func(GTK_TOGGLE_BUTTON(data->check),
+                                        checkbox_clicked_cb, self);
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(data->check), FALSE);
+        g_signal_handlers_unblock_by_func(GTK_TOGGLE_BUTTON(data->check),
+                                        checkbox_clicked_cb, self);
     }
 
     connect_cb_data_free(data);
