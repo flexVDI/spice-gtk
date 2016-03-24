@@ -1563,6 +1563,18 @@ _spice_usb_device_manager_uninstall_driver_async(SpiceUsbDeviceManager *self,
 
 #ifdef USE_USBREDIR
 
+static gboolean
+_spice_usb_device_manager_connect_device_finish(SpiceUsbDeviceManager *self,
+                                                GAsyncResult *res,
+                                                GError **error)
+{
+    GTask *task = G_TASK(res);
+
+    g_return_val_if_fail(g_task_is_valid(task, G_OBJECT(self)), FALSE);
+
+    return g_task_propagate_boolean(task, error);
+}
+
 static void
 _spice_usb_device_manager_connect_device_async(SpiceUsbDeviceManager *self,
                                                SpiceUsbDevice *device,
@@ -1727,10 +1739,13 @@ void _connect_device_async_cb(GObject *gobject,
 {
     SpiceUsbDeviceManager *self = SPICE_USB_DEVICE_MANAGER(gobject);
     GTask *task = user_data;
+    GError *error = NULL;
 
     _set_redirecting(self, FALSE);
-
-    g_task_return_boolean(task, TRUE);
+    if (_spice_usb_device_manager_connect_device_finish(self, channel_res, &error))
+        g_task_return_boolean(task, TRUE);
+    else
+        g_task_return_error(task, error);
     g_object_unref(task);
 }
 #endif
