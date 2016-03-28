@@ -684,6 +684,18 @@ static gboolean delete_cb(GtkWidget *widget, GdkEvent *event, gpointer data)
     return true;
 }
 
+static void switch_sub_menu(SpiceWindow *win, const char *src, const char *dst)
+{
+    GtkWidget *menu_item, *sub_menu;
+    menu_item = gtk_ui_manager_get_widget(win->ui, src);
+    sub_menu = gtk_menu_item_get_submenu(GTK_MENU_ITEM(menu_item));
+    g_object_ref(sub_menu);
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(menu_item), NULL);
+    menu_item = gtk_ui_manager_get_widget(win->ui, dst);
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(menu_item), sub_menu);
+    g_object_unref(sub_menu);
+}
+
 static gboolean window_state_cb(GtkWidget *widget, GdkEventWindowState *event,
                                 gpointer data)
 {
@@ -695,6 +707,11 @@ static gboolean window_state_cb(GtkWidget *widget, GdkEventWindowState *event,
             gtk_widget_hide(win->toolbar);
             gtk_widget_hide(win->statusbar);
             gtk_widget_grab_focus(win->spice);
+            switch_sub_menu(win, "/MainMenu/InputMenu", "/FullscreenMenu/InputMenu");
+            switch_sub_menu(win, "/MainMenu/OptionMenu", "/FullscreenMenu/OptionMenu");
+#if defined(WITH_FLEXVDI) && defined(ENABLE_PRINTING)
+            switch_sub_menu(win, "/MainMenu/SharePrinterMenu", "/FullscreenMenu/SharePrinterMenu");
+#endif
         } else {
             gboolean state;
             GtkAction *toggle;
@@ -707,6 +724,11 @@ static gboolean window_state_cb(GtkWidget *widget, GdkEventWindowState *event,
             state = gtk_toggle_action_get_active(GTK_TOGGLE_ACTION(toggle));
             gtk_widget_set_visible(win->statusbar, state);
             gtk_widget_hide(win->fullscreen_menubar);
+            switch_sub_menu(win, "/FullscreenMenu/InputMenu", "/MainMenu/InputMenu");
+            switch_sub_menu(win, "/FullscreenMenu/OptionMenu", "/MainMenu/OptionMenu");
+#if defined(WITH_FLEXVDI) && defined(ENABLE_PRINTING)
+            switch_sub_menu(win, "/FullscreenMenu/SharePrinterMenu", "/MainMenu/SharePrinterMenu");
+#endif
         }
     }
     return TRUE;
@@ -1161,46 +1183,11 @@ static char ui_xml[] =
 "    <toolitem action='Shutdown'/>\n"
 "  </toolbar>\n"
 "  <menubar action='FullscreenMenu'>\n"
-"    <menu action='InputMenu'>\n"
-#ifdef USE_SMARTCARD
-"      <menuitem action='InsertSmartcard'/>\n"
-"      <menuitem action='RemoveSmartcard'/>\n"
-#endif
-#ifdef USE_USBREDIR
-"      <menuitem action='SelectUsbDevices'/>\n"
-#endif
-"      <menuitem action='CAD'/>\n"
-#ifdef G_OS_WIN32
-"      <menuitem action='WCR'/>\n"
-"      <menuitem action='WCL'/>\n"
-"      <menuitem action='WL'/>\n"
-#else
-"      <menuitem action='CAF1'/>\n"
-"      <menuitem action='CAF2'/>\n"
-"      <menuitem action='CAF3'/>\n"
-"      <menuitem action='CAF4'/>\n"
-"      <menuitem action='CAF5'/>\n"
-"      <menuitem action='CAF6'/>\n"
-"      <menuitem action='CAF7'/>\n"
-"      <menuitem action='CAF8'/>\n"
-"      <menuitem action='CAF9'/>\n"
-"      <menuitem action='CAF10'/>\n"
-"      <menuitem action='CAF11'/>\n"
-"      <menuitem action='CAF12'/>\n"
-#endif
-"    </menu>\n"
+"    <menu action='InputMenu' />\n"
 #if defined(WITH_FLEXVDI) && defined(ENABLE_PRINTING)
 "    <menu action='SharePrinterMenu'/>\n"
 #endif
-"    <menu action='OptionMenu'>\n"
-"      <menuitem action='grab-keyboard'/>\n"
-"      <menuitem action='grab-mouse'/>\n"
-"      <menuitem action='resize-guest'/>\n"
-"      <menuitem action='scaling'/>\n"
-"      <menuitem action='disable-inputs'/>\n"
-"      <menuitem action='auto-clipboard'/>\n"
-"      <menuitem action='auto-usbredir'/>\n"
-"    </menu>\n"
+"    <menu action='OptionMenu' />\n"
 "  </menubar>\n"
 "</ui>\n";
 
@@ -1353,17 +1340,17 @@ static GtkWidget * get_printers_menu(SpiceWindow *win)
 static void share_current_printers(gpointer data)
 {
     SpiceWindow *win = data;
+    GtkWidget *mainSPMenu = gtk_ui_manager_get_widget(win->ui, "/MainMenu/SharePrinterMenu");
+    GtkWidget *fullSPMenu = gtk_ui_manager_get_widget(win->ui, "/FullscreenMenu/SharePrinterMenu");
     if (!flexvdi_agent_supports_capability(FLEXVDI_CAP_PRINTING)) {
-        GtkWidget *sPMenu = gtk_ui_manager_get_widget(win->ui, "/MainMenu/SharePrinterMenu");
-        gtk_widget_hide(sPMenu);
-        sPMenu = gtk_ui_manager_get_widget(win->ui, "/FullscreenMenu/SharePrinterMenu");
-        gtk_widget_hide(sPMenu);
+        gtk_widget_hide(mainSPMenu);
+        gtk_widget_hide(fullSPMenu);
     } else {
-        GtkWidget *sPMenu = gtk_ui_manager_get_widget(win->ui, "/MainMenu/SharePrinterMenu");
-        gtk_widget_show(sPMenu);
-        sPMenu = gtk_ui_manager_get_widget(win->ui, "/FullscreenMenu/SharePrinterMenu");
-        gtk_widget_show(sPMenu);
-        GtkWidget *subMenu = gtk_menu_item_get_submenu(GTK_MENU_ITEM(sPMenu));
+        gtk_widget_show(mainSPMenu);
+        gtk_widget_show(fullSPMenu);
+        GtkWidget *subMenu = win->fullscreen ?
+            gtk_menu_item_get_submenu(GTK_MENU_ITEM(fullSPMenu)) :
+            gtk_menu_item_get_submenu(GTK_MENU_ITEM(mainSPMenu));
         GList *children = gtk_container_get_children(GTK_CONTAINER(subMenu)), *child;
         for (child = children; child != NULL; child = g_list_next(child)) {
             if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(child->data))) {
@@ -1616,9 +1603,7 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     GtkWidget * sPMenu = gtk_ui_manager_get_widget(win->ui, "/MainMenu/SharePrinterMenu");
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(sPMenu), get_printers_menu(win));
     gtk_widget_hide(sPMenu);
-    sPMenu = gtk_ui_manager_get_widget(win->ui, "/FullscreenMenu/SharePrinterMenu");
-    gtk_menu_item_set_submenu(GTK_MENU_ITEM(sPMenu), get_printers_menu(win));
-    gtk_widget_hide(sPMenu);
+    gtk_widget_hide(gtk_ui_manager_get_widget(win->ui, "/FullscreenMenu/SharePrinterMenu"));
     flexvdi_on_agent_connected(share_current_printers, win);
 #endif
 
