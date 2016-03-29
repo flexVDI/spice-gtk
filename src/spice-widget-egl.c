@@ -382,6 +382,7 @@ void spice_egl_unrealize_display(SpiceDisplay *display)
 
     eglMakeCurrent(d->egl.display, EGL_NO_SURFACE, EGL_NO_SURFACE,
                    EGL_NO_CONTEXT);
+    eglTerminate(d->egl.display);
 }
 
 G_GNUC_INTERNAL
