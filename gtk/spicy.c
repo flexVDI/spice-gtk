@@ -431,6 +431,13 @@ static void menu_cb_fullscreen(GtkAction *action, void *data)
     window_set_fullscreen(win, !win->fullscreen);
 }
 
+static void menu_cb_minimize(GtkAction *action, void *data)
+{
+    SpiceWindow *win = data;
+
+    gtk_window_iconify(GTK_WINDOW(win->toplevel));
+}
+
 #ifdef USE_SMARTCARD
 static void enable_smartcard_actions(SpiceWindow *win, VReader *reader,
                                      gboolean can_insert, gboolean can_remove)
@@ -916,6 +923,12 @@ static const GtkActionEntry entries[] = {
         .accelerator = "<shift>F11",
         .tooltip     = N_("Leave fullscreen"),
     },{
+        .name        = "Minimize",
+        .stock_id    = "go-bottom",
+        .label       = N_("_Minimize"),
+        .callback    = G_CALLBACK(menu_cb_minimize),
+        .tooltip     = N_("Minimize"),
+    },{
 #ifdef USE_SMARTCARD
 	.name        = "InsertSmartcard",
 	.label       = N_("_Insert Smartcard"),
@@ -1178,6 +1191,7 @@ static char ui_xml[] =
 "    <toolitem action='PasteFromGuest'/>\n"
 "    <separator/>\n"
 "    <toolitem action='Restore'/>\n"
+"    <toolitem action='Minimize'/>\n"
 "    <toolitem action='Reboot'/>\n"
 "    <toolitem action='Powerdown'/>\n"
 "    <toolitem action='Shutdown'/>\n"
