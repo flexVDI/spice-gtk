@@ -1604,7 +1604,10 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(sPMenu), get_printers_menu(win));
     gtk_widget_hide(sPMenu);
     gtk_widget_hide(gtk_ui_manager_get_widget(win->ui, "/FullscreenMenu/SharePrinterMenu"));
-    flexvdi_on_agent_connected(share_current_printers, win);
+    if (flexvdi_is_agent_connected())
+        share_current_printers(win);
+    else
+        flexvdi_on_agent_connected(share_current_printers, win);
 #endif
 
     return win;
