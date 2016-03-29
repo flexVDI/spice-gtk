@@ -1827,7 +1827,7 @@ void spice_usb_device_manager_disconnect_device_async(SpiceUsbDeviceManager *sel
     g_return_if_fail(SPICE_IS_USB_DEVICE_MANAGER(self));
 
     g_return_if_fail(device != NULL);
-    g_return_if_fail(spice_usb_device_manager_is_device_connected(self, device);
+    g_return_if_fail(spice_usb_device_manager_is_device_connected(self, device));
 
     SPICE_DEBUG("disconnecting device %p", device);
 
