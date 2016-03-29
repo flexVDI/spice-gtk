@@ -230,14 +230,15 @@ static gint get_display_id(SpiceDisplay *display)
 static void update_ready(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
-    gboolean ready;
+    gboolean ready = FALSE;
 
-    ready = d->monitor_ready &&
+    if (d->monitor_ready) {
 #ifndef G_OS_WIN32
-        d->egl.enabled ? d->egl.image != NULL :
+        ready = d->egl.enabled ? d->egl.image != NULL : d->mark != 0;
+#else
+        ready = d->mark != 0;
 #endif
-        d->mark;
-
+    }
     /* If the 'resize-guest' property is set, the application expects spice-gtk
      * to manage the size and state of the displays, so update the 'enabled'
      * state here. If 'resize-guest' is false, we can assume that the
