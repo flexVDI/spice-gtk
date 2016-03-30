@@ -46,6 +46,7 @@ IGNORE_HFILES=					\
 	spice-uri-priv.h			\
 	spice-util-priv.h			\
 	spice-widget-priv.h			\
+	spicy-connect.h				\
 	usb-acl-helper.h			\
 	usb-device-manager-priv.h		\
 	usbutil.h				\
