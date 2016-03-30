@@ -337,8 +337,6 @@ SpiceUsbDeviceManagerPrivate
 <SECTION>
 <FILE>spice-gtk-session</FILE>
 <TITLE>SpiceGtkSession</TITLE>
-SpiceGtkSession
-SpiceGtkSessionClass
 spice_gtk_session_get
 spice_gtk_session_copy_to_guest
 spice_gtk_session_paste_from_guest
@@ -357,8 +355,6 @@ SpiceGtkSessionPrivate
 <SECTION>
 <FILE>spice-widget</FILE>
 <TITLE>SpiceDisplay</TITLE>
-SpiceDisplay
-SpiceDisplayClass
 SpiceDisplayKeyEvent
 spice_display_new
 spice_display_new_with_monitor
@@ -368,7 +364,6 @@ spice_display_get_grab_keys
 spice_display_send_keys
 spice_display_get_pixbuf
 <SUBSECTION>
-SpiceGrabSequence
 spice_grab_sequence_new
 spice_grab_sequence_new_from_string
 spice_grab_sequence_copy
@@ -393,8 +388,6 @@ SpiceDisplayPrivate
 <SECTION>
 <FILE>usb-device-widget</FILE>
 <TITLE>SpiceUsbDeviceWidget</TITLE>
-SpiceUsbDeviceWidget
-SpiceUsbDeviceWidgetClass
 <SUBSECTION>
 spice_usb_device_widget_new
 <SUBSECTION Standard>
