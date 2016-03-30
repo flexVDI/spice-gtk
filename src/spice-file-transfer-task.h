@@ -37,7 +37,7 @@ typedef struct _SpiceFileTransferTaskPrivate SpiceFileTransferTaskPrivate;
 /**
  * SpiceFileTransferTask:
  *
- * The #FileTransferTask struct is opaque and should not be accessed directly.
+ * The #SpiceFileTransferTask struct is opaque and should not be accessed directly.
  */
 struct _SpiceFileTransferTask
 {
