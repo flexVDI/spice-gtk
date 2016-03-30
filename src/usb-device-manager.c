@@ -232,11 +232,15 @@ G_DEFINE_BOXED_TYPE(SpiceUsbDevice, spice_usb_device, g_object_ref, g_object_unr
 #endif
 
 /**
-* spice_usb_device_manager_is_redirecting:
-* @manager: the #SpiceUsbDeviceManager manager
-*
-* Returns: %TRUE if device redirection negotiation flow is in progress
-*/
+ * spice_usb_device_manager_is_redirecting:
+ * @self: the #SpiceUsbDeviceManager manager
+ *
+ * Checks whether a device is being redirected
+ *
+ * Returns: %TRUE if device redirection negotiation flow is in progress
+ *
+ * Since: 0.32
+ */
 gboolean spice_usb_device_manager_is_redirecting(SpiceUsbDeviceManager *self)
 {
 #ifdef USE_USBREDIR
