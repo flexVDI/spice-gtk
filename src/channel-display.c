@@ -532,6 +532,8 @@ void spice_display_change_preferred_compression(SpiceChannel *channel, gint comp
  * spice_display_get_gl_scanout:
  * @channel: a #SpiceDisplayChannel
  *
+ * Retrieves the GL scanout if available
+ *
  * Returns: the current GL scanout, or %NULL if none or not valid
  *
  * Since: 0.31
