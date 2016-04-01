@@ -266,7 +266,10 @@ gboolean spice_egl_init(SpiceDisplay *display, GError **err)
     eglMakeCurrent(d->egl.display, EGL_NO_SURFACE, EGL_NO_SURFACE,
                    d->egl.ctx);
 
+#ifdef GDK_WINDOWING_WAYLAND
 end:
+#endif
+
     if (!spice_egl_init_shaders(display, err))
         return FALSE;
 
