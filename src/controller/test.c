@@ -256,7 +256,7 @@ int main (int argc, char *argv[])
     send_data (CONTROLLER_PASSWORD, (uint8_t*)PWD, strlen(PWD) + 1);
     send_data (CONTROLLER_SECURE_CHANNELS, (uint8_t*)SECURE_CHANNELS, strlen(SECURE_CHANNELS) + 1);
     send_data (CONTROLLER_DISABLE_CHANNELS, (uint8_t*)DISABLED_CHANNELS, strlen(DISABLED_CHANNELS) + 1);
-    send_data (CONTROLLER_TLS_CIPHERS, (uint8_t*)TLS_CIPHERS, sizeof(TLS_CIPHERS) + 1);
+    send_data (CONTROLLER_TLS_CIPHERS, (uint8_t*)TLS_CIPHERS, strlen(TLS_CIPHERS) + 1);
     send_data (CONTROLLER_CA_FILE, (uint8_t*)CA_FILE, strlen(CA_FILE) + 1);
     send_data (CONTROLLER_HOST_SUBJECT, (uint8_t*)HOST_SUBJECT, strlen(HOST_SUBJECT) + 1);
     send_data (CONTROLLER_SET_TITLE, (uint8_t*)TITLE, strlen(TITLE) + 1);
