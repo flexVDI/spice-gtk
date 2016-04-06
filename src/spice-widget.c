@@ -440,12 +440,12 @@ static void spice_display_finalize(GObject *obj)
     d->activeseq = NULL;
 
     if (d->show_cursor) {
-        gdk_cursor_unref(d->show_cursor);
+        g_object_unref(d->show_cursor);
         d->show_cursor = NULL;
     }
 
     if (d->mouse_cursor) {
-        gdk_cursor_unref(d->mouse_cursor);
+        g_object_unref(d->mouse_cursor);
         d->mouse_cursor = NULL;
     }
 
@@ -987,7 +987,7 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
     }
 
 end:
-    gdk_cursor_unref(blank);
+    g_object_unref(blank);
     return status;
 }
 
@@ -2368,7 +2368,7 @@ static void cursor_set(SpiceCursorChannel *channel,
 #endif
     if (d->show_cursor) {
         /* unhide */
-        gdk_cursor_unref(d->show_cursor);
+        g_object_unref(d->show_cursor);
         d->show_cursor = NULL;
         if (d->mouse_mode == SPICE_MOUSE_MODE_SERVER) {
             /* keep a hidden cursor, will be shown in cursor_move() */
@@ -2377,7 +2377,7 @@ static void cursor_set(SpiceCursorChannel *channel,
         }
     }
 
-    gdk_cursor_unref(d->mouse_cursor);
+    g_object_unref(d->mouse_cursor);
     d->mouse_cursor = cursor;
 
     update_mouse_pointer(display);
@@ -2493,7 +2493,7 @@ static void cursor_move(SpiceCursorChannel *channel, gint x, gint y, gpointer da
 
     /* apparently we have to restore cursor when "cursor_move" */
     if (d->show_cursor != NULL) {
-        gdk_cursor_unref(d->mouse_cursor);
+        g_object_unref(d->mouse_cursor);
         d->mouse_cursor = d->show_cursor;
         d->show_cursor = NULL;
         update_mouse_pointer(display);
