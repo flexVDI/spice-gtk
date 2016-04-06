@@ -124,6 +124,7 @@ AC_ARG_WITH([gtk],
 
 case "$with_gtk" in
   3.0) GTK_REQUIRED=3.10
+       GTK_ENCODED_VERSION="GDK_VERSION_3_10"
        ;;
   no)
        AS_IF([test x$enable_gtk_doc = xyes],
@@ -134,7 +135,9 @@ AC_SUBST([GTK_REQUIRED])
 AM_CONDITIONAL([WITH_GTK],[test "$with_gtk" != "no"])
 
 AS_IF([test "x$with_gtk" != "xno"],
-      [PKG_CHECK_MODULES(GTK, gtk+-3.0 >= $GTK_REQUIRED epoxy)])
+      [PKG_CHECK_MODULES(GTK, gtk+-3.0 >= $GTK_REQUIRED epoxy)]
+      [GTK_CFLAGS="$GTK_CFLAGS -DGDK_VERSION_MIN_REQUIRED=$GTK_ENCODED_VERSION \
+                               -DGDK_VERSION_MAX_ALLOWED=$GTK_ENCODED_VERSION"])
 AC_SUBST(GTK_CFLAGS)
 AC_SUBST(GTK_LIBS)
 SPICE_GTK_REQUIRES="${SPICE_GTK_REQUIRES} gtk+-3.0 >= $GTK_REQUIRED"
