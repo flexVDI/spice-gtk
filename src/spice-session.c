@@ -317,8 +317,7 @@ session_disconnect(SpiceSession *self, gboolean keep_main)
 
     s->connection_id = 0;
 
-    g_free(s->name);
-    s->name = NULL;
+    g_clear_pointer(&s->name, g_free);
     memset(s->uuid, 0, sizeof(s->uuid));
 
     spice_session_abort_migration(self);
@@ -1762,11 +1761,9 @@ void spice_session_abort_migration(SpiceSession *session)
     }
 
 end:
-    g_list_free(s->migration_left);
-    s->migration_left = NULL;
+    g_clear_pointer(&s->migration_left, g_list_free);
     session_disconnect(s->migration, FALSE);
-    g_object_unref(s->migration);
-    s->migration = NULL;
+    g_clear_pointer(&s->migration, g_object_unref);
 
     s->migrate_wait_init = FALSE;
     if (s->after_main_init) {
@@ -1805,8 +1802,7 @@ void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel)
     if (g_list_length(s->migration_left) == 0) {
         CHANNEL_DEBUG(channel, "migration: all channel migrated, success");
         session_disconnect(s->migration, FALSE);
-        g_object_unref(s->migration);
-        s->migration = NULL;
+        g_clear_pointer(&s->migration, g_object_unref);
         spice_session_set_migration_state(session, SPICE_SESSION_MIGRATION_NONE);
     }
 }

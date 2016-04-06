@@ -416,8 +416,7 @@ request_write_cb (GObject *source,
 
    if (data->offset == data->length)
     {
-      g_free (data->buffer);
-      data->buffer = NULL;
+      g_clear_pointer(&data->buffer, g_free);
 
       g_data_input_stream_read_until_async (data->data_in,
           HTTP_END_MARKER,

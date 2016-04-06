@@ -99,8 +99,7 @@ static gboolean parse_disable_effects(const gchar *option_name, const gchar *val
              */
             g_set_error(error, G_OPTION_ERROR, G_OPTION_ERROR_FAILED,
                     _("invalid effect name (%s), must be 'wallpaper', 'font-smooth', 'animation' or 'all'"), *it);
-            g_strfreev(disable_effects);
-            disable_effects = NULL;
+            g_clear_pointer(&disable_effects, g_strfreev);
             return FALSE;
         }
     }

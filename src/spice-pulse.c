@@ -131,21 +131,10 @@ static void spice_pulse_dispose(GObject *obj)
     SPICE_DEBUG("%s", __FUNCTION__);
     p = pulse->priv;
 
-    if (p->playback.uncork_op)
-        pa_operation_unref(p->playback.uncork_op);
-    p->playback.uncork_op = NULL;
-
-    if (p->playback.cork_op)
-        pa_operation_unref(p->playback.cork_op);
-    p->playback.cork_op = NULL;
-
-    if (p->record.uncork_op)
-        pa_operation_unref(p->record.uncork_op);
-    p->record.uncork_op = NULL;
-
-    if (p->record.cork_op)
-        pa_operation_unref(p->record.cork_op);
-    p->record.cork_op = NULL;
+    g_clear_pointer(&p->playback.uncork_op, pa_operation_unref);
+    g_clear_pointer(&p->playback.cork_op, pa_operation_unref);
+    g_clear_pointer(&p->record.uncork_op, pa_operation_unref);
+    g_clear_pointer(&p->record.cork_op, pa_operation_unref);
 
     if (p->results != NULL)
         spice_pulse_complete_all_async_tasks(pulse, "PulseAudio is being dispose");
@@ -194,8 +183,7 @@ static void pulse_uncork_cb(pa_stream *pastream, int success, void *data)
     if (!success)
         g_warning("pulseaudio uncork operation failed");
 
-    pa_operation_unref(s->uncork_op);
-    s->uncork_op = NULL;
+    g_clear_pointer(&s->uncork_op, pa_operation_unref);
 }
 
 static void stream_uncork(SpicePulse *pulse, struct stream *s)
@@ -207,8 +195,7 @@ static void stream_uncork(SpicePulse *pulse, struct stream *s)
 
     if (s->cork_op) {
         pa_operation_cancel(s->cork_op);
-        pa_operation_unref(s->cork_op);
-        s->cork_op = NULL;
+        g_clear_pointer(&s->cork_op, pa_operation_unref);
     }
 
     if (pa_stream_is_corked(s->stream) && !s->uncork_op) {
@@ -227,8 +214,7 @@ static void pulse_flush_cb(pa_stream *pastream, int success, void *data)
     if (!success)
         g_warning("pulseaudio flush operation failed");
 
-    pa_operation_unref(s->cork_op);
-    s->cork_op = NULL;
+    g_clear_pointer(&s->cork_op, pa_operation_unref);
 }
 
 static void pulse_cork_flush_cb(pa_stream *pastream, int success, void *data)
@@ -253,8 +239,7 @@ static void pulse_cork_cb(pa_stream *pastream, int success, void *data)
     if (!success)
         g_warning("pulseaudio cork operation failed");
 
-    pa_operation_unref(s->cork_op);
-    s->cork_op = NULL;
+    g_clear_pointer(&s->cork_op, pa_operation_unref);
 }
 
 static void stream_cork(SpicePulse *pulse, struct stream *s, gboolean with_flush)
@@ -264,8 +249,7 @@ static void stream_cork(SpicePulse *pulse, struct stream *s, gboolean with_flush
 
     if (s->uncork_op) {
         pa_operation_cancel(s->uncork_op);
-        pa_operation_unref(s->uncork_op);
-        s->uncork_op = NULL;
+        g_clear_pointer(&s->uncork_op, pa_operation_unref);
     }
 
     if (!pa_stream_is_corked(s->stream) && !s->cork_op) {
@@ -288,8 +272,7 @@ static void stream_stop(SpicePulse *pulse, struct stream *s)
         g_warning("pa_stream_disconnect() failed: %s",
                   pa_strerror(pa_context_errno(p->context)));
     }
-    pa_stream_unref(s->stream);
-    s->stream = NULL;
+    g_clear_pointer(&s->stream, pa_stream_unref);
 }
 
 static void stream_state_callback(pa_stream *s, void *userdata)
@@ -928,8 +911,7 @@ static gboolean free_async_task(gpointer user_data)
 
     if (task->pa_op != NULL) {
         pa_operation_cancel(task->pa_op);
-        pa_operation_unref(task->pa_op);
-        task->pa_op = NULL;
+        g_clear_pointer(&task->pa_op, pa_operation_unref);
     }
 
     if (task->pulse) {
@@ -966,8 +948,7 @@ static void cancel_task(GCancellable *cancellable, gpointer user_data)
      * cancelled task operation before free_async_task is called */
     if (task->pa_op != NULL) {
         pa_operation_cancel(task->pa_op);
-        pa_operation_unref(task->pa_op);
-        task->pa_op = NULL;
+        g_clear_pointer(&task->pa_op, pa_operation_unref);
     }
 
     /* Clear the pending_restore_task reference to avoid triggering a
@@ -1034,8 +1015,7 @@ static void spice_pulse_complete_all_async_tasks(SpicePulse *pulse, const gchar 
         complete_task(pulse, task, err_msg);
         free_async_task(task);
     }
-    g_list_free(p->results);
-    p->results = NULL;
+    g_clear_pointer(&p->results, g_list_free);
     SPICE_DEBUG("All async tasks completed");
 }
 

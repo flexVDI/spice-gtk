@@ -108,13 +108,11 @@ static void spice_record_channel_finalize(GObject *obj)
 {
     SpiceRecordChannelPrivate *c = SPICE_RECORD_CHANNEL(obj)->priv;
 
-    g_free(c->last_frame);
-    c->last_frame = NULL;
+    g_clear_pointer(&c->last_frame, g_free);
 
     snd_codec_destroy(&c->codec);
 
-    g_free(c->volume);
-    c->volume = NULL;
+    g_clear_pointer(&c->volume, g_free);
 
     if (G_OBJECT_CLASS(spice_record_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_record_channel_parent_class)->finalize(obj);
@@ -166,8 +164,7 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
 {
     SpiceRecordChannelPrivate *c = SPICE_RECORD_CHANNEL(channel)->priv;
 
-    g_free(c->last_frame);
-    c->last_frame = NULL;
+    g_clear_pointer(&c->last_frame, g_free);
 
     g_coroutine_signal_emit(channel, signals[SPICE_RECORD_STOP], 0);
     c->started = FALSE;

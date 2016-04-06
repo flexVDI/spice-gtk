@@ -58,15 +58,8 @@ static void spice_usb_acl_helper_cleanup(SpiceUsbAclHelper *self)
 
     g_clear_object(&priv->task);
 
-    if (priv->in_ch) {
-        g_io_channel_unref(priv->in_ch);
-        priv->in_ch = NULL;
-    }
-
-    if (priv->out_ch) {
-        g_io_channel_unref(priv->out_ch);
-        priv->out_ch = NULL;
-    }
+    g_clear_pointer(&priv->in_ch, g_io_channel_unref);
+    g_clear_pointer(&priv->out_ch, g_io_channel_unref);
 }
 
 static void spice_usb_acl_helper_finalize(GObject *gobject)

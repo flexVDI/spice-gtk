@@ -114,8 +114,7 @@ static void spice_playback_channel_finalize(GObject *obj)
 
     snd_codec_destroy(&c->codec);
 
-    g_free(c->volume);
-    c->volume = NULL;
+    g_clear_pointer(&c->volume, g_free);
 
     if (G_OBJECT_CLASS(spice_playback_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_playback_channel_parent_class)->finalize(obj);

@@ -70,19 +70,11 @@ void stream_dispose(struct stream *s)
 {
     if (s->pipe) {
         gst_element_set_state(s->pipe, GST_STATE_NULL);
-        gst_object_unref(s->pipe);
-        s->pipe = NULL;
+        g_clear_pointer(&s->pipe, gst_object_unref);
     }
 
-    if (s->src) {
-        gst_object_unref(s->src);
-        s->src = NULL;
-    }
-
-    if (s->sink) {
-        gst_object_unref(s->sink);
-        s->sink = NULL;
-    }
+    g_clear_pointer(&s->src, gst_object_unref);
+    g_clear_pointer(&s->sink, gst_object_unref);
 }
 
 static void spice_gstaudio_dispose(GObject *obj)
@@ -210,8 +202,7 @@ static void record_start(SpiceRecordChannel *channel, gint format, gint channels
         (p->record.rate != frequency ||
          p->record.channels != channels)) {
         record_stop(gstaudio);
-        gst_object_unref(p->record.pipe);
-        p->record.pipe = NULL;
+        g_clear_pointer(&p->record.pipe, gst_object_unref);
     }
 
     if (!p->record.pipe) {
@@ -244,10 +235,8 @@ static void record_start(SpiceRecordChannel *channel, gint format, gint channels
                                       G_CALLBACK(record_new_buffer), gstaudio, 0);
 
 cleanup:
-        if (error != NULL && p->record.pipe != NULL) {
-            gst_object_unref(p->record.pipe);
-            p->record.pipe = NULL;
-        }
+        if (error != NULL)
+            g_clear_pointer(&p->record.pipe, gst_object_unref);
         g_clear_error(&error);
         g_free(audio_caps);
         g_free(pipeline);
@@ -303,8 +292,7 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
         (p->playback.rate != frequency ||
          p->playback.channels != channels)) {
         playback_stop(gstaudio);
-        gst_object_unref(p->playback.pipe);
-        p->playback.pipe = NULL;
+        g_clear_pointer(&p->playback.pipe, gst_object_unref);
     }
 
     if (!p->playback.pipe) {
@@ -328,10 +316,8 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
         p->playback.channels = channels;
 
 cleanup:
-        if (error != NULL && p->playback.pipe != NULL) {
-            gst_object_unref(p->playback.pipe);
-            p->playback.pipe = NULL;
-        }
+        if (error != NULL)
+            g_clear_pointer(&p->playback.pipe, gst_object_unref);
         g_clear_error(&error);
         g_free(audio_caps);
         g_free(pipeline);

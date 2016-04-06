@@ -76,8 +76,7 @@ static int bio_gio_destroy(BIO *bio)
         return 0;
 
     SPICE_DEBUG("bio gsocket destroy");
-    g_free(bio->method);
-    bio->method = NULL;;
+    g_clear_pointer(&bio->method, g_free);
 
     return 1;
 }

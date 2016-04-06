@@ -65,10 +65,7 @@ static void spice_audio_finalize(GObject *gobject)
     SpiceAudio *self = SPICE_AUDIO(gobject);
     SpiceAudioPrivate *priv = self->priv;
 
-    if (priv->main_context) {
-        g_main_context_unref(priv->main_context);
-        priv->main_context = NULL;
-    }
+    g_clear_pointer(&priv->main_context, g_main_context_unref);
 
     if (G_OBJECT_CLASS(spice_audio_parent_class)->finalize)
         G_OBJECT_CLASS(spice_audio_parent_class)->finalize(gobject);

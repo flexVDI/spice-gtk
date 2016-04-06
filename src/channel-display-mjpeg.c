@@ -151,6 +151,5 @@ G_GNUC_INTERNAL
 void stream_mjpeg_cleanup(display_stream *st)
 {
     jpeg_destroy_decompress(&st->mjpeg_cinfo);
-    g_free(st->out_frame);
-    st->out_frame = NULL;
+    g_clear_pointer(&st->out_frame, g_free);
 }

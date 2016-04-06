@@ -432,12 +432,8 @@ static void spice_display_finalize(GObject *obj)
 
     SPICE_DEBUG("Finalize spice display");
 
-    if (d->grabseq) {
-        spice_grab_sequence_free(d->grabseq);
-        d->grabseq = NULL;
-    }
-    g_free(d->activeseq);
-    d->activeseq = NULL;
+    g_clear_pointer(&d->grabseq, spice_grab_sequence_free);
+    g_clear_pointer(&d->activeseq, g_free);
 
     g_clear_object(&d->show_cursor);
     g_clear_object(&d->mouse_cursor);
@@ -825,10 +821,7 @@ static void try_keyboard_ungrab(SpiceDisplay *display)
     SPICE_DEBUG("ungrab keyboard");
     gdk_keyboard_ungrab(GDK_CURRENT_TIME);
 #ifdef G_OS_WIN32
-    if (d->keyboard_hook != NULL) {
-        UnhookWindowsHookEx(d->keyboard_hook);
-        d->keyboard_hook = NULL;
-    }
+    g_clear_pointer(&d->keyboard_hook, UnhookWindowsHookEx);
 #endif
     d->keyboard_grab_active = false;
     g_signal_emit(widget, signals[SPICE_DISPLAY_KEYBOARD_GRAB], 0, false);
@@ -2354,8 +2347,7 @@ static void cursor_set(SpiceCursorChannel *channel,
 #endif
     if (d->show_cursor) {
         /* unhide */
-        g_object_unref(d->show_cursor);
-        d->show_cursor = NULL;
+        g_clear_pointer(&d->show_cursor, g_object_unref);
         if (d->mouse_mode == SPICE_MOUSE_MODE_SERVER) {
             /* keep a hidden cursor, will be shown in cursor_move() */
             d->show_cursor = cursor;

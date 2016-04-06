@@ -449,8 +449,7 @@ static void spice_main_channel_reset_agent(SpiceMainChannel *channel)
     c->agent_caps_received = FALSE;
     c->agent_display_config_sent = FALSE;
     c->agent_msg_pos = 0;
-    g_free(c->agent_msg_data);
-    c->agent_msg_data = NULL;
+    g_clear_pointer(&c->agent_msg_data, g_free);
     c->agent_msg_size = 0;
 
     tasks = g_hash_table_get_values(c->file_xfer_tasks);
@@ -916,8 +915,7 @@ static void agent_free_msg_queue(SpiceMainChannel *channel)
         spice_msg_out_unref(out);
     }
 
-    g_queue_free(c->agent_msg_queue);
-    c->agent_msg_queue = NULL;
+    g_clear_pointer(&c->agent_msg_queue, g_queue_free);
 }
 
 static gboolean flush_foreach_remove(gpointer key G_GNUC_UNUSED,

@@ -173,8 +173,7 @@ static void glz_decoder_window_release(SpiceGlzDecoderWindow *w,
 
     while (w->oldest < oldest) {
         slot = w->oldest % w->nimages;
-        glz_image_destroy(w->images[slot]);
-        w->images[slot] = NULL;
+        g_clear_pointer(&w->images[slot], glz_image_destroy);
         w->oldest++;
     }
 }

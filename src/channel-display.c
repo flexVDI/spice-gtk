@@ -831,11 +831,8 @@ static void destroy_canvas(display_surface *surface)
     zlib_decoder_destroy(surface->zlib_decoder);
     jpeg_decoder_destroy(surface->jpeg_decoder);
 
-    g_free(surface->data);
-    surface->data = NULL;
-
-    surface->canvas->ops->destroy(surface->canvas);
-    surface->canvas = NULL;
+    g_clear_pointer(&surface->data, g_free);
+    g_clear_pointer(&surface->canvas, surface->canvas->ops->destroy);
 }
 
 static display_surface *find_surface(SpiceDisplayChannelPrivate *c, guint32 surface_id)
@@ -1597,8 +1594,7 @@ static void clear_streams(SpiceChannel *channel)
     for (i = 0; i < c->nstreams; i++) {
         destroy_stream(channel, i);
     }
-    g_free(c->streams);
-    c->streams = NULL;
+    g_clear_pointer(&c->streams, g_free);
     c->nstreams = 0;
 }
 

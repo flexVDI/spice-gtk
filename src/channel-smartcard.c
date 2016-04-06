@@ -161,26 +161,15 @@ static void spice_smartcard_channel_finalize(GObject *obj)
     SpiceSmartcardChannel *channel = SPICE_SMARTCARD_CHANNEL(obj);
     SpiceSmartcardChannelPrivate *c = channel->priv;
 
-    if (c->pending_card_insertions != NULL) {
-        g_hash_table_destroy(c->pending_card_insertions);
-        c->pending_card_insertions = NULL;
-    }
-    if (c->pending_reader_removals != NULL) {
-        g_hash_table_destroy(c->pending_reader_removals);
-        c->pending_reader_removals = NULL;
-    }
+    g_clear_pointer(&c->pending_card_insertions, g_hash_table_destroy);
+    g_clear_pointer(&c->pending_reader_removals, g_hash_table_destroy);
     if (c->message_queue != NULL) {
         g_queue_foreach(c->message_queue, (GFunc)smartcard_message_free, NULL);
         g_queue_free(c->message_queue);
         c->message_queue = NULL;
     }
-    if (c->in_flight_message != NULL) {
-        smartcard_message_free(c->in_flight_message);
-        c->in_flight_message = NULL;
-    }
-
-    g_list_free(c->pending_reader_additions);
-    c->pending_reader_additions = NULL;
+    g_clear_pointer(&c->in_flight_message, smartcard_message_free);
+    g_clear_pointer(&c->pending_reader_additions, g_list_free);
 
     if (G_OBJECT_CLASS(spice_smartcard_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_smartcard_channel_parent_class)->finalize(obj);
@@ -199,13 +188,8 @@ static void spice_smartcard_channel_reset(SpiceChannel *channel, gboolean migrat
         g_queue_clear(c->message_queue);
     }
 
-    if (c->in_flight_message != NULL) {
-        smartcard_message_free(c->in_flight_message);
-        c->in_flight_message = NULL;
-    }
-
-    g_list_free(c->pending_reader_additions);
-    c->pending_reader_additions = NULL;
+    g_clear_pointer(&c->in_flight_message, smartcard_message_free);
+    g_clear_pointer(&c->pending_reader_additions, g_list_free);
 
     SPICE_CHANNEL_CLASS(spice_smartcard_channel_parent_class)->channel_reset(channel, migrating);
 }

@@ -303,8 +303,7 @@ static void spice_gtk_session_finalize(GObject *gobject)
 
     /* release stuff */
     for (i = 0; i < CLIPBOARD_LAST; ++i) {
-        g_free(s->clip_targets[i]);
-        s->clip_targets[i] = NULL;
+        g_clear_pointer(&s->clip_targets[i], g_free);
     }
 
     /* Chain up to the parent class */
@@ -792,8 +791,7 @@ static void clipboard_get(GtkClipboard *clipboard,
     gdk_threads_enter();
 
 cleanup:
-    g_main_loop_unref(ri.loop);
-    ri.loop = NULL;
+    g_clear_pointer(&ri.loop, g_main_loop_unref);
     g_signal_handler_disconnect(s->main, clipboard_handler);
     g_signal_handler_disconnect(s->main, agent_handler);
 }

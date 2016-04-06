@@ -127,10 +127,7 @@ static void spice_smartcard_manager_finalize(GObject *gobject)
     }
 
 #ifdef USE_SMARTCARD
-    if (priv->software_reader != NULL) {
-        vreader_free(priv->software_reader);
-        priv->software_reader = NULL;
-    }
+    g_clear_pointer(&priv->software_reader, vreader_free);
 #endif
 
     /* Chain up to the parent class */
@@ -275,8 +272,7 @@ static gboolean smartcard_monitor_dispatch(VEvent *event, gpointer user_data)
         case VEVENT_READER_REMOVE:
             if (spice_smartcard_reader_is_software((SpiceSmartcardReader*)event->reader)) {
                 g_warn_if_fail(manager->priv->software_reader != NULL);
-                vreader_free(manager->priv->software_reader);
-                manager->priv->software_reader = NULL;
+                g_clear_pointer(&manager->priv->software_reader, vreader_free);
             }
             SPICE_DEBUG("smartcard: reader-removed");
             g_signal_emit(G_OBJECT(user_data),
@@ -355,10 +351,7 @@ static void smartcard_source_finalize(GSource *source)
 {
     SmartcardSource *smartcard_source = (SmartcardSource *)source;
 
-    if (smartcard_source->pending_event) {
-        vevent_delete(smartcard_source->pending_event);
-        smartcard_source->pending_event = NULL;
-    }
+    g_clear_pointer(&smartcard_source->pending_event, vevent_delete);
 }
 
 static GSource *smartcard_monitor_source_new(void)

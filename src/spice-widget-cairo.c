@@ -53,14 +53,9 @@ void spicex_image_destroy(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
 
-    if (d->ximage) {
-        cairo_surface_destroy(d->ximage);
-        d->ximage = NULL;
-    }
-    if (d->convert && d->data) {
-        g_free(d->data);
-        d->data = NULL;
-    }
+    g_clear_pointer(&d->ximage, cairo_surface_destroy);
+    if (d->convert)
+        g_clear_pointer(&d->data, g_free);
     d->convert = FALSE;
 }
 

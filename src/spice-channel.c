@@ -1684,10 +1684,7 @@ restart:
             goto restep;
         }
 
-        if (serverin) {
-            g_free(serverin);
-            serverin = NULL;
-        }
+        g_clear_pointer(&serverin, g_free);
 
         CHANNEL_DEBUG(channel, "Client step result %d. Data %d bytes %p '%s'", err, clientoutlen, clientout, clientout);
 
@@ -1739,8 +1736,7 @@ restart:
 
         /* This server call shows complete, and earlier client step was OK */
         if (complete) {
-            g_free(serverin);
-            serverin = NULL;
+            g_clear_pointer(&serverin, g_free);
             if (err == SASL_CONTINUE) /* something went wrong */
                 goto complete;
             break;
@@ -2702,18 +2698,9 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
     }
 #endif
 
-    spice_openssl_verify_free(c->sslverify);
-    c->sslverify = NULL;
-
-    if (c->ssl) {
-        SSL_free(c->ssl);
-        c->ssl = NULL;
-    }
-
-    if (c->ctx) {
-        SSL_CTX_free(c->ctx);
-        c->ctx = NULL;
-    }
+    g_clear_pointer(&c->sslverify, spice_openssl_verify_free);
+    g_clear_pointer(&c->ssl, SSL_free);
+    g_clear_pointer(&c->ctx, SSL_CTX_free);
 
     g_clear_object(&c->conn);
     g_clear_object(&c->sock);
@@ -2723,8 +2710,7 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
     c->auth_needs_username = FALSE;
     c->auth_needs_password = FALSE;
 
-    g_free(c->peer_msg);
-    c->peer_msg = NULL;
+    g_clear_pointer(&c->peer_msg, g_free);
     c->peer_pos = 0;
 
     STATIC_MUTEX_LOCK(c->xmit_queue_lock);
