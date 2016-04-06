@@ -2641,18 +2641,18 @@ SpiceURI *spice_session_get_proxy_uri(SpiceSession *session)
  **/
 SpiceAudio *spice_audio_get(SpiceSession *session, GMainContext *context)
 {
-    static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
+    static GMutex mutex;
     SpiceAudio *self;
 
     g_return_val_if_fail(SPICE_IS_SESSION(session), NULL);
 
-    g_static_mutex_lock(&mutex);
+    g_mutex_lock(&mutex);
     self = session->priv->audio_manager;
     if (self == NULL) {
         self = spice_audio_new(session, context, NULL);
         session->priv->audio_manager = self;
     }
-    g_static_mutex_unlock(&mutex);
+    g_mutex_unlock(&mutex);
 
     return self;
 }
@@ -2675,19 +2675,19 @@ SpiceUsbDeviceManager *spice_usb_device_manager_get(SpiceSession *session,
                                                     GError **err)
 {
     SpiceUsbDeviceManager *self;
-    static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
+    static GMutex mutex;
 
     g_return_val_if_fail(SPICE_IS_SESSION(session), NULL);
     g_return_val_if_fail(err == NULL || *err == NULL, NULL);
 
-    g_static_mutex_lock(&mutex);
+    g_mutex_lock(&mutex);
     self = session->priv->usb_manager;
     if (self == NULL) {
         self = g_initable_new(SPICE_TYPE_USB_DEVICE_MANAGER, NULL, err,
                               "session", session, NULL);
         session->priv->usb_manager = self;
     }
-    g_static_mutex_unlock(&mutex);
+    g_mutex_unlock(&mutex);
 
     return self;
 }

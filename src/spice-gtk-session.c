@@ -1133,15 +1133,15 @@ SpiceGtkSession *spice_gtk_session_get(SpiceSession *session)
     g_return_val_if_fail(SPICE_IS_SESSION(session), NULL);
 
     SpiceGtkSession *self;
-    static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
+    static GMutex mutex;
 
-    g_static_mutex_lock(&mutex);
+    g_mutex_lock(&mutex);
     self = g_object_get_data(G_OBJECT(session), "spice-gtk-session");
     if (self == NULL) {
         self = g_object_new(SPICE_TYPE_GTK_SESSION, "session", session, NULL);
         g_object_set_data_full(G_OBJECT(session), "spice-gtk-session", self, g_object_unref);
     }
-    g_static_mutex_unlock(&mutex);
+    g_mutex_unlock(&mutex);
 
     return SPICE_GTK_SESSION(self);
 }

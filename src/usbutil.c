@@ -51,7 +51,7 @@ typedef struct _usb_vendor_info {
     char name[VENDOR_NAME_LEN];
 } usb_vendor_info;
 
-static GStaticMutex usbids_load_mutex = G_STATIC_MUTEX_INIT;
+static GMutex usbids_load_mutex;
 static int usbids_vendor_count = 0; /* < 0: failed, 0: empty, > 0: loaded */
 static usb_vendor_info *usbids_vendor_info = NULL;
 
@@ -215,7 +215,7 @@ static gboolean spice_usbutil_load_usbids(void)
 {
     gboolean success = FALSE;
 
-    g_static_mutex_lock(&usbids_load_mutex);
+    g_mutex_lock(&usbids_load_mutex);
     if (usbids_vendor_count) {
         success = usbids_vendor_count > 0;
         goto leave;
@@ -242,7 +242,7 @@ static gboolean spice_usbutil_load_usbids(void)
 #endif
 
 leave:
-    g_static_mutex_unlock(&usbids_load_mutex);
+    g_mutex_unlock(&usbids_load_mutex);
     return success;
 }
 
