@@ -222,8 +222,7 @@ wocky_http_proxy_connect (GProxy *proxy,
   g_free (buffer);
   buffer = g_data_input_stream_read_until (data_in, HTTP_END_MARKER, NULL,
       cancellable, error);
-  g_object_unref (data_in);
-  data_in = NULL;
+  g_clear_object(&data_in);
 
   if (buffer == NULL)
     {

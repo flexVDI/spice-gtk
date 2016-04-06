@@ -439,20 +439,9 @@ static void spice_display_finalize(GObject *obj)
     g_free(d->activeseq);
     d->activeseq = NULL;
 
-    if (d->show_cursor) {
-        g_object_unref(d->show_cursor);
-        d->show_cursor = NULL;
-    }
-
-    if (d->mouse_cursor) {
-        g_object_unref(d->mouse_cursor);
-        d->mouse_cursor = NULL;
-    }
-
-    if (d->mouse_pixbuf) {
-        g_object_unref(d->mouse_pixbuf);
-        d->mouse_pixbuf = NULL;
-    }
+    g_clear_object(&d->show_cursor);
+    g_clear_object(&d->mouse_cursor);
+    g_clear_object(&d->mouse_pixbuf);
 
     G_OBJECT_CLASS(spice_display_parent_class)->finalize(obj);
 }
@@ -2343,10 +2332,7 @@ static void cursor_set(SpiceCursorChannel *channel,
 
     cursor_invalidate(display);
 
-    if (d->mouse_pixbuf) {
-        g_object_unref(d->mouse_pixbuf);
-        d->mouse_pixbuf = NULL;
-    }
+    g_clear_object(&d->mouse_pixbuf);
 
     if (rgba != NULL) {
         d->mouse_pixbuf = gdk_pixbuf_new_from_data(g_memdup(rgba, width * height * 4),

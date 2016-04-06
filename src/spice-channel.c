@@ -155,10 +155,7 @@ static void spice_channel_dispose(GObject *gobject)
 
     spice_channel_disconnect(channel, SPICE_CHANNEL_CLOSED);
 
-    if (c->session) {
-         g_object_unref(c->session);
-         c->session = NULL;
-    }
+    g_clear_object(&c->session);
 
     g_clear_error(&c->error);
 
@@ -2718,11 +2715,7 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
         c->ctx = NULL;
     }
 
-    if (c->conn) {
-        g_object_unref(c->conn);
-        c->conn = NULL;
-    }
-
+    g_clear_object(&c->conn);
     g_clear_object(&c->sock);
 
     c->fd = -1;
