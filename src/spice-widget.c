@@ -2343,7 +2343,8 @@ static void cursor_set(SpiceCursorChannel *channel,
         g_warn_if_reached();
 
 #ifndef G_OS_WIN32
-    spice_egl_cursor_set(display);
+    if (d->egl.enabled)
+        spice_egl_cursor_set(display);
 #endif
     if (d->show_cursor) {
         /* unhide */

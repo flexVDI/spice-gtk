@@ -484,6 +484,8 @@ void spice_egl_cursor_set(SpiceDisplay *display)
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     GdkPixbuf *image = d->mouse_pixbuf;
 
+    g_return_if_fail(d->egl.enabled);
+
     if (image == NULL)
         return;
 
