@@ -143,9 +143,9 @@ static int ask_user(GtkWidget *parent, char *title, char *message,
     dialog = gtk_dialog_new_with_buttons(title,
                                          parent ? GTK_WINDOW(parent) : NULL,
                                          GTK_DIALOG_DESTROY_WITH_PARENT,
-                                         GTK_STOCK_OK,
+                                         "_OK",
                                          GTK_RESPONSE_ACCEPT,
-                                         GTK_STOCK_CANCEL,
+                                         "_Cancel",
                                          GTK_RESPONSE_REJECT,
                                          NULL);
     gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_ACCEPT);
@@ -370,7 +370,7 @@ static void menu_cb_select_usb_devices(GtkAction *action, void *data)
                     "Select USB devices for redirection",
                     GTK_WINDOW(win->toplevel),
                     GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-                    GTK_STOCK_CLOSE, GTK_RESPONSE_ACCEPT,
+                    "_Close", GTK_RESPONSE_ACCEPT,
                     NULL);
     gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_ACCEPT);
     gtk_container_set_border_width(GTK_CONTAINER(dialog), 12);
@@ -462,7 +462,7 @@ static void menu_cb_about(GtkAction *action, void *data)
                           "authors",         authors,
                           "comments",        comments,
                           "copyright",       copyright,
-                          "logo-icon-name",  GTK_STOCK_ABOUT,
+                          "logo-icon-name",  "help-about",
                           "website",         website,
                           "version",         PACKAGE_VERSION,
                           "license",         "LGPLv2.1",
@@ -640,12 +640,12 @@ static const GtkActionEntry entries[] = {
 
         /* File menu */
         .name        = "Connect",
-        .stock_id    = GTK_STOCK_CONNECT,
+        .stock_id    = "_Connect",
         .label       = "_Connect ...",
         .callback    = G_CALLBACK(menu_cb_connect),
     },{
         .name        = "Close",
-        .stock_id    = GTK_STOCK_CLOSE,
+        .stock_id    = "window-close",
         .label       = "_Close",
         .callback    = G_CALLBACK(menu_cb_close),
         .accelerator = "", /* none (disable default "<control>W") */
@@ -653,13 +653,13 @@ static const GtkActionEntry entries[] = {
 
         /* Edit menu */
         .name        = "CopyToGuest",
-        .stock_id    = GTK_STOCK_COPY,
+        .stock_id    = "edit-copy",
         .label       = "_Copy to guest",
         .callback    = G_CALLBACK(menu_cb_copy),
         .accelerator = "", /* none (disable default "<control>C") */
     },{
         .name        = "PasteFromGuest",
-        .stock_id    = GTK_STOCK_PASTE,
+        .stock_id    = "edit-paste",
         .label       = "_Paste from guest",
         .callback    = G_CALLBACK(menu_cb_paste),
         .accelerator = "", /* none (disable default "<control>V") */
@@ -667,7 +667,7 @@ static const GtkActionEntry entries[] = {
 
         /* View menu */
         .name        = "Fullscreen",
-        .stock_id    = GTK_STOCK_FULLSCREEN,
+        .stock_id    = "view-fullscreen",
         .label       = "_Fullscreen",
         .callback    = G_CALLBACK(menu_cb_fullscreen),
         .accelerator = "<shift>F11",
@@ -695,7 +695,7 @@ static const GtkActionEntry entries[] = {
 
         /* Help menu */
         .name        = "About",
-        .stock_id    = GTK_STOCK_ABOUT,
+        .stock_id    = "help-about",
         .label       = "_About ...",
         .callback    = G_CALLBACK(menu_cb_about),
     }
@@ -1486,8 +1486,7 @@ TransferTaskWidgets *transfer_task_widgets_new(SpiceFileTransferTask *task)
 
     widgets->vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     widgets->hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
-    widgets->cancel = gtk_button_new_from_icon_name(GTK_STOCK_CANCEL,
-                                                    GTK_ICON_SIZE_SMALL_TOOLBAR);
+    widgets->cancel = gtk_button_new_with_label("_Cancel");
 
     widgets->progress = gtk_progress_bar_new();
     widgets->label = gtk_label_new(spice_file_transfer_task_get_filename(task));

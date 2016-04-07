@@ -166,8 +166,8 @@ spice_usb_device_widget_show_info_bar(SpiceUsbDeviceWidget *self,
     hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
     gtk_container_add(GTK_CONTAINER(content_area), hbox);
 
-    widget = gtk_image_new_from_stock(stock_icon_id,
-                                      GTK_ICON_SIZE_SMALL_TOOLBAR);
+    widget = gtk_image_new_from_icon_name(stock_icon_id,
+                                          GTK_ICON_SIZE_SMALL_TOOLBAR);
     gtk_box_pack_start(GTK_BOX(hbox), widget, FALSE, FALSE, 0);
 
     widget = gtk_label_new(message);
@@ -214,7 +214,7 @@ static GObject *spice_usb_device_widget_constructor(
     if (err) {
         spice_usb_device_widget_show_info_bar(self, err->message,
                                               GTK_MESSAGE_WARNING,
-                                              GTK_STOCK_DIALOG_WARNING);
+                                              "dialog-warning");
         g_clear_error(&err);
         return obj;
     }
@@ -432,13 +432,13 @@ static gboolean spice_usb_device_widget_update_status(gpointer user_data)
     if (priv->err_msg) {
         spice_usb_device_widget_show_info_bar(self, priv->err_msg,
                                               GTK_MESSAGE_INFO,
-                                              GTK_STOCK_DIALOG_WARNING);
+                                              "dialog-warning");
         g_free(priv->err_msg);
         priv->err_msg = NULL;
     } else if (redirecting) {
         spice_usb_device_widget_show_info_bar(self, _("Redirecting USB Device..."),
                                               GTK_MESSAGE_INFO,
-                                              GTK_STOCK_DIALOG_INFO);
+                                              "dialog-information");
     } else {
         spice_usb_device_widget_hide_info_bar(self);
     }
@@ -446,7 +446,7 @@ static gboolean spice_usb_device_widget_update_status(gpointer user_data)
     if (priv->device_count == 0)
         spice_usb_device_widget_show_info_bar(self, _("No USB devices detected"),
                                               GTK_MESSAGE_INFO,
-                                              GTK_STOCK_DIALOG_INFO);
+                                              "dialog-information");
     return FALSE;
 }
 
