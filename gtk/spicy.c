@@ -745,13 +745,8 @@ static void grab_keys_pressed_cb(GtkWidget *widget, gpointer data)
 {
     SpiceWindow *win = data;
 
-    /* since mnemonics are disabled, we leave fullscreen when
-       ungrabbing mouse. Perhaps we should have a different handling
-       of fullscreen key, or simply use a UI, like vinagre */
     if (kiosk_mode) {
         connection_disconnect(win->conn, DISCONNECT_NO_ERROR);
-    } else {
-        window_set_fullscreen(win, FALSE);
     }
 }
 
