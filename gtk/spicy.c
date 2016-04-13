@@ -1858,6 +1858,8 @@ static void display_monitors(SpiceChannel *display, GParamSpec *pspec,
             add_window(conn, w);
             spice_g_signal_connect_object(display, "display-mark",
                                           G_CALLBACK(display_mark), w, 0);
+            if (monitors->len == 1)
+                gtk_window_set_position(GTK_WINDOW(w->toplevel), GTK_WIN_POS_CENTER_ALWAYS);
             gtk_widget_show(w->toplevel);
             update_auto_usbredir_sensitive(conn);
         }
