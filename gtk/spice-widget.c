@@ -1868,7 +1868,7 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                               "Resize guest",
                               "Try to adapt guest display on window resize. "
                               "Requires guest cooperation.",
-                              FALSE,
+                              TRUE,
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
                               G_PARAM_STATIC_STRINGS));

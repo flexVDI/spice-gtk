@@ -2335,14 +2335,6 @@ int main(int argc, char *argv[])
         exit(0);
     }
 
-    if (kiosk_mode) {
-        g_key_file_set_boolean(keyfile, "general", "scaling", TRUE);
-        g_key_file_set_boolean(keyfile, "general", "resize-guest", TRUE);
-        g_key_file_set_boolean(keyfile, "general", "auto-usbredir", TRUE);
-        g_key_file_set_boolean(keyfile, "general", "grab-keyboard", TRUE);
-        g_key_file_set_boolean(keyfile, "general", "grab-mouse", TRUE);
-    }
-
 #if !GLIB_CHECK_VERSION(2,36,0)
     g_type_init();
 #endif
