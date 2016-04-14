@@ -2247,17 +2247,14 @@ static void migrate_channel_event_cb(SpiceChannel *channel, SpiceChannelEvent ev
 {
     spice_migrate *mig = data;
     SpiceChannelPrivate  *c = SPICE_CHANNEL(channel)->priv;
-    SpiceSession *session;
 
     g_return_if_fail(mig->nchannels > 0);
     g_signal_handlers_disconnect_by_func(channel, migrate_channel_event_cb, data);
 
-    session = spice_channel_get_session(mig->src_channel);
-
     switch (event) {
     case SPICE_CHANNEL_OPENED:
-
         if (c->channel_type == SPICE_CHANNEL_MAIN) {
+            SpiceSession *session = spice_channel_get_session(mig->src_channel);
             if (mig->do_seamless) {
                 SpiceMainChannelPrivate *main_priv = SPICE_MAIN_CHANNEL(channel)->priv;
 
