@@ -1187,11 +1187,15 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
     return TRUE;
 }
 
+static SpiceAudio *spice_main_get_audio(const SpiceMainChannel *channel)
+{
+    return spice_audio_get(spice_channel_get_session(SPICE_CHANNEL(channel)), NULL);
+}
+
 static void audio_playback_volume_info_cb(GObject *object, GAsyncResult *res, gpointer user_data)
 {
     SpiceMainChannel *main_channel = user_data;
-    SpiceSession *session = spice_channel_get_session(SPICE_CHANNEL(main_channel));
-    SpiceAudio *audio = spice_audio_get(session, NULL);
+    SpiceAudio *audio = spice_main_get_audio(main_channel);
     VDAgentAudioVolumeSync *avs;
     guint16 *volume;
     guint8 nchannels;
@@ -1229,8 +1233,7 @@ static void audio_playback_volume_info_cb(GObject *object, GAsyncResult *res, gp
 
 static void agent_sync_audio_playback(SpiceMainChannel *main_channel)
 {
-    SpiceSession *session = spice_channel_get_session(SPICE_CHANNEL(main_channel));
-    SpiceAudio *audio = spice_audio_get(session, NULL);
+    SpiceAudio *audio = spice_main_get_audio(main_channel);
     SpiceMainChannelPrivate *c = main_channel->priv;
 
     if (audio == NULL ||
@@ -1249,8 +1252,7 @@ static void agent_sync_audio_playback(SpiceMainChannel *main_channel)
 static void audio_record_volume_info_cb(GObject *object, GAsyncResult *res, gpointer user_data)
 {
     SpiceMainChannel *main_channel = user_data;
-    SpiceSession *session = spice_channel_get_session(SPICE_CHANNEL(main_channel));
-    SpiceAudio *audio = spice_audio_get(session, NULL);
+    SpiceAudio *audio = spice_main_get_audio(main_channel);
     VDAgentAudioVolumeSync *avs;
     guint16 *volume;
     guint8 nchannels;
@@ -1287,8 +1289,7 @@ static void audio_record_volume_info_cb(GObject *object, GAsyncResult *res, gpoi
 
 static void agent_sync_audio_record(SpiceMainChannel *main_channel)
 {
-    SpiceSession *session = spice_channel_get_session(SPICE_CHANNEL(main_channel));
-    SpiceAudio *audio = spice_audio_get(session, NULL);
+    SpiceAudio *audio = spice_main_get_audio(main_channel);
     SpiceMainChannelPrivate *c = main_channel->priv;
 
     if (audio == NULL ||
