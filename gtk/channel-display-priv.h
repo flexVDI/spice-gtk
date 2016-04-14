@@ -21,7 +21,6 @@
 #include <pixman.h>
 #ifdef WIN32
 /* We need some hacks to avoid warnings from the jpeg headers */
-#define HAVE_BOOLEAN
 #define XMD_H
 #endif
 #include <jpeglib.h>
