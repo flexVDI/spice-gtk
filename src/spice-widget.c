@@ -1404,6 +1404,7 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
 #ifdef G_OS_WIN32
     int native_scancode;
     WORD langid = LOWORD(GetKeyboardLayout(0));
+    gboolean no_key_release = FALSE;
 #endif
 
 #ifdef G_OS_WIN32
@@ -1487,11 +1488,58 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
         }
         break;
     }
+
+    /* Emulate KeyRelease events for the following keys.
+     *
+     * Alt+Zenkaku_Hankaku generates WM_KEYDOWN VK_KANJI and no WM_KEYUP
+     * and it caused unlimited VK_KANJI in Linux desktop and the desktop
+     * hung up. We send WM_KEYUP VK_KANJI here to avoid unlimited events.
+     *
+     * Eisu_toggle generates WM_KEYDOWN VK_DBE_ALPHANUMERIC only in
+     * English mode,  WM_KEYDOWN VK_DBE_ALPHANUMERIC and WM_KEYUP
+     * VK_DBE_HIRAGANA in Japanese mode, and it caused unlimited
+     * VK_DBE_ALPHANUMERIC in Linux desktop.
+     * Since VK_DBE_HIRAGANA is also assigned in Hiragana key,
+     * we send WM_KEYUP VK_DBE_ALPHANUMERIC here to avoid unlimited events.
+     * No KeyPress VK_DBE_HIRAGANA seems harmless.
+     *
+     * Hiragana_Katakana generates WM_KEYDOWN VK_DBE_HIRAGANA and
+     * WM_KEYUP VK_DBE_ALPHANUMERIC in English mode, WM_KEYDOWN
+     * VK_DBE_HIRAGANA only in Japanese mode, and it caused unlimited
+     * VK_DBE_HIRAGANA in Linux desktop.
+     *
+     * Alt+Hiragana_Katakana generates WM_KEYUP VK_DBE_NOROMAN and
+     * WM_KEYDOWN VK_DBE_ROMAN but the KeyRelease is called before
+     * KeyDown is called and it caused unlimited VK_DBE_ROMAN.
+     * We ignore the scancode of VK_DBE_NOROMAN and emulate WM_KEYUP
+     * VK_DBE_ROMAN.
+     *
+     * Ctrl+Alt+Zenkaku_Hankaku generates WM_KEYDOWN VK_DBE_ENTERIMECONFIGMODE
+     * and no WM_KEYUP and it caused unlimited VK_DBE_ENTERIMECONFIGMODE
+     * in Linux desktop.
+     */
+    switch (langid) {
+    case MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN):
+        switch (key->hardware_keycode) {
+        case VK_KANJI:                  /* Alt + Zenkaku_Hankaku */
+        case VK_DBE_ALPHANUMERIC:       /* Eisu_toggle */
+        case VK_DBE_HIRAGANA:           /* Hiragana_Katakana */
+        case VK_DBE_ROMAN:              /* Alt+Hiragana_Katakana */
+        case VK_DBE_ENTERIMECONFIGMODE: /* Ctrl + Alt + Zenkaku_Hankaku */
+            no_key_release = TRUE;
+            break;
+        }
+        break;
+    }
 #endif
 
     switch (key->type) {
     case GDK_KEY_PRESS:
         send_key(display, scancode, SEND_KEY_PRESS, !key->is_modifier);
+#ifdef G_OS_WIN32
+        if (no_key_release)
+            send_key(display, scancode, SEND_KEY_RELEASE, !key->is_modifier);
+#endif
         break;
     case GDK_KEY_RELEASE:
         send_key(display, scancode, SEND_KEY_RELEASE, !key->is_modifier);
