@@ -30,6 +30,7 @@
 #endif
 #ifdef G_OS_WIN32
 #include <windows.h>
+#include <dinput.h>
 #include <ime.h>
 #include <gdk/gdkwin32.h>
 #ifndef MAPVK_VK_TO_VSC /* may be undefined in older mingw-headers */
@@ -1485,6 +1486,14 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
                                         /* to Muhenkan */
                 break;
             }
+        }
+        break;
+    case MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN):
+        if (key->hardware_keycode == VK_HANGUL && native_scancode == DIK_LALT) {
+            /* Left Alt (VK_MENU) has the scancode DIK_LALT (0x38) but
+             * Hangul (VK_HANGUL) has the scancode 0x138
+             */
+            scancode = native_scancode | 0x100;
         }
         break;
     }
