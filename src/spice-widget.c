@@ -30,6 +30,7 @@
 #endif
 #ifdef G_OS_WIN32
 #include <windows.h>
+#include <ime.h>
 #include <gdk/gdkwin32.h>
 #ifndef MAPVK_VK_TO_VSC /* may be undefined in older mingw-headers */
 #define MAPVK_VK_TO_VSC 0
@@ -1400,6 +1401,10 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = display->priv;
     int scancode;
+#ifdef G_OS_WIN32
+    int native_scancode;
+    WORD langid = LOWORD(GetKeyboardLayout(0));
+#endif
 
 #ifdef G_OS_WIN32
     /* on windows, we ought to ignore the reserved key event? */
@@ -1446,9 +1451,42 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
     scancode = vnc_display_keymap_gdk2xtkbd(d->keycode_map, d->keycode_maplen,
                                             key->hardware_keycode);
 #ifdef G_OS_WIN32
+    native_scancode = MapVirtualKey(key->hardware_keycode, MAPVK_VK_TO_VSC);
     /* MapVirtualKey doesn't return scancode with needed higher byte */
-    scancode = MapVirtualKey(key->hardware_keycode, MAPVK_VK_TO_VSC) |
-        (scancode & 0xff00);
+    scancode = native_scancode | (scancode & 0xff00);
+
+    /* Some virtual-key codes are missed in MapVirtualKey(). */
+    switch (langid) {
+    case MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN):
+        if (native_scancode == 0) {
+            switch (key->hardware_keycode) {
+            case VK_DBE_DBCSCHAR:       /* from Pressed Zenkaku_Hankaku */
+            case VK_KANJI:              /* from Alt + Zenkaku_Hankaku */
+            case VK_DBE_ENTERIMECONFIGMODE:
+                                        /* from Ctrl+Alt+Zenkaku_Hankaku */
+                scancode = MapVirtualKey(VK_DBE_SBCSCHAR, MAPVK_VK_TO_VSC);
+                                        /* to Released Zenkaku_Hankaku */
+                break;
+            case VK_CAPITAL:            /* from Shift + Eisu_toggle */
+            case VK_DBE_CODEINPUT:      /* from Pressed Ctrl+Alt+Eisu_toggle */
+            case VK_DBE_NOCODEINPUT:    /* from Released Ctrl+Alt+Eisu_toggle */
+                scancode = MapVirtualKey(VK_DBE_ALPHANUMERIC, MAPVK_VK_TO_VSC);
+                                        /* to Eisu_toggle */
+                break;
+            case VK_DBE_ROMAN:          /* from Pressed Alt+Hiragana_Katakana */
+            case VK_KANA:               /* from Ctrl+Shift+Hiragana_Katakana */
+                scancode = MapVirtualKey(VK_DBE_HIRAGANA, MAPVK_VK_TO_VSC);
+                                        /* to Hiragana_Katakana */
+                break;
+            case VK_DBE_ENTERWORDREGISTERMODE:
+                                        /* from Ctrl + Alt + Muhenkan */
+                scancode = MapVirtualKey(VK_NONCONVERT, MAPVK_VK_TO_VSC);
+                                        /* to Muhenkan */
+                break;
+            }
+        }
+        break;
+    }
 #endif
 
     switch (key->type) {
