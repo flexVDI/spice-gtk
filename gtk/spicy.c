@@ -669,13 +669,23 @@ static void menu_cb_about(GtkAction *action, void *data)
 static void power_event_cb(GtkAction *action, void *data)
 {
     SpiceWindow *win = data;
+    GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(win->toplevel),
+                                               GTK_DIALOG_DESTROY_WITH_PARENT | GTK_DIALOG_MODAL,
+                                               GTK_MESSAGE_WARNING, GTK_BUTTONS_YES_NO,
+                                               "WARNING: Are you sure you want to perform a %s action?",
+                                               gtk_action_get_name(action));
 
-    if (!strcmp(gtk_action_get_name(action), "Reboot")) {
-        spice_main_power_event_request(win->conn->main, SPICE_POWER_EVENT_RESET);
-    } else if (!strcmp(gtk_action_get_name(action), "Powerdown")) {
-        spice_main_power_event_request(win->conn->main, SPICE_POWER_EVENT_POWERDOWN);
-    } else if (!strcmp(gtk_action_get_name(action), "Shutdown")) {
-        spice_main_power_event_request(win->conn->main, SPICE_POWER_EVENT_SHUTDOWN);
+    gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_YES);
+    gint result = gtk_dialog_run(GTK_DIALOG(dialog));
+    gtk_widget_destroy(dialog);
+    if (result == GTK_RESPONSE_YES) {
+        if (!strcmp(gtk_action_get_name(action), "Reboot")) {
+            spice_main_power_event_request(win->conn->main, SPICE_POWER_EVENT_RESET);
+        } else if (!strcmp(gtk_action_get_name(action), "Powerdown")) {
+            spice_main_power_event_request(win->conn->main, SPICE_POWER_EVENT_POWERDOWN);
+        } else if (!strcmp(gtk_action_get_name(action), "Shutdown")) {
+            spice_main_power_event_request(win->conn->main, SPICE_POWER_EVENT_SHUTDOWN);
+        }
     }
 }
 
