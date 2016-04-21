@@ -2353,6 +2353,7 @@ int main(int argc, char *argv[])
 #ifdef WITH_FLEXVDI
     flexvdi_port_register_session(conn->session);
 #endif
+    g_object_set(gtk_settings_get_default(), "gtk-icon-theme-name", "flexvdi", NULL);
 
     g_object_get(conn->session,
                  "unix-path", &unix_path,
