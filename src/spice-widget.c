@@ -117,6 +117,7 @@ static void update_area(SpiceDisplay *display, gint x, gint y, gint width, gint 
 static void release_keys(SpiceDisplay *display);
 static void size_allocate(GtkWidget *widget, GtkAllocation *conf, gpointer data);
 static gboolean draw_event(GtkWidget *widget, cairo_t *cr, gpointer data);
+static void update_size_request(SpiceDisplay *display);
 
 /* ---------------------------------------------------------------- */
 
@@ -180,6 +181,7 @@ static void scaling_updated(SpiceDisplay *display)
     if (d->ximage && window) { /* if not yet shown */
         gtk_widget_queue_draw(GTK_WIDGET(display));
     }
+    update_size_request(display);
 }
 
 static void update_size_request(SpiceDisplay *display)
@@ -187,7 +189,7 @@ static void update_size_request(SpiceDisplay *display)
     SpiceDisplayPrivate *d = display->priv;
     gint reqwidth, reqheight;
 
-    if (d->resize_guest_enable) {
+    if (d->resize_guest_enable || d->allow_scaling) {
         reqwidth = 640;
         reqheight = 480;
     } else {
