@@ -2296,12 +2296,20 @@ static gboolean spice_channel_delayed_unref(gpointer data)
     SpiceChannel *channel = SPICE_CHANNEL(data);
     SpiceChannelPrivate *c = channel->priv;
     gboolean was_ready = c->state == SPICE_CHANNEL_STATE_READY;
+    SpiceSession *session;
 
     CHANNEL_DEBUG(channel, "Delayed unref channel %p", channel);
 
     g_return_val_if_fail(c->coroutine.coroutine.exited == TRUE, FALSE);
 
     c->state = SPICE_CHANNEL_STATE_UNCONNECTED;
+
+    session = spice_channel_get_session(channel);
+    if (spice_session_is_for_migration(session)) {
+        /* error during migration - abort migration */
+        spice_session_abort_migration(session);
+        return FALSE;
+    }
 
     if (c->event != SPICE_CHANNEL_NONE) {
         g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, c->event);
