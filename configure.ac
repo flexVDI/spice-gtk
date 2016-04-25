@@ -142,6 +142,18 @@ AC_SUBST(GTK_CFLAGS)
 AC_SUBST(GTK_LIBS)
 SPICE_GTK_REQUIRES="${SPICE_GTK_REQUIRES} gtk+-3.0 >= $GTK_REQUIRED"
 
+# Check for gdk_event_get_scancode function
+# This was added in Gdk 3.22
+# The check allows the usage of the function in case the function is
+# backported or in case of compilation from Gdk master branch
+old_LIBS="$LIBS"
+old_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $GTK_CFLAGS"
+LIBS="$LIBS $GTK_LIBS"
+AC_CHECK_FUNCS(gdk_event_get_scancode)
+LIBS="$old_LIBS"
+CFLAGS="$old_CFLAGS"
+
 PKG_CHECK_EXISTS([gtk+-quartz-$with_gtk], [have_quartz=yes], [have_quartz=no])
 AS_IF([test "x$have_quartz" = "xyes"], [AC_DEFINE([HAVE_QUARTZ], 1, [Have Quartz?])])
 AM_CONDITIONAL([WITH_DISPLAY_QUARTZ], [test "x$have_quartz" = "xyes"])
