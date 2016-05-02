@@ -183,13 +183,10 @@ read_cancelled(GCancellable *cancellable,
                             G_IO_ERROR, G_IO_ERROR_CANCELLED,
                             "read cancelled");
 
+    /* With GTask, we don't need to disconnect GCancellable when task is
+     * cancelled within cancellable callback as it could lead to deadlocks
+     * e.g: https://bugzilla.gnome.org/show_bug.cgi?id=705395 */
     g_clear_object(&self->task);
-
-    /* See FIXME */
-    /* if (self->cancellable) { */
-    /*     g_cancellable_disconnect(self->cancellable, self->cancel_id); */
-    /*     g_clear_object(&self->cancellable); */
-    /* } */
 }
 
 G_GNUC_INTERNAL void
@@ -230,13 +227,14 @@ spice_vmc_input_stream_read_all_finish(GInputStream *stream,
 {
     GTask *task = G_TASK(result);
     SpiceVmcInputStream *self = SPICE_VMC_INPUT_STREAM(stream);
+    GCancellable *cancel;
 
     g_return_val_if_fail(g_task_is_valid(task, self), -1);
-
-    /* FIXME: calling _finish() is required. Disconnecting in
-       read_cancelled() causes a deadlock. #705395 */
-    g_cancellable_disconnect(g_task_get_cancellable(task), self->cancel_id);
-
+    cancel = g_task_get_cancellable(task);
+    if (!g_cancellable_is_cancelled(cancel)) {
+         g_cancellable_disconnect(cancel, self->cancel_id);
+         self->cancel_id = 0;
+    }
     return g_task_propagate_int(task, error);
 }
 
@@ -276,13 +274,15 @@ spice_vmc_input_stream_read_finish(GInputStream *stream,
 {
     GTask *task = G_TASK(result);
     SpiceVmcInputStream *self = SPICE_VMC_INPUT_STREAM(stream);
+    GCancellable *cancel;
 
     g_return_val_if_fail(g_task_is_valid(task, self), -1);
 
-    /* FIXME: calling _finish() is required. Disconnecting in
-       read_cancelled() causes a deadlock. #705395 */
-    g_cancellable_disconnect(g_task_get_cancellable(task), self->cancel_id);
-
+    cancel = g_task_get_cancellable(task);
+    if (!g_cancellable_is_cancelled(cancel)) {
+         g_cancellable_disconnect(cancel, self->cancel_id);
+         self->cancel_id = 0;
+    }
     return g_task_propagate_int(task, error);
 }
 
