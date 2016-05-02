@@ -187,6 +187,8 @@ static void spice_channel_finalize(GObject *gobject)
     if (c->remote_common_caps)
         g_array_free(c->remote_common_caps, TRUE);
 
+    g_clear_pointer(&c->peer_msg, g_free);
+
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_channel_parent_class)->finalize(gobject);
