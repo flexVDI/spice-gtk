@@ -733,6 +733,7 @@ static const char *spice_display_properties[] = {
 static const char *spice_gtk_session_properties[] = {
     "auto-clipboard",
     "auto-usbredir",
+    "sync-modifiers",
 };
 
 static const GtkToggleActionEntry tentries[] = {
@@ -755,6 +756,10 @@ static const GtkToggleActionEntry tentries[] = {
     },{
         .name        = "disable-inputs",
         .label       = "Disable inputs",
+        .callback    = G_CALLBACK(menu_cb_bool_prop),
+    },{
+        .name        = "sync-modifiers",
+        .label       = "Sync modifiers",
         .callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
         .name        = "auto-clipboard",
@@ -843,6 +848,7 @@ static char ui_xml[] =
 "      <menuitem action='resize-guest'/>\n"
 "      <menuitem action='scaling'/>\n"
 "      <menuitem action='disable-inputs'/>\n"
+"      <menuitem action='sync-modifiers'/>\n"
 "      <menuitem action='auto-clipboard'/>\n"
 "      <menuitem action='auto-usbredir'/>\n"
 "      <menu action='CompressionMenu'>\n"
