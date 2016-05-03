@@ -37,12 +37,12 @@ G_BEGIN_DECLS
 typedef struct _SpiceDisplayPrivate SpiceDisplayPrivate;
 
 struct _SpiceDisplay {
-    GtkStack parent;
+    GtkEventBox parent;
     SpiceDisplayPrivate *priv;
 };
 
 struct _SpiceDisplayClass {
-    GtkStackClass parent_class;
+    GtkEventBoxClass parent_class;
 
     /* signals */
     void (*mouse_grab)(SpiceChannel *channel, gint grabbed);
@@ -53,6 +53,7 @@ struct _SpiceDisplayClass {
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_DISPLAY, SpiceDisplayPrivate))
 
 struct _SpiceDisplayPrivate {
+    GtkStack                *stack;
     gint                    channel_id;
     gint                    monitor_id;
 

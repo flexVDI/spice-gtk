@@ -70,7 +70,7 @@
  * save to disk).
  */
 
-G_DEFINE_TYPE(SpiceDisplay, spice_display, GTK_TYPE_STACK)
+G_DEFINE_TYPE(SpiceDisplay, spice_display, GTK_TYPE_EVENT_BOX)
 
 /* Properties */
 enum {
@@ -588,15 +588,17 @@ static void spice_display_init(SpiceDisplay *display)
     GtkTargetEntry targets = { "text/uri-list", 0, 0 };
 
     d = display->priv = SPICE_DISPLAY_GET_PRIVATE(display);
-
+    d->stack = GTK_STACK(gtk_stack_new());
+    gtk_container_add(GTK_CONTAINER(display), GTK_WIDGET(d->stack));
     area = gtk_drawing_area_new();
+
     g_object_connect(area,
                      "signal::draw", draw_event, display,
                      "signal::realize", drawing_area_realize, display,
                      NULL);
-    gtk_stack_add_named(GTK_STACK(widget), area, "draw-area");
+    gtk_stack_add_named(d->stack, area, "draw-area");
     gtk_widget_set_double_buffered(area, true);
-    gtk_stack_set_visible_child(GTK_STACK(widget), area);
+    gtk_stack_set_visible_child(d->stack, area);
 
 #if GTK_CHECK_VERSION(3,16,0)
 #ifndef G_OS_WIN32
@@ -607,7 +609,7 @@ static void spice_display_init(SpiceDisplay *display)
                      "signal::render", gl_area_render, display,
                      "signal::realize", gl_area_realize, display,
                      NULL);
-    gtk_stack_add_named(GTK_STACK(widget), area, "gl-area");
+    gtk_stack_add_named(d->stack, area, "gl-area");
     gtk_widget_show_all(widget);
 #endif
 #endif
@@ -1190,13 +1192,13 @@ static void set_egl_enabled(SpiceDisplay *display, bool enabled)
         /* even though the function is marked as deprecated, it's the
          * only way I found to prevent glitches when the window is
          * resized. */
-        area = gtk_stack_get_child_by_name(GTK_STACK(display), "draw-area");
+        area = gtk_stack_get_child_by_name(d->stack, "draw-area");
         gtk_widget_set_double_buffered(GTK_WIDGET(area), !enabled);
     } else
 #endif
     {
-        area = gtk_stack_get_child_by_name(GTK_STACK(display), "gl-area");
-        gtk_stack_set_visible_child_name(GTK_STACK(display),
+        area = gtk_stack_get_child_by_name(d->stack, "gl-area");
+        gtk_stack_set_visible_child_name(d->stack,
                                          enabled ? "gl-area" : "draw-area");
     }
 
@@ -1216,7 +1218,7 @@ static gboolean draw_event(GtkWidget *widget, cairo_t *cr, gpointer data)
 
 #ifndef G_OS_WIN32
     if (d->egl.enabled &&
-        g_str_equal(gtk_stack_get_visible_child_name(GTK_STACK(display)), "draw-area")) {
+        g_str_equal(gtk_stack_get_visible_child_name(d->stack), "draw-area")) {
         spice_egl_update_display(display);
         return false;
     }
@@ -2625,9 +2627,9 @@ static void gl_draw(SpiceDisplay *display,
     g_return_if_fail(d->egl.context_ready);
 
 #if GTK_CHECK_VERSION(3,16,0)
-    GtkWidget *gl = gtk_stack_get_child_by_name(GTK_STACK(display), "gl-area");
+    GtkWidget *gl = gtk_stack_get_child_by_name(d->stack, "gl-area");
 
-    if (gtk_stack_get_visible_child(GTK_STACK(display)) == gl) {
+    if (gtk_stack_get_visible_child(d->stack) == gl) {
         gtk_gl_area_queue_render(GTK_GL_AREA(gl));
         d->egl.call_draw_done = TRUE;
     } else
