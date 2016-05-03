@@ -65,6 +65,7 @@ struct _SpiceGtkSessionPrivate {
     gboolean                pointer_grabbed;
     gboolean                keyboard_has_focus;
     gboolean                mouse_has_pointer;
+    gboolean                sync_modifiers;
 };
 
 /**
@@ -118,6 +119,7 @@ enum {
     PROP_AUTO_CLIPBOARD,
     PROP_AUTO_USBREDIR,
     PROP_POINTER_GRABBED,
+    PROP_SYNC_MODIFIERS,
 };
 
 static guint32 get_keyboard_lock_modifiers(void)
@@ -184,6 +186,11 @@ static void spice_gtk_session_sync_keyboard_modifiers_for_channel(SpiceGtkSessio
     gint guest_modifiers = 0, client_modifiers = 0;
 
     g_return_if_fail(SPICE_IS_INPUTS_CHANNEL(inputs));
+
+    if (SPICE_IS_GTK_SESSION(self) && !self->priv->sync_modifiers) {
+        SPICE_DEBUG("Syncing modifiers is disabled");
+        return;
+    }
 
     g_object_get(inputs, "key-modifiers", &guest_modifiers, NULL);
     client_modifiers = get_keyboard_lock_modifiers();
@@ -332,6 +339,9 @@ static void spice_gtk_session_get_property(GObject    *gobject,
     case PROP_POINTER_GRABBED:
         g_value_set_boolean(value, s->pointer_grabbed);
         break;
+    case PROP_SYNC_MODIFIERS:
+        g_value_set_boolean(value, s->sync_modifiers);
+        break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -379,6 +389,9 @@ static void spice_gtk_session_set_property(GObject      *gobject,
         }
         break;
     }
+    case PROP_SYNC_MODIFIERS:
+        s->sync_modifiers = g_value_get_boolean(value);
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
         break;
@@ -465,6 +478,23 @@ static void spice_gtk_session_class_init(SpiceGtkSessionClass *klass)
                               "Whether the pointer is grabbed",
                               FALSE,
                               G_PARAM_READABLE |
+                              G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceGtkSession:sync-modifiers:
+     *
+     * Automatically sync modifiers (Caps, Num and Scroll locks) with the guest.
+     *
+     * Since: 0.32
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_SYNC_MODIFIERS,
+         g_param_spec_boolean("sync-modifiers",
+                              "Sync modifiers",
+                              "Automatically sync modifiers",
+                              TRUE,
+                              G_PARAM_READWRITE |
+                              G_PARAM_CONSTRUCT |
                               G_PARAM_STATIC_STRINGS));
 
     g_type_class_add_private(klass, sizeof(SpiceGtkSessionPrivate));
