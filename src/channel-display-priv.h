@@ -34,6 +34,39 @@
 
 G_BEGIN_DECLS
 
+typedef struct display_stream display_stream;
+
+typedef struct VideoDecoder VideoDecoder;
+struct VideoDecoder {
+    /* Releases the video decoder's resources */
+    void (*destroy)(VideoDecoder *decoder);
+
+    /* Decompresses the specified frame.
+     *
+     * @decoder:   The video decoder.
+     * @frame_msg: The Spice message containing the compressed frame.
+     * @return:    A pointer to the buffer holding the decoded frame. This
+     *             buffer will be invalidated by the next call to
+     *             decode_frame().
+     */
+    uint8_t* (*decode_frame)(VideoDecoder *decoder, SpiceMsgIn *frame_msg);
+
+    /* The format of the encoded video. */
+    int codec_type;
+
+    /* The associated display stream. */
+    display_stream *stream;
+};
+
+
+/* Instantiates the video decoder for the specified codec.
+ *
+ * @codec_type: The format of the video.
+ * @stream:     The associated video stream.
+ * @return:     A pointer to a structure implementing the VideoDecoder methods.
+ */
+VideoDecoder* create_mjpeg_decoder(int codec_type, display_stream *stream);
+
 
 typedef struct display_surface {
     guint32                     surface_id;
@@ -53,24 +86,18 @@ typedef struct drops_sequence_stats {
     uint32_t duration;
 } drops_sequence_stats;
 
-typedef struct display_stream {
+struct display_stream {
     SpiceMsgIn                  *msg_create;
     SpiceMsgIn                  *msg_clip;
-    SpiceMsgIn                  *msg_data;
 
     /* from messages */
     display_surface             *surface;
     SpiceClip                   *clip;
     QRegion                     region;
     int                         have_region;
-    int                         codec;
 
-    /* mjpeg decoder */
-    struct jpeg_source_mgr         mjpeg_src;
-    struct jpeg_decompress_struct  mjpeg_cinfo;
-    struct jpeg_error_mgr          mjpeg_jerr;
+    VideoDecoder                *video_decoder;
 
-    uint8_t                     *out_frame;
     GQueue                      *msgq;
     guint                       timeout;
     SpiceChannel                *channel;
@@ -97,15 +124,11 @@ typedef struct display_stream {
     uint32_t report_num_frames;
     uint32_t report_num_drops;
     uint32_t report_drops_seq_len;
-} display_stream;
+};
 
-void stream_get_dimensions(display_stream *st, int *width, int *height);
-uint32_t stream_get_current_frame(display_stream *st, uint8_t **data);
+void stream_get_dimensions(display_stream *st, SpiceMsgIn *frame_msg, int *width, int *height);
+uint32_t spice_msg_in_frame_data(SpiceMsgIn *frame_msg, uint8_t **data);
 
-/* channel-display-mjpeg.c */
-void stream_mjpeg_init(display_stream *st);
-void stream_mjpeg_data(display_stream *st);
-void stream_mjpeg_cleanup(display_stream *st);
 
 G_END_DECLS
 

@@ -1086,7 +1086,6 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
     st->msg_create = in;
     spice_msg_in_ref(in);
     st->clip = &op->clip;
-    st->codec = op->codec_type;
     st->surface = find_surface(c, op->surface_id);
     st->msgq = g_queue_new();
     st->channel = channel;
@@ -1095,10 +1094,15 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
     region_init(&st->region);
     display_update_stream_region(st);
 
-    switch (st->codec) {
+    switch (op->codec_type) {
     case SPICE_VIDEO_CODEC_TYPE_MJPEG:
-        stream_mjpeg_init(st);
+        st->video_decoder = create_mjpeg_decoder(op->codec_type, st);
         break;
+    default:
+        st->video_decoder = NULL;
+    }
+    if (st->video_decoder == NULL) {
+        spice_printerr("could not create a video decoder for codec %d", op->codec_type);
     }
 }
 
@@ -1141,15 +1145,15 @@ static gboolean display_stream_schedule(display_stream *st)
     return FALSE;
 }
 
-static SpiceRect *stream_get_dest(display_stream *st)
+static SpiceRect *stream_get_dest(display_stream *st, SpiceMsgIn *frame_msg)
 {
-    if (st->msg_data == NULL ||
-        spice_msg_in_type(st->msg_data) != SPICE_MSG_DISPLAY_STREAM_DATA_SIZED) {
+    if (frame_msg == NULL ||
+        spice_msg_in_type(frame_msg) != SPICE_MSG_DISPLAY_STREAM_DATA_SIZED) {
         SpiceMsgDisplayStreamCreate *info = spice_msg_in_parsed(st->msg_create);
 
         return &info->dest;
     } else {
-        SpiceMsgDisplayStreamDataSized *op = spice_msg_in_parsed(st->msg_data);
+        SpiceMsgDisplayStreamDataSized *op = spice_msg_in_parsed(frame_msg);
 
         return &op->dest;
    }
@@ -1164,21 +1168,16 @@ static uint32_t stream_get_flags(display_stream *st)
 }
 
 G_GNUC_INTERNAL
-uint32_t stream_get_current_frame(display_stream *st, uint8_t **data)
+uint32_t spice_msg_in_frame_data(SpiceMsgIn *frame_msg, uint8_t **data)
 {
-    if (st->msg_data == NULL) {
-        *data = NULL;
-        return 0;
-    }
-
-    switch (spice_msg_in_type(st->msg_data)) {
+    switch (spice_msg_in_type(frame_msg)) {
     case SPICE_MSG_DISPLAY_STREAM_DATA: {
-        SpiceMsgDisplayStreamData *op = spice_msg_in_parsed(st->msg_data);
+        SpiceMsgDisplayStreamData *op = spice_msg_in_parsed(frame_msg);
         *data = op->data;
         return op->data_size;
     }
     case SPICE_MSG_DISPLAY_STREAM_DATA_SIZED: {
-        SpiceMsgDisplayStreamDataSized *op = spice_msg_in_parsed(st->msg_data);
+        SpiceMsgDisplayStreamDataSized *op = spice_msg_in_parsed(frame_msg);
         *data = op->data;
         return op->data_size;
     }
@@ -1189,19 +1188,19 @@ uint32_t stream_get_current_frame(display_stream *st, uint8_t **data)
 }
 
 G_GNUC_INTERNAL
-void stream_get_dimensions(display_stream *st, int *width, int *height)
+void stream_get_dimensions(display_stream *st, SpiceMsgIn *frame_msg, int *width, int *height)
 {
     g_return_if_fail(width != NULL);
     g_return_if_fail(height != NULL);
 
-    if (st->msg_data == NULL ||
-        spice_msg_in_type(st->msg_data) != SPICE_MSG_DISPLAY_STREAM_DATA_SIZED) {
+    if (frame_msg == NULL ||
+        spice_msg_in_type(frame_msg) != SPICE_MSG_DISPLAY_STREAM_DATA_SIZED) {
         SpiceMsgDisplayStreamCreate *info = spice_msg_in_parsed(st->msg_create);
 
         *width = info->stream_width;
         *height = info->stream_height;
     } else {
-        SpiceMsgDisplayStreamDataSized *op = spice_msg_in_parsed(st->msg_data);
+        SpiceMsgDisplayStreamDataSized *op = spice_msg_in_parsed(frame_msg);
 
         *width = op->width;
         *height = op->height;
@@ -1219,24 +1218,21 @@ static gboolean display_stream_render(display_stream *st)
 
         g_return_val_if_fail(in != NULL, FALSE);
 
-        st->msg_data = in;
-        switch (st->codec) {
-        case SPICE_VIDEO_CODEC_TYPE_MJPEG:
-            stream_mjpeg_data(st);
-            break;
+        uint8_t *out_frame = NULL;
+        if (st->video_decoder) {
+            out_frame = st->video_decoder->decode_frame(st->video_decoder, in);
         }
-
-        if (st->out_frame) {
+        if (out_frame) {
             int width;
             int height;
             SpiceRect *dest;
             uint8_t *data;
             int stride;
 
-            stream_get_dimensions(st, &width, &height);
-            dest = stream_get_dest(st);
+            stream_get_dimensions(st, in, &width, &height);
+            dest = stream_get_dest(st, in);
 
-            data = st->out_frame;
+            data = out_frame;
             stride = width * sizeof(uint32_t);
             if (!(stream_get_flags(st) & SPICE_STREAM_FLAGS_TOP_DOWN)) {
                 data += stride * (height - 1);
@@ -1259,7 +1255,6 @@ static gboolean display_stream_render(display_stream *st)
                     dest->bottom - dest->top);
         }
 
-        st->msg_data = NULL;
         spice_msg_in_unref(in);
 
         in = g_queue_peek_head(st->msgq);
@@ -1568,10 +1563,8 @@ static void destroy_stream(SpiceChannel *channel, int id)
 
     g_array_free(st->drops_seqs_stats_arr, TRUE);
 
-    switch (st->codec) {
-    case SPICE_VIDEO_CODEC_TYPE_MJPEG:
-        stream_mjpeg_cleanup(st);
-        break;
+    if (st->video_decoder) {
+        st->video_decoder->destroy(st->video_decoder);
     }
 
     if (st->msg_clip)
