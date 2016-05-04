@@ -177,7 +177,7 @@ static gboolean parse_preferred_compression(const gchar *option_name, const gcha
 }
 
 /**
- * spice_get_option_group: (skip)
+ * spice_get_option_group:
  *
  * Gets commandline options.
  *
