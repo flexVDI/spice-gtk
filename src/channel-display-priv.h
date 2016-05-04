@@ -104,7 +104,7 @@ struct display_stream {
 
     /* stats */
     uint32_t             first_frame_mm_time;
-    uint32_t             num_drops_on_receive;
+    uint32_t             arrive_late_count;
     uint64_t             arrive_late_time;
     uint32_t             num_drops_on_playback;
     uint32_t             num_input_frames;
