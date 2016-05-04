@@ -39,6 +39,7 @@ typedef struct MJpegDecoder {
     /* ---------- Output frame data ---------- */
 
     uint8_t *out_frame;
+    uint32_t out_size;
 } MJpegDecoder;
 
 
@@ -85,8 +86,12 @@ static uint8_t* mjpeg_decoder_decode_frame(VideoDecoder *video_decoder,
 
     decoder->frame_msg = frame_msg;
     stream_get_dimensions(decoder->base.stream, frame_msg, &width, &height);
-    g_free(decoder->out_frame);
-    dest = decoder->out_frame = g_malloc0(width * height * 4);
+    if (decoder->out_size < width * height * 4) {
+        g_free(decoder->out_frame);
+        decoder->out_size = width * height * 4;
+        decoder->out_frame = g_malloc(decoder->out_size);
+    }
+    dest = decoder->out_frame;
 
     jpeg_read_header(&decoder->mjpeg_cinfo, 1);
 #ifdef JCS_EXTENSIONS
