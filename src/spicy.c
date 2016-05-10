@@ -1737,6 +1737,7 @@ static void connection_disconnect(spice_connection *conn)
 static void connection_destroy(spice_connection *conn)
 {
     g_object_unref(conn->session);
+    g_hash_table_unref(conn->transfers);
     free(conn);
 
     connections--;
