@@ -2964,7 +2964,7 @@ static void spice_file_transfer_task_completed(SpiceFileTransferTask *self,
     if (self->priv->error) {
         VDAgentFileXferStatusMessage msg = {
             .id = self->priv->id,
-            .result = error->code == G_IO_ERROR_CANCELLED ?
+            .result = self->priv->error->code == G_IO_ERROR_CANCELLED ?
                     VD_AGENT_FILE_XFER_STATUS_CANCELLED : VD_AGENT_FILE_XFER_STATUS_ERROR,
         };
         agent_msg_queue_many(self->priv->channel, VD_AGENT_FILE_XFER_STATUS,
@@ -2986,7 +2986,7 @@ static void spice_file_transfer_task_completed(SpiceFileTransferTask *self,
                                self);
     self->priv->pending = TRUE;
 signal:
-    g_signal_emit(self, task_signals[SIGNAL_FINISHED], 0, error);
+    g_signal_emit(self, task_signals[SIGNAL_FINISHED], 0, self->priv->error);
 }
 
 
