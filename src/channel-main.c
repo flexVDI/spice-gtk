@@ -2954,8 +2954,10 @@ static void spice_file_transfer_task_completed(SpiceFileTransferTask *self,
     if (self->priv->error)
         g_clear_error(&error);
     if (error) {
+        gchar *path = g_file_get_path(self->priv->file);
         SPICE_DEBUG("File %s xfer failed: %s",
-                    g_file_get_path(self->priv->file), error->message);
+                    path, error->message);
+        g_free(path);
         self->priv->error = error;
     }
 
