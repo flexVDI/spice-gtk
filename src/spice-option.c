@@ -181,6 +181,8 @@ static gboolean parse_preferred_compression(const gchar *option_name, const gcha
  *
  * Gets commandline options.
  *
+ * Bindings for other languages are available since 0.32
+ *
  * Returns: (transfer full): a #GOptionGroup for the commandline
  * arguments specific to Spice.  You have to call
  * spice_set_session_option() after to set the options on a
