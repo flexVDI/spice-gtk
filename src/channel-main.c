@@ -1981,18 +1981,11 @@ static void file_xfer_continue_read(SpiceFileTransferTask *self)
 }
 
 /* coroutine context */
-static void file_xfer_handle_status(SpiceMainChannel *channel,
-                                    VDAgentFileXferStatusMessage *msg)
+static void spice_file_transfer_task_handle_status(SpiceFileTransferTask *task,
+                                                   VDAgentFileXferStatusMessage *msg)
 {
-    SpiceMainChannelPrivate *c = channel->priv;
-    SpiceFileTransferTask *task;
     GError *error = NULL;
-
-    task = g_hash_table_lookup(c->file_xfer_tasks, GUINT_TO_POINTER(msg->id));
-    if (task == NULL) {
-        SPICE_DEBUG("cannot find task %d", msg->id);
-        return;
-    }
+    g_return_if_fail(task != NULL);
 
     SPICE_DEBUG("task %d received response %d", msg->id, msg->result);
 
@@ -2169,8 +2162,18 @@ static void main_agent_handle_msg(SpiceChannel *channel,
         break;
     }
     case VD_AGENT_FILE_XFER_STATUS:
-        file_xfer_handle_status(self, payload);
+    {
+        SpiceFileTransferTask *task;
+        VDAgentFileXferStatusMessage *msg = payload;
+
+        task = g_hash_table_lookup(c->file_xfer_tasks, GUINT_TO_POINTER(msg->id));
+        if (task != NULL) {
+            spice_file_transfer_task_handle_status(task, msg);
+        } else {
+            SPICE_DEBUG("cannot find task %d", msg->id);
+        }
         break;
+    }
     default:
         g_warning("unhandled agent message type: %u (%s), size %u",
                   msg->type, NAME(agent_msg_types, msg->type), msg->size);
