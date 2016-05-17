@@ -2991,16 +2991,6 @@ static void spice_file_transfer_task_completed(SpiceFileTransferTask *self,
         self->error = error;
     }
 
-    if (self->error) {
-        VDAgentFileXferStatusMessage msg = {
-            .id = self->id,
-            .result = self->error->code == G_IO_ERROR_CANCELLED ?
-                    VD_AGENT_FILE_XFER_STATUS_CANCELLED : VD_AGENT_FILE_XFER_STATUS_ERROR,
-        };
-        agent_msg_queue_many(self->channel, VD_AGENT_FILE_XFER_STATUS,
-                             &msg, sizeof(msg), NULL);
-    }
-
     if (self->pending) {
         /* Complete but pending is okay only if error is set */
         if (self->error == NULL) {
