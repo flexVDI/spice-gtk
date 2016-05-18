@@ -5,6 +5,7 @@ TESTS = coroutine				\
 	util					\
 	session					\
 	test-spice-uri				\
+	test-file-transfer			\
 	$(NULL)
 
 if WITH_PHODAV
@@ -38,6 +39,7 @@ coroutine_SOURCES = coroutine.c
 session_SOURCES = session.c
 pipe_SOURCES = pipe.c
 test_spice_uri_SOURCES = uri.c
+test_file_transfer_SOURCES = file-transfer.c
 usb_acl_helper_SOURCES = usb-acl-helper.c
 usb_acl_helper_CFLAGS = -DTESTDIR=\"$(abs_builddir)\"
 mock_acl_helper_SOURCES = mock-acl-helper.c
