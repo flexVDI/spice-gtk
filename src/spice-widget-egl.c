@@ -364,10 +364,6 @@ void spice_egl_unrealize_display(SpiceDisplay *display)
         d->egl.tex_pointer_id = 0;
     }
 
-    if (d->egl.surface != EGL_NO_SURFACE) {
-        eglDestroySurface(d->egl.display, d->egl.surface);
-        d->egl.surface = EGL_NO_SURFACE;
-    }
     if (d->egl.vbuf_id) {
         glDeleteBuffers(1, &d->egl.vbuf_id);
         d->egl.vbuf_id = 0;
@@ -378,14 +374,24 @@ void spice_egl_unrealize_display(SpiceDisplay *display)
         d->egl.prog = 0;
     }
 
-    if (d->egl.ctx) {
-        eglDestroyContext(d->egl.display, d->egl.ctx);
-        d->egl.ctx = 0;
-    }
+    if (GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
+        /* egl.surface && egl.ctx are only created on x11, see
+           spice_egl_init() */
 
-    eglMakeCurrent(d->egl.display, EGL_NO_SURFACE, EGL_NO_SURFACE,
-                   EGL_NO_CONTEXT);
-    eglTerminate(d->egl.display);
+        if (d->egl.surface != EGL_NO_SURFACE) {
+            eglDestroySurface(d->egl.display, d->egl.surface);
+            d->egl.surface = EGL_NO_SURFACE;
+        }
+
+        if (d->egl.ctx) {
+            eglDestroyContext(d->egl.display, d->egl.ctx);
+            d->egl.ctx = 0;
+        }
+
+        eglMakeCurrent(d->egl.display, EGL_NO_SURFACE, EGL_NO_SURFACE,
+                       EGL_NO_CONTEXT);
+        eglTerminate(d->egl.display);
+    }
 }
 
 G_GNUC_INTERNAL
