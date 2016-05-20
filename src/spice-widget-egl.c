@@ -284,12 +284,39 @@ end:
     return TRUE;
 }
 
+static gboolean
+gl_make_current(SpiceDisplay *display, GError **err)
+{
+    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+
+    if (GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
+        EGLBoolean success = eglMakeCurrent(d->egl.display,
+                                            d->egl.surface,
+                                            d->egl.surface,
+                                            d->egl.ctx);
+        if (success != EGL_TRUE) {
+            g_set_error_literal(err, SPICE_CLIENT_ERROR,
+                                SPICE_CLIENT_ERROR_FAILED,
+                                "failed to activate context");
+            return FALSE;
+        }
+    }
+#if GTK_CHECK_VERSION(3,16,0)
+    else {
+        GtkWidget *area = gtk_stack_get_child_by_name(d->stack, "gl-area");
+
+        gtk_gl_area_make_current(GTK_GL_AREA(area));
+    }
+#endif
+
+    return TRUE;
+}
+
 static gboolean spice_widget_init_egl_win(SpiceDisplay *display, GdkWindow *win,
                                           GError **err)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     EGLNativeWindowType native = 0;
-    EGLBoolean b;
 
     if (d->egl.surface)
         return TRUE;
@@ -316,15 +343,8 @@ static gboolean spice_widget_init_egl_win(SpiceDisplay *display, GdkWindow *win,
         return FALSE;
     }
 
-    b = eglMakeCurrent(d->egl.display,
-                       d->egl.surface,
-                       d->egl.surface,
-                       d->egl.ctx);
-    if (!b) {
-        g_set_error_literal(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
-                            "failed to activate context");
+    if (!gl_make_current(display, err))
         return FALSE;
-    }
 
     return TRUE;
 }
@@ -348,6 +368,9 @@ void spice_egl_unrealize_display(SpiceDisplay *display)
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
     SPICE_DEBUG("egl unrealize %p", d->egl.surface);
+
+    if (!gl_make_current(display, NULL))
+        return;
 
     if (d->egl.image != NULL) {
         eglDestroyImageKHR(d->egl.display, d->egl.image);
@@ -401,6 +424,9 @@ void spice_egl_resize_display(SpiceDisplay *display, int w, int h)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
     int prog;
+
+    if (!gl_make_current(display, NULL))
+        return;
 
     glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
 
@@ -521,6 +547,8 @@ void spice_egl_update_display(SpiceDisplay *display)
     int prog;
 
     g_return_if_fail(d->ready);
+    if (!gl_make_current(display, NULL))
+        return;
 
     spice_display_get_scaling(display, &s, &x, &y, &w, &h);
 
@@ -553,8 +581,14 @@ void spice_egl_update_display(SpiceDisplay *display)
     }
     SPICE_DEBUG("update %f +%d+%d %dx%d +%f+%f %fx%f", s, x, y, w, h,
                 tx, ty, tw, th);
-
     glBindTexture(GL_TEXTURE_2D, d->egl.tex_id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+#if !GTK_CHECK_VERSION(3,16,0)
+    glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, (GLeglImageOES)d->egl.image);
+#endif
+
     glDisable(GL_BLEND);
     glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
     glUseProgram(d->egl.prog);
@@ -587,7 +621,6 @@ void spice_egl_update_display(SpiceDisplay *display)
 
     glUseProgram(prog);
 }
-
 
 G_GNUC_INTERNAL
 gboolean spice_egl_update_scanout(SpiceDisplay *display,
@@ -633,11 +666,14 @@ gboolean spice_egl_update_scanout(SpiceDisplay *display,
                                        (EGLClientBuffer)NULL,
                                        attrs);
 
-    glBindTexture(GL_TEXTURE_2D, d->egl.tex_id);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, (GLeglImageOES)d->egl.image);
     d->egl.scanout = *scanout;
+
+#if GTK_CHECK_VERSION(3,16,0)
+    if (!gl_make_current(display, NULL))
+        return FALSE;
+
+    glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, (GLeglImageOES)d->egl.image);
+#endif
 
     return TRUE;
 }
