@@ -2307,7 +2307,7 @@ static gboolean spice_channel_delayed_unref(gpointer data)
     c->state = SPICE_CHANNEL_STATE_UNCONNECTED;
 
     session = spice_channel_get_session(channel);
-    if (spice_session_is_for_migration(session)) {
+    if (session && spice_session_is_for_migration(session)) {
         /* error during migration - abort migration */
         spice_session_abort_migration(session);
         return FALSE;
