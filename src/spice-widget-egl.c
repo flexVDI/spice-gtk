@@ -572,7 +572,10 @@ void spice_egl_update_display(SpiceDisplay *display)
                              0, 0, 1, 1);
     }
 
-    eglSwapBuffers(d->egl.display, d->egl.surface);
+    if (GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
+        /* gtk+ does the swap with gtkglarea */
+        eglSwapBuffers(d->egl.display, d->egl.surface);
+    }
 
     glUseProgram(prog);
 }
