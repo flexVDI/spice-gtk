@@ -33,12 +33,6 @@ gchar* spice_dos2unix(const gchar *str, gssize len, GError **error);
 void spice_mono_edge_highlight(unsigned width, unsigned hight,
                                const guint8 *and, const guint8 *xor, guint8 *dest);
 
-#define STATIC_MUTEX            GMutex
-#define STATIC_MUTEX_INIT(m)    g_mutex_init(&(m))
-#define STATIC_MUTEX_CLEAR(m)   g_mutex_clear(&(m))
-#define STATIC_MUTEX_LOCK(m)    g_mutex_lock(&(m))
-#define STATIC_MUTEX_UNLOCK(m)  g_mutex_unlock(&(m))
-
 G_END_DECLS
 
 #endif /* SPICE_UTIL_PRIV_H */

@@ -122,7 +122,7 @@ static void spice_channel_init(SpiceChannel *channel)
     spice_channel_set_common_capability(channel, SPICE_COMMON_CAP_AUTH_SASL);
 #endif
     g_queue_init(&c->xmit_queue);
-    STATIC_MUTEX_INIT(c->xmit_queue_lock);
+    g_mutex_init(&c->xmit_queue_lock);
 }
 
 static void spice_channel_constructed(GObject *gobject)
@@ -173,7 +173,7 @@ static void spice_channel_finalize(GObject *gobject)
 
     g_idle_remove_by_data(gobject);
 
-    STATIC_MUTEX_CLEAR(c->xmit_queue_lock);
+    g_mutex_clear(&c->xmit_queue_lock);
 
     if (c->caps)
         g_array_free(c->caps, TRUE);
@@ -681,9 +681,9 @@ static gboolean spice_channel_idle_wakeup(gpointer user_data)
      *   5) xmit_queue_wakeup_id now says there is a wakeup pending which is
      *      false
      */
-    STATIC_MUTEX_LOCK(c->xmit_queue_lock);
+    g_mutex_lock(&c->xmit_queue_lock);
     c->xmit_queue_wakeup_id = 0;
-    STATIC_MUTEX_UNLOCK(c->xmit_queue_lock);
+    g_mutex_unlock(&c->xmit_queue_lock);
 
     spice_channel_wakeup(channel, FALSE);
 
@@ -703,7 +703,7 @@ void spice_msg_out_send(SpiceMsgOut *out)
     c = out->channel->priv;
     size = spice_marshaller_get_total_size(out->marshaller);
 
-    STATIC_MUTEX_LOCK(c->xmit_queue_lock);
+    g_mutex_lock(&c->xmit_queue_lock);
     if (c->xmit_queue_blocked) {
         g_warning("message queue is blocked, dropping message");
         goto end;
@@ -724,7 +724,7 @@ void spice_msg_out_send(SpiceMsgOut *out)
     }
 
 end:
-    STATIC_MUTEX_UNLOCK(c->xmit_queue_lock);
+    g_mutex_unlock(&c->xmit_queue_lock);
 }
 
 /* coroutine context */
@@ -2200,9 +2200,9 @@ static void spice_channel_iterate_write(SpiceChannel *channel)
     SpiceMsgOut *out;
 
     do {
-        STATIC_MUTEX_LOCK(c->xmit_queue_lock);
+        g_mutex_lock(&c->xmit_queue_lock);
         out = g_queue_pop_head(&c->xmit_queue);
-        STATIC_MUTEX_UNLOCK(c->xmit_queue_lock);
+        g_mutex_unlock(&c->xmit_queue_lock);
         if (out) {
             guint32 size = spice_marshaller_get_total_size(out->marshaller);
             c->xmit_queue_size = (c->xmit_queue_size < size) ? 0 : c->xmit_queue_size - size;
@@ -2723,7 +2723,7 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
     g_clear_pointer(&c->peer_msg, g_free);
     c->peer_pos = 0;
 
-    STATIC_MUTEX_LOCK(c->xmit_queue_lock);
+    g_mutex_lock(&c->xmit_queue_lock);
     c->xmit_queue_blocked = TRUE; /* Disallow queuing new messages */
     gboolean was_empty = g_queue_is_empty(&c->xmit_queue);
     g_queue_foreach(&c->xmit_queue, (GFunc)spice_msg_out_unref, NULL);
@@ -2732,7 +2732,7 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
         g_source_remove(c->xmit_queue_wakeup_id);
         c->xmit_queue_wakeup_id = 0;
     }
-    STATIC_MUTEX_UNLOCK(c->xmit_queue_lock);
+    g_mutex_unlock(&c->xmit_queue_lock);
     spice_channel_flushed(channel, was_empty);
 
     g_array_set_size(c->remote_common_caps, 0);
@@ -2915,9 +2915,9 @@ guint64 spice_channel_get_queue_size (SpiceChannel *channel)
 {
     guint64 size;
     SpiceChannelPrivate *c = channel->priv;
-    STATIC_MUTEX_LOCK(c->xmit_queue_lock);
+    g_mutex_lock(&c->xmit_queue_lock);
     size = c->xmit_queue_size;
-    STATIC_MUTEX_UNLOCK(c->xmit_queue_lock);
+    g_mutex_unlock(&c->xmit_queue_lock);
     return size;
 }
 
@@ -3041,9 +3041,9 @@ void spice_channel_flush_async(SpiceChannel *self, GCancellable *cancellable,
 
     task = g_task_new(self, cancellable, callback, user_data);
 
-    STATIC_MUTEX_LOCK(c->xmit_queue_lock);
+    g_mutex_lock(&c->xmit_queue_lock);
     was_empty = g_queue_is_empty(&c->xmit_queue);
-    STATIC_MUTEX_UNLOCK(c->xmit_queue_lock);
+    g_mutex_unlock(&c->xmit_queue_lock);
     if (was_empty) {
         g_task_return_boolean(task, TRUE);
         g_object_unref(task);

@@ -109,7 +109,7 @@ struct _SpiceChannelPrivate {
 
     GQueue                      xmit_queue;
     gboolean                    xmit_queue_blocked;
-    STATIC_MUTEX                xmit_queue_lock;
+    GMutex                      xmit_queue_lock;
     guint                       xmit_queue_wakeup_id;
     guint64                     xmit_queue_size;
 
