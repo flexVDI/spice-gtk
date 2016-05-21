@@ -20,6 +20,7 @@ noinst_PROGRAMS += $(TESTS)
 AM_CPPFLAGS =					\
 	$(COMMON_CFLAGS)			\
 	$(GIO_CFLAGS)				\
+	$(SMARTCARD_CFLAGS)			\
 	-I$(top_srcdir)/src			\
 	-I$(top_builddir)/src			\
 	-DG_LOG_DOMAIN=\"GSpice\"		\
