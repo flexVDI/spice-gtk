@@ -1891,7 +1891,10 @@ error:
 G_GNUC_INTERNAL
 void spice_channel_wakeup(SpiceChannel *channel, gboolean cancel)
 {
-    GCoroutine *c = &channel->priv->coroutine;
+    GCoroutine *c;
+
+    g_return_if_fail(SPICE_IS_CHANNEL(channel));
+    c = &channel->priv->coroutine;
 
     if (cancel)
         g_coroutine_condition_cancel(c);
