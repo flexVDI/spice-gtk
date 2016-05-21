@@ -137,6 +137,58 @@ test_simple_transfer(Fixture *f, gconstpointer user_data)
     g_main_loop_run (f->loop);
 }
 
+/*******************************************************************************
+ * TEST CANCEL ON INIT TASK
+ ******************************************************************************/
+static void
+transfer_cancelled_on_init_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
+{
+    GFileInfo *info;
+    SpiceFileTransferTask *xfer_task;
+    GError *error = NULL;
+
+    xfer_task = SPICE_FILE_TRANSFER_TASK(obj);
+    info = spice_file_transfer_task_init_task_finish(xfer_task, res, &error);
+    g_assert_error(error, G_IO_ERROR, G_IO_ERROR_CANCELLED);
+    g_assert_null(info);
+
+    transfer_xfer_task_on_finished(NULL, NULL, data);
+}
+
+static void
+test_cancel_before_task_init(Fixture *f, gconstpointer user_data)
+{
+    GHashTableIter iter;
+    gpointer key, value;
+
+    f->xfer_tasks = spice_file_transfer_task_create_tasks(f->files, NULL, G_FILE_COPY_NONE, f->cancellable);
+    g_hash_table_iter_init(&iter, f->xfer_tasks);
+    while (g_hash_table_iter_next(&iter, &key, &value)) {
+        SpiceFileTransferTask *xfer_task = SPICE_FILE_TRANSFER_TASK(value);
+        g_signal_connect(xfer_task, "finished", G_CALLBACK(transfer_xfer_task_on_finished), f);
+        g_cancellable_cancel(f->cancellable);
+        spice_file_transfer_task_init_task_async(xfer_task, transfer_cancelled_on_init_async_cb, f);
+    }
+    g_main_loop_run (f->loop);
+}
+
+static void
+test_cancel_after_task_init(Fixture *f, gconstpointer user_data)
+{
+    GHashTableIter iter;
+    gpointer key, value;
+
+    f->xfer_tasks = spice_file_transfer_task_create_tasks(f->files, NULL, G_FILE_COPY_NONE, f->cancellable);
+    g_hash_table_iter_init(&iter, f->xfer_tasks);
+    while (g_hash_table_iter_next(&iter, &key, &value)) {
+        SpiceFileTransferTask *xfer_task = SPICE_FILE_TRANSFER_TASK(value);
+        g_signal_connect(xfer_task, "finished", G_CALLBACK(transfer_xfer_task_on_finished), f);
+        spice_file_transfer_task_init_task_async(xfer_task, transfer_cancelled_on_init_async_cb, f);
+        g_cancellable_cancel(f->cancellable);
+    }
+    g_main_loop_run (f->loop);
+}
+
 /* Tests summary:
  *
  * This tests are specific to SpiceFileTransferTask in order to verify:
@@ -182,9 +234,25 @@ int main(int argc, char* argv[])
                Fixture, GUINT_TO_POINTER(SINGLE_FILE),
                f_setup, test_simple_transfer, f_teardown);
 
+    g_test_add("/spice-file-transfer-task/single/cancel/before-task-init",
+               Fixture, GUINT_TO_POINTER(SINGLE_FILE),
+               f_setup, test_cancel_before_task_init, f_teardown);
+
+    g_test_add("/spice-file-transfer-task/single/cancel/after-task-init",
+               Fixture, GUINT_TO_POINTER(SINGLE_FILE),
+               f_setup, test_cancel_after_task_init, f_teardown);
+
     g_test_add("/spice-file-transfer-task/multiple/simple-transfer",
                Fixture, GUINT_TO_POINTER(MULTIPLE_FILES),
                f_setup, test_simple_transfer, f_teardown);
+
+    g_test_add("/spice-file-transfer-task/multiple/cancel/before-task-init",
+               Fixture, GUINT_TO_POINTER(MULTIPLE_FILES),
+               f_setup, test_cancel_before_task_init, f_teardown);
+
+    g_test_add("/spice-file-transfer-task/multiple/cancel/after-task-init",
+               Fixture, GUINT_TO_POINTER(MULTIPLE_FILES),
+               f_setup, test_cancel_after_task_init, f_teardown);
 
     return g_test_run();
 }
