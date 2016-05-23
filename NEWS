@@ -1,3 +1,33 @@
+v0.32
+=====
+
+libspice-client-gtk API/ABI break: library soname/version has been
+bumped, and deprecated symbols have been removed.  In practice, most
+of the API (in particular for language bindings) should be unchanged.
+
+- drop gtk+ 2.0 support
+- require gtk+ >= 3.12 and glib >= 2.36
+- add GStreamer as a backend for mjpeg, vp8 & h264 decoding
+  This allows the upcoming Spice server release to send video
+  regions with better codecs.
+- a number of spice-gtk structures are now private
+- spice-gtk widget is no longer a GtkDrawingArea but an opaque type
+  with only guarantee to be a GtkWidget
+- virgl: use GtkGlArea if possible (on wayland only atm)
+- virgl: various fixes (multiple display, resize, canvas-less support)
+- win-usbredir: use UsbDk backend when available and various
+  improvements
+- ensure that dnd file copy get cancelled
+- some JP and KR keyboard handling fixes on Windows
+- fix SASL GSSAPI
+- fix ipv6 proxy address handling
+- allow smaller widget with scaling enabled
+- add spice_main_request_mouse_mode() to request mouse mode
+- add SpiceGtkSession:sync-modifiers to change modifiers sync behaviour
+- various video decoding improvements
+- use GTask instead of GSimpleAsyncResult
+- misc bindings, leaks, warnings, and spelling fixes
+
 v0.31
 =====
 
