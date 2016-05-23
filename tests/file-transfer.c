@@ -279,6 +279,64 @@ test_cancel_after_read_async(Fixture *f, gconstpointer user_data)
     g_main_loop_run (f->loop);
 }
 
+/*******************************************************************************
+ * TEST AGENT CANCEL ON READ
+ ******************************************************************************/
+
+static void
+transfer_agent_cancelled_read_async_cb(GObject *source_object,
+                                       GAsyncResult *res,
+                                       gpointer user_data)
+{
+    SpiceFileTransferTask *xfer_task;
+    gssize count;
+    char *buffer;
+    GError *error = NULL;
+
+    xfer_task = SPICE_FILE_TRANSFER_TASK(source_object);
+    count = spice_file_transfer_task_read_finish(xfer_task, res, &buffer, &error);
+    g_assert_error(error, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED);
+    g_assert_cmpint(count, ==, -1);
+
+    transfer_xfer_task_on_finished(NULL, NULL, user_data);
+}
+
+static void
+transfer_on_init_async_cb_agent_cancel(GObject *obj, GAsyncResult *res, gpointer data)
+{
+    GFileInfo *info;
+    SpiceFileTransferTask *xfer_task;
+    GError *error = NULL;
+    GCancellable *cancellable;
+
+    xfer_task = SPICE_FILE_TRANSFER_TASK(obj);
+    info = spice_file_transfer_task_init_task_finish(xfer_task, res, &error);
+    g_assert_no_error(error);
+    g_assert_nonnull(info);
+
+    spice_file_transfer_task_read_async(xfer_task, transfer_agent_cancelled_read_async_cb, data);
+
+    error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                        "transfer is cancelled by spice agent");
+    spice_file_transfer_task_completed(xfer_task, error);
+}
+
+static void
+test_agent_cancel_on_read(Fixture *f, gconstpointer user_data)
+{
+    GHashTableIter iter;
+    gpointer key, value;
+
+    f->xfer_tasks = spice_file_transfer_task_create_tasks(f->files, NULL, G_FILE_COPY_NONE, NULL);
+    g_hash_table_iter_init(&iter, f->xfer_tasks);
+    while (g_hash_table_iter_next(&iter, &key, &value)) {
+        SpiceFileTransferTask *xfer_task = SPICE_FILE_TRANSFER_TASK(value);
+        g_signal_connect(xfer_task, "finished", G_CALLBACK(transfer_xfer_task_on_finished), f);
+        spice_file_transfer_task_init_task_async(xfer_task, transfer_on_init_async_cb_agent_cancel, f);
+    }
+    g_main_loop_run (f->loop);
+}
+
 /* Tests summary:
  *
  * This tests are specific to SpiceFileTransferTask in order to verify:
@@ -340,6 +398,10 @@ int main(int argc, char* argv[])
                Fixture, GUINT_TO_POINTER(SINGLE_FILE),
                f_setup, test_cancel_after_read_async, f_teardown);
 
+    g_test_add("/spice-file-transfer-task/single/agent/cancel",
+               Fixture, GUINT_TO_POINTER(SINGLE_FILE),
+               f_setup, test_agent_cancel_on_read, f_teardown);
+
     g_test_add("/spice-file-transfer-task/multiple/simple-transfer",
                Fixture, GUINT_TO_POINTER(MULTIPLE_FILES),
                f_setup, test_simple_transfer, f_teardown);
@@ -359,6 +421,10 @@ int main(int argc, char* argv[])
     g_test_add("/spice-file-transfer-task/multiple/cancel/after-read-async",
                Fixture, GUINT_TO_POINTER(MULTIPLE_FILES),
                f_setup, test_cancel_after_read_async, f_teardown);
+
+    g_test_add("/spice-file-transfer-task/multiple/agent/cancel",
+               Fixture, GUINT_TO_POINTER(MULTIPLE_FILES),
+               f_setup, test_agent_cancel_on_read, f_teardown);
 
     return g_test_run();
 }
