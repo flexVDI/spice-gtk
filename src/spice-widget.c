@@ -934,7 +934,7 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
     GdkWindow *window = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
-    GdkGrabStatus status = GDK_GRAB_BROKEN;
+    GdkGrabStatus status = GDK_GRAB_FAILED;
     GdkCursor *blank = get_blank_cursor();
 
     if (!gtk_widget_get_realized(GTK_WIDGET(display)))
