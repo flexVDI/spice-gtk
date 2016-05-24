@@ -103,7 +103,7 @@ struct display_stream {
 
     /* from messages */
     display_surface             *surface;
-    SpiceClip                   *clip;
+    const SpiceClip             *clip;
     QRegion                     region;
     int                         have_region;
 

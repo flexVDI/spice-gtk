@@ -1131,7 +1131,7 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
     }
 }
 
-static SpiceRect *stream_get_dest(display_stream *st, SpiceMsgIn *frame_msg)
+static const SpiceRect *stream_get_dest(display_stream *st, SpiceMsgIn *frame_msg)
 {
     if (frame_msg == NULL ||
         spice_msg_in_type(frame_msg) != SPICE_MSG_DISPLAY_STREAM_DATA_SIZED) {
@@ -1213,7 +1213,7 @@ void stream_display_frame(display_stream *st, SpiceMsgIn *frame_msg,
                           uint8_t* data)
 {
     int width, height;
-    SpiceRect *dest;
+    const SpiceRect *dest;
     int stride;
 
     stream_get_dimensions(st, frame_msg, &width, &height);
