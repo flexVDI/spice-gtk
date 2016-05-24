@@ -672,6 +672,7 @@ gboolean spice_egl_update_scanout(SpiceDisplay *display,
     if (!gl_make_current(display, NULL))
         return FALSE;
 
+    glBindTexture(GL_TEXTURE_2D, d->egl.tex_id);
     glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, (GLeglImageOES)d->egl.image);
 #endif
 
