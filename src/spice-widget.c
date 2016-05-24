@@ -238,7 +238,7 @@ static void update_ready(SpiceDisplay *display)
 
     if (d->monitor_ready) {
 #ifndef G_OS_WIN32
-        ready = d->egl.enabled ? d->egl.image != NULL : d->mark != 0;
+        ready = d->egl.enabled || d->mark != 0;
 #else
         ready = d->mark != 0;
 #endif
@@ -2296,9 +2296,12 @@ static void update_area(SpiceDisplay *display,
 
 #ifndef G_OS_WIN32
     if (d->egl.enabled) {
+        const SpiceGlScanout *so =
+            spice_display_get_gl_scanout(SPICE_DISPLAY_CHANNEL(d->display));
+        g_return_if_fail(so != NULL);
         primary = (GdkRectangle) {
-            .width = d->egl.scanout.width,
-            .height = d->egl.scanout.height
+            .width = so->width,
+            .height = so->height
         };
     } else
 #endif
@@ -2611,21 +2614,22 @@ G_GNUC_INTERNAL
 void spice_display_widget_gl_scanout(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
-    const SpiceGlScanout *scanout;
-    GError *err = NULL;
 
     SPICE_DEBUG("%s: got scanout",  __FUNCTION__);
     set_egl_enabled(display, true);
 
-    g_return_if_fail(d->egl.context_ready);
+    if (d->egl.context_ready) {
+        const SpiceGlScanout *scanout;
+        GError *err = NULL;
 
-    scanout = spice_display_get_gl_scanout(SPICE_DISPLAY_CHANNEL(d->display));
-    /* should only be called when the display has a scanout */
-    g_return_if_fail(scanout != NULL);
+        scanout = spice_display_get_gl_scanout(SPICE_DISPLAY_CHANNEL(d->display));
+        /* should only be called when the display has a scanout */
+        g_return_if_fail(scanout != NULL);
 
-    if (!spice_egl_update_scanout(display, scanout, &err)) {
-        g_critical("update scanout failed: %s", err->message);
-        g_clear_error(&err);
+        if (!spice_egl_update_scanout(display, scanout, &err)) {
+            g_critical("update scanout failed: %s", err->message);
+            g_clear_error(&err);
+        }
     }
 }
 
