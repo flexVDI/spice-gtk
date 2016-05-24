@@ -147,10 +147,10 @@ struct _SpiceDisplayPrivate {
 #endif
 };
 
-int      spicex_image_create                 (SpiceDisplay *display);
-void     spicex_image_destroy                (SpiceDisplay *display);
-void     spicex_draw_event                   (SpiceDisplay *display, cairo_t *cr);
-gboolean spicex_is_scaled                    (SpiceDisplay *display);
+int      spice_cairo_image_create                 (SpiceDisplay *display);
+void     spice_cairo_image_destroy                (SpiceDisplay *display);
+void     spice_cairo_draw_event                   (SpiceDisplay *display, cairo_t *cr);
+gboolean spice_cairo_is_scaled                    (SpiceDisplay *display);
 void     spice_display_get_scaling           (SpiceDisplay *display, double *s, int *x, int *y, int *w, int *h);
 gboolean spice_egl_init                      (SpiceDisplay *display, GError **err);
 gboolean spice_egl_realize_display           (SpiceDisplay *display, GdkWindow *win,

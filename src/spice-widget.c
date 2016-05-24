@@ -417,7 +417,7 @@ static void spice_display_dispose(GObject *obj)
 
     SPICE_DEBUG("spice display dispose");
 
-    spicex_image_destroy(display);
+    spice_cairo_image_destroy(display);
     g_clear_object(&d->session);
     d->gtk_session = NULL;
 
@@ -1113,7 +1113,7 @@ static void recalc_geometry(GtkWidget *widget)
     SpiceDisplayPrivate *d = display->priv;
     gdouble zoom = 1.0;
 
-    if (spicex_is_scaled(display))
+    if (spice_cairo_is_scaled(display))
         zoom = (gdouble)d->zoom_level / 100;
 
     SPICE_DEBUG("recalc geom monitor: %d:%d, guest +%d+%d:%dx%d, window %dx%d, zoom %g",
@@ -1229,7 +1229,7 @@ static gboolean draw_event(GtkWidget *widget, cairo_t *cr, gpointer data)
         return false;
     g_return_val_if_fail(d->canvas.surface != NULL, false);
 
-    spicex_draw_event(display, cr);
+    spice_cairo_draw_event(display, cr);
     update_mouse_pointer(display);
 
     return true;
@@ -1743,10 +1743,9 @@ static int button_mask_gdk_to_spice(int gdk)
     return spice;
 }
 
-G_GNUC_INTERNAL
-void spicex_transform_input (SpiceDisplay *display,
-                             double window_x, double window_y,
-                             int *input_x, int *input_y)
+static void transform_input(SpiceDisplay *display,
+                            double window_x, double window_y,
+                            int *input_x, int *input_y)
 {
     SpiceDisplayPrivate *d = display->priv;
     int display_x, display_y, display_w, display_h;
@@ -1799,7 +1798,7 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
         try_keyboard_grab(display);
     }
 
-    spicex_transform_input (display, motion->x, motion->y, &x, &y);
+    transform_input(display, motion->x, motion->y, &x, &y);
 
     switch (d->mouse_mode) {
     case SPICE_MOUSE_MODE_CLIENT:
@@ -1872,7 +1871,7 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
     if (d->disable_inputs)
         return true;
 
-    spicex_transform_input (display, button->x, button->y, &x, &y);
+    transform_input(display, button->x, button->y, &x, &y);
     if ((x < 0 || x >= d->area.width ||
          y < 0 || y >= d->area.height) &&
         d->mouse_mode == SPICE_MOUSE_MODE_CLIENT) {
@@ -1956,7 +1955,7 @@ static void update_image(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
 
-    spicex_image_create(display);
+    spice_cairo_image_create(display);
     if (d->canvas.convert)
         do_color_convert(display, &d->area);
 }
@@ -1977,7 +1976,7 @@ static void realize(GtkWidget *widget)
 
 static void unrealize(GtkWidget *widget)
 {
-    spicex_image_destroy(SPICE_DISPLAY(widget));
+    spice_cairo_image_destroy(SPICE_DISPLAY(widget));
 #ifndef G_OS_WIN32
     spice_egl_unrealize_display(SPICE_DISPLAY(widget));
 #endif
@@ -2323,7 +2322,7 @@ static void update_area(SpiceDisplay *display,
     if (!d->egl.enabled)
 #endif
     {
-        spicex_image_destroy(display);
+        spice_cairo_image_destroy(display);
         if (gtk_widget_get_realized(GTK_WIDGET(display)))
             update_image(display);
     }
@@ -2354,7 +2353,7 @@ static void primary_destroy(SpiceChannel *channel, gpointer data)
     SpiceDisplay *display = SPICE_DISPLAY(data);
     SpiceDisplayPrivate *d = display->priv;
 
-    spicex_image_destroy(display);
+    spice_cairo_image_destroy(display);
     d->canvas.width  = 0;
     d->canvas.height = 0;
     d->canvas.stride = 0;
@@ -2512,7 +2511,7 @@ void spice_display_get_scaling(SpiceDisplay *display,
         wh = fbh;
     }
 
-    if (!spicex_is_scaled(display)) {
+    if (!spice_cairo_is_scaled(display)) {
         s = 1.0;
         x = 0;
         y = 0;
