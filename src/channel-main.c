@@ -1559,7 +1559,16 @@ static void update_display_timer(SpiceMainChannel *channel, guint seconds)
     if (c->timer_id)
         g_source_remove(c->timer_id);
 
-    c->timer_id = g_timeout_add_seconds(seconds, timer_set_display, channel);
+    if (seconds != 0) {
+        c->timer_id = g_timeout_add_seconds(seconds, timer_set_display, channel);
+    } else {
+        /* We need to special case 0, as we want the callback to fire as soon
+         * as possible. g_timeout_add_seconds(0) would set up a timer which would fire
+         * at the next second boundary, which might be nearly 1 full second later.
+         */
+        c->timer_id = g_timeout_add(0, timer_set_display, channel);
+    }
+
 }
 
 /* coroutine context  */
