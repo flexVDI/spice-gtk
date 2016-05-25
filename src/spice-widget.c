@@ -1227,7 +1227,6 @@ static gboolean draw_event(GtkWidget *widget, cairo_t *cr, gpointer data)
     if (d->mark == 0 || d->canvas.data == NULL ||
         d->area.width == 0 || d->area.height == 0)
         return false;
-    g_return_val_if_fail(d->canvas.surface != NULL, false);
 
     spice_cairo_draw_event(display, cr);
     update_mouse_pointer(display);
