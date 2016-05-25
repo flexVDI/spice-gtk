@@ -38,7 +38,6 @@ G_BEGIN_DECLS
 
 typedef struct _SpiceFileTransferTask SpiceFileTransferTask;
 typedef struct _SpiceFileTransferTaskClass SpiceFileTransferTaskClass;
-typedef struct _SpiceFileTransferTaskPrivate SpiceFileTransferTaskPrivate;
 
 GType spice_file_transfer_task_get_type(void) G_GNUC_CONST;
 
