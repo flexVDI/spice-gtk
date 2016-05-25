@@ -18,6 +18,12 @@
 #ifndef __SPICE_FILE_TRANSFER_TASK_H__
 #define __SPICE_FILE_TRANSFER_TASK_H__
 
+#if !defined(__SPICE_CLIENT_H_INSIDE__) && !defined(SPICE_COMPILATION)
+#warning "Only <spice-client.h> can be included directly"
+#endif
+
+#include "spice-client.h"
+
 #include <glib-object.h>
 
 G_BEGIN_DECLS
