@@ -71,6 +71,30 @@ typedef struct spice_migrate spice_migrate;
  *
  * Since: 0.31
  */
+
+/**
+ * SpiceFileTransferTask:
+ *
+ * The #SpiceFileTransferTask struct is opaque and should not be accessed directly.
+ */
+struct _SpiceFileTransferTask
+{
+    GObject parent;
+
+    SpiceFileTransferTaskPrivate *priv;
+};
+
+/**
+ * SpiceFileTransferTaskClass:
+ * @parent_class: Parent class.
+ *
+ * Class structure for #SpiceFileTransferTask.
+ */
+struct _SpiceFileTransferTaskClass
+{
+    GObjectClass parent_class;
+};
+
 G_DEFINE_TYPE(SpiceFileTransferTask, spice_file_transfer_task, G_TYPE_OBJECT)
 
 #define FILE_TRANSFER_TASK_PRIVATE(o) \

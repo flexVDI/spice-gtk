@@ -40,29 +40,6 @@ typedef struct _SpiceFileTransferTask SpiceFileTransferTask;
 typedef struct _SpiceFileTransferTaskClass SpiceFileTransferTaskClass;
 typedef struct _SpiceFileTransferTaskPrivate SpiceFileTransferTaskPrivate;
 
-/**
- * SpiceFileTransferTask:
- *
- * The #SpiceFileTransferTask struct is opaque and should not be accessed directly.
- */
-struct _SpiceFileTransferTask
-{
-    GObject parent;
-
-    SpiceFileTransferTaskPrivate *priv;
-};
-
-/**
- * SpiceFileTransferTaskClass:
- * @parent_class: Parent class.
- *
- * Class structure for #SpiceFileTransferTask.
- */
-struct _SpiceFileTransferTaskClass
-{
-    GObjectClass parent_class;
-};
-
 GType spice_file_transfer_task_get_type(void) G_GNUC_CONST;
 
 char* spice_file_transfer_task_get_filename(SpiceFileTransferTask *self);

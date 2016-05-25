@@ -494,8 +494,6 @@ SpiceWebdavChannelPrivate
 <SECTION>
 <FILE>file-transfer-task</FILE>
 <TITLE>SpiceFileTransferTask</TITLE>
-SpiceFileTransferTask
-SpiceFileTransferTaskClass
 <SUBSECTION>
 spice_file_transfer_task_get_progress
 spice_file_transfer_task_get_filename
@@ -509,5 +507,7 @@ SPICE_FILE_TRANSFER_TASK_CLASS
 SPICE_IS_FILE_TRANSFER_TASK_CLASS
 SPICE_FILE_TRANSFER_TASK_GET_CLASS
 <SUBSECTION Private>
+SpiceFileTransferTask
+SpiceFileTransferTaskClass
 SpiceFileTransferTaskPrivate
 </SECTION>
