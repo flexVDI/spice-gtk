@@ -54,6 +54,10 @@
 
 typedef struct spice_migrate spice_migrate;
 
+static guint32 spice_file_transfer_task_get_id(SpiceFileTransferTask *self);
+static SpiceMainChannel *spice_file_transfer_task_get_channel(SpiceFileTransferTask *self);
+static GCancellable *spice_file_transfer_task_get_cancellable(SpiceFileTransferTask *self);
+
 /**
  * SECTION:file-transfer-task
  * @short_description: Monitoring file transfers
@@ -1911,9 +1915,12 @@ static void file_xfer_data_flushed_cb(GObject *source_object,
 static void file_xfer_queue(SpiceFileTransferTask *self, int data_size)
 {
     VDAgentFileXferDataMessage msg;
-    SpiceMainChannel *channel = SPICE_MAIN_CHANNEL(self->channel);
+    SpiceMainChannel *channel;
 
-    msg.id = self->id;
+    channel = spice_file_transfer_task_get_channel(self);
+    g_return_if_fail(channel != NULL);
+
+    msg.id = spice_file_transfer_task_get_id(self);
     msg.size = data_size;
     agent_msg_queue_many(channel, VD_AGENT_FILE_XFER_DATA,
                          &msg, sizeof(msg),
@@ -1941,12 +1948,15 @@ static void file_xfer_read_cb(GObject *source_object,
     }
 
     if (count > 0 || self->file_size == 0) {
+        GCancellable *cancellable;
+
         self->read_bytes += count;
         g_object_notify(G_OBJECT(self), "progress");
         file_xfer_queue(self, count);
         if (count == 0)
             return;
-        file_xfer_flush_async(channel, self->cancellable,
+        cancellable = spice_file_transfer_task_get_cancellable(self);
+        file_xfer_flush_async(channel, cancellable,
                               file_xfer_data_flushed_cb, self);
         self->pending = TRUE;
     } else if (error) {
@@ -3231,7 +3241,23 @@ gboolean spice_main_file_copy_finish(SpiceMainChannel *channel,
     return g_task_propagate_boolean(task, error);
 }
 
+static guint32 spice_file_transfer_task_get_id(SpiceFileTransferTask *self)
+{
+    g_return_val_if_fail(self != NULL, 0);
+    return self->id;
+}
 
+static SpiceMainChannel *spice_file_transfer_task_get_channel(SpiceFileTransferTask *self)
+{
+    g_return_val_if_fail(self != NULL, NULL);
+    return self->channel;
+}
+
+static GCancellable *spice_file_transfer_task_get_cancellable(SpiceFileTransferTask *self)
+{
+    g_return_val_if_fail(self != NULL, NULL);
+    return self->cancellable;
+}
 
 static void
 spice_file_transfer_task_get_property(GObject *object,
