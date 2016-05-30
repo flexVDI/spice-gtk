@@ -581,11 +581,7 @@ SPICE_CHECK_LZ4
 dnl ===========================================================================
 dnl check compiler flags
 
-# We want to enable these, but need to sort out the
-# decl mess with  src/generated_*.c
-dontwarn="-Wmissing-declarations"
-
-SPICE_COMPILE_WARNINGS([$dontwarn])
+SPICE_COMPILE_WARNINGS
 
 SPICE_CFLAGS="$SPICE_CFLAGS $WARN_CFLAGS"
 
