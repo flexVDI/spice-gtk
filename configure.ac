@@ -581,7 +581,10 @@ SPICE_CHECK_LZ4
 dnl ===========================================================================
 dnl check compiler flags
 
-SPICE_COMPILE_WARNINGS
+# some glib/gstreamer enums use 1 << 31
+dontwarn="-Wshift-overflow=2"
+
+SPICE_COMPILE_WARNINGS([$dontwarn])
 
 SPICE_CFLAGS="$SPICE_CFLAGS $WARN_CFLAGS"
 
