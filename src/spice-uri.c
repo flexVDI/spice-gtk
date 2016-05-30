@@ -340,7 +340,7 @@ static void spice_uri_finalize(GObject* obj)
     G_OBJECT_CLASS (spice_uri_parent_class)->finalize (obj);
 }
 
-static void spice_uri_init (SpiceURI *self)
+static void spice_uri_init (SpiceURI *self G_GNUC_UNUSED)
 {
 }
 
