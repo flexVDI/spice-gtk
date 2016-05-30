@@ -25,6 +25,7 @@
 #include "spice-marshal.h"
 
 #include "common/snd_codec.h"
+#include "channel-playback-priv.h"
 
 /**
  * SECTION:channel-playback

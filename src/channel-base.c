@@ -24,8 +24,8 @@
 #include "spice-channel-priv.h"
 
 /* coroutine context */
-G_GNUC_INTERNAL
-void spice_channel_handle_set_ack(SpiceChannel *channel, SpiceMsgIn *in)
+static void
+spice_channel_handle_set_ack(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceChannelPrivate *c = channel->priv;
     SpiceMsgSetAck* ack = spice_msg_in_parsed(in);
@@ -40,8 +40,8 @@ void spice_channel_handle_set_ack(SpiceChannel *channel, SpiceMsgIn *in)
 }
 
 /* coroutine context */
-G_GNUC_INTERNAL
-void spice_channel_handle_ping(SpiceChannel *channel, SpiceMsgIn *in)
+static void
+spice_channel_handle_ping(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceChannelPrivate *c = channel->priv;
     SpiceMsgPing *ping = spice_msg_in_parsed(in);
@@ -52,8 +52,8 @@ void spice_channel_handle_ping(SpiceChannel *channel, SpiceMsgIn *in)
 }
 
 /* coroutine context */
-G_GNUC_INTERNAL
-void spice_channel_handle_notify(SpiceChannel *channel, SpiceMsgIn *in)
+static void
+spice_channel_handle_notify(SpiceChannel *channel, SpiceMsgIn *in)
 {
     static const char* severity_strings[] = {"info", "warn", "error"};
     static const char* visibility_strings[] = {"!", "!!", "!!!"};
@@ -82,8 +82,8 @@ void spice_channel_handle_notify(SpiceChannel *channel, SpiceMsgIn *in)
 }
 
 /* coroutine context */
-G_GNUC_INTERNAL
-void spice_channel_handle_disconnect(SpiceChannel *channel, SpiceMsgIn *in)
+static void
+spice_channel_handle_disconnect(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceMsgDisconnect *disconnect = spice_msg_in_parsed(in);
 
@@ -148,8 +148,8 @@ get_msg_handler(SpiceChannel *channel, SpiceMsgIn *in, gpointer data)
 }
 
 /* coroutine context */
-G_GNUC_INTERNAL
-void spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in)
+static void
+spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceMsgOut *out;
     SpiceMsgIn *data = NULL;

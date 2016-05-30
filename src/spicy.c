@@ -84,6 +84,8 @@ struct _SpiceWindowClass
   GObjectClass parent_class;
 };
 
+static GType spice_window_get_type(void);
+
 G_DEFINE_TYPE (SpiceWindow, spice_window, G_TYPE_OBJECT);
 
 #define CHANNELID_MAX 4
@@ -1501,14 +1503,16 @@ static void dialog_response_cb(GtkDialog *dialog,
     }
 }
 
-void task_cancel_cb(GtkButton *button,
-                    gpointer user_data)
+static void
+task_cancel_cb(GtkButton *button,
+               gpointer user_data)
 {
     SpiceFileTransferTask *task = SPICE_FILE_TRANSFER_TASK(user_data);
     spice_file_transfer_task_cancel(task);
 }
 
-TransferTaskWidgets *transfer_task_widgets_new(SpiceFileTransferTask *task)
+static TransferTaskWidgets *
+transfer_task_widgets_new(SpiceFileTransferTask *task)
 {
     TransferTaskWidgets *widgets = g_new0(TransferTaskWidgets, 1);
 
@@ -1544,7 +1548,8 @@ TransferTaskWidgets *transfer_task_widgets_new(SpiceFileTransferTask *task)
     return widgets;
 }
 
-void transfer_task_widgets_free(TransferTaskWidgets *widgets)
+static void
+transfer_task_widgets_free(TransferTaskWidgets *widgets)
 {
     /* child widgets will be destroyed automatically */
     gtk_widget_destroy(widgets->vbox);

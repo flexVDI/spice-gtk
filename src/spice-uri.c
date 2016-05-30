@@ -22,6 +22,7 @@
 
 #include "spice-client.h"
 #include "spice-uri.h"
+#include "spice-uri-priv.h"
 
 /**
  * SECTION:spice-uri

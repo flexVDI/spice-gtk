@@ -583,7 +583,7 @@ dnl check compiler flags
 
 # We want to enable these, but need to sort out the
 # decl mess with  src/generated_*.c
-dontwarn="-Wmissing-prototypes -Wmissing-declarations"
+dontwarn="-Wmissing-declarations"
 
 # We want to enable these, but Gtk+2.0 has a bad decl
 # gtk-2.0/gtk/gtkitemfactory.h:47:1: error: function declaration

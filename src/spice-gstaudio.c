@@ -66,7 +66,7 @@ static void spice_gstaudio_finalize(GObject *obj)
     G_OBJECT_CLASS(spice_gstaudio_parent_class)->finalize(obj);
 }
 
-void stream_dispose(struct stream *s)
+static void stream_dispose(struct stream *s)
 {
     if (s->pipe) {
         gst_element_set_state(s->pipe, GST_STATE_NULL);
