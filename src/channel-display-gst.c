@@ -174,7 +174,11 @@ static GstFlowReturn new_sample(GstAppSink *gstappsink, gpointer video_decoder)
         while (l) {
             frame = l->data;
             if (frame->timestamp == GST_BUFFER_PTS(buffer)) {
-                /* Now that we know there is a match, remove the older
+                /* The frame is now ready for display */
+                frame->sample = sample;
+                g_queue_push_tail(decoder->display_queue, frame);
+
+                /* Now that we know there is a match, remove it and the older
                  * frames from the decoding queue.
                  */
                 while ((frame = g_queue_pop_head(decoder->decoding_queue))) {
@@ -187,10 +191,6 @@ static GstFlowReturn new_sample(GstAppSink *gstappsink, gpointer video_decoder)
                     SPICE_DEBUG("the GStreamer pipeline dropped a frame");
                     free_frame(frame);
                 }
-
-                /* The frame is now ready for display */
-                frame->sample = sample;
-                g_queue_push_tail(decoder->display_queue, frame);
                 break;
             }
             l = l->next;
