@@ -585,13 +585,6 @@ dnl check compiler flags
 # decl mess with  src/generated_*.c
 dontwarn="-Wmissing-declarations"
 
-# We want to enable these, but Gtk+2.0 has a bad decl
-# gtk-2.0/gtk/gtkitemfactory.h:47:1: error: function declaration
-# isn't a prototype.
-if test "$with_gtk" = "2.0"; then
-  dontwarn="$dontwarn -Wstrict-prototypes"
-fi
-
 SPICE_COMPILE_WARNINGS([$dontwarn])
 
 SPICE_CFLAGS="$SPICE_CFLAGS $WARN_CFLAGS"
