@@ -106,7 +106,7 @@ static gchar *spice_usbutil_get_sysfs_attribute(int bus, int address,
     if (stat(filename, &stat_buf) != 0)
         return NULL;
 
-    snprintf(filename, sizeof(filename), "/sys/dev/char/%d:%d/%s",
+    snprintf(filename, sizeof(filename), "/sys/dev/char/%u:%u/%s",
              major(stat_buf.st_rdev), minor(stat_buf.st_rdev), attribute);
     if (!g_file_get_contents(filename, &contents, NULL, NULL))
         return NULL;

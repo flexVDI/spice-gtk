@@ -250,7 +250,7 @@ static void mjpeg_decoder_queue_frame(VideoDecoder *video_decoder,
         if (frame_op->multi_media_time < last_op->multi_media_time) {
             /* This should really not happen */
             SPICE_DEBUG("new-frame-time < last-frame-time (%u < %u):"
-                        " resetting stream, id %d",
+                        " resetting stream, id %u",
                         frame_op->multi_media_time,
                         last_op->multi_media_time, frame_op->id);
             mjpeg_decoder_drop_queue(decoder);

@@ -655,10 +655,11 @@ gboolean spice_egl_update_scanout(SpiceDisplay *display,
     attrs[10] = EGL_LINUX_DRM_FOURCC_EXT;
     attrs[11] = format;
     attrs[12] = EGL_NONE;
-    SPICE_DEBUG("fd:%d stride:%d y0:%d %dx%d format:0x%x (%c%c%c%c)",
+    SPICE_DEBUG("fd:%d stride:%u y0:%d %ux%u format:0x%x (%c%c%c%c)",
                 scanout->fd, scanout->stride, scanout->y0top,
                 scanout->width, scanout->height, format,
-                format & 0xff, (format >> 8) & 0xff, (format >> 16) & 0xff, format >> 24);
+                (int)format & 0xff, (int)(format >> 8) & 0xff,
+                (int)(format >> 16) & 0xff, (int)format >> 24);
 
     d->egl.image = eglCreateImageKHR(d->egl.display,
                                        EGL_NO_CONTEXT,

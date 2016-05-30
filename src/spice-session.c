@@ -1694,7 +1694,7 @@ void spice_session_start_migrating(SpiceSession *session,
 
     g_warn_if_fail(ring_get_length(&s->channels) == ring_get_length(&m->channels));
 
-    SPICE_DEBUG("migration channels left:%d (in migration:%d)",
+    SPICE_DEBUG("migration channels left:%u (in migration:%u)",
                 ring_get_length(&s->channels), ring_get_length(&m->channels));
     s->migration_left = spice_session_get_channels(session);
 }
@@ -1931,7 +1931,7 @@ void spice_session_disconnect(SpiceSession *session)
 
     s = session->priv;
 
-    SPICE_DEBUG("session: disconnecting %d", s->disconnecting);
+    SPICE_DEBUG("session: disconnecting %u", s->disconnecting);
     if (s->disconnecting != 0)
         return;
 

@@ -316,7 +316,7 @@ static void smartcard_message_send(SpiceSmartcardChannel *channel,
     if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
         return;
 
-    CHANNEL_DEBUG(channel, "send message %d, %s",
+    CHANNEL_DEBUG(channel, "send message %u, %s",
                   msg_type, queue ? "queued" : "now");
     if (!queue) {
         spice_msg_out_send(msg_out);
@@ -496,11 +496,11 @@ static void handle_smartcard_msg(SpiceChannel *channel, SpiceMsgIn *in)
     SpiceMsgSmartcard *msg = spice_msg_in_parsed(in);
     VReader *reader;
 
-    CHANNEL_DEBUG(channel, "handle msg %d", msg->type);
+    CHANNEL_DEBUG(channel, "handle msg %u", msg->type);
     switch (msg->type) {
         case VSC_Error:
             g_return_if_fail(priv->in_flight_message != NULL);
-            CHANNEL_DEBUG(channel, "in flight %d", priv->in_flight_message->message_type);
+            CHANNEL_DEBUG(channel, "in flight %u", priv->in_flight_message->message_type);
             switch (priv->in_flight_message->message_type) {
                 case VSC_ReaderAdd:
                     g_return_if_fail(priv->pending_reader_additions != NULL);
@@ -529,7 +529,7 @@ static void handle_smartcard_msg(SpiceChannel *channel, SpiceMsgIn *in)
                 case VSC_ReaderRemove:
                     break;
                 default:
-                    g_warning("Unexpected message: %d", priv->in_flight_message->message_type);
+                    g_warning("Unexpected message: %u", priv->in_flight_message->message_type);
                     break;
             }
             smartcard_message_complete_in_flight(smartcard_channel);

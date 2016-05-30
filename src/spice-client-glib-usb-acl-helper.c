@@ -286,7 +286,7 @@ static void stdin_read_complete(GObject *src, GAsyncResult *res, gpointer data)
                                             NULL, stdin_read_complete, NULL);
         break;
     default:
-        FATAL_ERROR("Unexpected extra input in state %d: %s\n", state, s);
+        FATAL_ERROR("Unexpected extra input in state %u: %s\n", state, s);
     }
     g_free(s);
 }

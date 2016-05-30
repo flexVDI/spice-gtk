@@ -1108,7 +1108,7 @@ static void monitors_align(VDAgentMonConfig *monitors, int nmonitors)
         monitors[j].y = 0;
         x += monitors[j].width;
         if (monitors[j].width || monitors[j].height)
-            SPICE_DEBUG("#%d +%d+%d-%dx%d", j, monitors[j].x, monitors[j].y,
+            SPICE_DEBUG("#%d +%d+%d-%ux%u", j, monitors[j].x, monitors[j].y,
                         monitors[j].width, monitors[j].height);
     }
     g_free(sorted_monitors);
@@ -1171,7 +1171,7 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
         mon->monitors[j].height = c->display[i].height;
         mon->monitors[j].x = c->display[i].x;
         mon->monitors[j].y = c->display[i].y;
-        CHANNEL_DEBUG(channel, "monitor #%d: %dx%d+%d+%d @ %d bpp", j,
+        CHANNEL_DEBUG(channel, "monitor #%d: %ux%u+%d+%d @ %u bpp", j,
                       mon->monitors[j].width, mon->monitors[j].height,
                       mon->monitors[j].x, mon->monitors[j].y,
                       mon->monitors[j].depth);
@@ -1967,7 +1967,7 @@ static void spice_file_transfer_task_handle_status(SpiceFileTransferTask *task,
     GError *error = NULL;
     g_return_if_fail(task != NULL);
 
-    SPICE_DEBUG("task %d received response %d", msg->id, msg->result);
+    SPICE_DEBUG("task %u received response %u", msg->id, msg->result);
 
     switch (msg->result) {
     case VD_AGENT_FILE_XFER_STATUS_CAN_SEND_DATA:
@@ -2137,7 +2137,7 @@ static void main_agent_handle_msg(SpiceChannel *channel,
     case VD_AGENT_REPLY:
     {
         VDAgentReply *reply = payload;
-        SPICE_DEBUG("%s: reply: type %d, %s", __FUNCTION__, reply->type,
+        SPICE_DEBUG("%s: reply: type %u, %s", __FUNCTION__, reply->type,
                     reply->error == VD_AGENT_SUCCESS ? "success" : "error");
         break;
     }
@@ -2150,7 +2150,7 @@ static void main_agent_handle_msg(SpiceChannel *channel,
         if (task != NULL) {
             spice_file_transfer_task_handle_status(task, msg);
         } else {
-            SPICE_DEBUG("cannot find task %d", msg->id);
+            SPICE_DEBUG("cannot find task %u", msg->id);
         }
         break;
     }
@@ -2173,7 +2173,7 @@ static void main_handle_agent_data_msg(SpiceChannel* channel, int* msg_size, guc
         *msg_size -= n;
         *msg_pos += n;
         if (c->agent_msg_pos == sizeof(VDAgentMessage)) {
-            SPICE_DEBUG("agent msg start: msg_size=%d, protocol=%d, type=%d",
+            SPICE_DEBUG("agent msg start: msg_size=%u, protocol=%u, type=%u",
                         c->agent_msg.size, c->agent_msg.protocol, c->agent_msg.type);
             g_return_if_fail(c->agent_msg_data == NULL);
             c->agent_msg_data = g_malloc0(c->agent_msg.size);
@@ -2314,12 +2314,12 @@ static void migrate_channel_event_cb(SpiceChannel *channel, SpiceChannelEvent ev
             mig->nchannels--;
         }
 
-        SPICE_DEBUG("migration: channel opened chan:%p, left %d", channel, mig->nchannels);
+        SPICE_DEBUG("migration: channel opened chan:%p, left %u", channel, mig->nchannels);
         if (mig->nchannels == 0)
             coroutine_yieldto(mig->from, NULL);
         break;
     default:
-        CHANNEL_DEBUG(channel, "error or unhandled channel event during migration: %d", event);
+        CHANNEL_DEBUG(channel, "error or unhandled channel event during migration: %u", event);
         /* go back to main channel to report error */
         coroutine_yieldto(mig->from, NULL);
     }
@@ -2378,7 +2378,7 @@ static gboolean migrate_connect(gpointer data)
         host = info->host;
     } else {
         SpiceMigrationDstInfo *info = mig->info;
-        SPICE_DEBUG("migrate_begin %d %s %d %d",
+        SPICE_DEBUG("migrate_begin %u %s %d %d",
                     info->host_size, info->host_data, info->port, info->sport);
         port = info->port;
         sport = info->sport;
@@ -3109,7 +3109,7 @@ static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
         task->callback = callback;
         task->user_data = user_data;
 
-        CHANNEL_DEBUG(channel, "Insert a xfer task:%d to task list", task->id);
+        CHANNEL_DEBUG(channel, "Insert a xfer task:%u to task list", task->id);
         g_hash_table_insert(c->file_xfer_tasks,
                             GUINT_TO_POINTER(task->id),
                             task);

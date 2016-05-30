@@ -304,7 +304,7 @@ void spice_display_widget_update_monitor_area(SpiceDisplay *display)
 
     if (c->surface_id != 0) {
         g_warning("FIXME: only support monitor config with primary surface 0, "
-                  "but given config surface %d", c->surface_id);
+                  "but given config surface %u", c->surface_id);
         goto whole;
     }
 
@@ -808,7 +808,7 @@ static void try_keyboard_grab(SpiceDisplay *display)
     status = gdk_keyboard_grab(gtk_widget_get_window(widget), FALSE,
                                GDK_CURRENT_TIME);
     if (status != GDK_GRAB_SUCCESS) {
-        g_warning("keyboard grab failed %d", status);
+        g_warning("keyboard grab failed %u", status);
         d->keyboard_grab_active = false;
     } else {
         d->keyboard_grab_active = true;
@@ -966,7 +966,7 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
                      GDK_CURRENT_TIME);
     if (status != GDK_GRAB_SUCCESS) {
         d->mouse_grab_active = false;
-        g_warning("pointer grab failed %d", status);
+        g_warning("pointer grab failed %u", status);
     } else {
         d->mouse_grab_active = true;
         g_signal_emit(display, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, true);
@@ -1424,7 +1424,7 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
     }
 
 #endif
-    SPICE_DEBUG("%s %s: keycode: %d  state: %d  group %d modifier %d",
+    SPICE_DEBUG("%s %s: keycode: %d  state: %u  group %d modifier %d",
             __FUNCTION__, key->type == GDK_KEY_PRESS ? "press" : "release",
             key->hardware_keycode, key->state, key->group, key->is_modifier);
 
@@ -1863,7 +1863,7 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
     SpiceDisplayPrivate *d = display->priv;
     int x, y;
 
-    SPICE_DEBUG("%s %s: button %d, state 0x%x", __FUNCTION__,
+    SPICE_DEBUG("%s %s: button %u, state 0x%x", __FUNCTION__,
             button->type == GDK_BUTTON_PRESS ? "press" : "release",
             button->button, button->state);
 
@@ -2255,7 +2255,7 @@ static void update_mouse_mode(SpiceChannel *channel, gpointer data)
     GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(display));
 
     g_object_get(channel, "mouse-mode", &d->mouse_mode, NULL);
-    SPICE_DEBUG("mouse mode %d", d->mouse_mode);
+    SPICE_DEBUG("mouse mode %u", d->mouse_mode);
 
     switch (d->mouse_mode) {
     case SPICE_MOUSE_MODE_CLIENT:

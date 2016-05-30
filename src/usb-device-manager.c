@@ -1970,7 +1970,7 @@ spice_usb_device_manager_can_redirect_device(SpiceUsbDeviceManager  *self,
 gchar *spice_usb_device_get_description(SpiceUsbDevice *device, const gchar *format)
 {
 #ifdef USE_USBREDIR
-    int bus, address, vid, pid;
+    guint16 bus, address, vid, pid;
     gchar *description, *descriptor, *manufacturer = NULL, *product = NULL;
 
     g_return_val_if_fail(device != NULL, NULL);

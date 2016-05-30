@@ -89,7 +89,7 @@ static void invalidate(SpiceChannel *channel,
         rc = write_ppm_32();
         break;
     default:
-        fprintf(stderr, "unsupported spice surface format %d\n", d_format);
+        fprintf(stderr, "unsupported spice surface format %u\n", d_format);
         rc = -1;
         break;
     }
@@ -105,7 +105,7 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
     case SPICE_CHANNEL_OPENED:
         break;
     default:
-        g_warning("main channel event: %d", event);
+        g_warning("main channel event: %u", event);
         g_main_loop_quit(mainloop);
     }
 }

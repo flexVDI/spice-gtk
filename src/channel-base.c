@@ -77,7 +77,7 @@ spice_channel_handle_notify(SpiceChannel *channel, SpiceMsgIn *in)
 
     CHANNEL_DEBUG(channel, "%s -- %s%s #%u%s%.*s", __FUNCTION__,
             severity, visibility, notify->what,
-            message_str ? ": " : "", notify->message_len,
+            message_str ? ": " : "", (int)notify->message_len,
             message_str ? message_str : "");
 }
 

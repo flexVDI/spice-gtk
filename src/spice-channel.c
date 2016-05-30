@@ -568,7 +568,7 @@ void spice_msg_in_hexdump(SpiceMsgIn *in)
 {
     SpiceChannelPrivate *c = in->channel->priv;
 
-    fprintf(stderr, "--\n<< hdr: %s serial %" PRIu64 " type %d size %d sub-list %d\n",
+    fprintf(stderr, "--\n<< hdr: %s serial %" PRIu64 " type %u size %u sub-list %u\n",
             c->name, spice_header_get_in_msg_serial(in),
             spice_header_get_msg_type(in->header, c->use_mini_header),
             spice_header_get_msg_size(in->header, c->use_mini_header),
@@ -581,7 +581,7 @@ void spice_msg_out_hexdump(SpiceMsgOut *out, unsigned char *data, int len)
 {
     SpiceChannelPrivate *c = out->channel->priv;
 
-    fprintf(stderr, "--\n>> hdr: %s serial %" PRIu64 " type %d size %d sub-list %d\n",
+    fprintf(stderr, "--\n>> hdr: %s serial %" PRIu64 " type %u size %u sub-list %u\n",
             c->name,
             spice_header_get_out_msg_serial(out),
             spice_header_get_msg_type(out->header, c->use_mini_header),
@@ -1185,7 +1185,7 @@ static gboolean spice_channel_recv_auth(SpiceChannel *channel)
     }
 
     if (link_res != SPICE_LINK_ERR_OK) {
-        CHANNEL_DEBUG(channel, "link result: reply %d", link_res);
+        CHANNEL_DEBUG(channel, "link result: reply %u", link_res);
         spice_channel_failed_authentication(channel, FALSE);
         return FALSE;
     }
@@ -1209,7 +1209,7 @@ void spice_channel_up(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
 
-    CHANNEL_DEBUG(channel, "channel up, state %d", c->state);
+    CHANNEL_DEBUG(channel, "channel up, state %u", c->state);
 
     if (SPICE_CHANNEL_GET_CLASS(channel)->channel_up)
         SPICE_CHANNEL_GET_CLASS(channel)->channel_up(channel);
@@ -1272,7 +1272,7 @@ static void spice_channel_send_link(SpiceChannel *channel)
         *(uint32_t *)p = GUINT32_TO_LE(g_array_index(c->caps, uint32_t, i));
         p += sizeof(uint32_t);
     }
-    CHANNEL_DEBUG(channel, "channel type %d id %d num common caps %d num caps %d",
+    CHANNEL_DEBUG(channel, "channel type %d id %d num common caps %u num caps %u",
                   c->channel_type,
                   c->channel_id,
                   c->common_caps->len,
@@ -1298,11 +1298,11 @@ static gboolean spice_channel_recv_link_hdr(SpiceChannel *channel)
         goto error;
     }
 
-    CHANNEL_DEBUG(channel, "Peer version: %d:%d",
+    CHANNEL_DEBUG(channel, "Peer version: %u:%u",
                   GUINT32_FROM_LE(c->peer_hdr.major_version),
                   GUINT32_FROM_LE(c->peer_hdr.minor_version));
     if (c->peer_hdr.major_version != c->link_hdr.major_version) {
-        g_warning("major mismatch (got %d, expected %d)",
+        g_warning("major mismatch (got %u, expected %u)",
                   c->peer_hdr.major_version, c->link_hdr.major_version);
         goto error;
     }
@@ -1567,7 +1567,7 @@ static gboolean spice_channel_perform_auth_sasl(SpiceChannel *channel)
     if (c->has_error)
         goto error;
     if (len > SASL_MAX_MECHLIST_LEN) {
-        g_critical("mechlistlen %d too long", len);
+        g_critical("mechlistlen %u too long", len);
         goto error;
     }
 
@@ -1602,11 +1602,11 @@ restart:
         goto restart;
     }
 
-    CHANNEL_DEBUG(channel, "Server start negotiation with mech %s. Data %d bytes %p '%s'",
+    CHANNEL_DEBUG(channel, "Server start negotiation with mech %s. Data %u bytes %p '%s'",
                   mechname, clientoutlen, clientout, clientout);
 
     if (clientoutlen > SASL_MAX_DATA_LEN) {
-        g_critical("SASL negotiation data too long: %d bytes",
+        g_critical("SASL negotiation data too long: %u bytes",
                    clientoutlen);
         goto error;
     }
@@ -1635,7 +1635,7 @@ restart:
     if (c->has_error)
         goto error;
     if (len > SASL_MAX_DATA_LEN) {
-        g_critical("SASL negotiation data too long: %d bytes",
+        g_critical("SASL negotiation data too long: %u bytes",
                    len);
         goto error;
     }
@@ -1653,7 +1653,7 @@ restart:
     if (c->has_error)
         goto error;
 
-    CHANNEL_DEBUG(channel, "Client start result complete: %d. Data %d bytes %p '%s'",
+    CHANNEL_DEBUG(channel, "Client start result complete: %d. Data %u bytes %p '%s'",
                 complete, len, serverin, serverin);
 
     /* Loop-the-loop...
@@ -1688,7 +1688,7 @@ restart:
 
         g_clear_pointer(&serverin, g_free);
 
-        CHANNEL_DEBUG(channel, "Client step result %d. Data %d bytes %p '%s'", err, clientoutlen, clientout, clientout);
+        CHANNEL_DEBUG(channel, "Client step result %d. Data %u bytes %p '%s'", err, clientoutlen, clientout, clientout);
 
         /* Previous server call showed completion & we're now locally complete too */
         if (complete && err == SASL_OK)
@@ -1709,13 +1709,13 @@ restart:
         if (c->has_error)
             goto error;
 
-        CHANNEL_DEBUG(channel, "Server step with %d bytes %p", clientoutlen, clientout);
+        CHANNEL_DEBUG(channel, "Server step with %u bytes %p", clientoutlen, clientout);
 
         spice_channel_read(channel, &len, sizeof(guint32));
         if (c->has_error)
             goto error;
         if (len > SASL_MAX_DATA_LEN) {
-            g_critical("SASL negotiation data too long: %d bytes", len);
+            g_critical("SASL negotiation data too long: %u bytes", len);
             goto error;
         }
 
@@ -1733,7 +1733,7 @@ restart:
         if (c->has_error)
             goto error;
 
-        CHANNEL_DEBUG(channel, "Client step result complete: %d. Data %d bytes %p '%s'",
+        CHANNEL_DEBUG(channel, "Client step result complete: %d. Data %u bytes %p '%s'",
                     complete, len, serverin, serverin);
 
         /* This server call shows complete, and earlier client step was OK */
@@ -1754,9 +1754,9 @@ restart:
             goto error;
         }
         ssf = *(const int *)val;
-        CHANNEL_DEBUG(channel, "SASL SSF value %d", ssf);
+        CHANNEL_DEBUG(channel, "SASL SSF value %u", ssf);
         if (ssf < 56) { /* 56 == DES level, good for Kerberos */
-            g_critical("negotiation SSF %d was not strong enough", ssf);
+            g_critical("negotiation SSF %u was not strong enough", ssf);
             goto error;
         }
     }
@@ -1807,7 +1807,7 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
                             c->peer_hdr.size - c->peer_pos);
     c->peer_pos += rc;
     if (c->peer_pos != c->peer_hdr.size) {
-        g_critical("%s: %s: incomplete link reply (%d/%d)",
+        g_critical("%s: %s: incomplete link reply (%d/%u)",
                   c->name, __FUNCTION__, rc, c->peer_hdr.size);
         goto error;
     }
@@ -1821,7 +1821,7 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
         c->tls = TRUE;
         return FALSE;
     default:
-        g_warning("%s: %s: unhandled error %d",
+        g_warning("%s: %s: unhandled error %u",
                 c->name, __FUNCTION__, c->peer_msg->error);
         goto error;
     }
@@ -1840,13 +1840,13 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
     g_array_set_size(c->remote_common_caps, num_common_caps);
     for (i = 0; i < num_common_caps; i++, caps++) {
         g_array_index(c->remote_common_caps, uint32_t, i) = GUINT32_FROM_LE(*caps);
-        CHANNEL_DEBUG(channel, "got common caps %u:0x%X", i, GUINT32_FROM_LE(*caps));
+        CHANNEL_DEBUG(channel, "got common caps %d:0x%X", i, GUINT32_FROM_LE(*caps));
     }
 
     g_array_set_size(c->remote_caps, num_channel_caps);
     for (i = 0; i < num_channel_caps; i++, caps++) {
         g_array_index(c->remote_caps, uint32_t, i) = GUINT32_FROM_LE(*caps);
-        CHANNEL_DEBUG(channel, "got channel caps %u:0x%X", i, GUINT32_FROM_LE(*caps));
+        CHANNEL_DEBUG(channel, "got channel caps %d:0x%X", i, GUINT32_FROM_LE(*caps));
     }
 
     if (!spice_channel_test_common_capability(channel,
@@ -2683,7 +2683,7 @@ gboolean spice_channel_open_fd(SpiceChannel *channel, int fd)
 
     c = channel->priv;
     if (c->state > SPICE_CHANNEL_STATE_CONNECTING) {
-        g_warning("Invalid channel_connect state: %d", c->state);
+        g_warning("Invalid channel_connect state: %u", c->state);
         return true;
     }
 
@@ -2772,7 +2772,7 @@ void spice_channel_disconnect(SpiceChannel *channel, SpiceChannelEvent reason)
 {
     SpiceChannelPrivate *c;
 
-    CHANNEL_DEBUG(channel, "channel disconnect %d", reason);
+    CHANNEL_DEBUG(channel, "channel disconnect %u", reason);
 
     g_return_if_fail(SPICE_IS_CHANNEL(channel));
     g_return_if_fail(channel->priv != NULL);
@@ -2810,7 +2810,7 @@ static gboolean test_capability(GArray *caps, guint32 cap)
     c = g_array_index(caps, guint32, word_index);
     ret = (c & (1 << (cap % 32))) != 0;
 
-    SPICE_DEBUG("test cap %d in 0x%X: %s", cap, c, ret ? "yes" : "no");
+    SPICE_DEBUG("test cap %u in 0x%X: %s", cap, c, ret ? "yes" : "no");
     return ret;
 }
 

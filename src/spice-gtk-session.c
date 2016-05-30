@@ -183,7 +183,7 @@ static void spice_gtk_session_sync_keyboard_modifiers_for_channel(SpiceGtkSessio
                                                                   SpiceInputsChannel* inputs,
                                                                   gboolean force)
 {
-    gint guest_modifiers = 0, client_modifiers = 0;
+    guint32 guest_modifiers = 0, client_modifiers = 0;
 
     g_return_if_fail(SPICE_IS_INPUTS_CHANNEL(inputs));
 
@@ -511,7 +511,7 @@ static GtkClipboard* get_clipboard_from_selection(SpiceGtkSessionPrivate *s,
     } else if (selection == VD_AGENT_CLIPBOARD_SELECTION_PRIMARY) {
         return s->clipboard_primary;
     } else {
-        g_warning("Unhandled clipboard selection: %d", selection);
+        g_warning("Unhandled clipboard selection: %u", selection);
         return NULL;
     }
 }
@@ -864,7 +864,7 @@ static gboolean clipboard_grab(SpiceMainChannel *main, guint selection,
             }
         }
         if (!found) {
-            g_warning("clipboard: couldn't find a matching type for: %d",
+            g_warning("clipboard: couldn't find a matching type for: %u",
                       types[n]);
         }
     }

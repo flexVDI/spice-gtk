@@ -92,7 +92,7 @@ static void glz_decoder_window_resize(SpiceGlzDecoderWindow *w)
     struct glz_image  **new_images;
     int i, new_slot;
 
-    SPICE_DEBUG("%s: array resize %d -> %d", __FUNCTION__,
+    SPICE_DEBUG("%s: array resize %u -> %u", __FUNCTION__,
                 w->nimages, w->nimages * 2);
     new_images = g_new0(struct glz_image*, w->nimages * 2);
     for (i = 0; i < w->nimages; i++) {
@@ -367,7 +367,7 @@ static void decode_header(GlibGlzDecoder *d)
     d->image.id = decode_64(d);
     d->image.win_head_dist = decode_32(d);
 
-    SPICE_DEBUG("%s: %dx%d, id %" PRId64 ", ref %" PRId64,
+    SPICE_DEBUG("%s: %ux%u, id %" PRIu64 ", ref %" PRIu64,
             __FUNCTION__,
             d->image.width, d->image.height, d->image.id,
             d->image.id - d->image.win_head_dist);

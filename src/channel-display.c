@@ -1086,7 +1086,7 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
     SpiceMsgDisplayStreamCreate *op = spice_msg_in_parsed(in);
     display_stream *st;
 
-    CHANNEL_DEBUG(channel, "%s: id %d", __FUNCTION__, op->id);
+    CHANNEL_DEBUG(channel, "%s: id %u", __FUNCTION__, op->id);
 
     if (op->id >= c->nstreams) {
         int n = c->nstreams;
@@ -1127,7 +1127,7 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
 #endif
     }
     if (st->video_decoder == NULL) {
-        spice_printerr("could not create a video decoder for codec %d", op->codec_type);
+        spice_printerr("could not create a video decoder for codec %u", op->codec_type);
     }
 }
 
@@ -1349,7 +1349,7 @@ static void display_session_mm_time_reset_cb(SpiceSession *session, gpointer dat
         if (c->streams[i] == NULL) {
             continue;
         }
-        SPICE_DEBUG("%s: stream-id %d", __FUNCTION__, i);
+        SPICE_DEBUG("%s: stream-id %u", __FUNCTION__, i);
         st = c->streams[i];
         st->video_decoder->reschedule(st->video_decoder);
     }
@@ -1374,7 +1374,7 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
     mmtime = stream_get_time(st);
 
     if (spice_msg_in_type(in) == SPICE_MSG_DISPLAY_STREAM_DATA_SIZED) {
-        CHANNEL_DEBUG(channel, "stream %d contains sized data", op->id);
+        CHANNEL_DEBUG(channel, "stream %u contains sized data", op->id);
     }
 
     if (op->multi_media_time == 0) {
@@ -1465,9 +1465,9 @@ static void destroy_stream(SpiceChannel *channel, int id)
         return;
 
     num_out_frames = st->num_input_frames - st->arrive_late_count - st->num_drops_on_playback;
-    CHANNEL_DEBUG(channel, "%s: id=%d #in-frames=%d out/in=%.2f "
-        "#drops-on-receive=%d avg-late-time(ms)=%.2f "
-        "#drops-on-playback=%d", __FUNCTION__,
+    CHANNEL_DEBUG(channel, "%s: id=%d #in-frames=%u out/in=%.2f "
+        "#drops-on-receive=%u avg-late-time(ms)=%.2f "
+        "#drops-on-playback=%u", __FUNCTION__,
         id,
         st->num_input_frames,
         num_out_frames / (double)st->num_input_frames,
@@ -1523,7 +1523,7 @@ static void display_handle_stream_destroy(SpiceChannel *channel, SpiceMsgIn *in)
     SpiceMsgDisplayStreamDestroy *op = spice_msg_in_parsed(in);
 
     g_return_if_fail(op != NULL);
-    CHANNEL_DEBUG(channel, "%s: id %d", __FUNCTION__, op->id);
+    CHANNEL_DEBUG(channel, "%s: id %u", __FUNCTION__, op->id);
     destroy_stream(channel, op->id);
 }
 
@@ -1665,7 +1665,7 @@ static void display_handle_surface_create(SpiceChannel *channel, SpiceMsgIn *in)
     surface->size   = surface->height * surface->stride;
 
     if (create->flags & SPICE_SURFACE_FLAGS_PRIMARY) {
-        SPICE_DEBUG("primary flags: %d", create->flags);
+        SPICE_DEBUG("primary flags: %x", create->flags);
         surface->primary = true;
         create_canvas(channel, surface);
         if (c->mark_false_event_id != 0) {
@@ -1800,7 +1800,7 @@ static void display_handle_gl_draw(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceMsgDisplayGlDraw *draw = spice_msg_in_parsed(in);
 
-    CHANNEL_DEBUG(channel, "gl draw %dx%d+%d+%d",
+    CHANNEL_DEBUG(channel, "gl draw %ux%u+%u+%u",
                   draw->w, draw->h, draw->x, draw->y);
 
     g_coroutine_signal_emit(channel, signals[SPICE_DISPLAY_GL_DRAW], 0,

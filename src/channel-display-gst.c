@@ -366,7 +366,7 @@ static void spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
     SpiceStreamDataHeader *frame_op = spice_msg_in_parsed(frame_msg);
     if (frame_op->multi_media_time < decoder->last_mm_time) {
         SPICE_DEBUG("new-frame-time < last-frame-time (%u < %u):"
-                    " resetting stream, id %d",
+                    " resetting stream, id %u",
                     frame_op->multi_media_time,
                     decoder->last_mm_time, frame_op->id);
         /* Let GStreamer deal with the frame anyway */
@@ -402,7 +402,7 @@ static void spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
     g_mutex_unlock(&decoder->queues_mutex);
 
     if (gst_app_src_push_buffer(decoder->appsrc, buffer) != GST_FLOW_OK) {
-        SPICE_DEBUG("GStreamer error: unable to push frame of size %d", size);
+        SPICE_DEBUG("GStreamer error: unable to push frame of size %u", size);
         stream_dropped_frame_on_playback(decoder->base.stream);
     }
 }

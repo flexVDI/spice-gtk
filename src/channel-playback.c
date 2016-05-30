@@ -346,7 +346,7 @@ static void playback_handle_mode(SpiceChannel *channel, SpiceMsgIn *in)
     SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackMode *mode = spice_msg_in_parsed(in);
 
-    CHANNEL_DEBUG(channel, "%s: time %u mode %d data %p size %d", __FUNCTION__,
+    CHANNEL_DEBUG(channel, "%s: time %u mode %u data %p size %u", __FUNCTION__,
                   mode->time, mode->mode, mode->data, mode->data_size);
 
     c->mode = mode->mode;
@@ -367,7 +367,7 @@ static void playback_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
     SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackStart *start = spice_msg_in_parsed(in);
 
-    CHANNEL_DEBUG(channel, "%s: fmt %d channels %d freq %d time %d", __FUNCTION__,
+    CHANNEL_DEBUG(channel, "%s: fmt %u channels %u freq %u time %u", __FUNCTION__,
                   start->format, start->channels, start->frequency, start->time);
 
     c->frame_count = 0;

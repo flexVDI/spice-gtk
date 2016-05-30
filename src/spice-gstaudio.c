@@ -395,7 +395,7 @@ static void playback_mute_changed(GObject *object, GParamSpec *pspec, gpointer d
         return;
 
     g_object_get(object, "mute", &mute, NULL);
-    SPICE_DEBUG("playback mute changed to %u", mute);
+    SPICE_DEBUG("playback mute changed to %d", mute);
 
     if (GST_IS_BIN(p->playback.sink))
         e = gst_bin_get_by_interface(GST_BIN(p->playback.sink), GST_TYPE_STREAM_VOLUME);
@@ -457,7 +457,7 @@ static void record_mute_changed(GObject *object, GParamSpec *pspec, gpointer dat
         return;
 
     g_object_get(object, "mute", &mute, NULL);
-    SPICE_DEBUG("record mute changed to %u", mute);
+    SPICE_DEBUG("record mute changed to %d", mute);
 
     if (GST_IS_BIN(p->record.src))
         e = gst_bin_get_by_interface(GST_BIN(p->record.src), GST_TYPE_STREAM_VOLUME);

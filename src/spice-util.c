@@ -266,7 +266,7 @@ const gchar* spice_yes_no(gboolean value)
 G_GNUC_INTERNAL
 guint16 spice_make_scancode(guint scancode, gboolean release)
 {
-    SPICE_DEBUG("%s: %s scancode %d",
+    SPICE_DEBUG("%s: %s scancode %u",
                 __FUNCTION__, release ? "release" : "", scancode);
 
     if (release) {

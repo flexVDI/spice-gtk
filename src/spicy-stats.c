@@ -36,7 +36,7 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
     case SPICE_CHANNEL_OPENED:
         break;
     default:
-        g_warning("main channel event: %d", event);
+        g_warning("main channel event: %u", event);
         g_main_loop_quit(mainloop);
     }
 }

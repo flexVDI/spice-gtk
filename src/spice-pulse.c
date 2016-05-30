@@ -644,7 +644,7 @@ static void playback_mute_changed(GObject *object, GParamSpec *pspec, gpointer d
     pa_operation *op;
 
     g_object_get(object, "mute", &mute, NULL);
-    SPICE_DEBUG("playback mute changed %u", mute);
+    SPICE_DEBUG("playback mute changed %d", mute);
 
     if (!p->playback.stream ||
         pa_stream_get_index(p->playback.stream) == PA_INVALID_INDEX)
@@ -687,7 +687,7 @@ static void record_mute_changed(GObject *object, GParamSpec *pspec, gpointer dat
     pa_operation *op;
 
     g_object_get(object, "mute", &mute, NULL);
-    SPICE_DEBUG("record mute changed %u", mute);
+    SPICE_DEBUG("record mute changed %d", mute);
 
     if (!p->record.stream ||
         pa_stream_get_device_index(p->record.stream) == PA_INVALID_INDEX)
@@ -996,7 +996,7 @@ static void spice_pulse_complete_async_task(struct async_task *task, const gchar
     complete_task(task->pulse, task, err_msg);
     if (p->results != NULL) {
         p->results = g_list_remove(p->results, task);
-        SPICE_DEBUG("Number of async task is %d", g_list_length(p->results));
+        SPICE_DEBUG("Number of async task is %u", g_list_length(p->results));
     }
     free_async_task(task);
 }
@@ -1205,7 +1205,7 @@ static void pulse_stream_restore_info_async(gboolean is_playback,
     }
 
     p->results = g_list_append(p->results, task);
-    SPICE_DEBUG ("Number of async task is %d", g_list_length(p->results));
+    SPICE_DEBUG ("Number of async task is %u", g_list_length(p->results));
     return;
 
 fail:

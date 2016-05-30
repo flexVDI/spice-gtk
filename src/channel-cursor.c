@@ -304,7 +304,7 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
     guint8 *rgba;
     guint8 val;
 
-    CHANNEL_DEBUG(channel, "%s: flags %d, size %d", __FUNCTION__,
+    CHANNEL_DEBUG(channel, "%s: flags %x, size %u", __FUNCTION__,
                   scursor->flags, scursor->data_size);
 
     if (scursor->flags & SPICE_CURSOR_FLAGS_NONE)

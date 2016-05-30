@@ -1207,7 +1207,7 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
         break;
     default:
         /* TODO: more sophisticated error handling */
-        g_warning("unknown main channel event: %d", event);
+        g_warning("unknown main channel event: %u", event);
         /* connection_disconnect(conn); */
         break;
     }
