@@ -2510,8 +2510,10 @@ connected:
     spice_channel_send_link(channel);
     if (!spice_channel_recv_link_hdr(channel) ||
         !spice_channel_recv_link_msg(channel) ||
-        !spice_channel_recv_auth(channel))
+        !spice_channel_recv_auth(channel)) {
+        g_warning("%s: error in recv_link: %s", c->name);
         goto cleanup;
+    }
 
     while (spice_channel_iterate(channel))
         ;

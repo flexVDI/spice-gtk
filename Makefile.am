@@ -20,6 +20,7 @@ pkgconfig_DATA =					\
 
 if WITH_GTK
 pkgconfig_DATA += spice-client-gtk-$(SPICE_GTK_API_VERSION).pc
+bin_SCRIPTS = usb.ids
 endif
 
 if WITH_CONTROLLER

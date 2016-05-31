@@ -393,6 +393,8 @@ WIN_USB_FILES= \
 	win-usb-clerk.h			\
 	win-usb-driver-install.h	\
 	win-usb-driver-install.c	\
+	usbdk_api.h			\
+	usbdk_api.c			\
 	$(NULL)
 
 if OS_WIN32
