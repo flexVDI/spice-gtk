@@ -341,7 +341,7 @@ void spice_win_usb_driver_op(SpiceWinUsbDriver *self,
     g_clear_object(&task);
 }
 
-/**
+/*
  * Returns: currently returns 0 (failure) and 1 (success)
  * possibly later we'll add error-codes
  */

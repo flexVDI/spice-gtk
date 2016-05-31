@@ -116,7 +116,7 @@ complete_in_idle_cb(gpointer user_data)
 }
 
 /* coroutine */
-/**
+/*
  * Feed a SpiceVmc stream with new data from a coroutine
  *
  * The other end will be waiting on read_async() until data is fed
