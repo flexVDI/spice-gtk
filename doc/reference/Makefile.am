@@ -23,21 +23,25 @@ CFILE_GLOB = $(top_srcdir)/src/*.c
 
 # Header files to ignore when scanning. Use base file name, no paths
 IGNORE_HFILES=					\
-	bio-gsocket.h				\
+	bio-gio.h				\
 	channel-display-priv.h			\
 	channel-usbredir-priv.h			\
+	client_sw_canvas.h			\
 	continuation.h				\
 	controller				\
 	coroutine.h				\
 	decode.h				\
+	desktop-integration.h			\
 	display					\
 	gio-coroutine.h				\
+	giopipe.h				\
 	smartcard-manager-priv.h		\
 	spice-audio-priv.h			\
 	spice-channel-cache.h			\
 	spice-channel-priv.h			\
 	spice-cmdline.h				\
 	spice-common.h				\
+	spice-grab-sequence-prive.h		\
 	spice-gstaudio.h			\
 	spice-gtk-session-priv.h		\
 	spice-marshal.h				\
@@ -49,8 +53,14 @@ IGNORE_HFILES=					\
 	spicy-connect.h				\
 	usb-acl-helper.h			\
 	usb-device-manager-priv.h		\
+	usbdk_api.h				\
 	usbutil.h				\
+	vmcstream.h				\
 	vncdisplaykeymap.h			\
+	win-usb-clerk.h				\
+	win-usb-dev.h				\
+	win-usb-driver-install.h		\
+	wocky-http-proxy.h			\
 	$(NULL)
 
 # CFLAGS and LDFLAGS for compiling gtkdoc-scangobj with your library.
