@@ -39,6 +39,17 @@ typedef struct _SpiceDisplayChannelPrivate SpiceDisplayChannelPrivate;
 
 #define SPICE_TYPE_GL_SCANOUT (spice_gl_scanout_get_type ())
 
+/**
+ * SpiceGlScanout:
+ * @fd: a drm DMABUF file that can be imported with eglCreateImageKHR
+ * @width: width of the scanout
+ * @height: height of the scanout
+ * @stride: stride of the scanout
+ * @format: the drm fourcc format
+ * @y0top: orientation of the scanout
+ *
+ * Holds the information necessary for using the GL display scanout.
+ **/
 typedef struct _SpiceGlScanout SpiceGlScanout;
 struct _SpiceGlScanout {
     gint fd;
@@ -49,6 +60,17 @@ struct _SpiceGlScanout {
     gboolean y0top;
 };
 
+/**
+ * SpiceDisplayMonitorConfig:
+ * @id: monitor id
+ * @surface_id: monitor surface id
+ * @x: x position of the monitor
+ * @y: y position of the monitor
+ * @width: width of the monitor
+ * @height: height of the monitor
+ *
+ * Holds a monitor configuration.
+ **/
 typedef struct _SpiceDisplayMonitorConfig SpiceDisplayMonitorConfig;
 struct _SpiceDisplayMonitorConfig {
     guint id;
@@ -59,6 +81,19 @@ struct _SpiceDisplayMonitorConfig {
     guint height;
 };
 
+/**
+ * SpiceDisplayPrimary:
+ * @format: primary buffer format
+ * @width: width of the primary
+ * @height: height of the primary
+ * @stride: stride of the primary
+ * @shmid: identifier of the shared memory segment associated with
+ * the @data, or -1 if not shm
+ * @data: pointer to primary buffer
+ * @marked: whether the display is marked ready
+ *
+ * Holds the information necessary to use the primary surface.
+ **/
 typedef struct _SpiceDisplayPrimary SpiceDisplayPrimary;
 struct _SpiceDisplayPrimary {
     enum SpiceSurfaceFmt format;

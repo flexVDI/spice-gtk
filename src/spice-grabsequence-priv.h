@@ -21,6 +21,7 @@
 #include <glib.h>
 
 struct _SpiceGrabSequence {
+    /*< private >*/
     guint nkeysyms;
     guint *keysyms;
 };

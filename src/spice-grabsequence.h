@@ -33,6 +33,11 @@ G_BEGIN_DECLS
 
 #define SPICE_TYPE_GRAB_SEQUENCE            (spice_grab_sequence_get_type ())
 
+/**
+ * SpiceGrabSequence:
+ *
+ * An opaque type that represents a grab sequence.
+ **/
 typedef struct _SpiceGrabSequence SpiceGrabSequence;
 
 GType spice_grab_sequence_get_type(void);
