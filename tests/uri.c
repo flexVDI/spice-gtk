@@ -75,6 +75,7 @@ static void test_spice_uri_ipv4_bad(void)
         {"http://", "http", NULL, 3128, NULL, NULL, "Invalid hostname in uri address"},
         {"http://127.0.0.1:port", "http", "127.0.0.1", 3128, NULL, NULL,
           "Invalid uri port: port"},
+        {"http://127.0.0.1:", "http", "127.0.0.1", 3128, NULL, NULL, "Missing uri port"},
     };
 
     test_spice_uri_bad(invalid_test_cases, G_N_ELEMENTS(invalid_test_cases));

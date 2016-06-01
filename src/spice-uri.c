@@ -176,6 +176,9 @@ gboolean spice_uri_parse(SpiceURI *self, const gchar *_uri, GError **error)
             g_set_error(error, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                         "Invalid uri port: %s", uri_port);
             goto end;
+        } else if (endptr == uri_port) {
+            g_set_error(error, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED, "Missing uri port");
+            goto end;
         }
         spice_uri_set_port(self, port);
     }
