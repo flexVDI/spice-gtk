@@ -170,14 +170,18 @@ gboolean spice_uri_parse(SpiceURI *self, const gchar *_uri, GError **error)
         uri_port = uriv[1];
 
     if (uri_port != NULL) {
-        char *endptr;
-        guint port = strtoul(uri_port, &endptr, 10);
+        gchar *endptr;
+        gint64 port = g_ascii_strtoll(uri_port, &endptr, 10);
         if (*endptr != '\0') {
             g_set_error(error, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                         "Invalid uri port: %s", uri_port);
             goto end;
         } else if (endptr == uri_port) {
             g_set_error(error, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED, "Missing uri port");
+            goto end;
+        }
+        if (port <= 0 || port > 65535) {
+            g_set_error(error, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED, "Port out of range");
             goto end;
         }
         spice_uri_set_port(self, port);
