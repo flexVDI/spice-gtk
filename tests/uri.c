@@ -79,6 +79,8 @@ static void test_spice_uri_ipv4_bad(void)
         {"http://127.0.0.1:-80", "http", "127.0.0.1", 3128, NULL, NULL, "Port out of range"},
         {"http://127.0.0.1:4294967396", "http", "127.0.0.1", 3128, NULL, NULL, "Port out of range"},
         {"http://127.0.0.1:12345678901234", "http", "127.0.0.1", 3128, NULL, NULL, "Port out of range"},
+        {"scheme://192.168.1.1:3128", "http", "127.0.0.1", 3128, NULL, NULL,
+         "Invalid uri scheme for proxy: scheme"},
     };
 
     test_spice_uri_bad(invalid_test_cases, G_N_ELEMENTS(invalid_test_cases));

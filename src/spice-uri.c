@@ -109,7 +109,9 @@ static void spice_uri_reset(SpiceURI *self)
 G_GNUC_INTERNAL
 gboolean spice_uri_parse(SpiceURI *self, const gchar *_uri, GError **error)
 {
-    gchar *dup, *uri;
+    gchar *dup, *uri, **uriv = NULL;
+    const gchar *uri_port = NULL;
+    char *uri_scheme = NULL;
     gboolean success = FALSE;
     size_t len;
 
@@ -122,17 +124,21 @@ gboolean spice_uri_parse(SpiceURI *self, const gchar *_uri, GError **error)
     uri = dup = g_strdup(_uri);
     /* FIXME: use GUri when it is ready... only support http atm */
     /* the code is voluntarily not parsing thoroughly the uri */
-    if (g_ascii_strncasecmp("http://", uri, 7) == 0) {
-        uri += 7;
+    uri_scheme = g_uri_parse_scheme(uri);
+    if (uri_scheme == NULL) {
         spice_uri_set_scheme(self, "http");
+    } else {
+        spice_uri_set_scheme(self, uri_scheme);
+        uri += strlen(uri_scheme) + 3; /* scheme + "://" */
+    }
+    if (g_ascii_strcasecmp(spice_uri_get_scheme(self), "http") == 0) {
         spice_uri_set_port(self, 3128);
-    } else if (g_ascii_strncasecmp("https://", uri, 8) == 0) {
-        uri += 8;
-        spice_uri_set_scheme(self, "https");
+    } else if (g_ascii_strcasecmp(spice_uri_get_scheme(self), "https") == 0) {
         spice_uri_set_port(self, 3129);
     } else {
-        spice_uri_set_scheme(self, "http");
-        spice_uri_set_port(self, 3128);
+        g_set_error(error, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                    "Invalid uri scheme for proxy: %s", spice_uri_get_scheme(self));
+        goto end;
     }
     /* remove trailing slash */
     len = strlen(uri);
@@ -156,8 +162,7 @@ gboolean spice_uri_parse(SpiceURI *self, const gchar *_uri, GError **error)
     }
 
     /* max 2 parts, host:port */
-    gchar **uriv = g_strsplit(uri, ":", 2);
-    const gchar *uri_port = NULL;
+    uriv = g_strsplit(uri, ":", 2);
 
     if (uriv[0] == NULL || strlen(uriv[0]) == 0) {
         g_set_error(error, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
@@ -190,6 +195,7 @@ gboolean spice_uri_parse(SpiceURI *self, const gchar *_uri, GError **error)
     success = TRUE;
 
 end:
+    free(uri_scheme);
     g_free(dup);
     g_strfreev(uriv);
     return success;
