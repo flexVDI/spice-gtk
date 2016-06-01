@@ -161,8 +161,26 @@ gboolean spice_uri_parse(SpiceURI *self, const gchar *_uri, GError **error)
         uri = next;
     }
 
-    /* max 2 parts, host:port */
-    uriv = g_strsplit(uri, ":", 2);
+    if (*uri == '[') { /* ipv6 address */
+        uriv = g_strsplit(uri + 1, "]", 2);
+        if (uriv[1] == NULL) {
+            g_set_error(error, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                        "Missing ']' in ipv6 uri");
+            goto end;
+        }
+        if (*uriv[1] == ':') {
+            uri_port = uriv[1] + 1;
+        } else if (strlen(uriv[1]) > 0) { /* invalid string after the hostname */
+            g_set_error(error, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                        "Invalid uri address");
+            goto end;
+        }
+    } else {
+        /* max 2 parts, host:port */
+        uriv = g_strsplit(uri, ":", 2);
+        if (uriv[0] != NULL)
+            uri_port = uriv[1];
+    }
 
     if (uriv[0] == NULL || strlen(uriv[0]) == 0) {
         g_set_error(error, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
@@ -171,8 +189,6 @@ gboolean spice_uri_parse(SpiceURI *self, const gchar *_uri, GError **error)
     }
 
     spice_uri_set_hostname(self, uriv[0]);
-    if (uriv[0] != NULL)
-        uri_port = uriv[1];
 
     if (uri_port != NULL) {
         gchar *endptr;

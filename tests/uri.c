@@ -99,12 +99,45 @@ static void test_spice_uri_ipv4_good(void)
     test_spice_uri_good(valid_test_cases, G_N_ELEMENTS(valid_test_cases));
 }
 
+static void test_spice_uri_ipv6_bad(void)
+{
+    const struct test_case invalid_test_cases[] = {
+        {"http://[]:80", "http", NULL, 80, NULL, NULL, "Invalid hostname in uri address"},
+        {"http://[::1", "http", NULL, 3128, NULL, NULL, "Missing ']' in ipv6 uri"},
+        {"http://[host]1234", "http", "host", 3128, NULL, NULL, "Invalid uri address"},
+        {"http://[host]foo/", "http", "host", 3128, NULL, NULL, "Invalid uri address"},
+        {"http://[::1]:port", "http", "::1", 3128, NULL, NULL, "Invalid uri port: port"},
+        {"http://[::127.0.0.1]:", "http", "::127.0.0.1", 3128, NULL, NULL, "Missing uri port"},
+        {"http://[::127.0.0.1]:-42", "http", "::127.0.0.1", 3128, NULL, NULL, "Port out of range"},
+        {"[3ffe:2a00:100:7031::1]:42000000", "http", "3ffe:2a00:100:7031::1", 3128, NULL, NULL, "Port out of range"},
+        {"scheme://[3ffe::192.168.1.1]:3128", "http", "3ffe::192.168.1.1", 3128, NULL, NULL,
+         "Invalid uri scheme for proxy: scheme"},
+    };
+
+    test_spice_uri_bad(invalid_test_cases, G_N_ELEMENTS(invalid_test_cases));
+}
+
+static void test_spice_uri_ipv6_good(void)
+{
+    const struct test_case valid_test_cases[] = {
+        {"http://user:password@[host]:80/", "http", "host", 80, "user", "password", NULL},
+        {"http://user@[1080:0:0:0:8:800:200C:4171]:100", "http", "1080:0:0:0:8:800:200C:4171", 100,
+         "user", NULL, NULL},
+        {"https://[1080::8:800:200C:417A]", "https", "1080::8:800:200C:417A", 3129, NULL, NULL, NULL},
+        {"[3ffe:2a00:100:7031::1]", "http", "3ffe:2a00:100:7031::1", 3128, NULL, NULL, NULL},
+    };
+
+    test_spice_uri_good(valid_test_cases, G_N_ELEMENTS(valid_test_cases));
+}
+
 int main(int argc, char* argv[])
 {
     g_test_init(&argc, &argv, NULL);
 
     g_test_add_func("/spice_uri/ipv4/bad-uri", test_spice_uri_ipv4_bad);
     g_test_add_func("/spice_uri/ipv4/good-uri", test_spice_uri_ipv4_good);
+    g_test_add_func("/spice_uri/ipv6/bad-uri", test_spice_uri_ipv6_bad);
+    g_test_add_func("/spice_uri/ipv6/good-uri", test_spice_uri_ipv6_good);
 
     return g_test_run();
 }
