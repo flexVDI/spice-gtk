@@ -97,6 +97,15 @@ SpiceURI* spice_uri_new(void)
     return self;
 }
 
+static void spice_uri_reset(SpiceURI *self)
+{
+    g_clear_pointer(&self->scheme, g_free);
+    g_clear_pointer(&self->hostname, g_free);
+    g_clear_pointer(&self->user, g_free);
+    g_clear_pointer(&self->password, g_free);
+    self->port = 0;
+}
+
 G_GNUC_INTERNAL
 gboolean spice_uri_parse(SpiceURI *self, const gchar *_uri, GError **error)
 {
@@ -105,6 +114,9 @@ gboolean spice_uri_parse(SpiceURI *self, const gchar *_uri, GError **error)
     size_t len;
 
     g_return_val_if_fail(self != NULL, FALSE);
+
+    spice_uri_reset(self);
+
     g_return_val_if_fail(_uri != NULL, FALSE);
 
     uri = dup = g_strdup(_uri);
@@ -333,10 +345,7 @@ static void spice_uri_finalize(GObject* obj)
     SpiceURI *self;
 
     self = G_TYPE_CHECK_INSTANCE_CAST(obj, SPICE_TYPE_URI, SpiceURI);
-    g_free(self->scheme);
-    g_free(self->hostname);
-    g_free(self->user);
-    g_free(self->password);
+    spice_uri_reset(self);
 
     G_OBJECT_CLASS (spice_uri_parent_class)->finalize (obj);
 }

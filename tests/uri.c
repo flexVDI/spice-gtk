@@ -87,6 +87,7 @@ static void test_spice_uri_ipv4_good(void)
         {"https://127.0.0.1", "https", "127.0.0.1", 3129, NULL, NULL, NULL},
         {"127.0.0.1", "http", "127.0.0.1", 3128, NULL, NULL, NULL},
         {"http://user:password@host:80", "http", "host", 80, "user", "password", NULL},
+        {"https://host:42", "https", "host", 42, NULL, NULL, NULL}, /* tests resetting of username & password */
     };
 
     test_spice_uri_good(valid_test_cases, G_N_ELEMENTS(valid_test_cases));
