@@ -4,6 +4,7 @@ noinst_PROGRAMS =
 TESTS = coroutine				\
 	util					\
 	session					\
+	test-spice-uri				\
 	$(NULL)
 
 if WITH_PHODAV
@@ -36,6 +37,7 @@ util_SOURCES = util.c
 coroutine_SOURCES = coroutine.c
 session_SOURCES = session.c
 pipe_SOURCES = pipe.c
+test_spice_uri_SOURCES = uri.c
 usb_acl_helper_SOURCES = usb-acl-helper.c
 usb_acl_helper_CFLAGS = -DTESTDIR=\"$(abs_builddir)\"
 mock_acl_helper_SOURCES = mock-acl-helper.c
