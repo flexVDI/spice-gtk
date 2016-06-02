@@ -138,7 +138,7 @@ g_udev_client_list_devices(GUdevClient *self, GList **devs,
     rc = libusb_get_device_list(priv->ctx, &lusb_list);
     if (rc < 0) {
         const char *errstr = spice_usbutil_libusb_strerror(rc);
-        g_warning("%s: libusb_get_device_list failed", name);
+        g_warning("%s: libusb_get_device_list failed. Error %d: %s", name, rc, errstr);
         g_set_error(err, G_UDEV_CLIENT_ERROR, G_UDEV_CLIENT_LIBUSB_FAILED,
                     "%s: Error getting device list from libusb: %s [%"G_GSSIZE_FORMAT"]",
                     name, errstr, rc);
@@ -335,6 +335,14 @@ static gboolean gudev_devices_are_equal(GUdevDevice *a, GUdevDevice *b)
     return (same_pid && same_vid);
 }
 
+static void handle_dev_change(GUdevClient *self);
+
+static gboolean handle_dev_change_cb(gpointer d)
+{
+    handle_dev_change((GUdevClient *)d);
+    return FALSE;
+}
+
 
 /* Assumes each event stands for a single device change (at most) */
 static void handle_dev_change(GUdevClient *self)
@@ -351,6 +359,25 @@ static void handle_dev_change(GUdevClient *self)
 
     dev_count = g_udev_client_list_devices(self, &now_devs, &err,
                                            __FUNCTION__);
+    if (err != NULL)
+    {
+        /* Notice: G_UDEV_CLIENT_LIBUSB_FAILED is too coarse grained.
+         * -99 from libusb would be better. But this is the error code I get, 
+         * and it will suffice for now */
+        if (err->code == G_UDEV_CLIENT_LIBUSB_FAILED) 
+        {
+            g_warning("%s libusb error getting list of devices. Will try again in 500ms: %s",
+                 __FUNCTION__, err->message);
+            g_timeout_add_full(G_PRIORITY_HIGH, 500,
+                       handle_dev_change_cb,
+                       self, NULL);
+        } else {
+            g_warning("Error getting list of devices. Count %d, Error: %d - %s",
+                dev_count, err->code, err->message);
+        }
+
+        g_error_free(err);
+    }
     g_return_if_fail(dev_count >= 0);
 
     SPICE_DEBUG("number of current devices %"G_GSSIZE_FORMAT
