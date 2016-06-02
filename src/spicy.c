@@ -1518,7 +1518,7 @@ transfer_task_widgets_new(SpiceFileTransferTask *task)
 
     widgets->vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     widgets->hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
-    widgets->cancel = gtk_button_new_with_label("_Cancel");
+    widgets->cancel = gtk_button_new_with_label("Cancel");
 
     widgets->progress = gtk_progress_bar_new();
     widgets->label = gtk_label_new(spice_file_transfer_task_get_filename(task));
