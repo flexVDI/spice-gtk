@@ -87,26 +87,51 @@ static void schedule_frame(SpiceGstDecoder *decoder);
 static gboolean display_frame(gpointer video_decoder)
 {
     SpiceGstDecoder *decoder = (SpiceGstDecoder*)video_decoder;
+    SpiceFrame *frame;
+    GstCaps *caps;
+    gint width, height;
+    GstStructure *s;
+    GstBuffer *buffer;
+    GstMapInfo mapinfo;
 
     decoder->timer_id = 0;
 
     g_mutex_lock(&decoder->queues_mutex);
-    SpiceFrame *frame = g_queue_pop_head(decoder->display_queue);
+    frame = g_queue_pop_head(decoder->display_queue);
     g_mutex_unlock(&decoder->queues_mutex);
+    /* If the queue is empty we don't even need to reschedule */
     g_return_val_if_fail(frame, G_SOURCE_REMOVE);
 
-    GstBuffer *buffer = frame->sample ? gst_sample_get_buffer(frame->sample) : NULL;
-    GstMapInfo mapinfo;
     if (!frame->sample) {
         spice_warning("got a frame without a sample!");
-    } else if (gst_buffer_map(buffer, &mapinfo, GST_MAP_READ)) {
-        stream_display_frame(decoder->base.stream, frame->msg, mapinfo.data);
-        gst_buffer_unmap(buffer, &mapinfo);
-    } else {
-        spice_warning("GStreamer error: could not map the buffer");
+        goto error;
     }
-    free_frame(frame);
 
+    caps = gst_sample_get_caps(frame->sample);
+    if (!caps) {
+        spice_warning("GStreamer error: could not get the caps of the sample");
+        goto error;
+    }
+
+    s = gst_caps_get_structure(caps, 0);
+    if (!gst_structure_get_int(s, "width", &width) ||
+        !gst_structure_get_int(s, "height", &height)) {
+        spice_warning("GStreamer error: could not get the size of the frame");
+        goto error;
+    }
+
+    buffer = gst_sample_get_buffer(frame->sample);
+    if (!gst_buffer_map(buffer, &mapinfo, GST_MAP_READ)) {
+        spice_warning("GStreamer error: could not map the buffer");
+        goto error;
+    }
+
+    stream_display_frame(decoder->base.stream, frame->msg,
+                         width, height, mapinfo.data);
+    gst_buffer_unmap(buffer, &mapinfo);
+
+ error:
+    free_frame(frame);
     schedule_frame(decoder);
     return G_SOURCE_REMOVE;
 }

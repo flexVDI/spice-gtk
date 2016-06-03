@@ -135,10 +135,9 @@ struct display_stream {
     uint32_t report_drops_seq_len;
 };
 
-void stream_get_dimensions(display_stream *st, SpiceMsgIn *frame_msg, int *width, int *height);
 guint32 stream_get_time(display_stream *st);
 void stream_dropped_frame_on_playback(display_stream *st);
-void stream_display_frame(display_stream *st, SpiceMsgIn *frame_msg, uint8_t* data);
+void stream_display_frame(display_stream *st, SpiceMsgIn *frame_msg, uint32_t width, uint32_t height, uint8_t *data);
 uint32_t spice_msg_in_frame_data(SpiceMsgIn *frame_msg, uint8_t **data);
 
 

@@ -1174,26 +1174,6 @@ uint32_t spice_msg_in_frame_data(SpiceMsgIn *frame_msg, uint8_t **data)
 }
 
 G_GNUC_INTERNAL
-void stream_get_dimensions(display_stream *st, SpiceMsgIn *frame_msg, int *width, int *height)
-{
-    g_return_if_fail(width != NULL);
-    g_return_if_fail(height != NULL);
-
-    if (frame_msg == NULL ||
-        spice_msg_in_type(frame_msg) != SPICE_MSG_DISPLAY_STREAM_DATA_SIZED) {
-        SpiceMsgDisplayStreamCreate *info = spice_msg_in_parsed(st->msg_create);
-
-        *width = info->stream_width;
-        *height = info->stream_height;
-    } else {
-        SpiceMsgDisplayStreamDataSized *op = spice_msg_in_parsed(frame_msg);
-
-        *width = op->width;
-        *height = op->height;
-   }
-}
-
-G_GNUC_INTERNAL
 guint32 stream_get_time(display_stream *st)
 {
     SpiceSession *session = spice_channel_get_session(st->channel);
@@ -1210,13 +1190,11 @@ void stream_dropped_frame_on_playback(display_stream *st)
 /* main context */
 G_GNUC_INTERNAL
 void stream_display_frame(display_stream *st, SpiceMsgIn *frame_msg,
-                          uint8_t* data)
+                          uint32_t width, uint32_t height, uint8_t *data)
 {
-    int width, height;
     const SpiceRect *dest;
     int stride;
 
-    stream_get_dimensions(st, frame_msg, &width, &height);
     dest = stream_get_dest(st, frame_msg);
 
     stride = width * sizeof(uint32_t);

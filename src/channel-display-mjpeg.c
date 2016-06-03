@@ -86,12 +86,13 @@ static gboolean mjpeg_decoder_decode_frame(gpointer video_decoder)
 {
     MJpegDecoder *decoder = (MJpegDecoder*)video_decoder;
     gboolean back_compat = decoder->base.stream->channel->priv->peer_hdr.major_version == 1;
-    int width;
-    int height;
+    JDIMENSION width, height;
     uint8_t *dest;
     uint8_t *lines[4];
 
-    stream_get_dimensions(decoder->base.stream, decoder->cur_frame_msg, &width, &height);
+    jpeg_read_header(&decoder->mjpeg_cinfo, 1);
+    width = decoder->mjpeg_cinfo.image_width;
+    height = decoder->mjpeg_cinfo.image_height;
     if (decoder->out_size < width * height * 4) {
         g_free(decoder->out_frame);
         decoder->out_size = width * height * 4;
@@ -99,7 +100,6 @@ static gboolean mjpeg_decoder_decode_frame(gpointer video_decoder)
     }
     dest = decoder->out_frame;
 
-    jpeg_read_header(&decoder->mjpeg_cinfo, 1);
 #ifdef JCS_EXTENSIONS
     // requires jpeg-turbo
     if (back_compat)
@@ -168,7 +168,8 @@ static gboolean mjpeg_decoder_decode_frame(gpointer video_decoder)
     jpeg_finish_decompress(&decoder->mjpeg_cinfo);
 
     /* Display the frame and dispose of it */
-    stream_display_frame(decoder->base.stream, decoder->cur_frame_msg, decoder->out_frame);
+    stream_display_frame(decoder->base.stream, decoder->cur_frame_msg,
+                         width, height, decoder->out_frame);
     spice_msg_in_unref(decoder->cur_frame_msg);
     decoder->cur_frame_msg = NULL;
     decoder->timer_id = 0;
