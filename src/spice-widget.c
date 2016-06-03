@@ -930,12 +930,13 @@ error:
 }
 #endif
 
-static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
+static gboolean do_pointer_grab(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
     GdkWindow *window = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
-    GdkGrabStatus status = GDK_GRAB_FAILED;
+    GdkGrabStatus status;
     GdkCursor *blank = get_blank_cursor();
+    gboolean grab_successful = FALSE;
 
     if (!gtk_widget_get_realized(GTK_WIDGET(display)))
         goto end;
@@ -964,7 +965,8 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
                      NULL,
                      blank,
                      GDK_CURRENT_TIME);
-    if (status != GDK_GRAB_SUCCESS) {
+    grab_successful = (status == GDK_GRAB_SUCCESS);
+    if (!grab_successful) {
         d->mouse_grab_active = false;
         g_warning("pointer grab failed %u", status);
     } else {
@@ -976,7 +978,7 @@ static GdkGrabStatus do_pointer_grab(SpiceDisplay *display)
 
 end:
     g_object_unref(blank);
-    return status;
+    return grab_successful;
 }
 
 static void update_mouse_pointer(SpiceDisplay *display)
@@ -1023,7 +1025,7 @@ static void try_mouse_grab(SpiceDisplay *display)
     if (d->mouse_grab_active)
         return;
 
-    if (do_pointer_grab(display) != GDK_GRAB_SUCCESS)
+    if (!do_pointer_grab(display))
         return;
 
     d->mouse_last_x = -1;
