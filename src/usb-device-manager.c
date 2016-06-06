@@ -54,7 +54,7 @@
 #include <glib/gi18n.h>
 
 #ifndef G_OS_WIN32 /* Linux -- device id is bus.addr */
-#define DEV_ID_FMT "at %d.%d"
+#define DEV_ID_FMT "at %u.%u"
 #else /* Windows -- device id is vid:pid */
 #define DEV_ID_FMT "0x%04x:0x%04x"
 #endif
@@ -999,7 +999,7 @@ static void spice_usb_device_manager_add_dev(SpiceUsbDeviceManager  *self,
 }
 
 static void spice_usb_device_manager_remove_dev(SpiceUsbDeviceManager *self,
-                                                int bus, int address)
+                                                guint bus, guint address)
 {
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
     SpiceUsbDevice *device;
@@ -1081,7 +1081,7 @@ static void spice_usb_device_manager_add_udev(SpiceUsbDeviceManager  *self,
         spice_usb_device_manager_add_dev(self, libdev);
     else
         g_warning("Could not find USB device to add " DEV_ID_FMT,
-                  bus, address);
+                  (guint) bus, (guint) address);
 
     if (!priv->coldplug_list)
         libusb_free_device_list(dev_list, 1);

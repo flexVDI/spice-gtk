@@ -78,7 +78,7 @@ static gboolean spice_win_usb_driver_initable_init(GInitable     *initable,
         DWORD errval  = GetLastError();
         gchar *errstr = g_win32_error_message(errval);
         g_set_error(err, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_USB_SERVICE,
-                    "Failed to create service named pipe (%ld) %s", errval, errstr);
+                    "Failed to create service named pipe (%lu) %s", errval, errstr);
         g_free(errstr);
         return FALSE;
     }
@@ -117,6 +117,7 @@ static void spice_win_usb_driver_initable_iface_init(GInitableIface *iface)
 /* ------------------------------------------------------------------ */
 /* callbacks                                                          */
 
+static
 void win_usb_driver_handle_reply_cb(GObject *gobject,
                                     GAsyncResult *read_res,
                                     gpointer user_data)

@@ -4,8 +4,8 @@
 #include <windows.h>
 
 #define USB_CLERK_PIPE_NAME     TEXT("\\\\.\\pipe\\usbclerkpipe")
-#define USB_CLERK_MAGIC         0xDADA
-#define USB_CLERK_VERSION       0x0003
+#define USB_CLERK_MAGIC         0xDADAu
+#define USB_CLERK_VERSION       0x0003u
 
 typedef struct USBClerkHeader {
     UINT16 magic;

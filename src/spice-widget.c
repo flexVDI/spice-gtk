@@ -923,7 +923,7 @@ error:
     {
         DWORD errval  = GetLastError();
         gchar *errstr = g_win32_error_message(errval);
-        g_warning("failed to clip cursor (%ld) %s", errval, errstr);
+        g_warning("failed to clip cursor (%lu) %s", errval, errstr);
     }
 
     return false;
