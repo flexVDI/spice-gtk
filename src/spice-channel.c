@@ -1387,11 +1387,10 @@ spice_channel_gather_sasl_credentials(SpiceChannel *channel,
         switch (interact[ninteract].id) {
         case SASL_CB_AUTHNAME:
         case SASL_CB_USER:
-            if (spice_session_get_username(c->session) == NULL)
-                return FALSE;
-
-            interact[ninteract].result =  spice_session_get_username(c->session);
-            interact[ninteract].len = strlen(interact[ninteract].result);
+            if (spice_session_get_username(c->session) != NULL) {
+                interact[ninteract].result =  spice_session_get_username(c->session);
+                interact[ninteract].len = strlen(interact[ninteract].result);
+            }
             break;
 
         case SASL_CB_PASS:
