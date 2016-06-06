@@ -1406,7 +1406,7 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = display->priv;
-    int scancode;
+    int scancode = 0;
 #ifdef G_OS_WIN32
     int native_scancode;
     WORD langid = LOWORD(GetKeyboardLayout(0));
@@ -1414,8 +1414,23 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
 #endif
 
 #ifdef G_OS_WIN32
+    /* Try to get scancode with gdk_event_get_scancode.
+     * This API is available from 3.22 or if backported.
+     */
+#if HAVE_GDK_EVENT_GET_SCANCODE
+    native_scancode = gdk_event_get_scancode((GdkEvent *) key);
+    if (native_scancode) {
+        scancode = native_scancode & 0x1ff;
+        /* Windows always set extended attribute for these keys */
+        if (scancode == (0x100|DIK_NUMLOCK) || scancode == (0x100|DIK_RSHIFT))
+            scancode &= 0xff;
+    }
+#else
+    native_scancode = 0;
+#endif
+
     /* on windows, we ought to ignore the reserved key event? */
-    if (key->hardware_keycode == 0xff)
+    if (!native_scancode && key->hardware_keycode == 0xff)
         return false;
 
     if (!d->keyboard_grab_active) {
@@ -1455,23 +1470,10 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
     if (!d->inputs)
         return true;
 
-    scancode = vnc_display_keymap_gdk2xtkbd(d->keycode_map, d->keycode_maplen,
-                                            key->hardware_keycode);
+    if (!scancode)
+        scancode = vnc_display_keymap_gdk2xtkbd(d->keycode_map, d->keycode_maplen,
+                                                key->hardware_keycode);
 #ifdef G_OS_WIN32
-    /* Try to get scancode with gdk_event_get_scancode.
-     * This API is available from 3.22 or if backported.
-     */
-#if HAVE_GDK_EVENT_GET_SCANCODE
-    native_scancode = gdk_event_get_scancode((GdkEvent *) key);
-    if (native_scancode) {
-        scancode = native_scancode & 0x1ff;
-        /* Windows always set extended attribute for these keys */
-        if (scancode == (0x100|DIK_NUMLOCK) || scancode == (0x100|DIK_RSHIFT))
-            scancode &= 0xff;
-    }
-#else
-    native_scancode = 0;
-#endif
     if (!native_scancode) {
         native_scancode = MapVirtualKey(key->hardware_keycode, MAPVK_VK_TO_VSC);
         /* MapVirtualKey doesn't return scancode with needed higher byte */
