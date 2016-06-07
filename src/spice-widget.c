@@ -827,7 +827,11 @@ static void try_keyboard_ungrab(SpiceDisplay *display)
     SPICE_DEBUG("ungrab keyboard");
     gdk_keyboard_ungrab(GDK_CURRENT_TIME);
 #ifdef G_OS_WIN32
-    g_clear_pointer(&d->keyboard_hook, UnhookWindowsHookEx);
+    // do not use g_clear_pointer as Windows API have different linkage
+    if (d->keyboard_hook) {
+        UnhookWindowsHookEx(d->keyboard_hook);
+        d->keyboard_hook = NULL;
+    }
 #endif
     d->keyboard_grab_active = false;
     g_signal_emit(widget, signals[SPICE_DISPLAY_KEYBOARD_GRAB], 0, false);
