@@ -309,7 +309,7 @@ void spice_display_widget_update_monitor_area(SpiceDisplay *display)
     }
 
     /* If only one head on this monitor, update the whole area */
-    if(monitors->len == 1) {
+    if (monitors->len == 1 && !d->egl.enabled) {
         update_area(display, 0, 0, c->width, c->height);
     } else {
         update_area(display, c->x, c->y, c->width, c->height);
