@@ -123,8 +123,8 @@ AC_ARG_WITH([gtk],
   [with_gtk=3.0])
 
 case "$with_gtk" in
-  3.0) GTK_REQUIRED=3.10
-       GTK_ENCODED_VERSION="GDK_VERSION_3_10"
+  3.0) GTK_REQUIRED=3.12
+       GTK_ENCODED_VERSION="GDK_VERSION_3_12"
        ;;
   no)
        AS_IF([test x$enable_gtk_doc = xyes],
