@@ -451,9 +451,6 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
 
     g_type_class_add_private(klass, sizeof(SpiceDisplayChannelPrivate));
 
-    sw_canvas_init();
-    quic_init();
-    rop3_init();
     channel_set_handlers(SPICE_CHANNEL_CLASS(klass));
 }
 
