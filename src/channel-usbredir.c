@@ -24,6 +24,9 @@
 #ifdef USE_USBREDIR
 #include <glib/gi18n.h>
 #include <usbredirhost.h>
+#ifdef USE_LZ4
+#include <lz4.h>
+#endif
 #ifdef USE_POLKIT
 #include "usb-acl-helper.h"
 #endif
@@ -32,6 +35,7 @@
 #include "usbutil.h"
 #endif
 
+#include "common/log.h"
 #include "spice-client.h"
 #include "spice-common.h"
 
@@ -51,6 +55,7 @@
 
 #ifdef USE_USBREDIR
 
+#define COMPRESS_THRESHOLD 1000
 #define SPICE_USBREDIR_CHANNEL_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_USBREDIR_CHANNEL, SpiceUsbredirChannelPrivate))
 
@@ -239,6 +244,7 @@ static void channel_set_handlers(SpiceChannelClass *klass)
 {
     static const spice_msg_handler handlers[] = {
         [ SPICE_MSG_SPICEVMC_DATA ] = usbredir_handle_msg,
+        [ SPICE_MSG_SPICEVMC_COMPRESSED_DATA ] = usbredir_handle_msg,
     };
 
     spice_channel_set_handlers(klass, handlers, G_N_ELEMENTS(handlers));
@@ -274,6 +280,9 @@ void spice_usbredir_channel_set_context(SpiceUsbredirChannel *channel,
 
 #if USBREDIR_VERSION >= 0x000701
     usbredirhost_set_buffered_output_size_cb(priv->host, usbredir_buffered_output_size_callback);
+#endif
+#ifdef USE_LZ4
+    spice_channel_set_capability(channel, SPICE_SPICEVMC_CAP_DATA_COMPRESS_LZ4);
 #endif
 }
 
@@ -638,11 +647,71 @@ static void usbredir_free_write_cb_data(uint8_t *data, void *user_data)
     usbredirhost_free_write_buffer(priv->host, data);
 }
 
+#ifdef USE_LZ4
+static int try_write_compress_LZ4(SpiceUsbredirChannel *channel, uint8_t *data, int count) {
+    SpiceChannelPrivate *c;
+    SpiceMsgOut *msg_out_compressed;
+    int bound, compressed_data_count;
+    uint8_t *compressed_buf;
+    SpiceMsgCompressedData compressed_data_msg = {
+            .type = SPICE_DATA_COMPRESSION_TYPE_LZ4,
+            .uncompressed_size = count
+        };
+
+    c = SPICE_CHANNEL(channel)->priv;
+    if (g_socket_get_family(c->sock) == G_SOCKET_FAMILY_UNIX) {
+        /* AF_LOCAL socket - data will not be compressed */
+        return FALSE;
+    }
+    if (count <= COMPRESS_THRESHOLD) {
+        /* Not enough data to compress */
+        return FALSE;
+    }
+    if (!spice_channel_test_capability(SPICE_CHANNEL(channel),
+                                       SPICE_SPICEVMC_CAP_DATA_COMPRESS_LZ4)) {
+        /* No server compression capability - data will not be compressed */
+        return FALSE;
+    }
+    bound = LZ4_compressBound(count);
+    if (bound == 0) {
+        /* Invalid bound - data will not be compressed */
+        return FALSE;
+    }
+
+    compressed_buf = g_malloc(bound);
+    compressed_data_count = LZ4_compress_default((char*)data,
+                                                 (char*)compressed_buf,
+                                                 count,
+                                                 bound);
+    if (compressed_data_count > 0 && compressed_data_count < count) {
+        compressed_data_msg.compressed_data = compressed_buf;
+        msg_out_compressed = spice_msg_out_new(SPICE_CHANNEL(channel),
+                                               SPICE_MSGC_SPICEVMC_COMPRESSED_DATA);
+        msg_out_compressed->marshallers->msg_SpiceMsgCompressedData(msg_out_compressed->marshaller,
+                                                                    &compressed_data_msg);
+        spice_marshaller_add_ref_full(msg_out_compressed->marshaller,
+                                      compressed_data_msg.compressed_data,
+                                      compressed_data_count,
+                                      usbredir_free_write_cb_data,
+                                      channel);
+        spice_msg_out_send(msg_out_compressed);
+        return TRUE;
+    }
+    /* if not - free & fallback to sending the message uncompressed */
+    free(compressed_buf);
+    return FALSE;
+}
+#endif
+
 static int usbredir_write_callback(void *user_data, uint8_t *data, int count)
 {
     SpiceUsbredirChannel *channel = user_data;
     SpiceMsgOut *msg_out;
 
+#ifdef USE_LZ4
+    if (try_write_compress_LZ4(channel, data, count))
+        return count;
+#endif
     msg_out = spice_msg_out_new(SPICE_CHANNEL(channel),
                                 SPICE_MSGC_SPICEVMC_DATA);
     spice_marshaller_add_ref_full(msg_out->marshaller, data, count,
@@ -732,11 +801,49 @@ static void spice_usbredir_channel_up(SpiceChannel *c)
     usbredirhost_write_guest_data(priv->host);
 }
 
+static int try_handle_compressed_msg(SpiceMsgCompressedData *compressed_data_msg,
+                                     uint8_t **buf,
+                                     int *size) {
+    int decompressed_size = 0;
+    char *decompressed = NULL;
+
+    if (compressed_data_msg->uncompressed_size == 0) {
+        spice_warning("Invalid uncompressed_size");
+        return FALSE;
+    }
+
+    switch (compressed_data_msg->type) {
+#ifdef USE_LZ4
+    case SPICE_DATA_COMPRESSION_TYPE_LZ4:
+        decompressed = g_malloc(compressed_data_msg->uncompressed_size);
+        decompressed_size = LZ4_decompress_safe ((char*)compressed_data_msg->compressed_data,
+                                                 decompressed,
+                                                 compressed_data_msg->compressed_size,
+                                                 compressed_data_msg->uncompressed_size);
+        break;
+#endif
+    default:
+        spice_warning("Unknown Compression Type");
+        return FALSE;
+    }
+    if (decompressed_size != compressed_data_msg->uncompressed_size) {
+        spice_warning("Decompress Error decompressed_size=%d expected=%u",
+                      decompressed_size, compressed_data_msg->uncompressed_size);
+        g_free(decompressed);
+        return FALSE;
+    }
+
+    *size = decompressed_size;
+    *buf = (uint8_t*)decompressed;
+    return TRUE;
+
+}
+
 static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
 {
     SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(c);
     SpiceUsbredirChannelPrivate *priv = channel->priv;
-    int r, size;
+    int r = 0, size;
     uint8_t *buf;
 
     g_return_if_fail(priv->host != NULL);
@@ -744,13 +851,23 @@ static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
     /* No recursion allowed! */
     g_return_if_fail(priv->read_buf == NULL);
 
-    buf = spice_msg_in_raw(in, &size);
-    priv->read_buf = buf;
-    priv->read_buf_size = size;
+    if (spice_msg_in_type(in) == SPICE_MSG_SPICEVMC_COMPRESSED_DATA) {
+        SpiceMsgCompressedData *compressed_data_msg = spice_msg_in_parsed(in);
+        if (try_handle_compressed_msg(compressed_data_msg, &buf, &size)) {
+            priv->read_buf_size = size;
+            priv->read_buf = buf;
+        } else {
+            r = usbredirhost_read_parse_error;
+        }
+    } else { /* Regular SPICE_MSG_SPICEVMC_DATA msg */
+        buf = spice_msg_in_raw(in, &size);
+        priv->read_buf_size = size;
+        priv->read_buf = buf;
+    }
 
     spice_usbredir_channel_lock(channel);
-
-    r = usbredirhost_read_guest_data(priv->host);
+    if (r == 0)
+        r = usbredirhost_read_guest_data(priv->host);
     if (r != 0) {
         SpiceUsbDevice *spice_device = priv->spice_device;
         device_error_data err_data;
