@@ -49,7 +49,7 @@ void write_to_pipe (const void* data, size_t len)
 #ifdef WIN32
     DWORD written;
     if (!WriteFile (pipe, data, len, &written, NULL) || written != len) {
-        printf("Write to pipe failed %u\n", GetLastError());
+        printf("Write to pipe failed %lu\n", GetLastError());
     }
 #else
     if (send (sock, data, len, 0) != len) {
@@ -107,7 +107,7 @@ ssize_t read_from_pipe (void* data, size_t size)
 #ifdef WIN32
     DWORD bytes;
     if (!ReadFile (pipe, data, size, &bytes, NULL)) {
-        printf ("Read from pipe failed %u\n", GetLastError());
+        printf ("Read from pipe failed %lu\n", GetLastError());
     }
     read = bytes;
 #else
@@ -224,7 +224,7 @@ int main (int argc, char *argv[])
     printf ("Creating Spice controller connection %s\n", pipe_name);
     pipe = CreateFile (pipe_name, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
     if (pipe == INVALID_HANDLE_VALUE) {
-        printf ("Could not open pipe %u\n", GetLastError());
+        printf ("Could not open pipe %lu\n", GetLastError());
         return -1;
     }
 #else
