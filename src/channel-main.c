@@ -3121,7 +3121,7 @@ static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
         CHANNEL_DEBUG(channel, "Insert a xfer task:%u to task list", task->id);
         g_hash_table_insert(c->file_xfer_tasks,
                             GUINT_TO_POINTER(task->id),
-                            task);
+                            g_object_ref(task));
         g_signal_connect(task, "finished", G_CALLBACK(task_finished), channel);
         g_signal_emit(channel, signals[SPICE_MAIN_NEW_FILE_TRANSFER], 0, task);
 
@@ -3129,7 +3129,7 @@ static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
                           G_PRIORITY_DEFAULT,
                           cancellable,
                           file_xfer_read_async_cb,
-                          g_object_ref(task));
+                          task);
         task->pending = TRUE;
 
         /* if we created a per-task cancellable above, free it */
