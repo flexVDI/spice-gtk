@@ -65,6 +65,12 @@ static GHashTable *spice_file_transfer_task_create_tasks(GFile **files,
                                                          gpointer progress_callback_data,
                                                          GAsyncReadyCallback callback,
                                                          gpointer user_data);
+static void spice_file_transfer_task_init_task_async(SpiceFileTransferTask *self,
+                                                     GAsyncReadyCallback callback,
+                                                     gpointer userdata);
+static GFileInfo *spice_file_transfer_task_init_task_finish(SpiceFileTransferTask *xfer_task,
+                                                            GAsyncResult *result,
+                                                            GError **error);
 
 /**
  * SECTION:file-transfer-task
@@ -3024,34 +3030,32 @@ signal:
 }
 
 
-static void file_xfer_info_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
+static void file_xfer_init_task_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
 {
     GFileInfo *info;
-    GFile *file = G_FILE(obj);
-    GError *error = NULL;
-    GKeyFile *keyfile = NULL;
-    gchar *basename = NULL;
+    SpiceFileTransferTask *xfer_task;
+    SpiceMainChannel *channel;
+    gchar *string, *basename;
+    GKeyFile *keyfile;
     VDAgentFileXferStartMessage msg;
-    gsize /*msg_size*/ data_len;
-    gchar *string;
-    SpiceFileTransferTask *self = SPICE_FILE_TRANSFER_TASK(data);
+    guint64 file_size;
+    gsize data_len;
+    GError *error = NULL;
 
-    self->pending = FALSE;
-    info = g_file_query_info_finish(file, res, &error);
-    if (error || self->error)
+    xfer_task = SPICE_FILE_TRANSFER_TASK(obj);
+
+    info = spice_file_transfer_task_init_task_finish(xfer_task, res, &error);
+    if (info == NULL)
         goto failed;
 
-    self->file_size =
-        g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
-    g_object_notify(G_OBJECT(self), "progress");
-    keyfile = g_key_file_new();
+    channel = spice_file_transfer_task_get_channel(xfer_task);
+    basename = g_file_info_get_attribute_as_string(info, G_FILE_ATTRIBUTE_STANDARD_NAME);
+    file_size = g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
 
-    /* File name */
-    basename = g_file_get_basename(file);
+    keyfile = g_key_file_new();
     g_key_file_set_string(keyfile, "vdagent-file-xfer", "name", basename);
+    g_key_file_set_uint64(keyfile, "vdagent-file-xfer", "size", file_size);
     g_free(basename);
-    /* File size */
-    g_key_file_set_uint64(keyfile, "vdagent-file-xfer", "size", self->file_size);
 
     /* Save keyfile content to memory. TODO: more file attributions
        need to be sent to guest */
@@ -3061,39 +3065,18 @@ static void file_xfer_info_async_cb(GObject *obj, GAsyncResult *res, gpointer da
         goto failed;
 
     /* Create file-xfer start message */
-    msg.id = self->id;
-    agent_msg_queue_many(self->channel, VD_AGENT_FILE_XFER_START,
+    msg.id = spice_file_transfer_task_get_id(xfer_task);
+    agent_msg_queue_many(channel, VD_AGENT_FILE_XFER_START,
                          &msg, sizeof(msg),
                          string, data_len + 1, NULL);
     g_free(string);
-    spice_channel_wakeup(SPICE_CHANNEL(self->channel), FALSE);
+    spice_channel_wakeup(SPICE_CHANNEL(channel), FALSE);
+    g_object_unref(info);
     return;
 
 failed:
-    spice_file_transfer_task_completed(self, error);
-}
-
-static void file_xfer_read_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
-{
-    GFile *file = G_FILE(obj);
-    SpiceFileTransferTask *self = SPICE_FILE_TRANSFER_TASK(data);
-    GError *error = NULL;
-
-    self->pending = FALSE;
-    self->file_stream = g_file_read_finish(file, res, &error);
-    if (error || self->error) {
-        spice_file_transfer_task_completed(self, error);
-        return;
-    }
-
-    g_file_query_info_async(self->file,
-                            G_FILE_ATTRIBUTE_STANDARD_SIZE,
-                            G_FILE_QUERY_INFO_NONE,
-                            G_PRIORITY_DEFAULT,
-                            self->cancellable,
-                            file_xfer_info_async_cb,
-                            self);
-    self->pending = TRUE;
+    g_clear_object(&info);
+    spice_file_transfer_task_completed(xfer_task, error);
 }
 
 static SpiceFileTransferTask *spice_file_transfer_task_new(SpiceMainChannel *channel,
@@ -3182,11 +3165,9 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
     g_hash_table_iter_init(&iter, xfer_ht);
     while (g_hash_table_iter_next(&iter, &key, &value)) {
         guint32 task_id;
-        GFile *file;
         SpiceFileTransferTask *xfer_task = value;
 
         task_id = spice_file_transfer_task_get_id(xfer_task);
-        g_object_get(xfer_task, "file", &file, NULL);
 
         SPICE_DEBUG("Insert a xfer task:%u to task list", task_id);
 
@@ -3194,12 +3175,9 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
         g_signal_connect(xfer_task, "finished", G_CALLBACK(task_finished), channel);
         g_signal_emit(channel, signals[SPICE_MAIN_NEW_FILE_TRANSFER], 0, xfer_task);
 
-        g_file_read_async(file,
-                          G_PRIORITY_DEFAULT,
-                          cancellable,
-                          file_xfer_read_async_cb,
-                          xfer_task);
-        xfer_task->pending = TRUE;
+        spice_file_transfer_task_init_task_async(xfer_task,
+                                                 file_xfer_init_task_async_cb,
+                                                 NULL);
     }
     g_hash_table_unref(xfer_ht);
 }
@@ -3292,6 +3270,104 @@ static GHashTable *spice_file_transfer_task_create_tasks(GFile **files,
             g_object_unref(task_cancellable);
     }
     return xfer_ht;
+}
+
+static void spice_file_transfer_task_query_info_cb(GObject *obj,
+                                                   GAsyncResult *res,
+                                                   gpointer user_data)
+{
+    SpiceFileTransferTask *self;
+    GFileInfo *info;
+    GTask *task;
+    GError *error = NULL;
+
+    task = G_TASK(user_data);
+    self = g_task_get_source_object(task);
+
+    g_return_if_fail(self->pending == TRUE);
+    self->pending = FALSE;
+
+    info = g_file_query_info_finish(G_FILE(obj), res, &error);
+    if (self->error) {
+        /* Return error previously reported */
+        g_task_return_error(task, self->error);
+        return;
+    } else if (error) {
+        g_task_return_error(task, error);
+        return;
+    }
+
+    self->file_size =
+        g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
+
+    /* SpiceFileTransferTask's init is done, handshake for file-transfer will
+     * start soon. First "progress" can be emitted ~ 0% */
+    g_object_notify(G_OBJECT(self), "progress");
+
+    g_task_return_pointer(task, info, g_object_unref);
+}
+
+static void spice_file_transfer_task_read_file_cb(GObject *obj,
+                                                  GAsyncResult *res,
+                                                  gpointer user_data)
+{
+    SpiceFileTransferTask *self;
+    GTask *task;
+    GError *error = NULL;
+
+    task = G_TASK(user_data);
+    self = g_task_get_source_object(task);
+
+    g_return_if_fail(self->pending == TRUE);
+
+    self->file_stream = g_file_read_finish(G_FILE(obj), res, &error);
+    if (self->error) {
+        /* Return error previously reported */
+        self->pending = FALSE;
+        g_task_return_error(task, self->error);
+        return;
+    } else if (error) {
+        self->pending = FALSE;
+        g_task_return_error(task, error);
+        return;
+    }
+
+    g_file_query_info_async(self->file,
+                            "standard::*",
+                            G_FILE_QUERY_INFO_NONE,
+                            G_PRIORITY_DEFAULT,
+                            self->cancellable,
+                            spice_file_transfer_task_query_info_cb,
+                            task);
+}
+
+static void spice_file_transfer_task_init_task_async(SpiceFileTransferTask *self,
+                                                     GAsyncReadyCallback callback,
+                                                     gpointer userdata)
+{
+    GTask *task;
+
+    g_return_if_fail(self != NULL);
+    g_return_if_fail(self->pending == FALSE);
+
+    task = g_task_new(self, self->cancellable, callback, userdata);
+
+    self->pending = TRUE;
+    g_file_read_async(self->file,
+                      G_PRIORITY_DEFAULT,
+                      self->cancellable,
+                      spice_file_transfer_task_read_file_cb,
+                      task);
+}
+
+static GFileInfo *spice_file_transfer_task_init_task_finish(SpiceFileTransferTask *self,
+                                                            GAsyncResult *result,
+                                                            GError **error)
+{
+    GTask *task = G_TASK(result);
+
+    g_return_val_if_fail(self != NULL, NULL);
+    return g_task_propagate_pointer(task, error);
 }
 
 static void
