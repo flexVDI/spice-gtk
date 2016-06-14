@@ -3180,12 +3180,13 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
                                 GAsyncReadyCallback callback,
                                 gpointer user_data)
 {
-    SpiceMainChannelPrivate *c = channel->priv;
+    SpiceMainChannelPrivate *c;
 
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
     g_return_if_fail(sources != NULL);
 
+    c = channel->priv;
     if (!c->agent_connected) {
         g_task_report_new_error(channel,
                                 callback,
