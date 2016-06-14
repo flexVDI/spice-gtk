@@ -57,6 +57,14 @@ typedef struct spice_migrate spice_migrate;
 static guint32 spice_file_transfer_task_get_id(SpiceFileTransferTask *self);
 static SpiceMainChannel *spice_file_transfer_task_get_channel(SpiceFileTransferTask *self);
 static GCancellable *spice_file_transfer_task_get_cancellable(SpiceFileTransferTask *self);
+static GHashTable *spice_file_transfer_task_create_tasks(GFile **files,
+                                                         SpiceMainChannel *channel,
+                                                         GFileCopyFlags flags,
+                                                         GCancellable *cancellable,
+                                                         GFileProgressCallback progress_callback,
+                                                         gpointer progress_callback_data,
+                                                         GAsyncReadyCallback callback,
+                                                         gpointer user_data);
 
 /**
  * SECTION:file-transfer-task
@@ -3100,54 +3108,6 @@ static void task_finished(SpiceFileTransferTask *task,
     g_hash_table_remove(channel->priv->file_xfer_tasks, GUINT_TO_POINTER(task->id));
 }
 
-static void file_xfer_send_start_msg_async(SpiceMainChannel *channel,
-                                           GFile **files,
-                                           GFileCopyFlags flags,
-                                           GCancellable *cancellable,
-                                           GFileProgressCallback progress_callback,
-                                           gpointer progress_callback_data,
-                                           GAsyncReadyCallback callback,
-                                           gpointer user_data)
-{
-    SpiceMainChannelPrivate *c = channel->priv;
-    SpiceFileTransferTask *task;
-    gint i;
-
-    for (i = 0; files[i] != NULL && !g_cancellable_is_cancelled(cancellable); i++) {
-        GCancellable *task_cancellable = cancellable;
-        /* if a cancellable object was not provided for the overall operation,
-         * create a separate object for each file so that they can be cancelled
-         * separately  */
-        if (!task_cancellable)
-            task_cancellable = g_cancellable_new();
-
-        task = spice_file_transfer_task_new(channel, files[i], task_cancellable);
-        task->flags = flags;
-        task->progress_callback = progress_callback;
-        task->progress_callback_data = progress_callback_data;
-        task->callback = callback;
-        task->user_data = user_data;
-
-        CHANNEL_DEBUG(channel, "Insert a xfer task:%u to task list", task->id);
-        g_hash_table_insert(c->file_xfer_tasks,
-                            GUINT_TO_POINTER(task->id),
-                            g_object_ref(task));
-        g_signal_connect(task, "finished", G_CALLBACK(task_finished), channel);
-        g_signal_emit(channel, signals[SPICE_MAIN_NEW_FILE_TRANSFER], 0, task);
-
-        g_file_read_async(files[i],
-                          G_PRIORITY_DEFAULT,
-                          cancellable,
-                          file_xfer_read_async_cb,
-                          task);
-        task->pending = TRUE;
-
-        /* if we created a per-task cancellable above, free it */
-        if (!cancellable)
-            g_object_unref(task_cancellable);
-    }
-}
-
 /**
  * spice_main_file_copy_async:
  * @channel: a #SpiceMainChannel
@@ -3191,6 +3151,9 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
                                 gpointer user_data)
 {
     SpiceMainChannelPrivate *c;
+    GHashTable *xfer_ht;
+    GHashTableIter iter;
+    gpointer key, value;
 
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
@@ -3208,14 +3171,37 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
         return;
     }
 
-    file_xfer_send_start_msg_async(channel,
-                                   sources,
-                                   flags,
-                                   cancellable,
-                                   progress_callback,
-                                   progress_callback_data,
-                                   callback,
-                                   user_data);
+    xfer_ht = spice_file_transfer_task_create_tasks(sources,
+                                                    channel,
+                                                    flags,
+                                                    cancellable,
+                                                    progress_callback,
+                                                    progress_callback_data,
+                                                    callback,
+                                                    user_data);
+    g_hash_table_iter_init(&iter, xfer_ht);
+    while (g_hash_table_iter_next(&iter, &key, &value)) {
+        guint32 task_id;
+        GFile *file;
+        SpiceFileTransferTask *xfer_task = value;
+
+        task_id = spice_file_transfer_task_get_id(xfer_task);
+        g_object_get(xfer_task, "file", &file, NULL);
+
+        SPICE_DEBUG("Insert a xfer task:%u to task list", task_id);
+
+        g_hash_table_insert(c->file_xfer_tasks, key, g_object_ref(xfer_task));
+        g_signal_connect(xfer_task, "finished", G_CALLBACK(task_finished), channel);
+        g_signal_emit(channel, signals[SPICE_MAIN_NEW_FILE_TRANSFER], 0, xfer_task);
+
+        g_file_read_async(file,
+                          G_PRIORITY_DEFAULT,
+                          cancellable,
+                          file_xfer_read_async_cb,
+                          xfer_task);
+        xfer_task->pending = TRUE;
+    }
+    g_hash_table_unref(xfer_ht);
 }
 
 /**
@@ -3257,6 +3243,55 @@ static GCancellable *spice_file_transfer_task_get_cancellable(SpiceFileTransferT
 {
     g_return_val_if_fail(self != NULL, NULL);
     return self->cancellable;
+}
+
+/* Helper function which only creates a SpiceFileTransferTask per GFile
+ * in @files and returns a HashTable mapping task-id to the task itself
+ * Note that the HashTable does not free its values upon destruction:
+ * The SpiceFileTransferTask reference created here should be freed by
+ * spice_file_transfer_task_completed */
+static GHashTable *spice_file_transfer_task_create_tasks(GFile **files,
+                                                         SpiceMainChannel *channel,
+                                                         GFileCopyFlags flags,
+                                                         GCancellable *cancellable,
+                                                         GFileProgressCallback progress_callback,
+                                                         gpointer progress_callback_data,
+                                                         GAsyncReadyCallback callback,
+                                                         gpointer user_data)
+{
+    GHashTable *xfer_ht;
+    gint i;
+
+    g_return_val_if_fail(files != NULL && files[0] != NULL, NULL);
+
+    xfer_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
+    for (i = 0; files[i] != NULL && !g_cancellable_is_cancelled(cancellable); i++) {
+        SpiceFileTransferTask *xfer_task;
+        guint32 task_id;
+        GCancellable *task_cancellable = cancellable;
+
+        /* if a cancellable object was not provided for the overall operation,
+         * create a separate object for each file so that they can be cancelled
+         * separately  */
+        if (!task_cancellable)
+            task_cancellable = g_cancellable_new();
+
+        /* FIXME: Move the xfer-task initialization to spice_file_transfer_task_new() */
+        xfer_task = spice_file_transfer_task_new(channel, files[i], task_cancellable);
+        xfer_task->flags = flags;
+        xfer_task->progress_callback = progress_callback;
+        xfer_task->progress_callback_data = progress_callback_data;
+        xfer_task->callback = callback;
+        xfer_task->user_data = user_data;
+
+        task_id = spice_file_transfer_task_get_id(xfer_task);
+        g_hash_table_insert(xfer_ht, GUINT_TO_POINTER(task_id), xfer_task);
+
+        /* if we created a per-task cancellable above, unref it */
+        if (!cancellable)
+            g_object_unref(task_cancellable);
+    }
+    return xfer_ht;
 }
 
 static void
