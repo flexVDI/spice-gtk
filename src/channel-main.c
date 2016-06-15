@@ -1934,19 +1934,20 @@ static void file_xfer_data_flushed_cb(GObject *source_object,
     spice_file_transfer_task_read_async(self, file_xfer_read_async_cb, NULL);
 }
 
-static void file_xfer_queue(SpiceFileTransferTask *self, int data_size)
+static void file_xfer_queue_msg_to_agent(SpiceMainChannel *channel,
+                                         guint32 task_id,
+                                         gchar *buffer,
+                                         gint data_size)
 {
     VDAgentFileXferDataMessage msg;
-    SpiceMainChannel *channel;
 
-    channel = spice_file_transfer_task_get_channel(self);
     g_return_if_fail(channel != NULL);
 
-    msg.id = spice_file_transfer_task_get_id(self);
+    msg.id = task_id;
     msg.size = data_size;
     agent_msg_queue_many(channel, VD_AGENT_FILE_XFER_DATA,
                          &msg, sizeof(msg),
-                         self->buffer, data_size, NULL);
+                         buffer, data_size, NULL);
     spice_channel_wakeup(SPICE_CHANNEL(channel), FALSE);
 }
 
@@ -1972,7 +1973,7 @@ static void file_xfer_read_async_cb(GObject *source_object,
         return;
     }
 
-    file_xfer_queue(xfer_task, count);
+    file_xfer_queue_msg_to_agent(channel, spice_file_transfer_task_get_id(xfer_task), buffer, count);
     if (count == 0) {
         /* on EOF just wait for VD_AGENT_FILE_XFER_STATUS from agent */
         return;
