@@ -158,6 +158,11 @@ typedef struct {
     SpiceDisplayState       display_state;
 } SpiceDisplayConfig;
 
+typedef struct {
+    GHashTable                 *xfer_task;
+    SpiceMainChannel           *channel;
+} FileTransferOperation;
+
 struct _SpiceMainChannelPrivate  {
     enum SpiceMouseMode         mouse_mode;
     enum SpiceMouseMode         requested_mouse_mode;
@@ -261,6 +266,14 @@ static void file_xfer_read_async_cb(GObject *source_object,
 static void spice_main_set_max_clipboard(SpiceMainChannel *self, gint max);
 static void set_agent_connected(SpiceMainChannel *channel, gboolean connected);
 
+static void file_transfer_operation_free(FileTransferOperation *xfer_op);
+static void spice_main_channel_reset_all_xfer_operations(SpiceMainChannel *channel);
+static SpiceFileTransferTask *spice_main_channel_find_xfer_task_by_task_id(SpiceMainChannel *channel,
+                                                                           guint32 task_id);
+static void file_transfer_operation_task_finished(SpiceFileTransferTask *xfer_task,
+                                                  GError *error,
+                                                  gpointer userdata);
+
 /* ------------------------------------------------------------------ */
 
 static const char *agent_msg_types[] = {
@@ -319,10 +332,8 @@ static void spice_main_channel_init(SpiceMainChannel *channel)
 
     c = channel->priv = SPICE_MAIN_CHANNEL_GET_PRIVATE(channel);
     c->agent_msg_queue = g_queue_new();
-    c->file_xfer_tasks = g_hash_table_new_full(g_direct_hash, g_direct_equal,
-                                               NULL, g_object_unref);
-    c->flushing = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL,
-                                        g_object_unref);
+    c->file_xfer_tasks = g_hash_table_new(g_direct_hash, g_direct_equal);
+    c->flushing = g_hash_table_new(g_direct_hash, g_direct_equal);
     c->cancellable_volume_info = g_cancellable_new();
 
     spice_main_channel_reset_capabilties(SPICE_CHANNEL(channel));
@@ -474,9 +485,6 @@ static void spice_channel_iterate_write(SpiceChannel *channel)
 static void spice_main_channel_reset_agent(SpiceMainChannel *channel)
 {
     SpiceMainChannelPrivate *c = channel->priv;
-    GError *error;
-    GList *tasks;
-    GList *l;
 
     c->agent_connected = FALSE;
     c->agent_caps_received = FALSE;
@@ -485,15 +493,7 @@ static void spice_main_channel_reset_agent(SpiceMainChannel *channel)
     g_clear_pointer(&c->agent_msg_data, g_free);
     c->agent_msg_size = 0;
 
-    tasks = g_hash_table_get_values(c->file_xfer_tasks);
-    for (l = tasks; l != NULL; l = l->next) {
-        SpiceFileTransferTask *task = (SpiceFileTransferTask *)l->data;
-
-        error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
-                            "Agent connection closed");
-        spice_file_transfer_task_completed(task, error);
-    }
-    g_list_free(tasks);
+    spice_main_channel_reset_all_xfer_operations(channel);
     file_xfer_flushed(channel, FALSE);
 }
 
@@ -1898,12 +1898,17 @@ static void file_xfer_send_progress(SpiceFileTransferTask *xfer_task)
 
     channel = spice_file_transfer_task_get_channel(xfer_task);
 
-    /* since the progress_callback does not have a parameter to indicate
+    /* FIXME: This iterates over all SpiceFileTransferTasks, including ones from
+     * a different FileTransferOperation. The progress_callback should only
+     * return the info related to its FileTransferOperation.
+     * Since the progress_callback does not have a parameter to indicate
      * which file the progress is associated with, report progress on all
      * current transfers */
     g_hash_table_iter_init(&iter, channel->priv->file_xfer_tasks);
     while (g_hash_table_iter_next(&iter, &key, &value)) {
-        SpiceFileTransferTask *t = (SpiceFileTransferTask *)value;
+        SpiceFileTransferTask *t;
+
+        t = spice_main_channel_find_xfer_task_by_task_id(channel, GPOINTER_TO_UINT(key));
         read += t->read_bytes;
         total += t->file_size;
     }
@@ -1998,11 +2003,9 @@ static void main_agent_handle_xfer_status(SpiceMainChannel *channel,
                                           VDAgentFileXferStatusMessage *msg)
 {
     SpiceFileTransferTask *xfer_task;
-    SpiceMainChannelPrivate *c;
     GError *error = NULL;
 
-    c = channel->priv;
-    xfer_task = g_hash_table_lookup(c->file_xfer_tasks, GUINT_TO_POINTER(msg->id));
+    xfer_task = spice_main_channel_find_xfer_task_by_task_id(channel, msg->id);
     g_return_if_fail(xfer_task != NULL);
 
     SPICE_DEBUG("xfer-task %u received response %u", msg->id, msg->result);
@@ -3073,17 +3076,99 @@ failed:
     spice_file_transfer_task_completed(xfer_task, error);
 }
 
+static void file_transfer_operation_free(FileTransferOperation *xfer_op)
+{
+    g_return_if_fail(xfer_op != NULL);
+    spice_debug("Freeing file-transfer-operation %p", xfer_op);
+
+    /* SpiceFileTransferTask itself is freed after it emits "finish" */
+    g_hash_table_unref(xfer_op->xfer_task);
+    g_free(xfer_op);
+}
+
+static void spice_main_channel_reset_all_xfer_operations(SpiceMainChannel *channel)
+{
+    GHashTableIter iter_all_xfer_tasks;
+    gpointer key, value;
+
+    /* Mark each of SpiceFileTransferTask as completed due error */
+    g_hash_table_iter_init(&iter_all_xfer_tasks, channel->priv->file_xfer_tasks);
+    while (g_hash_table_iter_next(&iter_all_xfer_tasks, &key, &value)) {
+        FileTransferOperation *xfer_op = value;
+        SpiceFileTransferTask *xfer_task = g_hash_table_lookup(xfer_op->xfer_task, key);
+        GError *error;
+
+        if (xfer_task == NULL) {
+            spice_warning("(reset-all) can't complete task %u - completed already?",
+                          GPOINTER_TO_UINT(key));
+            continue;
+        }
+
+        error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                            "Agent connection closed");
+        spice_file_transfer_task_completed(xfer_task, error);
+    }
+}
+
+static SpiceFileTransferTask *spice_main_channel_find_xfer_task_by_task_id(SpiceMainChannel *channel,
+                                                                           guint32 task_id)
+{
+    FileTransferOperation *xfer_op;
+
+    xfer_op = g_hash_table_lookup(channel->priv->file_xfer_tasks, GUINT_TO_POINTER(task_id));
+    g_return_val_if_fail(xfer_op != NULL, NULL);
+    return g_hash_table_lookup(xfer_op->xfer_task, GUINT_TO_POINTER(task_id));
+}
+
+static void file_transfer_operation_task_finished(SpiceFileTransferTask *xfer_task,
+                                                  GError *error,
+                                                  gpointer userdata)
+{
+    SpiceMainChannel *channel;
+    FileTransferOperation *xfer_op;
+    guint32 task_id;
+
+    channel = spice_file_transfer_task_get_channel(xfer_task);
+    g_return_if_fail(channel != NULL);
+    task_id = spice_file_transfer_task_get_id(xfer_task);
+    g_return_if_fail(task_id != 0);
+
+    if (error) {
+        VDAgentFileXferStatusMessage msg;
+        msg.id = task_id;
+        if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+            msg.result = VD_AGENT_FILE_XFER_STATUS_CANCELLED;
+        } else {
+            msg.result = VD_AGENT_FILE_XFER_STATUS_ERROR;
+        }
+        agent_msg_queue_many(channel, VD_AGENT_FILE_XFER_STATUS,
+                             &msg, sizeof(msg), NULL);
+    }
+
+    xfer_op = g_hash_table_lookup(channel->priv->file_xfer_tasks, GUINT_TO_POINTER(task_id));
+    if (xfer_op == NULL) {
+        /* Likely the operation has ended before the remove-task was called. One
+         * situation that this can easily happen is if the agent is disconnected
+         * while there are pending files. */
+        g_object_unref(xfer_task);
+        return;
+    }
+
+    /* Remove and free SpiceFileTransferTask */
+    g_hash_table_remove(xfer_op->xfer_task, GUINT_TO_POINTER(task_id));
+    g_object_unref(xfer_task);
+
+    /* Keep file_xfer_tasks up to date. If no more elements, operation is over */
+    g_hash_table_remove(channel->priv->file_xfer_tasks, GUINT_TO_POINTER(task_id));
+
+    /* No more pending operations */
+    if (g_hash_table_size(xfer_op->xfer_task) == 0)
+        file_transfer_operation_free(xfer_op);
+}
+
 static SpiceFileTransferTask *spice_file_transfer_task_new(SpiceMainChannel *channel,
                                                            GFile *file,
                                                            GCancellable *cancellable);
-
-static void task_finished(SpiceFileTransferTask *task,
-                          GError *error,
-                          gpointer data)
-{
-    SpiceMainChannel *channel = SPICE_MAIN_CHANNEL(data);
-    g_hash_table_remove(channel->priv->file_xfer_tasks, GUINT_TO_POINTER(task->id));
-}
 
 /**
  * spice_main_file_copy_async:
@@ -3128,9 +3213,9 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
                                 gpointer user_data)
 {
     SpiceMainChannelPrivate *c;
-    GHashTable *xfer_ht;
     GHashTableIter iter;
     gpointer key, value;
+    FileTransferOperation *xfer_op;
 
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
@@ -3148,15 +3233,17 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
         return;
     }
 
-    xfer_ht = spice_file_transfer_task_create_tasks(sources,
-                                                    channel,
-                                                    flags,
-                                                    cancellable,
-                                                    progress_callback,
-                                                    progress_callback_data,
-                                                    callback,
-                                                    user_data);
-    g_hash_table_iter_init(&iter, xfer_ht);
+    xfer_op = g_new0(FileTransferOperation, 1);
+    xfer_op->channel = channel;
+    xfer_op->xfer_task = spice_file_transfer_task_create_tasks(sources,
+                                                               channel,
+                                                               flags,
+                                                               cancellable,
+                                                               progress_callback,
+                                                               progress_callback_data,
+                                                               callback,
+                                                               user_data);
+    g_hash_table_iter_init(&iter, xfer_op->xfer_task);
     while (g_hash_table_iter_next(&iter, &key, &value)) {
         guint32 task_id;
         SpiceFileTransferTask *xfer_task = value;
@@ -3165,15 +3252,14 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
 
         SPICE_DEBUG("Insert a xfer task:%u to task list", task_id);
 
-        g_hash_table_insert(c->file_xfer_tasks, key, g_object_ref(xfer_task));
-        g_signal_connect(xfer_task, "finished", G_CALLBACK(task_finished), channel);
+        g_hash_table_insert(c->file_xfer_tasks, key, xfer_op);
+        g_signal_connect(xfer_task, "finished", G_CALLBACK(file_transfer_operation_task_finished), NULL);
         g_signal_emit(channel, signals[SPICE_MAIN_NEW_FILE_TRANSFER], 0, xfer_task);
 
         spice_file_transfer_task_init_task_async(xfer_task,
                                                  file_xfer_init_task_async_cb,
                                                  NULL);
     }
-    g_hash_table_unref(xfer_ht);
 }
 
 /**
