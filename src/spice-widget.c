@@ -1687,6 +1687,15 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
         return true;
 
     release_keys(display);
+#ifdef G_OS_WIN32
+    /* Reset the IME context of the focused window.
+     * Note that the focused window can be different from SpiceDisplay
+     * one but the events are received and forwarder by this window. */
+    HWND hwnd_focused = GetFocus();
+    if (hwnd_focused != NULL) {
+        ImmAssociateContext(hwnd_focused, NULL);
+    }
+#endif
     if (!d->disable_inputs)
         spice_gtk_session_sync_keyboard_modifiers(d->gtk_session);
     if (d->keyboard_grab_released)
