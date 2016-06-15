@@ -61,8 +61,6 @@ static GHashTable *spice_file_transfer_task_create_tasks(GFile **files,
                                                          SpiceMainChannel *channel,
                                                          GFileCopyFlags flags,
                                                          GCancellable *cancellable,
-                                                         GFileProgressCallback progress_callback,
-                                                         gpointer progress_callback_data,
                                                          GAsyncReadyCallback callback,
                                                          gpointer user_data);
 static void spice_file_transfer_task_init_task_async(SpiceFileTransferTask *self,
@@ -78,6 +76,8 @@ static gssize spice_file_transfer_task_read_finish(SpiceFileTransferTask *self,
                                                    GAsyncResult *result,
                                                    char **buffer,
                                                    GError **error);
+static guint64 spice_file_transfer_task_get_file_size(SpiceFileTransferTask *self);
+static guint64 spice_file_transfer_task_get_bytes_read(SpiceFileTransferTask *self);
 
 /**
  * SECTION:file-transfer-task
@@ -108,8 +108,6 @@ struct _SpiceFileTransferTask
     GFileInputStream               *file_stream;
     GFileCopyFlags                 flags;
     GCancellable                   *cancellable;
-    GFileProgressCallback          progress_callback;
-    gpointer                       progress_callback_data;
     GAsyncReadyCallback            callback;
     gpointer                       user_data;
     char                           *buffer;
@@ -161,6 +159,12 @@ typedef struct {
 typedef struct {
     GHashTable                 *xfer_task;
     SpiceMainChannel           *channel;
+    GFileProgressCallback       progress_callback;
+    gpointer                    progress_callback_data;
+    struct {
+        goffset                 total_sent;
+        goffset                 transfer_size;
+    } stats;
 } FileTransferOperation;
 
 struct _SpiceMainChannelPrivate  {
@@ -273,6 +277,7 @@ static SpiceFileTransferTask *spice_main_channel_find_xfer_task_by_task_id(Spice
 static void file_transfer_operation_task_finished(SpiceFileTransferTask *xfer_task,
                                                   GError *error,
                                                   gpointer userdata);
+static void file_transfer_operation_send_progress(SpiceFileTransferTask *xfer_task);
 
 /* ------------------------------------------------------------------ */
 
@@ -1883,39 +1888,6 @@ static void file_xfer_close_cb(GObject      *object,
     g_object_unref(self);
 }
 
-static void file_xfer_send_progress(SpiceFileTransferTask *xfer_task)
-{
-    goffset read = 0;
-    goffset total = 0;
-    GHashTableIter iter;
-    gpointer key, value;
-    SpiceMainChannel *channel;
-
-    g_return_if_fail(xfer_task != NULL);
-
-    if (!xfer_task->progress_callback)
-        return;
-
-    channel = spice_file_transfer_task_get_channel(xfer_task);
-
-    /* FIXME: This iterates over all SpiceFileTransferTasks, including ones from
-     * a different FileTransferOperation. The progress_callback should only
-     * return the info related to its FileTransferOperation.
-     * Since the progress_callback does not have a parameter to indicate
-     * which file the progress is associated with, report progress on all
-     * current transfers */
-    g_hash_table_iter_init(&iter, channel->priv->file_xfer_tasks);
-    while (g_hash_table_iter_next(&iter, &key, &value)) {
-        SpiceFileTransferTask *t;
-
-        t = spice_main_channel_find_xfer_task_by_task_id(channel, GPOINTER_TO_UINT(key));
-        read += t->read_bytes;
-        total += t->file_size;
-    }
-
-    xfer_task->progress_callback(read, total, xfer_task->progress_callback_data);
-}
-
 static void file_xfer_data_flushed_cb(GObject *source_object,
                                       GAsyncResult *res,
                                       gpointer user_data)
@@ -1930,7 +1902,7 @@ static void file_xfer_data_flushed_cb(GObject *source_object,
         return;
     }
 
-    file_xfer_send_progress(self);
+    file_transfer_operation_send_progress(self);
 
     if (spice_util_get_debug()) {
         const GTimeSpan interval = 20 * G_TIME_SPAN_SECOND;
@@ -1971,11 +1943,13 @@ static void file_xfer_read_async_cb(GObject *source_object,
                                     GAsyncResult *res,
                                     gpointer user_data)
 {
+    FileTransferOperation *xfer_op;
     SpiceFileTransferTask *xfer_task;
     SpiceMainChannel *channel;
     gssize count;
     char *buffer;
     GCancellable *cancellable;
+    guint32 task_id;
     GError *error = NULL;
 
     xfer_task = SPICE_FILE_TRANSFER_TASK(source_object);
@@ -1993,6 +1967,10 @@ static void file_xfer_read_async_cb(GObject *source_object,
         /* on EOF just wait for VD_AGENT_FILE_XFER_STATUS from agent */
         return;
     }
+
+    task_id = spice_file_transfer_task_get_id(xfer_task);
+    xfer_op = g_hash_table_lookup(channel->priv->file_xfer_tasks, GUINT_TO_POINTER(task_id));
+    xfer_op->stats.total_sent += count;
 
     cancellable = spice_file_transfer_task_get_cancellable(xfer_task);
     file_xfer_flush_async(channel, cancellable, file_xfer_data_flushed_cb, xfer_task);
@@ -3027,6 +3005,7 @@ static void file_xfer_init_task_async_cb(GObject *obj, GAsyncResult *res, gpoint
     VDAgentFileXferStartMessage msg;
     guint64 file_size;
     gsize data_len;
+    FileTransferOperation *xfer_op;
     GError *error = NULL;
 
     xfer_task = SPICE_FILE_TRANSFER_TASK(obj);
@@ -3038,6 +3017,9 @@ static void file_xfer_init_task_async_cb(GObject *obj, GAsyncResult *res, gpoint
     channel = spice_file_transfer_task_get_channel(xfer_task);
     basename = g_file_info_get_attribute_as_string(info, G_FILE_ATTRIBUTE_STANDARD_NAME);
     file_size = g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
+
+    xfer_op = data;
+    xfer_op->stats.transfer_size += file_size;
 
     keyfile = g_key_file_new();
     g_key_file_set_string(keyfile, "vdagent-file-xfer", "name", basename);
@@ -3144,6 +3126,16 @@ static void file_transfer_operation_task_finished(SpiceFileTransferTask *xfer_ta
         return;
     }
 
+    if (error) {
+        /* On error or cancellation of a SpiceFileTransferTask we remove the
+         * remaining bytes from transfer-size in order to keep the coherence of
+         * the information we provide to the user (total-sent and transfer-size)
+         * in the progress-callback */
+        guint64 file_size = spice_file_transfer_task_get_file_size(xfer_task);
+        guint64 bytes_read = spice_file_transfer_task_get_bytes_read(xfer_task);
+        xfer_op->stats.transfer_size -= (file_size - bytes_read);
+    }
+
     /* Remove and free SpiceFileTransferTask */
     g_hash_table_remove(xfer_op->xfer_task, GUINT_TO_POINTER(task_id));
     g_object_unref(xfer_task);
@@ -3154,6 +3146,23 @@ static void file_transfer_operation_task_finished(SpiceFileTransferTask *xfer_ta
     /* No more pending operations */
     if (g_hash_table_size(xfer_op->xfer_task) == 0)
         file_transfer_operation_free(xfer_op);
+}
+
+static void file_transfer_operation_send_progress(SpiceFileTransferTask *xfer_task)
+{
+    FileTransferOperation *xfer_op;
+    SpiceMainChannel *channel;
+    guint32 task_id;
+
+    channel = spice_file_transfer_task_get_channel(xfer_task);
+    task_id = spice_file_transfer_task_get_id(xfer_task);
+    xfer_op = g_hash_table_lookup(channel->priv->file_xfer_tasks, GUINT_TO_POINTER(task_id));
+    g_return_if_fail(xfer_op != NULL);
+
+    if (xfer_op->progress_callback)
+        xfer_op->progress_callback(xfer_op->stats.total_sent,
+                                   xfer_op->stats.transfer_size,
+                                   xfer_op->progress_callback_data);
 }
 
 static SpiceFileTransferTask *spice_file_transfer_task_new(SpiceMainChannel *channel,
@@ -3225,12 +3234,12 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
 
     xfer_op = g_new0(FileTransferOperation, 1);
     xfer_op->channel = channel;
+    xfer_op->progress_callback = progress_callback;
+    xfer_op->progress_callback_data = progress_callback_data;
     xfer_op->xfer_task = spice_file_transfer_task_create_tasks(sources,
                                                                channel,
                                                                flags,
                                                                cancellable,
-                                                               progress_callback,
-                                                               progress_callback_data,
                                                                callback,
                                                                user_data);
     g_hash_table_iter_init(&iter, xfer_op->xfer_task);
@@ -3248,7 +3257,7 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
 
         spice_file_transfer_task_init_task_async(xfer_task,
                                                  file_xfer_init_task_async_cb,
-                                                 NULL);
+                                                 xfer_op);
     }
 }
 
@@ -3293,6 +3302,18 @@ static GCancellable *spice_file_transfer_task_get_cancellable(SpiceFileTransferT
     return self->cancellable;
 }
 
+static guint64 spice_file_transfer_task_get_file_size(SpiceFileTransferTask *self)
+{
+    g_return_val_if_fail(self != NULL, 0);
+    return self->file_size;
+}
+
+static guint64 spice_file_transfer_task_get_bytes_read(SpiceFileTransferTask *self)
+{
+    g_return_val_if_fail(self != NULL, 0);
+    return self->read_bytes;
+}
+
 /* Helper function which only creates a SpiceFileTransferTask per GFile
  * in @files and returns a HashTable mapping task-id to the task itself
  * Note that the HashTable does not free its values upon destruction:
@@ -3302,8 +3323,6 @@ static GHashTable *spice_file_transfer_task_create_tasks(GFile **files,
                                                          SpiceMainChannel *channel,
                                                          GFileCopyFlags flags,
                                                          GCancellable *cancellable,
-                                                         GFileProgressCallback progress_callback,
-                                                         gpointer progress_callback_data,
                                                          GAsyncReadyCallback callback,
                                                          gpointer user_data)
 {
@@ -3327,8 +3346,6 @@ static GHashTable *spice_file_transfer_task_create_tasks(GFile **files,
         /* FIXME: Move the xfer-task initialization to spice_file_transfer_task_new() */
         xfer_task = spice_file_transfer_task_new(channel, files[i], task_cancellable);
         xfer_task->flags = flags;
-        xfer_task->progress_callback = progress_callback;
-        xfer_task->progress_callback_data = progress_callback_data;
         xfer_task->callback = callback;
         xfer_task->user_data = user_data;
 
