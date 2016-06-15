@@ -1883,6 +1883,34 @@ static void file_xfer_close_cb(GObject      *object,
     g_object_unref(self);
 }
 
+static void file_xfer_send_progress(SpiceFileTransferTask *xfer_task)
+{
+    goffset read = 0;
+    goffset total = 0;
+    GHashTableIter iter;
+    gpointer key, value;
+    SpiceMainChannel *channel;
+
+    g_return_if_fail(xfer_task != NULL);
+
+    if (!xfer_task->progress_callback)
+        return;
+
+    channel = spice_file_transfer_task_get_channel(xfer_task);
+
+    /* since the progress_callback does not have a parameter to indicate
+     * which file the progress is associated with, report progress on all
+     * current transfers */
+    g_hash_table_iter_init(&iter, channel->priv->file_xfer_tasks);
+    while (g_hash_table_iter_next(&iter, &key, &value)) {
+        SpiceFileTransferTask *t = (SpiceFileTransferTask *)value;
+        read += t->read_bytes;
+        total += t->file_size;
+    }
+
+    xfer_task->progress_callback(read, total, xfer_task->progress_callback_data);
+}
+
 static void file_xfer_data_flushed_cb(GObject *source_object,
                                       GAsyncResult *res,
                                       gpointer user_data)
@@ -1897,6 +1925,8 @@ static void file_xfer_data_flushed_cb(GObject *source_object,
         return;
     }
 
+    file_xfer_send_progress(self);
+
     if (spice_util_get_debug()) {
         const GTimeSpan interval = 20 * G_TIME_SPAN_SECOND;
         gint64 now = g_get_monotonic_time();
@@ -1908,26 +1938,6 @@ static void file_xfer_data_flushed_cb(GObject *source_object,
                         100.0 * self->read_bytes / self->file_size, basename);
             g_free(basename);
         }
-    }
-
-    if (self->progress_callback) {
-        goffset read = 0;
-        goffset total = 0;
-        SpiceMainChannel *main_channel = self->channel;
-        GHashTableIter iter;
-        gpointer key, value;
-
-        /* since the progress_callback does not have a parameter to indicate
-         * which file the progress is associated with, report progress on all
-         * current transfers */
-        g_hash_table_iter_init(&iter, main_channel->priv->file_xfer_tasks);
-        while (g_hash_table_iter_next(&iter, &key, &value)) {
-            SpiceFileTransferTask *t = (SpiceFileTransferTask *)value;
-            read += t->read_bytes;
-            total += t->file_size;
-        }
-
-        self->progress_callback(read, total, self->progress_callback_data);
     }
 
     /* Read more data */
