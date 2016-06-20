@@ -156,7 +156,7 @@ SPICE_GTK_SOURCES_COMMON +=		\
 endif
 
 if WITH_GTK
-libspice_client_gtk_3_0_la_DEPEDENCIES = $(GTK_SYMBOLS_FILE)
+EXTRA_libspice_client_gtk_3_0_la_DEPENDENCIES = $(GTK_SYMBOLS_FILE)
 libspice_client_gtk_3_0_la_LDFLAGS = $(SPICE_GTK_LDFLAGS_COMMON)
 libspice_client_gtk_3_0_la_LIBADD = $(SPICE_GTK_LIBADD_COMMON)
 libspice_client_gtk_3_0_la_SOURCES = $(SPICE_GTK_SOURCES_COMMON)
@@ -176,7 +176,7 @@ nodist_libspice_client_gtkinclude_HEADERS =	\
 	$(NULL)
 endif
 
-libspice_client_glib_2_0_la_DEPENDENCIES = $(GLIB_SYMBOLS_FILE)
+EXTRA_libspice_client_glib_2_0_la_DEPENDENCIES = $(GLIB_SYMBOLS_FILE)
 
 libspice_client_glib_2_0_la_LDFLAGS =	\
 	-version-info 13:0:5		\
