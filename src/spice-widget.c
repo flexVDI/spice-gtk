@@ -632,6 +632,8 @@ static void spice_display_init(SpiceDisplay *display)
                           GDK_KEY_PRESS_MASK |
                           GDK_SCROLL_MASK);
     gtk_widget_set_can_focus(widget, true);
+    gtk_event_box_set_above_child(GTK_EVENT_BOX(widget), true);
+
     d->grabseq = spice_grab_sequence_new_from_string("Control_L+Alt_L");
     d->activeseq = g_new0(gboolean, d->grabseq->nkeysyms);
     d->mouse_cursor = get_blank_cursor();
