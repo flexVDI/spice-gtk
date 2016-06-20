@@ -231,17 +231,22 @@ static gint get_display_id(SpiceDisplay *display)
     return d->channel_id;
 }
 
+static bool egl_enabled(SpiceDisplayPrivate *d)
+{
+#ifndef G_OS_WIN32
+    return d->egl.enabled;
+#else
+    return false;
+#endif
+}
+
 static void update_ready(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
     gboolean ready = FALSE;
 
     if (d->monitor_ready) {
-#ifndef G_OS_WIN32
-        ready = d->egl.enabled || d->mark != 0;
-#else
-        ready = d->mark != 0;
-#endif
+        ready = egl_enabled(d) || d->mark != 0;
     }
     /* If the 'resize-guest' property is set, the application expects spice-gtk
      * to manage the size and state of the displays, so update the 'enabled'
@@ -309,7 +314,7 @@ void spice_display_widget_update_monitor_area(SpiceDisplay *display)
     }
 
     /* If only one head on this monitor, update the whole area */
-    if (monitors->len == 1 && !d->egl.enabled) {
+    if (monitors->len == 1 && !egl_enabled(d)) {
         update_area(display, 0, 0, c->width, c->height);
     } else {
         update_area(display, c->x, c->y, c->width, c->height);
@@ -1192,7 +1197,7 @@ static void set_egl_enabled(SpiceDisplay *display, bool enabled)
     SpiceDisplayPrivate *d = display->priv;
     GtkWidget *area;
 
-    if (d->egl.enabled == enabled)
+    if (egl_enabled(d) == enabled)
         return;
 
 #ifdef GDK_WINDOWING_X11
@@ -1225,7 +1230,7 @@ static gboolean draw_event(GtkWidget *widget, cairo_t *cr, gpointer data)
     g_return_val_if_fail(d != NULL, false);
 
 #ifndef G_OS_WIN32
-    if (d->egl.enabled &&
+    if (egl_enabled(d) &&
         g_str_equal(gtk_stack_get_visible_child_name(d->stack), "draw-area")) {
         spice_egl_update_display(display);
         return false;
@@ -1953,7 +1958,7 @@ static void size_allocate(GtkWidget *widget, GtkAllocation *conf, gpointer data)
         d->wh = conf->height;
         recalc_geometry(widget);
 #ifndef G_OS_WIN32
-        if (d->egl.enabled)
+        if (egl_enabled(d))
             spice_egl_resize_display(display, conf->width, conf->height);
 #endif
     }
@@ -2314,7 +2319,7 @@ static void update_area(SpiceDisplay *display,
     };
 
 #ifndef G_OS_WIN32
-    if (d->egl.enabled) {
+    if (egl_enabled(d)) {
         const SpiceGlScanout *so =
             spice_display_get_gl_scanout(SPICE_DISPLAY_CHANNEL(d->display));
         g_return_if_fail(so != NULL);
@@ -2339,10 +2344,7 @@ static void update_area(SpiceDisplay *display,
         return;
     }
 
-#ifndef G_OS_WIN32
-    if (!d->egl.enabled)
-#endif
-    {
+    if (!egl_enabled(d)) {
         spice_cairo_image_destroy(display);
         if (gtk_widget_get_realized(GTK_WIDGET(display)))
             update_image(display);
@@ -2478,7 +2480,7 @@ static void cursor_set(SpiceCursorChannel *channel,
         g_warn_if_reached();
 
 #ifndef G_OS_WIN32
-    if (d->egl.enabled)
+    if (egl_enabled(d))
         spice_egl_cursor_set(display);
 #endif
     if (d->show_cursor) {
@@ -2874,7 +2876,7 @@ GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
     g_return_val_if_fail(d->display != NULL, NULL);
 
 #ifndef G_OS_WIN32
-    if (d->egl.enabled) {
+    if (egl_enabled(d)) {
         GdkPixbuf *tmp;
 
         data = g_malloc0(d->area.width * d->area.height * 4);
