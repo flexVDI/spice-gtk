@@ -476,7 +476,7 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
         }
         tmp[0] = '\0';
         tmp++;
-        host = g_strdup(authority + 1);
+        host = g_strdup_printf("[%s]", authority + 1);
         if (tmp[0] == ':')
             port = g_strdup(tmp + 1);
     } else {
