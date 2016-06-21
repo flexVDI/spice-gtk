@@ -416,7 +416,6 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
     SpiceSessionPrivate *s = session->priv;
     gchar *host = NULL, *port = NULL, *tls_port = NULL, *uri = NULL, *username = NULL, *password = NULL;
     gchar *path = NULL;
-    gchar *unescaped_path = NULL;
     gchar *authority = NULL;
     gchar *query = NULL;
     gchar *tmp = NULL;
@@ -495,7 +494,6 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
         g_warning("Unexpected path data '%s' for URI '%s'", path, uri);
         /* don't fail, just ignore */
     }
-    unescaped_path = g_uri_unescape_string(path, NULL);
     path = NULL;
 
     while (query && query[0] != '\0') {
@@ -555,7 +553,6 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
 
 end:
     /* parsed ok -> apply */
-    g_free(unescaped_path);
     g_free(s->unix_path);
     g_free(s->host);
     g_free(s->port);
@@ -573,7 +570,6 @@ end:
 
 fail:
     g_free(uri);
-    g_free(unescaped_path);
     g_free(host);
     g_free(port);
     g_free(tls_port);
