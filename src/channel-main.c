@@ -1839,9 +1839,9 @@ static void main_handle_agent_disconnected(SpiceChannel *channel, SpiceMsgIn *in
 }
 
 /* main context */
-static void file_xfer_close_cb(GObject      *object,
-                               GAsyncResult *close_res,
-                               gpointer      user_data)
+static void spice_file_transfer_task_close_stream_cb(GObject      *object,
+                                                     GAsyncResult *close_res,
+                                                     gpointer      user_data)
 {
     SpiceFileTransferTask *self;
     GError *error = NULL;
@@ -2968,14 +2968,14 @@ static void spice_file_transfer_task_completed(SpiceFileTransferTask *self,
     }
 
     if (!self->file_stream) {
-        file_xfer_close_cb(NULL, NULL, self);
+        spice_file_transfer_task_close_stream_cb(NULL, NULL, self);
         goto signal;
     }
 
     g_input_stream_close_async(G_INPUT_STREAM(self->file_stream),
                                G_PRIORITY_DEFAULT,
                                self->cancellable,
-                               file_xfer_close_cb,
+                               spice_file_transfer_task_close_stream_cb,
                                self);
     self->pending = TRUE;
 signal:
