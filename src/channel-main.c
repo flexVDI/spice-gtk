@@ -1880,20 +1880,20 @@ static void file_xfer_data_flushed_cb(GObject *source_object,
                                       GAsyncResult *res,
                                       gpointer user_data)
 {
-    SpiceFileTransferTask *self = user_data;
+    SpiceFileTransferTask *xfer_task = user_data;
     SpiceMainChannel *channel = (SpiceMainChannel *)source_object;
     GError *error = NULL;
 
     file_xfer_flush_finish(channel, res, &error);
     if (error) {
-        spice_file_transfer_task_completed(self, error);
+        spice_file_transfer_task_completed(xfer_task, error);
         return;
     }
 
-    file_transfer_operation_send_progress(self);
+    file_transfer_operation_send_progress(xfer_task);
 
     /* Read more data */
-    spice_file_transfer_task_read_async(self, file_xfer_read_async_cb, NULL);
+    spice_file_transfer_task_read_async(xfer_task, file_xfer_read_async_cb, NULL);
 }
 
 static void file_xfer_queue_msg_to_agent(SpiceMainChannel *channel,
