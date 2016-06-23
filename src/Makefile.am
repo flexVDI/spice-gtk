@@ -233,6 +233,8 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	spice-channel.c					\
 	spice-channel-cache.h				\
 	spice-channel-priv.h				\
+	spice-file-transfer-task.c			\
+	spice-file-transfer-task-priv.h			\
 	coroutine.h					\
 	gio-coroutine.c					\
 	gio-coroutine.h					\
