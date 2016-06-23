@@ -1993,11 +1993,6 @@ static void spice_file_transfer_task_handle_status(SpiceFileTransferTask *task,
 
     switch (msg->result) {
     case VD_AGENT_FILE_XFER_STATUS_CAN_SEND_DATA:
-        if (task->pending) {
-            error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
-                           "transfer received CAN_SEND_DATA in pending state");
-            break;
-        }
         spice_file_transfer_task_read_async(task, file_xfer_read_async_cb, NULL);
         return;
     case VD_AGENT_FILE_XFER_STATUS_CANCELLED:
@@ -2009,9 +2004,6 @@ static void spice_file_transfer_task_handle_status(SpiceFileTransferTask *task,
                             "some errors occurred in the spice agent");
         break;
     case VD_AGENT_FILE_XFER_STATUS_SUCCESS:
-        if (task->pending)
-            error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
-                                "transfer received success in pending state");
         break;
     default:
         g_warn_if_reached();
@@ -3000,8 +2992,15 @@ static void spice_file_transfer_task_completed(SpiceFileTransferTask *self,
                              &msg, sizeof(msg), NULL);
     }
 
-    if (self->pending)
+    if (self->pending) {
+        /* Complete but pending is okay only if error is set */
+        if (self->error == NULL) {
+            self->error = g_error_new(SPICE_CLIENT_ERROR,
+                                      SPICE_CLIENT_ERROR_FAILED,
+                                      "Cannot complete task in pending state");
+        }
         return;
+    }
 
     if (!self->file_stream) {
         file_xfer_close_cb(NULL, NULL, self);
