@@ -3435,7 +3435,7 @@ spice_file_transfer_task_init(SpiceFileTransferTask *self)
 static SpiceFileTransferTask *
 spice_file_transfer_task_new(SpiceMainChannel *channel, GFile *file, GCancellable *cancellable)
 {
-    static uint32_t xfer_id = 0;    /* Used to identify task id */
+    static uint32_t xfer_id = 1;    /* Used to identify task id */
 
     return g_object_new(SPICE_TYPE_FILE_TRANSFER_TASK,
                         "id", xfer_id++,
