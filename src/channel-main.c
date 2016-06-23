@@ -1983,17 +1983,22 @@ static void file_xfer_read_async_cb(GObject *source_object,
 }
 
 /* coroutine context */
-static void spice_file_transfer_task_handle_status(SpiceFileTransferTask *task,
-                                                   VDAgentFileXferStatusMessage *msg)
+static void main_agent_handle_xfer_status(SpiceMainChannel *channel,
+                                          VDAgentFileXferStatusMessage *msg)
 {
+    SpiceFileTransferTask *xfer_task;
+    SpiceMainChannelPrivate *c;
     GError *error = NULL;
-    g_return_if_fail(task != NULL);
 
-    SPICE_DEBUG("task %u received response %u", msg->id, msg->result);
+    c = channel->priv;
+    xfer_task = g_hash_table_lookup(c->file_xfer_tasks, GUINT_TO_POINTER(msg->id));
+    g_return_if_fail(xfer_task != NULL);
+
+    SPICE_DEBUG("xfer-task %u received response %u", msg->id, msg->result);
 
     switch (msg->result) {
     case VD_AGENT_FILE_XFER_STATUS_CAN_SEND_DATA:
-        spice_file_transfer_task_read_async(task, file_xfer_read_async_cb, NULL);
+        spice_file_transfer_task_read_async(xfer_task, file_xfer_read_async_cb, NULL);
         return;
     case VD_AGENT_FILE_XFER_STATUS_CANCELLED:
         error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
@@ -2012,7 +2017,7 @@ static void spice_file_transfer_task_handle_status(SpiceFileTransferTask *task,
         break;
     }
 
-    spice_file_transfer_task_completed(task, error);
+    spice_file_transfer_task_completed(xfer_task, error);
 }
 
 /* any context: the message is not flushed immediately,
@@ -2156,18 +2161,8 @@ static void main_agent_handle_msg(SpiceChannel *channel,
         break;
     }
     case VD_AGENT_FILE_XFER_STATUS:
-    {
-        SpiceFileTransferTask *task;
-        VDAgentFileXferStatusMessage *msg = payload;
-
-        task = g_hash_table_lookup(c->file_xfer_tasks, GUINT_TO_POINTER(msg->id));
-        if (task != NULL) {
-            spice_file_transfer_task_handle_status(task, msg);
-        } else {
-            SPICE_DEBUG("cannot find task %u", msg->id);
-        }
+        main_agent_handle_xfer_status(self, payload);
         break;
-    }
     default:
         g_warning("unhandled agent message type: %u (%s), size %u",
                   msg->type, NAME(agent_msg_types, msg->type), msg->size);
