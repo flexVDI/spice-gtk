@@ -1892,19 +1892,6 @@ static void file_xfer_data_flushed_cb(GObject *source_object,
 
     file_transfer_operation_send_progress(self);
 
-    if (spice_util_get_debug()) {
-        const GTimeSpan interval = 20 * G_TIME_SPAN_SECOND;
-        gint64 now = g_get_monotonic_time();
-
-        if (interval < now - self->last_update) {
-            gchar *basename = g_file_get_basename(self->file);
-            self->last_update = now;
-            SPICE_DEBUG("transferred %.2f%% of the file %s",
-                        100.0 * self->read_bytes / self->file_size, basename);
-            g_free(basename);
-        }
-    }
-
     /* Read more data */
     spice_file_transfer_task_read_async(self, file_xfer_read_async_cb, NULL);
 }
@@ -3504,6 +3491,19 @@ static void spice_file_transfer_task_read_stream_cb(GObject *source_object,
     }
 
     self->read_bytes += nbytes;
+
+    if (spice_util_get_debug()) {
+        const GTimeSpan interval = 20 * G_TIME_SPAN_SECOND;
+        gint64 now = g_get_monotonic_time();
+
+        if (interval < now - self->last_update) {
+            gchar *basename = g_file_get_basename(self->file);
+            self->last_update = now;
+            SPICE_DEBUG("transferred %.2f%% of the file %s",
+                        100.0 * self->read_bytes / self->file_size, basename);
+            g_free(basename);
+        }
+    }
 
     g_task_return_int(task, nbytes);
 }
