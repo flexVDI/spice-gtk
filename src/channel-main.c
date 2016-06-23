@@ -1892,7 +1892,7 @@ static void file_xfer_data_flushed_cb(GObject *source_object,
     GError *error = NULL;
 
     file_xfer_flush_finish(channel, res, &error);
-    if (error || self->error) {
+    if (error) {
         spice_file_transfer_task_completed(self, error);
         return;
     }
