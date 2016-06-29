@@ -518,6 +518,7 @@ gboolean spice_usbredir_channel_disconnect_device_finish(
     return g_task_propagate_boolean(G_TASK(res), err);
 }
 
+G_GNUC_INTERNAL
 void spice_usbredir_channel_disconnect_device_async(SpiceUsbredirChannel *channel,
                                                     GCancellable *cancellable,
                                                     GAsyncReadyCallback callback,
@@ -656,11 +657,13 @@ static void *usbredir_alloc_lock(void) {
     return mutex;
 }
 
+G_GNUC_INTERNAL
 void spice_usbredir_channel_lock(SpiceUsbredirChannel *channel)
 {
     g_mutex_lock(&channel->priv->device_connect_mutex);
 }
 
+G_GNUC_INTERNAL
 void spice_usbredir_channel_unlock(SpiceUsbredirChannel *channel)
 {
     g_mutex_unlock(&channel->priv->device_connect_mutex);
