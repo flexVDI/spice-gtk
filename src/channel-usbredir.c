@@ -527,6 +527,7 @@ void spice_usbredir_channel_disconnect_device_async(SpiceUsbredirChannel *channe
 
     g_return_if_fail(channel != NULL);
     g_task_run_in_thread(task, _disconnect_device_thread);
+    g_object_unref(task);
 }
 
 G_GNUC_INTERNAL
