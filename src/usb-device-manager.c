@@ -112,7 +112,7 @@ struct _SpiceUsbDeviceManagerPrivate {
     libusb_context *context;
     int event_listeners;
     GThread *event_thread;
-    gboolean event_thread_run;
+    gint event_thread_run;
     struct usbredirfilter_rule *auto_conn_filter_rules;
     struct usbredirfilter_rule *redirect_on_connect_rules;
     int auto_conn_filter_rules_count;
@@ -380,7 +380,7 @@ static void spice_usb_device_manager_dispose(GObject *gobject)
         priv->hp_handle = 0;
     }
 #endif
-    if (priv->event_thread && !priv->event_thread_run) {
+    if (priv->event_thread && !g_atomic_int_get(&priv->event_thread_run)) {
         g_thread_join(priv->event_thread);
         priv->event_thread = NULL;
     }
@@ -1280,7 +1280,7 @@ static gpointer spice_usb_device_manager_usb_ev_thread(gpointer user_data)
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
     int rc;
 
-    while (priv->event_thread_run) {
+    while (g_atomic_int_get(&priv->event_thread_run)) {
         rc = libusb_handle_events(priv->context);
         if (rc && rc != LIBUSB_ERROR_INTERRUPTED) {
             const char *desc = spice_usbutil_libusb_strerror(rc);
@@ -1310,7 +1310,7 @@ gboolean spice_usb_device_manager_start_event_listening(
          g_thread_join(priv->event_thread);
          priv->event_thread = NULL;
     }
-    priv->event_thread_run = TRUE;
+    g_atomic_int_set(&priv->event_thread_run, TRUE);
     priv->event_thread = g_thread_new("usb_ev_thread",
                                       spice_usb_device_manager_usb_ev_thread,
                                       self);
@@ -1326,7 +1326,7 @@ void spice_usb_device_manager_stop_event_listening(
 
     priv->event_listeners--;
     if (priv->event_listeners == 0)
-        priv->event_thread_run = FALSE;
+        g_atomic_int_set(&priv->event_thread_run, FALSE);
 }
 
 static void spice_usb_device_manager_check_redir_on_connect(
