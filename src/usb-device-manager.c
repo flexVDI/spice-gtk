@@ -375,12 +375,22 @@ static void spice_usb_device_manager_dispose(GObject *gobject)
 #ifdef USE_LIBUSB_HOTPLUG
     if (priv->hp_handle) {
         spice_usb_device_manager_stop_event_listening(self);
+        if (g_atomic_int_get(&priv->event_thread_run)) {
+            /* Force termination of the event thread even if there were some
+             * mismatched spice_usb_device_manager_{start,stop}_event_listening
+             * calls. Otherwise, the usb event thread will be leaked, and will
+             * try to use the libusb context we destroy in finalize(), which would
+             * cause a crash */
+             g_warn_if_reached();
+             g_atomic_int_set(&priv->event_thread_run, FALSE);
+        }
         /* This also wakes up the libusb_handle_events() in the event_thread */
         libusb_hotplug_deregister_callback(priv->context, priv->hp_handle);
         priv->hp_handle = 0;
     }
 #endif
-    if (priv->event_thread && !g_atomic_int_get(&priv->event_thread_run)) {
+    if (priv->event_thread) {
+        g_warn_if_fail(g_atomic_int_get(&priv->event_thread_run) == FALSE);
         g_thread_join(priv->event_thread);
         priv->event_thread = NULL;
     }
