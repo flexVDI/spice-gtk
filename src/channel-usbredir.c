@@ -79,6 +79,7 @@ struct _SpiceUsbredirChannelPrivate {
     SpiceUsbAclHelper *acl_helper;
 #endif
     GMutex device_connect_mutex;
+    SpiceUsbDeviceManager *usb_device_manager;
 };
 
 static void channel_set_handlers(SpiceChannelClass *klass);
@@ -188,6 +189,11 @@ static void spice_usbredir_channel_dispose(GObject *obj)
     SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(obj);
 
     spice_usbredir_channel_disconnect_device(channel);
+    /* This should have been set to NULL during device disconnection,
+     * but better not to leak it if this does not happen for some reason
+     */
+    g_warn_if_fail(channel->priv->usb_device_manager == NULL);
+    g_clear_object(&channel->priv->usb_device_manager);
 
     /* Chain up to the parent class */
     if (G_OBJECT_CLASS(spice_usbredir_channel_parent_class)->dispose)
@@ -275,6 +281,7 @@ static gboolean spice_usbredir_channel_open_device(
     SpiceUsbredirChannel *channel, GError **err)
 {
     SpiceUsbredirChannelPrivate *priv = channel->priv;
+    SpiceSession *session;
     libusb_device_handle *handle = NULL;
     int rc, status;
 
@@ -300,10 +307,9 @@ static gboolean spice_usbredir_channel_open_device(
         return FALSE;
     }
 
-    if (!spice_usb_device_manager_start_event_listening(
-            spice_usb_device_manager_get(
-                spice_channel_get_session(SPICE_CHANNEL(channel)), NULL),
-            err)) {
+    session = spice_channel_get_session(SPICE_CHANNEL(channel));
+    priv->usb_device_manager = g_object_ref(spice_usb_device_manager_get(session, NULL));
+    if (!spice_usb_device_manager_start_event_listening(priv->usb_device_manager, err)) {
         usbredirhost_set_device(priv->host, NULL);
         return FALSE;
     }
@@ -481,12 +487,10 @@ void spice_usbredir_channel_disconnect_device(SpiceUsbredirChannel *channel)
          * usbredirhost_set_device NULL will interrupt the
          * libusb_handle_events call in the thread.
          */
-        {
-            SpiceSession *session = spice_channel_get_session(SPICE_CHANNEL(channel));
-            if (session != NULL)
-                spice_usb_device_manager_stop_event_listening(
-                    spice_usb_device_manager_get(session, NULL));
-        }
+        g_warn_if_fail(priv->usb_device_manager != NULL);
+        spice_usb_device_manager_stop_event_listening(priv->usb_device_manager);
+        g_clear_object(&priv->usb_device_manager);
+
         /* This also closes the libusb handle we passed from open_device */
         usbredirhost_set_device(priv->host, NULL);
         g_clear_pointer(&priv->device, libusb_unref_device);
