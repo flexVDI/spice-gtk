@@ -205,7 +205,7 @@ static void spice_usbredir_channel_dispose(GObject *obj)
  * Now the last one may seem like an issue, since what will happen if
  * spice_usbredir_channel_open_acl_cb will run after finalization?
  *
- * This will never happens since the GSimpleAsyncResult created before we
+ * This will never happens since the GTask created before we
  * get into the STATE_WAITING_FOR_ACL_HELPER takes a reference to its
  * source object, which is our SpiceUsbredirChannel object, so
  * the finalize won't hapen until spice_usbredir_channel_open_acl_cb runs,
