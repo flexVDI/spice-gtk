@@ -679,7 +679,7 @@ static void power_event_cb(GtkAction *action, void *data)
     gint result = gtk_dialog_run(GTK_DIALOG(dialog));
     gtk_widget_destroy(dialog);
     if (result == GTK_RESPONSE_YES) {
-        if (!strcmp(gtk_action_get_name(action), "Reboot")) {
+        if (!strcmp(gtk_action_get_name(action), "Reset")) {
             spice_main_power_event_request(win->conn->main, SPICE_POWER_EVENT_RESET);
         } else if (!strcmp(gtk_action_get_name(action), "Powerdown")) {
             spice_main_power_event_request(win->conn->main, SPICE_POWER_EVENT_POWERDOWN);
@@ -1024,21 +1024,21 @@ static const GtkActionEntry entries[] = {
 #endif
 
         /* Power events */
-        .name        = "Reboot",
+        .name        = "Reset",
         .stock_id    = "system-reboot",
-        .label       = N_("_Reboot"),
+        .label       = N_("_Reset"),
         .callback    = G_CALLBACK(power_event_cb),
-        .tooltip     = N_("Reboot immediately"),
+        .tooltip     = N_("Reset immediately"),
     },{
         .name        = "Powerdown",
         .stock_id    = "system-log-out",
-        .label       = N_("_Powerdown"),
+        .label       = N_("_Powerdown cycle"),
         .callback    = G_CALLBACK(power_event_cb),
         .tooltip     = N_("Powerdown cycle"),
     },{
         .name        = "Shutdown",
         .stock_id    = "system-shutdown",
-        .label       = N_("_Shutdown"),
+        .label       = N_("_Shutdown immediately"),
         .callback    = G_CALLBACK(power_event_cb),
         .tooltip     = N_("Shutdown immediately"),
     },{
@@ -1151,7 +1151,7 @@ static char ui_xml[] =
 #endif
 "    </menu>\n"
 "    <menu action='PowerMenu'>\n"
-"      <menuitem action='Reboot'/>\n"
+"      <menuitem action='Reset'/>\n"
 "      <menuitem action='Powerdown'/>\n"
 "      <menuitem action='Shutdown'/>\n"
 "    </menu>\n"
@@ -1179,7 +1179,7 @@ static char ui_xml[] =
 "    <separator/>\n"
 "    <toolitem action='Fullscreen'/>\n"
 "    <separator/>\n"
-"    <toolitem action='Reboot'/>\n"
+"    <toolitem action='Reset'/>\n"
 "    <toolitem action='Powerdown'/>\n"
 "    <toolitem action='Shutdown'/>\n"
 "  </toolbar>\n"
@@ -1197,7 +1197,7 @@ static char ui_xml[] =
 "    <separator/>\n"
 "    <toolitem action='Restore'/>\n"
 "    <toolitem action='Minimize'/>\n"
-"    <toolitem action='Reboot'/>\n"
+"    <toolitem action='Reset'/>\n"
 "    <toolitem action='Powerdown'/>\n"
 "    <toolitem action='Shutdown'/>\n"
 "  </toolbar>\n"
