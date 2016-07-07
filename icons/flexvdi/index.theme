@@ -1,0 +1,22 @@
+[Icon Theme]
+Name=Flexvdi
+Comment=Fallback icon theme
+Hidden=true
+Directories=scalable-toolbar,scalable-menu,48
+
+[scalable-toolbar]
+MinSize=20
+Size=24
+MaxSize=512
+Type=Scalable
+
+[scalable-menu]
+MinSize=1
+Size=16
+MaxSize=20
+Type=Scalable
+
+[48]
+Size=48
+Type=Fixed
+
