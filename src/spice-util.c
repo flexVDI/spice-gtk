@@ -352,7 +352,7 @@ static gchar* spice_convert_newlines(const gchar *str, gssize len,
         if (nl) {
             /* let's not double \r if it's already in the line */
             if (to == NEWLINE_TYPE_CR_LF &&
-                output->str[output->len - 1] != '\r')
+                (output->len == 0 || output->str[output->len - 1] != '\r'))
                 g_string_append_c(output, '\r');
 
             g_string_append_c(output, '\n');
