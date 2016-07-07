@@ -41,7 +41,8 @@ IGNORE_HFILES=					\
 	spice-channel-priv.h			\
 	spice-cmdline.h				\
 	spice-common.h				\
-	spice-grab-sequence-prive.h		\
+	spice-file-transfer-task-priv.h		\
+	spice-grabsequence-priv.h		\
 	spice-gstaudio.h			\
 	spice-gtk-session-priv.h		\
 	spice-marshal.h				\
