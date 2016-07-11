@@ -692,13 +692,13 @@ static int try_write_compress_LZ4(SpiceUsbredirChannel *channel, uint8_t *data, 
         spice_marshaller_add_ref_full(msg_out_compressed->marshaller,
                                       compressed_data_msg.compressed_data,
                                       compressed_data_count,
-                                      usbredir_free_write_cb_data,
+                                      (spice_marshaller_item_free_func)g_free,
                                       channel);
         spice_msg_out_send(msg_out_compressed);
         return TRUE;
     }
     /* if not - free & fallback to sending the message uncompressed */
-    free(compressed_buf);
+    g_free(compressed_buf);
     return FALSE;
 }
 #endif
@@ -709,8 +709,10 @@ static int usbredir_write_callback(void *user_data, uint8_t *data, int count)
     SpiceMsgOut *msg_out;
 
 #ifdef USE_LZ4
-    if (try_write_compress_LZ4(channel, data, count))
+    if (try_write_compress_LZ4(channel, data, count)) {
+        usbredirhost_free_write_buffer(channel->priv->host, data);
         return count;
+    }
 #endif
     msg_out = spice_msg_out_new(SPICE_CHANNEL(channel),
                                 SPICE_MSGC_SPICEVMC_DATA);
