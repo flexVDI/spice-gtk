@@ -648,15 +648,16 @@ static void usbredir_free_write_cb_data(uint8_t *data, void *user_data)
 }
 
 #ifdef USE_LZ4
-static int try_write_compress_LZ4(SpiceUsbredirChannel *channel, uint8_t *data, int count) {
+static int try_write_compress_LZ4(SpiceUsbredirChannel *channel, uint8_t *data, int count)
+{
     SpiceChannelPrivate *c;
     SpiceMsgOut *msg_out_compressed;
     int bound, compressed_data_count;
     uint8_t *compressed_buf;
     SpiceMsgCompressedData compressed_data_msg = {
-            .type = SPICE_DATA_COMPRESSION_TYPE_LZ4,
-            .uncompressed_size = count
-        };
+        .type = SPICE_DATA_COMPRESSION_TYPE_LZ4,
+        .uncompressed_size = count
+    };
 
     c = SPICE_CHANNEL(channel)->priv;
     if (g_socket_get_family(c->sock) == G_SOCKET_FAMILY_UNIX) {
@@ -697,6 +698,7 @@ static int try_write_compress_LZ4(SpiceUsbredirChannel *channel, uint8_t *data, 
         spice_msg_out_send(msg_out_compressed);
         return TRUE;
     }
+
     /* if not - free & fallback to sending the message uncompressed */
     g_free(compressed_buf);
     return FALSE;
