@@ -640,7 +640,7 @@ AC_MSG_NOTICE([
         USB redirection support:  ${have_usbredir} ${with_usbredir_hotplug}
         DBus:                     ${have_dbus}
         WebDAV support:           ${have_phodav}
-        LZ4 support:              ${enable_lz4}
+        LZ4 support:              ${have_lz4}
 
         Now type 'make' to build $PACKAGE
 
