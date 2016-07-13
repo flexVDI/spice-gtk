@@ -71,7 +71,7 @@ AC_SUBST(LIBM)
 AC_CONFIG_SUBDIRS([spice-common])
 PKG_CHECK_MODULES([SPICE_PROTOCOL], [spice-protocol >= 0.12.12])
 
-COMMON_CFLAGS='-I ${top_srcdir}/spice-common/ ${SPICE_PROTOCOL_CFLAGS}'
+COMMON_CFLAGS='-I${top_builddir}/spice-common/ -I${top_srcdir}/spice-common/ ${SPICE_PROTOCOL_CFLAGS}'
 AC_SUBST(COMMON_CFLAGS)
 
 SPICE_GTK_MAJOR_VERSION=`echo $PACKAGE_VERSION | cut -d. -f1`
