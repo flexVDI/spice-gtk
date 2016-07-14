@@ -1195,7 +1195,6 @@ static gboolean do_color_convert(SpiceDisplay *display, GdkRectangle *r)
 static void set_egl_enabled(SpiceDisplay *display, bool enabled)
 {
     SpiceDisplayPrivate *d = display->priv;
-    GtkWidget *area;
 
     if (egl_enabled(d) == enabled)
         return;
@@ -1205,12 +1204,11 @@ static void set_egl_enabled(SpiceDisplay *display, bool enabled)
         /* even though the function is marked as deprecated, it's the
          * only way I found to prevent glitches when the window is
          * resized. */
-        area = gtk_stack_get_child_by_name(d->stack, "draw-area");
+        GtkWidget *area = gtk_stack_get_child_by_name(d->stack, "draw-area");
         gtk_widget_set_double_buffered(GTK_WIDGET(area), !enabled);
     } else
 #endif
     {
-        area = gtk_stack_get_child_by_name(d->stack, "gl-area");
         gtk_stack_set_visible_child_name(d->stack,
                                          enabled ? "gl-area" : "draw-area");
     }
