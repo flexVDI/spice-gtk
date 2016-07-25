@@ -1286,6 +1286,25 @@ static gboolean key_press_delayed(gpointer data)
     return FALSE;
 }
 
+static bool send_pause(SpiceDisplay *display, GdkEventType type)
+{
+    SpiceInputsChannel *inputs = display->priv->inputs;
+
+    /* Send proper scancodes. This will send same scancodes
+     * as hardware.
+     * The 0x21d is a sort of Third-Ctrl while
+     * 0x45 is the NumLock.
+     */
+    if (type == GDK_KEY_PRESS) {
+        spice_inputs_key_press(inputs, 0x21d);
+        spice_inputs_key_press(inputs, 0x45);
+    } else {
+        spice_inputs_key_release(inputs, 0x21d);
+        spice_inputs_key_release(inputs, 0x45);
+    }
+    return true;
+}
+
 static void send_key(SpiceDisplay *display, int scancode, SendKeyType type, gboolean press_delayed)
 {
     SpiceDisplayPrivate *d = display->priv;
@@ -1479,6 +1498,16 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
     if (!d->inputs)
         return true;
 
+    if (key->keyval == GDK_KEY_Pause
+#ifdef G_OS_WIN32
+        /* for some reason GDK does not fill keyval for VK_PAUSE 
+         * See https://bugzilla.gnome.org/show_bug.cgi?id=769214
+         */
+        || key->hardware_keycode == VK_PAUSE
+#endif
+        ) {
+        return send_pause(display, key->type);
+    }
     if (!scancode)
         scancode = vnc_display_keymap_gdk2xtkbd(d->keycode_map, d->keycode_maplen,
                                                 key->hardware_keycode);
