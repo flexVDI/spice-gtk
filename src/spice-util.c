@@ -23,6 +23,7 @@
 #include <string.h>
 #include <glib.h>
 #include <glib-object.h>
+#include <spice/macros.h>
 #include "spice-util-priv.h"
 #include "spice-util.h"
 #include "spice-util-priv.h"
@@ -269,19 +270,12 @@ guint16 spice_make_scancode(guint scancode, gboolean release)
     SPICE_DEBUG("%s: %s scancode %u",
                 __FUNCTION__, release ? "release" : "", scancode);
 
-    if (release) {
-        if (scancode < 0x100)
-            return scancode | 0x80;
-        else
-            return 0x80e0 | ((scancode - 0x100) << 8);
-    } else {
-        if (scancode < 0x100)
-            return scancode;
-        else
-            return 0xe0 | ((scancode - 0x100) << 8);
-    }
-
-    g_return_val_if_reached(0);
+    scancode &= 0x37f;
+    if (release)
+        scancode |= 0x80;
+    if (scancode < 0x100)
+        return scancode;
+    return SPICE_BYTESWAP16(0xe000 | (scancode - 0x100));
 }
 
 typedef enum {
