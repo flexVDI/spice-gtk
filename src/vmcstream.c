@@ -411,7 +411,7 @@ write_cb(GObject *source_object,
 {
     GTask *task = user_data;
 
-    g_task_return_pointer(task, g_object_ref(task), g_object_unref);
+    g_task_return_pointer(task, g_object_ref(res), g_object_unref);
 
     g_object_unref(task);
 }
