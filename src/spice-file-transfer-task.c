@@ -118,9 +118,11 @@ static void spice_file_transfer_task_query_info_cb(GObject *obj,
     if (self->error) {
         /* Return error previously reported */
         g_task_return_error(task, self->error);
+        g_object_unref(task);
         return;
     } else if (error) {
         g_task_return_error(task, error);
+        g_object_unref(task);
         return;
     }
 
@@ -132,6 +134,7 @@ static void spice_file_transfer_task_query_info_cb(GObject *obj,
     g_object_notify(G_OBJECT(self), "progress");
 
     g_task_return_pointer(task, info, g_object_unref);
+    g_object_unref(task);
 }
 
 static void spice_file_transfer_task_read_file_cb(GObject *obj,
@@ -152,10 +155,12 @@ static void spice_file_transfer_task_read_file_cb(GObject *obj,
         /* Return error previously reported */
         self->pending = FALSE;
         g_task_return_error(task, self->error);
+        g_object_unref(task);
         return;
     } else if (error) {
         self->pending = FALSE;
         g_task_return_error(task, error);
+        g_object_unref(task);
         return;
     }
 
@@ -187,9 +192,11 @@ static void spice_file_transfer_task_read_stream_cb(GObject *source_object,
     if (self->error) {
         /* On any pending error on SpiceFileTransferTask */
         g_task_return_error(task, self->error);
+        g_object_unref(task);
         return;
     } else if (error) {
         g_task_return_error(task, error);
+        g_object_unref(task);
         return;
     }
 
@@ -209,6 +216,7 @@ static void spice_file_transfer_task_read_stream_cb(GObject *source_object,
     }
 
     g_task_return_int(task, nbytes);
+    g_object_unref(task);
 }
 
 /* main context */
@@ -433,6 +441,7 @@ void spice_file_transfer_task_read_async(SpiceFileTransferTask *self,
          * reach a state where agent says file-transfer SUCCEED but we are in a
          * PENDING state in SpiceFileTransferTask due reading in idle */
         g_task_return_int(task, 0);
+        g_object_unref(task);
         return;
     }
 

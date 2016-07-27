@@ -936,6 +936,7 @@ static void agent_send_msg_queue(SpiceMainChannel *channel)
         if (task) {
             /* if there's a flush task waiting for this message, finish it */
             g_task_return_boolean(task, TRUE);
+            g_object_unref(task);
             g_hash_table_remove(c->flushing, out);
         }
     }
@@ -2887,6 +2888,7 @@ static void file_transfer_operation_free(FileTransferOperation *xfer_op)
         SPICE_DEBUG("Transfer successful (%p)", xfer_op);
         g_task_return_boolean(xfer_op->task, TRUE);
     }
+    g_object_unref(xfer_op->task);
 
     /* SpiceFileTransferTask itself is freed after it emits "finish" */
     g_hash_table_unref(xfer_op->xfer_task);
