@@ -535,7 +535,7 @@ void spice_file_transfer_task_cancel(SpiceFileTransferTask *self)
  *
  * Gets the name of the file being transferred in this task
  *
- * Returns: (transfer none): The basename of the file
+ * Returns: (transfer full): The basename of the file
  *
  * Since: 0.31
  **/

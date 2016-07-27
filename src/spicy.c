@@ -1514,6 +1514,7 @@ task_cancel_cb(GtkButton *button,
 static TransferTaskWidgets *
 transfer_task_widgets_new(SpiceFileTransferTask *task)
 {
+    char *filename;
     TransferTaskWidgets *widgets = g_new0(TransferTaskWidgets, 1);
 
     widgets->vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -1521,7 +1522,9 @@ transfer_task_widgets_new(SpiceFileTransferTask *task)
     widgets->cancel = gtk_button_new_with_label("Cancel");
 
     widgets->progress = gtk_progress_bar_new();
-    widgets->label = gtk_label_new(spice_file_transfer_task_get_filename(task));
+    filename = spice_file_transfer_task_get_filename(task);
+    widgets->label = gtk_label_new(filename);
+    g_free(filename);
 
     gtk_widget_set_halign(widgets->label, GTK_ALIGN_START);
     gtk_widget_set_valign(widgets->label, GTK_ALIGN_BASELINE);
