@@ -116,6 +116,7 @@ transfer_init_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
     info = spice_file_transfer_task_init_task_finish(xfer_task, res, &error);
     g_assert_no_error(error);
     g_assert_nonnull(info);
+    g_object_unref(info);
 
     /* read file loop */
     spice_file_transfer_task_read_async(xfer_task, transfer_read_async_cb, NULL);
@@ -223,6 +224,7 @@ transfer_on_init_async_cb_before_read_cancel(GObject *obj, GAsyncResult *res, gp
     info = spice_file_transfer_task_init_task_finish(xfer_task, res, &error);
     g_assert_no_error(error);
     g_assert_nonnull(info);
+    g_object_unref(info);
 
     cancellable = spice_file_transfer_task_get_cancellable(xfer_task);
     g_cancellable_cancel(cancellable);
@@ -241,6 +243,7 @@ transfer_on_init_async_cb_after_read_cancel(GObject *obj, GAsyncResult *res, gpo
     info = spice_file_transfer_task_init_task_finish(xfer_task, res, &error);
     g_assert_no_error(error);
     g_assert_nonnull(info);
+    g_object_unref(info);
 
     cancellable = spice_file_transfer_task_get_cancellable(xfer_task);
     spice_file_transfer_task_read_async(xfer_task, transfer_cancelled_read_async_cb, data);
@@ -313,6 +316,7 @@ transfer_on_init_async_cb_agent_cancel(GObject *obj, GAsyncResult *res, gpointer
     info = spice_file_transfer_task_init_task_finish(xfer_task, res, &error);
     g_assert_no_error(error);
     g_assert_nonnull(info);
+    g_object_unref(info);
 
     spice_file_transfer_task_read_async(xfer_task, transfer_agent_cancelled_read_async_cb, data);
 
