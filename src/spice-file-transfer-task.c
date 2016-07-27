@@ -116,6 +116,8 @@ static void spice_file_transfer_task_query_info_cb(GObject *obj,
 
     info = g_file_query_info_finish(G_FILE(obj), res, &error);
     if (self->error) {
+        g_clear_object(&info);
+        g_clear_error(&error);
         /* Return error previously reported */
         g_task_return_error(task, g_error_copy(self->error));
         g_object_unref(task);
@@ -152,6 +154,7 @@ static void spice_file_transfer_task_read_file_cb(GObject *obj,
 
     self->file_stream = g_file_read_finish(G_FILE(obj), res, &error);
     if (self->error) {
+        g_clear_error(&error);
         /* Return error previously reported */
         self->pending = FALSE;
         g_task_return_error(task, g_error_copy(self->error));
@@ -190,6 +193,7 @@ static void spice_file_transfer_task_read_stream_cb(GObject *source_object,
 
     nbytes = g_input_stream_read_finish(G_INPUT_STREAM(self->file_stream), res, &error);
     if (self->error) {
+        g_clear_error(&error);
         /* On any pending error on SpiceFileTransferTask */
         g_task_return_error(task, g_error_copy(self->error));
         g_object_unref(task);
