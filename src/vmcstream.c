@@ -399,9 +399,13 @@ spice_vmc_output_stream_write_finish(GOutputStream *stream,
 {
     SpiceVmcOutputStream *self = SPICE_VMC_OUTPUT_STREAM(stream);
     GAsyncResult *res = g_task_propagate_pointer(G_TASK(simple), error);
+    gssize bytes_written;
 
     SPICE_DEBUG("spicevmc write finish");
-    return spice_vmc_write_finish(self->channel, res, error);
+    bytes_written = spice_vmc_write_finish(self->channel, res, error);
+    g_object_unref(res);
+
+    return bytes_written;
 }
 
 static void
