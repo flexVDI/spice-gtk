@@ -152,6 +152,7 @@ transfer_cancelled_on_init_async_cb(GObject *obj, GAsyncResult *res, gpointer da
     info = spice_file_transfer_task_init_task_finish(xfer_task, res, &error);
     g_assert_error(error, G_IO_ERROR, G_IO_ERROR_CANCELLED);
     g_assert_null(info);
+    g_clear_error(&error);
 
     transfer_xfer_task_on_finished(NULL, NULL, data);
 }
@@ -208,6 +209,7 @@ transfer_cancelled_read_async_cb(GObject *source_object,
     count = spice_file_transfer_task_read_finish(xfer_task, res, &buffer, &error);
     g_assert_error(error, G_IO_ERROR, G_IO_ERROR_CANCELLED);
     g_assert_cmpint(count, ==, -1);
+    g_clear_error(&error);
 
     transfer_xfer_task_on_finished(NULL, NULL, user_data);
 }
@@ -300,6 +302,7 @@ transfer_agent_cancelled_read_async_cb(GObject *source_object,
     count = spice_file_transfer_task_read_finish(xfer_task, res, &buffer, &error);
     g_assert_error(error, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED);
     g_assert_cmpint(count, ==, -1);
+    g_clear_error(&error);
 
     transfer_xfer_task_on_finished(NULL, NULL, user_data);
 }
