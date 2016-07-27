@@ -588,6 +588,7 @@ spice_file_transfer_task_dispose(GObject *object)
     SpiceFileTransferTask *self = SPICE_FILE_TRANSFER_TASK(object);
 
     g_clear_object(&self->file);
+    g_clear_object(&self->file_stream);
 
     G_OBJECT_CLASS(spice_file_transfer_task_parent_class)->dispose(object);
 }
