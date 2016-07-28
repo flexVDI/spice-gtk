@@ -568,20 +568,11 @@ drawing_area_realize(GtkWidget *area, gpointer user_data)
 {
 #ifdef GDK_WINDOWING_X11
     SpiceDisplay *display = SPICE_DISPLAY(user_data);
-    GError *err = NULL;
 
-    if (!GDK_IS_X11_DISPLAY(gdk_display_get_default()))
-        return;
+    if (GDK_IS_X11_DISPLAY(gdk_display_get_default()) &&
+        spice_display_get_gl_scanout(SPICE_DISPLAY_CHANNEL(display->priv->display)) != NULL)
+        spice_display_widget_gl_scanout(display);
 
-    if (!spice_egl_init(display, &err)) {
-        g_critical("egl init failed: %s", err->message);
-        g_clear_error(&err);
-    }
-
-    if (!spice_egl_realize_display(display, gtk_widget_get_window(area), &err)) {
-        g_critical("egl realize failed: %s", err->message);
-        g_clear_error(&err);
-    }
 #endif
 }
 
@@ -2662,13 +2653,32 @@ G_GNUC_INTERNAL
 void spice_display_widget_gl_scanout(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
+    GError *err = NULL;
 
     SPICE_DEBUG("%s: got scanout",  __FUNCTION__);
+
+#ifdef GDK_WINDOWING_X11
+    GtkWidget *area = gtk_stack_get_child_by_name(d->stack, "draw-area");
+
+    if (GDK_IS_X11_DISPLAY(gdk_display_get_default()) &&
+        !d->egl.context_ready &&
+        gtk_widget_get_realized(area)) {
+        if (!spice_egl_init(display, &err)) {
+            g_critical("egl init failed: %s", err->message);
+            g_clear_error(&err);
+        }
+
+        if (!spice_egl_realize_display(display, gtk_widget_get_window(area), &err)) {
+            g_critical("egl realize failed: %s", err->message);
+            g_clear_error(&err);
+        }
+    }
+#endif
+
     set_egl_enabled(display, true);
 
     if (d->egl.context_ready) {
         const SpiceGlScanout *scanout;
-        GError *err = NULL;
 
         scanout = spice_display_get_gl_scanout(SPICE_DISPLAY_CHANNEL(d->display));
         /* should only be called when the display has a scanout */
