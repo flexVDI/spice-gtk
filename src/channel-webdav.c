@@ -506,7 +506,8 @@ static void port_event(SpiceWebdavChannel *self, gint event)
 
     CHANNEL_DEBUG(self, "port event:%d", event);
     if (event == SPICE_PORT_EVENT_OPENED) {
-        g_cancellable_reset(c->cancellable);
+        g_clear_object(&c->cancellable);
+        c->cancellable = g_cancellable_new();
         start_demux(self);
     } else {
         g_cancellable_cancel(c->cancellable);
@@ -529,7 +530,6 @@ static void spice_webdav_channel_init(SpiceWebdavChannel *channel)
 
     channel->priv = c;
     c->stream = spice_vmc_stream_new(SPICE_CHANNEL(channel));
-    c->cancellable = g_cancellable_new();
     c->clients = g_hash_table_new_full(g_int64_hash, g_int64_equal,
                                        NULL, client_remove_unref);
     c->demux.buf = g_malloc0(MAX_MUX_SIZE);
