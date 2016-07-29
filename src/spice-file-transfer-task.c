@@ -325,6 +325,7 @@ void spice_file_transfer_task_completed(SpiceFileTransferTask *self,
     self->pending = TRUE;
 signal:
     g_signal_emit(self, task_signals[SIGNAL_FINISHED], 0, self->error);
+    /* SpiceFileTransferTask unref is done after input stream is closed */
 }
 
 G_GNUC_INTERNAL
@@ -364,9 +365,10 @@ guint64 spice_file_transfer_task_get_bytes_read(SpiceFileTransferTask *self)
 
 /* Helper function which only creates a SpiceFileTransferTask per GFile
  * in @files and returns a HashTable mapping task-id to the task itself
- * Note that the HashTable does not free its values upon destruction:
- * The SpiceFileTransferTask reference created here should be freed by
- * spice_file_transfer_task_completed */
+ * The SpiceFileTransferTask created here has two references, one should be
+ * freed by spice_file_transfer_task_close_stream_cb() after
+ * spice_file_transfer_task_completed() is called and the other reference
+ * belongs to the caller and should be freed upon GHashTable destruction */
 G_GNUC_INTERNAL
 GHashTable *spice_file_transfer_task_create_tasks(GFile **files,
                                                   SpiceMainChannel *channel,
@@ -385,7 +387,7 @@ GHashTable *spice_file_transfer_task_create_tasks(GFile **files,
 
         xfer_task = spice_file_transfer_task_new(channel, files[i], flags, cancellable);
         task_id = spice_file_transfer_task_get_id(xfer_task);
-        g_hash_table_insert(xfer_ht, GUINT_TO_POINTER(task_id), xfer_task);
+        g_hash_table_insert(xfer_ht, GUINT_TO_POINTER(task_id), g_object_ref(xfer_task));
     }
     return xfer_ht;
 }
