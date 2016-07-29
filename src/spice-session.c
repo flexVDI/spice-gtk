@@ -2116,7 +2116,7 @@ static gboolean open_host_idle_cb(gpointer data)
 #endif
         } else {
             SPICE_DEBUG("open host %s:%d", s->host, open_host->port);
-            address = g_network_address_new(s->host, open_host->port);
+            address = g_network_address_parse(s->host, open_host->port, &open_host->error);
         }
 
         if (address == NULL || open_host->error != NULL) {
