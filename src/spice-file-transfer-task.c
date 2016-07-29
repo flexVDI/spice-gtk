@@ -464,21 +464,6 @@ gssize spice_file_transfer_task_read_finish(SpiceFileTransferTask *self,
     return nbytes;
 }
 
-G_GNUC_INTERNAL
-void spice_file_transfer_task_debug_info(SpiceFileTransferTask *self)
-{
-    const GTimeSpan interval = 20 * G_TIME_SPAN_SECOND;
-    gint64 now = g_get_monotonic_time();
-
-    if (interval < now - self->last_update) {
-        gchar *basename = g_file_get_basename(self->file);
-        self->last_update = now;
-        SPICE_DEBUG("transferred %.2f%% of the file %s",
-                    100.0 * self->read_bytes / self->file_size, basename);
-        g_free(basename);
-    }
-}
-
 /*******************************************************************************
  * External API
  ******************************************************************************/
