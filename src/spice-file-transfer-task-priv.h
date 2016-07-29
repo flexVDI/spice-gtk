@@ -52,6 +52,7 @@ gssize spice_file_transfer_task_read_finish(SpiceFileTransferTask *self,
                                             GError **error);
 guint64 spice_file_transfer_task_get_file_size(SpiceFileTransferTask *self);
 guint64 spice_file_transfer_task_get_bytes_read(SpiceFileTransferTask *self);
+gboolean spice_file_transfer_task_is_completed(SpiceFileTransferTask *self);
 
 G_END_DECLS
 

@@ -42,6 +42,7 @@ struct _SpiceFileTransferTask
     GObject parent;
 
     uint32_t                       id;
+    gboolean                       completed;
     gboolean                       pending;
     GFile                          *file;
     SpiceMainChannel               *channel;
@@ -270,6 +271,8 @@ G_GNUC_INTERNAL
 void spice_file_transfer_task_completed(SpiceFileTransferTask *self,
                                         GError *error)
 {
+    self->completed = TRUE;
+
     /* In case of multiple errors we only report the first error */
     if (self->error)
         g_clear_error(&error);
@@ -475,6 +478,16 @@ gssize spice_file_transfer_task_read_finish(SpiceFileTransferTask *self,
         *buffer = self->buffer;
 
     return nbytes;
+}
+
+G_GNUC_INTERNAL
+gboolean spice_file_transfer_task_is_completed(SpiceFileTransferTask *self)
+{
+    g_return_val_if_fail(self != NULL, FALSE);
+
+    /* File transfer is considered over at the first time it is marked as
+     * complete with spice_file_transfer_task_completed. */
+    return self->completed;
 }
 
 /*******************************************************************************

@@ -1766,10 +1766,12 @@ static void file_xfer_data_flushed_cb(GObject *source_object,
         return;
     }
 
-    file_transfer_operation_send_progress(xfer_task);
-
-    /* Read more data */
-    spice_file_transfer_task_read_async(xfer_task, file_xfer_read_async_cb, NULL);
+    /* task might be completed while on idle */
+    if (!spice_file_transfer_task_is_completed(xfer_task)) {
+        file_transfer_operation_send_progress(xfer_task);
+        /* Read more data */
+        spice_file_transfer_task_read_async(xfer_task, file_xfer_read_async_cb, NULL);
+    }
 }
 
 static void file_xfer_queue_msg_to_agent(SpiceMainChannel *channel,
@@ -1814,13 +1816,15 @@ static void file_xfer_read_async_cb(GObject *source_object,
     }
 
     file_xfer_queue_msg_to_agent(channel, spice_file_transfer_task_get_id(xfer_task), buffer, count);
-    if (count == 0) {
-        /* on EOF just wait for VD_AGENT_FILE_XFER_STATUS from agent */
+    if (count == 0 || spice_file_transfer_task_is_completed(xfer_task)) {
+        /* on EOF just wait for VD_AGENT_FILE_XFER_STATUS from agent
+         * in case the task was completed, nothing to do. */
         return;
     }
 
     task_id = spice_file_transfer_task_get_id(xfer_task);
     xfer_op = g_hash_table_lookup(channel->priv->file_xfer_tasks, GUINT_TO_POINTER(task_id));
+    g_return_if_fail(xfer_op != NULL);
     xfer_op->stats.total_sent += count;
 
     cancellable = spice_file_transfer_task_get_cancellable(xfer_task);
@@ -1841,6 +1845,7 @@ static void main_agent_handle_xfer_status(SpiceMainChannel *channel,
 
     switch (msg->result) {
     case VD_AGENT_FILE_XFER_STATUS_CAN_SEND_DATA:
+        g_return_if_fail(spice_file_transfer_task_is_completed(xfer_task) == FALSE);
         spice_file_transfer_task_read_async(xfer_task, file_xfer_read_async_cb, NULL);
         return;
     case VD_AGENT_FILE_XFER_STATUS_CANCELLED:
