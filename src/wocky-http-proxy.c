@@ -454,8 +454,10 @@ reply_read_cb (GObject *source,
       return;
     }
 
-  g_task_return_pointer (data->task, data, (GDestroyNotify) free_connect_data);
+  g_task_return_pointer (data->task, data->io_stream, (GDestroyNotify) g_object_unref);
+  data->io_stream = NULL;
   g_object_unref (data->task);
+  free_connect_data (data);
 }
 
 static GIOStream *
@@ -464,9 +466,8 @@ wocky_http_proxy_connect_finish (GProxy *proxy,
     GError **error)
 {
   GTask *task = G_TASK (result);
-  ConnectAsyncData *data = g_task_propagate_pointer (task, error);
 
-  return data ? g_object_ref (data->io_stream) : NULL;
+  return g_task_propagate_pointer (task, error);
 }
 
 static gboolean
