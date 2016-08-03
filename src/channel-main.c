@@ -2898,8 +2898,6 @@ static void file_transfer_operation_free(FileTransferOperation *xfer_op)
         g_task_return_boolean(xfer_op->task, TRUE);
     }
     g_object_unref(xfer_op->task);
-
-    /* SpiceFileTransferTask itself is freed after it emits "finish" */
     g_hash_table_unref(xfer_op->xfer_task);
 
     spice_debug("Freeing file-transfer-operation %p", xfer_op);
@@ -2970,7 +2968,6 @@ static void file_transfer_operation_task_finished(SpiceFileTransferTask *xfer_ta
         /* Likely the operation has ended before the remove-task was called. One
          * situation that this can easily happen is if the agent is disconnected
          * while there are pending files. */
-        g_object_unref(xfer_task);
         return;
     }
 
@@ -2993,7 +2990,6 @@ static void file_transfer_operation_task_finished(SpiceFileTransferTask *xfer_ta
 
     /* Remove and free SpiceFileTransferTask */
     g_hash_table_remove(xfer_op->xfer_task, GUINT_TO_POINTER(task_id));
-    g_object_unref(xfer_task);
 
     /* Keep file_xfer_tasks up to date. If no more elements, operation is over */
     g_hash_table_remove(channel->priv->file_xfer_tasks, GUINT_TO_POINTER(task_id));

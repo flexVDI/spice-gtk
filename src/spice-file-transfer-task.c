@@ -380,7 +380,7 @@ GHashTable *spice_file_transfer_task_create_tasks(GFile **files,
 
     g_return_val_if_fail(files != NULL && files[0] != NULL, NULL);
 
-    xfer_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
+    xfer_ht = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, g_object_unref);
     for (i = 0; files[i] != NULL && !g_cancellable_is_cancelled(cancellable); i++) {
         SpiceFileTransferTask *xfer_task;
         guint32 task_id;
