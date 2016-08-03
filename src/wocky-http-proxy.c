@@ -363,6 +363,8 @@ wocky_http_proxy_connect_async (GProxy *proxy,
   data->length = strlen (data->buffer);
   data->offset = 0;
 
+  g_task_set_task_data (task, data, (GDestroyNotify)free_connect_data);
+
   if (WOCKY_IS_HTTPS_PROXY (proxy))
     {
       GError *error = NULL;
@@ -457,7 +459,6 @@ reply_read_cb (GObject *source,
   g_task_return_pointer (data->task, data->io_stream, (GDestroyNotify) g_object_unref);
   data->io_stream = NULL;
   g_object_unref (data->task);
-  free_connect_data (data);
 }
 
 static GIOStream *
