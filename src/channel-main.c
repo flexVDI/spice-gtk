@@ -889,15 +889,22 @@ static void file_xfer_flushed(SpiceMainChannel *channel, gboolean success)
                                 GUINT_TO_POINTER(success));
 }
 
-static void file_xfer_flush_async(SpiceMainChannel *channel, GCancellable *cancellable,
-                                  GAsyncReadyCallback callback, gpointer user_data)
+static void file_xfer_flush_async(SpiceFileTransferTask *xfer_task,
+                                  GAsyncReadyCallback callback,
+                                  gpointer user_data)
 {
     GTask *task;
-    SpiceMainChannelPrivate *c = channel->priv;
+    SpiceMainChannel *channel;
+    SpiceMainChannelPrivate *c;
     gboolean was_empty;
 
-    task = g_task_new(channel, cancellable, callback, user_data);
+    channel = spice_file_transfer_task_get_channel(xfer_task);
+    task = g_task_new(xfer_task,
+                      spice_file_transfer_task_get_cancellable(xfer_task),
+                      callback,
+                      user_data);
 
+    c = channel->priv;
     was_empty = g_queue_is_empty(c->agent_msg_queue);
     if (was_empty) {
         g_task_return_boolean(task, TRUE);
@@ -909,12 +916,13 @@ static void file_xfer_flush_async(SpiceMainChannel *channel, GCancellable *cance
     g_hash_table_insert(c->flushing, g_queue_peek_tail(c->agent_msg_queue), task);
 }
 
-static gboolean file_xfer_flush_finish(SpiceMainChannel *channel, GAsyncResult *result,
+static gboolean file_xfer_flush_finish(SpiceFileTransferTask *xfer_task,
+                                       GAsyncResult *result,
                                        GError **error)
 {
     GTask *task = G_TASK(result);
 
-    g_return_val_if_fail(g_task_is_valid(result, channel), FALSE);
+    g_return_val_if_fail(g_task_is_valid(result, xfer_task), FALSE);
 
     return g_task_propagate_boolean(task, error);
 }
@@ -1756,11 +1764,10 @@ static void file_xfer_data_flushed_cb(GObject *source_object,
                                       GAsyncResult *res,
                                       gpointer user_data)
 {
-    SpiceFileTransferTask *xfer_task = user_data;
-    SpiceMainChannel *channel = (SpiceMainChannel *)source_object;
+    SpiceFileTransferTask *xfer_task = SPICE_FILE_TRANSFER_TASK(source_object);
     GError *error = NULL;
 
-    file_xfer_flush_finish(channel, res, &error);
+    file_xfer_flush_finish(xfer_task, res, &error);
     if (error) {
         spice_file_transfer_task_completed(xfer_task, error);
         return;
@@ -1770,7 +1777,7 @@ static void file_xfer_data_flushed_cb(GObject *source_object,
     if (!spice_file_transfer_task_is_completed(xfer_task)) {
         file_transfer_operation_send_progress(xfer_task);
         /* Read more data */
-        spice_file_transfer_task_read_async(xfer_task, file_xfer_read_async_cb, NULL);
+        spice_file_transfer_task_read_async(xfer_task, file_xfer_read_async_cb, user_data);
     }
 }
 
@@ -1801,11 +1808,10 @@ static void file_xfer_read_async_cb(GObject *source_object,
     SpiceMainChannel *channel;
     gssize count;
     char *buffer;
-    GCancellable *cancellable;
-    guint32 task_id;
     GError *error = NULL;
 
     xfer_task = SPICE_FILE_TRANSFER_TASK(source_object);
+    xfer_op = user_data;
 
     channel = spice_file_transfer_task_get_channel(xfer_task);
     count = spice_file_transfer_task_read_finish(xfer_task, res, &buffer, &error);
@@ -1822,13 +1828,9 @@ static void file_xfer_read_async_cb(GObject *source_object,
         return;
     }
 
-    task_id = spice_file_transfer_task_get_id(xfer_task);
-    xfer_op = g_hash_table_lookup(channel->priv->file_xfer_tasks, GUINT_TO_POINTER(task_id));
-    g_return_if_fail(xfer_op != NULL);
     xfer_op->stats.total_sent += count;
 
-    cancellable = spice_file_transfer_task_get_cancellable(xfer_task);
-    file_xfer_flush_async(channel, cancellable, file_xfer_data_flushed_cb, xfer_task);
+    file_xfer_flush_async(xfer_task, file_xfer_data_flushed_cb, xfer_op);
 }
 
 /* coroutine context */
@@ -1836,17 +1838,19 @@ static void main_agent_handle_xfer_status(SpiceMainChannel *channel,
                                           VDAgentFileXferStatusMessage *msg)
 {
     SpiceFileTransferTask *xfer_task;
+    FileTransferOperation *xfer_op;
     GError *error = NULL;
 
     xfer_task = spice_main_channel_find_xfer_task_by_task_id(channel, msg->id);
     g_return_if_fail(xfer_task != NULL);
+    xfer_op = g_hash_table_lookup(channel->priv->file_xfer_tasks, GUINT_TO_POINTER(msg->id));
 
     SPICE_DEBUG("xfer-task %u received response %u", msg->id, msg->result);
 
     switch (msg->result) {
     case VD_AGENT_FILE_XFER_STATUS_CAN_SEND_DATA:
         g_return_if_fail(spice_file_transfer_task_is_completed(xfer_task) == FALSE);
-        spice_file_transfer_task_read_async(xfer_task, file_xfer_read_async_cb, NULL);
+        spice_file_transfer_task_read_async(xfer_task, file_xfer_read_async_cb, xfer_op);
         return;
     case VD_AGENT_FILE_XFER_STATUS_CANCELLED:
         error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
