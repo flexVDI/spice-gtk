@@ -1841,11 +1841,11 @@ static void main_agent_handle_xfer_status(SpiceMainChannel *channel,
     FileTransferOperation *xfer_op;
     GError *error = NULL;
 
+    SPICE_DEBUG("xfer-task %u received response %u", msg->id, msg->result);
+
     xfer_task = spice_main_channel_find_xfer_task_by_task_id(channel, msg->id);
     g_return_if_fail(xfer_task != NULL);
     xfer_op = g_hash_table_lookup(channel->priv->file_xfer_tasks, GUINT_TO_POINTER(msg->id));
-
-    SPICE_DEBUG("xfer-task %u received response %u", msg->id, msg->result);
 
     switch (msg->result) {
     case VD_AGENT_FILE_XFER_STATUS_CAN_SEND_DATA:
