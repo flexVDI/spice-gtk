@@ -472,8 +472,19 @@ static GdkCursor* get_blank_cursor(void)
 static gboolean grab_broken(SpiceDisplay *self, GdkEventGrabBroken *event,
                             gpointer user_data G_GNUC_UNUSED)
 {
+    GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(self));
     SPICE_DEBUG("%s (implicit: %d, keyboard: %d)", __FUNCTION__,
                 event->implicit, event->keyboard);
+    SPICE_DEBUG("%s (SpiceDisplay::GdkWindow %p, event->grab_window: %p)",
+                __FUNCTION__, window, event->grab_window);
+    if (window == event->grab_window) {
+        /* ignore grab-broken event moving the grab to GtkEventBox::window
+         * (from GtkEventBox::event_window) as we initially called
+         * gdk_pointer_grab() on GtkEventBox::window, see
+         * https://bugzilla.gnome.org/show_bug.cgi?id=769635
+         */
+        return false;
+    }
 
     if (event->keyboard) {
         try_keyboard_ungrab(self);
