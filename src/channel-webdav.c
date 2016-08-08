@@ -218,19 +218,16 @@ client_ref(Client *client)
     return client;
 }
 
-static void client_start_read(SpiceWebdavChannel *self, Client *client);
+static void client_start_read(Client *client);
 
-static void remove_client(SpiceWebdavChannel *self, Client *client)
+static void remove_client(Client *client)
 {
-    SpiceWebdavChannelPrivate *c;
-
     if (g_cancellable_is_cancelled(client->cancellable))
         return;
 
     g_cancellable_cancel(client->cancellable);
 
-    c = self->priv;
-    g_hash_table_remove(c->clients, &client->id);
+    g_hash_table_remove(client->self->priv->clients, &client->id);
 }
 
 static void mux_pushed_cb(OutputQueue *q, gpointer user_data)
@@ -238,9 +235,9 @@ static void mux_pushed_cb(OutputQueue *q, gpointer user_data)
     Client *client = user_data;
 
     if (client->mux.size == 0) {
-        remove_client(client->self, client);
+        remove_client(client);
     } else {
-        client_start_read(client->self, client);
+        client_start_read(client);
     }
 
     client_unref(client);
@@ -253,8 +250,7 @@ static void server_reply_cb(GObject *source_object,
                             gpointer user_data)
 {
     Client *client = user_data;
-    SpiceWebdavChannel *self = client->self;
-    SpiceWebdavChannelPrivate *c = self->priv;
+    SpiceWebdavChannelPrivate *c = client->self->priv;
     GError *err = NULL;
     gssize size;
 
@@ -277,14 +273,14 @@ end:
     if (err) {
         if (!g_cancellable_is_cancelled(client->cancellable))
             g_warning("read error: %s", err->message);
-        remove_client(self, client);
+        remove_client(client);
         g_clear_error(&err);
     }
 
     client_unref(client);
 }
 
-static void client_start_read(SpiceWebdavChannel *self, Client *client)
+static void client_start_read(Client *client)
 {
     GInputStream *input;
 
@@ -297,13 +293,13 @@ static void client_start_read(SpiceWebdavChannel *self, Client *client)
 static void start_demux(SpiceWebdavChannel *self);
 
 #ifdef USE_PHODAV
-static void demux_to_client_finish(SpiceWebdavChannel *self,
-                                   Client *client, gboolean fail)
+static void demux_to_client_finish(Client *client, gboolean fail)
 {
+    SpiceWebdavChannel *self = client->self;
     SpiceWebdavChannelPrivate *c = self->priv;
 
     if (fail) {
-        remove_client(self, client);
+        remove_client(client);
     }
 
     c->demuxing = FALSE;
@@ -327,18 +323,17 @@ static void demux_to_client_cb(GObject *source, GAsyncResult *result, gpointer u
 
     fail = (size != c->demux.size);
     g_warn_if_fail(size == c->demux.size);
-    demux_to_client_finish(client->self, client, fail);
+    demux_to_client_finish(client, fail);
 }
 #endif
 
-static void demux_to_client(SpiceWebdavChannel *self,
-                            Client *client)
+static void demux_to_client(Client *client)
 {
 #ifdef USE_PHODAV
-    SpiceWebdavChannelPrivate *c = self->priv;
+    SpiceWebdavChannelPrivate *c = client->self->priv;
     gsize size = c->demux.size;
 
-    CHANNEL_DEBUG(self, "pushing %"G_GSIZE_FORMAT" to client %p", size, client);
+    CHANNEL_DEBUG(client->self, "pushing %"G_GSIZE_FORMAT" to client %p", size, client);
 
     if (size > 0) {
         g_output_stream_write_all_async(g_io_stream_get_output_stream(client->pipe),
@@ -347,7 +342,7 @@ static void demux_to_client(SpiceWebdavChannel *self,
         return;
     } else {
         /* Nothing to write */
-        demux_to_client_finish(self, client, FALSE);
+        demux_to_client_finish(client, FALSE);
     }
 #endif
 }
@@ -383,8 +378,8 @@ static void start_client(SpiceWebdavChannel *self)
 
     g_hash_table_insert(c->clients, &client->id, client);
 
-    client_start_read(self, client);
-    demux_to_client(self, client);
+    client_start_read(client);
+    demux_to_client(client);
 
     g_clear_object(&addr);
     return;
@@ -423,7 +418,7 @@ static void data_read_cb(GObject *source_object,
     client = g_hash_table_lookup(c->clients, &c->demux.client);
 
     if (client)
-        demux_to_client(self, client);
+        demux_to_client(client);
     else
         start_client(self);
 }
