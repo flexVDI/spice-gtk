@@ -165,7 +165,6 @@ spice_vmc_input_stream_co_data(SpiceVmcInputStream *self,
         cb_data->pos = self->pos;
         g_idle_add(complete_in_idle_cb, cb_data);
 
-        g_cancellable_disconnect(g_task_get_cancellable(self->task), self->cancel_id);
         g_clear_object(&self->task);
     }
 
