@@ -910,6 +910,49 @@ static gboolean check_clipboard_size_limits(SpiceGtkSession *session,
     return TRUE;
 }
 
+/* This will convert line endings if needed (between Windows/Unix conventions),
+ * and will make sure 'len' does not take into account any trailing \0 as this could
+ * cause some confusion guest side.
+ * The 'len' argument will be modified by this function to the length of the modified
+ * string
+ */
+static char *fixup_clipboard_text(SpiceGtkSession *self, const char *text, int *len)
+{
+    char *conv = NULL;
+    int new_len = *len;
+
+
+    if (spice_main_agent_test_capability(self->priv->main, VD_AGENT_CAP_GUEST_LINEEND_CRLF)) {
+        GError *err = NULL;
+
+        conv = spice_unix2dos(text, *len, &err);
+        if (err) {
+            g_warning("Failed to convert text line ending: %s", err->message);
+            g_clear_error(&err);
+            return NULL;
+        }
+
+        new_len = strlen(conv);
+    } else {
+        /* On Windows, with some versions of gtk+, GtkSelectionData::length
+         * will include the final '\0'. When a string with this trailing '\0'
+         * is pasted in some linux applications, it will be pasted as <NIL> or
+         * as an invisible character, which is unwanted. Ensure the length we
+         * send to the agent does not include any trailing '\0'
+         * This is gtk+ bug https://bugzilla.gnome.org/show_bug.cgi?id=734670
+         */
+        new_len = strlen(text);
+    }
+
+    if (!check_clipboard_size_limits(self, new_len)) {
+        g_free(conv);
+        return NULL;
+    }
+
+    *len = new_len;
+    return conv;
+}
+
 static void clipboard_received_cb(GtkClipboard *clipboard,
                                   GtkSelectionData *selection_data,
                                   gpointer user_data)
@@ -959,31 +1002,7 @@ static void clipboard_received_cb(GtkClipboard *clipboard,
 
     /* gtk+ internal utf8 newline is always LF, even on windows */
     if (type == VD_AGENT_CLIPBOARD_UTF8_TEXT) {
-        if (spice_main_agent_test_capability(s->main, VD_AGENT_CAP_GUEST_LINEEND_CRLF)) {
-            GError *err = NULL;
-
-            conv = spice_unix2dos((gchar*)data, len, &err);
-            if (err) {
-                g_warning("Failed to convert text line ending: %s", err->message);
-                g_clear_error(&err);
-                return;
-            }
-
-            len = strlen(conv);
-        } else {
-            /* On Windows, with some versions of gtk+, GtkSelectionData::length
-             * will include the final '\0'. When a string with this trailing '\0'
-             * is pasted in some linux applications, it will be pasted as <NIL> or
-             * as an invisible character, which is unwanted. Ensure the length we
-             * send to the agent does not include any trailing '\0'
-             * This is gtk+ bug https://bugzilla.gnome.org/show_bug.cgi?id=734670
-             */
-            len = strlen((const char *)data);
-        }
-        if (!check_clipboard_size_limits(self, len)) {
-            g_free(conv);
-            return;
-        }
+        conv = fixup_clipboard_text(self, (gchar *)data, &len);
     }
 
     spice_main_clipboard_selection_notify(s->main, selection, type,
