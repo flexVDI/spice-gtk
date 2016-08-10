@@ -953,6 +953,40 @@ static char *fixup_clipboard_text(SpiceGtkSession *self, const char *text, int *
     return conv;
 }
 
+static void clipboard_received_text_cb(GtkClipboard *clipboard,
+                                       const gchar *text,
+                                       gpointer user_data)
+{
+    WeakRef *weakref = user_data;
+    SpiceGtkSession *self = (SpiceGtkSession*)weakref->object;
+    char *conv = NULL;
+    int len = 0;
+    int selection;
+
+    weak_unref(weakref);
+
+    if (self == NULL)
+        return;
+
+    g_return_if_fail(SPICE_IS_GTK_SESSION(self));
+
+    selection = get_selection_from_clipboard(self->priv, clipboard);
+    g_return_if_fail(selection != -1);
+
+    len = strlen(text);
+    if (!check_clipboard_size_limits(self, len)) {
+        return;
+    }
+
+    /* gtk+ internal utf8 newline is always LF, even on windows */
+    conv = fixup_clipboard_text(self, text, &len);
+
+    spice_main_clipboard_selection_notify(self->priv->main, selection,
+                                          VD_AGENT_CLIPBOARD_UTF8_TEXT,
+                                          (guchar *)(conv ?: text), len);
+    g_free(conv);
+}
+
 static void clipboard_received_cb(GtkClipboard *clipboard,
                                   GtkSelectionData *selection_data,
                                   gpointer user_data)
@@ -998,16 +1032,14 @@ static void clipboard_received_cb(GtkClipboard *clipboard,
     }
 
     const guchar *data = gtk_selection_data_get_data(selection_data);
-    gpointer conv = NULL;
 
-    /* gtk+ internal utf8 newline is always LF, even on windows */
-    if (type == VD_AGENT_CLIPBOARD_UTF8_TEXT) {
-        conv = fixup_clipboard_text(self, (gchar *)data, &len);
-    }
+    /* text should be handled through clipboard_received_text_cb(), not
+     * clipboard_received_cb().
+     */
+    g_warn_if_fail(type != VD_AGENT_CLIPBOARD_UTF8_TEXT);
 
     spice_main_clipboard_selection_notify(s->main, selection, type,
-                                          conv ?: data, len);
-    g_free(conv);
+                                          data, len);
 }
 
 static gboolean clipboard_request(SpiceMainChannel *main, guint selection,
@@ -1030,16 +1062,21 @@ static gboolean clipboard_request(SpiceMainChannel *main, guint selection,
     cb = get_clipboard_from_selection(s, selection);
     g_return_val_if_fail(cb != NULL, FALSE);
 
-    for (m = 0; m < SPICE_N_ELEMENTS(atom2agent); m++) {
-        if (atom2agent[m].vdagent == type)
-            break;
-    }
-
-    g_return_val_if_fail(m < SPICE_N_ELEMENTS(atom2agent), FALSE);
-
-    atom = gdk_atom_intern_static_string(atom2agent[m].xatom);
-    gtk_clipboard_request_contents(cb, atom, clipboard_received_cb,
+    if (type == VD_AGENT_CLIPBOARD_UTF8_TEXT) {
+        gtk_clipboard_request_text(cb, clipboard_received_text_cb,
                                    weak_ref(G_OBJECT(self)));
+    } else {
+        for (m = 0; m < SPICE_N_ELEMENTS(atom2agent); m++) {
+            if (atom2agent[m].vdagent == type)
+                break;
+        }
+
+        g_return_val_if_fail(m < SPICE_N_ELEMENTS(atom2agent), FALSE);
+
+        atom = gdk_atom_intern_static_string(atom2agent[m].xatom);
+        gtk_clipboard_request_contents(cb, atom, clipboard_received_cb,
+                                       weak_ref(G_OBJECT(self)));
+    }
 
     return TRUE;
 }
