@@ -1434,8 +1434,6 @@ static void destroy_stream(SpiceChannel *channel, int id)
 {
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     display_stream *st;
-    guint64 drops_duration_total = 0;
-    guint32 num_out_frames;
     int i;
 
     g_return_if_fail(c != NULL);
@@ -1446,20 +1444,22 @@ static void destroy_stream(SpiceChannel *channel, int id)
     if (!st)
         return;
 
-    num_out_frames = st->num_input_frames - st->arrive_late_count - st->num_drops_on_playback;
-    CHANNEL_DEBUG(channel, "%s: id=%d #in-frames=%u out/in=%.2f "
-        "#drops-on-receive=%u avg-late-time(ms)=%.2f "
-        "#drops-on-playback=%u", __FUNCTION__,
-        id,
-        st->num_input_frames,
-        num_out_frames / (double)st->num_input_frames,
-        st->arrive_late_count,
-        st->arrive_late_count ? st->arrive_late_time / ((double)st->arrive_late_count): 0,
-        st->num_drops_on_playback);
-    if (st->num_drops_seqs) {
-        CHANNEL_DEBUG(channel, "%s: #drops-sequences=%u ==>", __FUNCTION__, st->num_drops_seqs);
-    }
-    for (i = 0; i < st->num_drops_seqs; i++) {
+    if (st->num_input_frames > 0) {
+        guint64 drops_duration_total = 0;
+        guint32 num_out_frames = st->num_input_frames - st->arrive_late_count - st->num_drops_on_playback;
+        CHANNEL_DEBUG(channel, "%s: id=%d #in-frames=%u out/in=%.2f "
+            "#drops-on-receive=%u avg-late-time(ms)=%.2f "
+            "#drops-on-playback=%u", __FUNCTION__,
+            id,
+            st->num_input_frames,
+            num_out_frames / (double)st->num_input_frames,
+            st->arrive_late_count,
+            st->arrive_late_count ? st->arrive_late_time / ((double)st->arrive_late_count): 0,
+            st->num_drops_on_playback);
+        if (st->num_drops_seqs) {
+            CHANNEL_DEBUG(channel, "%s: #drops-sequences=%u ==>", __FUNCTION__, st->num_drops_seqs);
+        }
+        for (i = 0; i < st->num_drops_seqs; i++) {
             drops_sequence_stats *stats = &g_array_index(st->drops_seqs_stats_arr,
                                                          drops_sequence_stats,
                                                          i);
@@ -1468,9 +1468,10 @@ static void destroy_stream(SpiceChannel *channel, int id)
                                    stats->len,
                                    stats->start_mm_time - st->first_frame_mm_time,
                                    stats->duration);
-    }
-    if (st->num_drops_seqs) {
-        CHANNEL_DEBUG(channel, "%s: drops-total-duration=%"G_GUINT64_FORMAT" ==>", __FUNCTION__, drops_duration_total);
+        }
+        if (st->num_drops_seqs) {
+            CHANNEL_DEBUG(channel, "%s: drops-total-duration=%"G_GUINT64_FORMAT" ==>", __FUNCTION__, drops_duration_total);
+        }
     }
 
     g_array_free(st->drops_seqs_stats_arr, TRUE);
