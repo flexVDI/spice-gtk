@@ -507,7 +507,7 @@ gboolean spice_file_transfer_task_is_completed(SpiceFileTransferTask *self)
  * Convenience function for retrieving the current progress of this file
  * transfer task.
  *
- * Returns: A percentage value between 0 and 100
+ * Returns: A fractional value between 0 and 1.0
  *
  * Since: 0.31
  **/
@@ -717,7 +717,7 @@ spice_file_transfer_task_class_init(SpiceFileTransferTaskClass *klass)
      * SpiceFileTransferTask:progress:
      *
      * The current state of the file transfer. This value indicates a
-     * percentage, and ranges from 0 to 100. Listen for change notifications on
+     * fraction, and ranges from 0 to 1.0. Listen for change notifications on
      * this property to be updated whenever the file transfer progress changes.
      *
      * Since: 0.31
@@ -726,7 +726,7 @@ spice_file_transfer_task_class_init(SpiceFileTransferTaskClass *klass)
                                     g_param_spec_double("progress",
                                                         "Progress",
                                                         "The percentage of the file transferred",
-                                                        0.0, 100.0, 0.0,
+                                                        0.0, 1.0, 0.0,
                                                         G_PARAM_READABLE |
                                                         G_PARAM_STATIC_STRINGS));
 
