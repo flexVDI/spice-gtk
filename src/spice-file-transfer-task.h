@@ -43,6 +43,8 @@ GType spice_file_transfer_task_get_type(void) G_GNUC_CONST;
 
 char* spice_file_transfer_task_get_filename(SpiceFileTransferTask *self);
 void spice_file_transfer_task_cancel(SpiceFileTransferTask *self);
+guint64 spice_file_transfer_task_get_total_bytes(SpiceFileTransferTask *self);
+guint64 spice_file_transfer_task_get_transferred_bytes(SpiceFileTransferTask *self);
 double spice_file_transfer_task_get_progress(SpiceFileTransferTask *self);
 
 G_END_DECLS

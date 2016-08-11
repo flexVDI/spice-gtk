@@ -2976,8 +2976,8 @@ static void file_transfer_operation_task_finished(SpiceFileTransferTask *xfer_ta
          * remaining bytes from transfer-size in order to keep the coherence of
          * the information we provide to the user (total-sent and transfer-size)
          * in the progress-callback */
-        guint64 file_size = spice_file_transfer_task_get_file_size(xfer_task);
-        guint64 bytes_read = spice_file_transfer_task_get_bytes_read(xfer_task);
+        guint64 file_size = spice_file_transfer_task_get_total_bytes(xfer_task);
+        guint64 bytes_read = spice_file_transfer_task_get_transferred_bytes(xfer_task);
         xfer_op->stats.transfer_size -= (file_size - bytes_read);
         if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
             xfer_op->stats.cancelled++;

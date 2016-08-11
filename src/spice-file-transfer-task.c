@@ -73,6 +73,8 @@ enum {
     PROP_TASK_CHANNEL,
     PROP_TASK_CANCELLABLE,
     PROP_TASK_FILE,
+    PROP_TASK_TOTAL_BYTES,
+    PROP_TASK_TRANSFERRED_BYTES,
     PROP_TASK_PROGRESS,
 };
 
@@ -152,6 +154,7 @@ static void spice_file_transfer_task_query_info_cb(GObject *obj,
 
     /* SpiceFileTransferTask's init is done, handshake for file-transfer will
      * start soon. First "progress" can be emitted ~ 0% */
+    g_object_notify(G_OBJECT(self), "total-bytes");
     g_object_notify(G_OBJECT(self), "progress");
 
     g_task_return_pointer(task, info, g_object_unref);
@@ -349,15 +352,13 @@ GCancellable *spice_file_transfer_task_get_cancellable(SpiceFileTransferTask *se
     return self->cancellable;
 }
 
-G_GNUC_INTERNAL
-guint64 spice_file_transfer_task_get_file_size(SpiceFileTransferTask *self)
+guint64 spice_file_transfer_task_get_total_bytes(SpiceFileTransferTask *self)
 {
     g_return_val_if_fail(self != NULL, 0);
     return self->file_size;
 }
 
-G_GNUC_INTERNAL
-guint64 spice_file_transfer_task_get_bytes_read(SpiceFileTransferTask *self)
+guint64 spice_file_transfer_task_get_transferred_bytes(SpiceFileTransferTask *self)
 {
     g_return_val_if_fail(self != NULL, 0);
     return self->read_bytes;
@@ -445,6 +446,7 @@ void spice_file_transfer_task_read_async(SpiceFileTransferTask *self,
      * data that was already sent. To notify the 100% (completed), channel-main
      * should call read-async when it expects EOF. */
     g_object_notify(G_OBJECT(self), "progress");
+    g_object_notify(G_OBJECT(self), "transferred-bytes");
 
     task = g_task_new(self, self->cancellable, callback, userdata);
 
@@ -569,6 +571,12 @@ spice_file_transfer_task_get_property(GObject *object,
             break;
         case PROP_TASK_FILE:
             g_value_set_object(value, self->file);
+            break;
+        case PROP_TASK_TOTAL_BYTES:
+            g_value_set_uint64(value, spice_file_transfer_task_get_total_bytes(self));
+            break;
+        case PROP_TASK_TRANSFERRED_BYTES:
+            g_value_set_uint64(value, spice_file_transfer_task_get_transferred_bytes(self));
             break;
         case PROP_TASK_PROGRESS:
             g_value_set_double(value, spice_file_transfer_task_get_progress(self));
@@ -712,6 +720,38 @@ spice_file_transfer_task_class_init(SpiceFileTransferTaskClass *klass)
                                                         G_TYPE_FILE,
                                                         G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
                                                         G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceFileTransferTask:total-bytes:
+     *
+     * The total size in bytes of this file transfer.
+     *
+     * Since: 0.33
+     **/
+    g_object_class_install_property(object_class, PROP_TASK_TOTAL_BYTES,
+                                    g_param_spec_uint64("total-bytes",
+                                                        "Total bytes",
+                                                        "The size in bytes of the file transferred",
+                                                        0, G_MAXUINT64, 0,
+                                                        G_PARAM_READABLE |
+                                                        G_PARAM_STATIC_STRINGS));
+
+
+    /**
+     * SpiceFileTransferTask:transferred-bytes:
+     *
+     * The number of bytes that have been transferred so far.
+     *
+     * Since: 0.33
+     **/
+    g_object_class_install_property(object_class, PROP_TASK_TRANSFERRED_BYTES,
+                                    g_param_spec_uint64("transferred-bytes",
+                                                        "Transferred bytes",
+                                                        "The number of bytes transferred",
+                                                        0, G_MAXUINT64, 0,
+                                                        G_PARAM_READABLE |
+                                                        G_PARAM_STATIC_STRINGS));
+
 
     /**
      * SpiceFileTransferTask:progress:
