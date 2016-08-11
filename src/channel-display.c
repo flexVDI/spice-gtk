@@ -1222,8 +1222,15 @@ void stream_display_frame(display_stream *st, SpiceMsgIn *frame_msg,
 static void display_update_stream_report(SpiceDisplayChannel *channel, uint32_t stream_id,
                                          uint32_t frame_time, int32_t latency)
 {
-    display_stream *st = channel->priv->streams[stream_id];
+    SpiceDisplayChannelPrivate *c = channel->priv;
+    display_stream *st;
     guint64 now;
+
+    g_return_if_fail(c != NULL);
+    g_return_if_fail(c->streams != NULL);
+    g_return_if_fail(c->nstreams > stream_id);
+
+    st = channel->priv->streams[stream_id];
 
     if (!st->report_is_active) {
         return;
