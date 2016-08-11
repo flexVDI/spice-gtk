@@ -407,11 +407,6 @@ static void spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
         return;
     }
 
-    if (!decoder->pipeline && !create_pipeline(decoder)) {
-        stream_dropped_frame_on_playback(decoder->base.stream);
-        return;
-    }
-
     /* ref() the frame_msg for the buffer */
     spice_msg_in_ref(frame_msg);
     GstBuffer *buffer = gst_buffer_new_wrapped_full(GST_MEMORY_FLAG_PHYSICALLY_CONTIGUOUS,
@@ -463,6 +458,11 @@ VideoDecoder* create_gstreamer_decoder(int codec_type, display_stream *stream)
         g_mutex_init(&decoder->queues_mutex);
         decoder->decoding_queue = g_queue_new();
         decoder->display_queue = g_queue_new();
+
+        if (!create_pipeline(decoder)) {
+            decoder->base.destroy((VideoDecoder*)decoder);
+            decoder = NULL;
+        }
     }
 
     return (VideoDecoder*)decoder;
@@ -475,7 +475,7 @@ gboolean gstvideo_has_codec(int codec_type)
 
     VideoDecoder *decoder = create_gstreamer_decoder(codec_type, NULL);
     if (decoder) {
-        has_codec = create_pipeline((SpiceGstDecoder*)decoder);
+        has_codec = TRUE;
         decoder->destroy(decoder);
     }
 
