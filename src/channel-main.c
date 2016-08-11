@@ -1854,11 +1854,11 @@ static void main_agent_handle_xfer_status(SpiceMainChannel *channel,
         return;
     case VD_AGENT_FILE_XFER_STATUS_CANCELLED:
         error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
-                            "transfer is cancelled by spice agent");
+                            "The spice agent cancelled the file transfer");
         break;
     case VD_AGENT_FILE_XFER_STATUS_ERROR:
         error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
-                            "some errors occurred in the spice agent");
+                            "The spice agent reported an error during the file transfer");
         break;
     case VD_AGENT_FILE_XFER_STATUS_SUCCESS:
         break;
