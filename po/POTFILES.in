@@ -1,3 +1,4 @@
+src/channel-main.c
 src/channel-usbredir.c
 src/desktop-integration.c
 src/spice-channel.c

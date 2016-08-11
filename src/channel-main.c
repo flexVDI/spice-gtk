@@ -20,6 +20,7 @@
 #include <math.h>
 #include <spice/vd_agent.h>
 #include <glib/gstdio.h>
+#include <glib/gi18n-lib.h>
 
 #include "spice-client.h"
 #include "spice-common.h"
@@ -1853,12 +1854,12 @@ static void main_agent_handle_xfer_status(SpiceMainChannel *channel,
         spice_file_transfer_task_read_async(xfer_task, file_xfer_read_async_cb, xfer_op);
         return;
     case VD_AGENT_FILE_XFER_STATUS_CANCELLED:
-        error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
-                            "The spice agent cancelled the file transfer");
+        error = g_error_new_literal(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                                    _("The spice agent cancelled the file transfer"));
         break;
     case VD_AGENT_FILE_XFER_STATUS_ERROR:
-        error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
-                            "The spice agent reported an error during the file transfer");
+        error = g_error_new_literal(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                                    _("The spice agent reported an error during the file transfer"));
         break;
     case VD_AGENT_FILE_XFER_STATUS_SUCCESS:
         break;
