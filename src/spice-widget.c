@@ -1417,7 +1417,9 @@ static gboolean check_for_grab_key_released(SpiceDisplay *display, int type, int
 static void update_display(SpiceDisplay *display)
 {
 #ifdef G_OS_WIN32
-    win32_window = display ? GDK_WINDOW_HWND(gtk_widget_get_window(GTK_WIDGET(display))) : NULL;
+    win32_window = display ?
+                        gdk_win32_window_get_impl_hwnd(gtk_widget_get_window(GTK_WIDGET(display))) :
+                        NULL;
 #endif
 }
 
