@@ -135,7 +135,9 @@ AC_SUBST([GTK_REQUIRED])
 AM_CONDITIONAL([WITH_GTK],[test "$with_gtk" != "no"])
 
 AS_IF([test "x$with_gtk" != "xno"],
-      [PKG_CHECK_MODULES(GTK, gtk+-3.0 >= $GTK_REQUIRED epoxy)]
+      [AS_IF([test "x$os_win32" = "xyes"],
+             [PKG_CHECK_MODULES(GTK, gtk+-3.0 >= $GTK_REQUIRED)],
+             [PKG_CHECK_MODULES(GTK, gtk+-3.0 >= $GTK_REQUIRED epoxy)])]
       [GTK_CFLAGS="$GTK_CFLAGS -DGDK_VERSION_MIN_REQUIRED=$GTK_ENCODED_VERSION \
                                -DGDK_VERSION_MAX_ALLOWED=$GTK_ENCODED_VERSION"])
 AC_SUBST(GTK_CFLAGS)
