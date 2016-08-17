@@ -25,7 +25,7 @@
 #include "spice-marshal.h"
 #include "bio-gio.h"
 
-#include <glib/gi18n.h>
+#include <glib/gi18n-lib.h>
 
 #include <openssl/rsa.h>
 #include <openssl/evp.h>

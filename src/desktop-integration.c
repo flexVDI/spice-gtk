@@ -26,7 +26,7 @@
 #include "spice-session-priv.h"
 #include "desktop-integration.h"
 
-#include <glib/gi18n.h>
+#include <glib/gi18n-lib.h>
 
 #define GNOME_SESSION_INHIBIT_AUTOMOUNT 16
 

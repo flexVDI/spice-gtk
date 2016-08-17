@@ -20,7 +20,7 @@
 */
 
 #include "config.h"
-#include <glib/gi18n.h>
+#include <glib/gi18n-lib.h>
 #include "spice-client.h"
 #include "spice-marshal.h"
 #include "usb-device-widget.h"

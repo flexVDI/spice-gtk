@@ -22,7 +22,7 @@
 #include "config.h"
 
 #ifdef USE_USBREDIR
-#include <glib/gi18n.h>
+#include <glib/gi18n-lib.h>
 #include <usbredirhost.h>
 #ifdef USE_LZ4
 #include <lz4.h>

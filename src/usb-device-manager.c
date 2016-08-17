@@ -51,7 +51,7 @@
 #include "spice-marshal.h"
 #include "usb-device-manager-priv.h"
 
-#include <glib/gi18n.h>
+#include <glib/gi18n-lib.h>
 
 #ifndef G_OS_WIN32 /* Linux -- device id is bus.addr */
 #define DEV_ID_FMT "at %u.%u"

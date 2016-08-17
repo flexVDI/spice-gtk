@@ -19,7 +19,7 @@
 
 #include <stdlib.h>
 #include <glib-object.h>
-#include <glib/gi18n.h>
+#include <glib/gi18n-lib.h>
 #include "spice-session.h"
 #include "spice-util.h"
 #include "spice-channel-priv.h"
