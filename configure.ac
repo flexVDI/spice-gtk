@@ -12,6 +12,8 @@ AM_INIT_AUTOMAKE([foreign dist-bzip2 -Wall -Werror -Wno-portability])
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 LT_INIT([disable-static win32-dll])
 AM_MAINTAINER_MODE
+m4_ifndef([PKG_PREREQ],
+        [m4_fatal([must install pkg-config 0.29 or later before running autoconf/autogen])])
 
 IT_PROG_INTLTOOL([0.40.0])
 GETTEXT_PACKAGE=spice-gtk
@@ -101,13 +103,11 @@ SPICE_GLIB_REQUIRES=""
 SPICE_GTK_REQUIRES=""
 
 PKG_CHECK_MODULES(PIXMAN, pixman-1 >= 0.17.7)
-AC_SUBST(PIXMAN_CFLAGS)
-AC_SUBST(PIXMAN_LIBS)
+
 SPICE_GLIB_REQUIRES="${SPICE_GLIB_REQUIRES} pixman-1 >= 0.17.7"
 
 PKG_CHECK_MODULES(SSL, openssl)
-AC_SUBST(SSL_CFLAGS)
-AC_SUBST(SSL_LIBS)
+
 SPICE_GLIB_REQUIRES="${SPICE_GLIB_REQUIRES} openssl"
 
 SPICE_CHECK_SASL
@@ -140,8 +140,6 @@ AS_IF([test "x$with_gtk" != "xno"],
              [PKG_CHECK_MODULES(GTK, gtk+-3.0 >= $GTK_REQUIRED epoxy)])]
       [GTK_CFLAGS="$GTK_CFLAGS -DGDK_VERSION_MIN_REQUIRED=$GTK_ENCODED_VERSION \
                                -DGDK_VERSION_MAX_ALLOWED=$GTK_ENCODED_VERSION"])
-AC_SUBST(GTK_CFLAGS)
-AC_SUBST(GTK_LIBS)
 SPICE_GTK_REQUIRES="${SPICE_GTK_REQUIRES} gtk+-3.0 >= $GTK_REQUIRED"
 
 # Check for gdk_event_get_scancode function
@@ -167,8 +165,6 @@ AM_CONDITIONAL([WITH_DISPLAY_WINDOWS], [test "x$have_win32" = "xyes"])
 AC_CHECK_HEADERS([X11/XKBlib.h])
 AS_IF([test "x$have_quartz" != "xyes" && test "x$have_win32" != "xyes"],
       [PKG_CHECK_MODULES(X11,x11)])
-AC_SUBST(X11_CFLAGS)
-AC_SUBST(X11_LIBS)
 
 AC_ARG_WITH([pnp-ids-path],
   AC_HELP_STRING([--with-pnp-ids-path],
@@ -194,24 +190,14 @@ GLIB2_ENCODED_VERSION="GLIB_VERSION_2_36"
 PKG_CHECK_MODULES(GLIB2, glib-2.0 >= $GLIB2_REQUIRED)
 GLIB2_CFLAGS="$GLIB2_CFLAGS -DGLIB_VERSION_MIN_REQUIRED=$GLIB2_ENCODED_VERSION \
   -DGLIB_VERSION_MAX_ALLOWED=$GLIB2_ENCODED_VERSION"
-AC_SUBST(GLIB2_CFLAGS)
-AC_SUBST(GLIB2_LIBS)
 
 PKG_CHECK_MODULES(GOBJECT2, gobject-2.0)
-AC_SUBST(GOBJECT2_CFLAGS)
-AC_SUBST(GOBJECT2_LIBS)
 
 PKG_CHECK_MODULES(GIO, gio-2.0 >= 2.36 $gio_os)
-AC_SUBST(GIO_CFLAGS)
-AC_SUBST(GIO_LIBS)
 
 PKG_CHECK_MODULES(CAIRO, cairo >= 1.2.0)
-AC_SUBST(CAIRO_CFLAGS)
-AC_SUBST(CAIRO_LIBS)
 
 PKG_CHECK_MODULES(GTHREAD, gthread-2.0)
-AC_SUBST(GTHREAD_CFLAGS)
-AC_SUBST(GTHREAD_LIBS)
 
 AC_ARG_ENABLE([webdav],
   AS_HELP_STRING([--enable-webdav=@<:@auto/yes/no@:>@],
@@ -223,8 +209,6 @@ if test "x$enable_webdav" = "xno"; then
   have_phodav="no"
 else
   PKG_CHECK_MODULES(PHODAV, [libphodav-2.0 glib-2.0 >= 2.43.90 libsoup-2.4 >= 2.49.91], [have_phodav=yes], [have_phodav=no])
-  AC_SUBST(PHODAV_CFLAGS)
-  AC_SUBST(PHODAV_LIBS)
 
   if test "x$have_phodav" = "xno" && test "x$enable_webdav" = "xyes"; then
     AC_MSG_ERROR([webdav support explicitly requested, but some required packages are not available])
@@ -259,8 +243,6 @@ AS_IF([test "x$enable_pulse" != "xno"],
       ])
 ])
 AM_CONDITIONAL([HAVE_PULSE], [test "x$enable_pulse" = "xyes"])
-AC_SUBST(PULSE_CFLAGS)
-AC_SUBST(PULSE_LIBS)
 
 AC_ARG_ENABLE([gstaudio],
   AS_HELP_STRING([--enable-gstaudio=@<:@yes/auto/no@:>@], [Enable the GStreamer 1.0 audio backend @<:@default=auto@:>@]),
