@@ -165,6 +165,10 @@ AS_IF([test "x$have_win32" = "xyes"], [AC_DEFINE([HAVE_WINDOWS], 1, [Have Win32?
 AM_CONDITIONAL([WITH_DISPLAY_WINDOWS], [test "x$have_win32" = "xyes"])
 
 AC_CHECK_HEADERS([X11/XKBlib.h])
+AS_IF([test "x$have_quartz" != "xyes" && test "x$have_win32" != "xyes"],
+      [PKG_CHECK_MODULES(X11,x11)])
+AC_SUBST(X11_CFLAGS)
+AC_SUBST(X11_LIBS)
 
 AC_ARG_WITH([pnp-ids-path],
   AC_HELP_STRING([--with-pnp-ids-path],

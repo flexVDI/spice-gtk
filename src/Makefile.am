@@ -100,6 +100,7 @@ SPICE_COMMON_CPPFLAGS =						\
 	$(GUDEV_CFLAGS)						\
 	$(SOUP_CFLAGS)						\
 	$(PHODAV_CFLAGS)					\
+	$(X11_CFLAGS)					\
 	$(LZ4_CFLAGS)					\
 	$(NULL)
 
@@ -120,6 +121,7 @@ SPICE_GTK_LIBADD_COMMON =		\
 	libspice-client-glib-2.0.la	\
 	$(GTK_LIBS)			\
 	$(CAIRO_LIBS)			\
+	$(X11_LIBS)			\
 	$(LIBM)				\
 	$(NULL)
 
