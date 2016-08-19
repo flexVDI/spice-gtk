@@ -154,17 +154,8 @@ AC_CHECK_FUNCS(gdk_event_get_scancode)
 LIBS="$old_LIBS"
 CFLAGS="$old_CFLAGS"
 
-PKG_CHECK_EXISTS([gtk+-quartz-$with_gtk], [have_quartz=yes], [have_quartz=no])
-AS_IF([test "x$have_quartz" = "xyes"], [AC_DEFINE([HAVE_QUARTZ], 1, [Have Quartz?])])
-AM_CONDITIONAL([WITH_DISPLAY_QUARTZ], [test "x$have_quartz" = "xyes"])
-
-PKG_CHECK_EXISTS([gtk+-win32-$with_gtk], [have_win32=yes], [have_win32=no])
-AS_IF([test "x$have_win32" = "xyes"], [AC_DEFINE([HAVE_WINDOWS], 1, [Have Win32?])])
-AM_CONDITIONAL([WITH_DISPLAY_WINDOWS], [test "x$have_win32" = "xyes"])
-
+PKG_CHECK_EXISTS([gtk+-x11-$with_gtk], [PKG_CHECK_MODULES(X11, x11)])
 AC_CHECK_HEADERS([X11/XKBlib.h])
-AS_IF([test "x$have_quartz" != "xyes" && test "x$have_win32" != "xyes"],
-      [PKG_CHECK_MODULES(X11,x11)])
 
 AC_ARG_WITH([pnp-ids-path],
   AC_HELP_STRING([--with-pnp-ids-path],
