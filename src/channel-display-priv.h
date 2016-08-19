@@ -42,15 +42,14 @@ struct VideoDecoder {
     void (*destroy)(VideoDecoder *decoder);
 
     /* Notifies the decoder that the mm-time clock changed. */
-    void (*reschedule)(VideoDecoder *video_decoder);
+    void (*reschedule)(VideoDecoder *decoder);
 
     /* Decompresses the specified frame.
      *
      * @decoder:   The video decoder.
      * @frame_msg: The Spice message containing the compressed frame.
-     * @return:    A pointer to the buffer holding the decoded frame. This
-     *             buffer will be invalidated by the next call to
-     *             decode_frame().
+     * @latency:   How long in milliseconds until the frame should be
+     *             displayed. Negative values mean the frame is late.
      */
     void (*queue_frame)(VideoDecoder *decoder, SpiceMsgIn *frame_msg, int32_t latency);
 
