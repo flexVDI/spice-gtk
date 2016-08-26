@@ -97,6 +97,8 @@ enum {
     SPICE_DISPLAY_LAST_SIGNAL,
 };
 
+#define DEFAULT_KEYPRESS_DELAY 100
+
 static guint signals[SPICE_DISPLAY_LAST_SIGNAL];
 
 #ifdef G_OS_WIN32
@@ -2181,7 +2183,7 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
         (gobject_class, PROP_KEYPRESS_DELAY,
          g_param_spec_uint("keypress-delay", "Keypress delay",
                            "Keypress delay",
-                           0, G_MAXUINT, 100,
+                           0, G_MAXUINT, DEFAULT_KEYPRESS_DELAY,
                            G_PARAM_READWRITE |
                            G_PARAM_CONSTRUCT |
                            G_PARAM_STATIC_STRINGS));
@@ -2658,6 +2660,25 @@ static void cursor_reset(SpiceCursorChannel *channel, gpointer data)
     gdk_window_set_cursor(window, NULL);
 }
 
+static void inputs_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
+                                 gpointer data)
+{
+    SpiceDisplay *display = data;
+    guint delay = DEFAULT_KEYPRESS_DELAY;
+    GSocket *sock;
+
+    if (event != SPICE_CHANNEL_OPENED)
+        return;
+
+    g_object_get(channel, "socket", &sock, NULL);
+    if (g_socket_get_family(sock) == G_SOCKET_FAMILY_UNIX) {
+        delay = 0;
+    }
+    g_object_unref(sock);
+
+    spice_display_set_keypress_delay(display, delay);
+}
+
 #ifndef G_OS_WIN32
 G_GNUC_INTERNAL
 void spice_display_widget_gl_scanout(SpiceDisplay *display)
@@ -2795,6 +2816,8 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     if (SPICE_IS_INPUTS_CHANNEL(channel)) {
         d->inputs = SPICE_INPUTS_CHANNEL(channel);
         spice_channel_connect(channel);
+        spice_g_signal_connect_object(channel, "channel-event",
+                                      G_CALLBACK(inputs_channel_event), display, 0);
         return;
     }
 
