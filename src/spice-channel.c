@@ -85,6 +85,7 @@ enum {
     PROP_CHANNEL_TYPE,
     PROP_CHANNEL_ID,
     PROP_TOTAL_READ_BYTES,
+    PROP_SOCKET,
 };
 
 /* Signals */
@@ -215,6 +216,9 @@ static void spice_channel_get_property(GObject    *gobject,
     case PROP_TOTAL_READ_BYTES:
         g_value_set_ulong(value, c->total_read_bytes);
         break;
+    case PROP_SOCKET:
+        g_value_set_object(value, c->sock);
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
         break;
@@ -316,6 +320,25 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
                             0, G_MAXULONG, 0,
                             G_PARAM_READABLE |
                             G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceChannel:socket:
+     *
+     * Get the underlying #GSocket. Note that you should not read or
+     * write any data to it directly since this will likely corrupt
+     * the channel stream.  This property is mainly useful to get some
+     * connections details.
+     *
+     * Since: 0.33
+     */
+    g_object_class_install_property
+        (gobject_class, PROP_SOCKET,
+         g_param_spec_object("socket",
+                             "Socket",
+                             "Underlying GSocket",
+                             G_TYPE_SOCKET,
+                             G_PARAM_READABLE |
+                             G_PARAM_STATIC_STRINGS));
 
     /**
      * SpiceChannel::channel-event:
