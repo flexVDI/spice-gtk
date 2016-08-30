@@ -12,8 +12,6 @@ AM_INIT_AUTOMAKE([foreign dist-bzip2 -Wall -Werror -Wno-portability])
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 LT_INIT([disable-static win32-dll])
 AM_MAINTAINER_MODE
-m4_ifndef([PKG_PREREQ],
-        [m4_fatal([must install pkg-config 0.29 or later before running autoconf/autogen])])
 
 IT_PROG_INTLTOOL([0.40.0])
 GETTEXT_PACKAGE=spice-gtk
