@@ -503,6 +503,8 @@ gboolean spice_file_transfer_task_is_completed(SpiceFileTransferTask *self)
  **/
 double spice_file_transfer_task_get_progress(SpiceFileTransferTask *self)
 {
+    g_return_val_if_fail(SPICE_IS_FILE_TRANSFER_TASK(self), 0.0);
+
     if (self->file_size == 0)
         return 0.0;
 
@@ -522,6 +524,8 @@ double spice_file_transfer_task_get_progress(SpiceFileTransferTask *self)
  **/
 void spice_file_transfer_task_cancel(SpiceFileTransferTask *self)
 {
+    g_return_if_fail(SPICE_IS_FILE_TRANSFER_TASK(self));
+
     g_cancellable_cancel(self->cancellable);
 }
 
@@ -537,6 +541,8 @@ void spice_file_transfer_task_cancel(SpiceFileTransferTask *self)
  **/
 char* spice_file_transfer_task_get_filename(SpiceFileTransferTask *self)
 {
+    g_return_val_if_fail(SPICE_IS_FILE_TRANSFER_TASK(self), NULL);
+
     return g_file_get_basename(self->file);
 }
 
@@ -552,7 +558,7 @@ char* spice_file_transfer_task_get_filename(SpiceFileTransferTask *self)
  **/
 guint64 spice_file_transfer_task_get_total_bytes(SpiceFileTransferTask *self)
 {
-    g_return_val_if_fail(self != NULL, 0);
+    g_return_val_if_fail(SPICE_IS_FILE_TRANSFER_TASK(self), 0);
     return self->file_size;
 }
 
@@ -569,7 +575,7 @@ guint64 spice_file_transfer_task_get_total_bytes(SpiceFileTransferTask *self)
  **/
 guint64 spice_file_transfer_task_get_transferred_bytes(SpiceFileTransferTask *self)
 {
-    g_return_val_if_fail(self != NULL, 0);
+    g_return_val_if_fail(SPICE_IS_FILE_TRANSFER_TASK(self), 0);
     return self->read_bytes;
 }
 
