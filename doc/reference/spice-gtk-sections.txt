@@ -511,6 +511,8 @@ SpiceWebdavChannelPrivate
 <SUBSECTION>
 spice_file_transfer_task_get_progress
 spice_file_transfer_task_get_filename
+spice_file_transfer_task_get_total_bytes
+spice_file_transfer_task_get_transferred_bytes
 spice_file_transfer_task_cancel
 <SUBSECTION Standard>
 SPICE_FILE_TRANSFER_TASK

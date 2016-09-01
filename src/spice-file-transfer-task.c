@@ -352,18 +352,6 @@ GCancellable *spice_file_transfer_task_get_cancellable(SpiceFileTransferTask *se
     return self->cancellable;
 }
 
-guint64 spice_file_transfer_task_get_total_bytes(SpiceFileTransferTask *self)
-{
-    g_return_val_if_fail(self != NULL, 0);
-    return self->file_size;
-}
-
-guint64 spice_file_transfer_task_get_transferred_bytes(SpiceFileTransferTask *self)
-{
-    g_return_val_if_fail(self != NULL, 0);
-    return self->read_bytes;
-}
-
 /* Helper function which only creates a SpiceFileTransferTask per GFile
  * in @files and returns a HashTable mapping task-id to the task itself
  * The SpiceFileTransferTask created here has two references, one should be
@@ -550,6 +538,39 @@ void spice_file_transfer_task_cancel(SpiceFileTransferTask *self)
 char* spice_file_transfer_task_get_filename(SpiceFileTransferTask *self)
 {
     return g_file_get_basename(self->file);
+}
+
+/**
+ * spice_file_transfer_task_get_total_bytes:
+ * @self: a file transfer task
+ *
+ * Gets the total size in bytes of the file transfer.
+ *
+ * Returns: The total size of the file transfer
+ *
+ * Since: 0.33
+ **/
+guint64 spice_file_transfer_task_get_total_bytes(SpiceFileTransferTask *self)
+{
+    g_return_val_if_fail(self != NULL, 0);
+    return self->file_size;
+}
+
+
+/**
+ * spice_file_transfer_task_get_transferred_bytes:
+ * @self: a file transfer task
+ *
+ * Gets the number of bytes that have been transferred so far.
+ *
+ * Returns: The number of transferred bytes
+ *
+ * Since: 0.33
+ **/
+guint64 spice_file_transfer_task_get_transferred_bytes(SpiceFileTransferTask *self)
+{
+    g_return_val_if_fail(self != NULL, 0);
+    return self->read_bytes;
 }
 
 /*******************************************************************************
