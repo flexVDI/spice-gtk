@@ -28,8 +28,8 @@ G_BEGIN_DECLS
 gboolean spice_strv_contains(const GStrv strv, const gchar *str);
 const gchar* spice_yes_no(gboolean value);
 guint16 spice_make_scancode(guint scancode, gboolean release);
-gchar* spice_unix2dos(const gchar *str, gssize len, GError **error);
-gchar* spice_dos2unix(const gchar *str, gssize len, GError **error);
+gchar* spice_unix2dos(const gchar *str, gssize len);
+gchar* spice_dos2unix(const gchar *str, gssize len);
 void spice_mono_edge_highlight(unsigned width, unsigned hight,
                                const guint8 *and, const guint8 *xor, guint8 *dest);
 

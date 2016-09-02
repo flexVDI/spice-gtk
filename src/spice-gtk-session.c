@@ -736,15 +736,7 @@ static void clipboard_got_from_guest(SpiceMainChannel *main, guint selection,
         /* on windows, gtk+ would already convert to LF endings, but
            not on unix */
         if (spice_main_agent_test_capability(s->main, VD_AGENT_CAP_GUEST_LINEEND_CRLF)) {
-            GError *err = NULL;
-
-            conv = spice_dos2unix((gchar*)data, size, &err);
-            if (err) {
-                g_warning("Failed to convert text line ending: %s", err->message);
-                g_clear_error(&err);
-                goto end;
-            }
-
+            conv = spice_dos2unix((gchar*)data, size);
             size = strlen(conv);
         }
 
@@ -755,7 +747,6 @@ static void clipboard_got_from_guest(SpiceMainChannel *main, guint selection,
             8, data, size);
     }
 
-end:
     if (g_main_loop_is_running (ri->loop))
         g_main_loop_quit (ri->loop);
 
@@ -921,17 +912,8 @@ static char *fixup_clipboard_text(SpiceGtkSession *self, const char *text, int *
     char *conv = NULL;
     int new_len = *len;
 
-
     if (spice_main_agent_test_capability(self->priv->main, VD_AGENT_CAP_GUEST_LINEEND_CRLF)) {
-        GError *err = NULL;
-
-        conv = spice_unix2dos(text, *len, &err);
-        if (err) {
-            g_warning("Failed to convert text line ending: %s", err->message);
-            g_clear_error(&err);
-            return NULL;
-        }
-
+        conv = spice_unix2dos(text, *len);
         new_len = strlen(conv);
     } else {
         /* On Windows, with some versions of gtk+, GtkSelectionData::length

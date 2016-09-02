@@ -284,8 +284,7 @@ typedef enum {
 } NewlineType;
 
 static gssize get_line(const gchar *str, gsize len,
-                       NewlineType type, gsize *nl_len,
-                       GError **error)
+                       NewlineType type, gsize *nl_len)
 {
     const gchar *p, *endl;
     gsize nl = 0;
@@ -304,19 +303,15 @@ static gssize get_line(const gchar *str, gsize len,
 
 static gchar* spice_convert_newlines(const gchar *str, gssize len,
                                      NewlineType from,
-                                     NewlineType to,
-                                     GError **error)
+                                     NewlineType to)
 {
-    GError *err = NULL;
     gssize length;
     gsize nl;
     GString *output;
-    gboolean free_segment = FALSE;
     gint i;
 
     g_return_val_if_fail(str != NULL, NULL);
     g_return_val_if_fail(len >= -1, NULL);
-    g_return_val_if_fail(error == NULL || *error == NULL, NULL);
     /* only 2 supported combinations */
     g_return_val_if_fail((from == NEWLINE_TYPE_LF &&
                           to == NEWLINE_TYPE_CR_LF) ||
@@ -337,7 +332,7 @@ static gchar* spice_convert_newlines(const gchar *str, gssize len,
     output = g_string_sized_new(len * 2 + 1);
 
     for (i = 0; i < len; i += length + nl) {
-        length = get_line(str + i, len - i, from, &nl, &err);
+        length = get_line(str + i, len - i, from, &nl);
         if (length < 0)
             break;
 
@@ -353,30 +348,23 @@ static gchar* spice_convert_newlines(const gchar *str, gssize len,
         }
     }
 
-    if (err) {
-        g_propagate_error(error, err);
-        free_segment = TRUE;
-    }
-
-    return g_string_free(output, free_segment);
+    return g_string_free(output, FALSE);
 }
 
 G_GNUC_INTERNAL
-gchar* spice_dos2unix(const gchar *str, gssize len, GError **error)
+gchar* spice_dos2unix(const gchar *str, gssize len)
 {
     return spice_convert_newlines(str, len,
                                   NEWLINE_TYPE_CR_LF,
-                                  NEWLINE_TYPE_LF,
-                                  error);
+                                  NEWLINE_TYPE_LF);
 }
 
 G_GNUC_INTERNAL
-gchar* spice_unix2dos(const gchar *str, gssize len, GError **error)
+gchar* spice_unix2dos(const gchar *str, gssize len)
 {
     return spice_convert_newlines(str, len,
                                   NEWLINE_TYPE_LF,
-                                  NEWLINE_TYPE_CR_LF,
-                                  error);
+                                  NEWLINE_TYPE_CR_LF);
 }
 
 static bool buf_is_ones(unsigned size, const guint8 *data)

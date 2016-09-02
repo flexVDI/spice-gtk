@@ -35,7 +35,6 @@ static const struct {
 
 static void test_dos2unix(void)
 {
-    GError *err = NULL;
     gchar *tmp;
     unsigned int i;
 
@@ -43,22 +42,19 @@ static void test_dos2unix(void)
         if (!(dosunix[i].flags & DOS2UNIX))
             continue;
 
-        tmp = spice_dos2unix(dosunix[i].d, -1, &err);
+        tmp = spice_dos2unix(dosunix[i].d, -1);
         g_assert_cmpstr(tmp, ==, dosunix[i].u);
-        g_assert_no_error(err);
         g_free(tmp);
 
         /* including ending \0 */
-        tmp = spice_dos2unix(dosunix[i].d, strlen(dosunix[i].d) + 1, &err);
+        tmp = spice_dos2unix(dosunix[i].d, strlen(dosunix[i].d) + 1);
         g_assert_cmpstr(tmp, ==, dosunix[i].u);
-        g_assert_no_error(err);
         g_free(tmp);
     }
 }
 
 static void test_unix2dos(void)
 {
-    GError *err = NULL;
     gchar *tmp;
     unsigned int i;
 
@@ -66,15 +62,13 @@ static void test_unix2dos(void)
         if (!(dosunix[i].flags & UNIX2DOS))
             continue;
 
-        tmp = spice_unix2dos(dosunix[i].u, -1, &err);
+        tmp = spice_unix2dos(dosunix[i].u, -1);
         g_assert_cmpstr(tmp, ==, dosunix[i].d);
-        g_assert_no_error(err);
         g_free(tmp);
 
         /* including ending \0 */
-        tmp = spice_unix2dos(dosunix[i].u, strlen(dosunix[i].u) + 1, &err);
+        tmp = spice_unix2dos(dosunix[i].u, strlen(dosunix[i].u) + 1);
         g_assert_cmpstr(tmp, ==, dosunix[i].d);
-        g_assert_no_error(err);
         g_free(tmp);
     }
 }
