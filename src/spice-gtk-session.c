@@ -926,11 +926,6 @@ static char *fixup_clipboard_text(SpiceGtkSession *self, const char *text, int *
         new_len = strlen(text);
     }
 
-    if (!check_clipboard_size_limits(self, new_len)) {
-        g_free(conv);
-        return NULL;
-    }
-
     *len = new_len;
     return conv;
 }
@@ -962,6 +957,10 @@ static void clipboard_received_text_cb(GtkClipboard *clipboard,
 
     /* gtk+ internal utf8 newline is always LF, even on windows */
     conv = fixup_clipboard_text(self, text, &len);
+    if (!check_clipboard_size_limits(self, len)) {
+        g_free(conv);
+        return;
+    }
 
     spice_main_clipboard_selection_notify(self->priv->main, selection,
                                           VD_AGENT_CLIPBOARD_UTF8_TEXT,
