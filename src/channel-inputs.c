@@ -242,8 +242,10 @@ static void inputs_handle_modifiers(SpiceChannel *channel, SpiceMsgIn *in)
     SpiceInputsChannelPrivate *c = SPICE_INPUTS_CHANNEL(channel)->priv;
     SpiceMsgInputsKeyModifiers *modifiers = spice_msg_in_parsed(in);
 
-    c->modifiers = modifiers->modifiers;
-    g_coroutine_signal_emit(channel, signals[SPICE_INPUTS_MODIFIERS], 0);
+    if (c->modifiers != modifiers->modifiers) {
+        c->modifiers = modifiers->modifiers;
+        g_coroutine_signal_emit(channel, signals[SPICE_INPUTS_MODIFIERS], 0);
+    }
 }
 
 /* coroutine context */
