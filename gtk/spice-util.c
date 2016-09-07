@@ -367,7 +367,7 @@ static gchar* spice_convert_newlines(const gchar *str, gssize len,
     return g_string_free(output, free_segment);
 }
 
-G_GNUC_INTERNAL
+//G_GNUC_INTERNAL
 gchar* spice_dos2unix(const gchar *str, gssize len, GError **error)
 {
     return spice_convert_newlines(str, len,

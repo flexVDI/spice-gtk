@@ -32,6 +32,7 @@ gulong spice_g_signal_connect_object(gpointer instance,
                                      GConnectFlags connect_flags);
 gchar* spice_uuid_to_string(const guint8 uuid[16]);
 
+gchar* spice_dos2unix(const gchar *str, gssize len, GError **error);
 gchar* spice_unix2dos(const gchar *str, gssize len, GError **error);
 
 #define SPICE_DEBUG(fmt, ...)                                   \
