@@ -94,7 +94,7 @@ msgid "Grab keyboard when active and focused"
 msgstr "Saisir le clavier après focus"
 
 #: ../gtk/spicy.c:415
-msgid "Grab mouse in server mode (no tabled/vdagent)"
+msgid "Grab mouse in server mode (no tablet/vdagent)"
 msgstr "Saisir la souris en mode serveur (pas d'agent)"
 
 #: ../gtk/spicy.c:419

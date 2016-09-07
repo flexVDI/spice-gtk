@@ -745,7 +745,7 @@ static const GtkToggleActionEntry tentries[] = {
         .callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
         .name        = "grab-mouse",
-        .label       = "Grab mouse in server mode (no tabled/vdagent)",
+        .label       = "Grab mouse in server mode (no tablet/vdagent)",
         .callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
         .name        = "resize-guest",
