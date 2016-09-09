@@ -3128,7 +3128,7 @@ gboolean spice_main_file_copy_finish(SpiceMainChannel *channel,
                                      GAsyncResult *result,
                                      GError **error)
 {
-    GTask *task = G_TASK(result);;
+    GTask *task = G_TASK(result);
 
     g_return_val_if_fail(SPICE_IS_MAIN_CHANNEL(channel), FALSE);
     g_return_val_if_fail(g_task_is_valid(task, channel), FALSE);

@@ -1443,7 +1443,7 @@ GPtrArray* spice_usb_device_manager_get_devices_with_filter(
 
 #ifdef USE_USBREDIR
     SpiceUsbDeviceManagerPrivate *priv = self->priv;
-    struct usbredirfilter_rule *rules = NULL;;
+    struct usbredirfilter_rule *rules = NULL;
     int r, count = 0;
     guint i;
 
