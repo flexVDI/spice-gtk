@@ -499,6 +499,24 @@ static gboolean grab_broken(SpiceDisplay *self, GdkEventGrabBroken *event,
     return false;
 }
 
+static void file_transfer_callback(GObject *source_object,
+                                   GAsyncResult *result,
+                                   gpointer user_data G_GNUC_UNUSED)
+{
+    SpiceMainChannel *channel = SPICE_MAIN_CHANNEL(source_object);
+    GError *error = NULL;
+
+    if (spice_main_file_copy_finish(channel, result, &error))
+        return;
+
+    if (error != NULL && error->message != NULL)
+        g_warning("File transfer failed with error: %s", error->message);
+    else
+        g_warning("File transfer failed");
+
+    g_clear_error(&error);
+}
+
 static void drag_data_received_callback(SpiceDisplay *self,
                                         GdkDragContext *drag_context,
                                         gint x,
@@ -531,7 +549,7 @@ static void drag_data_received_callback(SpiceDisplay *self,
     g_strfreev(file_urls);
 
     spice_main_file_copy_async(d->main, files, 0, NULL, NULL,
-                               NULL, NULL, NULL);
+                               NULL, file_transfer_callback, NULL);
     for (i = 0; i < n_files; i++) {
         g_object_unref(files[i]);
     }
