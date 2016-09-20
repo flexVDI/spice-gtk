@@ -2400,7 +2400,8 @@ reconnect:
         snprintf(&wsportstr[0], 32, "/?ver=2&token=%s", ws_token);
 
         c->np_conn = nopoll_conn_tls_new_with_socket(c->np_ctx, NULL, g_socket_get_fd(c->sock),
-                                                     g_inet_address_to_string(host), NULL, NULL,
+                                                     g_inet_address_to_string(host), NULL,
+                                                     spice_session_get_host(c->session),
                                                      &wsportstr[0], "binary", NULL);
         if (nopoll_conn_is_ok(c->np_conn) != nopoll_true) {
             g_critical("Can't connect to websocket");
