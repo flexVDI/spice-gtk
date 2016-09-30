@@ -42,7 +42,7 @@ gboolean cancel_test(gpointer user_data)
 
 static void data_setup(Fixture *fixture, gconstpointer user_data)
 {
-    g_setenv("SPICE_USB_ACL_BINARY", TESTDIR"/mock-acl-helper", TRUE);
+    g_setenv("SPICE_USB_ACL_BINARY", TESTDIR"/test-mock-acl-helper", TRUE);
     fixture->cancellable = g_cancellable_new();
     fixture->acl_helper = spice_usb_acl_helper_new();
     fixture->loop = g_main_loop_new(NULL, FALSE);
