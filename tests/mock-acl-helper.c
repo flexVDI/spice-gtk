@@ -22,8 +22,6 @@
 #include <gio/gunixinputstream.h>
 
 static int exit_status;
-static int busnum, devnum;
-static char path[PATH_MAX];
 static GMainLoop *loop;
 static GDataInputStream *stdin_stream;
 
@@ -34,7 +32,7 @@ static void cleanup(void)
 }
 
 
-static void stdin_read_complete(GObject *src, GAsyncResult *res, gpointer data)
+static void stdin_read_complete(GObject *src, GAsyncResult *res, gpointer data G_GNUC_UNUSED)
 {
     char *s = NULL;
     const char *response = NULL;

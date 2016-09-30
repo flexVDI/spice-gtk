@@ -3,7 +3,7 @@
 static void test_session_uri(void)
 {
     SpiceSession *s;
-    gint i;
+    guint i;
 
     struct {
         gchar *port;

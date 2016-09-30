@@ -40,7 +40,7 @@ gboolean cancel_test(gpointer user_data)
     return G_SOURCE_REMOVE;
 }
 
-static void data_setup(Fixture *fixture, gconstpointer user_data)
+static void data_setup(Fixture *fixture, gconstpointer user_data G_GNUC_UNUSED)
 {
     g_setenv("SPICE_USB_ACL_BINARY", TESTDIR"/test-mock-acl-helper", TRUE);
     fixture->cancellable = g_cancellable_new();
@@ -50,7 +50,7 @@ static void data_setup(Fixture *fixture, gconstpointer user_data)
     fixture->timeout_source = g_timeout_add_seconds(2, abort_test, fixture);
 }
 
-static void data_teardown(Fixture *fixture, gconstpointer user_data)
+static void data_teardown(Fixture *fixture, gconstpointer user_data G_GNUC_UNUSED)
 {
     if (fixture->timeout_source)
         g_source_remove(fixture->timeout_source);
@@ -70,7 +70,7 @@ static void success_cb(GObject *source, GAsyncResult *result, gpointer user_data
     g_main_loop_quit(f->loop);
 }
 
-static void test_acl_helper_success(Fixture *fixture, gconstpointer user_data)
+static void test_acl_helper_success(Fixture *fixture, gconstpointer user_data G_GNUC_UNUSED)
 {
     spice_usb_acl_helper_open_acl_async(fixture->acl_helper, 1, 1,
                                         fixture->cancellable, success_cb, fixture);
@@ -88,7 +88,7 @@ static void spawn_fail_cb(GObject *source, GAsyncResult *result, gpointer user_d
     g_main_loop_quit(f->loop);
 }
 
-static void test_acl_helper_spawn_fail(Fixture *fixture, gconstpointer user_data)
+static void test_acl_helper_spawn_fail(Fixture *fixture, gconstpointer user_data G_GNUC_UNUSED)
 {
     g_setenv("SPICE_USB_ACL_BINARY", "does-not-exist", TRUE);
     spice_usb_acl_helper_open_acl_async(fixture->acl_helper, 1, 1,
@@ -110,7 +110,7 @@ static void early_eof_cb(GObject *source, GAsyncResult *result, gpointer user_da
 }
 
 /* helper sends EOF before sending a response */
-static void test_acl_helper_early_eof(Fixture *fixture, gconstpointer user_data)
+static void test_acl_helper_early_eof(Fixture *fixture, gconstpointer user_data G_GNUC_UNUSED)
 {
     g_setenv("TEST_EOF", "1", TRUE);
     spice_usb_acl_helper_open_acl_async(fixture->acl_helper, 1, 1,
@@ -131,7 +131,7 @@ static void helper_canceled_cb(GObject *source, GAsyncResult *result, gpointer u
     g_main_loop_quit(f->loop);
 }
 
-static void test_acl_helper_helper_canceled(Fixture *fixture, gconstpointer user_data)
+static void test_acl_helper_helper_canceled(Fixture *fixture, gconstpointer user_data G_GNUC_UNUSED)
 {
     g_setenv("TEST_RESPONSE", "CANCELED", TRUE);
     spice_usb_acl_helper_open_acl_async(fixture->acl_helper, 1, 1,
@@ -152,7 +152,7 @@ static void helper_error_response_cb(GObject *source, GAsyncResult *result, gpoi
     g_main_loop_quit(f->loop);
 }
 
-static void test_acl_helper_error_response(Fixture *fixture, gconstpointer user_data)
+static void test_acl_helper_error_response(Fixture *fixture, gconstpointer user_data G_GNUC_UNUSED)
 {
     g_setenv("TEST_RESPONSE", "Not authorized", TRUE);
     spice_usb_acl_helper_open_acl_async(fixture->acl_helper, 1, 1,
@@ -173,7 +173,7 @@ static void client_canceled_cb(GObject *source, GAsyncResult *result, gpointer u
     g_main_loop_quit(f->loop);
 }
 
-static void test_acl_helper_client_canceled(Fixture *fixture, gconstpointer user_data)
+static void test_acl_helper_client_canceled(Fixture *fixture, gconstpointer user_data G_GNUC_UNUSED)
 {
     /* ensure that the acl-helper does not have respond, so we can cancel the
      * task before we get a response from the helper binary */
@@ -185,7 +185,7 @@ static void test_acl_helper_client_canceled(Fixture *fixture, gconstpointer user
     g_unsetenv("TEST_NORESPONSE");
 }
 
-static void test_acl_helper_no_response(Fixture *fixture, gconstpointer user_data)
+static void test_acl_helper_no_response(Fixture *fixture, gconstpointer user_data G_GNUC_UNUSED)
 {
     /* ensure that the acl-helper does not have respond, so we can cancel the
      * task before we get a response from the helper binary */

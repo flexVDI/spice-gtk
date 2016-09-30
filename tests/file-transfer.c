@@ -26,7 +26,7 @@ const gchar content[] = "0123456789_spice-file-transfer-task";
 static void
 f_setup(Fixture *f, gconstpointer user_data)
 {
-    gint i;
+    guint i;
     GError *err = NULL;
 
     f->loop = g_main_loop_new(NULL, FALSE);
@@ -51,9 +51,9 @@ f_setup(Fixture *f, gconstpointer user_data)
 }
 
 static void
-f_teardown(Fixture *f, gconstpointer user_data)
+f_teardown(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
 {
-    gint i;
+    guint i;
     GError *err = NULL;
 
     g_main_loop_unref(f->loop);
@@ -72,8 +72,8 @@ f_teardown(Fixture *f, gconstpointer user_data)
  * TEST SIMPLE TRANSFER
  ******************************************************************************/
 static void
-transfer_xfer_task_on_finished(SpiceFileTransferTask *xfer_task,
-                               GError *error,
+transfer_xfer_task_on_finished(SpiceFileTransferTask *xfer_task G_GNUC_UNUSED,
+                               GError *error G_GNUC_UNUSED,
                                gpointer user_data)
 {
     Fixture *f = user_data;
@@ -86,7 +86,7 @@ transfer_xfer_task_on_finished(SpiceFileTransferTask *xfer_task,
 static void
 transfer_read_async_cb(GObject *source_object,
                        GAsyncResult *res,
-                       gpointer user_data)
+                       gpointer user_data G_GNUC_UNUSED)
 {
     SpiceFileTransferTask *xfer_task;
     gssize count;
@@ -106,7 +106,7 @@ transfer_read_async_cb(GObject *source_object,
 }
 
 static void
-transfer_init_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
+transfer_init_async_cb(GObject *obj, GAsyncResult *res, gpointer data G_GNUC_UNUSED)
 {
     GFileInfo *info;
     SpiceFileTransferTask *xfer_task;
@@ -123,7 +123,7 @@ transfer_init_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
 }
 
 static void
-test_simple_transfer(Fixture *f, gconstpointer user_data)
+test_simple_transfer(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
 {
     GHashTableIter iter;
     gpointer key, value;
@@ -158,7 +158,7 @@ transfer_cancelled_on_init_async_cb(GObject *obj, GAsyncResult *res, gpointer da
 }
 
 static void
-test_cancel_before_task_init(Fixture *f, gconstpointer user_data)
+test_cancel_before_task_init(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
 {
     GHashTableIter iter;
     gpointer key, value;
@@ -175,7 +175,7 @@ test_cancel_before_task_init(Fixture *f, gconstpointer user_data)
 }
 
 static void
-test_cancel_after_task_init(Fixture *f, gconstpointer user_data)
+test_cancel_after_task_init(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
 {
     GHashTableIter iter;
     gpointer key, value;
@@ -253,7 +253,7 @@ transfer_on_init_async_cb_after_read_cancel(GObject *obj, GAsyncResult *res, gpo
 }
 
 static void
-test_cancel_before_read_async(Fixture *f, gconstpointer user_data)
+test_cancel_before_read_async(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
 {
     GHashTableIter iter;
     gpointer key, value;
@@ -269,7 +269,7 @@ test_cancel_before_read_async(Fixture *f, gconstpointer user_data)
 }
 
 static void
-test_cancel_after_read_async(Fixture *f, gconstpointer user_data)
+test_cancel_after_read_async(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
 {
     GHashTableIter iter;
     gpointer key, value;
@@ -313,7 +313,6 @@ transfer_on_init_async_cb_agent_cancel(GObject *obj, GAsyncResult *res, gpointer
     GFileInfo *info;
     SpiceFileTransferTask *xfer_task;
     GError *error = NULL;
-    GCancellable *cancellable;
 
     xfer_task = SPICE_FILE_TRANSFER_TASK(obj);
     info = spice_file_transfer_task_init_task_finish(xfer_task, res, &error);
@@ -329,7 +328,7 @@ transfer_on_init_async_cb_agent_cancel(GObject *obj, GAsyncResult *res, gpointer
 }
 
 static void
-test_agent_cancel_on_read(Fixture *f, gconstpointer user_data)
+test_agent_cancel_on_read(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
 {
     GHashTableIter iter;
     gpointer key, value;

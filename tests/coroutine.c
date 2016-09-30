@@ -44,7 +44,7 @@ static void test_coroutine_simple(void)
     g_assert(coroutine_self_is_main());
 }
 
-static gpointer co_entry_two(gpointer data)
+static gpointer co_entry_two(gpointer data G_GNUC_UNUSED)
 {
     struct coroutine *self = coroutine_self();
     struct coroutine co = {
