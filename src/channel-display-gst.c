@@ -250,6 +250,10 @@ static void free_pipeline(SpiceGstDecoder *decoder)
 static gboolean create_pipeline(SpiceGstDecoder *decoder)
 {
     const gchar *src_caps, *gstdec_name;
+    gchar *desc;
+    GstAppSinkCallbacks appsink_cbs = { NULL };
+    GError *err = NULL;
+
     switch (decoder->base.codec_type) {
     case SPICE_VIDEO_CODEC_TYPE_MJPEG:
         src_caps = "caps=image/jpeg";
@@ -293,10 +297,12 @@ static gboolean create_pipeline(SpiceGstDecoder *decoder)
      * - Set max-bytes=0 on appsrc so it does not drop frames that may be
      *   needed by those that follow.
      */
-    gchar *desc = g_strdup_printf("appsrc name=src is-live=true format=time max-bytes=0 block=true %s ! %s ! videoconvert ! appsink name=sink caps=video/x-raw,format=BGRx sync=false drop=false", src_caps, gstdec_name);
+    desc = g_strdup_printf("appsrc name=src is-live=true format=time max-bytes=0 block=true "
+                           "%s ! %s ! videoconvert ! appsink name=sink "
+                           "caps=video/x-raw,format=BGRx sync=false drop=false",
+                           src_caps, gstdec_name);
     SPICE_DEBUG("GStreamer pipeline: %s", desc);
 
-    GError *err = NULL;
     decoder->pipeline = gst_parse_launch_full(desc, NULL, GST_PARSE_FLAG_FATAL_ERRORS, &err);
     g_free(desc);
     if (!decoder->pipeline) {
@@ -307,7 +313,8 @@ static gboolean create_pipeline(SpiceGstDecoder *decoder)
 
     decoder->appsrc = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(decoder->pipeline), "src"));
     decoder->appsink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(decoder->pipeline), "sink"));
-    GstAppSinkCallbacks appsink_cbs = {NULL, NULL, &new_sample, {NULL}};
+
+    appsink_cbs.new_sample = new_sample;
     gst_app_sink_set_callbacks(decoder->appsink, &appsink_cbs, decoder, NULL);
 
     decoder->clock = gst_pipeline_get_clock(GST_PIPELINE(decoder->pipeline));
