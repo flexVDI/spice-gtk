@@ -524,6 +524,61 @@ void spice_display_change_preferred_compression(SpiceChannel *channel, gint comp
     spice_msg_out_send_internal(out);
 }
 
+static void spice_display_send_client_preferred_video_codecs(SpiceChannel *channel,
+                                                             const GArray *codecs)
+{
+    guint i;
+    SpiceMsgOut *out;
+    SpiceMsgcDisplayPreferredVideoCodecType *msg;
+
+    msg = g_malloc0(sizeof(SpiceMsgcDisplayPreferredVideoCodecType) +
+                    (sizeof(SpiceVideoCodecType) * codecs->len));
+    msg->num_of_codecs = codecs->len;
+    for (i = 0; i < codecs->len; i++) {
+        msg->codecs[i] = g_array_index(codecs, gint, i);
+    }
+
+    out = spice_msg_out_new(channel, SPICE_MSGC_DISPLAY_PREFERRED_VIDEO_CODEC_TYPE);
+    out->marshallers->msgc_display_preferred_video_codec_type(out->marshaller, msg);
+    spice_msg_out_send_internal(out);
+    g_free(msg);
+}
+
+/**
+ * spice_display_change_preferred_video_codec:
+ * @channel: a #SpiceDisplayChannel
+ * @codec_type: a #SpiceVideoCodecType
+ *
+ * Tells the spice server to change the preferred video codec type for
+ * streaming in @channel. Application can set only one preferred video codec per
+ * display channel.
+ *
+ * Since: 0.34
+ */
+void spice_display_change_preferred_video_codec_type(SpiceChannel *channel, gint codec_type)
+{
+    GArray *codecs;
+
+    g_return_if_fail(SPICE_IS_DISPLAY_CHANNEL(channel));
+    g_return_if_fail(codec_type >= SPICE_VIDEO_CODEC_TYPE_MJPEG &&
+                     codec_type < SPICE_VIDEO_CODEC_TYPE_ENUM_END);
+
+    if (!spice_channel_test_capability(channel, SPICE_DISPLAY_CAP_PREF_VIDEO_CODEC_TYPE)) {
+        CHANNEL_DEBUG(channel, "does not have capability to change the preferred video codec type");
+        return;
+    }
+
+    /* FIXME: We should detect video codecs that client machine can do hw
+     * decoding, store this information (as GArray) and send it to the server.
+     * This array can be rearranged to have @codec_type in the front (which is
+     * the preferred for the client side) */
+    CHANNEL_DEBUG(channel, "changing preferred video codec type to %d", codec_type);
+    codecs = g_array_new(FALSE, FALSE, sizeof(gint));
+    g_array_append_val(codecs, codec_type);
+    spice_display_send_client_preferred_video_codecs(channel, codecs);
+    g_array_unref(codecs);
+}
+
 /**
  * spice_display_get_gl_scanout:
  * @channel: a #SpiceDisplayChannel

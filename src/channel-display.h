@@ -149,6 +149,7 @@ gboolean        spice_display_get_primary(SpiceChannel *channel, guint32 surface
                                           SpiceDisplayPrimary *primary);
 
 void spice_display_change_preferred_compression(SpiceChannel *channel, gint compression);
+void spice_display_change_preferred_video_codec_type(SpiceChannel *channel, gint codec_type);
 
 GType           spice_gl_scanout_get_type     (void) G_GNUC_CONST;
 void            spice_gl_scanout_free         (SpiceGlScanout *scanout);
