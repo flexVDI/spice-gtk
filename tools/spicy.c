@@ -651,6 +651,9 @@ static const GtkActionEntry entries[] = {
         .name        = "CompressionMenu",
         .label       = "_Preferred image compression",
     },{
+        .name        = "VideoCodecTypeMenu",
+        .label       = "_Preferred video codec type",
+    },{
         .name        = "HelpMenu",
         .label       = "_Help",
     },{
@@ -816,6 +819,26 @@ static const GtkRadioActionEntry compression_entries[] = {
     }
 };
 
+static const GtkRadioActionEntry video_codec_type_entries[] = {
+    {
+        .name  = "mjpeg",
+        .label = "mjpeg",
+        .value = SPICE_VIDEO_CODEC_TYPE_MJPEG,
+    },{
+        .name  = "vp8",
+        .label = "vp8",
+        .value = SPICE_VIDEO_CODEC_TYPE_VP8,
+    },{
+        .name  = "vp9",
+        .label = "vp9",
+        .value = SPICE_VIDEO_CODEC_TYPE_VP9,
+    },{
+        .name  = "h264",
+        .label = "h264",
+        .value = SPICE_VIDEO_CODEC_TYPE_H264,
+    }
+};
+
 static char ui_xml[] =
 "<ui>\n"
 "  <menubar action='MainMenu'>\n"
@@ -863,6 +886,12 @@ static char ui_xml[] =
 "        <menuitem action='lz4'/>\n"
 #endif
 "        <menuitem action='off'/>\n"
+"      </menu>\n"
+"      <menu action='VideoCodecTypeMenu'>\n"
+"        <menuitem action='mjpeg'/>\n"
+"        <menuitem action='vp8'/>\n"
+"        <menuitem action='vp9'/>\n"
+"        <menuitem action='h264'/>\n"
 "      </menu>\n"
 "    </menu>\n"
 "    <menu action='HelpMenu'>\n"
@@ -914,6 +943,14 @@ static void compression_cb(GtkRadioAction *action G_GNUC_UNUSED,
 {
     spice_display_change_preferred_compression(SPICE_CHANNEL(user_data),
                                                gtk_radio_action_get_current_value(current));
+}
+
+static void video_codec_type_cb(GtkRadioAction *action G_GNUC_UNUSED,
+                                GtkRadioAction *current,
+                                gpointer user_data)
+{
+    spice_display_change_preferred_video_codec_type(SPICE_CHANNEL(user_data),
+                                                    gtk_radio_action_get_current_value(current));
 }
 
 static void
@@ -970,6 +1007,16 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
         GtkAction *compression_menu_action = gtk_action_group_get_action(win->ag, "CompressionMenu");
         gtk_action_set_sensitive(compression_menu_action, FALSE);
     }
+    gtk_action_group_add_radio_actions(win->ag, video_codec_type_entries,
+                                       G_N_ELEMENTS(video_codec_type_entries), -1,
+                                       G_CALLBACK(video_codec_type_cb), win->display_channel);
+    if (!spice_channel_test_capability(win->display_channel,
+                                       SPICE_DISPLAY_CAP_PREF_VIDEO_CODEC_TYPE)) {
+        GtkAction *video_codec_type_menu_action =
+            gtk_action_group_get_action(win->ag, "VideoCodecTypeMenu");
+        gtk_action_set_sensitive(video_codec_type_menu_action, FALSE);
+    }
+
     gtk_ui_manager_insert_action_group(win->ui, win->ag, 0);
     gtk_window_add_accel_group(GTK_WINDOW(win->toplevel),
                                gtk_ui_manager_get_accel_group(win->ui));
