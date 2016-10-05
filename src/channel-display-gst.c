@@ -50,6 +50,39 @@ typedef struct SpiceGstDecoder {
     guint timer_id;
 } SpiceGstDecoder;
 
+static struct {
+    const gchar *dec_name;
+    const gchar *dec_caps;
+} gst_opts[] = {
+    /* decodebin will use vaapi if installed, which for a time could
+     * intentionally crash the application. So only use decodebin as a
+     * fallback or when SPICE_GSTVIDEO_AUTO is set.
+     * See: https://bugs.freedesktop.org/show_bug.cgi?id=90884
+     */
+    { "decodebin", "" },
+
+    /* SPICE_VIDEO_CODEC_TYPE_MJPEG */
+    { "jpegdec", "caps=image/jpeg" },
+
+    /* SPICE_VIDEO_CODEC_TYPE_VP8
+     *
+     * typefind is unable to identify VP8 streams by design.
+     * See: https://bugzilla.gnome.org/show_bug.cgi?id=756457
+     */
+    { "vp8dec", "caps=video/x-vp8" },
+
+    /* SPICE_VIDEO_CODEC_TYPE_H264
+     * h264 streams detection works fine and setting an incomplete cap
+     * causes errors. So let typefind do all the work.
+     */
+    { "h264parse ! avdec_h264", "" },
+
+};
+
+G_STATIC_ASSERT(G_N_ELEMENTS(gst_opts) == SPICE_VIDEO_CODEC_TYPE_ENUM_END);
+
+#define VALID_VIDEO_CODEC_TYPE(codec) \
+    (codec > 0 && codec < SPICE_VIDEO_CODEC_TYPE_ENUM_END)
 
 /* ---------- SpiceFrame ---------- */
 
@@ -249,45 +282,20 @@ static void free_pipeline(SpiceGstDecoder *decoder)
 
 static gboolean create_pipeline(SpiceGstDecoder *decoder)
 {
-    const gchar *src_caps, *gstdec_name;
     gchar *desc;
+    gboolean auto_enabled;
+    guint opt;
     GstAppSinkCallbacks appsink_cbs = { NULL };
     GError *err = NULL;
 
-    switch (decoder->base.codec_type) {
-    case SPICE_VIDEO_CODEC_TYPE_MJPEG:
-        src_caps = "caps=image/jpeg";
-        gstdec_name = "jpegdec";
-        break;
-    case SPICE_VIDEO_CODEC_TYPE_VP8:
-        /* typefind is unable to identify VP8 streams by design.
-         * See: https://bugzilla.gnome.org/show_bug.cgi?id=756457
-         */
-        src_caps = "caps=video/x-vp8";
-        gstdec_name = "vp8dec";
-        break;
-    case SPICE_VIDEO_CODEC_TYPE_H264:
-        /* h264 streams detection works fine and setting an incomplete cap
-         * causes errors. So let typefind do all the work.
-         */
-        src_caps = "";
-        gstdec_name = "h264parse ! avdec_h264";
-        break;
-    default:
-        SPICE_DEBUG("Unknown codec type %d. Trying decodebin.",
-                    decoder->base.codec_type);
-        src_caps = "";
-        gstdec_name = NULL;
-        break;
-    }
-
-    /* decodebin will use vaapi if installed, which for a time could
-     * intentionally crash the application. So only use decodebin as a
-     * fallback or when SPICE_GSTVIDEO_AUTO is set.
-     * See: https://bugs.freedesktop.org/show_bug.cgi?id=90884
-     */
-    if (gstdec_name == NULL || g_getenv("SPICE_GSTVIDEO_AUTO") != NULL) {
-        gstdec_name = "decodebin";
+    auto_enabled = (g_getenv("SPICE_GSTVIDEO_AUTO") != NULL);
+    if (auto_enabled || !VALID_VIDEO_CODEC_TYPE(decoder->base.codec_type)) {
+        SPICE_DEBUG("Trying %s for codec type %d %s",
+                    gst_opts[0].dec_name, decoder->base.codec_type,
+                    (auto_enabled) ? "(SPICE_GSTVIDEO_AUTO is set)" : "");
+        opt = 0;
+    } else {
+        opt = decoder->base.codec_type;
     }
 
     /* - We schedule the frame display ourselves so set sync=false on appsink
@@ -300,7 +308,7 @@ static gboolean create_pipeline(SpiceGstDecoder *decoder)
     desc = g_strdup_printf("appsrc name=src is-live=true format=time max-bytes=0 block=true "
                            "%s ! %s ! videoconvert ! appsink name=sink "
                            "caps=video/x-raw,format=BGRx sync=false drop=false",
-                           src_caps, gstdec_name);
+                           gst_opts[opt].dec_caps, gst_opts[opt].dec_name);
     SPICE_DEBUG("GStreamer pipeline: %s", desc);
 
     decoder->pipeline = gst_parse_launch_full(desc, NULL, GST_PARSE_FLAG_FATAL_ERRORS, &err);
