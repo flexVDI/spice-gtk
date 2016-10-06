@@ -1409,6 +1409,8 @@ static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
     return TRUE;
 }
 
+static void watch_stdin(void);
+
 static void port_opened(SpiceChannel *channel, GParamSpec *pspec,
                         spice_connection *conn)
 {
@@ -1432,6 +1434,7 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec,
 
         /* handle the first spicy port and connect it to stdin/out */
         if (g_strcmp0(name, "org.spice.spicy") == 0 && stdin_port == NULL) {
+            watch_stdin();
             stdin_port = port;
         }
     } else {
@@ -1907,8 +1910,6 @@ int main(int argc, char *argv[])
     g_free(port);
     g_free(tls_port);
     g_free(unix_path);
-
-    watch_stdin();
 
     connection_connect(conn);
     if (connections > 0)
