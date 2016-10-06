@@ -1,3 +1,21 @@
+v0.33
+=====
+
+- lz4 compression of USB channel
+- keyboard: pause key fixes, set keypress-delay to 0 on local socket
+- mouse: fix pointer grabbing in server mode
+- clipboard: fix copying text from old application without UTF8_STRING
+  target (motif)
+- file-xfer changes: grouping all transferred files per operation
+- new spice_file_transfer_task_get_{total_bytes,transferred_bytes} API
+  and associated properties
+- new SpiceChannel:socket property
+- fix rendering issues with CSD on Windows
+- fix gettext support, some translations updates
+- fix display refresh issue on f25 after resize (init egl only when
+  required)
+- many leaks and races fixes, new tests
+
 v0.32
 =====
 
