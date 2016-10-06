@@ -544,6 +544,12 @@ void spice_usbredir_channel_disconnect_device_async(SpiceUsbredirChannel *channe
     g_object_unref(task);
 }
 
+static SpiceUsbDevice *
+spice_usbredir_channel_get_spice_usb_device(SpiceUsbredirChannel *channel)
+{
+    return channel->priv->spice_device;
+}
+
 G_GNUC_INTERNAL
 libusb_device *spice_usbredir_channel_get_device(SpiceUsbredirChannel *channel)
 {
@@ -671,6 +677,10 @@ static int try_write_compress_LZ4(SpiceUsbredirChannel *channel, uint8_t *data, 
     if (!spice_channel_test_capability(SPICE_CHANNEL(channel),
                                        SPICE_SPICEVMC_CAP_DATA_COMPRESS_LZ4)) {
         /* No server compression capability - data will not be compressed */
+        return FALSE;
+    }
+    if (spice_usb_device_is_isochronous(spice_usbredir_channel_get_spice_usb_device(channel))) {
+        /* Don't compress - one of the device endpoints is isochronous */
         return FALSE;
     }
     bound = LZ4_compressBound(count);

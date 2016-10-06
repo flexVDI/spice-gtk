@@ -153,6 +153,7 @@ typedef struct _SpiceUsbDeviceInfo {
     guint8  devaddr;
     guint16 vid;
     guint16 pid;
+    gboolean isochronous;
 #ifdef G_OS_WIN32
     guint8  state;
 #else
@@ -2017,6 +2018,33 @@ gchar *spice_usb_device_get_description(SpiceUsbDevice *device, const gchar *for
 
 
 #ifdef USE_USBREDIR
+static gboolean probe_isochronous_endpoint(libusb_device *libdev)
+{
+    struct libusb_config_descriptor *conf_desc;
+    gboolean isoc_found = FALSE;
+    gint i, j, k;
+
+    g_return_val_if_fail(libdev != NULL, FALSE);
+
+    if (!libusb_get_active_config_descriptor(libdev, &conf_desc)) {
+        g_return_val_if_reached(FALSE);
+    }
+
+    for (i = 0; !isoc_found && i < conf_desc->bNumInterfaces; i++) {
+        for (j = 0; !isoc_found && j < conf_desc->interface[i].num_altsetting; j++) {
+            for (k = 0; !isoc_found && k < conf_desc->interface[i].altsetting[j].bNumEndpoints;k++) {
+                gint attributes = conf_desc->interface[i].altsetting[j].endpoint[k].bmAttributes;
+                gint type = attributes & LIBUSB_TRANSFER_TYPE_MASK;
+                if (type == LIBUSB_TRANSFER_TYPE_ISOCHRONOUS)
+                    isoc_found = TRUE;
+            }
+        }
+    }
+
+    libusb_free_config_descriptor(conf_desc);
+    return isoc_found;
+}
+
 /*
  * SpiceUsbDeviceInfo
  */
@@ -2042,6 +2070,7 @@ static SpiceUsbDeviceInfo *spice_usb_device_new(libusb_device *libdev)
     info->vid = vid;
     info->pid = pid;
     info->ref = 1;
+    info->isochronous = probe_isochronous_endpoint(libdev);
 #ifndef G_OS_WIN32
     info->libdev = libusb_ref_device(libdev);
 #endif
@@ -2083,6 +2112,15 @@ guint16 spice_usb_device_get_pid(const SpiceUsbDevice *device)
     g_return_val_if_fail(info != NULL, 0);
 
     return info->pid;
+}
+
+gboolean spice_usb_device_is_isochronous(const SpiceUsbDevice *device)
+{
+    const SpiceUsbDeviceInfo *info = (const SpiceUsbDeviceInfo *)device;
+
+    g_return_val_if_fail(info != NULL, 0);
+
+    return info->isochronous;
 }
 
 #ifdef G_OS_WIN32
