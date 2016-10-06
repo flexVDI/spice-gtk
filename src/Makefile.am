@@ -182,7 +182,7 @@ endif
 EXTRA_libspice_client_glib_2_0_la_DEPENDENCIES = $(GLIB_SYMBOLS_FILE)
 
 libspice_client_glib_2_0_la_LDFLAGS =	\
-	-version-info 13:0:5		\
+	-version-info 14:0:6		\
 	-no-undefined			\
 	$(GLIB_SYMBOLS_LDFLAGS)		\
 	$(NULL)
