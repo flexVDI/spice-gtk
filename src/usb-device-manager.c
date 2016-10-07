@@ -2026,7 +2026,7 @@ static gboolean probe_isochronous_endpoint(libusb_device *libdev)
 
     g_return_val_if_fail(libdev != NULL, FALSE);
 
-    if (!libusb_get_active_config_descriptor(libdev, &conf_desc)) {
+    if (libusb_get_active_config_descriptor(libdev, &conf_desc) != 0) {
         g_return_val_if_reached(FALSE);
     }
 
