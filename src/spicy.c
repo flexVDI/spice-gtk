@@ -1818,14 +1818,18 @@ static void setup_terminal(gboolean reset)
         return;
 
 #ifdef HAVE_TERMIOS_H
-    static struct termios saved_tios;
     struct termios tios;
+    static struct termios saved_tios;
+    static bool saved = false;
 
-    if (reset)
+    if (reset) {
+        if (!saved)
+            return;
         tios = saved_tios;
-    else {
+    } else {
         tcgetattr(stdinfd, &tios);
         saved_tios = tios;
+        saved = true;
         tios.c_lflag &= ~(ICANON | ECHO);
     }
 
