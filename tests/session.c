@@ -24,6 +24,12 @@ static void test_session_uri(void)
         { NULL, "5930",
           "spice://localhost?port=&tls-port=5930",
           "spice://localhost?tls-port=5930" },
+        { "42", NULL,
+          "spice://localhost:42",
+          "spice://localhost?port=42&" },
+        { "42", "5930",
+          "spice://localhost:42?tls-port=5930",
+          "spice://localhost?port=42&tls-port=5930" },
     };
 
     /* Set URI and check URI, port and tls_port */
