@@ -945,6 +945,11 @@ static void clipboard_received_text_cb(GtkClipboard *clipboard,
     if (self == NULL)
         return;
 
+    if (text == NULL) {
+        SPICE_DEBUG("Failed to retrieve clipboard text");
+        return;
+    }
+
     g_return_if_fail(SPICE_IS_GTK_SESSION(self));
 
     selection = get_selection_from_clipboard(self->priv, clipboard);
