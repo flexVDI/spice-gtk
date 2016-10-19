@@ -170,7 +170,7 @@ static void test_session_uri_good(const TestCase *tests, const guint cases)
     }
 
     /* Set port and tls_port, check URI */
-    for (i = 0; i < G_N_ELEMENTS(tests); i++) {
+    for (i = 0; i < cases; i++) {
         gchar *uri;
 
         s = spice_session_new();
