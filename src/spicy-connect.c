@@ -189,7 +189,7 @@ gboolean spicy_connect_dialog(SpiceSession *session)
     gtk_box_pack_start(recent_box, label, FALSE, TRUE, 0);
     gtk_misc_set_alignment(GTK_MISC(label), 0, 0.5);
 
-    button_box = GTK_BOX(gtk_hbutton_box_new());
+    button_box = GTK_BOX(gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL));
     gtk_button_box_set_layout(GTK_BUTTON_BOX(button_box), GTK_BUTTONBOX_END);
     gtk_box_set_spacing(button_box, 5);
     gtk_container_set_border_width(GTK_CONTAINER(button_box), 5);
