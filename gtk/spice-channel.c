@@ -1839,7 +1839,11 @@ void spice_channel_recv_msg(SpiceChannel *channel,
      * this would avoid malloc/free on each message?
      */
     in->data = g_malloc0(msg_size);
-    spice_channel_read(channel, in->data, msg_size);
+    do {
+        c->has_error = FALSE;
+        c->error_was_ping = FALSE;
+        spice_channel_read(channel, in->data, msg_size);
+    } while (c->has_error && c->error_was_ping);
     if (c->has_error)
         goto end;
     in->dpos = msg_size;
