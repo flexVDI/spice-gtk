@@ -2352,17 +2352,12 @@ static gboolean spice_channel_delayed_unref(gpointer data)
     return FALSE;
 }
 
-static X509_LOOKUP_METHOD spice_x509_mem_lookup = {
-    "spice_x509_mem_lookup",
-    0
-};
-
 static int spice_channel_load_ca(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
     STACK_OF(X509_INFO) *inf;
     X509_INFO *itmp;
-    X509_LOOKUP *lookup;
+    X509_STORE *store;
     BIO *in;
     int i, count = 0;
     guint8 *ca;
@@ -2372,13 +2367,13 @@ static int spice_channel_load_ca(SpiceChannel *channel)
 
     g_return_val_if_fail(c->ctx != NULL, 0);
 
-    lookup = X509_STORE_add_lookup(c->ctx->cert_store, &spice_x509_mem_lookup);
     ca_file = spice_session_get_ca_file(c->session);
     spice_session_get_ca(c->session, &ca, &size);
 
     CHANNEL_DEBUG(channel, "Load CA, file: %s, data: %p", ca_file, ca);
 
     if (ca != NULL) {
+        store = SSL_CTX_get_cert_store(c->ctx);
         in = BIO_new_mem_buf(ca, size);
         inf = PEM_X509_INFO_read_bio(in, NULL, NULL, NULL);
         BIO_free(in);
@@ -2386,11 +2381,11 @@ static int spice_channel_load_ca(SpiceChannel *channel)
         for (i = 0; i < sk_X509_INFO_num(inf); i++) {
             itmp = sk_X509_INFO_value(inf, i);
             if (itmp->x509) {
-                X509_STORE_add_cert(lookup->store_ctx, itmp->x509);
+                X509_STORE_add_cert(store, itmp->x509);
                 count++;
             }
             if (itmp->crl) {
-                X509_STORE_add_crl(lookup->store_ctx, itmp->crl);
+                X509_STORE_add_crl(store, itmp->crl);
                 count++;
             }
         }
