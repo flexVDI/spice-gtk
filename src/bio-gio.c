@@ -23,21 +23,22 @@
 #include "spice-util.h"
 #include "bio-gio.h"
 
-typedef struct bio_gsocket_method {
-    BIO_METHOD method;
-    GIOStream *stream;
-} bio_gsocket_method;
-
-#define BIO_GET_GSOCKET(bio)  (((bio_gsocket_method*)bio->method)->gsocket)
-#define BIO_GET_ISTREAM(bio)  (g_io_stream_get_input_stream(((bio_gsocket_method*)bio->method)->stream))
-#define BIO_GET_OSTREAM(bio)  (g_io_stream_get_output_stream(((bio_gsocket_method*)bio->method)->stream))
+static long bio_gio_ctrl(G_GNUC_UNUSED BIO *b,
+                         int cmd,
+                         G_GNUC_UNUSED long num,
+                         G_GNUC_UNUSED void *ptr)
+{
+    return (cmd == BIO_CTRL_FLUSH);
+}
 
 static int bio_gio_write(BIO *bio, const char *in, int inl)
 {
+    GOutputStream *stream;
     gssize ret;
     GError *error = NULL;
 
-    ret = g_pollable_output_stream_write_nonblocking(G_POLLABLE_OUTPUT_STREAM(BIO_GET_OSTREAM(bio)),
+    stream = g_io_stream_get_output_stream(bio->ptr);
+    ret = g_pollable_output_stream_write_nonblocking(G_POLLABLE_OUTPUT_STREAM(stream),
                                                      in, inl, NULL, &error);
     BIO_clear_retry_flags(bio);
 
@@ -53,10 +54,12 @@ static int bio_gio_write(BIO *bio, const char *in, int inl)
 
 static int bio_gio_read(BIO *bio, char *out, int outl)
 {
+    GInputStream *stream;
     gssize ret;
     GError *error = NULL;
 
-    ret = g_pollable_input_stream_read_nonblocking(G_POLLABLE_INPUT_STREAM(BIO_GET_ISTREAM(bio)),
+    stream = g_io_stream_get_input_stream(bio->ptr);
+    ret = g_pollable_input_stream_read_nonblocking(G_POLLABLE_INPUT_STREAM(stream),
                                                    out, outl, NULL, &error);
     BIO_clear_retry_flags(bio);
 
@@ -70,17 +73,6 @@ static int bio_gio_read(BIO *bio, char *out, int outl)
     return ret;
 }
 
-static int bio_gio_destroy(BIO *bio)
-{
-    if (bio == NULL || bio->method == NULL)
-        return 0;
-
-    SPICE_DEBUG("bio gsocket destroy");
-    g_clear_pointer(&bio->method, g_free);
-
-    return 1;
-}
-
 static int bio_gio_puts(BIO *bio, const char *str)
 {
     int n, ret;
@@ -91,23 +83,30 @@ static int bio_gio_puts(BIO *bio, const char *str)
     return ret;
 }
 
+#define BIO_TYPE_START 128
+
 G_GNUC_INTERNAL
 BIO* bio_new_giostream(GIOStream *stream)
 {
-    // TODO: make an actual new BIO type, or just switch to GTls already...
-    BIO *bio = BIO_new_socket(-1, BIO_NOCLOSE);
+    BIO *bio;
+    static BIO_METHOD bio_gio_method;
 
-    bio_gsocket_method *bio_method = g_new(bio_gsocket_method, 1);
-    bio_method->method = *bio->method;
-    bio_method->stream = stream;
+    if (bio_gio_method.name == NULL) {
+        bio_gio_method.type = BIO_TYPE_START | BIO_TYPE_SOURCE_SINK;
+        bio_gio_method.name = "gio stream";
+    }
 
-    bio->method->destroy(bio);
-    bio->method = (BIO_METHOD*)bio_method;
+    bio = BIO_new(&bio_gio_method);
+    if (!bio)
+        return NULL;
 
     bio->method->bwrite = bio_gio_write;
     bio->method->bread = bio_gio_read;
     bio->method->bputs = bio_gio_puts;
-    bio->method->destroy = bio_gio_destroy;
+    bio->method->ctrl = bio_gio_ctrl;
+
+    bio->init = 1;
+    bio->ptr = stream;
 
     return bio;
 }
