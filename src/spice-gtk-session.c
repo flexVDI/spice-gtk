@@ -808,11 +808,15 @@ static void clipboard_get(GtkClipboard *clipboard,
         goto cleanup;
     }
 
-    /* apparently, this is needed to avoid dead-lock, from
-       gtk_dialog_run */
+    /* This is modeled on the implementation of gtk_dialog_run() even though
+     * these thread functions are deprecated and appears to be needed to avoid
+     * dead-lock from gtk_dialog_run().
+     */
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     gdk_threads_leave();
     g_main_loop_run(ri.loop);
     gdk_threads_enter();
+    G_GNUC_END_IGNORE_DEPRECATIONS
 
 cleanup:
     g_clear_pointer(&ri.loop, g_main_loop_unref);
