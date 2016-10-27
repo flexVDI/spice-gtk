@@ -50,8 +50,6 @@ gchar* spice_uuid_to_string(const guint8 uuid[16]);
 #endif /* __GNUC__ */
 #endif
 
-#define SPICE_DEPRECATED  G_GNUC_DEPRECATED
-
 G_END_DECLS
 
 #endif /* SPICE_UTIL_H */

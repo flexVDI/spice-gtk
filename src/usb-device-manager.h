@@ -131,7 +131,7 @@ gboolean spice_usb_device_manager_disconnect_device_finish(
     SpiceUsbDeviceManager *self, GAsyncResult *res, GError **err);
 
 #ifndef SPICE_DISABLE_DEPRECATED
-SPICE_DEPRECATED
+SPICE_GNUC_DEPRECATED
 void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *manager,
                                                 SpiceUsbDevice *device);
 #endif
