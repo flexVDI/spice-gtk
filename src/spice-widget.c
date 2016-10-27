@@ -567,6 +567,8 @@ static void grab_notify(SpiceDisplay *display, gboolean was_grabbed)
 
 #if GTK_CHECK_VERSION(3,16,0)
 #ifndef G_OS_WIN32
+/* Ignore GLib's too-new warnings */
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 static gboolean
 gl_area_render(GtkGLArea *area, GdkGLContext *context, gpointer user_data)
 {
@@ -598,6 +600,7 @@ gl_area_realize(GtkGLArea *area, gpointer user_data)
         g_clear_error(&err);
     }
 }
+G_GNUC_END_IGNORE_DEPRECATIONS
 #endif
 #endif
 
@@ -636,6 +639,8 @@ static void spice_display_init(SpiceDisplay *display)
 
 #if GTK_CHECK_VERSION(3,16,0)
 #ifndef G_OS_WIN32
+/* Ignore GLib's too-new warnings */
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     area = gtk_gl_area_new();
     gtk_gl_area_set_required_version(GTK_GL_AREA(area), 3, 2);
     gtk_gl_area_set_auto_render(GTK_GL_AREA(area), false);
@@ -645,6 +650,7 @@ static void spice_display_init(SpiceDisplay *display)
                      NULL);
     gtk_stack_add_named(d->stack, area, "gl-area");
     gtk_widget_show_all(widget);
+G_GNUC_END_IGNORE_DEPRECATIONS
 #endif
 #endif
 

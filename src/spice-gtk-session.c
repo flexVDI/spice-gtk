@@ -126,6 +126,8 @@ static guint32 get_keyboard_lock_modifiers(void)
 {
     guint32 modifiers = 0;
 #if GTK_CHECK_VERSION(3,18,0)
+/* Ignore GLib's too-new warnings */
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     GdkKeymap *keyboard = gdk_keymap_get_default();
 
     if (gdk_keymap_get_caps_lock_state(keyboard)) {
@@ -139,6 +141,7 @@ static guint32 get_keyboard_lock_modifiers(void)
     if (gdk_keymap_get_scroll_lock_state(keyboard)) {
         modifiers |= SPICE_INPUTS_SCROLL_LOCK;
     }
+G_GNUC_END_IGNORE_DEPRECATIONS
 #else
 #ifdef HAVE_X11_XKBLIB_H
     Display *x_display = NULL;

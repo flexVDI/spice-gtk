@@ -303,9 +303,12 @@ gl_make_current(SpiceDisplay *display, GError **err)
     }
 #if GTK_CHECK_VERSION(3,16,0)
     else {
+        /* Ignore GLib's too-new warnings */
+        G_GNUC_BEGIN_IGNORE_DEPRECATIONS
         GtkWidget *area = gtk_stack_get_child_by_name(d->stack, "gl-area");
 
         gtk_gl_area_make_current(GTK_GL_AREA(area));
+        G_GNUC_END_IGNORE_DEPRECATIONS
     }
 #endif
 
