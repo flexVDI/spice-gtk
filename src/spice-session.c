@@ -33,7 +33,7 @@
 #include "wocky-http-proxy.h"
 #include "spice-uri-priv.h"
 #include "channel-playback-priv.h"
-#include "spice-audio.h"
+#include "spice-audio-priv.h"
 
 struct channel {
     SpiceChannel      *channel;
