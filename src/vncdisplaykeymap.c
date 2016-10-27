@@ -45,11 +45,6 @@
  */
 
 
-/* Compatability code to allow build on Gtk2 and Gtk3 */
-#ifndef GDK_Tab
-#define GDK_Tab GDK_KEY_Tab
-#endif
-
 /* keycode translation for sending ISO_Left_Send
  * to vncserver
  */
@@ -57,7 +52,7 @@ static struct {
 	GdkKeymapKey *keys;
 	gint n_keys;
 	guint keyval;
-} untranslated_keys[] = {{NULL, 0, GDK_Tab}};
+} untranslated_keys[] = {{NULL, 0, GDK_KEY_Tab}};
 
 static unsigned int ref_count_for_untranslated_keys = 0;
 
@@ -87,41 +82,21 @@ static unsigned int ref_count_for_untranslated_keys = 0;
 /* Xorg Cygwin aka XWin (offset + mangled XT keycodes) */
 #include "vncdisplaykeymap_xorgxwin2xtkbd.c"
 
-/* Gtk2 compat */
-#ifndef GDK_IS_X11_WINDOW
-#define GDK_IS_X11_WINDOW(win) (1)
-#endif
 #endif
 
 #ifdef GDK_WINDOWING_WIN32
 /* Win32 native virtual keycodes */
 #include "vncdisplaykeymap_win322xtkbd.c"
-
-/* Gtk2 compat */
-#ifndef GDK_IS_WIN32_WINDOW
-#define GDK_IS_WIN32_WINDOW(win) (1)
-#endif
 #endif
 
 #ifdef GDK_WINDOWING_QUARTZ
 /* OS-X native keycodes */
 #include "vncdisplaykeymap_osx2xtkbd.c"
-
-/* Gtk2 compat */
-#ifndef GDK_IS_QUARTZ_WINDOW
-#define GDK_IS_QUARTZ_WINDOW(win) (1)
-#endif
 #endif
 
 #ifdef GDK_WINDOWING_BROADWAY
 /* X11 keysyms */
 #include "vncdisplaykeymap_x112xtkbd.c"
-
-/* Gtk2 compat */
-#ifndef GDK_IS_BROADWAY_WINDOW
-#define GDK_IS_BROADWAY_WINDOW(win) (1)
-#endif
-
 #endif
 
 #ifdef GDK_WINDOWING_X11
