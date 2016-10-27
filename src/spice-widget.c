@@ -44,7 +44,6 @@
 #include "vncdisplaykeymap.h"
 #include "spice-grabsequence-priv.h"
 
-/* Some compatibility defines to let us build on both Gtk2 and Gtk3 */
 
 /**
  * SECTION:spice-widget
