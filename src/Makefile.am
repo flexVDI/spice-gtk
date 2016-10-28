@@ -77,7 +77,6 @@ KEYMAP_GEN = $(srcdir)/keymap-gen.pl
 SPICE_COMMON_CPPFLAGS =						\
 	-DSPICE_COMPILATION					\
 	-DG_LOG_DOMAIN=\"GSpice\"				\
-	-DSPICE_NO_DEPRECATED					\
 	-DSPICE_GTK_LOCALEDIR=\"${SPICE_GTK_LOCALEDIR}\"	\
 	-DPNP_IDS=\""$(PNP_IDS)"\"				\
 	-DUSB_IDS=\""$(USB_IDS)"\"				\
