@@ -30,7 +30,10 @@
 #ifdef __linux__
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/sysmacros.h>
+#ifndef major /* major and minor macros were moved to sys/sysmacros.h from sys/types.h */
 #include <sys/types.h>
+#endif
 #include <sys/stat.h>
 #endif
 #include "usbutil.h"
