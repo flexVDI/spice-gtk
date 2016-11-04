@@ -326,8 +326,12 @@ static void update_status_window(SpiceWindow *win)
         status = g_strdup_printf(_("Use %s to ungrab mouse."), seq);
         g_free(seq);
     } else {
-        status = g_strdup_printf(_("mouse: %s, agent: %s | stream: %s"),
-                 win->conn->mouse_state, win->conn->agent_state, win->conn->stream_state);
+        if (spice_util_get_debug())
+            status = g_strdup_printf(_("mouse: %s, agent: %s | stream: %s"),
+                    win->conn->mouse_state, win->conn->agent_state, win->conn->stream_state);
+        else
+            status = g_strdup_printf(_("mouse: %s, agent: %s"),
+                    win->conn->mouse_state, win->conn->agent_state);
     }
 
     gtk_label_set_text(GTK_LABEL(win->status), status);
