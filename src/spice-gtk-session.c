@@ -670,7 +670,7 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
 
         if (spice_main_agent_test_capability(s->main, VD_AGENT_CAP_CLIPBOARD_BY_DEMAND))
             spice_main_clipboard_selection_grab(s->main, selection, types, t);
-        /* Sending a grab causes the agent to do an impicit release */
+        /* Sending a grab causes the agent to do an implicit release */
         s->nclip_targets[selection] = 0;
     }
 }
