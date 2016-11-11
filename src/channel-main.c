@@ -1822,6 +1822,14 @@ static void file_xfer_read_async_cb(GObject *source_object,
         return;
     }
 
+    if (count == 0 && spice_file_transfer_task_get_total_bytes(xfer_task) > 0) {
+        /* If we have sent all payload to the agent, we should not send 0 bytes
+         * as it will cause https://bugs.freedesktop.org/show_bug.cgi?id=97227.
+         * Only when file has 0 bytes of size is when we should send 0 bytes to
+         * agent, see: https://bugzilla.redhat.com/show_bug.cgi?id=1135099 */
+        return;
+    }
+
     file_xfer_queue_msg_to_agent(channel, spice_file_transfer_task_get_id(xfer_task), buffer, count);
     if (count == 0 || spice_file_transfer_task_is_completed(xfer_task)) {
         /* on EOF just wait for VD_AGENT_FILE_XFER_STATUS from agent
