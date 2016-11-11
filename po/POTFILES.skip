@@ -1,2 +1,3 @@
 data/spicy.desktop.in
-gtk/phodav/libphodav/chezdav.c
+spice-common/python_modules/spice_parser.py
+spice-common/spice_codegen.py

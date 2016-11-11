@@ -44,7 +44,7 @@ struct _PipeInputStream
      * closing.
      */
     gboolean peer_closed;
-    GSource *source;
+    GList *sources;
 };
 
 struct _PipeInputStreamClass
@@ -69,7 +69,7 @@ struct _PipeOutputStream
     const gchar *buffer;
     gsize count;
     gboolean peer_closed;
-    GSource *source;
+    GList *sources;
 };
 
 struct _PipeOutputStreamClass
@@ -120,12 +120,32 @@ pipe_input_stream_read (GInputStream  *stream,
     return count;
 }
 
+static GList *
+set_all_sources_ready (GList *sources)
+{
+    GList *it = sources;
+    while (it != NULL) {
+        GSource *s = it->data;
+        GList *next = it->next;
+
+        if (s == NULL || g_source_is_destroyed(s)) {
+            /* remove */
+            sources = g_list_delete_link(sources, it);
+            g_source_unref(s);
+        } else {
+            /* dispatch */
+            g_source_set_ready_time(s, 0);
+        }
+        it = next;
+    }
+    return sources;
+}
+
 static void
 pipe_input_stream_check_source (PipeInputStream *self)
 {
-    if (self->source && !g_source_is_destroyed(self->source) &&
-        g_pollable_input_stream_is_readable(G_POLLABLE_INPUT_STREAM(self)))
-        g_source_set_ready_time(self->source, 0);
+    if (g_pollable_input_stream_is_readable(G_POLLABLE_INPUT_STREAM(self)))
+        self->sources = set_all_sources_ready(self->sources);
 }
 
 static gboolean
@@ -193,10 +213,8 @@ pipe_input_stream_dispose(GObject *object)
         self->peer = NULL;
     }
 
-    if (self->source) {
-        g_source_unref(self->source);
-        self->source = NULL;
-    }
+    g_list_free_full (self->sources, (GDestroyNotify) g_source_unref);
+    self->sources = NULL;
 
     G_OBJECT_CLASS(pipe_input_stream_parent_class)->dispose (object);
 }
@@ -234,14 +252,8 @@ pipe_input_stream_create_source (GPollableInputStream *stream,
     PipeInputStream *self = PIPE_INPUT_STREAM(stream);
     GSource *pollable_source;
 
-    g_return_val_if_fail (self->source == NULL ||
-                          g_source_is_destroyed (self->source), NULL);
-
-    if (self->source && g_source_is_destroyed (self->source))
-        g_source_unref (self->source);
-
     pollable_source = g_pollable_source_new_full (self, NULL, cancellable);
-    self->source = g_source_ref (pollable_source);
+    self->sources = g_list_prepend (self->sources, g_source_ref (pollable_source));
 
     return pollable_source;
 }
@@ -319,10 +331,8 @@ pipe_output_stream_dispose(GObject *object)
         self->peer = NULL;
     }
 
-    if (self->source) {
-        g_source_unref(self->source);
-        self->source = NULL;
-    }
+    g_list_free_full (self->sources, (GDestroyNotify) g_source_unref);
+    self->sources = NULL;
 
     G_OBJECT_CLASS(pipe_output_stream_parent_class)->dispose (object);
 }
@@ -330,9 +340,8 @@ pipe_output_stream_dispose(GObject *object)
 static void
 pipe_output_stream_check_source (PipeOutputStream *self)
 {
-    if (self->source && !g_source_is_destroyed(self->source) &&
-        g_pollable_output_stream_is_writable(G_POLLABLE_OUTPUT_STREAM(self)))
-        g_source_set_ready_time(self->source, 0);
+    if (g_pollable_output_stream_is_writable(G_POLLABLE_OUTPUT_STREAM(self)))
+        self->sources = set_all_sources_ready(self->sources);
 }
 
 static gboolean
@@ -416,14 +425,8 @@ pipe_output_stream_create_source (GPollableOutputStream *stream,
     PipeOutputStream *self = PIPE_OUTPUT_STREAM(stream);
     GSource *pollable_source;
 
-    g_return_val_if_fail (self->source == NULL ||
-                          g_source_is_destroyed (self->source), NULL);
-
-    if (self->source && g_source_is_destroyed (self->source))
-        g_source_unref (self->source);
-
     pollable_source = g_pollable_source_new_full (self, NULL, cancellable);
-    self->source = g_source_ref (pollable_source);
+    self->sources = g_list_prepend (self->sources, g_source_ref (pollable_source));
 
     return pollable_source;
 }
@@ -473,4 +476,9 @@ spice_make_pipe(GIOStream **p1, GIOStream **p2)
 
     *p1 = g_simple_io_stream_new(in1, out1);
     *p2 = g_simple_io_stream_new(in2, out2);
+
+    g_object_unref(in1);
+    g_object_unref(in2);
+    g_object_unref(out1);
+    g_object_unref(out2);
 }

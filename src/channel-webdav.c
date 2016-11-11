@@ -147,8 +147,7 @@ static gboolean output_queue_idle(gpointer user_data)
         return FALSE;
     }
 
-    g_output_stream_write_all(q->output, e->buf, e->size, NULL, NULL, &error);
-    if (error)
+    if (!g_output_stream_write_all(q->output, e->buf, e->size, NULL, NULL, &error))
         goto err;
     else if (e->pushed_cb)
         e->pushed_cb(q, e->user_data);
@@ -159,7 +158,9 @@ static gboolean output_queue_idle(gpointer user_data)
     return TRUE;
 
 err:
-    g_warning("error: %s", error->message);
+    g_warning("failed to write to output stream");
+    if (error)
+        g_warning("error: %s", error->message);
     g_clear_error(&error);
 
     q->idle_id = 0;
@@ -297,11 +298,11 @@ static void client_start_read(SpiceWebdavChannel *self, Client *client)
 static void start_demux(SpiceWebdavChannel *self);
 
 static void demux_to_client_finish(SpiceWebdavChannel *self,
-                                   Client *client, gssize size)
+                                   Client *client, gboolean fail)
 {
     SpiceWebdavChannelPrivate *c = self->priv;
 
-    if (size <= 0) {
+    if (fail) {
         remove_client(self, client);
     }
 
@@ -314,34 +315,37 @@ static void demux_to_client_cb(GObject *source, GAsyncResult *result, gpointer u
     Client *client = user_data;
     SpiceWebdavChannelPrivate *c = client->self->priv;
     GError *error = NULL;
-    gssize size;
+    gboolean fail;
+    gsize size;
 
-    size = g_output_stream_write_finish(G_OUTPUT_STREAM(source), result, &error);
+    g_output_stream_write_all_finish(G_OUTPUT_STREAM(source), result, &size, &error);
 
     if (error) {
         CHANNEL_DEBUG(client->self, "write failed: %s", error->message);
         g_clear_error(&error);
     }
 
+    fail = (size != c->demux.size);
     g_warn_if_fail(size == c->demux.size);
-    demux_to_client_finish(client->self, client, size);
+    demux_to_client_finish(client->self, client, fail);
 }
 
 static void demux_to_client(SpiceWebdavChannel *self,
                             Client *client)
 {
     SpiceWebdavChannelPrivate *c = self->priv;
-    gssize size = c->demux.size;
+    gsize size = c->demux.size;
 
-    CHANNEL_DEBUG(self, "pushing %"G_GSSIZE_FORMAT" to client %p", size, client);
+    CHANNEL_DEBUG(self, "pushing %"G_GSIZE_FORMAT" to client %p", size, client);
 
     if (size > 0) {
-        g_output_stream_write_async(g_io_stream_get_output_stream(client->pipe),
-                                    c->demux.buf, size, G_PRIORITY_DEFAULT,
-                                    c->cancellable, demux_to_client_cb, client);
+        g_output_stream_write_all_async(g_io_stream_get_output_stream(client->pipe),
+                                        c->demux.buf, size, G_PRIORITY_DEFAULT,
+                                        c->cancellable, demux_to_client_cb, client);
         return;
     } else {
-        demux_to_client_finish(self, client, size);
+        /* Nothing to write */
+        demux_to_client_finish(self, client, FALSE);
     }
 }
 

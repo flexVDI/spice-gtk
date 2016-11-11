@@ -122,6 +122,21 @@ enum {
 static guint32 get_keyboard_lock_modifiers(void)
 {
     guint32 modifiers = 0;
+#if GTK_CHECK_VERSION(3,18,0)
+    GdkKeymap *keyboard = gdk_keymap_get_default();
+
+    if (gdk_keymap_get_caps_lock_state(keyboard)) {
+        modifiers |= SPICE_INPUTS_CAPS_LOCK;
+    }
+
+    if (gdk_keymap_get_num_lock_state(keyboard)) {
+        modifiers |= SPICE_INPUTS_NUM_LOCK;
+    }
+
+    if (gdk_keymap_get_scroll_lock_state(keyboard)) {
+        modifiers |= SPICE_INPUTS_SCROLL_LOCK;
+    }
+#else
 #if HAVE_X11_XKBLIB_H
     Display *x_display = NULL;
     XKeyboardState keyboard_state;
@@ -157,6 +172,7 @@ static guint32 get_keyboard_lock_modifiers(void)
 #else
     g_warning("get_keyboard_lock_modifiers not implemented");
 #endif // HAVE_X11_XKBLIB_H
+#endif // GTK_CHECK_VERSION(3,18,0)
     return modifiers;
 }
 

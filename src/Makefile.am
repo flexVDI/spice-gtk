@@ -91,15 +91,12 @@ SPICE_COMMON_CPPFLAGS =						\
 	-I$(top_srcdir)						\
 	$(COMMON_CFLAGS)					\
 	$(PIXMAN_CFLAGS)					\
-	$(CELT051_CFLAGS)					\
-	$(OPUS_CFLAGS)  					\
 	$(PULSE_CFLAGS)						\
 	$(GTK_CFLAGS)						\
 	$(CAIRO_CFLAGS)						\
 	$(GLIB2_CFLAGS)						\
 	$(GIO_CFLAGS)						\
 	$(GOBJECT2_CFLAGS)					\
-	$(DBUS_GLIB_CFLAGS)					\
 	$(SSL_CFLAGS)						\
 	$(SASL_CFLAGS)						\
 	$(GST_CFLAGS)						\
@@ -129,7 +126,6 @@ SPICE_GTK_LIBADD_COMMON =		\
 	libspice-client-glib-2.0.la	\
 	$(GTK_LIBS)			\
 	$(CAIRO_LIBS)			\
-	$(DBUS_GLIB_LIBS)		\
 	$(VA_X11_LIBS)							\
 	$(XRANDR_LIBS)			\
 	$(LIBM)				\
@@ -215,8 +211,6 @@ libspice_client_glib_2_0_la_LIBADD =					\
 	$(SOUP_LIBS)							\
 	$(GIO_LIBS)							\
 	$(GOBJECT2_LIBS)						\
-	$(CELT051_LIBS)							\
-	$(OPUS_LIBS)							\
 	$(JPEG_LIBS)							\
 	$(NOPOLL_LIBS)							\
 	$(Z_LIBS)							\
@@ -710,16 +704,22 @@ typelibs_DATA = $(INTROSPECTION_GIRS:.gir=.typelib)
 CLEANFILES += $(gir_DATA) $(typelibs_DATA)
 endif
 
-update-symbol-files:
+update-map-file: $(libspice_client_gtkinclude_HEADERS) $(nodist_libspice_client_gtkinclude_HEADERS) $(libspice_client_glibinclude_HEADERS) $(nodist_libspice_client_glibinclude_HEADERS)
 	( echo "SPICEGTK_1 {" ; \
 	  echo "global:" ; \
-	  ctags -f - -I G_GNUC_CONST --c-kinds=p $(libspice_client_gtkinclude_HEADERS) $(nodist_libspice_client_gtkinclude_HEADERS) $(libspice_client_glibinclude_HEADERS) $(nodist_libspice_client_glibinclude_HEADERS) | awk '/^spice_/ { print $$1 ";" }' | sort ; \
+	  ctags -f - -I G_GNUC_CONST --c-kinds=p $^ | awk '/^spice_/ { print $$1 ";" }' | sort ; \
 	  echo "local:" ;  \
 	  echo "*;" ; \
 	  echo "};" ) > $(srcdir)/map-file
-	( ctags -f - -I G_GNUC_CONST --c-kinds=p $(libspice_client_glibinclude_HEADERS) $(nodist_libspice_client_glibinclude_HEADERS) | awk '/^spice_/ { print $$1 }' | sort ; \
+
+update-glib-sym-file: $(libspice_client_glibinclude_HEADERS) $(nodist_libspice_client_glibinclude_HEADERS)
+	( ctags -f - -I G_GNUC_CONST --c-kinds=p $^ | awk '/^spice_/ { print $$1 }' | sort ; \
 	) > $(srcdir)/spice-glib-sym-file
-	( ctags -f - -I G_GNUC_CONST --c-kinds=p $(libspice_client_gtkinclude_HEADERS) $(nodist_libspice_client_gtkinclude_HEADERS) | awk '/^spice_/ { print $$1 }' | sort ; \
+
+update-gtk-sym-file: $(libspice_client_gtkinclude_HEADERS) $(nodist_libspice_client_gtkinclude_HEADERS)
+	( ctags -f - -I G_GNUC_CONST --c-kinds=p $^ | awk '/^spice_/ { print $$1 }' | sort ; \
 	) > $(srcdir)/spice-gtk-sym-file
+
+update-symbol-files: update-map-file update-glib-sym-file update-gtk-sym-file
 
 -include $(top_srcdir)/git.mk

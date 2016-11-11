@@ -31,6 +31,7 @@
 #include "spice-util-priv.h"
 #include "spice-channel-priv.h"
 #include "spice-session-priv.h"
+#include "spice-audio-priv.h"
 
 /**
  * SECTION:channel-main
@@ -111,6 +112,10 @@ struct _SpiceMainChannelPrivate  {
     guint                       migrate_delayed_id;
     spice_migrate               *migrate_data;
     int                         max_clipboard;
+
+    gboolean                    agent_volume_playback_sync;
+    gboolean                    agent_volume_record_sync;
+    GCancellable                *cancellable_volume_info;
 };
 
 struct spice_migrate {
@@ -190,6 +195,7 @@ static const char *agent_msg_types[] = {
     [ VD_AGENT_CLIPBOARD_GRAB          ] = "clipboard grab",
     [ VD_AGENT_CLIPBOARD_REQUEST       ] = "clipboard request",
     [ VD_AGENT_CLIPBOARD_RELEASE       ] = "clipboard release",
+    [ VD_AGENT_AUDIO_VOLUME_SYNC       ] = "volume-sync",
 };
 
 static const char *agent_caps[] = {
@@ -204,6 +210,7 @@ static const char *agent_caps[] = {
     [ VD_AGENT_CAP_GUEST_LINEEND_LF    ] = "line-end lf",
     [ VD_AGENT_CAP_GUEST_LINEEND_CRLF  ] = "line-end crlf",
     [ VD_AGENT_CAP_MAX_CLIPBOARD       ] = "max-clipboard",
+    [ VD_AGENT_CAP_AUDIO_VOLUME_SYNC   ] = "volume-sync",
     [ VD_AGENT_CAP_PORT_FORWARDING     ] = "port-forwarding",
 };
 #define NAME(_a, _i) ((_i) < SPICE_N_ELEMENTS(_a) ? (_a[(_i)] ?: "?") : "?")
@@ -238,6 +245,7 @@ static void spice_main_channel_init(SpiceMainChannel *channel)
     c = channel->priv = SPICE_MAIN_CHANNEL_GET_PRIVATE(channel);
     c->agent_msg_queue = g_queue_new();
     c->file_xfer_tasks = g_hash_table_new(g_direct_hash, g_direct_equal);
+    c->cancellable_volume_info = g_cancellable_new();
     c->port_forwarder = new_port_forwarder(channel, port_forwarder_send_command);
 
     spice_main_channel_reset_capabilties(SPICE_CHANNEL(channel));
@@ -354,6 +362,9 @@ static void spice_main_channel_dispose(GObject *obj)
         c->migrate_delayed_id = 0;
     }
 
+    g_cancellable_cancel(c->cancellable_volume_info);
+    g_clear_object(&c->cancellable_volume_info);
+
     if (G_OBJECT_CLASS(spice_main_channel_parent_class)->dispose)
         G_OBJECT_CLASS(spice_main_channel_parent_class)->dispose(obj);
 }
@@ -423,6 +434,9 @@ static void spice_main_channel_reset(SpiceChannel *channel, gboolean migrating)
     c->agent_tokens = 0;
     agent_free_msg_queue(SPICE_MAIN_CHANNEL(channel));
     c->agent_msg_queue = g_queue_new();
+
+    c->agent_volume_playback_sync = FALSE;
+    c->agent_volume_record_sync = FALSE;
 
     set_agent_connected(SPICE_MAIN_CHANNEL(channel), FALSE);
 
@@ -1103,6 +1117,119 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
     return TRUE;
 }
 
+static void audio_playback_volume_info_cb(GObject *object, GAsyncResult *res, gpointer user_data)
+{
+    SpiceMainChannel *main_channel = user_data;
+    SpiceSession *session = spice_channel_get_session(SPICE_CHANNEL(main_channel));
+    SpiceAudio *audio = spice_audio_get(session, NULL);
+    VDAgentAudioVolumeSync *avs;
+    guint16 *volume;
+    guint8 nchannels;
+    gboolean mute, ret;
+    gsize array_size;
+    GError *error = NULL;
+
+    ret = spice_audio_get_playback_volume_info_finish(audio, res, &mute, &nchannels,
+                                                      &volume, &error);
+    if (ret == FALSE || volume == NULL || nchannels == 0) {
+        if (error != NULL) {
+            spice_warning("Failed to get playback async volume info: %s", error->message);
+            g_error_free (error);
+        } else {
+            SPICE_DEBUG("Failed to get playback async volume info");
+        }
+        main_channel->priv->agent_volume_playback_sync = FALSE;
+        return;
+    }
+
+    array_size = sizeof(uint16_t) * nchannels;
+    avs = g_malloc0(sizeof(VDAgentAudioVolumeSync) + array_size);
+    avs->is_playback = TRUE;
+    avs->mute = mute;
+    avs->nchannels = nchannels;
+    memcpy(avs->volume, volume, array_size);
+
+    SPICE_DEBUG("%s mute=%s nchannels=%u volume[0]=%u",
+                __func__, spice_yes_no(mute), nchannels, volume[0]);
+    g_free(volume);
+    agent_msg_queue(main_channel, VD_AGENT_AUDIO_VOLUME_SYNC,
+                    sizeof(VDAgentAudioVolumeSync) + array_size, avs);
+}
+
+static void agent_sync_audio_playback(SpiceMainChannel *main_channel)
+{
+    SpiceSession *session = spice_channel_get_session(SPICE_CHANNEL(main_channel));
+    SpiceAudio *audio = spice_audio_get(session, NULL);
+    SpiceMainChannelPrivate *c = main_channel->priv;
+
+    if (!test_agent_cap(main_channel, VD_AGENT_CAP_AUDIO_VOLUME_SYNC) ||
+        c->agent_volume_playback_sync == TRUE) {
+        SPICE_DEBUG("%s - is not going to sync audio with guest", __func__);
+        return;
+    }
+    /* only one per connection */
+    g_cancellable_reset(c->cancellable_volume_info);
+    c->agent_volume_playback_sync = TRUE;
+    spice_audio_get_playback_volume_info_async(audio, c->cancellable_volume_info, main_channel,
+                                               audio_playback_volume_info_cb, main_channel);
+}
+
+static void audio_record_volume_info_cb(GObject *object, GAsyncResult *res, gpointer user_data)
+{
+    SpiceMainChannel *main_channel = user_data;
+    SpiceSession *session = spice_channel_get_session(SPICE_CHANNEL(main_channel));
+    SpiceAudio *audio = spice_audio_get(session, NULL);
+    VDAgentAudioVolumeSync *avs;
+    guint16 *volume;
+    guint8 nchannels;
+    gboolean ret, mute;
+    gsize array_size;
+    GError *error = NULL;
+
+    ret = spice_audio_get_record_volume_info_finish(audio, res, &mute, &nchannels, &volume, &error);
+    if (ret == FALSE || volume == NULL || nchannels == 0) {
+        if (error != NULL) {
+            spice_warning ("Failed to get record async volume info: %s", error->message);
+            g_error_free (error);
+        } else {
+            SPICE_DEBUG("Failed to get record async volume info");
+        }
+        main_channel->priv->agent_volume_record_sync = FALSE;
+        return;
+    }
+
+    array_size = sizeof(uint16_t) * nchannels;
+    avs = g_malloc0(sizeof(VDAgentAudioVolumeSync) + array_size);
+    avs->is_playback = FALSE;
+    avs->mute = mute;
+    avs->nchannels = nchannels;
+    memcpy(avs->volume, volume, array_size);
+
+    SPICE_DEBUG("%s mute=%s nchannels=%u volume[0]=%u",
+                __func__, spice_yes_no(mute), nchannels, volume[0]);
+    g_free(volume);
+    agent_msg_queue(main_channel, VD_AGENT_AUDIO_VOLUME_SYNC,
+                    sizeof(VDAgentAudioVolumeSync) + array_size, avs);
+}
+
+static void agent_sync_audio_record(SpiceMainChannel *main_channel)
+{
+    SpiceSession *session = spice_channel_get_session(SPICE_CHANNEL(main_channel));
+    SpiceAudio *audio = spice_audio_get(session, NULL);
+    SpiceMainChannelPrivate *c = main_channel->priv;
+
+    if (!test_agent_cap(main_channel, VD_AGENT_CAP_AUDIO_VOLUME_SYNC) ||
+        c->agent_volume_record_sync == TRUE) {
+        SPICE_DEBUG("%s - is not going to sync audio with guest", __func__);
+        return;
+    }
+    /* only one per connection */
+    g_cancellable_reset(c->cancellable_volume_info);
+    c->agent_volume_record_sync = TRUE;
+    spice_audio_get_record_volume_info_async(audio, c->cancellable_volume_info, main_channel,
+                                             audio_record_volume_info_cb, main_channel);
+}
+
 /* any context: the message is not flushed immediately,
    you can wakeup() the channel coroutine or send_msg_queue() */
 static void agent_display_config(SpiceMainChannel *channel)
@@ -1357,6 +1484,8 @@ static void agent_start(SpiceMainChannel *channel)
     };
     SpiceMsgOut *out;
 
+    c->agent_volume_playback_sync = FALSE;
+    c->agent_volume_record_sync = FALSE;
     c->agent_caps_received = false;
     set_agent_connected(channel, TRUE);
 
@@ -1812,6 +1941,9 @@ static void main_agent_handle_msg(SpiceChannel *channel,
             agent_display_config(self);
             c->agent_display_config_sent = true;
         }
+
+        agent_sync_audio_playback(self);
+        agent_sync_audio_record(self);
 
         agent_max_clipboard(self);
 

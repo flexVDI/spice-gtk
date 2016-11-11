@@ -23,6 +23,7 @@
 #include "config.h"
 
 #include <windows.h>
+#include <stdio.h>
 #include <libusb.h>
 #include "win-usb-dev.h"
 #include "spice-marshal.h"

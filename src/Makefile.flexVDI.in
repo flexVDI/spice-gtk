@@ -3,19 +3,19 @@
 
 include Makefile
 
-flexvdi_SOURCES = $(top_srcdir)/gtk/spice-cmdline.c $(top_srcdir)/gtk/spicy.c
-flexvdi_OBJECTS = $(patsubst $(top_srcdir)/gtk/%.c, flexvdi/%.o, $(flexvdi_SOURCES))
-flexvdi_HEADERS = $(top_srcdir)/gtk/spice-cmdline.h
+flexvdi_SOURCES = $(top_srcdir)/src/spice-cmdline.c $(top_srcdir)/src/spicy.c
+flexvdi_OBJECTS = $(patsubst $(top_srcdir)/src/%.c, flexvdi/%.o, $(flexvdi_SOURCES))
+flexvdi_HEADERS = $(top_srcdir)/src/spice-cmdline.h
 flexvdi_LIBRARIES = "flexvdi-spice-client >= 2.2.5" spice-client-glib-2.0 spice-client-gtk-$(SPICE_GTK_API_VERSION)
 
 CFLAGS += -g -Wall -Wno-deprecated-declarations -Wno-unused-variable -Wno-unused-function
 CFLAGS += -DWITH_FLEXVDI $(spicy_CPPFLAGS)
-CFLAGS += -I$(top_builddir) -I$(top_srcdir)/gtk -I$(top_srcdir)/spice-common
+CFLAGS += -I$(top_builddir) -I$(top_srcdir)/src -I$(top_srcdir)/spice-common
 
 CFLAGS += $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --cflags $(flexvdi_LIBRARIES))
 LDFLAGS += $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --libs $(flexvdi_LIBRARIES))
 
-flexvdi/%.o: $(top_srcdir)/gtk/%.c $(flexvdi_HEADERS)
+flexvdi/%.o: $(top_srcdir)/src/%.c $(flexvdi_HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 spicy-flexvdi: flexvdi/spicy$(EXEEXT)

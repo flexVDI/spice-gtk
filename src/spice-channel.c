@@ -2193,9 +2193,9 @@ static gboolean spice_channel_iterate(SpiceChannel *channel)
 
         /* We don't want to report an error if the socket was closed gracefully
          * on the other end (VM shutdown) */
-        ret = g_socket_condition_check(c->sock, G_IO_IN | G_IO_ERR | G_IO_HUP);
+        ret = g_socket_condition_check(c->sock, G_IO_IN | G_IO_ERR);
 
-        if (ret & (G_IO_ERR|G_IO_HUP)) {
+        if (ret & G_IO_ERR) {
             CHANNEL_DEBUG(channel, "channel got error");
 
             if (c->state > SPICE_CHANNEL_STATE_CONNECTING) {
@@ -2498,6 +2498,7 @@ ssl_reconnect:
     }
 
 connected:
+    c->has_error = FALSE;
     c->in = g_io_stream_get_input_stream(G_IO_STREAM(c->conn));
     c->out = g_io_stream_get_output_stream(G_IO_STREAM(c->conn));
 
@@ -2516,7 +2517,7 @@ connected:
     if (!spice_channel_recv_link_hdr(channel) ||
         !spice_channel_recv_link_msg(channel) ||
         !spice_channel_recv_auth(channel)) {
-        g_warning("%s: error in recv_link: %s", c->name);
+        g_warning("%s: error in recv_link: %s", c->name, strerror(errno));
         goto cleanup;
     }
 

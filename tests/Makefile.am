@@ -15,16 +15,15 @@ TESTS = $(noinst_PROGRAMS)
 
 AM_CPPFLAGS =					\
 	$(GIO_CFLAGS)				\
-	-I$(top_srcdir)/gtk			\
-	-I$(top_builddir)/gtk			\
-	-I$(top_srcdir)/spice-common/spice-protocol	\
+	-I$(top_srcdir)/src			\
+	-I$(top_builddir)/src			\
 	-DG_LOG_DOMAIN=\"GSpice\"		\
 	$(NULL)
 
 AM_LDFLAGS = $(GIO_LIBS) -static
 
 LDADD =							\
-	$(top_builddir)/gtk/libspice-client-glib-2.0.la	\
+	$(top_builddir)/src/libspice-client-glib-2.0.la	\
 	$(NULL)
 
 util_SOURCES = util.c

@@ -2118,18 +2118,22 @@ static void proxy_lookup_ready(GObject *source_object, GAsyncResult *result,
 
     open_host_connectable_connect(open_host, G_SOCKET_CONNECTABLE(address));
     g_resolver_free_addresses(addresses);
+    g_object_unref(address);
 }
 
 /* main context */
 static gboolean open_host_idle_cb(gpointer data)
 {
     spice_open_host *open_host = data;
-    SpiceSession *session = open_host->session;
-    SpiceSessionPrivate *s = session->priv;
+    SpiceSessionPrivate *s;
 
     g_return_val_if_fail(open_host != NULL, FALSE);
     g_return_val_if_fail(open_host->connection == NULL, FALSE);
 
+    if (spice_channel_get_session(open_host->channel) != open_host->session)
+        return FALSE;
+
+    s = open_host->session->priv;
     open_host->proxy = s->proxy;
     if (open_host->error != NULL) {
         coroutine_yieldto(open_host->from, NULL);
@@ -2211,7 +2215,8 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
         } else {
             port = *use_tls ? s->tls_port : s->port;
             if (port == NULL) {
-                g_warning("Missing port value (use_tls: %d)", *use_tls);
+                g_debug("Missing port value, not attempting %s connection.",
+                        *use_tls?"TLS":"unencrypted");
                 return NULL;
             }
         }
@@ -2230,6 +2235,7 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
     }
 
     open_host.client = g_socket_client_new();
+    g_socket_client_set_enable_proxy(open_host.client, s->proxy != NULL);
     g_socket_client_set_timeout(open_host.client, SOCKET_TIMEOUT);
 
     g_idle_add(open_host_idle_cb, &open_host);
