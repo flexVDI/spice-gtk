@@ -197,7 +197,7 @@ end:
 }
 
 
-static void set_handlers(SpiceChannelClass *klass,
+static void set_handlers(SpiceChannelClassPrivate *klass,
                          const spice_msg_handler* handlers, const int n)
 {
     int i;
@@ -209,7 +209,7 @@ static void set_handlers(SpiceChannelClass *klass,
     }
 }
 
-static void spice_channel_add_base_handlers(SpiceChannelClass *klass)
+static void spice_channel_add_base_handlers(SpiceChannelClassPrivate *klass)
 {
     static const spice_msg_handler handlers[] = {
         [ SPICE_MSG_SET_ACK ]                  = spice_channel_handle_set_ack,
@@ -227,12 +227,14 @@ G_GNUC_INTERNAL
 void spice_channel_set_handlers(SpiceChannelClass *klass,
                                 const spice_msg_handler* handlers, const int n)
 {
-    /* FIXME: use class private (requires glib 2.24) */
-    g_return_if_fail(klass->handlers == NULL);
-    klass->handlers = g_array_sized_new(FALSE, TRUE, sizeof(spice_msg_handler), n);
+    klass->priv =
+        G_TYPE_CLASS_GET_PRIVATE (klass, spice_channel_get_type (), SpiceChannelClassPrivate);
 
-    spice_channel_add_base_handlers(klass);
-    set_handlers(klass, handlers, n);
+    g_return_if_fail(klass->priv->handlers == NULL);
+    klass->priv->handlers = g_array_sized_new(FALSE, TRUE, sizeof(spice_msg_handler), n);
+
+    spice_channel_add_base_handlers(klass->priv);
+    set_handlers(klass->priv, handlers, n);
 }
 
 static void

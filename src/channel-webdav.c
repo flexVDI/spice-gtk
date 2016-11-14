@@ -297,6 +297,7 @@ static void client_start_read(SpiceWebdavChannel *self, Client *client)
 
 static void start_demux(SpiceWebdavChannel *self);
 
+#ifdef USE_PHODAV
 static void demux_to_client_finish(SpiceWebdavChannel *self,
                                    Client *client, gboolean fail)
 {
@@ -329,10 +330,12 @@ static void demux_to_client_cb(GObject *source, GAsyncResult *result, gpointer u
     g_warn_if_fail(size == c->demux.size);
     demux_to_client_finish(client->self, client, fail);
 }
+#endif
 
 static void demux_to_client(SpiceWebdavChannel *self,
                             Client *client)
 {
+#ifdef USE_PHODAV
     SpiceWebdavChannelPrivate *c = self->priv;
     gsize size = c->demux.size;
 
@@ -347,6 +350,7 @@ static void demux_to_client(SpiceWebdavChannel *self,
         /* Nothing to write */
         demux_to_client_finish(self, client, FALSE);
     }
+#endif
 }
 
 static void start_client(SpiceWebdavChannel *self)

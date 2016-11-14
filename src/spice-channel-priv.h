@@ -75,6 +75,11 @@ enum spice_channel_state {
     SPICE_CHANNEL_STATE_MIGRATION_HANDSHAKE,
 };
 
+struct _SpiceChannelClassPrivate
+{
+    GArray *handlers;
+};
+
 struct _SpiceChannelPrivate {
     /* swapped on migration */
     SSL_CTX                     *ctx;

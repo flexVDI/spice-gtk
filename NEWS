@@ -1,3 +1,13 @@
+v0.29
+=====
+
+- sync guest audio volume with client volume
+- use stream volume for PulseAudio source
+- on Windows, fail early during initialization if the usbclerk service
+  can't be reached
+- fix audio and usb managers to work with client provided fds
+- many crasher and bug fixes
+
 v0.28
 =====
 
