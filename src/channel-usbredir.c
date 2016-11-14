@@ -293,6 +293,7 @@ static gboolean spice_usbredir_channel_open_device(
     SpiceSession *session;
     libusb_device_handle *handle = NULL;
     int rc, status;
+    SpiceUsbDeviceManager *manager;
 
     g_return_val_if_fail(priv->state == STATE_DISCONNECTED
 #ifdef USE_POLKIT
@@ -317,7 +318,10 @@ static gboolean spice_usbredir_channel_open_device(
     }
 
     session = spice_channel_get_session(SPICE_CHANNEL(channel));
-    priv->usb_device_manager = g_object_ref(spice_usb_device_manager_get(session, NULL));
+    manager = spice_usb_device_manager_get(session, NULL);
+    g_return_val_if_fail(manager != NULL, FALSE);
+
+    priv->usb_device_manager = g_object_ref(manager);
     if (!spice_usb_device_manager_start_event_listening(priv->usb_device_manager, err)) {
         usbredirhost_set_device(priv->host, NULL);
         return FALSE;
