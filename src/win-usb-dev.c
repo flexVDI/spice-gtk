@@ -108,12 +108,11 @@ GQuark g_udev_client_error_quark(void)
 
 GUdevClient *g_udev_client_new(const gchar* const *subsystems)
 {
-    if (!singleton) {
-        singleton = g_initable_new(G_UDEV_TYPE_CLIENT, NULL, NULL, NULL);
-        return singleton;
-    } else {
+    if (singleton != NULL)
         return g_object_ref(singleton);
-    }
+
+    singleton = g_initable_new(G_UDEV_TYPE_CLIENT, NULL, NULL, NULL);
+    return singleton;
 }
 
 
