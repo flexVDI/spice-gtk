@@ -85,11 +85,15 @@ static unsigned int ref_count_for_untranslated_keys = 0;
 #endif
 
 #ifdef GDK_WINDOWING_WIN32
+#include <gdk/gdkwin32.h>
+
 /* Win32 native virtual keycodes */
 #include "vncdisplaykeymap_win322xtkbd.c"
 #endif
 
 #ifdef GDK_WINDOWING_QUARTZ
+#include <gdk/gdkquartz.h>
+
 /* OS-X native keycodes */
 #include "vncdisplaykeymap_osx2xtkbd.c"
 #endif
