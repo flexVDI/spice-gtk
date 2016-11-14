@@ -321,6 +321,11 @@ static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
     /* Start listening for usb devices plug / unplug */
 #ifdef USE_GUDEV
     priv->udev = g_udev_client_new(subsystems, err);
+    if (priv->udev == NULL) {
+        const gchar *msg = (err != NULL && *err != NULL) ? (*err)->message : "";
+        g_warning("Error initializing GUdevClient - %s", msg);
+        return FALSE;
+    }
     g_signal_connect(G_OBJECT(priv->udev), "uevent",
                      G_CALLBACK(spice_usb_device_manager_uevent_cb), self);
     /* Do coldplug (detection of already connected devices) */
