@@ -232,9 +232,6 @@ g_udev_client_initable_init(GInitable *initable, GCancellable *cancellable,
  g_udev_client_init_failed_unreg:
     UnregisterClass(G_UDEV_CLIENT_WINCLASS_NAME, NULL);
  g_udev_client_init_failed:
-    libusb_exit(priv->ctx);
-    priv->ctx = NULL;
-
     return FALSE;
 }
 
