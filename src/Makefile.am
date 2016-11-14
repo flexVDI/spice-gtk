@@ -401,6 +401,8 @@ endif
 
 spicy_SOURCES =					\
 	spicy.c					\
+	spicy-connect.h 			\
+	spicy-connect.c 			\
 	spice-cmdline.h				\
 	spice-cmdline.c				\
 	$(NULL)

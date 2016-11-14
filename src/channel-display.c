@@ -824,12 +824,15 @@ static void spice_display_channel_up(SpiceChannel *channel)
     SpiceMsgOut *out;
     SpiceSession *s = spice_channel_get_session(channel);
     SpiceMsgcDisplayInit init;
+    SpiceMsgcDisplayPreferredCompression pref_comp_msg;
     int cache_size;
     int glz_window_size;
+    SpiceImageCompression preferred_compression = SPICE_IMAGE_COMPRESSION_INVALID;
 
     g_object_get(s,
                  "cache-size", &cache_size,
                  "glz-window-size", &glz_window_size,
+                 "preferred-compression", &preferred_compression,
                  NULL);
     CHANNEL_DEBUG(channel, "%s: cache_size %d, glz_window_size %d (bytes)", __FUNCTION__,
                   cache_size, glz_window_size);
@@ -841,10 +844,16 @@ static void spice_display_channel_up(SpiceChannel *channel)
     out->marshallers->msgc_display_init(out->marshaller, &init);
     spice_msg_out_send_internal(out);
 
-    /* if we are not using monitors config, notify of existence of
-       this monitor */
-    if (channel->priv->channel_id != 0)
-        g_coroutine_object_notify(G_OBJECT(channel), "monitors");
+    /* notify of existence of this monitor */
+    g_coroutine_object_notify(G_OBJECT(channel), "monitors");
+
+    if (spice_channel_test_capability(channel, SPICE_DISPLAY_CAP_PREF_COMPRESSION) &&
+            preferred_compression > SPICE_IMAGE_COMPRESSION_INVALID) {
+        pref_comp_msg.image_compression = preferred_compression;
+        out = spice_msg_out_new(channel, SPICE_MSGC_DISPLAY_PREFERRED_COMPRESSION);
+        out->marshallers->msgc_display_preferred_compression(out->marshaller, &pref_comp_msg);
+        spice_msg_out_send_internal(out);
+    }
 }
 
 #define DRAW(type) {                                                    \
@@ -1816,7 +1825,7 @@ static void display_handle_monitors_config(SpiceChannel *channel, SpiceMsgIn *in
     g_return_if_fail(config != NULL);
     g_return_if_fail(config->count > 0);
 
-    CHANNEL_DEBUG(channel, "monitors config: n: %d/%d", config->count, config->max_allowed);
+    CHANNEL_DEBUG(channel, "received new monitors config from guest: n: %d/%d", config->count, config->max_allowed);
 
     c->monitors_max = config->max_allowed;
     if (CLAMP_CHECK(c->monitors_max, 1, MONITORS_MAX)) {

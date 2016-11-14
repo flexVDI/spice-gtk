@@ -16,7 +16,6 @@
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
 #include "config.h"
-#include <glib/gi18n.h>
 
 #include "spice-client.h"
 #include "spice-common.h"
@@ -68,7 +67,7 @@ static GOptionEntry app_entries[] = {
         .long_name        = "version",
         .arg              = G_OPTION_ARG_NONE,
         .arg_data         = &version,
-        .description      = N_("Display version and quit"),
+        .description      = "Display version and quit",
     },
     {
         /* end of list */
@@ -88,18 +87,14 @@ int main(int argc, char *argv[])
 
     signal(SIGINT, signal_handler);
 
-    bindtextdomain(GETTEXT_PACKAGE, SPICE_GTK_LOCALEDIR);
-    bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
-    textdomain(GETTEXT_PACKAGE);
-
     /* parse opts */
     context = g_option_context_new(NULL);
-    g_option_context_set_summary(context, _("A Spice client used for testing and measurements."));
-    g_option_context_set_description(context, _("Report bugs to " PACKAGE_BUGREPORT "."));
+    g_option_context_set_summary(context, "A Spice client used for testing and measurements.");
+    g_option_context_set_description(context, "Report bugs to " PACKAGE_BUGREPORT ".");
     g_option_context_set_main_group(context, spice_cmdline_get_option_group());
     g_option_context_add_main_entries(context, app_entries, NULL);
     if (!g_option_context_parse (context, &argc, &argv, &error)) {
-        g_print(_("option parsing failed: %s\n"), error->message);
+        g_print("option parsing failed: %s\n", error->message);
         exit(1);
     }
 
@@ -119,7 +114,7 @@ int main(int argc, char *argv[])
     spice_cmdline_session_setup(session);
 
     if (!spice_session_connect(session)) {
-        fprintf(stderr, _("spice_session_connect failed\n"));
+        fprintf(stderr, "spice_session_connect failed\n");
         exit(1);
     }
 

@@ -75,6 +75,12 @@ typedef struct SpiceFileXferTask {
     GError                         *error;
 } SpiceFileXferTask;
 
+typedef enum {
+    DISPLAY_UNDEFINED,
+    DISPLAY_DISABLED,
+    DISPLAY_ENABLED,
+} SpiceDisplayState;
+
 struct _SpiceMainChannelPrivate  {
     enum SpiceMouseMode         mouse_mode;
     bool                        agent_connected;
@@ -99,8 +105,7 @@ struct _SpiceMainChannelPrivate  {
         int                     y;
         int                     width;
         int                     height;
-        gboolean                enabled;
-        gboolean                enabled_set;
+        SpiceDisplayState       display_state;
     } display[MAX_DISPLAY];
     gint                        timer_id;
     GQueue                      *agent_msg_queue;
@@ -1069,7 +1074,7 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
     } else {
         monitors = 0;
         for (i = 0; i < SPICE_N_ELEMENTS(c->display); i++) {
-            if (c->display[i].enabled)
+            if (c->display[i].display_state == DISPLAY_ENABLED)
                 monitors += 1;
         }
     }
@@ -1082,9 +1087,10 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
         c->disable_display_align == FALSE)
         mon->flags |= VD_AGENT_CONFIG_MONITORS_FLAG_USE_POS;
 
+    CHANNEL_DEBUG(channel, "sending new monitors config to guest");
     j = 0;
     for (i = 0; i < SPICE_N_ELEMENTS(c->display); i++) {
-        if (!c->display[i].enabled) {
+        if (c->display[i].display_state != DISPLAY_ENABLED) {
             if (spice_main_agent_test_capability(channel,
                                      VD_AGENT_CAP_SPARSE_MONITORS_CONFIG))
                 j++;
@@ -1095,7 +1101,7 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
         mon->monitors[j].height = c->display[i].height;
         mon->monitors[j].x = c->display[i].x;
         mon->monitors[j].y = c->display[i].y;
-        CHANNEL_DEBUG(channel, "monitor config: #%d %dx%d+%d+%d @ %d bpp", j,
+        CHANNEL_DEBUG(channel, "monitor #%d: %dx%d+%d+%d @ %d bpp", j,
                       mon->monitors[j].width, mon->monitors[j].height,
                       mon->monitors[j].x, mon->monitors[j].y,
                       mon->monitors[j].depth);
@@ -1421,6 +1427,22 @@ static void agent_clipboard_release(SpiceMainChannel *channel, guint selection)
     agent_msg_queue(channel, VD_AGENT_CLIPBOARD_RELEASE, msgsize, msg);
 }
 
+static gboolean any_display_has_dimensions(SpiceMainChannel *channel)
+{
+    SpiceMainChannelPrivate *c;
+    guint i;
+
+    g_return_val_if_fail(SPICE_IS_MAIN_CHANNEL(channel), FALSE);
+    c = channel->priv;
+
+    for (i = 0; i < MAX_DISPLAY; i++) {
+        if (c->display[i].width > 0 && c->display[i].height > 0)
+            return TRUE;
+    }
+
+    return FALSE;
+}
+
 /* main context*/
 static gboolean timer_set_display(gpointer data)
 {
@@ -1433,16 +1455,22 @@ static gboolean timer_set_display(gpointer data)
     if (!c->agent_connected)
         return FALSE;
 
+    if (!any_display_has_dimensions(channel)) {
+        SPICE_DEBUG("Not sending monitors config, at least one monitor must have dimensions");
+        return FALSE;
+    }
+
     session = spice_channel_get_session(SPICE_CHANNEL(channel));
 
-    /* ensure we have an explicit monitor configuration at least for
-       number of display channels */
-    for (i = 0; i < spice_session_get_n_display_channels(session); i++)
-        if (!c->display[i].enabled_set) {
-            SPICE_DEBUG("Not sending monitors config, missing monitors");
-            return FALSE;
-        }
-
+    if (!spice_main_agent_test_capability(channel, VD_AGENT_CAP_SPARSE_MONITORS_CONFIG)) {
+        /* ensure we have an explicit monitor configuration at least for
+           number of display channels */
+        for (i = 0; i < spice_session_get_n_display_channels(session); i++)
+            if (c->display[i].display_state == DISPLAY_UNDEFINED) {
+                SPICE_DEBUG("Not sending monitors config, missing monitors");
+                return FALSE;
+            }
+    }
     spice_main_send_monitor_config(channel);
 
     return FALSE;
@@ -2779,6 +2807,7 @@ void spice_main_clipboard_selection_request(SpiceMainChannel *channel, guint sel
  **/
 void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled)
 {
+    SpiceDisplayState display_state = enabled ? DISPLAY_ENABLED : DISPLAY_DISABLED;
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
     g_return_if_fail(id >= -1);
@@ -2788,15 +2817,13 @@ void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean 
     if (id == -1) {
         gint i;
         for (i = 0; i < G_N_ELEMENTS(c->display); i++) {
-            c->display[i].enabled = enabled;
-            c->display[i].enabled_set = TRUE;
+            c->display[i].display_state = display_state;
         }
     } else {
         g_return_if_fail(id < G_N_ELEMENTS(c->display));
-        if (c->display[id].enabled == enabled)
+        if (c->display[id].display_state == display_state)
             return;
-        c->display[id].enabled = enabled;
-        c->display[id].enabled_set = TRUE;
+        c->display[id].display_state = display_state;
     }
 
     update_display_timer(channel, 1);

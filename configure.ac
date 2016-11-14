@@ -4,6 +4,7 @@ AC_INIT([spice-gtk], [m4_esyscmd(build-aux/git-version-gen .tarball-version)],
         [spice-devel@lists.freedesktop.org])
 
 AC_CONFIG_MACRO_DIR([m4])
+m4_include([spice-common/m4/spice-deps.m4])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_AUX_DIR([build-aux])
 
@@ -72,7 +73,9 @@ AC_CHECK_LIBM
 AC_SUBST(LIBM)
 
 AC_CONFIG_SUBDIRS([spice-common])
-COMMON_CFLAGS='-I ${top_srcdir}/spice-common/ -I ${top_srcdir}/spice-common/spice-protocol/'
+PKG_CHECK_MODULES([SPICE_PROTOCOL], [spice-protocol >= 0.12.10])
+
+COMMON_CFLAGS='-I ${top_srcdir}/spice-common/ ${SPICE_PROTOCOL_CFLAGS}'
 AC_SUBST(COMMON_CFLAGS)
 
 SPICE_GTK_MAJOR_VERSION=`echo $PACKAGE_VERSION | cut -d. -f1`
@@ -98,7 +101,7 @@ if test ! -e "$srcdir/src/vncdisplaykeymap_osx2xtkbd.c"; then
   AC_MSG_RESULT([found])
 fi
 
-SPICE_GLIB_REQUIRES=""
+SPICE_GLIB_REQUIRES="spice-protocol >= 0.12.10"
 SPICE_GTK_REQUIRES=""
 
 PKG_CHECK_MODULES(PIXMAN, pixman-1 >= 0.17.7)
@@ -356,22 +359,7 @@ AC_SUBST(NOPOLL_LIBS)
 AC_CHECK_LIB(z, deflate, Z_LIBS='-lz', AC_MSG_ERROR([zlib not found]))
 AC_SUBST(Z_LIBS)
 
-AC_ARG_ENABLE([smartcard],
-  AS_HELP_STRING([--enable-smartcard=@<:@auto/yes/no@:>@],
-                 [Enable smartcard support @<:@default=auto@:>@]),
-  [],
-  [enable_smartcard="auto"])
-
-have_smartcard=no
-if test "x$enable_smartcard" != "xno"; then
-  PKG_CHECK_MODULES(SMARTCARD, libcacard >= 0.1.2, [have_smartcard=yes], [have_smartcard=no])
-  if test "x$enable_smartcard" != "xauto" && test "x$have_smartcard" = "xno"; then
-    AC_MSG_ERROR("Smartcard support requested but libcacard could not be found")
-  fi
-  if test "x$have_smartcard" = "xyes"; then
-    AC_DEFINE([USE_SMARTCARD], [1], [Define if supporting smartcard proxying])
-  fi
-fi
+SPICE_CHECK_SMARTCARD([SMARTCARD])
 AM_CONDITIONAL([WITH_SMARTCARD], [test "x$have_smartcard" = "xyes"])
 
 AC_ARG_ENABLE([usbredir],
@@ -696,18 +684,7 @@ if test "x$enable_dbus" != "xno"; then
   fi
 fi
 
-AC_ARG_ENABLE([lz4],
-  AS_HELP_STRING([--enable-lz4=@<:@yes/no@:>@],
-                 [Enable lz4 compression algorithm @<:@default=no@:>@]),
-  [],
-  [enable_lz4="no"])
-
-if test "x$enable_lz4" = "xyes"; then
-    PKG_CHECK_MODULES(LZ4, liblz4)
-    AC_DEFINE([USE_LZ4], [1], [Define to build with Lz4 support])
-fi
-AC_SUBST(LZ4_CFLAGS)
-AC_SUBST(LZ4_LIBS)
+SPICE_CHECK_LZ4([LZ4])
 
 AC_ARG_ENABLE([va],
   AS_HELP_STRING([--enable-va=@<:@yes/no@:>@],
@@ -763,7 +740,7 @@ SPICE_CFLAGS="$SPICE_CFLAGS $WARN_CFLAGS"
 
 AC_SUBST(SPICE_CFLAGS)
 
-SPICE_GLIB_CFLAGS="$PROTOCOL_CFLAGS $PIXMAN_CFLAGS $PULSE_CFLAGS $GST_CFLAGS $GLIB2_CFLAGS $GIO_CFLAGS $GOBJECT2_CFLAGS $SSL_CFLAGS $SASL_CFLAGS"
+SPICE_GLIB_CFLAGS="$PIXMAN_CFLAGS $PULSE_CFLAGS $GST_CFLAGS $GLIB2_CFLAGS $GIO_CFLAGS $GOBJECT2_CFLAGS $SSL_CFLAGS $SASL_CFLAGS"
 SPICE_GTK_CFLAGS="$SPICE_GLIB_CFLAGS $GTK_CFLAGS "
 
 AC_SUBST(SPICE_GLIB_CFLAGS)

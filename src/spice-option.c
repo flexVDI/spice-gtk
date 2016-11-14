@@ -41,6 +41,7 @@ static gint cache_size = 0;
 static gint glz_window_size = 0;
 static gchar *secure_channels = NULL;
 static gchar *shared_dir = NULL;
+static SpiceImageCompression preferred_compression = SPICE_IMAGE_COMPRESSION_INVALID;
 
 G_GNUC_NORETURN
 static void option_version(void)
@@ -149,6 +150,33 @@ static gboolean parse_usbredir_filter(const gchar *option_name,
     return TRUE;
 }
 
+static gboolean parse_preferred_compression(const gchar *option_name, const gchar *value,
+                                            gpointer data, GError **error)
+{
+    if (!strcmp(value, "auto-glz")) {
+        preferred_compression = SPICE_IMAGE_COMPRESSION_AUTO_GLZ;
+    } else if (!strcmp(value, "auto-lz")) {
+        preferred_compression = SPICE_IMAGE_COMPRESSION_AUTO_LZ;
+    } else if (!strcmp(value, "quic")) {
+        preferred_compression = SPICE_IMAGE_COMPRESSION_QUIC;
+    } else if (!strcmp(value, "glz")) {
+        preferred_compression = SPICE_IMAGE_COMPRESSION_GLZ;
+    } else if (!strcmp(value, "lz")) {
+        preferred_compression = SPICE_IMAGE_COMPRESSION_LZ;
+#ifdef USE_LZ4
+    } else if (!strcmp(value, "lz4")) {
+        preferred_compression = SPICE_IMAGE_COMPRESSION_LZ4;
+#endif
+    } else if (!strcmp(value, "off")) {
+        preferred_compression = SPICE_IMAGE_COMPRESSION_OFF;
+    } else {
+        preferred_compression = SPICE_IMAGE_COMPRESSION_INVALID;
+        g_set_error(error, G_OPTION_ERROR, G_OPTION_ERROR_FAILED,
+                    _("Image compression algorithm %s not supported"), value);
+        return FALSE;
+    }
+    return TRUE;
+}
 
 /**
  * spice_get_option_group: (skip)
@@ -194,6 +222,13 @@ GOptionGroup* spice_get_option_group(void)
           N_("Glz compression history size"), N_("<bytes>") },
         { "spice-shared-dir", '\0', 0, G_OPTION_ARG_FILENAME, &shared_dir,
           N_("Shared directory"), N_("<dir>") },
+        { "spice-preferred-compression", '\0', 0, G_OPTION_ARG_CALLBACK, parse_preferred_compression,
+          N_("Preferred image compression algorithm"),
+#ifdef USE_LZ4
+          "<auto-glz,auto-lz,quic,glz,lz,lz4,off>" },
+#else
+          "<auto-glz,auto-lz,quic,glz,lz,off>" },
+#endif
 
         { "spice-debug", '\0', G_OPTION_FLAG_NO_ARG, G_OPTION_ARG_CALLBACK, option_debug,
           N_("Enable Spice-GTK debugging"), NULL },
@@ -281,4 +316,6 @@ void spice_set_session_option(SpiceSession *session)
         g_object_set(session, "glz-window-size", glz_window_size, NULL);
     if (shared_dir)
         g_object_set(session, "shared-dir", shared_dir, NULL);
+    if (preferred_compression != SPICE_IMAGE_COMPRESSION_INVALID)
+        g_object_set(session, "preferred-compression", preferred_compression, NULL);
 }
