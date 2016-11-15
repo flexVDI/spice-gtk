@@ -137,6 +137,8 @@ static gboolean version = false;
 static char *spicy_title = NULL;
 static gboolean kiosk_mode = false;
 static gboolean disable_power_events = false;
+static gboolean disable_copy_to_guest = false;
+static gboolean disable_paste_from_guest = false;
 /* globals */
 static GMainLoop     *mainloop = NULL;
 static int           connections = 0;
@@ -238,6 +240,10 @@ static void update_edit_menu_window(SpiceWindow *win)
 {
     int i;
     GtkAction *toggle;
+    gboolean disabled_entries[G_N_ELEMENTS(spice_edit_properties)] = {
+        disable_copy_to_guest,
+        disable_paste_from_guest,
+        false };
 
     if (win == NULL) {
         return;
@@ -248,7 +254,7 @@ static void update_edit_menu_window(SpiceWindow *win)
     for (i = 0; i < G_N_ELEMENTS(spice_edit_properties); i++) {
         toggle = gtk_action_group_get_action(win->ag, spice_edit_properties[i]);
         if (toggle) {
-            gtk_action_set_sensitive(toggle, win->conn->agent_connected);
+            gtk_action_set_sensitive(toggle, win->conn->agent_connected && !disabled_entries[i]);
         }
     }
 }
@@ -2079,6 +2085,18 @@ static GOptionEntry cmd_entries[] = {
         .arg              = G_OPTION_ARG_NONE,
         .arg_data         = &disable_power_events,
         .description      = "Disable power events",
+    },{
+        .long_name        = "disable-copy-to-guest",
+        .short_name       = '\0',
+        .arg              = G_OPTION_ARG_NONE,
+        .arg_data         = &disable_copy_to_guest,
+        .description      = "Disable copy to guest",
+    },{
+        .long_name        = "disable-paste-from-guest",
+        .short_name       = '\0',
+        .arg              = G_OPTION_ARG_NONE,
+        .arg_data         = &disable_paste_from_guest,
+        .description      = "Disable paste from guest",
     },{
         /* end of list */
     }
