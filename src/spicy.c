@@ -136,6 +136,7 @@ static gboolean fullscreen = false;
 static gboolean version = false;
 static char *spicy_title = NULL;
 static gboolean kiosk_mode = false;
+static gboolean disable_power_events = false;
 /* globals */
 static GMainLoop     *mainloop = NULL;
 static int           connections = 0;
@@ -1460,6 +1461,16 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
                                       win, 0);
     }
 
+    if (disable_power_events) {
+        gtk_widget_hide(gtk_ui_manager_get_widget(win->ui, "/MainMenu/PowerMenu"));
+        gtk_widget_hide(gtk_ui_manager_get_widget(win->ui, "/ToolBar/Reset"));
+        gtk_widget_hide(gtk_ui_manager_get_widget(win->ui, "/FullscreenBar/Reset"));
+        gtk_widget_hide(gtk_ui_manager_get_widget(win->ui, "/ToolBar/Powerdown"));
+        gtk_widget_hide(gtk_ui_manager_get_widget(win->ui, "/FullscreenBar/Powerdown"));
+        gtk_widget_hide(gtk_ui_manager_get_widget(win->ui, "/ToolBar/Shutdown"));
+        gtk_widget_hide(gtk_ui_manager_get_widget(win->ui, "/FullscreenBar/Shutdown"));
+    }
+
     update_edit_menu_window(win);
 
     toggle = gtk_action_group_get_action(win->ag, "Toolbar");
@@ -2062,6 +2073,12 @@ static GOptionEntry cmd_entries[] = {
         .arg              = G_OPTION_ARG_NONE,
         .arg_data         = &kiosk_mode,
         .description      = "Use kiosk mode",
+    },{
+        .long_name        = "disable-power-events",
+        .short_name       = '\0',
+        .arg              = G_OPTION_ARG_NONE,
+        .arg_data         = &disable_power_events,
+        .description      = "Disable power events",
     },{
         /* end of list */
     }
