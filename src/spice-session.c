@@ -35,6 +35,7 @@
 #include "spice-uri-priv.h"
 #include "channel-playback-priv.h"
 #include "spice-audio.h"
+#include "channel-inputs.h"
 
 struct channel {
     SpiceChannel      *channel;
@@ -131,6 +132,7 @@ struct _SpiceSessionPrivate {
     GStrv             redirected_lports;
 
     gint inactivity_timeout;
+    SpiceInputsChannel *inputs_channel;
 };
 
 
@@ -2340,6 +2342,21 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
     return open_host.connection;
 }
 
+static gboolean check_inactivity(gpointer user_data)
+{
+    SpiceSession *session = user_data;
+    SpiceSessionPrivate *s = session->priv;
+    gint elapsed = g_get_monotonic_time() - spice_inputs_get_last_input_time(s->inputs_channel);
+    elapsed /= 1000000;
+
+    if (elapsed >= s->inactivity_timeout) {
+        spice_session_disconnect(session);
+    } else {
+        g_timeout_add_seconds(s->inactivity_timeout - elapsed, check_inactivity, session);
+    }
+
+    return FALSE;
+}
 
 G_GNUC_INTERNAL
 void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel)
@@ -2368,6 +2385,10 @@ void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel)
 
         CHANNEL_DEBUG(channel, "new main channel, switching");
         s->cmain = channel;
+    } else if (SPICE_IS_INPUTS_CHANNEL(channel) && s->inactivity_timeout) {
+        g_warn_if_fail(s->inputs_channel == NULL);
+        s->inputs_channel = SPICE_INPUTS_CHANNEL(channel);
+        g_timeout_add_seconds(s->inactivity_timeout, check_inactivity, session);
     } else if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
         g_warn_if_fail(s->playback_channel == NULL);
         s->playback_channel = SPICE_PLAYBACK_CHANNEL(channel);
