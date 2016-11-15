@@ -141,7 +141,7 @@ g_udev_client_list_devices(GUdevClient *self, GList **devs,
     rc = libusb_get_device_list(priv->ctx, &lusb_list);
     if (rc < 0) {
         const char *errstr = spice_usbutil_libusb_strerror(rc);
-        g_warning("%s: libusb_get_device_list failed", name);
+        g_warning("%s: libusb_get_device_list failed - %s", name, errstr);
         g_set_error(err, G_UDEV_CLIENT_ERROR, G_UDEV_CLIENT_LIBUSB_FAILED,
                     "%s: Error getting device list from libusb: %s [%"G_GSSIZE_FORMAT"]",
                     name, errstr, rc);
