@@ -64,6 +64,8 @@ struct _SpiceGtkSessionPrivate {
     gboolean                auto_usbredir_enable;
     int                     auto_usbredir_reqs;
     gboolean                pointer_grabbed;
+    gboolean                disable_copy_to_guest;
+    gboolean                disable_paste_from_guest;
 };
 
 /**
@@ -117,6 +119,8 @@ enum {
     PROP_AUTO_CLIPBOARD,
     PROP_AUTO_USBREDIR,
     PROP_POINTER_GRABBED,
+    PROP_DISABLE_COPY_TO_GUEST,
+    PROP_DISABLE_PASTE_FROM_GUEST,
 };
 
 static guint32 get_keyboard_lock_modifiers(void)
@@ -315,6 +319,12 @@ static void spice_gtk_session_get_property(GObject    *gobject,
     case PROP_POINTER_GRABBED:
         g_value_set_boolean(value, s->pointer_grabbed);
         break;
+    case PROP_DISABLE_COPY_TO_GUEST:
+        g_value_set_boolean(value, s->disable_copy_to_guest);
+        break;
+    case PROP_DISABLE_PASTE_FROM_GUEST:
+        g_value_set_boolean(value, s->disable_paste_from_guest);
+        break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -362,6 +372,12 @@ static void spice_gtk_session_set_property(GObject      *gobject,
         }
         break;
     }
+    case PROP_DISABLE_COPY_TO_GUEST:
+        s->disable_copy_to_guest = g_value_get_boolean(value);
+        break;
+    case PROP_DISABLE_PASTE_FROM_GUEST:
+        s->disable_paste_from_guest = g_value_get_boolean(value);
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
         break;
@@ -453,6 +469,38 @@ static void spice_gtk_session_class_init(SpiceGtkSessionClass *klass)
                               "Whether the pointer is grabbed",
                               FALSE,
                               G_PARAM_READABLE |
+                              G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceGtkSession:disable-copy-to-guest:
+     *
+     * When this is true the clipboard does not work from client to guest.
+     *
+     * Since: 0.29
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_DISABLE_COPY_TO_GUEST,
+         g_param_spec_boolean("disable-copy-to-guest",
+                              "Disable copy to guest",
+                              "Disable clipboard from client to guest.",
+                              FALSE,
+                              G_PARAM_READWRITE |
+                              G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceGtkSession:disable-paste-from-guest:
+     *
+     * When this is true the clipboard does not work from guest to client.
+     *
+     * Since: 0.29
+     **/
+    g_object_class_install_property
+        (gobject_class, PROP_DISABLE_PASTE_FROM_GUEST,
+         g_param_spec_boolean("disable-paste-from-guest",
+                              "Disable paste from guest",
+                              "Disable clipboard from guest to client.",
+                              FALSE,
+                              G_PARAM_READWRITE |
                               G_PARAM_STATIC_STRINGS));
 
     g_type_class_add_private(klass, sizeof(SpiceGtkSessionPrivate));
