@@ -2002,6 +2002,10 @@ static spice_connection *connection_new(void)
     conn = g_new0(spice_connection, 1);
     conn->session = spice_session_new();
     conn->gtk_session = spice_gtk_session_get(conn->session);
+    g_object_set(conn->gtk_session,
+                 "disable-copy-to-guest", disable_copy_to_guest,
+                 "disable-paste-from-guest", disable_paste_from_guest,
+                 NULL);
     g_signal_connect(conn->session, "channel-new",
                      G_CALLBACK(channel_new), conn);
     g_signal_connect(conn->session, "channel-destroy",
