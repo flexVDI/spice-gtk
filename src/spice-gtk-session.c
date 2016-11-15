@@ -711,7 +711,7 @@ static void clipboard_owner_change(GtkClipboard        *clipboard,
 
         s->clipboard_by_guest[selection] = FALSE;
         s->clip_hasdata[selection] = TRUE;
-        if (s->auto_clipboard_enable && !read_only(self))
+        if (s->auto_clipboard_enable && !read_only(self) && !s->disable_copy_to_guest)
             gtk_clipboard_request_targets(clipboard, clipboard_get_targets,
                                           weak_ref(G_OBJECT(self)));
         break;
@@ -888,6 +888,7 @@ static gboolean clipboard_grab(SpiceMainChannel *main, guint selection,
 
     if (read_only(self) ||
         !s->auto_clipboard_enable ||
+        s->disable_paste_from_guest ||
         s->nclip_targets[selection] == 0)
         goto skip_grab_clipboard;
 
@@ -1197,6 +1198,7 @@ void spice_gtk_session_copy_to_guest(SpiceGtkSession *self)
     g_return_if_fail(read_only(self) == FALSE);
 
     SpiceGtkSessionPrivate *s = self->priv;
+    if (s->disable_copy_to_guest) return;
     int selection = VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD;
 
     if (s->clip_hasdata[selection] && !s->clip_grabbed[selection]) {
@@ -1219,6 +1221,7 @@ void spice_gtk_session_paste_from_guest(SpiceGtkSession *self)
     g_return_if_fail(read_only(self) == FALSE);
 
     SpiceGtkSessionPrivate *s = self->priv;
+    if (s->disable_paste_from_guest) return;
     int selection = VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD;
 
     if (s->nclip_targets[selection] == 0) {
