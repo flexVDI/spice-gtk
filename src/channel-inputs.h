@@ -83,6 +83,7 @@ void spice_inputs_key_press(SpiceInputsChannel *channel, guint scancode);
 void spice_inputs_key_release(SpiceInputsChannel *channel, guint scancode);
 void spice_inputs_set_key_locks(SpiceInputsChannel *channel, guint locks);
 void spice_inputs_key_press_and_release(SpiceInputsChannel *channel, guint scancode);
+gint64 spice_inputs_get_last_input_time(SpiceInputsChannel *channel);
 
 G_END_DECLS
 
