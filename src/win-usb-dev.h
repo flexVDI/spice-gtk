@@ -79,7 +79,7 @@ struct _GUdevClientClass
 };
 
 GType g_udev_client_get_type(void) G_GNUC_CONST;
-GUdevClient *g_udev_client_new(const gchar* const *subsystems, GError **error);
+GUdevClient *g_udev_client_new(const gchar* const *subsystems);
 GList *g_udev_client_query_by_subsystem(GUdevClient *client, const gchar *subsystem);
 
 GType g_udev_device_get_type(void) G_GNUC_CONST;

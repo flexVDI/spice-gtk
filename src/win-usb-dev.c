@@ -106,12 +106,12 @@ GQuark g_udev_client_error_quark(void)
     return g_quark_from_static_string("win-gudev-client-error-quark");
 }
 
-GUdevClient *g_udev_client_new(const gchar* const *subsystems, GError **error)
+GUdevClient *g_udev_client_new(const gchar* const *subsystems)
 {
     if (singleton != NULL)
         return g_object_ref(singleton);
 
-    singleton = g_initable_new(G_UDEV_TYPE_CLIENT, NULL, error, NULL);
+    singleton = g_initable_new(G_UDEV_TYPE_CLIENT, NULL, NULL, NULL);
     return singleton;
 }
 
