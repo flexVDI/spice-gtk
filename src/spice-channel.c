@@ -2340,6 +2340,21 @@ const GError* spice_channel_get_error(SpiceChannel *self)
     return c->error;
 }
 
+static void nopoll_log_handler(noPollCtx *ctx, noPollDebugLevel level,
+                               const char *log_msg, noPollPtr user_data)
+{
+    GLogLevelFlags slevel;
+    if (level == NOPOLL_LEVEL_DEBUG) slevel = G_LOG_LEVEL_DEBUG;
+    else {
+        slevel = G_LOG_LEVEL_WARNING;
+#ifdef WIN32
+        errno = WSAGetErrno();
+#endif
+        if (errno == EAGAIN) return; // Ignore these errors
+    }
+    g_log(G_LOG_DOMAIN, slevel, "%s", log_msg);
+}
+
 /* coroutine context */
 static void *spice_channel_coroutine(void *data)
 {
@@ -2406,6 +2421,7 @@ reconnect:
             goto cleanup;
         }
 
+        nopoll_log_set_handler(c->np_ctx, nopoll_log_handler, NULL);
         //nopoll_log_enable(c->np_ctx, nopoll_true);
 
         addr = g_socket_get_remote_address(c->sock, NULL);
