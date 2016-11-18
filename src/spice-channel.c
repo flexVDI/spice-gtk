@@ -893,15 +893,15 @@ reread:
     if (c->ws) {
         ret = nopoll_conn_read(c->np_conn, data, len, nopoll_false, 0);
         if (ret < 0) {
-            if (errno == EAGAIN
+            if (ret == -3) {
+                /* nopoll is telling us he got a WS PING, and we should ignore it */
+                c->error_was_ping = TRUE;
+            } else if (errno == EAGAIN
 #ifdef WIN32
                     || errno == WSAEWOULDBLOCK
 #endif
                 ) {
                 cond = G_IO_IN;
-            } else if (ret == -3) {
-                /* nopoll is telling us he got a WS PING, and we should ignore it */
-                c->error_was_ping = TRUE;
             }
             ret = -1;
         }
