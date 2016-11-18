@@ -2355,6 +2355,13 @@ static void nopoll_log_handler(noPollCtx *ctx, noPollDebugLevel level,
     g_log(G_LOG_DOMAIN, slevel, "%s", log_msg);
 }
 
+static noPollCtx * nopoll_get_context(void)
+{
+    static noPollCtx *np_ctx = NULL;
+    if (!np_ctx) np_ctx = nopoll_ctx_new();
+    return np_ctx;
+}
+
 /* coroutine context */
 static void *spice_channel_coroutine(void *data)
 {
@@ -2414,7 +2421,7 @@ reconnect:
     if (ws_token != NULL) {
         c->ws = TRUE;
 
-        c->np_ctx = nopoll_ctx_new();
+        c->np_ctx = nopoll_get_context();
         if (c->np_ctx == NULL) {
             g_critical("Can't allocate noPoll context");
             g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_TLS);
