@@ -1077,6 +1077,40 @@ static void display_update_stream_region(display_stream *st)
     }
 }
 
+static void report_invalid_stream(SpiceChannel *channel, uint32_t id)
+{
+    if (spice_channel_test_capability(channel, SPICE_DISPLAY_CAP_STREAM_REPORT)) {
+        SpiceMsgcDisplayStreamReport report;
+        SpiceMsgOut *msg;
+
+        /* Send a special stream report (UINT_MAX dropped frames out of zero)
+         * to indicate there is no such stream.
+         */
+        spice_printerr("notify the server that stream %u does not exist", id);
+        memset(&report, 0, sizeof(report));
+        report.stream_id = id;
+        report.num_frames = 0;
+        report.num_drops = UINT_MAX;
+
+        msg = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_DISPLAY_STREAM_REPORT);
+        msg->marshallers->msgc_display_stream_report(msg->marshaller, &report);
+        spice_msg_out_send(msg);
+    }
+}
+
+static display_stream *get_stream_by_id(SpiceChannel *channel, uint32_t id)
+{
+    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
+
+    if (c != NULL && c->streams != NULL && id < c->nstreams &&
+        c->streams[id] != NULL) {
+        return c->streams[id];
+    }
+
+    report_invalid_stream(channel, id);
+    return NULL;
+}
+
 /* coroutine context */
 static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
 {
@@ -1127,6 +1161,7 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
     if (st->video_decoder == NULL) {
         spice_printerr("could not create a video decoder for codec %u", op->codec_type);
         destroy_stream(channel, op->id);
+        report_invalid_stream(channel, op->id);
     }
 }
 
@@ -1224,17 +1259,10 @@ void stream_display_frame(display_stream *st, SpiceMsgIn *frame_msg,
 static void display_update_stream_report(SpiceDisplayChannel *channel, uint32_t stream_id,
                                          uint32_t frame_time, int32_t latency)
 {
-    SpiceDisplayChannelPrivate *c = channel->priv;
-    display_stream *st;
+    display_stream *st = get_stream_by_id(SPICE_CHANNEL(channel), stream_id);
     guint64 now;
 
-    g_return_if_fail(c != NULL);
-    g_return_if_fail(c->streams != NULL);
-    g_return_if_fail(c->nstreams > stream_id);
-
-    st = channel->priv->streams[stream_id];
     g_return_if_fail(st != NULL);
-
     if (!st->report_is_active) {
         return;
     }
@@ -1347,15 +1375,10 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     SpiceStreamDataHeader *op = spice_msg_in_parsed(in);
-    display_stream *st;
+    display_stream *st = get_stream_by_id(channel, op->id);
     guint32 mmtime;
     int32_t latency;
 
-    g_return_if_fail(c != NULL);
-    g_return_if_fail(c->streams != NULL);
-    g_return_if_fail(c->nstreams > op->id);
-
-    st =  c->streams[op->id];
     g_return_if_fail(st != NULL);
     mmtime = stream_get_time(st);
 
@@ -1415,17 +1438,10 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
 /* coroutine context */
 static void display_handle_stream_clip(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     SpiceMsgDisplayStreamClip *op = spice_msg_in_parsed(in);
-    display_stream *st;
+    display_stream *st = get_stream_by_id(channel, op->id);
 
-    g_return_if_fail(c != NULL);
-    g_return_if_fail(c->streams != NULL);
-    g_return_if_fail(c->nstreams > op->id);
-
-    st = c->streams[op->id];
     g_return_if_fail(st != NULL);
-
     if (st->msg_clip) {
         spice_msg_in_unref(st->msg_clip);
     }
@@ -1524,17 +1540,10 @@ static void display_handle_stream_destroy_all(SpiceChannel *channel, SpiceMsgIn 
 /* coroutine context */
 static void display_handle_stream_activate_report(SpiceChannel *channel, SpiceMsgIn *in)
 {
-    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     SpiceMsgDisplayStreamActivateReport *op = spice_msg_in_parsed(in);
-    display_stream *st;
+    display_stream *st = get_stream_by_id(channel, op->stream_id);
 
-    g_return_if_fail(c != NULL);
-    g_return_if_fail(c->streams != NULL);
-    g_return_if_fail(c->nstreams > op->stream_id);
-
-    st = c->streams[op->stream_id];
     g_return_if_fail(st != NULL);
-
     st->report_is_active = TRUE;
     st->report_id = op->unique_id;
     st->report_max_window = op->max_window_size;
