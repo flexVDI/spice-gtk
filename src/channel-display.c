@@ -1424,7 +1424,11 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
      * decoding and best decide if/when to drop them when they are late,
      * taking into account the impact on later frames.
      */
-    st->video_decoder->queue_frame(st->video_decoder, in,  latency);
+    if (!st->video_decoder->queue_frame(st->video_decoder, in, latency)) {
+        destroy_stream(channel, op->id);
+        report_invalid_stream(channel, op->id);
+        return;
+    }
     if (c->enable_adaptive_streaming) {
         display_update_stream_report(SPICE_DISPLAY_CHANNEL(channel), op->id,
                                      op->multi_media_time, latency);

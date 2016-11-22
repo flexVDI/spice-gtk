@@ -280,6 +280,28 @@ static void free_pipeline(SpiceGstDecoder *decoder)
     decoder->pipeline = NULL;
 }
 
+static gboolean handle_pipeline_message(GstBus *bus, GstMessage *msg, gpointer video_decoder)
+{
+    SpiceGstDecoder *decoder = video_decoder;
+
+    if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR) {
+        GError *err = NULL;
+        gchar *debug_info = NULL;
+        gst_message_parse_error(msg, &err, &debug_info);
+        spice_warning("GStreamer error from element %s: %s",
+                      GST_OBJECT_NAME(msg->src), err->message);
+        if (debug_info) {
+            SPICE_DEBUG("debug information: %s", debug_info);
+            g_free(debug_info);
+        }
+        g_clear_error(&err);
+
+        /* We won't be able to process any more frame anyway */
+        free_pipeline(decoder);
+    }
+    return TRUE;
+}
+
 static gboolean create_pipeline(SpiceGstDecoder *decoder)
 {
     gchar *desc;
@@ -287,6 +309,7 @@ static gboolean create_pipeline(SpiceGstDecoder *decoder)
     guint opt;
     GstAppSinkCallbacks appsink_cbs = { NULL };
     GError *err = NULL;
+    GstBus *bus;
 
     auto_enabled = (g_getenv("SPICE_GSTVIDEO_AUTO") != NULL);
     if (auto_enabled || !VALID_VIDEO_CODEC_TYPE(decoder->base.codec_type)) {
@@ -324,6 +347,9 @@ static gboolean create_pipeline(SpiceGstDecoder *decoder)
 
     appsink_cbs.new_sample = new_sample;
     gst_app_sink_set_callbacks(decoder->appsink, &appsink_cbs, decoder, NULL);
+    bus = gst_pipeline_get_bus(GST_PIPELINE(decoder->pipeline));
+    gst_bus_add_watch(bus, handle_pipeline_message, decoder);
+    gst_object_unref(bus);
 
     decoder->clock = gst_pipeline_get_clock(GST_PIPELINE(decoder->pipeline));
 
@@ -390,9 +416,9 @@ static void release_buffer_data(gpointer data)
     spice_msg_in_unref(frame_msg);
 }
 
-static void spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
-                                          SpiceMsgIn *frame_msg,
-                                          int32_t latency)
+static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
+                                              SpiceMsgIn *frame_msg,
+                                              int32_t latency)
 {
     SpiceGstDecoder *decoder = (SpiceGstDecoder*)video_decoder;
 
@@ -400,7 +426,7 @@ static void spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
     uint32_t size = spice_msg_in_frame_data(frame_msg, &data);
     if (size == 0) {
         SPICE_DEBUG("got an empty frame buffer!");
-        return;
+        return TRUE;
     }
 
     SpiceStreamDataHeader *frame_op = spice_msg_in_parsed(frame_msg);
@@ -419,7 +445,13 @@ static void spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
          * saves CPU so do it.
          */
         SPICE_DEBUG("dropping a late MJPEG frame");
-        return;
+        return TRUE;
+    }
+
+    if (decoder->pipeline == NULL) {
+        /* An error occurred, causing the GStreamer pipeline to be freed */
+        spice_warning("An error occurred, stopping the video stream");
+        return FALSE;
     }
 
     /* ref() the frame_msg for the buffer */
@@ -440,6 +472,7 @@ static void spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
         SPICE_DEBUG("GStreamer error: unable to push frame of size %u", size);
         stream_dropped_frame_on_playback(decoder->base.stream);
     }
+    return TRUE;
 }
 
 static gboolean gstvideo_init(void)

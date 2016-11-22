@@ -50,8 +50,10 @@ struct VideoDecoder {
      * @frame_msg: The Spice message containing the compressed frame.
      * @latency:   How long in milliseconds until the frame should be
      *             displayed. Negative values mean the frame is late.
+     * @return:    False if the decoder can no longer decode frames,
+     *             True otherwise.
      */
-    void (*queue_frame)(VideoDecoder *decoder, SpiceMsgIn *frame_msg, int32_t latency);
+    gboolean (*queue_frame)(VideoDecoder *decoder, SpiceMsgIn *frame_msg, int32_t latency);
 
     /* The format of the encoded video. */
     int codec_type;

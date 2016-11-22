@@ -235,8 +235,9 @@ static void mjpeg_decoder_drop_queue(MJpegDecoder *decoder)
 
 /* ---------- VideoDecoder's public API ---------- */
 
-static void mjpeg_decoder_queue_frame(VideoDecoder *video_decoder,
-                                      SpiceMsgIn *frame_msg, int32_t latency)
+static gboolean mjpeg_decoder_queue_frame(VideoDecoder *video_decoder,
+                                          SpiceMsgIn *frame_msg,
+                                          int32_t latency)
 {
     MJpegDecoder *decoder = (MJpegDecoder*)video_decoder;
     SpiceMsgIn *last_msg;
@@ -262,12 +263,13 @@ static void mjpeg_decoder_queue_frame(VideoDecoder *video_decoder,
      * So drop late frames as early as possible to save on processing time.
      */
     if (latency < 0) {
-        return;
+        return TRUE;
     }
 
     spice_msg_in_ref(frame_msg);
     g_queue_push_tail(decoder->msgq, frame_msg);
     mjpeg_decoder_schedule(decoder);
+    return TRUE;
 }
 
 static void mjpeg_decoder_reschedule(VideoDecoder *video_decoder)
