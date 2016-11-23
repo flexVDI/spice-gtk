@@ -85,7 +85,7 @@ AC_DEFUN([SPICE_COMPILE_WARNINGS],[
     gl_WARN_ADD([-Wno-format-nonliteral])
     # We use some deprecated functions to avoid #ifdef hell while maintaining
     # compat with older gtk / glib versions
-    gl_WARN_ADD([-Wno-deprecated-declarations])
+    gl_WARN_ADD([-Wno-error=deprecated-declarations])
 
 
 
