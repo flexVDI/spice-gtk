@@ -50,7 +50,6 @@ struct _SpiceInputsChannelPrivate {
     int                         motion_count;
     int                         modifiers;
     guint32                     locks;
-    gint64                      last_input_time;
 };
 
 G_DEFINE_TYPE(SpiceInputsChannel, spice_inputs_channel, SPICE_TYPE_CHANNEL)
@@ -300,7 +299,6 @@ void spice_inputs_motion(SpiceInputsChannel *channel, gint dx, gint dy,
         return;
 
     c = channel->priv;
-    c->last_input_time = g_get_monotonic_time();
     c->bs  = button_state;
     c->dx += dx;
     c->dy += dy;
@@ -331,7 +329,6 @@ void spice_inputs_position(SpiceInputsChannel *channel, gint x, gint y,
         return;
 
     c = channel->priv;
-    c->last_input_time = g_get_monotonic_time();
     c->bs  = button_state;
     c->x   = x;
     c->y   = y;
@@ -367,7 +364,6 @@ void spice_inputs_button_press(SpiceInputsChannel *channel, gint button,
         return;
 
     c = channel->priv;
-    c->last_input_time = g_get_monotonic_time();
     switch (button) {
     case SPICE_MOUSE_BUTTON_LEFT:
         button_state |= SPICE_MOUSE_BUTTON_MASK_LEFT;
@@ -415,7 +411,6 @@ void spice_inputs_button_release(SpiceInputsChannel *channel, gint button,
         return;
 
     c = channel->priv;
-    c->last_input_time = g_get_monotonic_time();
     switch (button) {
     case SPICE_MOUSE_BUTTON_LEFT:
         button_state &= ~SPICE_MOUSE_BUTTON_MASK_LEFT;
@@ -460,7 +455,6 @@ void spice_inputs_key_press(SpiceInputsChannel *channel, guint scancode)
     if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
         return;
 
-    channel->priv->last_input_time = g_get_monotonic_time();
     down.code = spice_make_scancode(scancode, FALSE);
     msg = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_INPUTS_KEY_DOWN);
     msg->marshallers->msgc_inputs_key_down(msg->marshaller, &down);
@@ -487,7 +481,6 @@ void spice_inputs_key_release(SpiceInputsChannel *channel, guint scancode)
     if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
         return;
 
-    channel->priv->last_input_time = g_get_monotonic_time();
     up.code = spice_make_scancode(scancode, TRUE);
     msg = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_INPUTS_KEY_UP);
     msg->marshallers->msgc_inputs_key_up(msg->marshaller, &up);
@@ -521,7 +514,6 @@ void spice_inputs_key_press_and_release(SpiceInputsChannel *input_channel, guint
         guint16 code;
         guint8 *buf;
 
-        input_channel->priv->last_input_time = g_get_monotonic_time();
         msg = spice_msg_out_new(channel, SPICE_MSGC_INPUTS_KEY_SCANCODE);
         if (scancode < 0x100) {
             buf = (guint8*)spice_marshaller_reserve_space(msg->marshaller, 2);
@@ -598,7 +590,6 @@ static void spice_inputs_channel_up(SpiceChannel *channel)
     if (spice_channel_get_read_only(channel))
         return;
 
-    c->last_input_time = g_get_monotonic_time();
     msg = set_key_locks(SPICE_INPUTS_CHANNEL(channel), c->locks);
     spice_msg_out_send_internal(msg);
 }
@@ -607,13 +598,6 @@ static void spice_inputs_channel_reset(SpiceChannel *channel, gboolean migrating
 {
     SpiceInputsChannelPrivate *c = SPICE_INPUTS_CHANNEL(channel)->priv;
     c->motion_count = 0;
-    c->last_input_time = g_get_monotonic_time();
 
     SPICE_CHANNEL_CLASS(spice_inputs_channel_parent_class)->channel_reset(channel, migrating);
-}
-
-gint64 spice_inputs_get_last_input_time(SpiceInputsChannel *channel)
-{
-    SpiceInputsChannelPrivate *c = channel->priv;
-    return c->last_input_time;
 }
