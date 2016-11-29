@@ -281,6 +281,7 @@ static void spice_session_init(SpiceSession *session)
 {
     SpiceSessionPrivate *s;
     gchar *channels;
+    GError *err = NULL;
 
     SPICE_DEBUG("New session (compiled from package " PACKAGE_STRING ")");
     s = session->priv = SPICE_SESSION_GET_PRIVATE(session);
@@ -293,6 +294,12 @@ static void spice_session_init(SpiceSession *session)
     s->images = cache_image_new((GDestroyNotify)pixman_image_unref);
     s->glz_window = glz_decoder_window_new();
     update_proxy(session, NULL);
+
+    s->usb_manager = spice_usb_device_manager_get(session, &err);
+    if (err != NULL) {
+        SPICE_DEBUG("Could not initialize SpiceUsbDeviceManager - %s", err->message);
+        g_clear_error(&err);
+    }
 }
 
 static void
