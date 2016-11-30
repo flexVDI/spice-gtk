@@ -55,6 +55,15 @@ static void spice_channel_reset_capabilities(SpiceChannel *channel);
 static void spice_channel_send_migration_handshake(SpiceChannel *channel);
 static gboolean channel_connect(SpiceChannel *channel, gboolean tls);
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000
+static RSA *EVP_PKEY_get0_RSA(EVP_PKEY *pkey)
+{
+    if (pkey->type != EVP_PKEY_RSA) {
+        return NULL;
+    }
+    return pkey->pkey.rsa;
+}
+#endif
 /**
  * SECTION:spice-channel
  * @short_description: the base channel class
@@ -1161,7 +1170,7 @@ static SpiceChannelEvent spice_channel_send_spice_ticket(SpiceChannel *channel)
     pubkey = d2i_PUBKEY_bio(bioKey, NULL);
     g_return_val_if_fail(pubkey != NULL, ret);
 
-    rsa = pubkey->pkey.rsa;
+    rsa = EVP_PKEY_get0_RSA(pubkey);
     nRSASize = RSA_size(rsa);
 
     encrypted = g_alloca(nRSASize);

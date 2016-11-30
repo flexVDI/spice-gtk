@@ -23,6 +23,75 @@
 #include "spice-util.h"
 #include "bio-gio.h"
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000
+static BIO_METHOD one_static_bio;
+
+static int BIO_meth_set_read(BIO_METHOD *biom,
+                             int (*bread) (BIO *, char *, int))
+{
+    biom->bread = bread;
+    return 1;
+}
+
+static int BIO_meth_set_write(BIO_METHOD *biom,
+                              int (*bwrite) (BIO *, const char *, int))
+{
+    biom->bwrite = bwrite;
+    return 1;
+}
+
+static int BIO_meth_set_puts(BIO_METHOD *biom,
+                             int (*bputs) (BIO *, const char *))
+{
+    biom->bputs = bputs;
+    return 1;
+}
+
+static int BIO_meth_set_ctrl(BIO_METHOD *biom,
+                             long (*ctrl) (BIO *, int, long, void *))
+{
+    biom->ctrl = ctrl;
+    return 1;
+}
+
+#define BIO_TYPE_START 128
+
+static int BIO_get_new_index(void)
+{
+    static int bio_index = BIO_TYPE_START;
+    return bio_index++;
+}
+
+static void BIO_set_init(BIO *a, int init)
+{
+	a->init = init;
+}
+
+static void BIO_set_data(BIO *a, void *ptr)
+{
+    a->ptr = ptr;
+}
+
+static void *BIO_get_data(BIO *a)
+{
+    return a->ptr;
+}
+
+static BIO_METHOD *BIO_meth_new(int type, const char *name)
+{
+    BIO_METHOD *biom = &one_static_bio;
+
+    biom->type = type;
+    biom->name = name;
+    return biom;
+}
+
+static void BIO_meth_free(BIO_METHOD *biom)
+{
+}
+
+#endif
+
 static long bio_gio_ctrl(G_GNUC_UNUSED BIO *b,
                          int cmd,
                          G_GNUC_UNUSED long num,
@@ -37,7 +106,7 @@ static int bio_gio_write(BIO *bio, const char *in, int inl)
     gssize ret;
     GError *error = NULL;
 
-    stream = g_io_stream_get_output_stream(bio->ptr);
+    stream = g_io_stream_get_output_stream(BIO_get_data(bio));
     ret = g_pollable_output_stream_write_nonblocking(G_POLLABLE_OUTPUT_STREAM(stream),
                                                      in, inl, NULL, &error);
     BIO_clear_retry_flags(bio);
@@ -58,7 +127,7 @@ static int bio_gio_read(BIO *bio, char *out, int outl)
     gssize ret;
     GError *error = NULL;
 
-    stream = g_io_stream_get_input_stream(bio->ptr);
+    stream = g_io_stream_get_input_stream(BIO_get_data(bio));
     ret = g_pollable_input_stream_read_nonblocking(G_POLLABLE_INPUT_STREAM(stream),
                                                    out, outl, NULL, &error);
     BIO_clear_retry_flags(bio);
@@ -83,30 +152,35 @@ static int bio_gio_puts(BIO *bio, const char *str)
     return ret;
 }
 
-#define BIO_TYPE_START 128
+static BIO_METHOD *bio_gio_method;
 
 G_GNUC_INTERNAL
 BIO* bio_new_giostream(GIOStream *stream)
 {
     BIO *bio;
-    static BIO_METHOD bio_gio_method;
 
-    if (bio_gio_method.name == NULL) {
-        bio_gio_method.type = BIO_TYPE_START | BIO_TYPE_SOURCE_SINK;
-        bio_gio_method.name = "gio stream";
+    if (!bio_gio_method) {
+        bio_gio_method = BIO_meth_new(BIO_get_new_index() |
+                                      BIO_TYPE_SOURCE_SINK,
+                                      "gio stream");
+        if (!bio_gio_method)
+            return NULL;
+
+        if (!BIO_meth_set_write(bio_gio_method, bio_gio_write) ||
+            !BIO_meth_set_read(bio_gio_method, bio_gio_read) ||
+            !BIO_meth_set_puts(bio_gio_method, bio_gio_puts) ||
+            !BIO_meth_set_ctrl(bio_gio_method, bio_gio_ctrl)) {
+            BIO_meth_free(bio_gio_method);
+            bio_gio_method = NULL;
+            return NULL;
+        }
     }
 
-    bio = BIO_new(&bio_gio_method);
+    bio = BIO_new(bio_gio_method);
     if (!bio)
         return NULL;
 
-    bio->method->bwrite = bio_gio_write;
-    bio->method->bread = bio_gio_read;
-    bio->method->bputs = bio_gio_puts;
-    bio->method->ctrl = bio_gio_ctrl;
-
-    bio->init = 1;
-    bio->ptr = stream;
-
+    BIO_set_init(bio, 1);
+    BIO_set_data(bio, stream);
     return bio;
 }
