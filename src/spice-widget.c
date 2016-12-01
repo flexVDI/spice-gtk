@@ -812,6 +812,9 @@ SpiceGrabSequence *spice_display_get_grab_keys(SpiceDisplay *display)
     return d->grabseq;
 }
 
+/* FIXME: gdk_keyboard_grab/ungrab() is deprecated */
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+
 static void try_keyboard_grab(SpiceDisplay *display)
 {
     GtkWidget *widget = GTK_WIDGET(display);
@@ -878,6 +881,8 @@ static void try_keyboard_ungrab(SpiceDisplay *display)
     d->keyboard_grab_active = false;
     g_signal_emit(widget, signals[SPICE_DISPLAY_KEYBOARD_GRAB], 0, false);
 }
+G_GNUC_END_IGNORE_DEPRECATIONS
+
 
 static void update_keyboard_grab(SpiceDisplay *display)
 {
@@ -1002,6 +1007,8 @@ static gboolean do_pointer_grab(SpiceDisplay *display)
      * what window the pointer is actally over, so use 'FALSE' for
      * 'owner_events' parameter
      */
+    /* FIXME: gdk_pointer_grab() is deprecated */
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     status = gdk_pointer_grab(window, FALSE,
                      GDK_POINTER_MOTION_MASK |
                      GDK_BUTTON_PRESS_MASK |
@@ -1011,6 +1018,7 @@ static gboolean do_pointer_grab(SpiceDisplay *display)
                      NULL,
                      blank,
                      GDK_CURRENT_TIME);
+    G_GNUC_END_IGNORE_DEPRECATIONS
     grab_successful = (status == GDK_GRAB_SUCCESS);
     if (!grab_successful) {
         d->mouse_grab_active = false;
@@ -1101,14 +1109,20 @@ static void mouse_wrap(SpiceDisplay *display, GdkEventMotion *motion)
         /* FIXME: we try our best to ignore that next pointer move event.. */
         gdk_display_sync(gdk_screen_get_display(screen));
 
+        /* FIXME: gdk_display_warp_pointer() is deprecated */
+        G_GNUC_BEGIN_IGNORE_DEPRECATIONS
         gdk_display_warp_pointer(gtk_widget_get_display(GTK_WIDGET(display)),
                                  screen, xr, yr);
+        G_GNUC_END_IGNORE_DEPRECATIONS
         d->mouse_last_x = -1;
         d->mouse_last_y = -1;
     }
 #endif
 
 }
+
+/* FIXME: gdk_pointer_ungrab()/gdk_display_warp_pointer() are deprecated */
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 
 static void try_mouse_ungrab(SpiceDisplay *display)
 {
@@ -1142,6 +1156,7 @@ static void try_mouse_ungrab(SpiceDisplay *display)
     g_signal_emit(display, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, false);
     spice_gtk_session_set_pointer_grabbed(d->gtk_session, false);
 }
+G_GNUC_END_IGNORE_DEPRECATIONS
 
 static void update_mouse_grab(SpiceDisplay *display)
 {
@@ -1972,7 +1987,7 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
             try_mouse_grab(display);
             return true;
         }
-    } else
+    } else {
         /* allow to drag and drop between windows/displays:
 
            By default, X (and other window system) do a pointer grab
@@ -1985,7 +2000,11 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
            FIXME: should be multiple widget grab, but how?
            or should know the position of the other widgets?
         */
+        /* FIXME: gdk_pointer_ungrab() is deprecated */
+        G_GNUC_BEGIN_IGNORE_DEPRECATIONS
         gdk_pointer_ungrab(GDK_CURRENT_TIME);
+        G_GNUC_END_IGNORE_DEPRECATIONS
+    }
 
     if (!d->inputs)
         return true;
@@ -2355,7 +2374,10 @@ static void update_mouse_mode(SpiceChannel *channel, gpointer data)
 
         if (window != NULL) {
             GdkModifierType modifiers;
+            /* FIXME: gdk_window_get_pointer() is deprecated */
+            G_GNUC_BEGIN_IGNORE_DEPRECATIONS
             gdk_window_get_pointer(window, NULL, NULL, &modifiers);
+            G_GNUC_END_IGNORE_DEPRECATIONS
 
             if (modifiers & SPICE_GDK_BUTTONS_MASK)
                 try_mouse_grab(display);
@@ -2771,7 +2793,10 @@ static void gl_draw(SpiceDisplay *display,
     GtkWidget *gl = gtk_stack_get_child_by_name(d->stack, "gl-area");
 
     if (gtk_stack_get_visible_child(d->stack) == gl) {
+        /* Ignore GLib's too-new warnings */
+        G_GNUC_BEGIN_IGNORE_DEPRECATIONS
         gtk_gl_area_queue_render(GTK_GL_AREA(gl));
+        G_GNUC_END_IGNORE_DEPRECATIONS
         d->egl.call_draw_done = TRUE;
     } else
 #endif
