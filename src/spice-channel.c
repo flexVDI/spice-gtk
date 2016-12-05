@@ -759,7 +759,11 @@ static void spice_channel_flush_wire(SpiceChannel *channel,
         if (c->ws) {
             ret = nopoll_conn_send_binary(c->np_conn, ptr+offset, datalen-offset);
             if (ret < 0) {
-                g_warning("Error writting to websocket: %s", strerror(errno));
+                if (errno == EAGAIN) {
+                    cond = G_IO_OUT;
+                } else {
+                    g_warning("Error writting to websocket: %s", strerror(errno));
+                }
                 ret = -1;
             }
         } else if (c->tls) {
