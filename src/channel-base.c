@@ -262,8 +262,8 @@ void spice_vmc_write_async(SpiceChannel *self,
     g_task_set_task_data(task, GSIZE_TO_POINTER(count), NULL);
 
     msg = spice_msg_out_new(SPICE_CHANNEL(self), SPICE_MSGC_SPICEVMC_DATA);
-    spice_marshaller_add_ref_full(msg->marshaller, (uint8_t*)buffer, count,
-                                  vmc_write_free_cb, task);
+    spice_marshaller_add_by_ref_full(msg->marshaller, (uint8_t*)buffer, count,
+                                     vmc_write_free_cb, task);
     spice_msg_out_send(msg);
 }
 

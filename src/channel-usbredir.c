@@ -706,11 +706,11 @@ static int try_write_compress_LZ4(SpiceUsbredirChannel *channel, uint8_t *data, 
                                                SPICE_MSGC_SPICEVMC_COMPRESSED_DATA);
         msg_out_compressed->marshallers->msg_SpiceMsgCompressedData(msg_out_compressed->marshaller,
                                                                     &compressed_data_msg);
-        spice_marshaller_add_ref_full(msg_out_compressed->marshaller,
-                                      compressed_data_msg.compressed_data,
-                                      compressed_data_count,
-                                      (spice_marshaller_item_free_func)g_free,
-                                      channel);
+        spice_marshaller_add_by_ref_full(msg_out_compressed->marshaller,
+                                         compressed_data_msg.compressed_data,
+                                         compressed_data_count,
+                                         (spice_marshaller_item_free_func)g_free,
+                                         channel);
         spice_msg_out_send(msg_out_compressed);
         return TRUE;
     }
@@ -734,8 +734,8 @@ static int usbredir_write_callback(void *user_data, uint8_t *data, int count)
 #endif
     msg_out = spice_msg_out_new(SPICE_CHANNEL(channel),
                                 SPICE_MSGC_SPICEVMC_DATA);
-    spice_marshaller_add_ref_full(msg_out->marshaller, data, count,
-                                  usbredir_free_write_cb_data, channel);
+    spice_marshaller_add_by_ref_full(msg_out->marshaller, data, count,
+                                     usbredir_free_write_cb_data, channel);
     spice_msg_out_send(msg_out);
 
     return count;
