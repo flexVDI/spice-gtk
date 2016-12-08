@@ -402,10 +402,12 @@ spicy_LDADD =						\
 	$(LIBM)						\
 	$(NULL)
 
+# FIXME: GtkAction and lots of GtkUIManager APIs are deprecated
 spicy_CPPFLAGS =			\
 	$(AM_CPPFLAGS)			\
 	$(GTHREAD_CFLAGS)		\
 	-DSPICE_DISABLE_DEPRECATED	\
+	-Wno-deprecated-declarations	\
 	$(NULL)
 
 
