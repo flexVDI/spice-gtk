@@ -314,7 +314,9 @@ static void demux_to_client_cb(GObject *source, GAsyncResult *result, gpointer u
     gboolean fail;
     gsize size;
 
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     g_output_stream_write_all_finish(G_OUTPUT_STREAM(source), result, &size, &error);
+G_GNUC_END_IGNORE_DEPRECATIONS
 
     if (error) {
         CHANNEL_DEBUG(client->self, "write failed: %s", error->message);
@@ -336,9 +338,11 @@ static void demux_to_client(Client *client)
     CHANNEL_DEBUG(client->self, "pushing %"G_GSIZE_FORMAT" to client %p", size, client);
 
     if (size > 0) {
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
         g_output_stream_write_all_async(g_io_stream_get_output_stream(client->pipe),
                                         c->demux.buf, size, G_PRIORITY_DEFAULT,
                                         c->cancellable, demux_to_client_cb, client);
+G_GNUC_END_IGNORE_DEPRECATIONS
         return;
     } else {
         /* Nothing to write */
@@ -372,7 +376,9 @@ static void start_client(SpiceWebdavChannel *self)
     client->cancellable = g_cancellable_new();
     spice_make_pipe(&client->pipe, &peer);
 
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     addr = g_inet_socket_address_new_from_string ("127.0.0.1", 0);
+G_GNUC_END_IGNORE_DEPRECATIONS
     if (!soup_server_accept_iostream(server, peer, addr, addr, &error))
         goto fail;
 
