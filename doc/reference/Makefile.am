@@ -58,9 +58,7 @@ IGNORE_HFILES=					\
 	usbutil.h				\
 	vmcstream.h				\
 	vncdisplaykeymap.h			\
-	win-usb-clerk.h				\
 	win-usb-dev.h				\
-	win-usb-driver-install.h		\
 	wocky-http-proxy.h			\
 	$(NULL)
 

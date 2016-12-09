@@ -371,9 +371,6 @@ endif
 WIN_USB_FILES= \
 	win-usb-dev.h			\
 	win-usb-dev.c			\
-	win-usb-clerk.h			\
-	win-usb-driver-install.h	\
-	win-usb-driver-install.c	\
 	usbdk_api.h			\
 	usbdk_api.c			\
 	$(NULL)
