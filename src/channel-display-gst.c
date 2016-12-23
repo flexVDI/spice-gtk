@@ -127,9 +127,8 @@ static gboolean display_frame(gpointer video_decoder)
     GstBuffer *buffer;
     GstMapInfo mapinfo;
 
-    decoder->timer_id = 0;
-
     g_mutex_lock(&decoder->queues_mutex);
+    decoder->timer_id = 0;
     frame = g_queue_pop_head(decoder->display_queue);
     g_mutex_unlock(&decoder->queues_mutex);
     /* If the queue is empty we don't even need to reschedule */
