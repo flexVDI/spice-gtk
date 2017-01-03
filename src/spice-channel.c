@@ -2364,10 +2364,6 @@ static gboolean spice_channel_delayed_unref(gpointer data)
 static int spice_channel_load_ca(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
-    STACK_OF(X509_INFO) *inf;
-    X509_INFO *itmp;
-    X509_STORE *store;
-    BIO *in;
     int i, count = 0;
     guint8 *ca;
     guint size;
@@ -2382,12 +2378,17 @@ static int spice_channel_load_ca(SpiceChannel *channel)
     CHANNEL_DEBUG(channel, "Load CA, file: %s, data: %p", ca_file, ca);
 
     if (ca != NULL) {
+        STACK_OF(X509_INFO) *inf;
+        X509_STORE *store;
+        BIO *in;
+
         store = SSL_CTX_get_cert_store(c->ctx);
         in = BIO_new_mem_buf(ca, size);
         inf = PEM_X509_INFO_read_bio(in, NULL, NULL, NULL);
         BIO_free(in);
 
         for (i = 0; i < sk_X509_INFO_num(inf); i++) {
+            X509_INFO *itmp;
             itmp = sk_X509_INFO_value(inf, i);
             if (itmp->x509) {
                 X509_STORE_add_cert(store, itmp->x509);
