@@ -38,7 +38,7 @@ cp -r "$ICONSDIR"/flexvdi $TMPDIR/usr/share/icons
 cat > $TMPDIR/AppRun <<\EOF
 #!/bin/sh
 HERE=$(dirname $(readlink -f "${0}"))
-export LD_LIBRARY_PATH="${HERE}"/usr/lib:$PATH
+export LD_LIBRARY_PATH="${HERE}"/usr/lib:$LD_LIBRARY_PATH
 export XDG_DATA_DIRS="${HERE}/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
 "${HERE}"/usr/bin/spicy $@
 EOF
