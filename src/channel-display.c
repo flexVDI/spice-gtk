@@ -736,6 +736,12 @@ static void spice_display_channel_reset_capabilities(SpiceChannel *channel)
     } else {
         SPICE_DEBUG("GStreamer does not support the h264 codec");
     }
+    if (gstvideo_has_codec(SPICE_VIDEO_CODEC_TYPE_VP9)) {
+        spice_channel_set_capability(SPICE_CHANNEL(channel),
+                                     SPICE_DISPLAY_CAP_CODEC_VP9);
+    } else {
+        SPICE_DEBUG("GStreamer does not support the vp9 codec");
+    }
 }
 
 static void destroy_surface(gpointer data)

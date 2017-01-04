@@ -77,6 +77,8 @@ static struct {
      */
     { "h264parse ! avdec_h264", "" },
 
+    /* SPICE_VIDEO_CODEC_TYPE_VP9 */
+    { "vp9dec", "caps=video/x-vp9" },
 };
 
 G_STATIC_ASSERT(G_N_ELEMENTS(gst_opts) <= SPICE_VIDEO_CODEC_TYPE_ENUM_END);
