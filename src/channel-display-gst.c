@@ -79,10 +79,10 @@ static struct {
 
 };
 
-G_STATIC_ASSERT(G_N_ELEMENTS(gst_opts) == SPICE_VIDEO_CODEC_TYPE_ENUM_END);
+G_STATIC_ASSERT(G_N_ELEMENTS(gst_opts) <= SPICE_VIDEO_CODEC_TYPE_ENUM_END);
 
 #define VALID_VIDEO_CODEC_TYPE(codec) \
-    (codec > 0 && codec < SPICE_VIDEO_CODEC_TYPE_ENUM_END)
+    (codec > 0 && codec < G_N_ELEMENTS(gst_opts))
 
 /* ---------- SpiceFrame ---------- */
 
