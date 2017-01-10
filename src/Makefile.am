@@ -45,10 +45,6 @@ EXTRA_DIST =					\
 
 DISTCLEANFILES = spice-version.h
 
-bin_PROGRAMS = spicy-stats spicy-screenshot
-if WITH_GTK
-bin_PROGRAMS += spicy
-endif
 if WITH_POLKIT
 acldir = $(ACL_HELPER_DIR)
 acl_PROGRAMS = spice-client-glib-usb-acl-helper
@@ -383,31 +379,6 @@ endif
 libspice_client_glib_2_0_la_LIBADD += -lws2_32 -lgdi32
 endif
 
-spicy_SOURCES =					\
-	spicy.c					\
-	spicy-connect.h 			\
-	spicy-connect.c 			\
-	spice-cmdline.h				\
-	spice-cmdline.c				\
-	$(NULL)
-
-spicy_LDADD =						\
-	libspice-client-gtk-3.0.la			\
-	libspice-client-glib-2.0.la			\
-	$(GTHREAD_LIBS)					\
-	$(GTK_LIBS)					\
-	$(LIBM)						\
-	$(NULL)
-
-# FIXME: GtkAction and lots of GtkUIManager APIs are deprecated
-spicy_CPPFLAGS =			\
-	$(AM_CPPFLAGS)			\
-	$(GTHREAD_CFLAGS)		\
-	-DSPICE_DISABLE_DEPRECATED	\
-	-Wno-deprecated-declarations	\
-	$(NULL)
-
-
 if WITH_POLKIT
 spice_client_glib_usb_acl_helper_SOURCES =	\
 	spice-client-glib-usb-acl-helper.c	\
@@ -434,30 +405,6 @@ install-data-hook:
 	-chmod u+s  $(DESTDIR)$(acldir)/spice-client-glib-usb-acl-helper
 
 endif
-
-
-spicy_screenshot_SOURCES =			\
-	spicy-screenshot.c			\
-	spice-cmdline.h				\
-	spice-cmdline.c				\
-	$(NULL)
-
-spicy_screenshot_LDADD =			\
-	libspice-client-glib-2.0.la		\
-	$(GOBJECT2_LIBS)			\
-	$(NULL)
-
-spicy_stats_SOURCES =			\
-	spicy-stats.c			\
-	spice-cmdline.h			\
-	spice-cmdline.c			\
-	$(NULL)
-
-spicy_stats_LDADD =				\
-	libspice-client-glib-2.0.la		\
-	$(GOBJECT2_LIBS)			\
-	$(NULL)
-
 
 
 $(libspice_client_glib_2_0_la_SOURCES): spice-glib-enums.h spice-marshal.h

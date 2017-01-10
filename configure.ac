@@ -590,6 +590,7 @@ po/Makefile.in
 src/Makefile
 src/spice-version.h
 src/controller/Makefile
+tools/Makefile
 doc/Makefile
 doc/reference/Makefile
 man/Makefile
