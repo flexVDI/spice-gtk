@@ -29,8 +29,6 @@ struct _SpiceAudioPrivate {
     GMainContext            *main_context;
 };
 
-SpiceAudio* spice_audio_new(SpiceSession *session, GMainContext *context, const char *name);
-
 void spice_audio_get_playback_volume_info_async(SpiceAudio *audio, GCancellable *cancellable,
         SpiceMainChannel *main_channel, GAsyncReadyCallback callback, gpointer user_data);
 gboolean spice_audio_get_playback_volume_info_finish(SpiceAudio *audio, GAsyncResult *res,
