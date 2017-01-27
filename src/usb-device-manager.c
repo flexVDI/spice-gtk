@@ -207,6 +207,9 @@ static
 void _connect_device_async_cb(GObject *gobject,
                               GAsyncResult *channel_res,
                               gpointer user_data);
+static
+void disconnect_device_sync(SpiceUsbDeviceManager *self,
+                            SpiceUsbDevice *device);
 
 G_DEFINE_BOXED_TYPE(SpiceUsbDevice, spice_usb_device,
                     (GBoxedCopyFunc)spice_usb_device_ref,
@@ -983,7 +986,8 @@ static void spice_usb_device_manager_remove_dev(SpiceUsbDeviceManager *self,
         return;
     }
 
-    spice_usb_device_manager_disconnect_device(self, device);
+    /* TODO: check usage of the sync version is ok here */
+    disconnect_device_sync(self, device);
 
     SPICE_DEBUG("device removed %04x:%04x (%p)",
                 spice_usb_device_get_vid(device),
@@ -1542,15 +1546,8 @@ void _connect_device_async_cb(GObject *gobject,
 }
 #endif
 
-/**
- * spice_usb_device_manager_disconnect_device:
- * @manager: the #SpiceUsbDeviceManager manager
- * @device: a #SpiceUsbDevice to disconnect
- *
- * Disconnects the @device.
- */
-void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
-                                                SpiceUsbDevice *device)
+static void disconnect_device_sync(SpiceUsbDeviceManager *self,
+                                   SpiceUsbDevice *device)
 {
     g_return_if_fail(SPICE_IS_USB_DEVICE_MANAGER(self));
     g_return_if_fail(device != NULL);
@@ -1565,6 +1562,19 @@ void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
         spice_usbredir_channel_disconnect_device(channel);
 
 #endif
+}
+
+/**
+ * spice_usb_device_manager_disconnect_device:
+ * @manager: the #SpiceUsbDeviceManager manager
+ * @device: a #SpiceUsbDevice to disconnect
+ *
+ * Disconnects the @device.
+ */
+void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *self,
+                                                SpiceUsbDevice *device)
+{
+    disconnect_device_sync(self, device);
 }
 
 typedef struct _disconnect_cb_data
