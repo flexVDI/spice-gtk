@@ -37,8 +37,6 @@ EXTRA_DIST =					\
 	map-file				\
 	spice-glib-sym-file			\
 	spice-gtk-sym-file			\
-	spice-client-gtk-manual.defs		\
-	spice-client-gtk.override		\
 	spice-marshal.txt			\
 	spice-version.h.in			\
 	$(NULL)
