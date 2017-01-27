@@ -232,22 +232,9 @@ gboolean spice_audio_get_record_volume_info_finish(SpiceAudio *audio,
             res, mute, nchannels, volume, error);
 }
 
-/**
- * spice_audio_new:
- * @session: the #SpiceSession to connect to
- * @context: (allow-none): a #GMainContext to attach to (or %NULL for
- * default).
- * @name: (allow-none): a name for the audio channels (or %NULL for
- * application name).
- *
- * Once instantiated, #SpiceAudio will handle the playback and record
- * channels to stream to your local audio system.
- *
- * Returns: a new #SpiceAudio instance or %NULL if no backend or failed.
- * Deprecated: 0.8: Use spice_audio_get() instead
- **/
-SpiceAudio *spice_audio_new(SpiceSession *session, GMainContext *context,
-                            const char *name)
+G_GNUC_INTERNAL
+SpiceAudio *spice_audio_new_priv(SpiceSession *session, GMainContext *context,
+                                 const char *name)
 {
     SpiceAudio *self = NULL;
 
@@ -271,4 +258,24 @@ SpiceAudio *spice_audio_new(SpiceSession *session, GMainContext *context,
     update_audio_channels(self, session);
 
     return self;
+}
+
+/**
+ * spice_audio_new:
+ * @session: the #SpiceSession to connect to
+ * @context: (allow-none): a #GMainContext to attach to (or %NULL for
+ * default).
+ * @name: (allow-none): a name for the audio channels (or %NULL for
+ * application name).
+ *
+ * Once instantiated, #SpiceAudio will handle the playback and record
+ * channels to stream to your local audio system.
+ *
+ * Returns: a new #SpiceAudio instance or %NULL if no backend or failed.
+ * Deprecated: 0.8: Use spice_audio_get() instead
+ **/
+SpiceAudio *spice_audio_new(SpiceSession *session, GMainContext *context,
+                            const char *name)
+{
+    return spice_audio_new_priv(session, context, name);
 }

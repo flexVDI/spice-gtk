@@ -33,7 +33,7 @@
 #include "wocky-http-proxy.h"
 #include "spice-uri-priv.h"
 #include "channel-playback-priv.h"
-#include "spice-audio.h"
+#include "spice-audio-priv.h"
 
 struct channel {
     SpiceChannel      *channel;
@@ -2648,7 +2648,7 @@ SpiceAudio *spice_audio_get(SpiceSession *session, GMainContext *context)
     g_mutex_lock(&mutex);
     self = session->priv->audio_manager;
     if (self == NULL) {
-        self = spice_audio_new(session, context, NULL);
+        self = spice_audio_new_priv(session, context, NULL);
         session->priv->audio_manager = self;
     }
     g_mutex_unlock(&mutex);
