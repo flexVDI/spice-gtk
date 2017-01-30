@@ -71,6 +71,7 @@ struct _SpiceWindow {
     bool             fullscreen;
     bool             mouse_grabbed;
     SpiceChannel     *display_channel;
+    gint             video_codec;
 #ifdef G_OS_WIN32
     gint             win_x;
     gint             win_y;
@@ -180,6 +181,15 @@ static int ask_user(GtkWidget *parent, char *title, char *message,
     return retval;
 }
 
+static const gchar *video_codec_enum_to_str[] = {
+    [0] = "none",
+    [SPICE_VIDEO_CODEC_TYPE_MJPEG] = "mjpeg",
+    [SPICE_VIDEO_CODEC_TYPE_VP8] = "vp8",
+    [SPICE_VIDEO_CODEC_TYPE_H264] = "h264",
+    [SPICE_VIDEO_CODEC_TYPE_VP9] = "vp9",
+    [SPICE_VIDEO_CODEC_TYPE_ENUM_END] = "error",
+};
+
 static void update_status_window(SpiceWindow *win)
 {
     GString *status;
@@ -188,9 +198,10 @@ static void update_status_window(SpiceWindow *win)
         return;
 
     status = g_string_new(NULL);
-    g_string_printf(status, "mouse: %6s, agent: %3s",
+    g_string_printf(status, "mouse: %6s, agent: %3s, streaming: %5s",
                     win->conn->mouse_state,
-                    win->conn->agent_state);
+                    win->conn->agent_state,
+                    video_codec_enum_to_str[win->video_codec]);
 
     if (win->mouse_grabbed) {
         SpiceGrabSequence *sequence = spice_display_get_grab_keys(SPICE_DISPLAY(win->spice));
@@ -1442,6 +1453,32 @@ static void del_window(spice_connection *conn, SpiceWindow *win)
     destroy_spice_window(win);
 }
 
+static void display_stream_changes(SpiceChannel *display, GParamSpec *pspec,
+                                   spice_connection *conn)
+{
+    gint i;
+    gint id, codec_type;
+    GArray *monitors;
+
+    g_object_get(display,
+                 "channel-id", &id,
+                 "monitors", &monitors,
+                 "stream-video-codec-type", &codec_type,
+                 NULL);
+
+    for (i = 0; i < monitors->len; i++) {
+        SpiceWindow *win = get_window(conn, id, i);
+
+        if (win == NULL)
+            continue;
+
+        win->video_codec = codec_type;
+        update_status_window(win);
+    }
+
+    g_clear_pointer(&monitors, g_array_unref);
+}
+
 static void display_monitors(SpiceChannel *display, GParamSpec *pspec,
                              spice_connection *conn)
 {
@@ -1752,6 +1789,8 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         SPICE_DEBUG("new display channel (#%d)", id);
         g_signal_connect(channel, "notify::monitors",
                          G_CALLBACK(display_monitors), conn);
+        g_signal_connect(channel, "notify::stream-video-codec-type",
+                         G_CALLBACK(display_stream_changes), conn);
         spice_channel_connect(channel);
     }
 
