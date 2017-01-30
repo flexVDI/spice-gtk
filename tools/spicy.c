@@ -182,23 +182,25 @@ static int ask_user(GtkWidget *parent, char *title, char *message,
 
 static void update_status_window(SpiceWindow *win)
 {
-    gchar *status;
+    GString *status;
 
     if (win == NULL)
         return;
 
+    status = g_string_new(NULL);
+    g_string_printf(status, "mouse: %6s, agent: %3s",
+                    win->conn->mouse_state,
+                    win->conn->agent_state);
+
     if (win->mouse_grabbed) {
         SpiceGrabSequence *sequence = spice_display_get_grab_keys(SPICE_DISPLAY(win->spice));
         gchar *seq = spice_grab_sequence_as_string(sequence);
-        status = g_strdup_printf("Use %s to ungrab mouse.", seq);
+        g_string_append_printf(status, "\tUse %s to ungrab mouse", seq);
         g_free(seq);
-    } else {
-        status = g_strdup_printf("mouse: %s, agent: %s",
-                 win->conn->mouse_state, win->conn->agent_state);
     }
 
-    gtk_label_set_text(GTK_LABEL(win->status), status);
-    g_free(status);
+    gtk_label_set_text(GTK_LABEL(win->status), status->str);
+    g_string_free(status, TRUE);
 }
 
 static void update_status(struct spice_connection *conn)
