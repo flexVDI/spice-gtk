@@ -70,6 +70,7 @@ struct _SpiceDisplayChannelPrivate {
     GArray                      *monitors;
     guint                       monitors_max;
     gboolean                    enable_adaptive_streaming;
+    SpiceVideoCodecType         stream_video_codec_type;
 #ifdef G_OS_WIN32
     HDC dc;
 #endif
@@ -86,6 +87,7 @@ enum {
     PROP_MONITORS,
     PROP_MONITORS_MAX,
     PROP_GL_SCANOUT,
+    PROP_STREAM_VIDEO_CODEC_TYPE,
 };
 
 enum {
@@ -222,6 +224,10 @@ static void spice_display_get_property(GObject    *object,
         g_value_set_static_boxed(value, spice_display_get_gl_scanout(channel));
         break;
     }
+    case PROP_STREAM_VIDEO_CODEC_TYPE: {
+        g_value_set_int(value, c->stream_video_codec_type);
+        break;
+    }
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
         break;
@@ -333,6 +339,23 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
                             SPICE_TYPE_GL_SCANOUT,
                             G_PARAM_READABLE |
                             G_PARAM_STATIC_STRINGS));
+
+    /**
+     * SpiceDisplayChannel:stream-video-codec-type
+     *
+     * The SpiceVideoCodecType enum value for the video-codec being used in the
+     * current stream or 0 when there is no ongoing streaming.
+     *
+     * Since: 0.34
+     */
+    g_object_class_install_property
+        (gobject_class, PROP_STREAM_VIDEO_CODEC_TYPE,
+         g_param_spec_int("stream-video-codec-type",
+                          "Stream Video Codec Type",
+                          "The Video Codec Type from current Stream",
+                          0, SPICE_VIDEO_CODEC_TYPE_ENUM_END, 0,
+                          G_PARAM_READABLE |
+                          G_PARAM_STATIC_STRINGS));
 
     /**
      * SpiceDisplayChannel::display-primary-create:
@@ -1218,6 +1241,10 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
         spice_printerr("could not create a video decoder for codec %u", op->codec_type);
         destroy_stream(channel, op->id);
         report_invalid_stream(channel, op->id);
+    } else {
+        spice_debug("New stream created of type: %u", op->codec_type);
+        c->stream_video_codec_type = op->codec_type;
+        g_coroutine_object_notify(G_OBJECT(channel), "stream-video-codec-type");
     }
 }
 
@@ -1567,6 +1594,8 @@ static void destroy_stream(SpiceChannel *channel, int id)
 
     g_free(st);
     c->streams[id] = NULL;
+    c->stream_video_codec_type = 0;
+    g_coroutine_object_notify(G_OBJECT(channel), "stream-video-codec-type");
 }
 
 static void clear_streams(SpiceChannel *channel)
