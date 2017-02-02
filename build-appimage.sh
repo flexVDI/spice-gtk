@@ -3,14 +3,16 @@
 set -e
 
 BIN=$1
+shift
 if [ `basename "$BIN"` != "spicy" ]; then
-    echo Usage: $0 spicy_path icon
+    echo "Usage: $0 spicy_path [extra_deps]"
+    exit 1
 fi
 
 if ldd "$BIN" | grep -q flexvdi; then
-    libs="libnopoll libspice-client-glib libspice-client-gtk libcups libflexvdi-spice-client"
+    libs="libnopoll libspice-client-glib libspice-client-gtk libcups libflexvdi-spice-client $*"
 else
-    libs="libnopoll libspice-client-glib libspice-client-gtk"
+    libs="libnopoll libspice-client-glib libspice-client-gtk $*"
 fi
 SRCDIR=`dirname "$0"`
 ICONSDIR="$SRCDIR"/icons
@@ -32,6 +34,7 @@ DEPS=`ldd "$BIN"`
 for lib in $libs; do
     cp `echo "$DEPS" | grep $lib | sed 's;.* => \(/.*\) (.*;\1;'` $TMPDIR/usr/lib
 done
+chmod 755 $TMPDIR/usr/bin/* $TMPDIR/usr/lib/*
 strip -s $TMPDIR/usr/bin/* $TMPDIR/usr/lib/*
 cp -r "$ICONSDIR"/flexvdi $TMPDIR/usr/share/icons
 
