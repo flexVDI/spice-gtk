@@ -971,29 +971,32 @@ gint spice_channel_unix_read_fd(SpiceChannel *channel)
 #endif
 
 /*
- * Read at least 1 more byte of data straight off the wire
- * into the requested buffer.
+ * Helper function to deal with the nonblocking part of _read_wire() function.
+ * It returns the result of the read and will set the proper bits in @cond in
+ * case the read function would block.
+ *
+ * Returns -1 in case of any problems.
  */
 /* coroutine context */
-static int spice_channel_read_wire(SpiceChannel *channel, void *data, size_t len)
+static int spice_channel_read_wire_nonblocking(SpiceChannel *channel,
+                                               void *data,
+                                               size_t len,
+                                               GIOCondition *cond)
 {
     SpiceChannelPrivate *c = channel->priv;
     gssize ret;
-    GIOCondition cond;
 
-reread:
+    g_assert(cond != NULL);
+    *cond = 0;
 
-    if (c->has_error) return 0; /* has_error is set by disconnect(), return no error */
-
-    cond = 0;
     if (c->tls) {
         ret = SSL_read(c->ssl, data, len);
         if (ret < 0) {
             ret = SSL_get_error(c->ssl, ret);
             if (ret == SSL_ERROR_WANT_READ)
-                cond |= G_IO_IN;
+                *cond |= G_IO_IN;
             if (ret == SSL_ERROR_WANT_WRITE)
-                cond |= G_IO_OUT;
+                *cond |= G_IO_OUT;
             ret = -1;
         }
     } else {
@@ -1002,7 +1005,7 @@ reread:
                                                        data, len, NULL, &error);
         if (ret < 0) {
             if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
-                cond = G_IO_IN;
+                *cond = G_IO_IN;
             } else {
                 CHANNEL_DEBUG(channel, "Read error %s", error->message);
             }
@@ -1010,6 +1013,26 @@ reread:
             ret = -1;
         }
     }
+
+    return ret;
+}
+
+/*
+ * Read at least 1 more byte of data straight off the wire
+ * into the requested buffer.
+ */
+/* coroutine context */
+static int spice_channel_read_wire(SpiceChannel *channel, void *data, size_t len)
+{
+    SpiceChannelPrivate *c = channel->priv;
+    GIOCondition cond;
+    gssize ret;
+
+reread:
+
+    if (c->has_error) return 0; /* has_error is set by disconnect(), return no error */
+
+    ret = spice_channel_read_wire_nonblocking(channel, data, len, &cond);
 
     if (ret == -1) {
         if (cond != 0) {
