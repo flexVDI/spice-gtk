@@ -769,6 +769,53 @@ void spice_msg_out_send_internal(SpiceMsgOut *out)
 }
 
 /*
+ * Helper function to deal with the nonblocking part of _flush_wire() function.
+ * It returns the result of the write and will set the proper bits in @cond in
+ * case the write function would block.
+ *
+ * Returns -1 in case of any problems.
+ */
+/* coroutine context */
+static gint spice_channel_flush_wire_nonblocking(SpiceChannel *channel,
+                                                 const gchar *ptr,
+                                                 size_t len,
+                                                 GIOCondition *cond)
+{
+    SpiceChannelPrivate *c = channel->priv;
+    gssize ret;
+
+    g_assert(cond != NULL);
+    *cond = 0;
+
+    if (c->tls) {
+        ret = SSL_write(c->ssl, ptr, len);
+        if (ret < 0) {
+            ret = SSL_get_error(c->ssl, ret);
+            if (ret == SSL_ERROR_WANT_READ)
+                *cond |= G_IO_IN;
+            if (ret == SSL_ERROR_WANT_WRITE)
+                *cond |= G_IO_OUT;
+            ret = -1;
+        }
+    } else {
+        GError *error = NULL;
+        ret = g_pollable_output_stream_write_nonblocking(G_POLLABLE_OUTPUT_STREAM(c->out),
+                                                         ptr, len, NULL, &error);
+        if (ret < 0) {
+            if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
+                *cond = G_IO_OUT;
+            } else {
+                CHANNEL_DEBUG(channel, "Send error %s", error->message);
+            }
+            g_clear_error(&error);
+            ret = -1;
+        }
+    }
+
+    return ret;
+}
+
+/*
  * Write all 'data' of length 'datalen' bytes out to
  * the wire
  */
@@ -784,34 +831,10 @@ static void spice_channel_flush_wire(SpiceChannel *channel,
 
     while (offset < datalen) {
         gssize ret;
-        GError *error = NULL;
 
         if (c->has_error) return;
 
-        cond = 0;
-        if (c->tls) {
-            ret = SSL_write(c->ssl, ptr+offset, datalen-offset);
-            if (ret < 0) {
-                ret = SSL_get_error(c->ssl, ret);
-                if (ret == SSL_ERROR_WANT_READ)
-                    cond |= G_IO_IN;
-                if (ret == SSL_ERROR_WANT_WRITE)
-                    cond |= G_IO_OUT;
-                ret = -1;
-            }
-        } else {
-            ret = g_pollable_output_stream_write_nonblocking(G_POLLABLE_OUTPUT_STREAM(c->out),
-                                                             ptr+offset, datalen-offset, NULL, &error);
-            if (ret < 0) {
-                if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
-                    cond = G_IO_OUT;
-                } else {
-                    CHANNEL_DEBUG(channel, "Send error %s", error->message);
-                }
-                g_clear_error(&error);
-                ret = -1;
-            }
-        }
+        ret = spice_channel_flush_wire_nonblocking(channel, ptr+offset, datalen-offset, &cond);
         if (ret == -1) {
             if (cond != 0) {
                 // TODO: should use g_pollable_input/output_stream_create_source() in 2.28 ?
