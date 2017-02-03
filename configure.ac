@@ -265,7 +265,7 @@ AS_IF([test "x$enable_gstvideo" != "xno"],
          [gstreamer-1.0 gstreamer-base-1.0 gstreamer-app-1.0 gstreamer-video-1.0],
          [missing_gstreamer_elements=""
           SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-base 1.0], [appsrc videoconvert appsink])
-          SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-good 1.0], [jpegdec vp8dec])
+          SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-good 1.0], [jpegdec vp8dec vp9dec])
           SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-bad 1.0], [h264parse])
           SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gstreamer-libav 1.0], [avdec_h264])
           AS_IF([test x"$missing_gstreamer_elements" = "xyes"],
