@@ -701,6 +701,18 @@ static HDC create_compatible_dc(void)
 
 static void spice_display_channel_reset_capabilities(SpiceChannel *channel)
 {
+    guint i;
+    static const struct {
+        SpiceVideoCodecType type;
+        int cap;
+        const gchar name[8];
+    } gst_codecs[] = {
+        {SPICE_VIDEO_CODEC_TYPE_MJPEG, SPICE_DISPLAY_CAP_CODEC_MJPEG, "mjpeg"},
+        {SPICE_VIDEO_CODEC_TYPE_VP8, SPICE_DISPLAY_CAP_CODEC_VP8, "vp8"},
+        {SPICE_VIDEO_CODEC_TYPE_H264, SPICE_DISPLAY_CAP_CODEC_H264, "h264"},
+        {SPICE_VIDEO_CODEC_TYPE_VP9, SPICE_DISPLAY_CAP_CODEC_VP9, "vp9"},
+    };
+
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_SIZED_STREAM);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_MONITORS_CONFIG);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_COMPOSITE);
@@ -718,29 +730,12 @@ static void spice_display_channel_reset_capabilities(SpiceChannel *channel)
 #ifdef HAVE_BUILTIN_MJPEG
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_CODEC_MJPEG);
 #endif
-    if (gstvideo_has_codec(SPICE_VIDEO_CODEC_TYPE_MJPEG)) {
-        spice_channel_set_capability(SPICE_CHANNEL(channel),
-                                     SPICE_DISPLAY_CAP_CODEC_MJPEG);
-    } else {
-        SPICE_DEBUG("GStreamer does not support the mjpeg codec");
-    }
-    if (gstvideo_has_codec(SPICE_VIDEO_CODEC_TYPE_VP8)) {
-        spice_channel_set_capability(SPICE_CHANNEL(channel),
-                                     SPICE_DISPLAY_CAP_CODEC_VP8);
-    } else {
-        SPICE_DEBUG("GStreamer does not support the vp8 codec");
-    }
-    if (gstvideo_has_codec(SPICE_VIDEO_CODEC_TYPE_H264)) {
-        spice_channel_set_capability(SPICE_CHANNEL(channel),
-                                     SPICE_DISPLAY_CAP_CODEC_H264);
-    } else {
-        SPICE_DEBUG("GStreamer does not support the h264 codec");
-    }
-    if (gstvideo_has_codec(SPICE_VIDEO_CODEC_TYPE_VP9)) {
-        spice_channel_set_capability(SPICE_CHANNEL(channel),
-                                     SPICE_DISPLAY_CAP_CODEC_VP9);
-    } else {
-        SPICE_DEBUG("GStreamer does not support the vp9 codec");
+    for (i = 0; i < G_N_ELEMENTS(gst_codecs); i++) {
+        if (gstvideo_has_codec(gst_codecs[i].type)) {
+            spice_channel_set_capability(SPICE_CHANNEL(channel), gst_codecs[i].cap);
+        } else {
+            SPICE_DEBUG("GStreamer does not support the %s codec", gst_codecs[i].name);
+        }
     }
 }
 
