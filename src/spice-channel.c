@@ -2352,9 +2352,10 @@ static void nopoll_log_handler(noPollCtx *ctx, noPollDebugLevel level,
     else {
         slevel = G_LOG_LEVEL_WARNING;
 #ifdef WIN32
-        errno = WSAGetErrno();
-#endif
+        if (WSAGetLastError() == WSAEWOULDBLOCK) return; // Ignore these errors
+#else
         if (errno == EAGAIN) return; // Ignore these errors
+#endif
     }
     g_log(G_LOG_DOMAIN, slevel, "%s", log_msg);
 }
