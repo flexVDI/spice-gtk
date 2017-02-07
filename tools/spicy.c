@@ -1534,6 +1534,14 @@ static void transfer_task_finished(SpiceFileTransferTask *task, GError *error, s
         gtk_widget_hide(conn->transfer_dialog);
 }
 
+static gboolean dialog_delete_cb(GtkWidget *widget,
+                                 GdkEvent *event G_GNUC_UNUSED,
+                                 gpointer user_data G_GNUC_UNUSED)
+{
+    gtk_dialog_response(GTK_DIALOG(widget), GTK_RESPONSE_CANCEL);
+    return TRUE;
+}
+
 static void dialog_response_cb(GtkDialog *dialog,
                                gint response_id,
                                gpointer user_data)
@@ -1627,6 +1635,8 @@ static void spice_connection_add_task(spice_connection *conn, SpiceFileTransferT
         gtk_window_set_resizable(GTK_WINDOW(conn->transfer_dialog), FALSE);
         g_signal_connect(conn->transfer_dialog, "response",
                          G_CALLBACK(dialog_response_cb), conn);
+        g_signal_connect(conn->transfer_dialog, "delete-event",
+                         G_CALLBACK(dialog_delete_cb), conn);
     }
     gtk_widget_show(conn->transfer_dialog);
     content = gtk_dialog_get_content_area(GTK_DIALOG(conn->transfer_dialog));
