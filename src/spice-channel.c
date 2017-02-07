@@ -1169,7 +1169,7 @@ static void spice_channel_send_link(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
     uint8_t *buffer, *p;
-    int protocol, i;
+    int protocol, i, j;
 
     c->link_hdr.magic = SPICE_MAGIC;
     c->link_hdr.size = sizeof(c->link_msg);
@@ -1210,12 +1210,18 @@ static void spice_channel_send_link(SpiceChannel *channel)
     memcpy(p, &c->link_msg, sizeof(c->link_msg)); p += sizeof(c->link_msg);
 
     for (i = 0; i < c->common_caps->len; i++) {
-        *(uint32_t *)p = g_array_index(c->common_caps, uint32_t, i);
-        p += sizeof(uint32_t);
+        uint8_t *tmp = (uint8_t *) &g_array_index(c->common_caps, uint32_t, i);
+        for (j = 0; j < 4; j++) {
+            *p = tmp[j];
+            p++;
+        }
     }
     for (i = 0; i < c->caps->len; i++) {
-        *(uint32_t *)p = g_array_index(c->caps, uint32_t, i);
-        p += sizeof(uint32_t);
+        uint8_t *tmp = (uint8_t *) &g_array_index(c->caps, uint32_t, i);
+        for (j = 0; j < 4; j++) {
+            *p = tmp[j];
+            p++;
+        }
     }
     CHANNEL_DEBUG(channel, "channel type %d id %d num common caps %d num caps %d",
                   c->link_msg.channel_type,
