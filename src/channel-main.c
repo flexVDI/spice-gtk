@@ -2915,19 +2915,23 @@ static void file_transfer_operation_free(FileTransferOperation *xfer_op)
 
 static void spice_main_channel_reset_all_xfer_operations(SpiceMainChannel *channel)
 {
-    GHashTableIter iter_all_xfer_tasks;
-    gpointer key, value;
+    GList *it, *keys;
 
     /* Mark each of SpiceFileTransferTask as completed due error */
-    g_hash_table_iter_init(&iter_all_xfer_tasks, channel->priv->file_xfer_tasks);
-    while (g_hash_table_iter_next(&iter_all_xfer_tasks, &key, &value)) {
-        FileTransferOperation *xfer_op = value;
-        SpiceFileTransferTask *xfer_task = g_hash_table_lookup(xfer_op->xfer_task, key);
+    keys = g_hash_table_get_keys(channel->priv->file_xfer_tasks);
+    for (it = keys; it != NULL; it = it->next) {
+        FileTransferOperation *xfer_op;
+        SpiceFileTransferTask *xfer_task;
         GError *error;
 
+        xfer_op = g_hash_table_lookup(channel->priv->file_xfer_tasks, it->data);
+        if (xfer_op == NULL)
+            continue;
+
+        xfer_task = g_hash_table_lookup(xfer_op->xfer_task, it->data);
         if (xfer_task == NULL) {
             spice_warning("(reset-all) can't complete task %u - completed already?",
-                          GPOINTER_TO_UINT(key));
+                          GPOINTER_TO_UINT(it->data));
             continue;
         }
 
@@ -2935,6 +2939,7 @@ static void spice_main_channel_reset_all_xfer_operations(SpiceMainChannel *chann
                             "Agent connection closed");
         spice_file_transfer_task_completed(xfer_task, error);
     }
+    g_list_free(keys);
 }
 
 static SpiceFileTransferTask *spice_main_channel_find_xfer_task_by_task_id(SpiceMainChannel *channel,
