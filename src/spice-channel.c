@@ -2163,15 +2163,12 @@ static void spice_channel_iterate_read(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
 
-    if (!c->ws || nopoll_conn_pending_data(c->np_conn) != nopoll_true) {
-        g_coroutine_socket_wait(&c->coroutine, c->sock, G_IO_IN);
-    }
+    g_coroutine_socket_wait(&c->coroutine, c->sock, G_IO_IN);
 
     /* treat all incoming data (block on message completion) */
     while (!c->has_error &&
            c->state != SPICE_CHANNEL_STATE_MIGRATING &&
-           (g_pollable_input_stream_is_readable(G_POLLABLE_INPUT_STREAM(c->in))
-           || (c->ws && nopoll_conn_pending_data(c->np_conn) == nopoll_true))) {
+           g_pollable_input_stream_is_readable(G_POLLABLE_INPUT_STREAM(c->in))) {
         do
             spice_channel_recv_msg(channel,
                                    (handler_msg_in)SPICE_CHANNEL_GET_CLASS(channel)->handle_msg, NULL);
@@ -2390,6 +2387,7 @@ static void *spice_channel_coroutine(void *data)
     GInetSocketAddress *iaddr = NULL;
     GInetAddress *host;
     char *ws_token = NULL;
+    noPollConnOpts *opts;
 
     CHANNEL_DEBUG(channel, "Started background coroutine %p", &c->coroutine);
 
@@ -2454,7 +2452,10 @@ reconnect:
         host = g_inet_socket_address_get_address(iaddr);
         snprintf(&wsportstr[0], 32, "/?ver=2&token=%s", ws_token);
 
-        c->np_conn = nopoll_conn_tls_new_with_socket(c->np_ctx, NULL, g_socket_get_fd(c->sock),
+        // TODO: Check server certificates
+        opts = nopoll_conn_opts_new();
+        nopoll_conn_opts_ssl_peer_verify(opts, nopoll_false);
+        c->np_conn = nopoll_conn_tls_new_with_socket(c->np_ctx, opts, g_socket_get_fd(c->sock),
                                                      g_inet_address_to_string(host), NULL,
                                                      spice_session_get_host(c->session),
                                                      &wsportstr[0], "binary", NULL);
