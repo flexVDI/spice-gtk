@@ -4,7 +4,7 @@ set -e
 
 BIN=$1
 shift
-if [ `basename "$BIN"` != "spicy" ]; then
+if ! [ -x "$BIN" ]; then
     echo "Usage: $0 spicy_path [extra_deps]"
     exit 1
 fi
