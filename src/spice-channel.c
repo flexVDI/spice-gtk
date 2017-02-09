@@ -2365,7 +2365,7 @@ static void nopoll_log_handler(noPollCtx *ctx, noPollDebugLevel level,
         if (errno == EAGAIN) return; // Ignore these errors
 #endif
     }
-    g_log(G_LOG_DOMAIN, slevel, "%s", log_msg);
+    g_log("nopoll", slevel, "%s", log_msg);
 }
 
 static noPollCtx * nopoll_get_context(void)
