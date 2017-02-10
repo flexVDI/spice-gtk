@@ -575,31 +575,26 @@ static const struct {
     }
 };
 
-typedef struct _WeakRef {
-    GObject *object;
-} WeakRef;
-
-static void weak_notify_cb(WeakRef *weakref, GObject *object)
+static GWeakRef* get_weak_ref(gpointer object)
 {
-    weakref->object = NULL;
-}
-
-static WeakRef* weak_ref(GObject *object)
-{
-    WeakRef *weakref = g_new(WeakRef, 1);
-
-    g_object_weak_ref(object, (GWeakNotify)weak_notify_cb, weakref);
-    weakref->object = object;
-
+    GWeakRef *weakref = g_new(GWeakRef, 1);
+    g_weak_ref_init(weakref, object);
     return weakref;
 }
 
-static void weak_unref(WeakRef* weakref)
+static gpointer free_weak_ref(gpointer data)
 {
-    if (weakref->object)
-        g_object_weak_unref(weakref->object, (GWeakNotify)weak_notify_cb, weakref);
+    GWeakRef *weakref = data;
+    gpointer object = g_weak_ref_get(weakref);
 
+    g_weak_ref_clear(weakref);
     g_free(weakref);
+    if (object != NULL) {
+        /* The main reference still exists as object is not NULL, so we can
+         * remove the strong reference given by g_weak_ref_get */
+        g_object_unref(object);
+    }
+    return object;
 }
 
 static void clipboard_get_targets(GtkClipboard *clipboard,
@@ -607,9 +602,7 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
                                   gint n_atoms,
                                   gpointer user_data)
 {
-    WeakRef *weakref = user_data;
-    SpiceGtkSession *self = (SpiceGtkSession*)weakref->object;
-    weak_unref(weakref);
+    SpiceGtkSession *self = free_weak_ref(user_data);
 
     if (self == NULL)
         return;
@@ -706,7 +699,7 @@ static void clipboard_owner_change(GtkClipboard        *clipboard,
         s->clip_hasdata[selection] = TRUE;
         if (s->auto_clipboard_enable && !read_only(self))
             gtk_clipboard_request_targets(clipboard, clipboard_get_targets,
-                                          weak_ref(G_OBJECT(self)));
+                                          get_weak_ref(self));
         break;
     default:
         s->clip_hasdata[selection] = FALSE;
@@ -939,13 +932,10 @@ static void clipboard_received_text_cb(GtkClipboard *clipboard,
                                        const gchar *text,
                                        gpointer user_data)
 {
-    WeakRef *weakref = user_data;
-    SpiceGtkSession *self = (SpiceGtkSession*)weakref->object;
+    SpiceGtkSession *self = free_weak_ref(user_data);
     char *conv = NULL;
     int len = 0;
     int selection;
-
-    weak_unref(weakref);
 
     if (self == NULL)
         return;
@@ -982,9 +972,7 @@ static void clipboard_received_cb(GtkClipboard *clipboard,
                                   GtkSelectionData *selection_data,
                                   gpointer user_data)
 {
-    WeakRef *weakref = user_data;
-    SpiceGtkSession *self = (SpiceGtkSession*)weakref->object;
-    weak_unref(weakref);
+    SpiceGtkSession *self = free_weak_ref(user_data);
 
     if (self == NULL)
         return;
@@ -1055,7 +1043,7 @@ static gboolean clipboard_request(SpiceMainChannel *main, guint selection,
 
     if (type == VD_AGENT_CLIPBOARD_UTF8_TEXT) {
         gtk_clipboard_request_text(cb, clipboard_received_text_cb,
-                                   weak_ref(G_OBJECT(self)));
+                                   get_weak_ref(self));
     } else {
         for (m = 0; m < SPICE_N_ELEMENTS(atom2agent); m++) {
             if (atom2agent[m].vdagent == type)
@@ -1066,7 +1054,7 @@ static gboolean clipboard_request(SpiceMainChannel *main, guint selection,
 
         atom = gdk_atom_intern_static_string(atom2agent[m].xatom);
         gtk_clipboard_request_contents(cb, atom, clipboard_received_cb,
-                                       weak_ref(G_OBJECT(self)));
+                                       get_weak_ref(self));
     }
 
     return TRUE;
@@ -1239,7 +1227,7 @@ void spice_gtk_session_copy_to_guest(SpiceGtkSession *self)
 
     if (s->clip_hasdata[selection] && !s->clip_grabbed[selection]) {
         gtk_clipboard_request_targets(s->clipboard, clipboard_get_targets,
-                                      weak_ref(G_OBJECT(self)));
+                                      get_weak_ref(self));
     }
 }
 
