@@ -460,12 +460,19 @@ static void spice_display_finalize(GObject *obj)
     G_OBJECT_CLASS(spice_display_parent_class)->finalize(obj);
 }
 
-static GdkCursor* get_blank_cursor(void)
+static GdkCursor* spice_display_get_blank_cursor(SpiceDisplay *display)
 {
-    if (g_getenv("SPICE_DEBUG_CURSOR"))
-        return gdk_cursor_new(GDK_DOT);
+    GdkDisplay *gdk_display;
+    const gchar *cursor_name;
+    GdkWindow *gdk_window = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
 
-    return gdk_cursor_new(GDK_BLANK_CURSOR);
+    if (gdk_window == NULL)
+        return NULL;
+
+    gdk_display = gdk_window_get_display(gdk_window);
+    cursor_name = g_getenv("SPICE_DEBUG_CURSOR") ? "crosshair" : "none";
+
+    return gdk_cursor_new_from_name(gdk_display, cursor_name);
 }
 
 static gboolean grab_broken(SpiceDisplay *self, GdkEventGrabBroken *event,
@@ -676,7 +683,6 @@ G_GNUC_END_IGNORE_DEPRECATIONS
 
     d->grabseq = spice_grab_sequence_new_from_string("Control_L+Alt_L");
     d->activeseq = g_new0(gboolean, d->grabseq->nkeysyms);
-    d->mouse_cursor = get_blank_cursor();
 }
 
 static GObject *
@@ -986,7 +992,7 @@ static gboolean do_pointer_grab(SpiceDisplay *display)
     SpiceDisplayPrivate *d = display->priv;
     GdkWindow *window = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(display)));
     GdkGrabStatus status;
-    GdkCursor *blank = get_blank_cursor();
+    GdkCursor *blank = spice_display_get_blank_cursor(display);
     gboolean grab_successful = FALSE;
 
     if (!gtk_widget_get_realized(GTK_WIDGET(display)))
@@ -2579,7 +2585,9 @@ static void cursor_set(SpiceCursorChannel *channel,
         }
     }
 
-    g_object_unref(d->mouse_cursor);
+    if (d->mouse_cursor != NULL) {
+        g_object_unref(d->mouse_cursor);
+    }
     d->mouse_cursor = cursor;
 
     update_mouse_pointer(display);
@@ -2596,7 +2604,7 @@ static void cursor_hide(SpiceCursorChannel *channel, gpointer data)
 
     cursor_invalidate(display);
     d->show_cursor = d->mouse_cursor;
-    d->mouse_cursor = get_blank_cursor();
+    d->mouse_cursor = spice_display_get_blank_cursor(display);
     update_mouse_pointer(display);
 }
 
