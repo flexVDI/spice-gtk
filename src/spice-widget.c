@@ -819,6 +819,17 @@ SpiceGrabSequence *spice_display_get_grab_keys(SpiceDisplay *display)
     return d->grabseq;
 }
 
+#if GTK_CHECK_VERSION(3, 20, 0)
+static GdkSeat *spice_display_get_default_seat(SpiceDisplay *display)
+{
+    GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(display));
+    GdkDisplay *gdk_display = gdk_window_get_display(window);
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    return gdk_display_get_default_seat(gdk_display);
+    G_GNUC_END_IGNORE_DEPRECATIONS
+}
+#endif
+
 /* FIXME: gdk_keyboard_grab/ungrab() is deprecated */
 G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 
@@ -857,8 +868,19 @@ static void try_keyboard_grab(SpiceDisplay *display)
                                             GetModuleHandle(NULL), 0);
     g_warn_if_fail(d->keyboard_hook != NULL);
 #endif
+#if GTK_CHECK_VERSION(3, 20, 0)
+    status = gdk_seat_grab(spice_display_get_default_seat(display),
+                           gtk_widget_get_window(widget),
+                           GDK_SEAT_CAPABILITY_KEYBOARD,
+                           FALSE,
+                           NULL,
+                           NULL,
+                           NULL,
+                           NULL);
+#else
     status = gdk_keyboard_grab(gtk_widget_get_window(widget), FALSE,
                                GDK_CURRENT_TIME);
+#endif
     if (status != GDK_GRAB_SUCCESS) {
         g_warning("keyboard grab failed %u", status);
         d->keyboard_grab_active = false;
@@ -877,7 +899,11 @@ static void try_keyboard_ungrab(SpiceDisplay *display)
         return;
 
     SPICE_DEBUG("ungrab keyboard");
+#if GTK_CHECK_VERSION(3, 20, 0)
+    gdk_seat_ungrab(spice_display_get_default_seat(display));
+#else
     gdk_keyboard_ungrab(GDK_CURRENT_TIME);
+#endif
 #ifdef G_OS_WIN32
     // do not use g_clear_pointer as Windows API have different linkage
     if (d->keyboard_hook) {
