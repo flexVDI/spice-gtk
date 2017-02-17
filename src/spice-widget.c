@@ -119,6 +119,7 @@ static void release_keys(SpiceDisplay *display);
 static void size_allocate(GtkWidget *widget, GtkAllocation *conf, gpointer data);
 static gboolean draw_event(GtkWidget *widget, cairo_t *cr, gpointer data);
 static void update_size_request(SpiceDisplay *display);
+static GdkDevice *spice_gdk_window_get_pointing_device(GdkWindow *window);
 
 /* ---------------------------------------------------------------- */
 
@@ -1112,14 +1113,11 @@ static void mouse_wrap(SpiceDisplay *display, GdkEventMotion *motion)
     yr = gdk_screen_get_height(screen) / 2;
 
     if (xr != (gint)motion->x_root || yr != (gint)motion->y_root) {
+        GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(display));
         /* FIXME: we try our best to ignore that next pointer move event.. */
         gdk_display_sync(gdk_screen_get_display(screen));
 
-        /* FIXME: gdk_display_warp_pointer() is deprecated */
-        G_GNUC_BEGIN_IGNORE_DEPRECATIONS
-        gdk_display_warp_pointer(gtk_widget_get_display(GTK_WIDGET(display)),
-                                 screen, xr, yr);
-        G_GNUC_END_IGNORE_DEPRECATIONS
+        gdk_device_warp(spice_gdk_window_get_pointing_device(window), screen, xr, yr);
         d->mouse_last_x = -1;
         d->mouse_last_y = -1;
     }
@@ -1127,7 +1125,7 @@ static void mouse_wrap(SpiceDisplay *display, GdkEventMotion *motion)
 
 }
 
-/* FIXME: gdk_pointer_ungrab()/gdk_display_warp_pointer() are deprecated */
+/* FIXME: gdk_pointer_ungrab() is deprecated */
 G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 
 static void try_mouse_ungrab(SpiceDisplay *display)
@@ -1135,6 +1133,7 @@ static void try_mouse_ungrab(SpiceDisplay *display)
     SpiceDisplayPrivate *d = display->priv;
     double s;
     int x, y;
+    GdkWindow *window;
 
     if (!d->mouse_grab_active)
         return;
@@ -1150,14 +1149,15 @@ static void try_mouse_ungrab(SpiceDisplay *display)
 
     spice_display_get_scaling(display, &s, &x, &y, NULL, NULL);
 
-    gdk_window_get_root_coords(gtk_widget_get_window(GTK_WIDGET(display)),
+    window = gtk_widget_get_window(GTK_WIDGET(display));
+    gdk_window_get_root_coords(window,
                                x + d->mouse_guest_x * s,
                                y + d->mouse_guest_y * s,
                                &x, &y);
 
-    gdk_display_warp_pointer(gtk_widget_get_display(GTK_WIDGET(display)),
-                             gtk_widget_get_screen(GTK_WIDGET(display)),
-                             x, y);
+    gdk_device_warp(spice_gdk_window_get_pointing_device(window),
+                    gtk_widget_get_screen(GTK_WIDGET(display)),
+                    x, y);
 
     g_signal_emit(display, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, false);
     spice_gtk_session_set_pointer_grabbed(d->gtk_session, false);
