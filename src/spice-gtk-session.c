@@ -917,11 +917,10 @@ static gboolean check_clipboard_size_limits(SpiceGtkSession *session,
 static char *fixup_clipboard_text(SpiceGtkSession *self, const char *text, int *len)
 {
     char *conv = NULL;
-    int new_len = *len;
 
     if (spice_main_agent_test_capability(self->priv->main, VD_AGENT_CAP_GUEST_LINEEND_CRLF)) {
         conv = spice_unix2dos(text, *len);
-        new_len = strlen(conv);
+        *len = strlen(conv);
     } else {
         /* On Windows, with some versions of gtk+, GtkSelectionData::length
          * will include the final '\0'. When a string with this trailing '\0'
@@ -930,10 +929,9 @@ static char *fixup_clipboard_text(SpiceGtkSession *self, const char *text, int *
          * send to the agent does not include any trailing '\0'
          * This is gtk+ bug https://bugzilla.gnome.org/show_bug.cgi?id=734670
          */
-        new_len = strlen(text);
+        *len = strlen(text);
     }
 
-    *len = new_len;
     return conv;
 }
 
