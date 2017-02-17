@@ -1031,6 +1031,17 @@ static gboolean do_pointer_grab(SpiceDisplay *display)
 #endif
 
     try_keyboard_grab(display);
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+#if GTK_CHECK_VERSION(3, 20, 0)
+    status = gdk_seat_grab(spice_display_get_default_seat(display),
+                           window,
+                           GDK_SEAT_CAPABILITY_ALL_POINTING,
+                           TRUE,
+                           blank,
+                           NULL,
+                           NULL,
+                           NULL);
+#else
     /*
      * from gtk-vnc:
      * For relative mouse to work correctly when grabbed we need to
@@ -1040,8 +1051,6 @@ static gboolean do_pointer_grab(SpiceDisplay *display)
      * what window the pointer is actally over, so use 'FALSE' for
      * 'owner_events' parameter
      */
-    /* FIXME: gdk_pointer_grab() is deprecated */
-    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     status = gdk_pointer_grab(window, FALSE,
                      GDK_POINTER_MOTION_MASK |
                      GDK_BUTTON_PRESS_MASK |
@@ -1051,6 +1060,7 @@ static gboolean do_pointer_grab(SpiceDisplay *display)
                      NULL,
                      blank,
                      GDK_CURRENT_TIME);
+#endif
     G_GNUC_END_IGNORE_DEPRECATIONS
     grab_successful = (status == GDK_GRAB_SUCCESS);
     if (!grab_successful) {
@@ -1151,9 +1161,6 @@ static void mouse_wrap(SpiceDisplay *display, GdkEventMotion *motion)
 
 }
 
-/* FIXME: gdk_pointer_ungrab() is deprecated */
-G_GNUC_BEGIN_IGNORE_DEPRECATIONS
-
 static void try_mouse_ungrab(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
@@ -1164,7 +1171,13 @@ static void try_mouse_ungrab(SpiceDisplay *display)
     if (!d->mouse_grab_active)
         return;
 
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+#if GTK_CHECK_VERSION(3, 20, 0)
+    gdk_seat_ungrab(spice_display_get_default_seat(display));
+#else
     gdk_pointer_ungrab(GDK_CURRENT_TIME);
+#endif
+    G_GNUC_END_IGNORE_DEPRECATIONS
     gtk_grab_remove(GTK_WIDGET(display));
 #ifdef G_OS_WIN32
     ClipCursor(NULL);
@@ -1188,7 +1201,6 @@ static void try_mouse_ungrab(SpiceDisplay *display)
     g_signal_emit(display, signals[SPICE_DISPLAY_MOUSE_GRAB], 0, false);
     spice_gtk_session_set_pointer_grabbed(d->gtk_session, false);
 }
-G_GNUC_END_IGNORE_DEPRECATIONS
 
 static void update_mouse_grab(SpiceDisplay *display)
 {
@@ -2034,7 +2046,11 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
         */
         /* FIXME: gdk_pointer_ungrab() is deprecated */
         G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+#if GTK_CHECK_VERSION(3, 20, 0)
+        gdk_seat_ungrab(spice_display_get_default_seat(display));
+#else
         gdk_pointer_ungrab(GDK_CURRENT_TIME);
+#endif
         G_GNUC_END_IGNORE_DEPRECATIONS
     }
 
