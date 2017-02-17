@@ -2361,11 +2361,40 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
 #define SPICE_GDK_BUTTONS_MASK \
     (GDK_BUTTON1_MASK|GDK_BUTTON2_MASK|GDK_BUTTON3_MASK|GDK_BUTTON4_MASK|GDK_BUTTON5_MASK)
 
+static GdkDevice *spice_gdk_window_get_pointing_device(GdkWindow *window)
+{
+    GdkDisplay *gdk_display = gdk_window_get_display(window);
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+#if GTK_CHECK_VERSION(3, 20, 0)
+    return gdk_seat_get_pointer(gdk_display_get_default_seat(gdk_display));
+#else
+    return gdk_device_manager_get_client_pointer(gdk_display_get_device_manager(gdk_display));
+#endif
+    G_GNUC_END_IGNORE_DEPRECATIONS
+}
+
+static GdkModifierType spice_display_get_modifiers_state(SpiceDisplay *display)
+{
+    GdkModifierType modifiers;
+    GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(display));
+
+    if (window == NULL) {
+        return 0;
+    }
+
+    gdk_window_get_device_position(window,
+                                   spice_gdk_window_get_pointing_device(window),
+                                   NULL,
+                                   NULL,
+                                   &modifiers);
+
+    return modifiers;
+}
+
 static void update_mouse_mode(SpiceChannel *channel, gpointer data)
 {
     SpiceDisplay *display = data;
     SpiceDisplayPrivate *d = display->priv;
-    GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(display));
 
     g_object_get(channel, "mouse-mode", &d->mouse_mode, NULL);
     SPICE_DEBUG("mouse mode %u", d->mouse_mode);
@@ -2378,15 +2407,8 @@ static void update_mouse_mode(SpiceChannel *channel, gpointer data)
         d->mouse_guest_x = -1;
         d->mouse_guest_y = -1;
 
-        if (window != NULL) {
-            GdkModifierType modifiers;
-            /* FIXME: gdk_window_get_pointer() is deprecated */
-            G_GNUC_BEGIN_IGNORE_DEPRECATIONS
-            gdk_window_get_pointer(window, NULL, NULL, &modifiers);
-            G_GNUC_END_IGNORE_DEPRECATIONS
-
-            if (modifiers & SPICE_GDK_BUTTONS_MASK)
-                try_mouse_grab(display);
+        if (spice_display_get_modifiers_state(display) & SPICE_GDK_BUTTONS_MASK) {
+            try_mouse_grab(display);
         }
         break;
     default:
