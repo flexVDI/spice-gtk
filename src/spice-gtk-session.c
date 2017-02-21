@@ -609,6 +609,11 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
 
     g_return_if_fail(SPICE_IS_GTK_SESSION(self));
 
+    if (atoms == NULL) {
+        SPICE_DEBUG("Retrieving the clipboard data has failed");
+        return;
+    }
+
     SpiceGtkSessionPrivate *s = self->priv;
     guint32 types[SPICE_N_ELEMENTS(atom2agent)];
     char *name;
