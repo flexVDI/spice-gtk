@@ -615,7 +615,7 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
     }
 
     SpiceGtkSessionPrivate *s = self->priv;
-    guint32 types[SPICE_N_ELEMENTS(atom2agent)];
+    guint32 types[SPICE_N_ELEMENTS(atom2agent)] = { 0 };
     char *name;
     int a, m, t;
     int selection;
@@ -635,7 +635,6 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
         }
     }
 
-    memset(types, 0, sizeof(types));
     for (a = 0; a < n_atoms; a++) {
         name = gdk_atom_name(atoms[a]);
         for (m = 0; m < SPICE_N_ELEMENTS(atom2agent); m++) {
