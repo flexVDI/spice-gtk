@@ -616,6 +616,7 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
 
     SpiceGtkSessionPrivate *s = self->priv;
     guint32 types[SPICE_N_ELEMENTS(atom2agent)] = { 0 };
+    gint num_types;
     char *name;
     int a, m, t;
     int selection;
@@ -635,38 +636,41 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
         }
     }
 
+    /* Set all Atoms that matches our current protocol implementation */
+    num_types = 0;
     for (a = 0; a < n_atoms; a++) {
         name = gdk_atom_name(atoms[a]);
         for (m = 0; m < SPICE_N_ELEMENTS(atom2agent); m++) {
             if (strcasecmp(name, atom2agent[m].xatom) != 0) {
                 continue;
             }
-            /* found match */
-            for (t = 0; t < SPICE_N_ELEMENTS(atom2agent); t++) {
+
+            /* check if type is already in list */
+            for (t = 0; t < num_types; t++) {
                 if (types[t] == atom2agent[m].vdagent) {
-                    /* type already in list */
-                    break;
-                }
-                if (types[t] == 0) {
-                    /* add type to empty slot */
-                    types[t] = atom2agent[m].vdagent;
                     break;
                 }
             }
-            break;
+
+            if (t == num_types) {
+                /* add type to empty slot */
+                types[t] = atom2agent[m].vdagent;
+                num_types++;
+            }
         }
         g_free(name);
     }
-    for (t = 0; t < SPICE_N_ELEMENTS(atom2agent); t++) {
-        if (types[t] == 0) {
-            break;
-        }
+
+    if (num_types == 0) {
+        SPICE_DEBUG("No GdkAtoms will be sent from %d", n_atoms);
+        return;
     }
-    if (!s->clip_grabbed[selection] && t > 0) {
+
+    if (!s->clip_grabbed[selection]) {
         s->clip_grabbed[selection] = TRUE;
 
         if (spice_main_agent_test_capability(s->main, VD_AGENT_CAP_CLIPBOARD_BY_DEMAND))
-            spice_main_clipboard_selection_grab(s->main, selection, types, t);
+            spice_main_clipboard_selection_grab(s->main, selection, types, num_types);
         /* Sending a grab causes the agent to do an implicit release */
         s->nclip_targets[selection] = 0;
     }
