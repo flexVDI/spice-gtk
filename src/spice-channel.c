@@ -1051,29 +1051,30 @@ static int spice_channel_read_wire(SpiceChannel *channel, void *data, size_t len
     GIOCondition cond;
     gssize ret;
 
-reread:
+    while (TRUE) {
 
-    if (c->has_error) return 0; /* has_error is set by disconnect(), return no error */
+        if (c->has_error) return 0; /* has_error is set by disconnect(), return no error */
 
-    ret = spice_channel_read_wire_nonblocking(channel, data, len, &cond);
+        ret = spice_channel_read_wire_nonblocking(channel, data, len, &cond);
 
-    if (ret == -1) {
-        if (cond != 0) {
-            // TODO: should use g_pollable_input/output_stream_create_source() ?
-            g_coroutine_socket_wait(&c->coroutine, c->sock, cond);
-            goto reread;
-        } else {
-            c->has_error = TRUE;
-            return -errno;
+        if (ret == -1) {
+            if (cond != 0) {
+                // TODO: should use g_pollable_input/output_stream_create_source() ?
+                g_coroutine_socket_wait(&c->coroutine, c->sock, cond);
+                continue;
+            } else {
+                c->has_error = TRUE;
+                return -errno;
+            }
         }
-    }
-    if (ret == 0) {
-        CHANNEL_DEBUG(channel, "Closing the connection: spice_channel_read() - ret=0");
-        c->has_error = TRUE;
-        return 0;
-    }
+        if (ret == 0) {
+            CHANNEL_DEBUG(channel, "Closing the connection: spice_channel_read() - ret=0");
+            c->has_error = TRUE;
+            return 0;
+        }
 
-    return ret;
+        return ret;
+    }
 }
 
 #ifdef HAVE_SASL
