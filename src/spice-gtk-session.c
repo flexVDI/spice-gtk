@@ -636,6 +636,11 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
         }
     }
 
+    if (s->clip_grabbed[selection]) {
+        SPICE_DEBUG("Clipboard is already grabbed, ignoring %d atoms", n_atoms);
+        return;
+    }
+
     /* Set all Atoms that matches our current protocol implementation */
     num_types = 0;
     for (a = 0; a < n_atoms; a++) {
@@ -666,14 +671,13 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
         return;
     }
 
-    if (!s->clip_grabbed[selection]) {
-        s->clip_grabbed[selection] = TRUE;
+    s->clip_grabbed[selection] = TRUE;
 
-        if (spice_main_agent_test_capability(s->main, VD_AGENT_CAP_CLIPBOARD_BY_DEMAND))
-            spice_main_clipboard_selection_grab(s->main, selection, types, num_types);
-        /* Sending a grab causes the agent to do an implicit release */
-        s->nclip_targets[selection] = 0;
-    }
+    if (spice_main_agent_test_capability(s->main, VD_AGENT_CAP_CLIPBOARD_BY_DEMAND))
+        spice_main_clipboard_selection_grab(s->main, selection, types, num_types);
+
+    /* Sending a grab causes the agent to do an implicit release */
+    s->nclip_targets[selection] = 0;
 }
 
 static void clipboard_owner_change(GtkClipboard        *clipboard,
