@@ -1048,12 +1048,15 @@ static int spice_channel_read_wire_nonblocking(SpiceChannel *channel,
 static int spice_channel_read_wire(SpiceChannel *channel, void *data, size_t len)
 {
     SpiceChannelPrivate *c = channel->priv;
-    GIOCondition cond;
-    gssize ret;
 
     while (TRUE) {
+        gssize ret;
+        GIOCondition cond;
 
-        if (c->has_error) return 0; /* has_error is set by disconnect(), return no error */
+        if (c->has_error) {
+            /* has_error is set by disconnect(), return no error */
+            return 0;
+        }
 
         ret = spice_channel_read_wire_nonblocking(channel, data, len, &cond);
 
