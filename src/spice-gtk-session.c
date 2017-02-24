@@ -936,35 +936,40 @@ static void clipboard_received_text_cb(GtkClipboard *clipboard,
     char *conv = NULL;
     int len = 0;
     int selection;
+    const guchar *data = NULL;
 
     if (self == NULL)
         return;
 
+    selection = get_selection_from_clipboard(self->priv, clipboard);
+    g_return_if_fail(selection != -1);
+
     if (text == NULL) {
         SPICE_DEBUG("Failed to retrieve clipboard text");
-        return;
+        goto notify_agent;
     }
 
     g_return_if_fail(SPICE_IS_GTK_SESSION(self));
 
-    selection = get_selection_from_clipboard(self->priv, clipboard);
-    g_return_if_fail(selection != -1);
-
     len = strlen(text);
     if (!check_clipboard_size_limits(self, len)) {
-        return;
+        SPICE_DEBUG("Failed size limits of clipboard text (%d bytes)", len);
+        goto notify_agent;
     }
 
     /* gtk+ internal utf8 newline is always LF, even on windows */
     conv = fixup_clipboard_text(self, text, &len);
     if (!check_clipboard_size_limits(self, len)) {
-        g_free(conv);
-        return;
+        SPICE_DEBUG("Failed size limits of clipboard text (%d bytes)", len);
+        goto notify_agent;
     }
 
+    data = (const guchar *) (conv != NULL ? conv : text);
+notify_agent:
     spice_main_clipboard_selection_notify(self->priv->main, selection,
                                           VD_AGENT_CLIPBOARD_UTF8_TEXT,
-                                          (guchar *)(conv ?: text), len);
+                                          data,
+                                          (data != NULL) ? len : 0);
     g_free(conv);
 }
 
