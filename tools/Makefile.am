@@ -60,6 +60,7 @@ spicy_stats_SOURCES =			\
 
 spicy_stats_LDADD =			\
 	$(top_builddir)/src/libspice-client-glib-2.0.la	\
+	$(GOBJECT2_LIBS) \
 	$(NULL)
 
 spicy_stats_CPPFLAGS =			\
