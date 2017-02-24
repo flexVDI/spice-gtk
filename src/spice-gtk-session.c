@@ -604,6 +604,8 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
 {
     SpiceGtkSession *self = free_weak_ref(user_data);
 
+    SPICE_DEBUG("%s:", __FUNCTION__);
+
     if (self == NULL)
         return;
 
@@ -627,15 +629,6 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
     selection = get_selection_from_clipboard(s, clipboard);
     g_return_if_fail(selection != -1);
 
-    SPICE_DEBUG("%s:", __FUNCTION__);
-    if (spice_util_get_debug()) {
-        for (a = 0; a < n_atoms; a++) {
-            name = gdk_atom_name(atoms[a]);
-            SPICE_DEBUG(" \"%s\"", name);
-            g_free(name);
-        }
-    }
-
     if (s->clip_grabbed[selection]) {
         SPICE_DEBUG("Clipboard is already grabbed, ignoring %d atoms", n_atoms);
         return;
@@ -645,6 +638,9 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
     num_types = 0;
     for (a = 0; a < n_atoms; a++) {
         name = gdk_atom_name(atoms[a]);
+
+        SPICE_DEBUG(" \"%s\"", name);
+
         for (m = 0; m < SPICE_N_ELEMENTS(atom2agent); m++) {
             if (strcasecmp(name, atom2agent[m].xatom) != 0) {
                 continue;
