@@ -619,8 +619,7 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
     SpiceGtkSessionPrivate *s = self->priv;
     guint32 types[SPICE_N_ELEMENTS(atom2agent)] = { 0 };
     gint num_types;
-    char *name;
-    int a, m, t;
+    int a;
     int selection;
 
     if (s->main == NULL)
@@ -637,11 +636,14 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
     /* Set all Atoms that matches our current protocol implementation */
     num_types = 0;
     for (a = 0; a < n_atoms; a++) {
-        name = gdk_atom_name(atoms[a]);
+        guint m;
+        gchar *name = gdk_atom_name(atoms[a]);
 
         SPICE_DEBUG(" \"%s\"", name);
 
         for (m = 0; m < SPICE_N_ELEMENTS(atom2agent); m++) {
+            guint t;
+
             if (strcasecmp(name, atom2agent[m].xatom) != 0) {
                 continue;
             }
