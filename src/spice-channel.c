@@ -1189,8 +1189,8 @@ static void spice_channel_failed_sasl_authentication(SpiceChannel *channel)
 #endif
 
 /* coroutine context */
-static void spice_channel_failed_authentication(SpiceChannel *channel,
-                                                gboolean invalidPassword)
+static void spice_channel_failed_spice_authentication(SpiceChannel *channel,
+                                                      gboolean invalidPassword)
 {
     SpiceChannelPrivate *c = channel->priv;
 
@@ -1203,7 +1203,7 @@ static void spice_channel_failed_authentication(SpiceChannel *channel,
         g_set_error_literal(&c->error,
                             SPICE_CLIENT_ERROR,
                             SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD,
-                            _("Authentication failed: password is required"));
+                            _("Authentication failed: wrong password ?"));
 
     c->event = SPICE_CHANNEL_ERROR_AUTH;
 
@@ -1242,7 +1242,7 @@ static SpiceChannelEvent spice_channel_send_spice_ticket(SpiceChannel *channel)
     if (password == NULL)
         password = g_strdup("");
     if (strlen(password) > SPICE_MAX_PASSWORD_LENGTH) {
-        spice_channel_failed_authentication(channel, TRUE);
+        spice_channel_failed_spice_authentication(channel, TRUE);
         ret = SPICE_CHANNEL_ERROR_AUTH;
         goto cleanup;
     }
@@ -1278,7 +1278,7 @@ static gboolean spice_channel_recv_auth(SpiceChannel *channel)
 
     if (link_res != SPICE_LINK_ERR_OK) {
         CHANNEL_DEBUG(channel, "link result: reply %u", link_res);
-        spice_channel_failed_authentication(channel, FALSE);
+        spice_channel_failed_spice_authentication(channel, FALSE);
         return FALSE;
     }
 
