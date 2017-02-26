@@ -1163,28 +1163,38 @@ static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
     return length;
 }
 
+#if HAVE_SASL
+/* coroutine context */
+static void spice_channel_failed_sasl_authentication(SpiceChannel *channel)
+{
+    SpiceChannelPrivate *c = channel->priv;
+    gint err_code; /* The application should activate the authentication window fields accordingly */
+
+    if (c->auth_needs_username && c->auth_needs_password)
+        err_code = SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD_AND_USERNAME;
+    else if (c->auth_needs_username)
+        err_code = SPICE_CLIENT_ERROR_AUTH_NEEDS_USERNAME;
+    else
+        err_code = SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD;
+
+    g_set_error_literal(&c->error,
+                        SPICE_CLIENT_ERROR,
+                        err_code,
+                        _("Authentication failed"));
+
+    c->event = SPICE_CHANNEL_ERROR_AUTH;
+
+    c->has_error = TRUE; /* force disconnect */
+}
+#endif
+
 /* coroutine context */
 static void spice_channel_failed_authentication(SpiceChannel *channel,
                                                 gboolean invalidPassword)
 {
     SpiceChannelPrivate *c = channel->priv;
 
-    if (c->auth_needs_username && c->auth_needs_password)
-        g_set_error_literal(&c->error,
-                            SPICE_CLIENT_ERROR,
-                            SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD_AND_USERNAME,
-                            _("Authentication failed: password and username are required"));
-    else if (c->auth_needs_username)
-        g_set_error_literal(&c->error,
-                            SPICE_CLIENT_ERROR,
-                            SPICE_CLIENT_ERROR_AUTH_NEEDS_USERNAME,
-                            _("Authentication failed: username is required"));
-    else if (c->auth_needs_password)
-        g_set_error_literal(&c->error,
-                            SPICE_CLIENT_ERROR,
-                            SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD,
-                            _("Authentication failed: password is required"));
-    else if (invalidPassword)
+    if (invalidPassword)
         g_set_error_literal(&c->error,
                             SPICE_CLIENT_ERROR,
                             SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD,
@@ -1858,7 +1868,7 @@ error:
     if (saslconn)
         sasl_dispose(&saslconn);
 
-    spice_channel_failed_authentication(channel, FALSE);
+    spice_channel_failed_sasl_authentication(channel);
     ret = FALSE;
 
 cleanup:
