@@ -1074,7 +1074,7 @@ static gboolean do_pointer_grab(SpiceDisplay *display)
     }
 
 end:
-    g_object_unref(blank);
+    g_clear_object(&blank);
     return grab_successful;
 }
 
@@ -2767,7 +2767,7 @@ static void cursor_move(SpiceCursorChannel *channel, gint x, gint y, gpointer da
 
     /* apparently we have to restore cursor when "cursor_move" */
     if (d->show_cursor != NULL) {
-        g_object_unref(d->mouse_cursor);
+        g_clear_object(&d->mouse_cursor);
         d->mouse_cursor = d->show_cursor;
         d->show_cursor = NULL;
         update_mouse_pointer(display);
