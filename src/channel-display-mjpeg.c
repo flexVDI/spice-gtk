@@ -289,6 +289,7 @@ static void mjpeg_decoder_destroy(VideoDecoder* video_decoder)
     MJpegDecoder *decoder = (MJpegDecoder*)video_decoder;
 
     mjpeg_decoder_drop_queue(decoder);
+    g_queue_free(decoder->msgq);
     jpeg_destroy_decompress(&decoder->mjpeg_cinfo);
     g_free(decoder->out_frame);
     free(decoder);
