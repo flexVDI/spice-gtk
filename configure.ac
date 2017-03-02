@@ -86,17 +86,6 @@ AC_SUBST(SPICE_GTK_MICRO_VERSION)
 dnl =========================================================================
 dnl Chek optional features
 
-srcdir="$(dirname $0)"
-if test ! -e "$srcdir/src/vncdisplaykeymap_osx2xtkbd.c"; then
-  AC_MSG_CHECKING([for Text::CSV Perl module])
-  perl -MText::CSV -e "" >/dev/null 2>&1
-  if test $? -ne 0 ; then
-    AC_MSG_RESULT([not found])
-    AC_MSG_ERROR([Text::CSV Perl module is required to compile this package])
-  fi
-  AC_MSG_RESULT([found])
-fi
-
 SPICE_GLIB_REQUIRES=""
 SPICE_GTK_REQUIRES=""
 
