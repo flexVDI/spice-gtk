@@ -75,8 +75,8 @@ struct _SpiceWindow {
     gint             win_x;
     gint             win_y;
 #endif
-    bool             enable_accels_save;
-    bool             enable_mnemonics_save;
+    gboolean         enable_accels_save;
+    gboolean         enable_mnemonics_save;
 };
 
 struct _SpiceWindowClass
