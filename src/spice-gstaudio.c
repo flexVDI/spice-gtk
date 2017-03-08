@@ -430,9 +430,6 @@ static void record_volume_changed(GObject *object, GParamSpec *pspec, gpointer d
     vol = 1.0 * volume[0] / VOLUME_NORMAL;
     SPICE_DEBUG("record volume changed to %u (%0.2f)", volume[0], 100*vol);
 
-    /* TODO directsoundsrc doesn't support IDirectSoundBuffer_SetVolume */
-    /* TODO pulsesrc doesn't support volume property, it's all coming! */
-
     if (GST_IS_BIN(p->record.src))
         e = gst_bin_get_by_interface(GST_BIN(p->record.src), GST_TYPE_STREAM_VOLUME);
     else
@@ -441,7 +438,7 @@ static void record_volume_changed(GObject *object, GParamSpec *pspec, gpointer d
     if (GST_IS_STREAM_VOLUME(e))
         gst_stream_volume_set_volume(GST_STREAM_VOLUME(e), GST_STREAM_VOLUME_FORMAT_CUBIC, vol);
     else
-        g_warning("gst lacks volume capabilities on src (TODO)");
+        g_warning("gst lacks volume capabilities on src");
 
     g_object_unref(e);
 }
@@ -467,7 +464,7 @@ static void record_mute_changed(GObject *object, GParamSpec *pspec, gpointer dat
     if (GST_IS_STREAM_VOLUME (e))
         gst_stream_volume_set_mute(GST_STREAM_VOLUME(e), mute);
     else
-        g_warning("gst lacks mute capabilities on src: %d (TODO)", mute);
+        g_warning("gst lacks mute capabilities on src: %d", mute);
 
     g_object_unref(e);
 }
