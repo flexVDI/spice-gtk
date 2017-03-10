@@ -5,7 +5,6 @@ if WITH_CONTROLLER
 SUBDIRS += controller
 endif
 
-# Avoid need for perl(Text::CSV) by end users
 KEYMAPS =					\
 	vncdisplaykeymap_xorgevdev2xtkbd.c	\
 	vncdisplaykeymap_xorgkbd2xtkbd.c	\

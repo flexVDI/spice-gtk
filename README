@@ -53,4 +53,4 @@ gstreamer1-devel gstreamer1-plugins-base-devel gstreamer1-plugins-good gstreamer
 
 . If you build from git, you'll also need:
 
-libtool automake vala vala-tools perl-Text-CSV
+libtool automake vala vala-tools
