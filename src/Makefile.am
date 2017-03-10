@@ -30,8 +30,9 @@ BUILT_SOURCES = $(GLIBGENS) $(KEYMAPS)
 
 EXTRA_DIST =					\
 	decode-glz-tmpl.c			\
-	$(KEYMAP_CSV) 				\
-	$(KEYMAP_GEN) 				\
+	$(KEYMAPS)				\
+	$(KEYMAP_CSV)				\
+	$(KEYMAP_GEN)				\
 	map-file				\
 	spice-glib-sym-file			\
 	spice-gtk-sym-file			\
