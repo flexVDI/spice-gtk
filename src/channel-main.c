@@ -225,6 +225,7 @@ static const char *agent_caps[] = {
     [ VD_AGENT_CAP_MAX_CLIPBOARD       ] = "max-clipboard",
     [ VD_AGENT_CAP_AUDIO_VOLUME_SYNC   ] = "volume-sync",
     [ VD_AGENT_CAP_MONITORS_CONFIG_POSITION ] = "monitors config position",
+    [ VD_AGENT_CAP_FILE_XFER_DISABLED ] = "file transfer disabled",
 };
 #define NAME(_a, _i) ((_i) < SPICE_N_ELEMENTS(_a) ? (_a[(_i)] ?: "?") : "?")
 
@@ -3094,6 +3095,17 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
                                 SPICE_CLIENT_ERROR,
                                 SPICE_CLIENT_ERROR_FAILED,
                                 "The agent is not connected");
+        return;
+    }
+
+    if (test_agent_cap(channel, VD_AGENT_CAP_FILE_XFER_DISABLED)) {
+        g_task_report_new_error(channel,
+                                callback,
+                                user_data,
+                                spice_main_file_copy_async,
+                                SPICE_CLIENT_ERROR,
+                                SPICE_CLIENT_ERROR_FAILED,
+                                _("The file transfer is disabled"));
         return;
     }
 
