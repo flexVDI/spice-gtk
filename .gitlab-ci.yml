@@ -1,0 +1,12 @@
+image: fedora:latest
+
+before_script:
+  - dnf install 'dnf-command(copr)' git libtool make pyparsing redhat-rpm-config -y
+  - dnf copr enable @spice/nightly -y
+  - dnf builddep spice-gtk -y
+
+makecheck:
+  script:
+  - ./autogen.sh --enable-static
+  - make -j4
+  - make check
