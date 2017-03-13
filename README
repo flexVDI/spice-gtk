@@ -21,7 +21,7 @@ libspice-client-gtk-3.0
 
 spicy
    a gtk test client. The recommended client for end user is
-   virt-viewer (http://git.fedorahosted.org/cgit/virt-viewer.git/)
+   virt-viewer (https://pagure.io/virt-viewer)
 
 spicy-screenshot
    Command line tool, connects to spice server and writes out a
