@@ -9,10 +9,12 @@ if ! [ -x "$BIN" ]; then
     exit 1
 fi
 
+libs="libnopoll libspice-client-glib libspice-client-gtk $*"
 if ldd "$BIN" | grep -q flexvdi; then
-    libs="libnopoll libspice-client-glib libspice-client-gtk libcups libflexvdi-spice-client $*"
-else
-    libs="libnopoll libspice-client-glib libspice-client-gtk $*"
+    libs="$libs libcups libflexvdi-spice-client"
+fi
+if ldd "$BIN" | grep -q pulse; then
+    libs="$libs libpulse"
 fi
 SRCDIR=`dirname "$0"`
 ICONSDIR="$SRCDIR"/icons
@@ -43,6 +45,10 @@ cat > $TMPDIR/AppRun <<\EOF
 HERE=$(dirname $(readlink -f "${0}"))
 export LD_LIBRARY_PATH="${HERE}"/usr/lib:$LD_LIBRARY_PATH
 export XDG_DATA_DIRS="${HERE}/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+export PULSE_COOKIE=`mktemp`
+trap 'rm -f $PULSE_COOKIE' EXIT
+xprop -root PULSE_COOKIE | cut -d '"' -f 2 | while read -N2 code; do printf "\x$code"; done > $PULSE_COOKIE
+export PULSE_SERVER=`xprop -root PULSE_SERVER | cut -d '"' -f 2 | cut -d '}' -f 2`
 "${HERE}"/usr/bin/spicy $@
 EOF
 chmod 755 $TMPDIR/AppRun $TMPDIR/usr/bin/spicy $TMPDIR/usr/lib/*
