@@ -890,6 +890,20 @@ static void try_keyboard_grab(SpiceDisplay *display)
     }
 }
 
+static void ungrab_keyboard(G_GNUC_UNUSED SpiceDisplay *display)
+{
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+#if GTK_CHECK_VERSION(3, 20, 0)
+    /* we want to ungrab just the keyboard - it is not possible using gdk_seat_ungrab().
+       See also https://bugzilla.gnome.org/show_bug.cgi?id=780133 */
+    GdkDevice *keyboard = gdk_seat_get_keyboard(spice_display_get_default_seat(display));
+    gdk_device_ungrab(keyboard, GDK_CURRENT_TIME);
+#else
+    gdk_keyboard_ungrab(GDK_CURRENT_TIME);
+#endif
+    G_GNUC_END_IGNORE_DEPRECATIONS
+}
+
 static void try_keyboard_ungrab(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
@@ -899,11 +913,7 @@ static void try_keyboard_ungrab(SpiceDisplay *display)
         return;
 
     SPICE_DEBUG("ungrab keyboard");
-#if GTK_CHECK_VERSION(3, 20, 0)
-    gdk_seat_ungrab(spice_display_get_default_seat(display));
-#else
-    gdk_keyboard_ungrab(GDK_CURRENT_TIME);
-#endif
+    ungrab_keyboard(display);
 #ifdef G_OS_WIN32
     // do not use g_clear_pointer as Windows API have different linkage
     if (d->keyboard_hook) {
@@ -1161,6 +1171,20 @@ static void mouse_wrap(SpiceDisplay *display, GdkEventMotion *motion)
 
 }
 
+static void ungrab_pointer(G_GNUC_UNUSED SpiceDisplay *display)
+{
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+#if GTK_CHECK_VERSION(3, 20, 0)
+    /* we want to ungrab just the pointer - it is not possible using gdk_seat_ungrab().
+       See also https://bugzilla.gnome.org/show_bug.cgi?id=780133 */
+    GdkDevice *pointer = gdk_seat_get_pointer(spice_display_get_default_seat(display));
+    gdk_device_ungrab(pointer, GDK_CURRENT_TIME);
+#else
+    gdk_pointer_ungrab(GDK_CURRENT_TIME);
+#endif
+    G_GNUC_END_IGNORE_DEPRECATIONS
+}
+
 static void try_mouse_ungrab(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
@@ -1171,13 +1195,7 @@ static void try_mouse_ungrab(SpiceDisplay *display)
     if (!d->mouse_grab_active)
         return;
 
-    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
-#if GTK_CHECK_VERSION(3, 20, 0)
-    gdk_seat_ungrab(spice_display_get_default_seat(display));
-#else
-    gdk_pointer_ungrab(GDK_CURRENT_TIME);
-#endif
-    G_GNUC_END_IGNORE_DEPRECATIONS
+    ungrab_pointer(display);
     gtk_grab_remove(GTK_WIDGET(display));
 #ifdef G_OS_WIN32
     ClipCursor(NULL);
@@ -2044,14 +2062,7 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
            FIXME: should be multiple widget grab, but how?
            or should know the position of the other widgets?
         */
-        /* FIXME: gdk_pointer_ungrab() is deprecated */
-        G_GNUC_BEGIN_IGNORE_DEPRECATIONS
-#if GTK_CHECK_VERSION(3, 20, 0)
-        gdk_seat_ungrab(spice_display_get_default_seat(display));
-#else
-        gdk_pointer_ungrab(GDK_CURRENT_TIME);
-#endif
-        G_GNUC_END_IGNORE_DEPRECATIONS
+        ungrab_pointer(display);
     }
 
     if (!d->inputs)
