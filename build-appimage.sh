@@ -1,13 +1,13 @@
 #!/bin/bash
 
-set -e
-
 BIN=$1
 shift
 if ! [ -x "$BIN" ]; then
     echo "Usage: $0 spicy_path [extra_deps]"
     exit 1
 fi
+
+set -e
 
 libs="libnopoll libspice-client-glib libspice-client-gtk $*"
 if ldd "$BIN" | grep -q flexvdi; then
