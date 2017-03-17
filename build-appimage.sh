@@ -16,6 +16,10 @@ fi
 if ldd "$BIN" | grep -q pulse; then
     libs="$libs libpulse"
 fi
+if ldd "$BIN" | grep -q libva; then
+    libs="$libs libva"
+    intel_driver=`pkg-config libva --variable driverdir`/i965_drv_video.so
+fi
 SRCDIR=`dirname "$0"`
 ICONSDIR="$SRCDIR"/icons
 
@@ -36,6 +40,9 @@ DEPS=`ldd "$BIN"`
 for lib in $libs; do
     cp `echo "$DEPS" | grep $lib | sed 's;.* => \(/.*\) (.*;\1;'` $TMPDIR/usr/lib
 done
+if [ -f "$intel_driver" ]; then
+    cp "$intel_driver" $TMPDIR/usr/lib
+fi
 chmod 755 $TMPDIR/usr/bin/* $TMPDIR/usr/lib/*
 strip -s $TMPDIR/usr/bin/* $TMPDIR/usr/lib/*
 cp -r "$ICONSDIR"/flexvdi $TMPDIR/usr/share/icons
@@ -49,6 +56,7 @@ export PULSE_COOKIE=`mktemp`
 trap 'rm -f $PULSE_COOKIE' EXIT
 xprop -root PULSE_COOKIE | cut -d '"' -f 2 | while read -N2 code; do printf "\x$code"; done > $PULSE_COOKIE
 export PULSE_SERVER=`xprop -root PULSE_SERVER | cut -d '"' -f 2 | cut -d '}' -f 2`
+export LIBVA_DRIVERS_PATH="${HERE}"/usr/lib
 "${HERE}"/usr/bin/spicy $@
 EOF
 chmod 755 $TMPDIR/AppRun $TMPDIR/usr/bin/spicy $TMPDIR/usr/lib/*
