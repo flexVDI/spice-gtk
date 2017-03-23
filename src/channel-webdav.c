@@ -584,7 +584,7 @@ static void spice_webdav_channel_class_init(SpiceWebdavChannelClass *klass)
 }
 
 /* coroutine context */
-static void webdav_handle_msg(SpiceChannel *channel, SpiceMsgIn *in)
+static void webdav_handle_data_msg(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceWebdavChannel *self = SPICE_WEBDAV_CHANNEL(channel);
     SpiceWebdavChannelPrivate *c = self->priv;
@@ -609,9 +609,13 @@ static void spice_webdav_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
     parent_class = SPICE_CHANNEL_CLASS(spice_webdav_channel_parent_class);
 
     if (type == SPICE_MSG_SPICEVMC_DATA)
-        webdav_handle_msg(channel, msg);
-    else if (parent_class->handle_msg)
-        parent_class->handle_msg(channel, msg);
-    else
-        g_return_if_reached();
+        webdav_handle_data_msg(channel, msg);
+
+    /* The only message that we need to handle ourselves is SPICE_MSG_SPICEVMC_DATA
+     * as we want to read it with spice_vmc_input/output_stream to handle
+     * channel-webdav inner protocol easily ($client, $data_size, $data).
+     * Everything else is handled by port-event signal from channel-port.c so we
+     * let it read the message for us. */
+    g_return_if_fail(parent_class->handle_msg != NULL);
+    parent_class->handle_msg(channel, msg);
 }
