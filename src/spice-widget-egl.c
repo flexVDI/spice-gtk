@@ -276,7 +276,7 @@ end:
     d->egl.context_ready = TRUE;
 
     if (spice_display_get_gl_scanout(SPICE_DISPLAY_CHANNEL(d->display)) != NULL) {
-        SPICE_DEBUG("scanout present during egl init, updating widget");
+        DISPLAY_DEBUG(display, "scanout present during egl init, updating widget");
         spice_display_widget_gl_scanout(display);
         spice_display_widget_update_monitor_area(display);
     }
@@ -355,7 +355,7 @@ static gboolean spice_widget_init_egl_win(SpiceDisplay *display, GdkWindow *win,
 G_GNUC_INTERNAL
 gboolean spice_egl_realize_display(SpiceDisplay *display, GdkWindow *win, GError **err)
 {
-    SPICE_DEBUG("egl realize");
+    DISPLAY_DEBUG(display, "egl realize");
     if (!spice_widget_init_egl_win(display, win, err))
         return FALSE;
 
@@ -370,7 +370,7 @@ void spice_egl_unrealize_display(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
-    SPICE_DEBUG("egl unrealize %p", d->egl.surface);
+    DISPLAY_DEBUG(display, "egl unrealize %p", d->egl.surface);
 
     if (!gl_make_current(display, NULL))
         return;
@@ -582,8 +582,8 @@ void spice_egl_update_display(SpiceDisplay *display)
         ty = 1 - ty;
         th = -1 * th;
     }
-    SPICE_DEBUG("update %f +%d+%d %dx%d +%f+%f %fx%f", s, x, y, w, h,
-                tx, ty, tw, th);
+    DISPLAY_DEBUG(display, "update %f +%d+%d %dx%d +%f+%f %fx%f", s, x, y, w, h,
+                  tx, ty, tw, th);
     glBindTexture(GL_TEXTURE_2D, d->egl.tex_id);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -658,11 +658,11 @@ gboolean spice_egl_update_scanout(SpiceDisplay *display,
     attrs[10] = EGL_LINUX_DRM_FOURCC_EXT;
     attrs[11] = format;
     attrs[12] = EGL_NONE;
-    SPICE_DEBUG("fd:%d stride:%u y0:%d %ux%u format:0x%x (%c%c%c%c)",
-                scanout->fd, scanout->stride, scanout->y0top,
-                scanout->width, scanout->height, format,
-                (int)format & 0xff, (int)(format >> 8) & 0xff,
-                (int)(format >> 16) & 0xff, (int)format >> 24);
+    DISPLAY_DEBUG(display, "fd:%d stride:%u y0:%d %ux%u format:0x%x (%c%c%c%c)",
+                  scanout->fd, scanout->stride, scanout->y0top,
+                  scanout->width, scanout->height, format,
+                  (int)format & 0xff, (int)(format >> 8) & 0xff,
+                  (int)(format >> 16) & 0xff, (int)format >> 24);
 
     d->egl.image = eglCreateImageKHR(d->egl.display,
                                        EGL_NO_CONTEXT,
