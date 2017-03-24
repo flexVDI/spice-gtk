@@ -2444,13 +2444,26 @@ static GdkModifierType spice_display_get_modifiers_state(SpiceDisplay *display)
     return modifiers;
 }
 
+static const gchar* mouse_mode_to_str(guint mode)
+{
+    static const gchar *const mouse_mode_str[] = {
+        [SPICE_MOUSE_MODE_CLIENT] = "client",
+        [SPICE_MOUSE_MODE_SERVER] = "server",
+    };
+
+    if (mode < G_N_ELEMENTS(mouse_mode_str) && mouse_mode_str[mode] != NULL) {
+        return mouse_mode_str[mode];
+    }
+    return "unknown";
+}
+
 static void update_mouse_mode(SpiceChannel *channel, gpointer data)
 {
     SpiceDisplay *display = data;
     SpiceDisplayPrivate *d = display->priv;
 
     g_object_get(channel, "mouse-mode", &d->mouse_mode, NULL);
-    SPICE_DEBUG("mouse mode %u", d->mouse_mode);
+    SPICE_DEBUG("mouse mode %u (%s)", d->mouse_mode, mouse_mode_to_str(d->mouse_mode));
 
     switch (d->mouse_mode) {
     case SPICE_MOUSE_MODE_CLIENT:
