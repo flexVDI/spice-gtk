@@ -657,10 +657,10 @@ G_GNUC_BEGIN_IGNORE_DEPRECATIONS
                      "signal::realize", gl_area_realize, display,
                      NULL);
     gtk_stack_add_named(d->stack, area, "gl-area");
-    gtk_widget_show_all(widget);
 G_GNUC_END_IGNORE_DEPRECATIONS
 #endif
 #endif
+    gtk_widget_show_all(widget);
 
     g_signal_connect(display, "grab-broken-event", G_CALLBACK(grab_broken), NULL);
     g_signal_connect(display, "grab-notify", G_CALLBACK(grab_notify), NULL);
