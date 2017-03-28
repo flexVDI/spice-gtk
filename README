@@ -42,7 +42,7 @@ dnf builddep spice-gtk
 
 . or install:
 
-gtk3-devel spice-protocol
+gtk3-devel spice-protocol intltool
 openssl-devel pulseaudio-libs-devel pixman-devel
 gobject-introspection-devel libjpeg-turbo-devel zlib-devel
 cyrus-sasl-devel gtk-doc

@@ -26,7 +26,20 @@ if WITH_CONTROLLER
 pkgconfig_DATA += spice-controller.pc
 endif
 
-DISTCLEANFILES = $(pkgconfig_DATA)
+INTLTOOL_FILES =				\
+	intltool-extract.in			\
+	intltool-merge.in			\
+	intltool-update.in			\
+	$(NULL)
+
+DISTCLEANFILES =				\
+	$(pkgconfig_DATA)			\
+	intltool-extract			\
+	intltool-merge				\
+	intltool-update				\
+	gnome-doc-utils.make			\
+	po/.intltool-merge-cache		\
+	$(NULL)
 
 EXTRA_DIST =					\
 	build-aux/git-version-gen		\
@@ -40,6 +53,7 @@ MAINTAINERCLEANFILES =					\
 	$(GITIGNORE_MAINTAINERCLEANFILES_MAKEFILE_IN)	\
 	$(GITIGNORE_MAINTAINERCLEANFILES_M4_LIBTOOL)	\
 	m4/gtk-doc.m4					\
+	m4/intltool.m4					\
 	gtk-doc.make					\
 	$(NULL)
 
