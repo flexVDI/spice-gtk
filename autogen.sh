@@ -10,7 +10,6 @@ test -z "$srcdir" && srcdir=.
     git submodule update --init --recursive
     gtkdocize
     autoreconf -v --force --install
-    intltoolize -f
 )
 
 CONFIGURE_ARGS="--enable-maintainer-mode --enable-gtk-doc --with-gtk=3.0 --enable-vala"

@@ -42,7 +42,7 @@ dnf builddep spice-gtk
 
 . or install:
 
-gtk3-devel spice-protocol intltool
+gtk3-devel spice-protocol
 openssl-devel pulseaudio-libs-devel pixman-devel
 gobject-introspection-devel libjpeg-turbo-devel zlib-devel
 cyrus-sasl-devel gtk-doc
@@ -53,4 +53,4 @@ gstreamer1-devel gstreamer1-plugins-base-devel gstreamer1-plugins-good gstreamer
 
 . If you build from git, you'll also need:
 
-libtool automake vala vala-tools python2/python3
+libtool automake gettext-devel vala vala-tools python2/python3
