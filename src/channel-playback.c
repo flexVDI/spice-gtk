@@ -367,8 +367,9 @@ static void playback_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
     SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackStart *start = spice_msg_in_parsed(in);
 
-    CHANNEL_DEBUG(channel, "%s: fmt %u channels %u freq %u time %u", __FUNCTION__,
-                  start->format, start->channels, start->frequency, start->time);
+    CHANNEL_DEBUG(channel, "%s: fmt %u channels %u freq %u time %u mode %s", __FUNCTION__,
+                  start->format, start->channels, start->frequency, start->time,
+                  spice_audio_data_mode_to_string(c->mode));
 
     c->frame_count = 0;
     c->last_time = start->time;

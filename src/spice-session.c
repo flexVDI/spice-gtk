@@ -2602,6 +2602,19 @@ void spice_session_set_shared_dir(SpiceSession *session, const gchar *dir)
     s->shared_dir = g_strdup(dir);
 }
 
+G_GNUC_INTERNAL
+const gchar* spice_audio_data_mode_to_string(gint mode)
+{
+    static const char *str[] = {
+        [ SPICE_AUDIO_DATA_MODE_INVALID ] = "invalid",
+        [ SPICE_AUDIO_DATA_MODE_RAW ] = "raw",
+        [ SPICE_AUDIO_DATA_MODE_CELT_0_5_1 ] = "celt",
+        [ SPICE_AUDIO_DATA_MODE_OPUS ] = "opus",
+    };
+    return (mode >= 0 && mode < G_N_ELEMENTS(str)) ? str[mode] : "unknown audio codec";
+}
+
+
 /**
  * spice_session_get_proxy_uri:
  * @session: a #SpiceSession

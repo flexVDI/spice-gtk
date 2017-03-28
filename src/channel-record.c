@@ -405,8 +405,9 @@ static void record_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
 
     c->mode = spice_record_desired_mode(channel, start->frequency);
 
-    CHANNEL_DEBUG(channel, "%s: fmt %u channels %u freq %u", __FUNCTION__,
-                  start->format, start->channels, start->frequency);
+    CHANNEL_DEBUG(channel, "%s: fmt %u channels %u freq %u mode %s", __FUNCTION__,
+                  start->format, start->channels, start->frequency,
+                  spice_audio_data_mode_to_string(c->mode));
 
     g_return_if_fail(start->format == SPICE_AUDIO_FMT_S16);
 
