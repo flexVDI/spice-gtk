@@ -417,6 +417,32 @@ static void release_buffer_data(gpointer data)
     spice_msg_in_unref(frame_msg);
 }
 
+/* spice_gst_decoder_queue_frame() queues the SpiceMsgIn message for decoding
+ * and displaying. The steps it goes through are as follows:
+ *
+ * 1) A SpiceFrame is created to keep track of SpiceMsgIn and some additional
+ *    metadata. SpiceMsgIn is reffed. The SpiceFrame is then pushed to the
+ *    decoding_queue.
+ * 2) The data part of SpiceMsgIn, which contains the compressed frame data,
+ *    is wrapped in a GstBuffer and is pushed to the GStreamer pipeline for
+ *    decoding. SpiceMsgIn is reffed.
+ * 3) As soon as the GStreamer pipeline no longer needs the compressed frame it
+ *    calls release_buffer_data() to unref SpiceMsgIn.
+ * 4) Once the decompressed frame is available the GStreamer pipeline calls
+ *    new_sample() in the GStreamer thread.
+ * 5) new_sample() then matches the decompressed frame to a SpiceFrame from
+ *    the decoding queue using the GStreamer timestamp information to deal with
+ *    dropped frames. The SpiceFrame is popped from the decoding_queue.
+ * 6) new_sample() then attaches the decompressed frame to the SpiceFrame,
+ *    pushes it to the display_queue and calls schedule_frame().
+ * 7) schedule_frame() then uses the SpiceMsgIn's mm_time to arrange for
+ *    display_frame() to be called, in the main thread, at the right time for
+ *    the next frame.
+ * 8) display_frame() pops the first SpiceFrame from the display_queue and
+ *    calls stream_display_frame().
+ * 9) display_frame() then frees the SpiceFrame and the decompressed frame.
+ *    SpiceMsgIn is unreffed.
+ */
 static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
                                               SpiceMsgIn *frame_msg,
                                               int32_t latency)
