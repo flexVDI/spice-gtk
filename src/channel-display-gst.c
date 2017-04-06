@@ -90,23 +90,22 @@ G_STATIC_ASSERT(G_N_ELEMENTS(gst_opts) <= SPICE_VIDEO_CODEC_TYPE_ENUM_END);
 
 typedef struct SpiceGstFrame {
     GstClockTime timestamp;
-    SpiceMsgIn *msg;
+    SpiceFrame *frame;
     GstSample *sample;
 } SpiceGstFrame;
 
-static SpiceGstFrame *create_gst_frame(GstBuffer *buffer, SpiceMsgIn *msg)
+static SpiceGstFrame *create_gst_frame(GstBuffer *buffer, SpiceFrame *frame)
 {
     SpiceGstFrame *gstframe = spice_new(SpiceGstFrame, 1);
     gstframe->timestamp = GST_BUFFER_PTS(buffer);
-    gstframe->msg = msg;
-    spice_msg_in_ref(msg);
+    gstframe->frame = frame;
     gstframe->sample = NULL;
     return gstframe;
 }
 
 static void free_gst_frame(SpiceGstFrame *gstframe)
 {
-    spice_msg_in_unref(gstframe->msg);
+    gstframe->frame->free(gstframe->frame);
     if (gstframe->sample) {
         gst_sample_unref(gstframe->sample);
     }
@@ -160,7 +159,7 @@ static gboolean display_frame(gpointer video_decoder)
         goto error;
     }
 
-    stream_display_frame(decoder->base.stream, gstframe->msg,
+    stream_display_frame(decoder->base.stream, gstframe->frame,
                          width, height, mapinfo.data);
     gst_buffer_unmap(buffer, &mapinfo);
 
@@ -182,9 +181,8 @@ static void schedule_frame(SpiceGstDecoder *decoder)
             break;
         }
 
-        SpiceStreamDataHeader *op = spice_msg_in_parsed(gstframe->msg);
-        if (now < op->multi_media_time) {
-            decoder->timer_id = g_timeout_add(op->multi_media_time - now,
+        if (now < gstframe->frame->mm_time) {
+            decoder->timer_id = g_timeout_add(gstframe->frame->mm_time - now,
                                               display_frame, decoder);
         } else if (g_queue_get_length(decoder->display_queue) == 1) {
             /* Still attempt to display the least out of date frame so the
@@ -193,8 +191,8 @@ static void schedule_frame(SpiceGstDecoder *decoder)
             decoder->timer_id = g_timeout_add(0, display_frame, decoder);
         } else {
             SPICE_DEBUG("%s: rendering too late by %u ms (ts: %u, mmtime: %u), dropping",
-                        __FUNCTION__, now - op->multi_media_time,
-                        op->multi_media_time, now);
+                        __FUNCTION__, now - gstframe->frame->mm_time,
+                        gstframe->frame->mm_time, now);
             stream_dropped_frame_on_playback(decoder->base.stream);
             g_queue_pop_head(decoder->display_queue);
             free_gst_frame(gstframe);
@@ -411,23 +409,17 @@ static void spice_gst_decoder_destroy(VideoDecoder *video_decoder)
      */
 }
 
-static void release_buffer_data(gpointer data)
-{
-    SpiceMsgIn* frame_msg = (SpiceMsgIn*)data;
-    spice_msg_in_unref(frame_msg);
-}
 
-/* spice_gst_decoder_queue_frame() queues the SpiceMsgIn message for decoding
- * and displaying. The steps it goes through are as follows:
+/* spice_gst_decoder_queue_frame() queues the SpiceFrame for decoding and
+ * displaying. The steps it goes through are as follows:
  *
- * 1) A SpiceGstFrame is created to keep track of SpiceMsgIn and some additional
- *    metadata. SpiceMsgIn is reffed. The SpiceFrame is then pushed to the
- *    decoding_queue.
- * 2) The data part of SpiceMsgIn, which contains the compressed frame data,
- *    is wrapped in a GstBuffer and is pushed to the GStreamer pipeline for
- *    decoding. SpiceMsgIn is reffed.
+ * 1) A SpiceGstFrame is created to keep track of SpiceFrame and some additional
+ *    metadata. The SpiceGstFrame is then pushed to the decoding_queue.
+ * 2) frame->data, which contains the compressed frame data, is reffed and
+ *    wrapped in a GstBuffer which is pushed to the GStreamer pipeline for
+ *    decoding.
  * 3) As soon as the GStreamer pipeline no longer needs the compressed frame it
- *    calls release_buffer_data() to unref SpiceMsgIn.
+ *    will call frame->unref_data() to free it.
  * 4) Once the decompressed frame is available the GStreamer pipeline calls
  *    new_sample() in the GStreamer thread.
  * 5) new_sample() then matches the decompressed frame to a SpiceGstFrame from
@@ -435,36 +427,32 @@ static void release_buffer_data(gpointer data)
  *    dropped frames. The SpiceGstFrame is popped from the decoding_queue.
  * 6) new_sample() then attaches the decompressed frame to the SpiceGstFrame,
  *    pushes it to the display_queue and calls schedule_frame().
- * 7) schedule_frame() then uses the SpiceMsgIn's mm_time to arrange for
+ * 7) schedule_frame() then uses gstframe->frame->mm_time to arrange for
  *    display_frame() to be called, in the main thread, at the right time for
  *    the next frame.
  * 8) display_frame() pops the first SpiceGstFrame from the display_queue and
  *    calls stream_display_frame().
- * 9) display_frame() then frees the SpiceGstFrame and the decompressed frame.
- *    SpiceMsgIn is unreffed.
+ * 9) display_frame() then frees the SpiceGstFrame, which frees the SpiceFrame
+ *    and decompressed frame with it.
  */
 static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
-                                              SpiceMsgIn *frame_msg,
-                                              int32_t latency)
+                                              SpiceFrame *frame, int latency)
 {
     SpiceGstDecoder *decoder = (SpiceGstDecoder*)video_decoder;
 
-    uint8_t *data;
-    uint32_t size = spice_msg_in_frame_data(frame_msg, &data);
-    if (size == 0) {
+    if (frame->size == 0) {
         SPICE_DEBUG("got an empty frame buffer!");
+        frame->free(frame);
         return TRUE;
     }
 
-    SpiceStreamDataHeader *frame_op = spice_msg_in_parsed(frame_msg);
-    if (frame_op->multi_media_time < decoder->last_mm_time) {
+    if (frame->mm_time < decoder->last_mm_time) {
         SPICE_DEBUG("new-frame-time < last-frame-time (%u < %u):"
-                    " resetting stream, id %u",
-                    frame_op->multi_media_time,
-                    decoder->last_mm_time, frame_op->id);
+                    " resetting stream",
+                    frame->mm_time, decoder->last_mm_time);
         /* Let GStreamer deal with the frame anyway */
     }
-    decoder->last_mm_time = frame_op->multi_media_time;
+    decoder->last_mm_time = frame->mm_time;
 
     if (latency < 0 &&
         decoder->base.codec_type == SPICE_VIDEO_CODEC_TYPE_MJPEG) {
@@ -472,6 +460,7 @@ static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
          * saves CPU so do it.
          */
         SPICE_DEBUG("dropping a late MJPEG frame");
+        frame->free(frame);
         return TRUE;
     }
 
@@ -481,22 +470,22 @@ static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
         return FALSE;
     }
 
-    /* ref() the frame_msg for the buffer */
-    spice_msg_in_ref(frame_msg);
+    /* ref() the frame data for the buffer */
+    frame->ref_data(frame->data_opaque);
     GstBuffer *buffer = gst_buffer_new_wrapped_full(GST_MEMORY_FLAG_PHYSICALLY_CONTIGUOUS,
-                                                    data, size, 0, size,
-                                                    frame_msg, &release_buffer_data);
+                                                    frame->data, frame->size, 0, frame->size,
+                                                    frame->data_opaque, frame->unref_data);
 
     GST_BUFFER_DURATION(buffer) = GST_CLOCK_TIME_NONE;
     GST_BUFFER_DTS(buffer) = GST_CLOCK_TIME_NONE;
     GST_BUFFER_PTS(buffer) = gst_clock_get_time(decoder->clock) - gst_element_get_base_time(decoder->pipeline) + ((uint64_t)MAX(0, latency)) * 1000 * 1000;
 
     g_mutex_lock(&decoder->queues_mutex);
-    g_queue_push_tail(decoder->decoding_queue, create_gst_frame(buffer, frame_msg));
+    g_queue_push_tail(decoder->decoding_queue, create_gst_frame(buffer, frame));
     g_mutex_unlock(&decoder->queues_mutex);
 
     if (gst_app_src_push_buffer(decoder->appsrc, buffer) != GST_FLOW_OK) {
-        SPICE_DEBUG("GStreamer error: unable to push frame of size %u", size);
+        SPICE_DEBUG("GStreamer error: unable to push frame of size %u", frame->size);
         stream_dropped_frame_on_playback(decoder->base.stream);
     }
     return TRUE;

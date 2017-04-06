@@ -36,6 +36,20 @@ G_BEGIN_DECLS
 
 typedef struct display_stream display_stream;
 
+typedef struct SpiceFrame SpiceFrame;
+struct SpiceFrame {
+    uint32_t mm_time;
+    SpiceRect dest;
+
+    uint8_t *data;
+    uint32_t size;
+    gpointer data_opaque;
+    void (*ref_data)(gpointer data_opaque);
+    void (*unref_data)(gpointer data_opaque);
+
+    void (*free)(SpiceFrame *frame);
+};
+
 typedef struct VideoDecoder VideoDecoder;
 struct VideoDecoder {
     /* Releases the video decoder's resources */
@@ -44,16 +58,17 @@ struct VideoDecoder {
     /* Notifies the decoder that the mm-time clock changed. */
     void (*reschedule)(VideoDecoder *decoder);
 
-    /* Decompresses the specified frame.
+    /* Takes ownership of the specified frame, decompresses it,
+     * and displays it at the right time.
      *
      * @decoder:   The video decoder.
-     * @frame_msg: The Spice message containing the compressed frame.
+     * @frame:     The compressed Spice frame.
      * @latency:   How long in milliseconds until the frame should be
      *             displayed. Negative values mean the frame is late.
      * @return:    False if the decoder can no longer decode frames,
      *             True otherwise.
      */
-    gboolean (*queue_frame)(VideoDecoder *decoder, SpiceMsgIn *frame_msg, int32_t latency);
+    gboolean (*queue_frame)(VideoDecoder *video_decoder, SpiceFrame *frame, int latency);
 
     /* The format of the encoded video. */
     int codec_type;
@@ -137,8 +152,7 @@ struct display_stream {
 
 guint32 stream_get_time(display_stream *st);
 void stream_dropped_frame_on_playback(display_stream *st);
-void stream_display_frame(display_stream *st, SpiceMsgIn *frame_msg, uint32_t width, uint32_t height, uint8_t *data);
-uint32_t spice_msg_in_frame_data(SpiceMsgIn *frame_msg, uint8_t **data);
+void stream_display_frame(display_stream *st, SpiceFrame *frame, uint32_t width, uint32_t height, uint8_t* data);
 
 
 G_END_DECLS

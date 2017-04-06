@@ -1234,8 +1234,7 @@ static const SpiceRect *stream_get_dest(display_stream *st, SpiceMsgIn *frame_ms
 
 }
 
-G_GNUC_INTERNAL
-uint32_t spice_msg_in_frame_data(SpiceMsgIn *frame_msg, uint8_t **data)
+static uint32_t spice_msg_in_frame_data(SpiceMsgIn *frame_msg, uint8_t **data)
 {
     switch (spice_msg_in_type(frame_msg)) {
     case SPICE_MSG_DISPLAY_STREAM_DATA: {
@@ -1270,15 +1269,10 @@ void stream_dropped_frame_on_playback(display_stream *st)
 
 /* main context */
 G_GNUC_INTERNAL
-void stream_display_frame(display_stream *st, SpiceMsgIn *frame_msg,
+void stream_display_frame(display_stream *st, SpiceFrame *frame,
                           uint32_t width, uint32_t height, uint8_t *data)
 {
-    const SpiceRect *dest;
-    int stride;
-
-    dest = stream_get_dest(st, frame_msg);
-
-    stride = width * sizeof(uint32_t);
+    int stride = width * sizeof(uint32_t);
     if (!(st->flags & SPICE_STREAM_FLAGS_TOP_DOWN)) {
         data += stride * (height - 1);
         stride = -stride;
@@ -1288,15 +1282,16 @@ void stream_display_frame(display_stream *st, SpiceMsgIn *frame_msg,
 #ifdef G_OS_WIN32
                                         SPICE_DISPLAY_CHANNEL(st->channel)->priv->dc,
 #endif
-                                        dest, data,
+                                        &frame->dest, data,
                                         width, height, stride,
                                         st->have_region ? &st->region : NULL);
 
-    if (st->surface->primary)
+    if (st->surface->primary) {
         g_signal_emit(st->channel, signals[SPICE_DISPLAY_INVALIDATE], 0,
-                      dest->left, dest->top,
-                      dest->right - dest->left,
-                      dest->bottom - dest->top);
+                      frame->dest.left, frame->dest.top,
+                      frame->dest.right - frame->dest.left,
+                      frame->dest.bottom - frame->dest.top);
+    }
 }
 
 /* after a sequence of 3 drops, push a report to the server, even
@@ -1425,6 +1420,7 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
     display_stream *st = get_stream_by_id(channel, op->id);
     guint32 mmtime;
     int32_t latency;
+    SpiceFrame *frame;
 
     g_return_if_fail(st != NULL);
     mmtime = stream_get_time(st);
@@ -1471,11 +1467,20 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
      * decoding and best decide if/when to drop them when they are late,
      * taking into account the impact on later frames.
      */
-    if (!st->video_decoder->queue_frame(st->video_decoder, in, latency)) {
+    frame = spice_new(SpiceFrame, 1);
+    frame->mm_time = op->multi_media_time;
+    frame->dest = *stream_get_dest(st, in);
+    frame->size = spice_msg_in_frame_data(in, &frame->data);
+    frame->data_opaque = in;
+    frame->ref_data = (void*)spice_msg_in_ref;
+    frame->unref_data = (void*)spice_msg_in_unref;
+    frame->free = (void*)free;
+    if (!st->video_decoder->queue_frame(st->video_decoder, frame, latency)) {
         destroy_stream(channel, op->id);
         report_invalid_stream(channel, op->id);
         return;
     }
+
     if (c->enable_adaptive_streaming) {
         display_update_stream_report(SPICE_DISPLAY_CHANNEL(channel), op->id,
                                      op->multi_media_time, latency);

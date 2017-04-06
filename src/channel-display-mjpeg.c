@@ -38,7 +38,7 @@ typedef struct MJpegDecoder {
     /* ---------- Frame queue ---------- */
 
     GQueue *msgq;
-    SpiceMsgIn *cur_frame_msg;
+    SpiceFrame *cur_frame;
     guint timer_id;
 
     /* ---------- Output frame data ---------- */
@@ -53,10 +53,8 @@ typedef struct MJpegDecoder {
 static void mjpeg_src_init(struct jpeg_decompress_struct *cinfo)
 {
     MJpegDecoder *decoder = SPICE_CONTAINEROF(cinfo->src, MJpegDecoder, mjpeg_src);
-
-    uint8_t *data;
-    cinfo->src->bytes_in_buffer = spice_msg_in_frame_data(decoder->cur_frame_msg, &data);
-    cinfo->src->next_input_byte = data;
+    cinfo->src->bytes_in_buffer = decoder->cur_frame->size;
+    cinfo->src->next_input_byte = decoder->cur_frame->data;
 }
 
 static boolean mjpeg_src_fill(struct jpeg_decompress_struct *cinfo)
@@ -74,6 +72,15 @@ static void mjpeg_src_skip(struct jpeg_decompress_struct *cinfo,
 static void mjpeg_src_term(struct jpeg_decompress_struct *cinfo)
 {
     /* nothing */
+}
+
+
+/* ---------- A SpiceFrame helper ---------- */
+
+static void free_spice_frame(SpiceFrame *frame)
+{
+    frame->unref_data(frame->data_opaque);
+    frame->free(frame);
 }
 
 
@@ -168,10 +175,10 @@ static gboolean mjpeg_decoder_decode_frame(gpointer video_decoder)
     jpeg_finish_decompress(&decoder->mjpeg_cinfo);
 
     /* Display the frame and dispose of it */
-    stream_display_frame(decoder->base.stream, decoder->cur_frame_msg,
+    stream_display_frame(decoder->base.stream, decoder->cur_frame,
                          width, height, decoder->out_frame);
-    spice_msg_in_unref(decoder->cur_frame_msg);
-    decoder->cur_frame_msg = NULL;
+    free_spice_frame(decoder->cur_frame);
+    decoder->cur_frame = NULL;
     decoder->timer_id = 0;
 
     /* Schedule the next frame */
@@ -190,33 +197,32 @@ static void mjpeg_decoder_schedule(MJpegDecoder *decoder)
     }
 
     guint32 time = stream_get_time(decoder->base.stream);
-    SpiceMsgIn *frame_msg = decoder->cur_frame_msg;
-    decoder->cur_frame_msg = NULL;
+    SpiceFrame *frame = decoder->cur_frame;
+    decoder->cur_frame = NULL;
     do {
-        if (frame_msg) {
-            SpiceStreamDataHeader *op = spice_msg_in_parsed(frame_msg);
-            if (time <= op->multi_media_time) {
-                guint32 d = op->multi_media_time - time;
-                decoder->cur_frame_msg = frame_msg;
+        if (frame) {
+            if (time <= frame->mm_time) {
+                guint32 d = frame->mm_time - time;
+                decoder->cur_frame = frame;
                 decoder->timer_id = g_timeout_add(d, mjpeg_decoder_decode_frame, decoder);
                 break;
             }
 
             SPICE_DEBUG("%s: rendering too late by %u ms (ts: %u, mmtime: %u), dropping ",
-                        __FUNCTION__, time - op->multi_media_time,
-                        op->multi_media_time, time);
+                        __FUNCTION__, time - frame->mm_time,
+                        frame->mm_time, time);
             stream_dropped_frame_on_playback(decoder->base.stream);
-            spice_msg_in_unref(frame_msg);
+            free_spice_frame(frame);
         }
-        frame_msg = g_queue_pop_head(decoder->msgq);
-    } while (frame_msg);
+        frame = g_queue_pop_head(decoder->msgq);
+    } while (frame);
 }
 
 
 /* mjpeg_decoder_drop_queue() helper */
 static void _msg_in_unref_func(gpointer data, gpointer user_data)
 {
-    spice_msg_in_unref(data);
+    free_spice_frame((SpiceFrame*)data);
 }
 
 static void mjpeg_decoder_drop_queue(MJpegDecoder *decoder)
@@ -225,9 +231,9 @@ static void mjpeg_decoder_drop_queue(MJpegDecoder *decoder)
         g_source_remove(decoder->timer_id);
         decoder->timer_id = 0;
     }
-    if (decoder->cur_frame_msg) {
-        spice_msg_in_unref(decoder->cur_frame_msg);
-        decoder->cur_frame_msg = NULL;
+    if (decoder->cur_frame) {
+        free_spice_frame(decoder->cur_frame);
+        decoder->cur_frame = NULL;
     }
     g_queue_foreach(decoder->msgq, _msg_in_unref_func, NULL);
     g_queue_clear(decoder->msgq);
@@ -236,25 +242,21 @@ static void mjpeg_decoder_drop_queue(MJpegDecoder *decoder)
 /* ---------- VideoDecoder's public API ---------- */
 
 static gboolean mjpeg_decoder_queue_frame(VideoDecoder *video_decoder,
-                                          SpiceMsgIn *frame_msg,
-                                          int32_t latency)
+                                          SpiceFrame *frame, int32_t latency)
 {
     MJpegDecoder *decoder = (MJpegDecoder*)video_decoder;
-    SpiceMsgIn *last_msg;
+    SpiceFrame *last_frame;
 
     SPICE_DEBUG("%s", __FUNCTION__);
 
-    last_msg = g_queue_peek_tail(decoder->msgq);
-    if (last_msg) {
-        SpiceStreamDataHeader *last_op, *frame_op;
-        last_op = spice_msg_in_parsed(last_msg);
-        frame_op = spice_msg_in_parsed(frame_msg);
-        if (frame_op->multi_media_time < last_op->multi_media_time) {
+    last_frame = g_queue_peek_tail(decoder->msgq);
+    if (last_frame) {
+        if (frame->mm_time < last_frame->mm_time) {
             /* This should really not happen */
             SPICE_DEBUG("new-frame-time < last-frame-time (%u < %u):"
-                        " resetting stream, id %u",
-                        frame_op->multi_media_time,
-                        last_op->multi_media_time, frame_op->id);
+                        " resetting stream",
+                        frame->mm_time,
+                        last_frame->mm_time);
             mjpeg_decoder_drop_queue(decoder);
         }
     }
@@ -266,8 +268,8 @@ static gboolean mjpeg_decoder_queue_frame(VideoDecoder *video_decoder,
         return TRUE;
     }
 
-    spice_msg_in_ref(frame_msg);
-    g_queue_push_tail(decoder->msgq, frame_msg);
+    frame->ref_data(frame->data_opaque);
+    g_queue_push_tail(decoder->msgq, frame);
     mjpeg_decoder_schedule(decoder);
     return TRUE;
 }
