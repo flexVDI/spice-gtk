@@ -1118,11 +1118,11 @@ static void display_update_stream_region(display_stream *st)
 {
     int i;
 
-    switch (st->clip->type) {
+    switch (st->clip.type) {
     case SPICE_CLIP_TYPE_RECTS:
         region_clear(&st->region);
-        for (i = 0; i < st->clip->rects->num_rects; i++) {
-            region_add(&st->region, &st->clip->rects->rects[i]);
+        for (i = 0; i < st->clip.rects->num_rects; i++) {
+            region_add(&st->region, &st->clip.rects->rects[i]);
         }
         st->have_region = true;
         break;
@@ -1191,9 +1191,9 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
     c->streams[op->id] = g_new0(display_stream, 1);
     st = c->streams[op->id];
 
-    st->msg_create = in;
-    spice_msg_in_ref(in);
-    st->clip = &op->clip;
+    st->flags = op->flags;
+    st->dest = op->dest;
+    st->clip = op->clip;
     st->surface = find_surface(c, op->surface_id);
     st->channel = channel;
     st->drops_seqs_stats_arr = g_array_new(FALSE, FALSE, sizeof(drops_sequence_stats));
@@ -1225,22 +1225,13 @@ static const SpiceRect *stream_get_dest(display_stream *st, SpiceMsgIn *frame_ms
 {
     if (frame_msg == NULL ||
         spice_msg_in_type(frame_msg) != SPICE_MSG_DISPLAY_STREAM_DATA_SIZED) {
-        SpiceMsgDisplayStreamCreate *info = spice_msg_in_parsed(st->msg_create);
-
-        return &info->dest;
+        return &st->dest;
     } else {
         SpiceMsgDisplayStreamDataSized *op = spice_msg_in_parsed(frame_msg);
 
         return &op->dest;
    }
 
-}
-
-static uint32_t stream_get_flags(display_stream *st)
-{
-    SpiceMsgDisplayStreamCreate *info = spice_msg_in_parsed(st->msg_create);
-
-    return info->flags;
 }
 
 G_GNUC_INTERNAL
@@ -1288,7 +1279,7 @@ void stream_display_frame(display_stream *st, SpiceMsgIn *frame_msg,
     dest = stream_get_dest(st, frame_msg);
 
     stride = width * sizeof(uint32_t);
-    if (!(stream_get_flags(st) & SPICE_STREAM_FLAGS_TOP_DOWN)) {
+    if (!(st->flags & SPICE_STREAM_FLAGS_TOP_DOWN)) {
         data += stride * (height - 1);
         stride = -stride;
     }
@@ -1502,12 +1493,8 @@ static void display_handle_stream_clip(SpiceChannel *channel, SpiceMsgIn *in)
     display_stream *st = get_stream_by_id(channel, op->id);
 
     g_return_if_fail(st != NULL);
-    if (st->msg_clip) {
-        spice_msg_in_unref(st->msg_clip);
-    }
-    spice_msg_in_ref(in);
-    st->msg_clip = in;
-    st->clip = &op->clip;
+
+    st->clip = op->clip;
     display_update_stream_region(st);
 }
 
@@ -1560,10 +1547,6 @@ static void destroy_stream(SpiceChannel *channel, int id)
     if (st->video_decoder) {
         st->video_decoder->destroy(st->video_decoder);
     }
-
-    if (st->msg_clip)
-        spice_msg_in_unref(st->msg_clip);
-    spice_msg_in_unref(st->msg_create);
 
     g_free(st);
     c->streams[id] = NULL;

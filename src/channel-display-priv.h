@@ -99,12 +99,11 @@ typedef struct drops_sequence_stats {
 } drops_sequence_stats;
 
 struct display_stream {
-    SpiceMsgIn                  *msg_create;
-    SpiceMsgIn                  *msg_clip;
-
     /* from messages */
+    uint32_t                    flags;
+    SpiceRect                   dest;
     display_surface             *surface;
-    const SpiceClip             *clip;
+    SpiceClip                   clip;
     QRegion                     region;
     int                         have_region;
 
