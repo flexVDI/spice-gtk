@@ -109,7 +109,7 @@ static display_surface *find_surface(SpiceDisplayChannelPrivate *c, guint32 surf
 static void spice_display_channel_reset(SpiceChannel *channel, gboolean migrating);
 static void spice_display_channel_reset_capabilities(SpiceChannel *channel);
 static void destroy_canvas(display_surface *surface);
-static void destroy_stream(SpiceChannel *channel, int id);
+static void destroy_display_stream(display_stream *st, int id);
 static void display_session_mm_time_reset_cb(SpiceSession *session, gpointer data);
 static SpiceGlScanout* spice_gl_scanout_copy(const SpiceGlScanout *scanout);
 
@@ -1168,11 +1168,61 @@ static display_stream *get_stream_by_id(SpiceChannel *channel, uint32_t id)
 }
 
 /* coroutine context */
+static display_stream *display_stream_create(SpiceChannel *channel, uint32_t surface_id,
+                                             uint32_t flags, uint32_t codec_type,
+                                             const SpiceRect *dest, const SpiceClip *clip)
+{
+    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
+    display_stream *st = g_new0(display_stream, 1);
+
+    st->flags = flags;
+    st->dest = *dest;
+    st->clip = *clip;
+    st->surface = find_surface(c, surface_id);
+    st->channel = channel;
+    st->drops_seqs_stats_arr = g_array_new(FALSE, FALSE, sizeof(drops_sequence_stats));
+
+    region_init(&st->region);
+    display_update_stream_region(st);
+
+    switch (codec_type) {
+#ifdef HAVE_BUILTIN_MJPEG
+    case SPICE_VIDEO_CODEC_TYPE_MJPEG:
+        st->video_decoder = create_mjpeg_decoder(codec_type, st);
+        break;
+#endif
+    default:
+#ifdef HAVE_GSTVIDEO
+        st->video_decoder = create_gstreamer_decoder(codec_type, st);
+#endif
+        break;
+    }
+    if (st->video_decoder == NULL) {
+        spice_printerr("could not create a video decoder for codec %u", codec_type);
+        destroy_display_stream(st, 0);
+        st = NULL;
+    }
+    return st;
+}
+
+static void destroy_stream(SpiceChannel *channel, int id)
+{
+    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
+
+    g_return_if_fail(c != NULL);
+    g_return_if_fail(c->streams != NULL);
+    g_return_if_fail(c->nstreams > id);
+
+    if (c->streams[id]) {
+        destroy_display_stream(c->streams[id], id);
+        c->streams[id] = NULL;
+    }
+}
+
 static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     SpiceMsgDisplayStreamCreate *op = spice_msg_in_parsed(in);
-    display_stream *st;
 
     CHANNEL_DEBUG(channel, "%s: id %u", __FUNCTION__, op->id);
 
@@ -1188,34 +1238,12 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
         memset(c->streams + n, 0, (c->nstreams - n) * sizeof(c->streams[0]));
     }
     g_return_if_fail(c->streams[op->id] == NULL);
-    c->streams[op->id] = g_new0(display_stream, 1);
-    st = c->streams[op->id];
 
-    st->flags = op->flags;
-    st->dest = op->dest;
-    st->clip = op->clip;
-    st->surface = find_surface(c, op->surface_id);
-    st->channel = channel;
-    st->drops_seqs_stats_arr = g_array_new(FALSE, FALSE, sizeof(drops_sequence_stats));
-
-    region_init(&st->region);
-    display_update_stream_region(st);
-
-    switch (op->codec_type) {
-#ifdef HAVE_BUILTIN_MJPEG
-    case SPICE_VIDEO_CODEC_TYPE_MJPEG:
-        st->video_decoder = create_mjpeg_decoder(op->codec_type, st);
-        break;
-#endif
-    default:
-#ifdef HAVE_GSTVIDEO
-        st->video_decoder = create_gstreamer_decoder(op->codec_type, st);
-#else
-        st->video_decoder = NULL;
-#endif
-    }
-    if (st->video_decoder == NULL) {
-        spice_printerr("could not create a video decoder for codec %u", op->codec_type);
+    c->streams[op->id] = display_stream_create(channel, op->surface_id,
+                                               op->flags, op->codec_type,
+                                               &op->dest, &op->clip);
+    if (c->streams[op->id] == NULL) {
+        spice_printerr("could not create the %u video stream", op->id);
         destroy_stream(channel, op->id);
         report_invalid_stream(channel, op->id);
     }
@@ -1503,24 +1531,14 @@ static void display_handle_stream_clip(SpiceChannel *channel, SpiceMsgIn *in)
     display_update_stream_region(st);
 }
 
-static void destroy_stream(SpiceChannel *channel, int id)
+static void destroy_display_stream(display_stream *st, int id)
 {
-    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
-    display_stream *st;
     int i;
-
-    g_return_if_fail(c != NULL);
-    g_return_if_fail(c->streams != NULL);
-    g_return_if_fail(c->nstreams > id);
-
-    st = c->streams[id];
-    if (!st)
-        return;
 
     if (st->num_input_frames > 0) {
         guint64 drops_duration_total = 0;
         guint32 num_out_frames = st->num_input_frames - st->arrive_late_count - st->num_drops_on_playback;
-        CHANNEL_DEBUG(channel, "%s: id=%d #in-frames=%u out/in=%.2f "
+        CHANNEL_DEBUG(st->channel, "%s: id=%d #in-frames=%u out/in=%.2f "
             "#drops-on-receive=%u avg-late-time(ms)=%.2f "
             "#drops-on-playback=%u", __FUNCTION__,
             id,
@@ -1530,20 +1548,20 @@ static void destroy_stream(SpiceChannel *channel, int id)
             st->arrive_late_count ? st->arrive_late_time / ((double)st->arrive_late_count): 0,
             st->num_drops_on_playback);
         if (st->num_drops_seqs) {
-            CHANNEL_DEBUG(channel, "%s: #drops-sequences=%u ==>", __FUNCTION__, st->num_drops_seqs);
+            CHANNEL_DEBUG(st->channel, "%s: #drops-sequences=%u ==>", __FUNCTION__, st->num_drops_seqs);
         }
         for (i = 0; i < st->num_drops_seqs; i++) {
             drops_sequence_stats *stats = &g_array_index(st->drops_seqs_stats_arr,
                                                          drops_sequence_stats,
                                                          i);
             drops_duration_total += stats->duration;
-            CHANNEL_DEBUG(channel, "%s: \t len=%u start-ms=%u duration-ms=%u", __FUNCTION__,
-                                   stats->len,
-                                   stats->start_mm_time - st->first_frame_mm_time,
-                                   stats->duration);
+            CHANNEL_DEBUG(st->channel, "%s: \t len=%u start-ms=%u duration-ms=%u", __FUNCTION__,
+                          stats->len,
+                          stats->start_mm_time - st->first_frame_mm_time,
+                          stats->duration);
         }
         if (st->num_drops_seqs) {
-            CHANNEL_DEBUG(channel, "%s: drops-total-duration=%"G_GUINT64_FORMAT" ==>", __FUNCTION__, drops_duration_total);
+            CHANNEL_DEBUG(st->channel, "%s: drops-total-duration=%"G_GUINT64_FORMAT" ==>", __FUNCTION__, drops_duration_total);
         }
     }
 
@@ -1554,7 +1572,6 @@ static void destroy_stream(SpiceChannel *channel, int id)
     }
 
     g_free(st);
-    c->streams[id] = NULL;
 }
 
 static void clear_streams(SpiceChannel *channel)
