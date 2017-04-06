@@ -86,31 +86,31 @@ G_STATIC_ASSERT(G_N_ELEMENTS(gst_opts) <= SPICE_VIDEO_CODEC_TYPE_ENUM_END);
 #define VALID_VIDEO_CODEC_TYPE(codec) \
     (codec > 0 && codec < G_N_ELEMENTS(gst_opts))
 
-/* ---------- SpiceFrame ---------- */
+/* ---------- SpiceGstFrame ---------- */
 
-typedef struct _SpiceFrame {
+typedef struct SpiceGstFrame {
     GstClockTime timestamp;
     SpiceMsgIn *msg;
     GstSample *sample;
-} SpiceFrame;
+} SpiceGstFrame;
 
-static SpiceFrame *create_frame(GstBuffer *buffer, SpiceMsgIn *msg)
+static SpiceGstFrame *create_gst_frame(GstBuffer *buffer, SpiceMsgIn *msg)
 {
-    SpiceFrame *frame = spice_new(SpiceFrame, 1);
-    frame->timestamp = GST_BUFFER_PTS(buffer);
-    frame->msg = msg;
+    SpiceGstFrame *gstframe = spice_new(SpiceGstFrame, 1);
+    gstframe->timestamp = GST_BUFFER_PTS(buffer);
+    gstframe->msg = msg;
     spice_msg_in_ref(msg);
-    frame->sample = NULL;
-    return frame;
+    gstframe->sample = NULL;
+    return gstframe;
 }
 
-static void free_frame(SpiceFrame *frame)
+static void free_gst_frame(SpiceGstFrame *gstframe)
 {
-    spice_msg_in_unref(frame->msg);
-    if (frame->sample) {
-        gst_sample_unref(frame->sample);
+    spice_msg_in_unref(gstframe->msg);
+    if (gstframe->sample) {
+        gst_sample_unref(gstframe->sample);
     }
-    free(frame);
+    free(gstframe);
 }
 
 
@@ -122,7 +122,7 @@ static void schedule_frame(SpiceGstDecoder *decoder);
 static gboolean display_frame(gpointer video_decoder)
 {
     SpiceGstDecoder *decoder = (SpiceGstDecoder*)video_decoder;
-    SpiceFrame *frame;
+    SpiceGstFrame *gstframe;
     GstCaps *caps;
     gint width, height;
     GstStructure *s;
@@ -131,17 +131,17 @@ static gboolean display_frame(gpointer video_decoder)
 
     g_mutex_lock(&decoder->queues_mutex);
     decoder->timer_id = 0;
-    frame = g_queue_pop_head(decoder->display_queue);
+    gstframe = g_queue_pop_head(decoder->display_queue);
     g_mutex_unlock(&decoder->queues_mutex);
     /* If the queue is empty we don't even need to reschedule */
-    g_return_val_if_fail(frame, G_SOURCE_REMOVE);
+    g_return_val_if_fail(gstframe, G_SOURCE_REMOVE);
 
-    if (!frame->sample) {
+    if (!gstframe->sample) {
         spice_warning("got a frame without a sample!");
         goto error;
     }
 
-    caps = gst_sample_get_caps(frame->sample);
+    caps = gst_sample_get_caps(gstframe->sample);
     if (!caps) {
         spice_warning("GStreamer error: could not get the caps of the sample");
         goto error;
@@ -154,18 +154,18 @@ static gboolean display_frame(gpointer video_decoder)
         goto error;
     }
 
-    buffer = gst_sample_get_buffer(frame->sample);
+    buffer = gst_sample_get_buffer(gstframe->sample);
     if (!gst_buffer_map(buffer, &mapinfo, GST_MAP_READ)) {
         spice_warning("GStreamer error: could not map the buffer");
         goto error;
     }
 
-    stream_display_frame(decoder->base.stream, frame->msg,
+    stream_display_frame(decoder->base.stream, gstframe->msg,
                          width, height, mapinfo.data);
     gst_buffer_unmap(buffer, &mapinfo);
 
  error:
-    free_frame(frame);
+    free_gst_frame(gstframe);
     schedule_frame(decoder);
     return G_SOURCE_REMOVE;
 }
@@ -177,12 +177,12 @@ static void schedule_frame(SpiceGstDecoder *decoder)
     g_mutex_lock(&decoder->queues_mutex);
 
     while (!decoder->timer_id) {
-        SpiceFrame *frame = g_queue_peek_head(decoder->display_queue);
-        if (!frame) {
+        SpiceGstFrame *gstframe = g_queue_peek_head(decoder->display_queue);
+        if (!gstframe) {
             break;
         }
 
-        SpiceStreamDataHeader *op = spice_msg_in_parsed(frame->msg);
+        SpiceStreamDataHeader *op = spice_msg_in_parsed(gstframe->msg);
         if (now < op->multi_media_time) {
             decoder->timer_id = g_timeout_add(op->multi_media_time - now,
                                               display_frame, decoder);
@@ -197,7 +197,7 @@ static void schedule_frame(SpiceGstDecoder *decoder)
                         op->multi_media_time, now);
             stream_dropped_frame_on_playback(decoder->base.stream);
             g_queue_pop_head(decoder->display_queue);
-            free_frame(frame);
+            free_gst_frame(gstframe);
         }
     }
 
@@ -228,27 +228,27 @@ static GstFlowReturn new_sample(GstAppSink *gstappsink, gpointer video_decoder)
          * finding a match either, etc. So check the buffer has a matching
          * frame first.
          */
-        SpiceFrame *frame;
+        SpiceGstFrame *gstframe;
         GList *l = g_queue_peek_head_link(decoder->decoding_queue);
         while (l) {
-            frame = l->data;
-            if (frame->timestamp == GST_BUFFER_PTS(buffer)) {
+            gstframe = l->data;
+            if (gstframe->timestamp == GST_BUFFER_PTS(buffer)) {
                 /* The frame is now ready for display */
-                frame->sample = sample;
-                g_queue_push_tail(decoder->display_queue, frame);
+                gstframe->sample = sample;
+                g_queue_push_tail(decoder->display_queue, gstframe);
 
                 /* Now that we know there is a match, remove it and the older
                  * frames from the decoding queue.
                  */
-                while ((frame = g_queue_pop_head(decoder->decoding_queue))) {
-                    if (frame->timestamp == GST_BUFFER_PTS(buffer)) {
+                while ((gstframe = g_queue_pop_head(decoder->decoding_queue))) {
+                    if (gstframe->timestamp == GST_BUFFER_PTS(buffer)) {
                         break;
                     }
                     /* The GStreamer pipeline dropped the corresponding
                      * buffer.
                      */
                     SPICE_DEBUG("the GStreamer pipeline dropped a frame");
-                    free_frame(frame);
+                    free_gst_frame(gstframe);
                 }
                 break;
             }
@@ -394,13 +394,13 @@ static void spice_gst_decoder_destroy(VideoDecoder *video_decoder)
         g_source_remove(decoder->timer_id);
     }
     g_mutex_clear(&decoder->queues_mutex);
-    SpiceFrame *frame;
-    while ((frame = g_queue_pop_head(decoder->decoding_queue))) {
-        free_frame(frame);
+    SpiceGstFrame *gstframe;
+    while ((gstframe = g_queue_pop_head(decoder->decoding_queue))) {
+        free_gst_frame(gstframe);
     }
     g_queue_free(decoder->decoding_queue);
-    while ((frame = g_queue_pop_head(decoder->display_queue))) {
-        free_frame(frame);
+    while ((gstframe = g_queue_pop_head(decoder->display_queue))) {
+        free_gst_frame(gstframe);
     }
     g_queue_free(decoder->display_queue);
 
@@ -420,7 +420,7 @@ static void release_buffer_data(gpointer data)
 /* spice_gst_decoder_queue_frame() queues the SpiceMsgIn message for decoding
  * and displaying. The steps it goes through are as follows:
  *
- * 1) A SpiceFrame is created to keep track of SpiceMsgIn and some additional
+ * 1) A SpiceGstFrame is created to keep track of SpiceMsgIn and some additional
  *    metadata. SpiceMsgIn is reffed. The SpiceFrame is then pushed to the
  *    decoding_queue.
  * 2) The data part of SpiceMsgIn, which contains the compressed frame data,
@@ -430,17 +430,17 @@ static void release_buffer_data(gpointer data)
  *    calls release_buffer_data() to unref SpiceMsgIn.
  * 4) Once the decompressed frame is available the GStreamer pipeline calls
  *    new_sample() in the GStreamer thread.
- * 5) new_sample() then matches the decompressed frame to a SpiceFrame from
+ * 5) new_sample() then matches the decompressed frame to a SpiceGstFrame from
  *    the decoding queue using the GStreamer timestamp information to deal with
- *    dropped frames. The SpiceFrame is popped from the decoding_queue.
- * 6) new_sample() then attaches the decompressed frame to the SpiceFrame,
+ *    dropped frames. The SpiceGstFrame is popped from the decoding_queue.
+ * 6) new_sample() then attaches the decompressed frame to the SpiceGstFrame,
  *    pushes it to the display_queue and calls schedule_frame().
  * 7) schedule_frame() then uses the SpiceMsgIn's mm_time to arrange for
  *    display_frame() to be called, in the main thread, at the right time for
  *    the next frame.
- * 8) display_frame() pops the first SpiceFrame from the display_queue and
+ * 8) display_frame() pops the first SpiceGstFrame from the display_queue and
  *    calls stream_display_frame().
- * 9) display_frame() then frees the SpiceFrame and the decompressed frame.
+ * 9) display_frame() then frees the SpiceGstFrame and the decompressed frame.
  *    SpiceMsgIn is unreffed.
  */
 static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
@@ -492,7 +492,7 @@ static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
     GST_BUFFER_PTS(buffer) = gst_clock_get_time(decoder->clock) - gst_element_get_base_time(decoder->pipeline) + ((uint64_t)MAX(0, latency)) * 1000 * 1000;
 
     g_mutex_lock(&decoder->queues_mutex);
-    g_queue_push_tail(decoder->decoding_queue, create_frame(buffer, frame_msg));
+    g_queue_push_tail(decoder->decoding_queue, create_gst_frame(buffer, frame_msg));
     g_mutex_unlock(&decoder->queues_mutex);
 
     if (gst_app_src_push_buffer(decoder->appsrc, buffer) != GST_FLOW_OK) {
