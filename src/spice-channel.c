@@ -780,7 +780,8 @@ static void spice_channel_flush_wire(SpiceChannel *channel,
             ret = g_pollable_output_stream_write_nonblocking(G_POLLABLE_OUTPUT_STREAM(c->out),
                                                              ptr+offset, datalen-offset, NULL, &error);
             if (ret < 0) {
-                if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
+                if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)
+                 || g_error_matches(error, G_IO_ERROR, G_IO_ERROR_NOT_CONNECTED)) {
                     cond = G_IO_OUT;
                 } else {
                     CHANNEL_DEBUG(channel, "Send error %s", error->message);
@@ -928,7 +929,8 @@ reread:
         ret = g_pollable_input_stream_read_nonblocking(G_POLLABLE_INPUT_STREAM(c->in),
                                                        data, len, NULL, &error);
         if (ret < 0) {
-            if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
+            if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)
+                || g_error_matches(error, G_IO_ERROR, G_IO_ERROR_NOT_CONNECTED)) {
                 cond = G_IO_IN;
             } else {
                 CHANNEL_DEBUG(channel, "Read error %s", error->message);
