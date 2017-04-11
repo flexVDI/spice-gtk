@@ -1945,6 +1945,12 @@ void _usbdk_hider_update(SpiceUsbDeviceManager *manager)
         return;
     }
 
+    if (!spice_session_get_usbredir_enabled(priv->session)) {
+        SPICE_DEBUG("USB redirection disabled, no hider setup needed");
+        _usbdk_hider_clear(manager);
+        return;
+    }
+
     if (!priv->auto_connect) {
         SPICE_DEBUG("Auto-connect disabled, no hider setup needed");
         _usbdk_hider_clear(manager);
