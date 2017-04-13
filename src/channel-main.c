@@ -2831,7 +2831,8 @@ static void file_xfer_init_task_async_cb(GObject *obj, GAsyncResult *res, gpoint
     GFileInfo *info;
     SpiceFileTransferTask *xfer_task;
     SpiceMainChannel *channel;
-    gchar *string, *basename;
+    gchar *string;
+    const gchar *basename;
     GKeyFile *keyfile;
     VDAgentFileXferStartMessage msg;
     guint64 file_size;
@@ -2846,7 +2847,7 @@ static void file_xfer_init_task_async_cb(GObject *obj, GAsyncResult *res, gpoint
         goto failed;
 
     channel = spice_file_transfer_task_get_channel(xfer_task);
-    basename = g_file_info_get_attribute_as_string(info, G_FILE_ATTRIBUTE_STANDARD_NAME);
+    basename = g_file_info_get_attribute_byte_string(info, G_FILE_ATTRIBUTE_STANDARD_NAME);
     file_size = g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
 
     xfer_op = data;
@@ -2855,7 +2856,6 @@ static void file_xfer_init_task_async_cb(GObject *obj, GAsyncResult *res, gpoint
     keyfile = g_key_file_new();
     g_key_file_set_string(keyfile, "vdagent-file-xfer", "name", basename);
     g_key_file_set_uint64(keyfile, "vdagent-file-xfer", "size", file_size);
-    g_free(basename);
 
     /* Save keyfile content to memory. TODO: more file attributions
        need to be sent to guest */
