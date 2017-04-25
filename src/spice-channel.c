@@ -1203,7 +1203,7 @@ static void spice_channel_failed_spice_authentication(SpiceChannel *channel,
         g_set_error_literal(&c->error,
                             SPICE_CLIENT_ERROR,
                             SPICE_CLIENT_ERROR_AUTH_NEEDS_PASSWORD,
-                            _("Authentication failed: wrong password ?"));
+                            _("Authentication failed: wrong password?"));
 
     c->event = SPICE_CHANNEL_ERROR_AUTH;
 
