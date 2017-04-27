@@ -68,10 +68,11 @@ static struct {
     { "vp8dec", "caps=video/x-vp8" },
 
     /* SPICE_VIDEO_CODEC_TYPE_H264
-     * h264 streams detection works fine and setting an incomplete cap
-     * causes errors. So let typefind do all the work.
+     * When setting video/x-h264, h264parse will complain if we don't have the
+     * stream-format or codec_data information. As stream-format is byte-stream
+     * (hardcoded in spice-server), let's add it here to avoid the warning.
      */
-    { "h264parse ! avdec_h264", "" },
+    { "h264parse ! avdec_h264", "caps=video/x-h264,stream-format=byte-stream" },
 
     /* SPICE_VIDEO_CODEC_TYPE_VP9 */
     { "vp9dec", "caps=video/x-vp9" },
