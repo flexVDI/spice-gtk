@@ -521,16 +521,62 @@ VideoDecoder* create_gstreamer_decoder(int codec_type, display_stream *stream)
     return (VideoDecoder*)decoder;
 }
 
+static void gstvideo_debug_available_decoders(int codec_type,
+                                              GList *all_decoders,
+                                              GList *codec_decoders)
+{
+    GList *l;
+    GString *msg = g_string_new(NULL);
+    /* Print list of available decoders to make debugging easier */
+    g_string_printf(msg, "From %3u video decoder elements, %2u can handle caps %12s: ",
+                    g_list_length(all_decoders), g_list_length(codec_decoders),
+                    gst_opts[codec_type].dec_caps);
+
+    for (l = codec_decoders; l != NULL; l = l->next) {
+        GstPluginFeature *pfeat = GST_PLUGIN_FEATURE(l->data);
+        g_string_append_printf(msg, "%s, ", gst_plugin_feature_get_name(pfeat));
+    }
+
+    /* Drop trailing ", " */
+    g_string_truncate(msg, msg->len - 2);
+    spice_debug("%s", msg->str);
+    g_string_free(msg, TRUE);
+}
+
 G_GNUC_INTERNAL
 gboolean gstvideo_has_codec(int codec_type)
 {
-    gboolean has_codec = FALSE;
+    GList *all_decoders, *codec_decoders;
+    GstCaps *caps;
+    GstElementFactoryListType type;
 
-    VideoDecoder *decoder = create_gstreamer_decoder(codec_type, NULL);
-    if (decoder) {
-        has_codec = TRUE;
-        decoder->destroy(decoder);
+    g_return_val_if_fail(gstvideo_init(), FALSE);
+    g_return_val_if_fail(VALID_VIDEO_CODEC_TYPE(codec_type), FALSE);
+
+    type = GST_ELEMENT_FACTORY_TYPE_DECODER |
+           GST_ELEMENT_FACTORY_TYPE_MEDIA_VIDEO |
+           GST_ELEMENT_FACTORY_TYPE_MEDIA_IMAGE;
+    all_decoders = gst_element_factory_list_get_elements(type, GST_RANK_NONE);
+    if (all_decoders == NULL) {
+        spice_warning("No video decoders from GStreamer were found");
+        return FALSE;
     }
 
-    return has_codec;
+    caps = gst_caps_from_string(gst_opts[codec_type].dec_caps);
+    codec_decoders = gst_element_factory_list_filter(all_decoders, caps, GST_PAD_SINK, TRUE);
+    gst_caps_unref(caps);
+
+    if (codec_decoders == NULL) {
+        spice_debug("From %u decoders, none can handle '%s'",
+                    g_list_length(all_decoders), gst_opts[codec_type].dec_caps);
+        gst_plugin_feature_list_free(all_decoders);
+        return FALSE;
+    }
+
+    if (spice_util_get_debug())
+        gstvideo_debug_available_decoders(codec_type, all_decoders, codec_decoders);
+
+    gst_plugin_feature_list_free(codec_decoders);
+    gst_plugin_feature_list_free(all_decoders);
+    return TRUE;
 }
