@@ -50,6 +50,9 @@ typedef struct SpiceGstDecoder {
     guint timer_id;
 } SpiceGstDecoder;
 
+/* FIXME: With gstreamer version 1.9.0 and higher, we are using playbin to
+ * create the pipeline for us and for that reason we don't need to keep track of
+ * decoder's name anymore. */
 static struct {
     const gchar *dec_name;
     const gchar *dec_caps;
@@ -82,6 +85,24 @@ G_STATIC_ASSERT(G_N_ELEMENTS(gst_opts) <= SPICE_VIDEO_CODEC_TYPE_ENUM_END);
 
 #define VALID_VIDEO_CODEC_TYPE(codec) \
     (codec > 0 && codec < G_N_ELEMENTS(gst_opts))
+
+/* GstPlayFlags enum is in plugin's header which should not be exported.
+ * https://bugzilla.gnome.org/show_bug.cgi?id=784279
+ */
+typedef enum {
+  GST_PLAY_FLAG_VIDEO             = (1 << 0),
+  GST_PLAY_FLAG_AUDIO             = (1 << 1),
+  GST_PLAY_FLAG_TEXT              = (1 << 2),
+  GST_PLAY_FLAG_VIS               = (1 << 3),
+  GST_PLAY_FLAG_SOFT_VOLUME       = (1 << 4),
+  GST_PLAY_FLAG_NATIVE_AUDIO      = (1 << 5),
+  GST_PLAY_FLAG_NATIVE_VIDEO      = (1 << 6),
+  GST_PLAY_FLAG_DOWNLOAD          = (1 << 7),
+  GST_PLAY_FLAG_BUFFERING         = (1 << 8),
+  GST_PLAY_FLAG_DEINTERLACE       = (1 << 9),
+  GST_PLAY_FLAG_SOFT_COLORBALANCE = (1 << 10),
+  GST_PLAY_FLAG_FORCE_FILTERS     = (1 << 11),
+} SpiceGstPlayFlags;
 
 /* ---------- SpiceGstFrame ---------- */
 
@@ -298,13 +319,81 @@ static gboolean handle_pipeline_message(GstBus *bus, GstMessage *msg, gpointer v
     return TRUE;
 }
 
+#if GST_CHECK_VERSION(1,9,0)
+static void app_source_setup(GstElement *pipeline G_GNUC_UNUSED,
+                             GstElement *source,
+                             SpiceGstDecoder *decoder)
+{
+    GstCaps *caps;
+
+    /* - We schedule the frame display ourselves so set sync=false on appsink
+     *   so the pipeline decodes them as fast as possible. This will also
+     *   minimize the risk of frames getting lost when we rebuild the
+     *   pipeline.
+     * - Set max-bytes=0 on appsrc so it does not drop frames that may be
+     *   needed by those that follow.
+     */
+    caps = gst_caps_from_string(gst_opts[decoder->base.codec_type].dec_caps);
+    g_object_set(source,
+                 "caps", caps,
+                 "is-live", TRUE,
+                 "format", GST_FORMAT_TIME,
+                 "max-bytes", 0,
+                 "block", TRUE,
+                 NULL);
+    gst_caps_unref(caps);
+    decoder->appsrc = GST_APP_SRC(gst_object_ref(source));
+}
+#endif
+
 static gboolean create_pipeline(SpiceGstDecoder *decoder)
 {
-    gchar *desc;
     GstAppSinkCallbacks appsink_cbs = { NULL };
-    GError *err = NULL;
     GstBus *bus;
+#if GST_CHECK_VERSION(1,9,0)
+    GstElement *playbin, *sink;
+    SpiceGstPlayFlags flags;
+    GstCaps *caps;
 
+    playbin = gst_element_factory_make("playbin", "playbin");
+    if (playbin == NULL) {
+        spice_warning("error upon creation of 'playbin' element");
+        return FALSE;
+    }
+
+    sink = gst_element_factory_make("appsink", "sink");
+    if (sink == NULL) {
+        spice_warning("error upon creation of 'appsink' element");
+        gst_object_unref(playbin);
+        return FALSE;
+    }
+
+    caps = gst_caps_from_string("video/x-raw,format=BGRx");
+    g_object_set(sink,
+                 "caps", caps,
+                 "sync", FALSE,
+                 "drop", FALSE,
+                 NULL);
+    gst_caps_unref(caps);
+
+    g_signal_connect(playbin, "source-setup", G_CALLBACK(app_source_setup), decoder);
+
+    g_object_set(playbin,
+                 "uri", "appsrc://",
+                 "video-sink", gst_object_ref(sink),
+                 NULL);
+
+    /* Disable audio in playbin */
+    g_object_get(playbin, "flags", &flags, NULL);
+    flags &= ~(GST_PLAY_FLAG_AUDIO | GST_PLAY_FLAG_TEXT);
+    g_object_set(playbin, "flags", flags, NULL);
+
+    g_warn_if_fail(decoder->appsrc == NULL);
+    decoder->appsink = GST_APP_SINK(sink);
+    decoder->pipeline = playbin;
+#else
+    gchar *desc;
+    GError *err = NULL;
 
     /* - We schedule the frame display ourselves so set sync=false on appsink
      *   so the pipeline decodes them as fast as possible. This will also
@@ -330,6 +419,7 @@ static gboolean create_pipeline(SpiceGstDecoder *decoder)
 
     decoder->appsrc = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(decoder->pipeline), "src"));
     decoder->appsink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(decoder->pipeline), "sink"));
+#endif
 
     appsink_cbs.new_sample = new_sample;
     gst_app_sink_set_callbacks(decoder->appsink, &appsink_cbs, decoder, NULL);
@@ -456,6 +546,14 @@ static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
         spice_warning("An error occurred, stopping the video stream");
         return FALSE;
     }
+
+#if GST_CHECK_VERSION(1,9,0)
+    if (decoder->appsrc == NULL) {
+        spice_warning("Error: Playbin has not yet initialized the Appsrc element");
+        stream_dropped_frame_on_playback(decoder->base.stream);
+        return TRUE;
+    }
+#endif
 
     /* ref() the frame data for the buffer */
     frame->ref_data(frame->data_opaque);
