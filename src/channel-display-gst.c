@@ -54,12 +54,8 @@ static struct {
     const gchar *dec_name;
     const gchar *dec_caps;
 } gst_opts[] = {
-    /* decodebin will use vaapi if installed, which for a time could
-     * intentionally crash the application. So only use decodebin as a
-     * fallback or when SPICE_GSTVIDEO_AUTO is set.
-     * See: https://bugs.freedesktop.org/show_bug.cgi?id=90884
-     */
-    { "decodebin", "" },
+    /* SpiceVideoCodecType starts at index 1 */
+    { NULL, NULL },
 
     /* SPICE_VIDEO_CODEC_TYPE_MJPEG */
     { "jpegdec", "caps=image/jpeg" },
@@ -304,21 +300,10 @@ static gboolean handle_pipeline_message(GstBus *bus, GstMessage *msg, gpointer v
 static gboolean create_pipeline(SpiceGstDecoder *decoder)
 {
     gchar *desc;
-    gboolean auto_enabled;
-    guint opt;
     GstAppSinkCallbacks appsink_cbs = { NULL };
     GError *err = NULL;
     GstBus *bus;
 
-    auto_enabled = (g_getenv("SPICE_GSTVIDEO_AUTO") != NULL);
-    if (auto_enabled || !VALID_VIDEO_CODEC_TYPE(decoder->base.codec_type)) {
-        SPICE_DEBUG("Trying %s for codec type %d %s",
-                    gst_opts[0].dec_name, decoder->base.codec_type,
-                    (auto_enabled) ? "(SPICE_GSTVIDEO_AUTO is set)" : "");
-        opt = 0;
-    } else {
-        opt = decoder->base.codec_type;
-    }
 
     /* - We schedule the frame display ourselves so set sync=false on appsink
      *   so the pipeline decodes them as fast as possible. This will also
@@ -330,7 +315,8 @@ static gboolean create_pipeline(SpiceGstDecoder *decoder)
     desc = g_strdup_printf("appsrc name=src is-live=true format=time max-bytes=0 block=true "
                            "%s ! %s ! videoconvert ! appsink name=sink "
                            "caps=video/x-raw,format=BGRx sync=false drop=false",
-                           gst_opts[opt].dec_caps, gst_opts[opt].dec_name);
+                           gst_opts[decoder->base.codec_type].dec_caps,
+                           gst_opts[decoder->base.codec_type].dec_name);
     SPICE_DEBUG("GStreamer pipeline: %s", desc);
 
     decoder->pipeline = gst_parse_launch_full(desc, NULL, GST_PARSE_FLAG_FATAL_ERRORS, &err);
