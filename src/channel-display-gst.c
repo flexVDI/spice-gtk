@@ -58,24 +58,24 @@ static struct {
     { NULL, NULL },
 
     /* SPICE_VIDEO_CODEC_TYPE_MJPEG */
-    { "jpegdec", "caps=image/jpeg" },
+    { "jpegdec", "image/jpeg" },
 
     /* SPICE_VIDEO_CODEC_TYPE_VP8
      *
      * typefind is unable to identify VP8 streams by design.
      * See: https://bugzilla.gnome.org/show_bug.cgi?id=756457
      */
-    { "vp8dec", "caps=video/x-vp8" },
+    { "vp8dec", "video/x-vp8" },
 
     /* SPICE_VIDEO_CODEC_TYPE_H264
      * When setting video/x-h264, h264parse will complain if we don't have the
      * stream-format or codec_data information. As stream-format is byte-stream
      * (hardcoded in spice-server), let's add it here to avoid the warning.
      */
-    { "h264parse ! avdec_h264", "caps=video/x-h264,stream-format=byte-stream" },
+    { "h264parse ! avdec_h264", "video/x-h264,stream-format=byte-stream" },
 
     /* SPICE_VIDEO_CODEC_TYPE_VP9 */
-    { "vp9dec", "caps=video/x-vp9" },
+    { "vp9dec", "video/x-vp9" },
 };
 
 G_STATIC_ASSERT(G_N_ELEMENTS(gst_opts) <= SPICE_VIDEO_CODEC_TYPE_ENUM_END);
@@ -314,7 +314,7 @@ static gboolean create_pipeline(SpiceGstDecoder *decoder)
      *   needed by those that follow.
      */
     desc = g_strdup_printf("appsrc name=src is-live=true format=time max-bytes=0 block=true "
-                           "%s ! %s ! videoconvert ! appsink name=sink "
+                           "caps=%s ! %s ! videoconvert ! appsink name=sink "
                            "caps=video/x-raw,format=BGRx sync=false drop=false",
                            gst_opts[decoder->base.codec_type].dec_caps,
                            gst_opts[decoder->base.codec_type].dec_name);
