@@ -453,6 +453,7 @@ void spice_playback_channel_set_delay(SpicePlaybackChannel *channel, guint32 del
 {
     SpicePlaybackChannelPrivate *c;
     SpiceSession *session;
+    gboolean bad_delay;
 
     g_return_if_fail(SPICE_IS_PLAYBACK_CHANNEL(channel));
 
@@ -462,8 +463,13 @@ void spice_playback_channel_set_delay(SpicePlaybackChannel *channel, guint32 del
     c->latency = delay_ms;
 
     session = spice_channel_get_session(SPICE_CHANNEL(channel));
+    bad_delay = (delay_ms == 0);
     if (session) {
-        spice_session_set_mm_time(session, c->last_time - delay_ms);
+        if (bad_delay) {
+            CHANNEL_DEBUG(channel, "Delay value is not reliable. Will ignore mm_time");
+        }
+        spice_session_set_mm_time(session, c->last_time - delay_ms, bad_delay);
+
     } else {
         CHANNEL_DEBUG(channel, "channel detached from session, mm time skipped");
     }

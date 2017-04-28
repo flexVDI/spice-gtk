@@ -98,6 +98,7 @@ struct _SpiceSessionPrivate {
     SpiceChannel      *cmain; /* weak reference */
     Ring              channels;
     guint32           mm_time;
+    gboolean          invalid_mm_time;
     gboolean          client_provided_sockets;
     guint64           mm_time_at_clock;
     SpiceSession      *migration;
@@ -2433,11 +2434,13 @@ int spice_session_get_connection_id(SpiceSession *session)
 }
 
 G_GNUC_INTERNAL
-guint32 spice_session_get_mm_time(SpiceSession *session)
+guint32 spice_session_get_mm_time(SpiceSession *session, gboolean* invalid_time)
 {
     g_return_val_if_fail(SPICE_IS_SESSION(session), 0);
 
     SpiceSessionPrivate *s = session->priv;
+    if (invalid_time)
+        *invalid_time = s->invalid_mm_time;
 
     /* FIXME: we may want to estimate the drift of clocks, and well,
        do something better than this trivial approach */
@@ -2447,18 +2450,19 @@ guint32 spice_session_get_mm_time(SpiceSession *session)
 #define MM_TIME_DIFF_RESET_THRESH 500 // 0.5 sec
 
 G_GNUC_INTERNAL
-void spice_session_set_mm_time(SpiceSession *session, guint32 time)
+void spice_session_set_mm_time(SpiceSession *session, guint32 time, gboolean invalid_time)
 {
     g_return_if_fail(SPICE_IS_SESSION(session));
 
     SpiceSessionPrivate *s = session->priv;
     guint32 old_time;
 
-    old_time = spice_session_get_mm_time(session);
+    old_time = spice_session_get_mm_time(session, NULL);
 
     s->mm_time = time;
+    s->invalid_mm_time = invalid_time;
     s->mm_time_at_clock = g_get_monotonic_time();
-    SPICE_DEBUG("set mm time: %u", spice_session_get_mm_time(session));
+    SPICE_DEBUG("set mm time: %u", spice_session_get_mm_time(session, NULL));
     if (time > old_time + MM_TIME_DIFF_RESET_THRESH ||
         time < old_time) {
         SPICE_DEBUG("%s: mm-time-reset, old %u, new %u", __FUNCTION__, old_time, s->mm_time);
