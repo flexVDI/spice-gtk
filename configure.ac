@@ -64,6 +64,14 @@ AM_CONDITIONAL([OS_WIN32],[test "$os_win32" = "yes"])
 
 AC_CHECK_HEADERS([sys/socket.h netinet/in.h arpa/inet.h])
 AC_CHECK_HEADERS([termios.h])
+AC_CHECK_HEADERS([epoxy/egl.h],
+                 [have_egl=yes],
+                 [have_egl=no])
+AC_MSG_CHECKING([if we can use EGL in libepoxy)])
+AC_MSG_RESULT([$have_egl])
+AM_CONDITIONAL([HAVE_EGL],[test "$have_egl" = "yes"])
+AS_IF([test "$have_egl" = "yes"],
+       AC_DEFINE([HAVE_EGL], [1], [Define if supporting EGL]))
 
 AC_CHECK_LIBM
 AC_SUBST(LIBM)

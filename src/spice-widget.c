@@ -235,7 +235,7 @@ static gint get_display_id(SpiceDisplay *display)
 
 static bool egl_enabled(SpiceDisplayPrivate *d)
 {
-#ifndef G_OS_WIN32
+#if HAVE_EGL
     return d->egl.enabled;
 #else
     return false;
@@ -574,7 +574,7 @@ static void grab_notify(SpiceDisplay *display, gboolean was_grabbed)
 }
 
 #if GTK_CHECK_VERSION(3,16,0)
-#ifndef G_OS_WIN32
+#if HAVE_EGL
 /* Ignore GLib's too-new warnings */
 G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 static gboolean
@@ -646,7 +646,7 @@ static void spice_display_init(SpiceDisplay *display)
     gtk_stack_set_visible_child(d->stack, area);
 
 #if GTK_CHECK_VERSION(3,16,0)
-#ifndef G_OS_WIN32
+#if HAVE_EGL
 /* Ignore GLib's too-new warnings */
 G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     area = gtk_gl_area_new();
@@ -1305,7 +1305,7 @@ static gboolean do_color_convert(SpiceDisplay *display, GdkRectangle *r)
     return true;
 }
 
-#ifndef G_OS_WIN32
+#if HAVE_EGL
 static void set_egl_enabled(SpiceDisplay *display, bool enabled)
 {
     SpiceDisplayPrivate *d = display->priv;
@@ -1341,7 +1341,7 @@ static gboolean draw_event(GtkWidget *widget, cairo_t *cr, gpointer data)
     SpiceDisplayPrivate *d = display->priv;
     g_return_val_if_fail(d != NULL, false);
 
-#ifndef G_OS_WIN32
+#if HAVE_EGL
     if (egl_enabled(d) &&
         g_str_equal(gtk_stack_get_visible_child_name(d->stack), "draw-area")) {
         spice_egl_update_display(display);
@@ -2101,7 +2101,7 @@ static void size_allocate(GtkWidget *widget, GtkAllocation *conf, gpointer data)
         d->ww = conf->width;
         d->wh = conf->height;
         recalc_geometry(widget);
-#ifndef G_OS_WIN32
+#if HAVE_EGL
         if (egl_enabled(d))
             spice_egl_resize_display(display, conf->width, conf->height);
 #endif
@@ -2144,7 +2144,7 @@ static void realize(GtkWidget *widget)
 static void unrealize(GtkWidget *widget)
 {
     spice_cairo_image_destroy(SPICE_DISPLAY(widget));
-#ifndef G_OS_WIN32
+#if HAVE_EGL
     spice_egl_unrealize_display(SPICE_DISPLAY(widget));
 #endif
 
@@ -2500,7 +2500,7 @@ static void update_area(SpiceDisplay *display,
         .height = height
     };
 
-#ifndef G_OS_WIN32
+#if HAVE_EGL
     if (egl_enabled(d)) {
         const SpiceGlScanout *so =
             spice_display_get_gl_scanout(SPICE_DISPLAY_CHANNEL(d->display));
@@ -2597,7 +2597,7 @@ static void invalidate(SpiceChannel *channel,
         .height = h
     };
 
-#ifndef G_OS_WIN32
+#if HAVE_EGL
     set_egl_enabled(display, false);
 #endif
 
@@ -2661,7 +2661,7 @@ static void cursor_set(SpiceCursorChannel *channel,
     } else
         g_warn_if_reached();
 
-#ifndef G_OS_WIN32
+#if HAVE_EGL
     if (egl_enabled(d))
         spice_egl_cursor_set(display);
 #endif
@@ -2833,7 +2833,7 @@ static void inputs_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
     spice_display_set_keypress_delay(display, delay);
 }
 
-#ifndef G_OS_WIN32
+#if HAVE_EGL
 G_GNUC_INTERNAL
 void spice_display_widget_gl_scanout(SpiceDisplay *display)
 {
@@ -2942,7 +2942,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
             mark(display, primary.marked);
         }
 
-#ifndef G_OS_WIN32
+#if HAVE_EGL
         spice_g_signal_connect_object(channel, "notify::gl-scanout",
                                       G_CALLBACK(spice_display_widget_gl_scanout),
                                       display, G_CONNECT_SWAPPED);
@@ -3102,7 +3102,7 @@ GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display)
     g_return_val_if_fail(d != NULL, NULL);
     g_return_val_if_fail(d->display != NULL, NULL);
 
-#ifndef G_OS_WIN32
+#if HAVE_EGL
     if (egl_enabled(d)) {
         GdkPixbuf *tmp;
 

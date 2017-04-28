@@ -24,7 +24,7 @@
 #include <windows.h>
 #endif
 
-#ifndef G_OS_WIN32
+#ifdef HAVE_EPOXY_EGL_H
 #include <epoxy/egl.h>
 #endif
 
@@ -133,7 +133,7 @@ struct _SpiceDisplayPrivate {
     int                     x11_accel_denominator;
     int                     x11_threshold;
 #endif
-#ifndef G_OS_WIN32
+#if HAVE_EGL
     struct {
         gboolean            context_ready;
         gboolean            enabled;
@@ -150,7 +150,7 @@ struct _SpiceDisplayPrivate {
         gboolean            call_draw_done;
         SpiceGlScanout      scanout;
     } egl;
-#endif
+#endif // HAVE_EGL
 };
 
 int      spice_cairo_image_create                 (SpiceDisplay *display);

@@ -145,7 +145,7 @@ SPICE_GTK_SOURCES_COMMON +=		\
 	spice-widget-cairo.c		\
 	$(NULL)
 
-if !OS_WIN32
+if HAVE_EGL
 SPICE_GTK_SOURCES_COMMON +=		\
 	spice-widget-egl.c		\
 	$(NULL)
