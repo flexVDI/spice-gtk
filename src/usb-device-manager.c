@@ -786,6 +786,7 @@ static gboolean spice_usb_device_manager_get_device_descriptor(
     return TRUE;
 }
 
+#endif // USE_USBREDIR
 
 /**
  * spice_usb_device_get_libusb_device:
@@ -812,6 +813,7 @@ spice_usb_device_get_libusb_device(const SpiceUsbDevice *device G_GNUC_UNUSED)
     return NULL;
 }
 
+#ifdef USE_USBREDIR
 static gboolean spice_usb_device_manager_get_libdev_vid_pid(
     libusb_device *libdev, int *vid, int *pid)
 {
@@ -1117,7 +1119,7 @@ static int spice_usb_device_manager_hotplug_cb(libusb_context       *ctx,
     g_idle_add(spice_usb_device_manager_hotplug_idle_cb, args);
     return 0;
 }
-#endif
+#endif // USE_USBREDIR
 
 static void spice_usb_device_manager_channel_connect_cb(
     GObject *gobject, GAsyncResult *channel_res, gpointer user_data)
