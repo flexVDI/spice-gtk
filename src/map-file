@@ -20,6 +20,7 @@ spice_channel_test_common_capability;
 spice_channel_type_to_string;
 spice_client_error_quark;
 spice_cursor_channel_get_type;
+spice_cursor_shape_get_type;
 spice_display_change_preferred_compression;
 spice_display_change_preferred_video_codec_type;
 spice_display_channel_get_type;

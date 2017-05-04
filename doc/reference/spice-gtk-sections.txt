@@ -180,6 +180,8 @@ SPICE_IS_DISPLAY_CHANNEL_CLASS
 SPICE_DISPLAY_CHANNEL_GET_CLASS
 SPICE_TYPE_GL_SCANOUT
 spice_gl_scanout_get_type
+SPICE_TYPE_CURSOR_SHAPE
+spice_cursor_shape_get_type
 <SUBSECTION Private>
 SpiceDisplayChannelPrivate
 </SECTION>
@@ -189,6 +191,7 @@ SpiceDisplayChannelPrivate
 <TITLE>SpiceCursorChannel</TITLE>
 SpiceCursorChannel
 SpiceCursorChannelClass
+SpiceCursorShape
 <SUBSECTION Standard>
 SPICE_CURSOR_CHANNEL
 SPICE_IS_CURSOR_CHANNEL

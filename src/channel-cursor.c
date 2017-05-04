@@ -36,8 +36,9 @@
  * The Spice protocol defines a set of messages for controlling cursor
  * shape and position on the remote display area. The cursor changes
  * that should be reflected on the display are notified by
- * signals. See for example #SpiceCursorChannel::cursor-set
- * #SpiceCursorChannel::cursor-move signals.
+ * signals. See for example #SpiceCursorChannel::cursor-set and
+ * #SpiceCursorChannel::cursor-move signals and the #SpiceCursorChannel:cursor
+ * property.
  */
 
 #define SPICE_CURSOR_CHANNEL_GET_PRIVATE(obj)                                  \
@@ -55,6 +56,13 @@ struct display_cursor {
 struct _SpiceCursorChannelPrivate {
     display_cache               *cursors;
     gboolean                    init_done;
+    SpiceCursorShape            last_cursor;
+};
+
+/* Properties */
+enum {
+    PROP_0,
+    PROP_CURSOR,
 };
 
 enum {
@@ -74,7 +82,34 @@ static void channel_set_handlers(SpiceChannelClass *klass);
 
 G_DEFINE_TYPE(SpiceCursorChannel, spice_cursor_channel, SPICE_TYPE_CHANNEL)
 
+static SpiceCursorShape *spice_cursor_shape_copy(const SpiceCursorShape *cursor);
+static void spice_cursor_shape_free(SpiceCursorShape *cursor);
+
+G_DEFINE_BOXED_TYPE(SpiceCursorShape, spice_cursor_shape,
+                    (GBoxedCopyFunc)spice_cursor_shape_copy,
+                    (GBoxedFreeFunc)spice_cursor_shape_free)
+
 /* ------------------------------------------------------------------ */
+static SpiceCursorShape *spice_cursor_shape_copy(const SpiceCursorShape *cursor)
+{
+    SpiceCursorShape *new_cursor;
+
+    g_return_val_if_fail(cursor != NULL, NULL);
+
+    new_cursor = g_new(SpiceCursorShape, 1);
+    *new_cursor = *cursor;
+    new_cursor->data = g_memdup(cursor->data, cursor->width * cursor->height * 4);
+
+    return new_cursor;
+}
+
+static void spice_cursor_shape_free(SpiceCursorShape *cursor)
+{
+    g_return_if_fail(cursor != NULL);
+
+    g_free(cursor->data);
+    g_free(cursor);
+}
 
 static void spice_cursor_channel_init(SpiceCursorChannel *channel)
 {
@@ -107,14 +142,59 @@ static void spice_cursor_channel_reset(SpiceChannel *channel, gboolean migrating
     SPICE_CHANNEL_CLASS(spice_cursor_channel_parent_class)->channel_reset(channel, migrating);
 }
 
+static void spice_cursor_channel_dispose(GObject *object)
+{
+    SpiceCursorChannelPrivate *c = SPICE_CURSOR_CHANNEL(object)->priv;
+
+    g_clear_pointer(&c->last_cursor.data, g_free);
+
+    if (G_OBJECT_CLASS(spice_cursor_channel_parent_class)->dispose)
+        G_OBJECT_CLASS(spice_cursor_channel_parent_class)->dispose(object);
+}
+
+static void spice_cursor_channel_get_property(GObject    *object,
+                                              guint       prop_id,
+                                              GValue     *value,
+                                              GParamSpec *pspec)
+{
+    SpiceCursorChannel *channel = SPICE_CURSOR_CHANNEL(object);
+    SpiceCursorChannelPrivate *c = channel->priv;
+
+    switch (prop_id) {
+    case PROP_CURSOR:
+        g_value_set_static_boxed(value, c->last_cursor.data ? &c->last_cursor : NULL);
+        break;
+    default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+        break;
+    }
+}
+
 static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
     SpiceChannelClass *channel_class = SPICE_CHANNEL_CLASS(klass);
 
+    gobject_class->dispose      = spice_cursor_channel_dispose;
     gobject_class->finalize     = spice_cursor_channel_finalize;
+    gobject_class->get_property = spice_cursor_channel_get_property;
     channel_class->channel_reset = spice_cursor_channel_reset;
 
+    /**
+     * SpiceCursorChannel:cursor:
+     *
+     * The last #SpiceCursorShape received.
+     *
+     * Since: 0.34
+     */
+    g_object_class_install_property
+        (gobject_class, PROP_CURSOR,
+         g_param_spec_boxed("cursor",
+                            "Last cursor shape",
+                            "Last cursor shape received from the server",
+                            SPICE_TYPE_CURSOR_SHAPE,
+                            G_PARAM_READABLE |
+                            G_PARAM_STATIC_STRINGS));
     /**
      * SpiceCursorChannel::cursor-set:
      * @cursor: the #SpiceCursorChannel that emitted the signal
@@ -399,7 +479,22 @@ cache_add:
 /* coroutine context */
 static void emit_cursor_set(SpiceChannel *channel, display_cursor *cursor)
 {
+    SpiceCursorChannelPrivate *c;
+
     g_return_if_fail(cursor != NULL);
+
+    c = SPICE_CURSOR_CHANNEL(channel)->priv;
+
+    c->last_cursor.type = cursor->hdr.type;
+    c->last_cursor.width = cursor->hdr.width;
+    c->last_cursor.height = cursor->hdr.height;
+    c->last_cursor.hot_spot_x = cursor->hdr.hot_spot_x;
+    c->last_cursor.hot_spot_y = cursor->hdr.hot_spot_y;
+    g_free(c->last_cursor.data);
+    c->last_cursor.data = g_memdup(cursor->data,
+                                   cursor->hdr.width * cursor->hdr.height * 4);
+
+    g_coroutine_object_notify(G_OBJECT(channel), "cursor");
     g_coroutine_signal_emit(channel, signals[SPICE_CURSOR_SET], 0,
                             cursor->hdr.width, cursor->hdr.height,
                             cursor->hdr.hot_spot_x, cursor->hdr.hot_spot_y,
