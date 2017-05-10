@@ -319,7 +319,6 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
 
     /**
      * SpiceDisplayChannel:gl-scanout:
-     * @display: the #SpiceDisplayChannel that emitted the signal
      *
      * The last #SpiceGlScanout received.
      *
