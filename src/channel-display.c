@@ -130,6 +130,14 @@ spice_gl_scanout_copy(const SpiceGlScanout *scanout)
     return so;
 }
 
+/**
+ * spice_gl_scanout_free:
+ * @scanout: a #SpiceGlScanout
+ *
+ * Frees the @scanout.
+ *
+ * Since: 0.31
+ */
 void
 spice_gl_scanout_free(SpiceGlScanout *scanout)
 {
