@@ -545,7 +545,7 @@ static void spice_display_send_client_preferred_video_codecs(SpiceChannel *chann
 }
 
 /**
- * spice_display_change_preferred_video_codec:
+ * spice_display_change_preferred_video_codec_type:
  * @channel: a #SpiceDisplayChannel
  * @codec_type: a #SpiceVideoCodecType
  *
