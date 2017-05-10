@@ -1321,6 +1321,7 @@ static void agent_announce_caps(SpiceMainChannel *channel)
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_CLIPBOARD_BY_DEMAND);
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_CLIPBOARD_SELECTION);
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_MONITORS_CONFIG_POSITION);
+    VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_FILE_XFER_DETAILED_ERRORS);
 
     agent_msg_queue(channel, VD_AGENT_ANNOUNCE_CAPABILITIES, size, caps);
     g_free(caps);
@@ -1870,6 +1871,17 @@ static void main_agent_handle_xfer_status(SpiceMainChannel *channel,
         error = g_error_new_literal(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                                     _("The spice agent reported an error during the file transfer"));
         break;
+    case VD_AGENT_FILE_XFER_STATUS_NOT_ENOUGH_SPACE: {
+        uint64_t *free_space = (uint64_t *)(msg->data);
+        gchar *free_space_str = g_format_size(*free_space);
+        gchar *file_size_str = g_format_size(spice_file_transfer_task_get_total_bytes(xfer_task));
+        error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                            _("File transfer failed due to lack of free space on remote machine "
+                            "(%s free, %s to transfer)"), free_space_str, file_size_str);
+        g_free(free_space_str);
+        g_free(file_size_str);
+        break;
+    }
     case VD_AGENT_FILE_XFER_STATUS_SUCCESS:
         break;
     default:
