@@ -37,7 +37,17 @@ G_BEGIN_DECLS
 #define SPICE_IS_USB_DEVICE_WIDGET_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), SPICE_TYPE_USB_DEVICE_WIDGET))
 #define SPICE_USB_DEVICE_WIDGET_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), SPICE_TYPE_USB_DEVICE_WIDGET, SpiceUsbDeviceWidgetClass))
 
+/**
+ * SpiceUsbDeviceWidget:
+ *
+ * The #SpiceUsbDeviceWidget struct is opaque and should not be accessed directly.
+ */
 typedef struct _SpiceUsbDeviceWidget SpiceUsbDeviceWidget;
+/**
+ * SpiceUsbDeviceWidgetClass:
+ *
+ * Class structure for #SpiceUsbDeviceWidget. It is opaque and should not be accessed directly.
+ */
 typedef struct _SpiceUsbDeviceWidgetClass SpiceUsbDeviceWidgetClass;
 typedef struct _SpiceUsbDeviceWidgetPrivate SpiceUsbDeviceWidgetPrivate;
 

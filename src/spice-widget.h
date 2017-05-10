@@ -40,7 +40,18 @@ G_BEGIN_DECLS
 #define SPICE_DISPLAY_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS((obj), SPICE_TYPE_DISPLAY, SpiceDisplayClass))
 
 
+/**
+ * SpiceDisplay:
+ *
+ * The #SpiceDisplay struct is opaque and should not be accessed directly.
+ */
 typedef struct _SpiceDisplay SpiceDisplay;
+
+/**
+ * SpiceDisplayClass:
+ *
+ * Class structure for #SpiceDisplay. It is opaque and should not be accessed directly.
+ */
 typedef struct _SpiceDisplayClass SpiceDisplayClass;
 
 /**

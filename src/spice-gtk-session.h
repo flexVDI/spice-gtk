@@ -33,7 +33,18 @@ G_BEGIN_DECLS
 #define SPICE_IS_GTK_SESSION_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), SPICE_TYPE_GTK_SESSION))
 #define SPICE_GTK_SESSION_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), SPICE_TYPE_GTK_SESSION, SpiceGtkSessionClass))
 
+/**
+ * SpiceGtkSession:
+ *
+ * The #SpiceGtkSession struct is opaque and should not be accessed directly.
+ */
 typedef struct _SpiceGtkSession SpiceGtkSession;
+
+/**
+ * SpiceGtkSessionClass:
+ *
+ * Class structure for #SpiceGtkSession. It is opaque and should not be accessed directly.
+ */
 typedef struct _SpiceGtkSessionClass SpiceGtkSessionClass;
 
 GType spice_gtk_session_get_type(void);
