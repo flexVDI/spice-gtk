@@ -67,7 +67,7 @@ AC_CHECK_HEADERS([termios.h])
 AC_CHECK_HEADERS([epoxy/egl.h],
                  [have_egl=yes],
                  [have_egl=no])
-AC_MSG_CHECKING([if we can use EGL in libepoxy)])
+AC_MSG_CHECKING([if we can use EGL in libepoxy])
 AC_MSG_RESULT([$have_egl])
 AM_CONDITIONAL([HAVE_EGL],[test "$have_egl" = "yes"])
 AS_IF([test "$have_egl" = "yes"],
