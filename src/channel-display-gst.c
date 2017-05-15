@@ -512,6 +512,8 @@ VideoDecoder* create_gstreamer_decoder(int codec_type, display_stream *stream)
 {
     SpiceGstDecoder *decoder = NULL;
 
+    g_return_val_if_fail(VALID_VIDEO_CODEC_TYPE(codec_type), NULL);
+
     if (gstvideo_init()) {
         decoder = spice_new0(SpiceGstDecoder, 1);
         decoder->base.destroy = spice_gst_decoder_destroy;
