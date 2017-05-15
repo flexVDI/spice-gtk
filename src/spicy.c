@@ -133,6 +133,7 @@ static void del_window(spice_connection *conn, SpiceWindow *win);
 
 /* options */
 static gboolean fullscreen = false;
+static gboolean fullscreen_on_all_monitors = false;
 static gboolean version = false;
 static char *spicy_title = NULL;
 static gboolean kiosk_mode = false;
@@ -1270,6 +1271,17 @@ static void share_current_printers(gpointer data)
 
 #endif
 
+void realize_window(GtkWidget * toplevel, gpointer data)
+{
+    if (fullscreen_on_all_monitors) {
+        gdk_window_set_fullscreen_mode(gtk_widget_get_window(toplevel),
+                                       GDK_FULLSCREEN_ON_ALL_MONITORS);
+        fullscreen = TRUE;
+    }
+    if (fullscreen || kiosk_mode)
+        gtk_window_fullscreen(GTK_WINDOW(toplevel));
+}
+
 static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *channel, int id, gint monitor_id)
 {
     char title[32];
@@ -1436,8 +1448,7 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     gtk_container_add(GTK_CONTAINER(win->toplevel), overlay);
 
     /* show window */
-    if (fullscreen || kiosk_mode)
-        gtk_window_fullscreen(GTK_WINDOW(win->toplevel));
+    g_signal_connect(win->toplevel, "realize", (GCallback)realize_window, NULL);
 
     gtk_widget_show_all(overlay);
     gtk_widget_hide(win->fullscreen_menubar);
@@ -2066,6 +2077,12 @@ static GOptionEntry cmd_entries[] = {
         .arg              = G_OPTION_ARG_NONE,
         .arg_data         = &fullscreen,
         .description      = "Open in full screen mode",
+    },{
+        .long_name        = "full-screen-on-all-monitors",
+        .short_name       = 'F',
+        .arg              = G_OPTION_ARG_NONE,
+        .arg_data         = &fullscreen_on_all_monitors,
+        .description      = "Open in full screen mode on all monitors",
     },{
         .long_name        = "version",
         .arg              = G_OPTION_ARG_NONE,
