@@ -118,7 +118,7 @@ void spice_usb_device_manager_connect_device_async(
                                              gpointer user_data);
 
 void spice_usb_device_manager_disconnect_device_async(
-                                             SpiceUsbDeviceManager *manager,
+                                             SpiceUsbDeviceManager *self,
                                              SpiceUsbDevice *device,
                                              GCancellable *cancellable,
                                              GAsyncReadyCallback callback,
