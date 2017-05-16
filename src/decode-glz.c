@@ -238,9 +238,6 @@ typedef uint16_t rgb16_pixel_t;
 #undef ATTR_PACKED
 
 #define LZ_PLT
-#include "decode-glz-tmpl.c"
-
-#define LZ_PLT
 #define PLT8
 #define TO_RGB32
 #include "decode-glz-tmpl.c"
@@ -267,12 +264,7 @@ typedef uint16_t rgb16_pixel_t;
 
 
 #define LZ_RGB16
-#include "decode-glz-tmpl.c"
-#define LZ_RGB16
 #define TO_RGB32
-#include "decode-glz-tmpl.c"
-
-#define LZ_RGB24
 #include "decode-glz-tmpl.c"
 
 #define LZ_RGB32
@@ -298,19 +290,6 @@ const decode_function DECODE_TO_RGB32[] = {
     glz_plt8_to_rgb32_decode,
     glz_rgb16_to_rgb32_decode,
     glz_rgb32_decode,
-    glz_rgb32_decode,
-    glz_rgb32_decode
-};
-
-const decode_function DECODE_TO_SAME[] = {
-    NULL,
-    glz_plt_decode,
-    glz_plt_decode,
-    glz_plt_decode,
-    glz_plt_decode,
-    glz_plt_decode,
-    glz_rgb16_decode,
-    glz_rgb24_decode,
     glz_rgb32_decode,
     glz_rgb32_decode
 };
