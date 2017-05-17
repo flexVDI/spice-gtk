@@ -29,11 +29,15 @@ spicy_LDADD =				\
 	$(top_builddir)/src/libspice-client-gtk-3.0.la	\
 	$(top_builddir)/src/libspice-client-glib-2.0.la	\
 	$(GTK_LIBS) \
+	$(GSTAUDIO_LIBS) \
+	$(GSTVIDEO_LIBS) \
 	$(NULL)
 
 # FIXME: GtkAction and lots of GtkUIManager APIs are deprecated
 spicy_CPPFLAGS =			\
 	$(TOOLS_CPPFLAGS)		\
+	$(GSTAUDIO_CFLAGS)		\
+	$(GSTVIDEO_CFLAGS)		\
 	-DSPICE_DISABLE_DEPRECATED	\
 	-Wno-deprecated-declarations	\
 	$(NULL)

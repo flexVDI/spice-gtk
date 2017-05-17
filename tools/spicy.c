@@ -37,6 +37,9 @@
 #include "usb-device-widget.h"
 
 #include "spicy-connect.h"
+#if HAVE_GSTAUDIO || HAVE_GSTVIDEO
+#include <gst/gst.h>
+#endif
 
 typedef struct spice_connection spice_connection;
 
@@ -1995,6 +1998,9 @@ int main(int argc, char *argv[])
 
     /* parse opts */
     gtk_init(&argc, &argv);
+#if HAVE_GSTAUDIO || HAVE_GSTVIDEO
+    gst_init(&argc, &argv);
+#endif
     context = g_option_context_new("- spice client test application");
     g_option_context_set_summary(context, "Gtk+ test client to connect to Spice servers.");
     g_option_context_set_description(context, "Report bugs to " PACKAGE_BUGREPORT ".");
@@ -2002,6 +2008,9 @@ int main(int argc, char *argv[])
     g_option_context_set_main_group(context, spice_cmdline_get_option_group());
     g_option_context_add_main_entries(context, cmd_entries, NULL);
     g_option_context_add_group(context, gtk_get_option_group(TRUE));
+#if HAVE_GSTAUDIO || HAVE_GSTVIDEO
+    g_option_context_add_group(context, gst_init_get_option_group());
+#endif
     if (!g_option_context_parse (context, &argc, &argv, &error)) {
         g_print("option parsing failed: %s\n", error->message);
         exit(1);
