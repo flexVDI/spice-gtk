@@ -2635,29 +2635,32 @@ static void mark(SpiceDisplay *display, gint mark)
 }
 
 static void cursor_set(SpiceCursorChannel *channel,
-                       gint width, gint height, gint hot_x, gint hot_y,
-                       gpointer rgba, gpointer data)
+                       G_GNUC_UNUSED GParamSpec *pspec,
+                       gpointer data)
 {
     SpiceDisplay *display = data;
     SpiceDisplayPrivate *d = display->priv;
     GdkCursor *cursor = NULL;
+    SpiceCursorShape *cursor_shape;
 
     cursor_invalidate(display);
 
-    g_clear_object(&d->mouse_pixbuf);
-
-    if (rgba != NULL) {
-        d->mouse_pixbuf = gdk_pixbuf_new_from_data(g_memdup(rgba, width * height * 4),
+    g_object_get(G_OBJECT(channel), "cursor", &cursor_shape, NULL);
+    if (cursor_shape != NULL && cursor_shape->data != NULL) {
+        g_clear_object(&d->mouse_pixbuf);
+        d->mouse_pixbuf = gdk_pixbuf_new_from_data(cursor_shape->data,
                                                    GDK_COLORSPACE_RGB,
                                                    TRUE, 8,
-                                                   width,
-                                                   height,
-                                                   width * 4,
-                                                   (GdkPixbufDestroyNotify)g_free, NULL);
-        d->mouse_hotspot.x = hot_x;
-        d->mouse_hotspot.y = hot_y;
+                                                   cursor_shape->width,
+                                                   cursor_shape->height,
+                                                   cursor_shape->width * 4,
+                                                   NULL, NULL);
+        d->mouse_hotspot.x = cursor_shape->hot_spot_x;
+        d->mouse_hotspot.y = cursor_shape->hot_spot_y;
         cursor = gdk_cursor_new_from_pixbuf(gtk_widget_get_display(GTK_WIDGET(display)),
-                                            d->mouse_pixbuf, hot_x, hot_y);
+                                            d->mouse_pixbuf,
+                                            d->mouse_hotspot.x,
+                                            d->mouse_hotspot.y);
     } else
         g_warn_if_reached();
 
@@ -2958,7 +2961,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         if (id != d->channel_id)
             return;
         d->cursor = SPICE_CURSOR_CHANNEL(channel);
-        spice_g_signal_connect_object(channel, "cursor-set",
+        spice_g_signal_connect_object(channel, "notify::cursor",
                                       G_CALLBACK(cursor_set), display, 0);
         spice_g_signal_connect_object(channel, "cursor-move",
                                       G_CALLBACK(cursor_move), display, 0);

@@ -208,11 +208,13 @@ static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
      *
      * The #SpiceCursorChannel::cursor-set signal is emitted to modify
      * cursor aspect and position on the display area.
+     *
+     * Deprecated: 0.34: Use #SpiceCursorChannel:cursor notify instead.
      **/
     signals[SPICE_CURSOR_SET] =
         g_signal_new("cursor-set",
                      G_OBJECT_CLASS_TYPE(gobject_class),
-                     G_SIGNAL_RUN_FIRST,
+                     G_SIGNAL_RUN_FIRST | G_SIGNAL_DEPRECATED,
                      G_STRUCT_OFFSET(SpiceCursorChannelClass, cursor_set),
                      NULL, NULL,
                      g_cclosure_user_marshal_VOID__INT_INT_INT_INT_POINTER,
