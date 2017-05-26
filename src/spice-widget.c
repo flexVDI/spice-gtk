@@ -2958,6 +2958,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     }
 
     if (SPICE_IS_CURSOR_CHANNEL(channel)) {
+        gpointer cursor_shape;
         if (id != d->channel_id)
             return;
         d->cursor = SPICE_CURSOR_CHANNEL(channel);
@@ -2970,6 +2971,11 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         spice_g_signal_connect_object(channel, "cursor-reset",
                                       G_CALLBACK(cursor_reset), display, 0);
         spice_channel_connect(channel);
+
+        g_object_get(G_OBJECT(channel), "cursor", &cursor_shape, NULL);
+        if (cursor_shape != NULL) {
+            cursor_set(d->cursor, NULL, display);
+        }
         return;
     }
 
