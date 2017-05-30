@@ -27,8 +27,8 @@
 #include <stdlib.h>
 
 #ifdef USE_USBREDIR
-#ifdef __linux__
 #include <stdio.h>
+#ifdef __linux__
 #include <unistd.h>
 #include <sys/sysmacros.h>
 #ifndef major /* major and minor macros were moved to sys/sysmacros.h from sys/types.h */
