@@ -430,6 +430,7 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
         }
         break;
     case SPICE_CURSOR_TYPE_COLOR16:
+        size /= 2u;
         for (i = 0; i < hdr->width * hdr->height; i++) {
             pix_mask = get_pix_mask(data, size, i);
             pix = *((guint16*)data + i);
