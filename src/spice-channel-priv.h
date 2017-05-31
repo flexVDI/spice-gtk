@@ -125,7 +125,6 @@ struct _SpiceChannelPrivate {
     int                         channel_id;
     int                         channel_type;
     SpiceLinkHeader             link_hdr;
-    SpiceLinkMess               link_msg;
     SpiceLinkHeader             peer_hdr;
     SpiceLinkReply*             peer_msg;
     int                         peer_pos;

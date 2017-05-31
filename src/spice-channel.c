@@ -1313,9 +1313,10 @@ static void spice_channel_send_link(SpiceChannel *channel)
     SpiceChannelPrivate *c = channel->priv;
     uint8_t *buffer, *p;
     int protocol, i;
+    SpiceLinkMess link_msg;
 
     c->link_hdr.magic = SPICE_MAGIC;
-    c->link_hdr.size = sizeof(c->link_msg);
+    c->link_hdr.size = sizeof(link_msg);
 
     g_object_get(c->session, "protocol", &protocol, NULL);
     switch (protocol) {
@@ -1339,13 +1340,13 @@ static void spice_channel_send_link(SpiceChannel *channel)
     c->link_hdr.major_version = GUINT32_TO_LE(c->link_hdr.major_version);
     c->link_hdr.minor_version = GUINT32_TO_LE(c->link_hdr.minor_version);
 
-    c->link_msg.connection_id = GUINT32_TO_LE(spice_session_get_connection_id(c->session));
-    c->link_msg.channel_type  = c->channel_type;
-    c->link_msg.channel_id    = c->channel_id;
-    c->link_msg.caps_offset   = GUINT32_TO_LE(sizeof(c->link_msg));
+    link_msg.connection_id = GUINT32_TO_LE(spice_session_get_connection_id(c->session));
+    link_msg.channel_type  = c->channel_type;
+    link_msg.channel_id    = c->channel_id;
+    link_msg.caps_offset   = GUINT32_TO_LE(sizeof(link_msg));
 
-    c->link_msg.num_common_caps = GUINT32_TO_LE(c->common_caps->len);
-    c->link_msg.num_channel_caps = GUINT32_TO_LE(c->caps->len);
+    link_msg.num_common_caps = GUINT32_TO_LE(c->common_caps->len);
+    link_msg.num_channel_caps = GUINT32_TO_LE(c->caps->len);
     c->link_hdr.size += (c->common_caps->len + c->caps->len) * sizeof(uint32_t);
 
     buffer = g_malloc0(sizeof(c->link_hdr) + c->link_hdr.size);
@@ -1354,7 +1355,7 @@ static void spice_channel_send_link(SpiceChannel *channel)
     c->link_hdr.size = GUINT32_TO_LE(c->link_hdr.size);
 
     memcpy(p, &c->link_hdr, sizeof(c->link_hdr)); p += sizeof(c->link_hdr);
-    memcpy(p, &c->link_msg, sizeof(c->link_msg)); p += sizeof(c->link_msg);
+    memcpy(p, &link_msg, sizeof(link_msg)); p += sizeof(link_msg);
 
     for (i = 0; i < c->common_caps->len; i++) {
         *(uint32_t *)p = GUINT32_TO_LE(g_array_index(c->common_caps, uint32_t, i));
