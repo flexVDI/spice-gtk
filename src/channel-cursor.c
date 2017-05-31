@@ -422,7 +422,7 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
         memcpy(cursor->data, data, size);
         for (i = 0; i < hdr->width * hdr->height; i++) {
             pix_mask = get_pix_mask(data, size, i);
-            if (pix_mask && *((guint32*)data + i) == 0xffffff) {
+            if (pix_mask && cursor->data[i] == 0xffffff) {
                 cursor->data[i] = get_pix_hack(i, hdr->width);
             } else {
                 cursor->data[i] |= (pix_mask ? 0 : 0xff000000);
