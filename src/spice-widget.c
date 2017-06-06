@@ -851,10 +851,17 @@ static void try_keyboard_grab(SpiceDisplay *display)
         return;
     if (d->keyboard_grab_active)
         return;
+#ifdef G_OS_WIN32
+    if (!d->keyboard_have_focus)
+        return;
+    if (!d->mouse_have_pointer)
+        return;
+#else
     if (!spice_gtk_session_get_keyboard_has_focus(d->gtk_session))
         return;
     if (!spice_gtk_session_get_mouse_has_pointer(d->gtk_session))
         return;
+#endif
     if (d->keyboard_grab_released)
         return;
 
@@ -1544,6 +1551,12 @@ static void update_display(SpiceDisplay *display)
     win32_window = display ?
                         gdk_win32_window_get_impl_hwnd(gtk_widget_get_window(GTK_WIDGET(display))) :
                         NULL;
+    if(win32_window) {
+        SpiceDisplayPrivate *d = display->priv;
+        if(spice_gtk_session_get_keyboard_has_focus(d->gtk_session) &&
+           spice_gtk_session_get_mouse_has_pointer(d->gtk_session))
+            SetFocus(win32_window);
+    }
 #endif
 }
 
@@ -1863,7 +1876,6 @@ static gboolean focus_in_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UN
 static gboolean focus_out_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_UNUSED)
 {
     SpiceDisplay *display = SPICE_DISPLAY(widget);
-    SpiceDisplayPrivate *d = display->priv;
 
     DISPLAY_DEBUG(display, "%s", __FUNCTION__);
     update_display(NULL);
@@ -1872,8 +1884,11 @@ static gboolean focus_out_event(GtkWidget *widget, GdkEventFocus *focus G_GNUC_U
      * Ignore focus out after a keyboard grab
      * (this happens when doing the grab from the enter_event callback).
      */
+#ifndef G_OS_WIN32
+    SpiceDisplayPrivate *d = display->priv;
     if (d->keyboard_grab_active)
         return true;
+#endif
 
     release_keys(display);
     update_keyboard_focus(display, false);
