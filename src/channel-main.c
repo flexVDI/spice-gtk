@@ -1882,6 +1882,19 @@ static void main_agent_handle_xfer_status(SpiceMainChannel *channel,
         g_free(file_size_str);
         break;
     }
+    case VD_AGENT_FILE_XFER_STATUS_SESSION_LOCKED:
+        error = g_error_new_literal(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                                    _("User's session is locked and cannot transfer files, "
+                                      "unlock it and try again."));
+        break;
+    case VD_AGENT_FILE_XFER_STATUS_VDAGENT_NOT_CONNECTED:
+        error = g_error_new_literal(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                                    _("Session agent not connected."));
+        break;
+    case VD_AGENT_FILE_XFER_STATUS_DISABLED:
+        error = g_error_new_literal(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                                    _("File transfer is disabled."));
+        break;
     case VD_AGENT_FILE_XFER_STATUS_SUCCESS:
         break;
     default:
