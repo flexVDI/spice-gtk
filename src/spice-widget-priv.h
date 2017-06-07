@@ -91,7 +91,7 @@ struct _SpiceDisplayPrivate {
     SpiceSession            *session;
     SpiceGtkSession         *gtk_session;
     SpiceMainChannel        *main;
-    SpiceChannel            *display;
+    SpiceDisplayChannel     *display;
     SpiceCursorChannel      *cursor;
     SpiceInputsChannel      *inputs;
     SpiceSmartcardChannel   *smartcard;

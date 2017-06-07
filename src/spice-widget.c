@@ -301,7 +301,8 @@ void spice_display_widget_update_monitor_area(SpiceDisplay *display)
     if (c == NULL) {
         DISPLAY_DEBUG(display, "update monitor: no monitor %d", d->monitor_id);
         set_monitor_ready(display, false);
-        if (spice_channel_test_capability(d->display, SPICE_DISPLAY_CAP_MONITORS_CONFIG)) {
+        if (spice_channel_test_capability(SPICE_CHANNEL(d->display),
+                                          SPICE_DISPLAY_CAP_MONITORS_CONFIG)) {
             DISPLAY_DEBUG(display, "waiting until MonitorsConfig is received");
             g_clear_pointer(&monitors, g_array_unref);
             return;
@@ -586,7 +587,7 @@ gl_area_render(GtkGLArea *area, GdkGLContext *context, gpointer user_data)
     spice_egl_update_display(display);
     glFlush();
     if (d->egl.call_draw_done) {
-        spice_display_gl_draw_done(SPICE_DISPLAY_CHANNEL(d->display));
+        spice_display_gl_draw_done(d->display);
         d->egl.call_draw_done = FALSE;
     }
 
@@ -619,9 +620,9 @@ drawing_area_realize(GtkWidget *area, gpointer user_data)
     SpiceDisplay *display = SPICE_DISPLAY(user_data);
 
     if (GDK_IS_X11_DISPLAY(gdk_display_get_default()) &&
-        spice_display_get_gl_scanout(SPICE_DISPLAY_CHANNEL(display->priv->display)) != NULL)
+        spice_display_get_gl_scanout(display->priv->display) != NULL) {
         spice_display_widget_gl_scanout(display);
-
+    }
 #endif
 }
 
@@ -2503,7 +2504,7 @@ static void update_area(SpiceDisplay *display,
 #if HAVE_EGL
     if (egl_enabled(d)) {
         const SpiceGlScanout *so =
-            spice_display_get_gl_scanout(SPICE_DISPLAY_CHANNEL(d->display));
+            spice_display_get_gl_scanout(d->display);
         g_return_if_fail(so != NULL);
         primary = (GdkRectangle) {
             .width = so->width,
@@ -2553,7 +2554,7 @@ static void primary_create(SpiceChannel *channel, gint format,
     spice_display_widget_update_monitor_area(display);
 }
 
-static void primary_destroy(SpiceChannel *channel, gpointer data)
+static void primary_destroy(SpiceDisplayChannel *channel, gpointer data)
 {
     SpiceDisplay *display = SPICE_DISPLAY(data);
     SpiceDisplayPrivate *d = display->priv;
@@ -2871,7 +2872,7 @@ void spice_display_widget_gl_scanout(SpiceDisplay *display)
     if (d->egl.context_ready) {
         const SpiceGlScanout *scanout;
 
-        scanout = spice_display_get_gl_scanout(SPICE_DISPLAY_CHANNEL(d->display));
+        scanout = spice_display_get_gl_scanout(d->display);
         /* should only be called when the display has a scanout */
         g_return_if_fail(scanout != NULL);
 
@@ -2893,7 +2894,7 @@ static void gl_draw(SpiceDisplay *display,
 
     if (!d->egl.context_ready) {
         DISPLAY_DEBUG(display, "Draw without GL context, skipping");
-        spice_display_gl_draw_done(SPICE_DISPLAY_CHANNEL(d->display));
+        spice_display_gl_draw_done(d->display);
         return;
     }
 
@@ -2910,7 +2911,7 @@ static void gl_draw(SpiceDisplay *display,
 #endif
     {
         spice_egl_update_display(display);
-        spice_display_gl_draw_done(SPICE_DISPLAY_CHANNEL(d->display));
+        spice_display_gl_draw_done(d->display);
     }
 }
 #endif
@@ -2934,7 +2935,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         SpiceDisplayPrimary primary;
         if (id != d->channel_id)
             return;
-        d->display = channel;
+        d->display = SPICE_DISPLAY_CHANNEL(channel);
         spice_g_signal_connect_object(channel, "display-primary-create",
                                       G_CALLBACK(primary_create), display, 0);
         spice_g_signal_connect_object(channel, "display-primary-destroy",
