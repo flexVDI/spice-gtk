@@ -1327,7 +1327,7 @@ static void set_egl_enabled(SpiceDisplay *display, bool enabled)
                                          enabled ? "gl-area" : "draw-area");
     }
 
-    if (enabled) {
+    if (enabled && d->egl.context_ready) {
         spice_egl_resize_display(display, d->ww, d->wh);
     }
 
@@ -2861,6 +2861,8 @@ void spice_display_widget_gl_scanout(SpiceDisplay *display)
             g_critical("egl realize failed: %s", err->message);
             g_clear_error(&err);
         }
+
+        spice_egl_resize_display(display, d->ww, d->wh);
     }
 #endif
 
