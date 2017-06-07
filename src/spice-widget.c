@@ -2891,7 +2891,11 @@ static void gl_draw(SpiceDisplay *display,
 
     set_egl_enabled(display, true);
 
-    g_return_if_fail(d->egl.context_ready);
+    if (!d->egl.context_ready) {
+        DISPLAY_DEBUG(display, "Draw without GL context, skipping");
+        spice_display_gl_draw_done(SPICE_DISPLAY_CHANNEL(d->display));
+        return;
+    }
 
 #if GTK_CHECK_VERSION(3,16,0)
     GtkWidget *gl = gtk_stack_get_child_by_name(d->stack, "gl-area");
