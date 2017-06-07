@@ -289,6 +289,8 @@ gl_make_current(SpiceDisplay *display, GError **err)
 {
     SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
 
+    g_return_val_if_fail(d->egl.context_ready, FALSE);
+
     if (GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
         EGLBoolean success = eglMakeCurrent(d->egl.display,
                                             d->egl.surface,
