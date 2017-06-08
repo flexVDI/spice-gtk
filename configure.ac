@@ -62,6 +62,18 @@ esac
 AC_MSG_RESULT([$os_win32])
 AM_CONDITIONAL([OS_WIN32],[test "$os_win32" = "yes"])
 
+AC_MSG_CHECKING([for native macOS])
+case "$host_os" in
+     *darwin*)
+        os_mac=yes
+        ;;
+     *)
+        os_mac=no
+        ;;
+esac
+AC_MSG_RESULT([$os_mac])
+AM_CONDITIONAL([OS_MAC],[test "$os_mac" = "yes"])
+
 AC_CHECK_HEADERS([sys/socket.h netinet/in.h arpa/inet.h])
 AC_CHECK_HEADERS([termios.h])
 AC_CHECK_HEADERS([epoxy/egl.h],
@@ -468,6 +480,9 @@ esac
 if test "$with_coroutine" = "auto"; then
   if test "$os_win32" = "yes"; then
     with_coroutine=winfiber
+  elif test "$os_mac" = "yes"; then
+    with_coroutine=ucontext
+    AC_DEFINE([_XOPEN_SOURCE], [1], [Define _XOPEN_SOURCE on macOS for ucontext])
   else
     with_coroutine=ucontext
   fi
