@@ -151,7 +151,7 @@ static gboolean mjpeg_decoder_decode_frame(gpointer video_decoder)
 #ifndef JCS_EXTENSIONS
         {
             uint8_t *s = lines[0];
-            uint32_t *d = (uint32_t *)s;
+            uint32_t *d = SPICE_ALIGNED_CAST(uint32_t *, s);
 
             if (back_compat) {
                 for (unsigned int j = lines_read * width; j > 0; ) {

@@ -381,10 +381,11 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
     SpiceCursorHeader *hdr = &scursor->header;
     display_cursor *cursor;
     size_t size;
-    gint i, pix_mask, pix;
+    guint32 i, pix_mask, pix;
     const guint8* data;
     guint8 *rgba;
     guint8 val;
+    guint32 palette[16];
 
     CHANNEL_DEBUG(channel, "%s: flags %x, size %u", __FUNCTION__,
                   scursor->flags, scursor->data_size);
@@ -433,7 +434,7 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
         size /= 2u;
         for (i = 0; i < hdr->width * hdr->height; i++) {
             pix_mask = get_pix_mask(data, size, i);
-            pix = *((guint16*)data + i);
+            pix = *(SPICE_UNALIGNED_CAST(guint16 *, data) + i);
             if (pix_mask && pix == 0x7fff) {
                 cursor->data[i] = get_pix_hack(i, hdr->width);
             } else {
@@ -444,10 +445,11 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
         break;
     case SPICE_CURSOR_TYPE_COLOR4:
         size = ((unsigned int)(SPICE_ALIGN(hdr->width, 2) / 2)) * hdr->height;
+        memcpy(palette, data + size, sizeof(palette));
         for (i = 0; i < hdr->width * hdr->height; i++) {
             pix_mask = get_pix_mask(data, size + (sizeof(uint32_t) << 4), i);
             int idx = (i & 1) ? (data[i >> 1] & 0x0f) : ((data[i >> 1] & 0xf0) >> 4);
-            pix = *((uint32_t*)(data + size) + idx);
+            pix = palette[idx];
             if (pix_mask && pix == 0xffffff) {
                 cursor->data[i] = get_pix_hack(i, hdr->width);
             } else {

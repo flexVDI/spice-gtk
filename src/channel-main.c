@@ -1872,7 +1872,7 @@ static void main_agent_handle_xfer_status(SpiceMainChannel *channel,
                                     _("The spice agent reported an error during the file transfer"));
         break;
     case VD_AGENT_FILE_XFER_STATUS_NOT_ENOUGH_SPACE: {
-        uint64_t *free_space = (uint64_t *)(msg->data);
+        uint64_t *free_space = SPICE_ALIGNED_CAST(uint64_t *, msg->data);
         gchar *free_space_str = g_format_size(*free_space);
         gchar *file_size_str = g_format_size(spice_file_transfer_task_get_total_bytes(xfer_task));
         error = g_error_new(SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,

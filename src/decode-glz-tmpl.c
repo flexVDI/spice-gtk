@@ -178,7 +178,7 @@ static size_t FNAME(decode)(SpiceGlzDecoderWindow *window,
                             uint64_t image_id, SpicePalette *plt)
 {
     uint8_t      *ip = in_buf;
-    OUT_PIXEL    *out_pix_buf = (OUT_PIXEL *)out_buf;
+    OUT_PIXEL    *out_pix_buf = SPICE_ALIGNED_CAST(OUT_PIXEL *, out_buf);
     OUT_PIXEL    *op = out_pix_buf;
     OUT_PIXEL    *op_limit = out_pix_buf + size;
 
