@@ -1630,7 +1630,7 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
 
     if (key->keyval == GDK_KEY_Pause
 #ifdef G_OS_WIN32
-        /* for some reason GDK does not fill keyval for VK_PAUSE 
+        /* for some reason GDK does not fill keyval for VK_PAUSE
          * See https://bugzilla.gnome.org/show_bug.cgi?id=769214
          */
         || key->hardware_keycode == VK_PAUSE
