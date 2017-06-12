@@ -927,15 +927,16 @@ static void usbredir_handle_msg(SpiceChannel *c, SpiceMsgIn *in)
         err_data.caller = coroutine_self();
         err_data.spice_device = g_boxed_copy(spice_usb_device_get_type(), spice_device);
         err_data.error = err;
+        spice_usbredir_channel_unlock(channel);
         g_idle_add(device_error, &err_data);
         coroutine_yield(NULL);
 
         g_boxed_free(spice_usb_device_get_type(), err_data.spice_device);
 
         g_error_free(err);
+    } else {
+        spice_usbredir_channel_unlock(channel);
     }
-
-    spice_usbredir_channel_unlock(channel);
 }
 
 #endif /* USE_USBREDIR */
