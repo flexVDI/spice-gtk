@@ -74,7 +74,6 @@ SPICE_COMMON_CPPFLAGS =						\
 	-DSPICE_GTK_LOCALEDIR=\"${SPICE_GTK_LOCALEDIR}\"	\
 	-DPNP_IDS=\""$(PNP_IDS)"\"				\
 	-DUSB_IDS=\""$(USB_IDS)"\"				\
-	-DSPICE_DISABLE_ABORT					\
 	-I$(top_srcdir)						\
 	$(COMMON_CFLAGS)					\
 	$(PIXMAN_CFLAGS)					\
