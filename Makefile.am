@@ -22,10 +22,6 @@ if WITH_GTK
 pkgconfig_DATA += spice-client-gtk-3.0.pc
 endif
 
-if WITH_CONTROLLER
-pkgconfig_DATA += spice-controller.pc
-endif
-
 DISTCLEANFILES = $(pkgconfig_DATA)
 
 EXTRA_DIST =					\

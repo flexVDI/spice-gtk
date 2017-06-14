@@ -58,7 +58,7 @@
                     "PYTHONPATH": "/app"
                 }
             },
-            "config-opts": [ "--disable-controller", "--disable-vala",
+            "config-opts": [ "--disable-vala",
                              "--disable-gtk-doc", "--enable-python-checks" ],
             "sources": [
                 {

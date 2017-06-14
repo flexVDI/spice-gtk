@@ -1,10 +1,6 @@
 NULL =
 SUBDIRS =
 
-if WITH_CONTROLLER
-SUBDIRS += controller
-endif
-
 KEYMAPS =					\
 	vncdisplaykeymap_xorgevdev2xtkbd.c	\
 	vncdisplaykeymap_xorgkbd2xtkbd.c	\
