@@ -1,3 +1,31 @@
+v0.34
+=====
+
+- NOTE: this is the last release with the spice-controller library
+- add VP9 codec support
+- API: add spice_display_change_preferred_video_codec_type()
+- API: add new SpiceCursorChannel:cursor property, deprecate "cursor-set" signal
+- API: spice_audio_new() is no longer in public header (it was deprecated
+  for a long while)
+- fix clipboard crash and other regressions from 0.33
+- report invalid or stopped streams to the server
+- use playbin instead of decodebin with gstreamer > 1.9
+- support GST_DEBUG_BIN_TO_DOT_FILE debug
+- deprecate a few esoteric options from --spice group:
+  --spice-color-depth, --spice-cache-size, --spice-glz-window-size used
+  mainly for development. They may be available with spicy in the future.
+- win32: handle failures when starting win-usb manager
+- win32: removed windows usb-clerk support, replaced by UsbDk
+- win32: fix alt-tab & grab issues
+- spicy learned to tweak codec preference, cancel transfer, and resize
+  precisely for debugging purposes
+- use keycodemapdb submodule, drop perl(Text::CSV) dependency
+- file-xfer: fix bad filename encoding
+- file-xfer: handle new error kind
+- build-sys fixes for macos
+- replace some deprecated gtk code
+- memory leak fixes, new tests
+
 v0.33
 =====
 
