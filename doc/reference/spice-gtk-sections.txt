@@ -434,10 +434,7 @@ spice_uuid_to_string
 SPICE_DEBUG
 spice_util_get_debug
 SPICE_RESERVED_PADDING
-SPICE_DEPRECATED_FOR
 spice_g_signal_connect_object
-SPICE_DEPRECATED
-SPICE_GNUC_DEPRECATED_FOR
 </SECTION>
 
 <SECTION>

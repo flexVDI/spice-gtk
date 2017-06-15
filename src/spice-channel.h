@@ -24,7 +24,6 @@
 
 #include <gio/gio.h>
 
-#include <spice/macros.h>
 #include "spice-types.h"
 #include "spice-glib-enums.h"
 #include "spice-util.h"
@@ -137,9 +136,9 @@ gboolean spice_channel_test_common_capability(SpiceChannel *channel, guint32 cap
 void spice_channel_flush_async(SpiceChannel *channel, GCancellable *cancellable, GAsyncReadyCallback callback, gpointer user_data);
 gboolean spice_channel_flush_finish(SpiceChannel *channel, GAsyncResult *result, GError **error);
 #ifndef SPICE_DISABLE_DEPRECATED
-SPICE_GNUC_DEPRECATED
+G_DEPRECATED
 void spice_channel_set_capability(SpiceChannel *channel, guint32 cap);
-SPICE_GNUC_DEPRECATED
+G_DEPRECATED
 void spice_channel_destroy(SpiceChannel *channel);
 #endif
 
