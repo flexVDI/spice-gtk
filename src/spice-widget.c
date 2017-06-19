@@ -2161,7 +2161,8 @@ static void unrealize(GtkWidget *widget)
 {
     spice_cairo_image_destroy(SPICE_DISPLAY(widget));
 #if HAVE_EGL
-    spice_egl_unrealize_display(SPICE_DISPLAY(widget));
+    if (SPICE_DISPLAY(widget)->priv->egl.context_ready)
+        spice_egl_unrealize_display(SPICE_DISPLAY(widget));
 #endif
 
     GTK_WIDGET_CLASS(spice_display_parent_class)->unrealize(widget);
