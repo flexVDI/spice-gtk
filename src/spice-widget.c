@@ -19,10 +19,10 @@
 
 #include <math.h>
 #include <glib.h>
+#include <gdk/gdk.h>
 
 #ifdef HAVE_X11_XKBLIB_H
 #include <X11/XKBlib.h>
-#include <gdk/gdkx.h>
 #endif
 #ifdef GDK_WINDOWING_X11
 #include <X11/Xlib.h>

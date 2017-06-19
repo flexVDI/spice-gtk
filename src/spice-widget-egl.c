@@ -18,6 +18,7 @@
 #include "config.h"
 
 #include <math.h>
+#include <gdk/gdk.h>
 
 #define EGL_EGLEXT_PROTOTYPES
 #define GL_GLEXT_PROTOTYPES
@@ -27,7 +28,9 @@
 #include "spice-gtk-session-priv.h"
 #include <libdrm/drm_fourcc.h>
 
+#ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
+#endif
 #ifdef GDK_WINDOWING_WAYLAND
 #include <gdk/gdkwayland.h>
 #endif
@@ -291,6 +294,7 @@ gl_make_current(SpiceDisplay *display, GError **err)
 
     g_return_val_if_fail(d->egl.context_ready, FALSE);
 
+#ifdef GDK_WINDOWING_X11
     if (GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
         EGLBoolean success = eglMakeCurrent(d->egl.display,
                                             d->egl.surface,
@@ -303,8 +307,12 @@ gl_make_current(SpiceDisplay *display, GError **err)
             return FALSE;
         }
     }
+#endif
 #if GTK_CHECK_VERSION(3,16,0)
-    else {
+#ifdef GDK_WINDOWING_X11
+    else
+#endif
+    {
         /* Ignore GLib's too-new warnings */
         G_GNUC_BEGIN_IGNORE_DEPRECATIONS
         GtkWidget *area = gtk_stack_get_child_by_name(d->stack, "gl-area");
@@ -402,6 +410,7 @@ void spice_egl_unrealize_display(SpiceDisplay *display)
         d->egl.prog = 0;
     }
 
+#ifdef GDK_WINDOWING_X11
     if (GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
         /* egl.surface && egl.ctx are only created on x11, see
            spice_egl_init() */
@@ -422,6 +431,7 @@ void spice_egl_unrealize_display(SpiceDisplay *display)
         /* do not call eglterminate() since egl may be used by
          * somebody else code */
     }
+#endif
 }
 
 G_GNUC_INTERNAL
@@ -619,10 +629,12 @@ void spice_egl_update_display(SpiceDisplay *display)
                              0, 0, 1, 1);
     }
 
+#ifdef GDK_WINDOWING_X11
     if (GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
         /* gtk+ does the swap with gtkglarea */
         eglSwapBuffers(d->egl.display, d->egl.surface);
     }
+#endif
 
     glUseProgram(prog);
 }
