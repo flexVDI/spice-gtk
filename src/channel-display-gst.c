@@ -268,7 +268,8 @@ static gboolean handle_pipeline_message(GstBus *bus, GstMessage *msg, gpointer v
 {
     SpiceGstDecoder *decoder = video_decoder;
 
-    if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR) {
+    switch(GST_MESSAGE_TYPE(msg)) {
+    case GST_MESSAGE_ERROR: {
         GError *err = NULL;
         gchar *debug_info = NULL;
         gst_message_parse_error(msg, &err, &debug_info);
@@ -282,6 +283,24 @@ static gboolean handle_pipeline_message(GstBus *bus, GstMessage *msg, gpointer v
 
         /* We won't be able to process any more frame anyway */
         free_pipeline(decoder);
+        break;
+    }
+    case GST_MESSAGE_STREAM_START: {
+        gchar *filename = g_strdup_printf("spice-gtk-gst-pipeline-debug-%ld-%s",
+                                          get_stream_id_by_stream(decoder->base.stream->channel,
+                                                                  decoder->base.stream),
+                                          gst_opts[decoder->base.codec_type].name);
+        GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(decoder->pipeline),
+                                  GST_DEBUG_GRAPH_SHOW_ALL
+                                    | GST_DEBUG_GRAPH_SHOW_FULL_PARAMS
+                                    | GST_DEBUG_GRAPH_SHOW_STATES,
+                                    filename);
+        g_free(filename);
+        break;
+    }
+    default:
+        /* not being handled */
+        break;
     }
     return TRUE;
 }

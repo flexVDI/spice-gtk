@@ -193,6 +193,7 @@ G_STATIC_ASSERT(G_N_ELEMENTS(gst_opts) <= SPICE_VIDEO_CODEC_TYPE_ENUM_END);
 guint32 stream_get_time(display_stream *st);
 void stream_dropped_frame_on_playback(display_stream *st);
 void stream_display_frame(display_stream *st, SpiceFrame *frame, uint32_t width, uint32_t height, uint8_t* data);
+gint64 get_stream_id_by_stream(SpiceChannel *channel, display_stream *st);
 
 
 G_END_DECLS
