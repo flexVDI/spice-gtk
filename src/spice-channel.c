@@ -2180,12 +2180,14 @@ static void spice_channel_iterate_read(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
 
-    g_coroutine_socket_wait(&c->coroutine, c->sock, G_IO_IN);
+    if (!c->ws || !nopoll_conn_read_pending(c->np_conn))
+        g_coroutine_socket_wait(&c->coroutine, c->sock, G_IO_IN);
 
     /* treat all incoming data (block on message completion) */
     while (!c->has_error &&
            c->state != SPICE_CHANNEL_STATE_MIGRATING &&
-           g_pollable_input_stream_is_readable(G_POLLABLE_INPUT_STREAM(c->in))) {
+           ((c->ws && nopoll_conn_read_pending(c->np_conn)) ||
+            g_pollable_input_stream_is_readable(G_POLLABLE_INPUT_STREAM(c->in)))) {
         do
             spice_channel_recv_msg(channel,
                                    (handler_msg_in)SPICE_CHANNEL_GET_CLASS(channel)->handle_msg, NULL);
