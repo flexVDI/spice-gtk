@@ -748,6 +748,7 @@ static void spice_channel_flush_wire(SpiceChannel *channel,
     const char *ptr = data;
     size_t offset = 0;
     GIOCondition cond;
+    int pending_bytes;
 
     while (offset < datalen) {
         gssize ret;
@@ -807,6 +808,21 @@ static void spice_channel_flush_wire(SpiceChannel *channel,
             return;
         }
         offset += ret;
+    }
+
+    if (c->ws) {
+        while ((pending_bytes = nopoll_conn_complete_pending_write(c->np_conn) != 0)) {
+            g_debug("Writing %d pending bytes", pending_bytes);
+            if (pending_bytes < 0 && errno != EAGAIN
+#ifdef WIN32
+                && WSAGetLastError() != WSAEWOULDBLOCK
+#endif
+            ) {
+                c->has_error = TRUE;
+                return;
+            }
+            g_coroutine_socket_wait(&c->coroutine, c->sock, G_IO_OUT);
+        }
     }
 }
 
@@ -2146,7 +2162,6 @@ static void spice_channel_iterate_write(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
     SpiceMsgOut *out;
-    int pending_bytes;
 
     do {
         STATIC_MUTEX_LOCK(c->xmit_queue_lock);
@@ -2154,20 +2169,6 @@ static void spice_channel_iterate_write(SpiceChannel *channel)
         STATIC_MUTEX_UNLOCK(c->xmit_queue_lock);
         if (out) {
             spice_channel_write_msg(channel, out);
-            if (c->ws) {
-                while ((pending_bytes = nopoll_conn_complete_pending_write(c->np_conn) != 0)) {
-                    g_warning("Writing %d pending bytes", pending_bytes);
-                    if (pending_bytes < 0 && errno != EAGAIN
-#ifdef WIN32
-                        && WSAGetLastError() != WSAEWOULDBLOCK
-#endif
-                    ) {
-                        c->has_error = TRUE;
-                        return;
-                    }
-                    g_coroutine_socket_wait(&c->coroutine, c->sock, G_IO_OUT);
-                }
-            }
         }
     } while (out);
 
