@@ -40,14 +40,14 @@
 
 struct _SpiceUsbDeviceWidget
 {
-    GtkVBox parent;
+    GtkBox parent;
 
     SpiceUsbDeviceWidgetPrivate *priv;
 };
 
 struct _SpiceUsbDeviceWidgetClass
 {
-    GtkVBoxClass parent_class;
+    GtkBoxClass parent_class;
 
     /* signals */
     void (*connect_failed) (SpiceUsbDeviceWidget *widget,
