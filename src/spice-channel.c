@@ -1938,8 +1938,9 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
         CHANNEL_DEBUG(channel, "got common caps %d:0x%X", i, *caps);
     }
 
-    g_array_set_size(c->remote_caps, num_channel_caps);
     caps_src += num_common_caps * sizeof(uint32_t);
+    g_array_set_size(c->remote_caps, num_channel_caps);
+    caps = &g_array_index(c->remote_caps, uint32_t, 0);
     memcpy(caps, caps_src, num_channel_caps * sizeof(uint32_t));
     for (i = 0; i < num_channel_caps; i++, caps++) {
         *caps = GUINT32_FROM_LE(*caps);
