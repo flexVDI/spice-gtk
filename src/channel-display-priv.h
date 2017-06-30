@@ -150,6 +150,46 @@ struct display_stream {
     uint32_t report_drops_seq_len;
 };
 
+static const struct {
+    int cap;
+    const gchar name[8];
+
+    /* FIXME: With gstreamer version 1.9.0 and higher, we are using playbin to
+     * create the pipeline for us and for that reason we don't need to keep track of
+     * decoder's name anymore. */
+    const gchar *dec_name;
+    const gchar *dec_caps;
+} gst_opts[] = {
+    /* SpiceVideoCodecType starts at index 1 */
+    { 0 },
+
+    /* SPICE_VIDEO_CODEC_TYPE_MJPEG */
+    { SPICE_DISPLAY_CAP_CODEC_MJPEG, "mjpeg",
+      "jpegdec", "image/jpeg" },
+
+    /* SPICE_VIDEO_CODEC_TYPE_VP8
+     *
+     * typefind is unable to identify VP8 streams by design.
+     * See: https://bugzilla.gnome.org/show_bug.cgi?id=756457
+     */
+    { SPICE_DISPLAY_CAP_CODEC_VP8, "vp8",
+      "vp8dec", "video/x-vp8" },
+
+    /* SPICE_VIDEO_CODEC_TYPE_H264
+     * When setting video/x-h264, h264parse will complain if we don't have the
+     * stream-format or codec_data information. As stream-format is byte-stream
+     * (hardcoded in spice-server), let's add it here to avoid the warning.
+     */
+    { SPICE_DISPLAY_CAP_CODEC_H264, "h264",
+      "h264parse ! avdec_h264", "video/x-h264,stream-format=byte-stream" },
+
+    /* SPICE_VIDEO_CODEC_TYPE_VP9 */
+    { SPICE_DISPLAY_CAP_CODEC_VP9, "vp9",
+      "vp9dec", "video/x-vp9" },
+};
+
+G_STATIC_ASSERT(G_N_ELEMENTS(gst_opts) <= SPICE_VIDEO_CODEC_TYPE_ENUM_END);
+
 guint32 stream_get_time(display_stream *st);
 void stream_dropped_frame_on_playback(display_stream *st);
 void stream_display_frame(display_stream *st, SpiceFrame *frame, uint32_t width, uint32_t height, uint8_t* data);

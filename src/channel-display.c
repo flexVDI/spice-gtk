@@ -764,16 +764,6 @@ static HDC create_compatible_dc(void)
 static void spice_display_channel_reset_capabilities(SpiceChannel *channel)
 {
     guint i;
-    static const struct {
-        SpiceVideoCodecType type;
-        int cap;
-        const gchar name[8];
-    } gst_codecs[] = {
-        {SPICE_VIDEO_CODEC_TYPE_MJPEG, SPICE_DISPLAY_CAP_CODEC_MJPEG, "mjpeg"},
-        {SPICE_VIDEO_CODEC_TYPE_VP8, SPICE_DISPLAY_CAP_CODEC_VP8, "vp8"},
-        {SPICE_VIDEO_CODEC_TYPE_H264, SPICE_DISPLAY_CAP_CODEC_H264, "h264"},
-        {SPICE_VIDEO_CODEC_TYPE_VP9, SPICE_DISPLAY_CAP_CODEC_VP9, "vp9"},
-    };
 
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_SIZED_STREAM);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_MONITORS_CONFIG);
@@ -792,11 +782,11 @@ static void spice_display_channel_reset_capabilities(SpiceChannel *channel)
 #ifdef HAVE_BUILTIN_MJPEG
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_CODEC_MJPEG);
 #endif
-    for (i = 0; i < G_N_ELEMENTS(gst_codecs); i++) {
-        if (gstvideo_has_codec(gst_codecs[i].type)) {
-            spice_channel_set_capability(SPICE_CHANNEL(channel), gst_codecs[i].cap);
+    for (i = 1; i < G_N_ELEMENTS(gst_opts); i++) {
+        if (gstvideo_has_codec(i)) {
+            spice_channel_set_capability(SPICE_CHANNEL(channel), gst_opts[i].cap);
         } else {
-            SPICE_DEBUG("GStreamer does not support the %s codec", gst_codecs[i].name);
+            SPICE_DEBUG("GStreamer does not support the %s codec", gst_opts[i].name);
         }
     }
 }
