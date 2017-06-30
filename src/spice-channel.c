@@ -1884,11 +1884,25 @@ cleanup:
 #endif /* HAVE_SASL */
 
 /* coroutine context */
+static void store_caps(const uint8_t *caps_src, const GArray *caps_dst)
+{
+    uint32_t *caps;
+    guint i;
+
+    caps = &g_array_index(caps_dst, uint32_t, 0);
+    memcpy(caps, caps_src, caps_dst->len * sizeof(uint32_t));
+    for (i = 0; i < caps_dst->len; i++, caps++) {
+        *caps = GUINT32_FROM_LE(*caps);
+        SPICE_DEBUG("\t%u:0x%X", i, *caps);
+    }
+}
+
+/* coroutine context */
 static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c;
-    int rc, num_caps, i;
-    uint32_t *caps, num_channel_caps, num_common_caps;
+    int rc, num_caps;
+    uint32_t num_channel_caps, num_common_caps;
     uint8_t *caps_src;
     SpiceChannelEvent event = SPICE_CHANNEL_ERROR_LINK;
 
@@ -1931,21 +1945,13 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
 
     caps_src = (uint8_t *)c->peer_msg + GUINT32_FROM_LE(c->peer_msg->caps_offset);
     g_array_set_size(c->remote_common_caps, num_common_caps);
-    caps = &g_array_index(c->remote_common_caps, uint32_t, 0);
-    memcpy(caps, caps_src, num_common_caps * sizeof(uint32_t));
-    for (i = 0; i < num_common_caps; i++, caps++) {
-        *caps = GUINT32_FROM_LE(*caps);
-        CHANNEL_DEBUG(channel, "got common caps %d:0x%X", i, *caps);
-    }
+    CHANNEL_DEBUG(channel, "got remote common caps:");
+    store_caps(caps_src, c->remote_common_caps);
 
     caps_src += num_common_caps * sizeof(uint32_t);
     g_array_set_size(c->remote_caps, num_channel_caps);
-    caps = &g_array_index(c->remote_caps, uint32_t, 0);
-    memcpy(caps, caps_src, num_channel_caps * sizeof(uint32_t));
-    for (i = 0; i < num_channel_caps; i++, caps++) {
-        *caps = GUINT32_FROM_LE(*caps);
-        CHANNEL_DEBUG(channel, "got channel caps %d:0x%X", i, *caps);
-    }
+    CHANNEL_DEBUG(channel, "got remote channel caps:");
+    store_caps(caps_src, c->remote_caps);
 
     if (!spice_channel_test_common_capability(channel,
             SPICE_COMMON_CAP_PROTOCOL_AUTH_SELECTION)) {
