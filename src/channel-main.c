@@ -3103,9 +3103,9 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
                                 gpointer user_data)
 {
     SpiceMainChannelPrivate *c;
-    GHashTableIter iter;
-    gpointer key, value;
     FileTransferOperation *xfer_op;
+    GError *error = NULL;
+    GList *it, *keys;
 
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
@@ -3113,25 +3113,13 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
 
     c = channel->priv;
     if (!c->agent_connected) {
-        g_task_report_new_error(channel,
-                                callback,
-                                user_data,
-                                spice_main_file_copy_async,
-                                SPICE_CLIENT_ERROR,
-                                SPICE_CLIENT_ERROR_FAILED,
-                                "The agent is not connected");
-        return;
-    }
-
-    if (test_agent_cap(channel, VD_AGENT_CAP_FILE_XFER_DISABLED)) {
-        g_task_report_new_error(channel,
-                                callback,
-                                user_data,
-                                spice_main_file_copy_async,
-                                SPICE_CLIENT_ERROR,
-                                SPICE_CLIENT_ERROR_FAILED,
-                                _("The file transfer is disabled"));
-        return;
+        error = g_error_new(SPICE_CLIENT_ERROR,
+                            SPICE_CLIENT_ERROR_FAILED,
+                            "The agent is not connected");
+    } else if (test_agent_cap(channel, VD_AGENT_CAP_FILE_XFER_DISABLED)) {
+        error = g_error_new(SPICE_CLIENT_ERROR,
+                            SPICE_CLIENT_ERROR_FAILED,
+                            _("The file transfer is disabled"));
     }
 
     xfer_op = g_new0(FileTransferOperation, 1);
@@ -3144,23 +3132,29 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
                                                                flags,
                                                                cancellable);
     xfer_op->stats.num_files = g_hash_table_size(xfer_op->xfer_task);
-    g_hash_table_iter_init(&iter, xfer_op->xfer_task);
-    while (g_hash_table_iter_next(&iter, &key, &value)) {
+    keys = g_hash_table_get_keys(xfer_op->xfer_task);
+    for (it = keys; it != NULL; it = it->next) {
         guint32 task_id;
-        SpiceFileTransferTask *xfer_task = value;
+        SpiceFileTransferTask *xfer_task = g_hash_table_lookup(xfer_op->xfer_task, it->data);
 
         task_id = spice_file_transfer_task_get_id(xfer_task);
 
         SPICE_DEBUG("Insert a xfer task:%u to task list", task_id);
 
-        g_hash_table_insert(c->file_xfer_tasks, key, xfer_op);
+        g_hash_table_insert(c->file_xfer_tasks, it->data, xfer_op);
         g_signal_connect(xfer_task, "finished", G_CALLBACK(file_transfer_operation_task_finished), NULL);
         g_signal_emit(channel, signals[SPICE_MAIN_NEW_FILE_TRANSFER], 0, xfer_task);
 
-        spice_file_transfer_task_init_task_async(xfer_task,
-                                                 file_xfer_init_task_async_cb,
-                                                 xfer_op);
+        if (error == NULL) {
+            spice_file_transfer_task_init_task_async(xfer_task,
+                                                     file_xfer_init_task_async_cb,
+                                                     xfer_op);
+        } else {
+            spice_file_transfer_task_completed(xfer_task, g_error_copy(error));
+        }
     }
+    g_list_free(keys);
+    g_clear_error(&error);
 }
 
 /**
