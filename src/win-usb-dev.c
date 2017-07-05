@@ -380,20 +380,20 @@ static gboolean get_usb_dev_info(libusb_device *dev, GUdevDeviceInfo *udevinfo)
     return TRUE;
 }
 
-/* Only vid:pid are compared */
+/* Only bus:addr are compared */
 static gint gudev_devices_differ(gconstpointer a, gconstpointer b)
 {
     GUdevDeviceInfo *ai, *bi;
-    gboolean same_vid;
-    gboolean same_pid;
+    gboolean same_bus;
+    gboolean same_addr;
 
     ai = G_UDEV_DEVICE(a)->priv->udevinfo;
     bi = G_UDEV_DEVICE(b)->priv->udevinfo;
 
-    same_vid  = (ai->vid == bi->vid);
-    same_pid  = (ai->pid == bi->pid);
+    same_bus = (ai->bus == bi->bus);
+    same_addr = (ai->addr == bi->addr);
 
-    return (same_pid && same_vid) ? 0 : -1;
+    return (same_bus && same_addr) ? 0 : -1;
 }
 
 static void notify_dev_state_change(GUdevClient *self,
