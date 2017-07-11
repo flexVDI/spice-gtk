@@ -635,9 +635,9 @@ static void spice_usb_device_manager_class_init(SpiceUsbDeviceManagerClass *klas
                                     pspec);
 
     /**
-     * SpiceUsbDeviceManager:n-free-channels:
+     * SpiceUsbDeviceManager:free-channels:
      *
-     * Get a list of avaialable channels for redirecting USB devices.
+     * Get the number of available channels for redirecting USB devices.
      *
      * Since: 0.31
      */
