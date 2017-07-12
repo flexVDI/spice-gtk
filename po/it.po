@@ -7,8 +7,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: spice master it\n"
-"Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2016-08-17 08:38+0100\n"
+"Report-Msgid-Bugs-To: spice-devel@lists.freedesktop.org\n"
+"POT-Creation-Date: 2017-07-12 17:29+0200\n"
 "PO-Revision-Date: 2016-08-17 08:57+0100\n"
 "Last-Translator: Frediano Ziglio <fziglio@redhat.com>\n"
 "Language-Team: \n"
@@ -18,102 +18,90 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: Poedit 1.8.8\n"
 
-#: ../src/channel-usbredir.c:890
+#: src/channel-main.c:1868
+msgid "The spice agent cancelled the file transfer"
+msgstr ""
+
+#: src/channel-main.c:1872
+msgid "The spice agent reported an error during the file transfer"
+msgstr ""
+
+#: src/channel-main.c:1879
+#, c-format
+msgid ""
+"File transfer failed due to lack of free space on remote machine (%s free, "
+"%s to transfer)"
+msgstr ""
+
+#: src/channel-main.c:1887
+msgid ""
+"User's session is locked and cannot transfer files, unlock it and try again."
+msgstr ""
+
+#: src/channel-main.c:1892
+msgid "Session agent not connected."
+msgstr ""
+
+#: src/channel-main.c:1896
+#, fuzzy
+msgid "File transfer is disabled."
+msgstr "Redirezione USB disabilitata"
+
+#: src/channel-main.c:3133
+#, fuzzy
+msgid "The file transfer is disabled"
+msgstr "Redirezione USB disabilitata"
+
+#: src/channel-usbredir.c:906
 #, c-format
 msgid "usbredir protocol parse error for %s"
 msgstr "errore di formato nel protocollo usbredir per %s"
 
-#: ../src/channel-usbredir.c:895
+#: src/channel-usbredir.c:911
 #, c-format
 msgid "%s rejected by host"
 msgstr "%s rifiutato dall'host"
 
-#: ../src/channel-usbredir.c:900
+#: src/channel-usbredir.c:916
 #, c-format
 msgid "%s disconnected (fatal IO error)"
 msgstr "%s disconnesso (errore I/O fatale)"
 
-#: ../src/channel-usbredir.c:904
+#: src/channel-usbredir.c:920
 #, c-format
 msgid "Unknown error (%d) for %s"
 msgstr "Errore sconosciuto (%d) per %s"
 
-#: ../src/desktop-integration.c:104
+#: src/desktop-integration.c:104
 msgid "Automounting has been inhibited for USB auto-redirecting"
 msgstr ""
 "L'automontatura è stata disabilitata per consentire l'autoredirezione USB"
 
-#: ../src/spice-channel.c:1094
-msgid "Authentication failed: password and username are required"
-msgstr "Autenticazione fallita: note utente e password sono necessari"
-
-#: ../src/spice-channel.c:1099
-msgid "Authentication failed: username is required"
+#: src/spice-channel.c:1183
+#, fuzzy
+msgid "Authentication failed"
 msgstr "Autenticazione fallita: note utente necessario"
 
-#: ../src/spice-channel.c:1104 ../src/spice-channel.c:1114
-msgid "Authentication failed: password is required"
-msgstr "Autenticazione fallita: password necessaria"
-
-#: ../src/spice-channel.c:1109
+#: src/spice-channel.c:1201
 msgid "Authentication failed: password is too long"
 msgstr "Autenticazione fallita: password troppo lunga"
 
-#: ../src/spice-cmdline.c:36
-msgid "Spice server uri"
-msgstr "URI Spice server"
+#: src/spice-channel.c:1206
+#, fuzzy
+msgid "Authentication failed: wrong password?"
+msgstr "Autenticazione fallita: password necessaria"
 
-#: ../src/spice-cmdline.c:37
-msgid "<uri>"
-msgstr "<uri>"
-
-#: ../src/spice-cmdline.c:43
-msgid "Spice server address"
-msgstr "Indirizzo Spice server"
-
-#: ../src/spice-cmdline.c:44
-msgid "<host>"
-msgstr "<host>"
-
-#: ../src/spice-cmdline.c:50
-msgid "Spice server port"
-msgstr "Porta Spice server"
-
-#: ../src/spice-cmdline.c:51 ../src/spice-cmdline.c:58
-msgid "<port>"
-msgstr "<porta>"
-
-#: ../src/spice-cmdline.c:57
-msgid "Spice server secure port"
-msgstr "Porta sicura Spice server"
-
-#: ../src/spice-cmdline.c:64
-msgid "Server password"
-msgstr "Password server"
-
-#: ../src/spice-cmdline.c:65
-msgid "<password>"
-msgstr "<password>"
-
-#: ../src/spice-cmdline.c:76
-msgid "Spice connection options:"
-msgstr "Opzioni connessione Spice:"
-
-#: ../src/spice-cmdline.c:77
-msgid "Show Spice options"
-msgstr "Mostra opzioni Spice"
-
-#: ../src/spice-option.c:65
+#: src/spice-option.c:65
 #, c-format
 msgid "missing color depth, must be 16 or 32"
 msgstr "profondità colore assente, deve essere 16 o 32"
 
-#: ../src/spice-option.c:81
+#: src/spice-option.c:81
 #, c-format
 msgid "invalid color depth (%s), must be 16 or 32"
 msgstr "profondità di colore invalida (%s), deve essere 16 o 32"
 
-#: ../src/spice-option.c:101
+#: src/spice-option.c:101
 #, c-format
 msgid ""
 "invalid effect name (%s), must be 'wallpaper', 'font-smooth', 'animation' or "
@@ -122,54 +110,55 @@ msgstr ""
 "nome effetto invalido (%s), deve essere 'wallpaper', 'font-smooth', "
 "'animation' oppure 'all'"
 
-#: ../src/spice-option.c:125
+#: src/spice-option.c:125
 #, c-format
 msgid "invalid channel name (%s), valid names: all, %s"
 msgstr "nome del canale invalido (%s), nomi validi: all, %s"
 
-#: ../src/spice-option.c:173
+#: src/spice-option.c:173
 #, c-format
 msgid "Image compression algorithm %s not supported"
 msgstr "Algoritmo di compressione %s non supportato"
 
-#: ../src/spice-option.c:195
+#: src/spice-option.c:195
 msgid "Force the specified channels to be secured"
 msgstr "Forza il canale specificato ad essere sicuro"
 
-#: ../src/spice-option.c:197
+#: src/spice-option.c:197
 msgid "Disable guest display effects"
 msgstr "Disabilita effetti grafici guest"
 
-#: ../src/spice-option.c:199
-msgid "Guest display color depth"
+#: src/spice-option.c:199
+#, fuzzy
+msgid "Guest display color depth (deprecated)"
 msgstr "Profondità di colore guest"
 
-#: ../src/spice-option.c:201
+#: src/spice-option.c:201
 msgid "Truststore file for secure connections"
 msgstr "Archivio certificatori per connessioni sicure"
 
-#: ../src/spice-option.c:201
+#: src/spice-option.c:201
 msgid "<file>"
 msgstr "<file>"
 
-#: ../src/spice-option.c:203
+#: src/spice-option.c:203
 msgid "Subject of the host certificate (field=value pairs separated by commas)"
 msgstr ""
 "Oggetto del certificato dell'host (campo=paia di valori separati da virgola)"
 
-#: ../src/spice-option.c:203
+#: src/spice-option.c:203
 msgid "<host-subject>"
 msgstr "<oggetto-host>"
 
-#: ../src/spice-option.c:205
+#: src/spice-option.c:205
 msgid "Disable audio support"
 msgstr "Disabilita supporto audio"
 
-#: ../src/spice-option.c:207
+#: src/spice-option.c:207
 msgid "Enable smartcard support"
 msgstr "Abilita supporto smartcard"
 
-#: ../src/spice-option.c:209
+#: src/spice-option.c:209
 msgid ""
 "Certificates to use for software smartcards (field=values separated by "
 "commas)"
@@ -177,11 +166,11 @@ msgstr ""
 "Certificati da usare per smartcard software (campo=valori separati da "
 "virgola)"
 
-#: ../src/spice-option.c:209
+#: src/spice-option.c:209
 msgid "<certificates>"
 msgstr "<certificati>"
 
-#: ../src/spice-option.c:211
+#: src/spice-option.c:211
 msgid ""
 "Path to the local certificate database to use for software smartcard "
 "certificates"
@@ -189,134 +178,183 @@ msgstr ""
 "Percorso del database di certificati locali da usare per i certificati delle "
 "smartcard software"
 
-#: ../src/spice-option.c:211
+#: src/spice-option.c:211
 msgid "<certificate-db>"
 msgstr "<database-certificati>"
 
-#: ../src/spice-option.c:213
+#: src/spice-option.c:213
 msgid "Disable USB redirection support"
 msgstr "Disabilita supporto redirezione USB"
 
-#: ../src/spice-option.c:218
+#: src/spice-option.c:218
 msgid "Filter selecting USB devices to be auto-redirected when plugged in"
 msgstr ""
 "Filtro per la selezione dispositivi USB che devono essere rediretti quando "
 "inseriti"
 
-#: ../src/spice-option.c:218 ../src/spice-option.c:220
+#: src/spice-option.c:218 src/spice-option.c:220
 msgid "<filter-string>"
 msgstr "<stringa-filtro>"
 
-#: ../src/spice-option.c:220
+#: src/spice-option.c:220
 msgid "Filter selecting USB devices to redirect on connect"
 msgstr ""
 "Filtro per la selezione dispositivi USB che devono essere rediretti alla "
 "connessione"
 
-#: ../src/spice-option.c:222
-msgid "Image cache size"
+#: src/spice-option.c:222
+#, fuzzy
+msgid "Image cache size (deprecated)"
 msgstr "Dimensione cache immagini"
 
-#: ../src/spice-option.c:222 ../src/spice-option.c:224
+#: src/spice-option.c:222 src/spice-option.c:224
 msgid "<bytes>"
 msgstr "<byte>"
 
-#: ../src/spice-option.c:224
-msgid "Glz compression history size"
+#: src/spice-option.c:224
+#, fuzzy
+msgid "Glz compression history size (deprecated)"
 msgstr "Dimensione finestra di compressione glz"
 
-#: ../src/spice-option.c:226
+#: src/spice-option.c:226
 msgid "Shared directory"
 msgstr "Cartella condivisa"
 
-#: ../src/spice-option.c:226
+#: src/spice-option.c:226
 msgid "<dir>"
 msgstr "<cartella>"
 
-#: ../src/spice-option.c:228
+#: src/spice-option.c:228
 msgid "Preferred image compression algorithm"
 msgstr "Algoritmo compressione immagini preferito"
 
-#: ../src/spice-option.c:236
+#: src/spice-option.c:236
 msgid "Enable Spice-GTK debugging"
 msgstr "Abilita debugging Spice-GTK"
 
-#: ../src/spice-option.c:238
+#: src/spice-option.c:238
 msgid "Display Spice-GTK version information"
 msgstr "Mostra informazioni versione Spice-GTK"
 
-#: ../src/spice-option.c:243
+#: src/spice-option.c:243
 msgid "Spice Options:"
 msgstr "Opzioni Spice:"
 
-#: ../src/spice-option.c:243
+#: src/spice-option.c:243
 msgid "Show Spice Options"
 msgstr "Mostra opzioni Spice"
 
-#: ../src/usb-device-manager.c:364 ../src/usb-device-manager.c:1954
+#: src/usb-device-manager.c:359 src/usb-device-manager.c:1747
 msgid "USB redirection support not compiled in"
 msgstr "Supporto redirezione USB non compilato"
 
-#: ../src/usb-device-manager.c:1640
+#: src/usb-device-manager.c:1434
 msgid "Device was not found"
 msgstr "Dispositivo non trovato"
 
-#: ../src/usb-device-manager.c:1656
+#: src/usb-device-manager.c:1450
 msgid "No free USB channel"
 msgstr "Nessun canale USB libero"
 
-#: ../src/usb-device-manager.c:1891
+#: src/usb-device-manager.c:1684
 msgid "USB redirection is disabled"
 msgstr "Redirezione USB disabilitata"
 
-#: ../src/usb-device-manager.c:1897
+#: src/usb-device-manager.c:1690
 msgid "The connected VM is not configured for USB redirection"
 msgstr ""
 "La macchina a cui siete connessi non è configurata per la redirezione USB"
 
-#: ../src/usb-device-manager.c:1919
+#: src/usb-device-manager.c:1712
 msgid "Some USB devices were not found"
 msgstr "Qualche dispositivo USB non è stato trovato"
 
-#: ../src/usb-device-manager.c:1929
+#: src/usb-device-manager.c:1722
 msgid "Some USB devices are blocked by host policy"
 msgstr "Qualche dispositivo USB è bloccato da una politica host"
 
-#: ../src/usb-device-manager.c:1947
+#: src/usb-device-manager.c:1740
 msgid "There are no free USB channels"
 msgstr "Non ci sono canali USB liberi"
 
-#: ../src/usb-device-manager.c:2003
+#: src/usb-device-manager.c:1796
 #, c-format
 msgid "%s %s %s at %d-%d"
 msgstr "%s %s %s a %d-%d"
 
-#: ../src/usb-device-widget.c:207
+#: src/usb-device-widget.c:207
 msgid "Select USB devices to redirect"
 msgstr "Selezionare dispositivo USB da redirigere"
 
-#: ../src/usb-device-widget.c:420
+#: src/usb-device-widget.c:420
 #, c-format
 msgid "Select USB devices to redirect (%d free channel)"
 msgstr "Selezionare dispositivo USB da redirigere (%d canale libero)"
 
-#: ../src/usb-device-widget.c:421
+#: src/usb-device-widget.c:421
 #, c-format
 msgid "Select USB devices to redirect (%d free channels)"
 msgstr "Selezionare dispositivo USB da redirigere (%d canali liberi)"
 
-#: ../src/usb-device-widget.c:439
+#: src/usb-device-widget.c:439
 msgid "Redirecting USB Device..."
 msgstr "Reindirizzando dispositivo USB..."
 
-#: ../src/usb-device-widget.c:447
+#: src/usb-device-widget.c:447
 msgid "No USB devices detected"
 msgstr "Dispositivo USB non rilevato"
 
-#: ../src/usbutil.c:293
+#: src/usbutil.c:296
 msgid "USB"
 msgstr "USB"
 
-#: ../src/usbutil.c:295
+#: src/usbutil.c:298
 msgid "Device"
 msgstr "Dispositivo"
+
+#: tools/spice-cmdline.c:36
+msgid "Spice server uri"
+msgstr "URI Spice server"
+
+#: tools/spice-cmdline.c:37
+msgid "<uri>"
+msgstr "<uri>"
+
+#: tools/spice-cmdline.c:43
+msgid "Spice server address"
+msgstr "Indirizzo Spice server"
+
+#: tools/spice-cmdline.c:44
+msgid "<host>"
+msgstr "<host>"
+
+#: tools/spice-cmdline.c:50
+msgid "Spice server port"
+msgstr "Porta Spice server"
+
+#: tools/spice-cmdline.c:51 tools/spice-cmdline.c:58
+msgid "<port>"
+msgstr "<porta>"
+
+#: tools/spice-cmdline.c:57
+msgid "Spice server secure port"
+msgstr "Porta sicura Spice server"
+
+#: tools/spice-cmdline.c:64
+msgid "Server password"
+msgstr "Password server"
+
+#: tools/spice-cmdline.c:65
+msgid "<password>"
+msgstr "<password>"
+
+#: tools/spice-cmdline.c:76
+msgid "Spice connection options:"
+msgstr "Opzioni connessione Spice:"
+
+#: tools/spice-cmdline.c:77
+msgid "Show Spice options"
+msgstr "Mostra opzioni Spice"
+
+#~ msgid "Authentication failed: password and username are required"
+#~ msgstr "Autenticazione fallita: note utente e password sono necessari"
