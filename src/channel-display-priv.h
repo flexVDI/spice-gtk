@@ -181,7 +181,7 @@ static const struct {
      * (hardcoded in spice-server), let's add it here to avoid the warning.
      */
     { SPICE_DISPLAY_CAP_CODEC_H264, "h264",
-      "h264parse ! avdec_h264", "video/x-h264,stream-format=byte-stream" },
+      "h264parse ! avdec_h264", "video/x-h264" },
 
     /* SPICE_VIDEO_CODEC_TYPE_VP9 */
     { SPICE_DISPLAY_CAP_CODEC_VP9, "vp9",

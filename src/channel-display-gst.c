@@ -656,7 +656,7 @@ gboolean gstvideo_has_codec(int codec_type)
     }
 
     caps = gst_caps_from_string(gst_opts[codec_type].dec_caps);
-    codec_decoders = gst_element_factory_list_filter(all_decoders, caps, GST_PAD_SINK, TRUE);
+    codec_decoders = gst_element_factory_list_filter(all_decoders, caps, GST_PAD_SINK, FALSE);
     gst_caps_unref(caps);
 
     if (codec_decoders == NULL) {
