@@ -292,7 +292,9 @@ static gboolean handle_pipeline_message(GstBus *bus, GstMessage *msg, gpointer v
                                           gst_opts[decoder->base.codec_type].name);
         GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(decoder->pipeline),
                                   GST_DEBUG_GRAPH_SHOW_ALL
+#if GST_CHECK_VERSION(1,5,1)
                                     | GST_DEBUG_GRAPH_SHOW_FULL_PARAMS
+#endif
                                     | GST_DEBUG_GRAPH_SHOW_STATES,
                                     filename);
         g_free(filename);
