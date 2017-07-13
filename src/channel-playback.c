@@ -313,7 +313,7 @@ static void playback_handle_data(SpiceChannel *channel, SpiceMsgIn *in)
                   packet->time, packet->data, packet->data_size);
 #endif
 
-    if (c->last_time > packet->time)
+    if (spice_mmtime_diff(c->last_time, packet->time) > 0)
         g_warn_if_reached();
 
     c->last_time = packet->time;

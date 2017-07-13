@@ -201,7 +201,7 @@ static void mjpeg_decoder_schedule(MJpegDecoder *decoder)
     decoder->cur_frame = NULL;
     do {
         if (frame) {
-            if (time <= frame->mm_time) {
+            if (spice_mmtime_diff(time, frame->mm_time) <= 0) {
                 guint32 d = frame->mm_time - time;
                 decoder->cur_frame = frame;
                 decoder->timer_id = g_timeout_add(d, mjpeg_decoder_decode_frame, decoder);
@@ -251,7 +251,7 @@ static gboolean mjpeg_decoder_queue_frame(VideoDecoder *video_decoder,
 
     last_frame = g_queue_peek_tail(decoder->msgq);
     if (last_frame) {
-        if (frame->mm_time < last_frame->mm_time) {
+        if (spice_mmtime_diff(frame->mm_time, last_frame->mm_time) < 0) {
             /* This should really not happen */
             SPICE_DEBUG("new-frame-time < last-frame-time (%u < %u):"
                         " resetting stream",

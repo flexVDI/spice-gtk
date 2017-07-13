@@ -166,7 +166,7 @@ static void schedule_frame(SpiceGstDecoder *decoder)
             break;
         }
 
-        if (now < gstframe->frame->mm_time) {
+        if (spice_mmtime_diff(now, gstframe->frame->mm_time) < 0) {
             decoder->timer_id = g_timeout_add(gstframe->frame->mm_time - now,
                                               display_frame, decoder);
         } else if (g_queue_get_length(decoder->display_queue) == 1) {
@@ -511,7 +511,7 @@ static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
         return TRUE;
     }
 
-    if (frame->mm_time < decoder->last_mm_time) {
+    if (spice_mmtime_diff(frame->mm_time, decoder->last_mm_time) < 0) {
         SPICE_DEBUG("new-frame-time < last-frame-time (%u < %u):"
                     " resetting stream",
                     frame->mm_time, decoder->last_mm_time);

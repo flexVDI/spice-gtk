@@ -1366,7 +1366,7 @@ static void display_update_stream_report(SpiceDisplayChannel *channel, uint32_t 
     }
 
     if (st->report_num_frames >= st->report_max_window ||
-        now - st->report_start_time >= st->report_timeout ||
+        spice_mmtime_diff(now - st->report_start_time, st->report_timeout) >= 0 ||
         st->report_drops_seq_len >= STREAM_REPORT_DROP_SEQ_LEN_LIMIT) {
         SpiceMsgcDisplayStreamReport report;
         SpiceSession *session = spice_channel_get_session(SPICE_CHANNEL(channel));

@@ -2336,8 +2336,8 @@ void spice_session_set_mm_time(SpiceSession *session, guint32 time)
     s->mm_time = time;
     s->mm_time_at_clock = g_get_monotonic_time();
     SPICE_DEBUG("set mm time: %u", spice_session_get_mm_time(session));
-    if (time > old_time + MM_TIME_DIFF_RESET_THRESH ||
-        time < old_time) {
+    if (spice_mmtime_diff(time, old_time + MM_TIME_DIFF_RESET_THRESH) > 0 ||
+        spice_mmtime_diff(time, old_time) < 0) {
         SPICE_DEBUG("%s: mm-time-reset, old %u, new %u", __FUNCTION__, old_time, s->mm_time);
         g_coroutine_signal_emit(session, signals[SPICE_SESSION_MM_TIME_RESET], 0);
     }

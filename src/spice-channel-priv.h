@@ -43,6 +43,8 @@ G_BEGIN_DECLS
 #define CHANNEL_DEBUG(channel, fmt, ...) \
     SPICE_DEBUG("%s: " fmt, SPICE_CHANNEL(channel)->priv->name, ## __VA_ARGS__)
 
+#define spice_mmtime_diff(t1, t2)       ((int32_t) ((t1)-(t2)))
+
 struct _SpiceMsgOut {
     int                   refcount;
     SpiceChannel          *channel;
