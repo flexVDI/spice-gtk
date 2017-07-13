@@ -286,7 +286,7 @@ static gboolean handle_pipeline_message(GstBus *bus, GstMessage *msg, gpointer v
         break;
     }
     case GST_MESSAGE_STREAM_START: {
-        gchar *filename = g_strdup_printf("spice-gtk-gst-pipeline-debug-%ld-%s",
+        gchar *filename = g_strdup_printf("spice-gtk-gst-pipeline-debug-%" G_GINT64_FORMAT "-%s",
                                           get_stream_id_by_stream(decoder->base.stream->channel,
                                                                   decoder->base.stream),
                                           gst_opts[decoder->base.codec_type].name);
