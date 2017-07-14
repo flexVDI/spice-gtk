@@ -32,7 +32,6 @@ EXTRA_DIST =					\
 	build-aux/git-version-gen		\
 	gtk-doc.make				\
 	.version				\
-	$(INTLTOOL_FILES)			\
 	$(NULL)
 
 MAINTAINERCLEANFILES =					\
