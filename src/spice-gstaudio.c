@@ -38,6 +38,7 @@ struct stream {
     GstElement              *sink;
     guint                   rate;
     guint                   channels;
+    gboolean                fake; /* fake channel just for getting info about audio (volume) */
 };
 
 struct _SpiceGstaudioPrivate {
@@ -264,6 +265,8 @@ static gboolean update_mmtime_timeout_cb(gpointer data)
     SpiceGstaudioPrivate *p = gstaudio->priv;
     GstQuery *q;
 
+    g_return_val_if_fail(!p->playback.fake, TRUE);
+
     q = gst_query_new_latency();
     if (gst_element_query(p->playback.pipe, q)) {
         gboolean live;
@@ -326,7 +329,7 @@ cleanup:
     if (p->playback.pipe)
         gst_element_set_state(p->playback.pipe, GST_STATE_PLAYING);
 
-    if (p->mmtime_id == 0) {
+    if (!p->playback.fake && p->mmtime_id == 0) {
         update_mmtime_timeout_cb(gstaudio);
         p->mmtime_id = g_timeout_add_seconds(1, update_mmtime_timeout_cb, gstaudio);
     }
@@ -569,7 +572,6 @@ static gboolean spice_gstaudio_get_playback_volume_info_finish(SpiceAudio *audio
     GstElement *e;
     gboolean lmute;
     gdouble vol;
-    gboolean fake_channel = FALSE;
     GTask *task = G_TASK(res);
 
     g_return_val_if_fail(g_task_is_valid(task, audio), FALSE);
@@ -584,9 +586,9 @@ static gboolean spice_gstaudio_get_playback_volume_info_finish(SpiceAudio *audio
 
     if (p->playback.sink == NULL || p->playback.channels == 0) {
         SPICE_DEBUG("PlaybackChannel not created yet, force start");
+        p->playback.fake = TRUE;
         /* In order to get system volume, we start the pipeline */
         playback_start(NULL, SPICE_AUDIO_FMT_S16, 2, 48000, audio);
-        fake_channel = TRUE;
     }
 
     if (GST_IS_BIN(p->playback.sink))
@@ -604,9 +606,10 @@ static gboolean spice_gstaudio_get_playback_volume_info_finish(SpiceAudio *audio
     }
     g_object_unref(e);
 
-    if (fake_channel) {
+    if (p->playback.fake) {
         SPICE_DEBUG("Stop faked PlaybackChannel");
         playback_stop(SPICE_GSTAUDIO(audio));
+        p->playback.fake = FALSE;
     }
 
     if (mute != NULL) {
