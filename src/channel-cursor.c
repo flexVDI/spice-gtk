@@ -405,6 +405,18 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
 
     g_return_val_if_fail(scursor->data_size != 0, NULL);
 
+    if (hdr->hot_spot_x > hdr->width) {
+        CHANNEL_DEBUG(channel,
+                      "hot spot X position (%d) is outside cursor area, capping to cursor width (%d)",
+                      hdr->hot_spot_x, hdr->width);
+        hdr->hot_spot_x = hdr->width;
+    }
+    if (hdr->hot_spot_y > hdr->height) {
+        CHANNEL_DEBUG(channel,
+                      "hot spot Y position (%d) is outside cursor area, capping to cursor height (%d)",
+                      hdr->hot_spot_y, hdr->height);
+        hdr->hot_spot_y = hdr->height;
+    }
     size = 4u * hdr->width * hdr->height;
     cursor = g_malloc0(sizeof(*cursor) + size);
     cursor->hdr = *hdr;
