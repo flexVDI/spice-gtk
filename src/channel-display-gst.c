@@ -200,8 +200,8 @@ static GstFlowReturn new_sample(GstAppSink *gstappsink, gpointer video_decoder)
     SpiceGstDecoder *decoder = video_decoder;
 
     GstSample *sample = gst_app_sink_pull_sample(decoder->appsink);
-    GstBuffer *buffer = sample ? gst_sample_get_buffer(sample) : NULL;
     if (sample) {
+        GstBuffer *buffer = gst_sample_get_buffer(sample);
         g_mutex_lock(&decoder->queues_mutex);
 
         /* gst_app_sink_pull_sample() sometimes returns the same buffer twice
