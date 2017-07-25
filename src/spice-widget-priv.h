@@ -169,7 +169,9 @@ gboolean spice_egl_update_scanout            (SpiceDisplay *display,
                                               GError **err);
 void     spice_egl_cursor_set                (SpiceDisplay *display);
 
+#ifdef HAVE_EGL
 void     spice_display_widget_gl_scanout     (SpiceDisplay *display);
+#endif
 void     spice_display_widget_update_monitor_area(SpiceDisplay *display);
 
 G_END_DECLS

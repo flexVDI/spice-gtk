@@ -616,7 +616,7 @@ G_GNUC_END_IGNORE_DEPRECATIONS
 static void
 drawing_area_realize(GtkWidget *area, gpointer user_data)
 {
-#ifdef GDK_WINDOWING_X11
+#if defined(GDK_WINDOWING_X11) && defined(HAVE_EGL)
     SpiceDisplay *display = SPICE_DISPLAY(user_data);
 
     if (GDK_IS_X11_DISPLAY(gdk_display_get_default()) &&
