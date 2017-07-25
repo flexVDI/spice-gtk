@@ -1312,9 +1312,11 @@ void stream_dropped_frame_on_playback(display_stream *st)
 /* main context */
 G_GNUC_INTERNAL
 void stream_display_frame(display_stream *st, SpiceFrame *frame,
-                          uint32_t width, uint32_t height, uint8_t *data)
+                          uint32_t width, uint32_t height, int stride, uint8_t *data)
 {
-    int stride = width * sizeof(uint32_t);
+    if (stride == SPICE_UNKNOWN_STRIDE) {
+        stride = width * sizeof(uint32_t);
+    }
     if (!(st->flags & SPICE_STREAM_FLAGS_TOP_DOWN)) {
         data += stride * (height - 1);
         stride = -stride;

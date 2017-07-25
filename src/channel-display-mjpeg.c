@@ -176,7 +176,7 @@ static gboolean mjpeg_decoder_decode_frame(gpointer video_decoder)
 
     /* Display the frame and dispose of it */
     stream_display_frame(decoder->base.stream, decoder->cur_frame,
-                         width, height, decoder->out_frame);
+                         width, height, SPICE_UNKNOWN_STRIDE, decoder->out_frame);
     free_spice_frame(decoder->cur_frame);
     decoder->cur_frame = NULL;
     decoder->timer_id = 0;

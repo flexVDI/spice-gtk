@@ -26,6 +26,7 @@
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
 #include <gst/app/gstappsink.h>
+#include <gst/video/gstvideometa.h>
 
 
 /* GStreamer decoder implementation */
@@ -102,6 +103,12 @@ static void free_gst_frame(SpiceGstFrame *gstframe)
 
 static void schedule_frame(SpiceGstDecoder *decoder);
 
+static int spice_gst_buffer_get_stride(GstBuffer *buffer)
+{
+    GstVideoMeta *video = gst_buffer_get_video_meta(buffer);
+    return video && video->n_planes > 0 ? video->stride[0] : SPICE_UNKNOWN_STRIDE;
+}
+
 /* main context */
 static gboolean display_frame(gpointer video_decoder)
 {
@@ -145,7 +152,7 @@ static gboolean display_frame(gpointer video_decoder)
     }
 
     stream_display_frame(decoder->base.stream, gstframe->frame,
-                         width, height, mapinfo.data);
+                         width, height, spice_gst_buffer_get_stride(buffer), mapinfo.data);
     gst_buffer_unmap(buffer, &mapinfo);
 
  error:
