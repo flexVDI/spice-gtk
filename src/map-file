@@ -120,7 +120,6 @@ spice_uri_set_scheme;
 spice_uri_set_user;
 spice_uri_to_string;
 spice_usb_device_get_description;
-spice_usb_device_get_libusb_device;
 spice_usb_device_get_type;
 spice_usb_device_manager_can_redirect_device;
 spice_usb_device_manager_connect_device_async;
@@ -139,7 +138,6 @@ spice_util_get_version_string;
 spice_util_set_debug;
 spice_uuid_to_string;
 spice_webdav_channel_get_type;
-set_va_display_hooks;
 local:
 *;
 };
