@@ -30,7 +30,6 @@
 #include "spice-util-priv.h"
 #include "spice-session-priv.h"
 #include "gio-coroutine.h"
-#include "wocky-http-proxy.h"
 #include "spice-uri-priv.h"
 #include "channel-playback-priv.h"
 #include "spice-audio-priv.h"
@@ -844,9 +843,6 @@ static void spice_session_set_property(GObject      *gobject,
 static void spice_session_class_init(SpiceSessionClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
-
-    _wocky_http_proxy_get_type();
-    _wocky_https_proxy_get_type();
 
     gobject_class->dispose      = spice_session_dispose;
     gobject_class->finalize     = spice_session_finalize;

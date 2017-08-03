@@ -255,8 +255,6 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	$(USB_ACL_HELPER_SRCS)				\
 	vmcstream.c					\
 	vmcstream.h					\
-	wocky-http-proxy.c				\
-	wocky-http-proxy.h				\
 							\
 	decode.h					\
 	decode-glz.c					\

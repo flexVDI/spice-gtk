@@ -58,7 +58,6 @@ IGNORE_HFILES=					\
 	vmcstream.h				\
 	vncdisplaykeymap.h			\
 	win-usb-dev.h				\
-	wocky-http-proxy.h			\
 	$(NULL)
 
 # CFLAGS and LDFLAGS for compiling gtkdoc-scangobj with your library.
