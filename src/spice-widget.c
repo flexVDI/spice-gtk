@@ -1577,6 +1577,7 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
      * This API is available from 3.22 or if backported.
      */
 #if HAVE_GDK_EVENT_GET_SCANCODE
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     native_scancode = gdk_event_get_scancode((GdkEvent *) key);
     if (native_scancode) {
         scancode = native_scancode & 0x1ff;
@@ -1584,6 +1585,7 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
         if (scancode == (0x100|DIK_NUMLOCK) || scancode == (0x100|DIK_RSHIFT))
             scancode &= 0xff;
     }
+G_GNUC_END_IGNORE_DEPRECATIONS
 #else
     native_scancode = 0;
 #endif
