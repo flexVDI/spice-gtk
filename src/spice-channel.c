@@ -2136,7 +2136,7 @@ const gchar* spice_channel_type_to_string(gint type)
         str = to_string[type];
     }
 
-    return str ? str : "unknown channel type";
+    return str ? str : "unknown";
 }
 
 /**
