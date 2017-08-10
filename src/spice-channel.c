@@ -1891,6 +1891,9 @@ static void store_caps(const uint8_t *caps_src, uint32_t ncaps,
     guint i;
 
     g_array_set_size(caps_dst, ncaps);
+    if (ncaps == 0)
+        return;
+
     caps = &g_array_index(caps_dst, uint32_t, 0);
     memcpy(caps, caps_src, ncaps * sizeof(uint32_t));
 
