@@ -1511,14 +1511,14 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
      * decoding and best decide if/when to drop them when they are late,
      * taking into account the impact on later frames.
      */
-    frame = spice_new(SpiceFrame, 1);
+    frame = g_new(SpiceFrame, 1);
     frame->mm_time = op->multi_media_time;
     frame->dest = *stream_get_dest(st, in);
     frame->size = spice_msg_in_frame_data(in, &frame->data);
     frame->data_opaque = in;
     frame->ref_data = (void*)spice_msg_in_ref;
     frame->unref_data = (void*)spice_msg_in_unref;
-    frame->free = (void*)free;
+    frame->free = (void*)g_free;
     if (!st->video_decoder->queue_frame(st->video_decoder, frame, latency)) {
         destroy_stream(channel, op->id);
         report_invalid_stream(channel, op->id);

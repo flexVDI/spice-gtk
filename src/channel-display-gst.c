@@ -82,7 +82,7 @@ typedef struct SpiceGstFrame {
 
 static SpiceGstFrame *create_gst_frame(GstBuffer *buffer, SpiceFrame *frame)
 {
-    SpiceGstFrame *gstframe = spice_new(SpiceGstFrame, 1);
+    SpiceGstFrame *gstframe = g_new(SpiceGstFrame, 1);
     gstframe->timestamp = GST_BUFFER_PTS(buffer);
     gstframe->frame = frame;
     gstframe->sample = NULL;
@@ -95,7 +95,7 @@ static void free_gst_frame(SpiceGstFrame *gstframe)
     if (gstframe->sample) {
         gst_sample_unref(gstframe->sample);
     }
-    free(gstframe);
+    g_free(gstframe);
 }
 
 
@@ -474,7 +474,7 @@ static void spice_gst_decoder_destroy(VideoDecoder *video_decoder)
     }
     g_queue_free(decoder->display_queue);
 
-    free(decoder);
+    g_free(decoder);
 
     /* Don't call gst_deinit() as other parts of the client
      * may still be using GStreamer.
@@ -595,7 +595,7 @@ VideoDecoder* create_gstreamer_decoder(int codec_type, display_stream *stream)
     g_return_val_if_fail(VALID_VIDEO_CODEC_TYPE(codec_type), NULL);
 
     if (gstvideo_init()) {
-        decoder = spice_new0(SpiceGstDecoder, 1);
+        decoder = g_new0(SpiceGstDecoder, 1);
         decoder->base.destroy = spice_gst_decoder_destroy;
         decoder->base.reschedule = spice_gst_decoder_reschedule;
         decoder->base.queue_frame = spice_gst_decoder_queue_frame;
