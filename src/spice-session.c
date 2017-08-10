@@ -2276,7 +2276,7 @@ static void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *c
     }
 
     ring_remove(&item->link);
-    free(item);
+    g_free(item);
 
     g_signal_emit(session, signals[SPICE_SESSION_CHANNEL_DESTROY], 0, channel);
 

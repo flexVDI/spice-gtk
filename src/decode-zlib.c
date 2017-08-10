@@ -76,7 +76,7 @@ SpiceZlibDecoder *zlib_decoder_new(void)
     return &d->base;
 
 fail:
-    free(d);
+    g_free(d);
     return NULL;
 }
 
@@ -85,5 +85,5 @@ void zlib_decoder_destroy(SpiceZlibDecoder *decoder)
     GlibZlibDecoder *d = SPICE_CONTAINEROF(decoder, GlibZlibDecoder, base);
 
     inflateEnd(&d->_z_strm);
-    free(d);
+    g_free(d);
 }

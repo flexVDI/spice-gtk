@@ -1880,7 +1880,7 @@ static void connection_destroy(spice_connection *conn)
 {
     g_object_unref(conn->session);
     g_hash_table_unref(conn->transfers);
-    free(conn);
+    g_free(conn);
 
     connections--;
     SPICE_DEBUG("%s (%d)", __FUNCTION__, connections);
