@@ -250,7 +250,7 @@ readcancel_cb(GObject *source, GAsyncResult *result, gpointer user_data)
     nbytes = g_input_stream_read_finish(G_INPUT_STREAM(source), result, &error);
 
     g_assert_cmpint(nbytes, ==, -1);
-    g_assert_error(error, G_IO_ERROR, G_IO_ERROR_CLOSED);
+    g_assert_error(error, G_IO_ERROR, G_IO_ERROR_CANCELLED);
     g_clear_error(&error);
 
     g_main_loop_quit (loop);
@@ -263,7 +263,7 @@ test_pipe_readcancel(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
 
     g_input_stream_read_async(f->ip2, f->buf, 1, G_PRIORITY_DEFAULT,
                               f->cancellable, readcancel_cb, f->loop);
-    g_output_stream_close(f->op1, f->cancellable, &error);
+    g_cancellable_cancel(f->cancellable);
 
     g_main_loop_run (f->loop);
 }
