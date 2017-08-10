@@ -209,9 +209,7 @@ readclose_cb(GObject *source, GAsyncResult *result, gpointer user_data)
 
     nbytes = g_input_stream_read_finish(G_INPUT_STREAM(source), result, &error);
 
-    g_assert_cmpint(nbytes, ==, -1);
-    g_assert_error(error, G_IO_ERROR, G_IO_ERROR_CLOSED);
-    g_clear_error(&error);
+    g_assert_cmpint(nbytes, ==, 0);
 
     g_main_loop_quit (loop);
 }

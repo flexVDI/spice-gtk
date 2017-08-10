@@ -98,7 +98,11 @@ pipe_input_stream_read (GInputStream  *stream,
 
     g_return_val_if_fail(count > 0, -1);
 
-    if (g_input_stream_is_closed (stream) || self->peer_closed) {
+    if (self->peer_closed) {
+        return 0;
+    }
+
+    if (g_input_stream_is_closed (stream)) {
         g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_CLOSED,
                              "Stream is already closed");
         return -1;
