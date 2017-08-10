@@ -218,7 +218,7 @@ client_ref(Client *client)
     return client;
 }
 
-static void client_start_read(Client *client);
+static bool client_start_read(Client *client);
 
 static void remove_client(Client *client)
 {
@@ -234,10 +234,9 @@ static void mux_pushed_cb(OutputQueue *q, gpointer user_data)
 {
     Client *client = user_data;
 
-    if (client->mux.size == 0) {
+    if (client->mux.size == 0 ||
+        !client_start_read(client)) {
         remove_client(client);
-    } else {
-        client_start_read(client);
     }
 
     client_unref(client);
@@ -280,14 +279,18 @@ end:
     client_unref(client);
 }
 
-static void client_start_read(Client *client)
+static bool client_start_read(Client *client)
 {
     GInputStream *input;
 
     input = g_io_stream_get_input_stream(G_IO_STREAM(client->pipe));
+    if (g_input_stream_is_closed(input)) {
+        return false;
+    }
     g_input_stream_read_async(input, client->mux.buf, MAX_MUX_SIZE,
                               G_PRIORITY_DEFAULT, client->cancellable, server_reply_cb,
                               client_ref(client));
+    return true;
 }
 
 static void start_demux(SpiceWebdavChannel *self);
@@ -361,6 +364,7 @@ static void start_client(SpiceWebdavChannel *self)
     SoupServer *server;
     GSocketAddress *addr;
     GError *error = NULL;
+    bool started;
 
     session = spice_channel_get_session(SPICE_CHANNEL(self));
     server = phodav_server_get_soup_server(spice_session_get_webdav_server(session));
@@ -384,7 +388,8 @@ G_GNUC_END_IGNORE_DEPRECATIONS
 
     g_hash_table_insert(c->clients, &client->id, client);
 
-    client_start_read(client);
+    started = client_start_read(client);
+    g_assert(started);
     demux_to_client(client);
 
     g_clear_object(&addr);
