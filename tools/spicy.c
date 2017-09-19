@@ -373,7 +373,7 @@ static void menu_cb_mouse_mode(GtkAction *action, void *data)
     else
         mode = SPICE_MOUSE_MODE_CLIENT;
 
-    spice_main_request_mouse_mode(cmain, mode);
+    spice_main_channel_request_mouse_mode(cmain, mode);
 }
 
 #ifdef USE_USBREDIR
@@ -614,14 +614,17 @@ static void menu_cb_resize_to(GtkAction *action G_GNUC_UNUSED,
 
     gtk_widget_show_all(dialog);
     if (gtk_dialog_run(GTK_DIALOG (dialog)) == GTK_RESPONSE_APPLY) {
-        spice_main_update_display_enabled(win->conn->main, win->id + win->monitor_id, TRUE, FALSE);
-        spice_main_set_display(win->conn->main,
-                               win->id + win->monitor_id,
-                               gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_x)),
-                               gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_y)),
-                               gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_width)),
-                               gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_height)));
-        spice_main_send_monitor_config(win->conn->main);
+        spice_main_channel_update_display_enabled(win->conn->main, win->id + win->monitor_id, TRUE,
+                                                  FALSE);
+        spice_main_channel_update_display(
+            win->conn->main,
+            win->id + win->monitor_id,
+            gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_x)),
+            gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_y)),
+            gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_width)),
+            gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_height)),
+            TRUE);
+        spice_main_channel_send_monitor_config(win->conn->main);
     }
     gtk_widget_destroy(dialog);
 }
@@ -1437,10 +1440,10 @@ static void del_window(spice_connection *conn, SpiceWindow *win)
     g_debug("del display monitor %d:%d", win->id, win->monitor_id);
     conn->wins[win->id * CHANNELID_MAX + win->monitor_id] = NULL;
     if (win->id > 0)
-        spice_main_set_display_enabled(conn->main, win->id, FALSE);
+        spice_main_channel_update_display_enabled(conn->main, win->id, FALSE, TRUE);
     else
-        spice_main_set_display_enabled(conn->main, win->monitor_id, FALSE);
-    spice_main_send_monitor_config(conn->main);
+        spice_main_channel_update_display_enabled(conn->main, win->monitor_id, FALSE, TRUE);
+    spice_main_channel_send_monitor_config(conn->main);
 
     destroy_spice_window(win);
 }

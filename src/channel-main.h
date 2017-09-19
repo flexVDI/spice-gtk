@@ -71,44 +71,81 @@ struct _SpiceMainChannelClass {
 
 GType spice_main_channel_get_type(void);
 
-void spice_main_set_display(SpiceMainChannel *channel, int id,
-                            int x, int y, int width, int height);
-void spice_main_update_display(SpiceMainChannel *channel, int id,
-                               int x, int y, int width, int height, gboolean update);
-void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled);
-void spice_main_update_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled, gboolean update);
-gboolean spice_main_send_monitor_config(SpiceMainChannel *channel);
+void spice_main_channel_update_display(SpiceMainChannel *channel, int id, int x, int y, int width,
+                                       int height, gboolean update);
+void spice_main_channel_update_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled,
+                                               gboolean update);
+gboolean spice_main_channel_send_monitor_config(SpiceMainChannel *channel);
 
-void spice_main_clipboard_selection_grab(SpiceMainChannel *channel, guint selection, guint32 *types, int ntypes);
-void spice_main_clipboard_selection_release(SpiceMainChannel *channel, guint selection);
-void spice_main_clipboard_selection_notify(SpiceMainChannel *channel, guint selection, guint32 type, const guchar *data, size_t size);
-void spice_main_clipboard_selection_request(SpiceMainChannel *channel, guint selection, guint32 type);
+void spice_main_channel_clipboard_selection_grab(SpiceMainChannel *channel, guint selection,
+                                                 guint32 *types, int ntypes);
+void spice_main_channel_clipboard_selection_release(SpiceMainChannel *channel, guint selection);
+void spice_main_channel_clipboard_selection_notify(SpiceMainChannel *channel, guint selection,
+                                                   guint32 type, const guchar *data, size_t size);
+void spice_main_channel_clipboard_selection_request(SpiceMainChannel *channel, guint selection,
+                                                    guint32 type);
 
-gboolean spice_main_agent_test_capability(SpiceMainChannel *channel, guint32 cap);
-void spice_main_file_copy_async(SpiceMainChannel *channel,
-                                GFile **sources,
-                                GFileCopyFlags flags,
-                                GCancellable *cancellable,
-                                GFileProgressCallback progress_callback,
-                                gpointer progress_callback_data,
-                                GAsyncReadyCallback callback,
-                                gpointer user_data);
+gboolean spice_main_channel_agent_test_capability(SpiceMainChannel *channel, guint32 cap);
+void spice_main_channel_file_copy_async(SpiceMainChannel *channel,
+                                        GFile **sources,
+                                        GFileCopyFlags flags,
+                                        GCancellable *cancellable,
+                                        GFileProgressCallback progress_callback,
+                                        gpointer progress_callback_data,
+                                        GAsyncReadyCallback callback,
+                                        gpointer user_data);
 
-gboolean spice_main_file_copy_finish(SpiceMainChannel *channel,
-                                     GAsyncResult *result,
-                                     GError **error);
+gboolean spice_main_channel_file_copy_finish(SpiceMainChannel *channel,
+                                             GAsyncResult *result,
+                                             GError **error);
 
-void spice_main_request_mouse_mode(SpiceMainChannel *channel, int mode);
+void spice_main_channel_request_mouse_mode(SpiceMainChannel *channel, int mode);
 
 #ifndef SPICE_DISABLE_DEPRECATED
-G_DEPRECATED_FOR(spice_main_clipboard_selection_grab)
+G_DEPRECATED_FOR(spice_main_channel_clipboard_selection_grab)
 void spice_main_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int ntypes);
-G_DEPRECATED_FOR(spice_main_clipboard_selection_release)
+G_DEPRECATED_FOR(spice_main_channel_clipboard_selection_release)
 void spice_main_clipboard_release(SpiceMainChannel *channel);
-G_DEPRECATED_FOR(spice_main_clipboard_selection_notify)
+G_DEPRECATED_FOR(spice_main_channel_clipboard_selection_notify)
 void spice_main_clipboard_notify(SpiceMainChannel *channel, guint32 type, const guchar *data, size_t size);
-G_DEPRECATED_FOR(spice_main_clipboard_selection_request)
+G_DEPRECATED_FOR(spice_main_channel_clipboard_selection_request)
 void spice_main_clipboard_request(SpiceMainChannel *channel, guint32 type);
+
+G_DEPRECATED_FOR(spice_main_channel_set_display)
+void spice_main_set_display(SpiceMainChannel *channel, int id,int x, int y, int width, int height);
+G_DEPRECATED_FOR(spice_main_update_display)
+void spice_main_update_display(SpiceMainChannel *channel, int id, int x, int y, int width,
+                               int height, gboolean update);
+G_DEPRECATED_FOR(spice_main_channel_set_display_enabled)
+void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled);
+G_DEPRECATED_FOR(spice_main_channel_update_display_enabled)
+void spice_main_update_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled,
+                                       gboolean update);
+G_DEPRECATED_FOR(spice_main_channel_send_monitor_config)
+gboolean spice_main_send_monitor_config(SpiceMainChannel *channel);
+G_DEPRECATED_FOR(spice_main_channel_clipboard_selection_grab)
+void spice_main_clipboard_selection_grab(SpiceMainChannel *channel, guint selection, guint32 *types,
+                                         int ntypes);
+G_DEPRECATED_FOR(spice_main_channel_clipboard_selection_release)
+void spice_main_clipboard_selection_release(SpiceMainChannel *channel, guint selection);
+G_DEPRECATED_FOR(spice_main_channel_clipboard_selection_notify)
+void spice_main_clipboard_selection_notify(SpiceMainChannel *channel, guint selection, guint32 type,
+                                           const guchar *data, size_t size);
+G_DEPRECATED_FOR(spice_main_channel_clipboard_selection_request)
+void spice_main_clipboard_selection_request(SpiceMainChannel *channel, guint selection,
+                                            guint32 type);
+G_DEPRECATED_FOR(spice_main_channel_agent_test_capability)
+gboolean spice_main_agent_test_capability(SpiceMainChannel *channel, guint32 cap);
+G_DEPRECATED_FOR(spice_main_channel_file_copy_async)
+void spice_main_file_copy_async(SpiceMainChannel *channel, GFile **sources, GFileCopyFlags flags,
+                                GCancellable *cancellable, GFileProgressCallback progress_callback,
+                                gpointer progress_callback_data, GAsyncReadyCallback callback,
+                                gpointer user_data);
+G_DEPRECATED_FOR(spice_main_channel_file_copy_finish)
+gboolean spice_main_file_copy_finish(SpiceMainChannel *channel, GAsyncResult *result,
+                                     GError **error);
+G_DEPRECATED_FOR(spice_main_channel_request_mouse_mode)
+void spice_main_request_mouse_mode(SpiceMainChannel *channel, int mode);
 #endif
 
 G_END_DECLS

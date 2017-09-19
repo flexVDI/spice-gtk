@@ -256,8 +256,7 @@ static void update_ready(SpiceDisplay *display)
      * application will manage the state of the displays.
      */
     if (d->resize_guest_enable) {
-        spice_main_update_display_enabled(d->main, get_display_id(display),
-                                          ready, TRUE);
+        spice_main_channel_update_display_enabled(d->main, get_display_id(display), ready, TRUE);
     }
 
     if (d->ready == ready)
@@ -514,7 +513,7 @@ static void file_transfer_callback(GObject *source_object,
     SpiceMainChannel *channel = SPICE_MAIN_CHANNEL(source_object);
     GError *error = NULL;
 
-    if (spice_main_file_copy_finish(channel, result, &error))
+    if (spice_main_channel_file_copy_finish(channel, result, &error))
         return;
 
     if (error != NULL && error->message != NULL)
@@ -556,8 +555,8 @@ static void drag_data_received_callback(SpiceDisplay *self,
     }
     g_strfreev(file_urls);
 
-    spice_main_file_copy_async(d->main, files, 0, NULL, NULL,
-                               NULL, file_transfer_callback, NULL);
+    spice_main_channel_file_copy_async(d->main, files, 0, NULL, NULL, NULL, file_transfer_callback,
+                                       NULL);
     for (i = 0; i < n_files; i++) {
         g_object_unref(files[i]);
     }
@@ -1257,8 +1256,8 @@ static void recalc_geometry(GtkWidget *widget)
                   d->ww, d->wh, zoom);
 
     if (d->resize_guest_enable)
-        spice_main_set_display(d->main, get_display_id(display),
-                               d->area.x, d->area.y, d->ww / zoom, d->wh / zoom);
+        spice_main_channel_update_display(d->main, get_display_id(display),
+                                          d->area.x, d->area.y, d->ww / zoom, d->wh / zoom, TRUE);
 }
 
 /* ---------------------------------------------------------------- */

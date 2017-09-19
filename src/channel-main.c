@@ -1085,8 +1085,26 @@ static void monitors_align(VDAgentMonConfig *monitors, int nmonitors)
  * spice_main_set_display() and spice_main_set_display_enabled()
  *
  * Returns: %TRUE on success.
+ *
+ * Deprecated: 0.35: use spice_main_channel_send_monitor_config() instead.
  **/
 gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
+{
+    return spice_main_channel_send_monitor_config(channel);
+}
+
+/**
+ * spice_main_channel_send_monitor_config:
+ * @channel: a #SpiceMainChannel
+ *
+ * Send monitors configuration previously set with
+ * spice_main_set_display() and spice_main_set_display_enabled()
+ *
+ * Returns: %TRUE on success.
+ *
+ * Since: 0.35
+ **/
+gboolean spice_main_channel_send_monitor_config(SpiceMainChannel *channel)
 {
     SpiceMainChannelPrivate *c;
     VDAgentMonitorsConfig *mon;
@@ -1097,8 +1115,7 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
     c = channel->priv;
     g_return_val_if_fail(c->agent_connected, FALSE);
 
-    if (spice_main_agent_test_capability(channel,
-                                     VD_AGENT_CAP_SPARSE_MONITORS_CONFIG)) {
+    if (spice_main_channel_agent_test_capability(channel, VD_AGENT_CAP_SPARSE_MONITORS_CONFIG)) {
         monitors = SPICE_N_ELEMENTS(c->display);
     } else {
         monitors = 0;
@@ -1120,8 +1137,8 @@ gboolean spice_main_send_monitor_config(SpiceMainChannel *channel)
     j = 0;
     for (i = 0; i < SPICE_N_ELEMENTS(c->display); i++) {
         if (c->display[i].display_state != DISPLAY_ENABLED) {
-            if (spice_main_agent_test_capability(channel,
-                                     VD_AGENT_CAP_SPARSE_MONITORS_CONFIG))
+            if (spice_main_channel_agent_test_capability(channel,
+                                                         VD_AGENT_CAP_SPARSE_MONITORS_CONFIG))
                 j++;
             continue;
         }
@@ -1497,7 +1514,7 @@ static gboolean timer_set_display(gpointer data)
 
     session = spice_channel_get_session(SPICE_CHANNEL(channel));
 
-    if (!spice_main_agent_test_capability(channel, VD_AGENT_CAP_SPARSE_MONITORS_CONFIG)) {
+    if (!spice_main_channel_agent_test_capability(channel, VD_AGENT_CAP_SPARSE_MONITORS_CONFIG)) {
         /* ensure we have an explicit monitor configuration at least for
            number of display channels */
         for (i = 0; i < spice_session_get_n_display_channels(session); i++)
@@ -1506,7 +1523,7 @@ static gboolean timer_set_display(gpointer data)
                 return FALSE;
             }
     }
-    spice_main_send_monitor_config(channel);
+    spice_main_channel_send_monitor_config(channel);
 
     return FALSE;
 }
@@ -1587,8 +1604,25 @@ static void agent_stopped(SpiceMainChannel *channel)
  * when possible.
  *
  * Since: 0.32
+ * Deprecated: 0.35: use spice_main_channel_request_mouse_mode() instead.
  **/
 void spice_main_request_mouse_mode(SpiceMainChannel *channel, int mode)
+{
+    spice_main_channel_request_mouse_mode(channel, mode);
+}
+
+/**
+ * spice_main_channel_request_mouse_mode:
+ * @channel: a %SpiceMainChannel
+ * @mode: a SPICE_MOUSE_MODE
+ *
+ * Request a mouse mode to the server. The server may not be able to
+ * change the mouse mode, but spice-gtk will try to request it
+ * when possible.
+ *
+ * Since: 0.35
+ **/
+void spice_main_channel_request_mouse_mode(SpiceMainChannel *channel, int mode)
 {
     SpiceMsgcMainMouseModeRequest req = {
         .mode = mode,
@@ -1623,7 +1657,7 @@ static void set_mouse_mode(SpiceMainChannel *channel, uint32_t supported, uint32
 
     if (c->requested_mouse_mode != c->mouse_mode &&
         c->requested_mouse_mode & supported) {
-        spice_main_request_mouse_mode(SPICE_MAIN_CHANNEL(channel), c->requested_mouse_mode);
+        spice_main_channel_request_mouse_mode(SPICE_MAIN_CHANNEL(channel), c->requested_mouse_mode);
     }
 }
 
@@ -2567,8 +2601,26 @@ static void spice_main_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
  * Test capability of a remote agent.
  *
  * Returns: %TRUE if @cap (channel kind capability) is available.
+ *
+ * Deprecated: 0.35: use spice_main_channel_agent_test_capability() instead.
  **/
 gboolean spice_main_agent_test_capability(SpiceMainChannel *channel, guint32 cap)
+{
+    return spice_main_channel_agent_test_capability(channel, cap);
+}
+
+/**
+ * spice_main_channel_agent_test_capability:
+ * @channel: a #SpiceMainChannel
+ * @cap: an agent capability identifier
+ *
+ * Test capability of a remote agent.
+ *
+ * Returns: %TRUE if @cap (channel kind capability) is available.
+ *
+ * Since: 0.35
+ **/
+gboolean spice_main_channel_agent_test_capability(SpiceMainChannel *channel, guint32 cap)
 {
     g_return_val_if_fail(SPICE_IS_MAIN_CHANNEL(channel), FALSE);
 
@@ -2591,10 +2643,37 @@ gboolean spice_main_agent_test_capability(SpiceMainChannel *channel, guint32 cap
  * after 1 second without further changes. You can send when you want
  * without delay the new configuration to the remote with
  * spice_main_send_monitor_config()
+ *
+ * Deprecated: 0.35: use spice_main_channel_update_display() instead.
  **/
 void spice_main_update_display(SpiceMainChannel *channel, int id,
                                int x, int y, int width, int height,
                                gboolean update)
+{
+    spice_main_channel_update_display(channel, id, x, y, width, height, update);
+}
+
+/**
+ * spice_main_channel_update_display:
+ * @channel: a #SpiceMainChannel
+ * @id: display ID
+ * @x: x position
+ * @y: y position
+ * @width: display width
+ * @height: display height
+ * @update: if %TRUE, update guest resolution after 1sec.
+ *
+ * Update the display @id resolution.
+ *
+ * If @update is %TRUE, the remote configuration will be updated too
+ * after 1 second without further changes. You can send when you want
+ * without delay the new configuration to the remote with
+ * spice_main_send_monitor_config()
+ *
+ * Since: 0.35
+ **/
+void spice_main_channel_update_display(SpiceMainChannel *channel, int id, int x, int y, int width,
+                               int height, gboolean update)
 {
     SpiceMainChannelPrivate *c;
 
@@ -2634,11 +2713,13 @@ void spice_main_update_display(SpiceMainChannel *channel, int id,
  *
  * Notify the guest of screen resolution change. The notification is
  * sent 1 second later, if no further changes happen.
+ *
+ * Deprecated: 0.35: use spice_main_channel_update_display() instead.
  **/
 void spice_main_set_display(SpiceMainChannel *channel, int id,
                             int x, int y, int width, int height)
 {
-    spice_main_update_display(channel, id, x, y, width, height, TRUE);
+    spice_main_channel_update_display(channel, id, x, y, width, height, TRUE);
 }
 
 /**
@@ -2649,11 +2730,12 @@ void spice_main_set_display(SpiceMainChannel *channel, int id,
  *
  * Grab the guest clipboard, with #VD_AGENT_CLIPBOARD @types.
  *
- * Deprecated: 0.6: use spice_main_clipboard_selection_grab() instead.
+ * Deprecated: 0.6: use spice_main_channel_clipboard_selection_grab() instead.
  **/
 void spice_main_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int ntypes)
 {
-    spice_main_clipboard_selection_grab(channel, VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD, types, ntypes);
+    spice_main_channel_clipboard_selection_grab(channel, VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD,
+                                                types, ntypes);
 }
 
 /**
@@ -2666,9 +2748,27 @@ void spice_main_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int nt
  * Grab the guest clipboard, with #VD_AGENT_CLIPBOARD @types.
  *
  * Since: 0.6
+ * Deprecated: 0.35: use spice_main_channel_clipboard_selection_grab() instead.
  **/
 void spice_main_clipboard_selection_grab(SpiceMainChannel *channel, guint selection,
                                          guint32 *types, int ntypes)
+{
+    spice_main_channel_clipboard_selection_grab(channel, selection, types, ntypes);
+}
+
+/**
+ * spice_main_channel_clipboard_selection_grab:
+ * @channel: a #SpiceMainChannel
+ * @selection: one of the clipboard #VD_AGENT_CLIPBOARD_SELECTION_*
+ * @types: an array of #VD_AGENT_CLIPBOARD types available in the clipboard
+ * @ntypes: the number of @types
+ *
+ * Grab the guest clipboard, with #VD_AGENT_CLIPBOARD @types.
+ *
+ * Since: 0.35
+ **/
+void spice_main_channel_clipboard_selection_grab(SpiceMainChannel *channel, guint selection,
+                                                 guint32 *types, int ntypes)
 {
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
@@ -2684,11 +2784,11 @@ void spice_main_clipboard_selection_grab(SpiceMainChannel *channel, guint select
  * Release the clipboard (for example, when the client loses the
  * clipboard grab): Inform the guest no clipboard data is available.
  *
- * Deprecated: 0.6: use spice_main_clipboard_selection_release() instead.
+ * Deprecated: 0.6: use spice_main_channel_clipboard_selection_release() instead.
  **/
 void spice_main_clipboard_release(SpiceMainChannel *channel)
 {
-    spice_main_clipboard_selection_release(channel, VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD);
+    spice_main_channel_clipboard_selection_release(channel, VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD);
 }
 
 /**
@@ -2700,8 +2800,24 @@ void spice_main_clipboard_release(SpiceMainChannel *channel)
  * clipboard grab): Inform the guest no clipboard data is available.
  *
  * Since: 0.6
+ * Deprecated: 0.35: use spice_main_channel_clipboard_selection_release() instead.
  **/
 void spice_main_clipboard_selection_release(SpiceMainChannel *channel, guint selection)
+{
+    spice_main_channel_clipboard_selection_release(channel, selection);
+}
+
+/**
+ * spice_main_channel_clipboard_selection_release:
+ * @channel: a #SpiceMainChannel
+ * @selection: one of the clipboard #VD_AGENT_CLIPBOARD_SELECTION_*
+ *
+ * Release the clipboard (for example, when the client loses the
+ * clipboard grab): Inform the guest no clipboard data is available.
+ *
+ * Since: 0.35
+ **/
+void spice_main_channel_clipboard_selection_release(SpiceMainChannel *channel, guint selection)
 {
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
@@ -2724,13 +2840,13 @@ void spice_main_clipboard_selection_release(SpiceMainChannel *channel, guint sel
  *
  * Send the clipboard data to the guest.
  *
- * Deprecated: 0.6: use spice_main_clipboard_selection_notify() instead.
+ * Deprecated: 0.6: use spice_main_channel_clipboard_selection_notify() instead.
  **/
 void spice_main_clipboard_notify(SpiceMainChannel *channel,
                                  guint32 type, const guchar *data, size_t size)
 {
-    spice_main_clipboard_selection_notify(channel, VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD,
-                                          type, data, size);
+    spice_main_channel_clipboard_selection_notify(channel, VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD,
+                                                  type, data, size);
 }
 
 /**
@@ -2744,8 +2860,27 @@ void spice_main_clipboard_notify(SpiceMainChannel *channel,
  * Send the clipboard data to the guest.
  *
  * Since: 0.6
+ * Deprecated: 0.35: use spice_main_channel_clipboard_selection_notify() instead.
  **/
 void spice_main_clipboard_selection_notify(SpiceMainChannel *channel, guint selection,
+                                           guint32 type, const guchar *data, size_t size)
+{
+    spice_main_channel_clipboard_selection_notify(channel, selection, type, data, size);
+}
+
+/**
+ * spice_main_channel_clipboard_selection_notify:
+ * @channel: a #SpiceMainChannel
+ * @selection: one of the clipboard #VD_AGENT_CLIPBOARD_SELECTION_*
+ * @type: a #VD_AGENT_CLIPBOARD type
+ * @data: clipboard data
+ * @size: data length in bytes
+ *
+ * Send the clipboard data to the guest.
+ *
+ * Since: 0.35
+ **/
+void spice_main_channel_clipboard_selection_notify(SpiceMainChannel *channel, guint selection,
                                            guint32 type, const guchar *data, size_t size)
 {
     g_return_if_fail(channel != NULL);
@@ -2763,11 +2898,12 @@ void spice_main_clipboard_selection_notify(SpiceMainChannel *channel, guint sele
  * Request clipboard data of @type from the guest. The reply is sent
  * through the #SpiceMainChannel::main-clipboard signal.
  *
- * Deprecated: 0.6: use spice_main_clipboard_selection_request() instead.
+ * Deprecated: 0.6: use spice_main_channel_clipboard_selection_request() instead.
  **/
 void spice_main_clipboard_request(SpiceMainChannel *channel, guint32 type)
 {
-    spice_main_clipboard_selection_request(channel, VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD, type);
+    spice_main_channel_clipboard_selection_request(channel, VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD,
+                                                   type);
 }
 
 /**
@@ -2780,8 +2916,26 @@ void spice_main_clipboard_request(SpiceMainChannel *channel, guint32 type)
  * through the #SpiceMainChannel::main-clipboard-selection signal.
  *
  * Since: 0.6
+ * Deprecated: 0.35: use spice_main_channel_clipboard_selection_request() instead.
  **/
 void spice_main_clipboard_selection_request(SpiceMainChannel *channel, guint selection, guint32 type)
+{
+    spice_main_channel_clipboard_selection_request(channel, selection, type);
+}
+
+/**
+ * spice_main_channel_clipboard_selection_request:
+ * @channel: a #SpiceMainChannel
+ * @selection: one of the clipboard #VD_AGENT_CLIPBOARD_SELECTION_*
+ * @type: a #VD_AGENT_CLIPBOARD type
+ *
+ * Request clipboard data of @type from the guest. The reply is sent
+ * through the #SpiceMainChannel::main-clipboard-selection signal.
+ *
+ * Since: 0.35
+ **/
+void spice_main_channel_clipboard_selection_request(SpiceMainChannel *channel, guint selection,
+                                                    guint32 type)
 {
     g_return_if_fail(channel != NULL);
     g_return_if_fail(SPICE_IS_MAIN_CHANNEL(channel));
@@ -2807,8 +2961,34 @@ void spice_main_clipboard_selection_request(SpiceMainChannel *channel, guint sel
  * the value will be saved and used in the next configuration update.
  *
  * Since: 0.30
+ * Deprecated: 0.35: use spice_main_channel_update_display_enabled() instead.
  **/
-void spice_main_update_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled, gboolean update)
+void spice_main_update_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled,
+                                       gboolean update)
+{
+    spice_main_channel_update_display_enabled(channel, id, enabled, update);
+}
+
+/**
+ * spice_main_channel_update_display_enabled:
+ * @channel: a #SpiceMainChannel
+ * @id: display ID (if -1: set all displays)
+ * @enabled: wether display @id is enabled
+ * @update: if %TRUE, update guest display state after 1sec.
+ *
+ * When sending monitor configuration to agent guest, if @enabled is %FALSE,
+ * don't set display @id, which the agent translates to disabling the display
+ * id. If @enabled is %TRUE, the monitor will be included in the next monitor
+ * update. Note: this will take effect next time the monitor configuration is
+ * sent.
+ *
+ * If @update is %FALSE, no server update will be triggered by this call, but
+ * the value will be saved and used in the next configuration update.
+ *
+ * Since: 0.35
+ **/
+void spice_main_channel_update_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled,
+                                               gboolean update)
 {
     SpiceDisplayState display_state = enabled ? DISPLAY_ENABLED : DISPLAY_DISABLED;
     g_return_if_fail(channel != NULL);
@@ -2845,10 +3025,11 @@ void spice_main_update_display_enabled(SpiceMainChannel *channel, int id, gboole
  * configuration is sent.
  *
  * Since: 0.6
+ * Deprecated: 0.35: use spice_main_channel_update_display_enabled() instead.
  **/
 void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled)
 {
-    spice_main_update_display_enabled(channel, id, enabled, TRUE);
+    spice_main_channel_update_display_enabled(channel, id, enabled, TRUE);
 }
 
 static void file_xfer_init_task_async_cb(GObject *obj, GAsyncResult *res, gpointer data)
@@ -3068,6 +3249,35 @@ static void file_transfer_operation_send_progress(SpiceFileTransferTask *xfer_ta
  * @callback: a #GAsyncReadyCallback to call when the request is satisfied
  * @user_data: the data to pass to callback function
  *
+ * See: spice_main_channel_file_copy_async()
+ *
+ * Deprecated: 0.35: use spice_main_channel_file_copy_async() instead.
+ **/
+void spice_main_file_copy_async(SpiceMainChannel *channel,
+                                GFile **sources,
+                                GFileCopyFlags flags,
+                                GCancellable *cancellable,
+                                GFileProgressCallback progress_callback,
+                                gpointer progress_callback_data,
+                                GAsyncReadyCallback callback,
+                                gpointer user_data)
+{
+    spice_main_channel_file_copy_async(channel, sources, flags, cancellable, progress_callback,
+                                       progress_callback_data, callback, user_data);
+}
+
+/**
+ * spice_main_channel_file_copy_async:
+ * @channel: a #SpiceMainChannel
+ * @sources: (array zero-terminated=1): a %NULL-terminated array of #GFile objects to be transferred
+ * @flags: set of #GFileCopyFlags
+ * @cancellable: (allow-none): optional #GCancellable object, %NULL to ignore
+ * @progress_callback: (allow-none) (scope call): function to callback with
+ *     progress information, or %NULL if progress information is not needed
+ * @progress_callback_data: (closure): user data to pass to @progress_callback
+ * @callback: a #GAsyncReadyCallback to call when the request is satisfied
+ * @user_data: the data to pass to callback function
+ *
  * Copies the file @sources to guest
  *
  * If @cancellable is not %NULL, then the operation can be cancelled by
@@ -3092,15 +3302,16 @@ static void file_transfer_operation_send_progress(SpiceFileTransferTask *xfer_ta
  * progress_callback (above). If you need to monitor the ending of individual
  * files, you can connect to "finished" signal from each SpiceFileTransferTask.
  *
+ * Since: 0.35
  **/
-void spice_main_file_copy_async(SpiceMainChannel *channel,
-                                GFile **sources,
-                                GFileCopyFlags flags,
-                                GCancellable *cancellable,
-                                GFileProgressCallback progress_callback,
-                                gpointer progress_callback_data,
-                                GAsyncReadyCallback callback,
-                                gpointer user_data)
+void spice_main_channel_file_copy_async(SpiceMainChannel *channel,
+                                        GFile **sources,
+                                        GFileCopyFlags flags,
+                                        GCancellable *cancellable,
+                                        GFileProgressCallback progress_callback,
+                                        gpointer progress_callback_data,
+                                        GAsyncReadyCallback callback,
+                                        gpointer user_data)
 {
     SpiceMainChannelPrivate *c;
     FileTransferOperation *xfer_op;
@@ -3171,6 +3382,24 @@ void spice_main_file_copy_async(SpiceMainChannel *channel,
 gboolean spice_main_file_copy_finish(SpiceMainChannel *channel,
                                      GAsyncResult *result,
                                      GError **error)
+{
+    return spice_main_channel_file_copy_finish(channel, result, error);
+}
+
+/**
+ * spice_main_channel_file_copy_finish:
+ * @channel: a #SpiceMainChannel
+ * @result: a #GAsyncResult.
+ * @error: a #GError, or %NULL
+ *
+ * Finishes copying the file started with
+ * spice_main_file_copy_async().
+ *
+ * Returns: a %TRUE on success, %FALSE on error.
+ **/
+gboolean spice_main_channel_file_copy_finish(SpiceMainChannel *channel,
+                                             GAsyncResult *result,
+                                             GError **error)
 {
     GTask *task = G_TASK(result);
 
