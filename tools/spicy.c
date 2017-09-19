@@ -1484,7 +1484,7 @@ static void port_write_cb(GObject *source_object,
     SpicePortChannel *port = SPICE_PORT_CHANNEL(source_object);
     GError *error = NULL;
 
-    spice_port_write_finish(port, res, &error);
+    spice_port_channel_write_finish(port, res, &error);
     if (error != NULL)
         g_warning("%s", error->message);
     g_clear_error(&error);
@@ -1519,7 +1519,7 @@ static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
         return FALSE;
 
     if (stdin_port != NULL)
-        spice_port_write_async(stdin_port, buf, bytes_read, NULL, port_write_cb, NULL);
+        spice_port_channel_write_async(stdin_port, buf, bytes_read, NULL, port_write_cb, NULL);
 
     return TRUE;
 }
@@ -1543,7 +1543,7 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec,
     if (opened) {
         /* only send a break event and disconnect */
         if (g_strcmp0(name, "org.spice.spicy.break") == 0) {
-            spice_port_event(port, SPICE_PORT_EVENT_BREAK);
+            spice_port_channel_event(port, SPICE_PORT_EVENT_BREAK);
             spice_channel_flush_async(channel, NULL, port_flushed_cb, conn);
         }
 

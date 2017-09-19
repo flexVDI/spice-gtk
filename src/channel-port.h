@@ -66,14 +66,29 @@ struct _SpicePortChannelClass {
 
 GType spice_port_channel_get_type(void);
 
+void spice_port_channel_write_async(SpicePortChannel *port,
+                                    const void *buffer, gsize count,
+                                    GCancellable *cancellable,
+                                    GAsyncReadyCallback callback,
+                                    gpointer user_data);
+gssize spice_port_channel_write_finish(SpicePortChannel *port,
+                                       GAsyncResult *result, GError **error);
+void spice_port_channel_event(SpicePortChannel *port, guint8 event);
+
+
+#ifndef SPICE_DISABLE_DEPRECATED
+G_DEPRECATED_FOR(spice_port_channel_write_async)
 void spice_port_write_async(SpicePortChannel *port,
                             const void *buffer, gsize count,
                             GCancellable *cancellable,
                             GAsyncReadyCallback callback,
                             gpointer user_data);
+G_DEPRECATED_FOR(spice_port_channel_write_finish)
 gssize spice_port_write_finish(SpicePortChannel *port,
                                GAsyncResult *result, GError **error);
+G_DEPRECATED_FOR(spice_port_channel_event)
 void spice_port_event(SpicePortChannel *port, guint8 event);
+#endif
 
 G_END_DECLS
 

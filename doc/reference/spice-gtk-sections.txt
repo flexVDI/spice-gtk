@@ -452,8 +452,11 @@ SpicePortChannel
 SpicePortChannelClass
 <SUBSECTION>
 spice_port_event
+spice_port_channel_event
 spice_port_write_async
+spice_port_channel_write_async
 spice_port_write_finish
+spice_port_channel_write_finish
 <SUBSECTION Standard>
 SPICE_PORT_CHANNEL
 SPICE_IS_PORT_CHANNEL

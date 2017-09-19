@@ -277,12 +277,39 @@ static void port_handle_msg(SpiceChannel *channel, SpiceMsgIn *in)
  * the operation.
  *
  * Since: 0.15
+ * Deprecated: 0.35: use spice_port_channel_write_async() instead.
  **/
 void spice_port_write_async(SpicePortChannel *self,
                             const void *buffer, gsize count,
                             GCancellable *cancellable,
                             GAsyncReadyCallback callback,
                             gpointer user_data)
+{
+    spice_port_channel_write_async(self, buffer, count, cancellable, callback, user_data);
+}
+
+/**
+ * spice_port_channel_write_async:
+ * @port: A #SpicePortChannel
+ * @buffer: (array length=count) (element-type guint8): the buffer
+ * containing the data to write
+ * @count: the number of bytes to write
+ * @cancellable: (allow-none): optional GCancellable object, NULL to ignore
+ * @callback: (scope async): callback to call when the request is satisfied
+ * @user_data: (closure): the data to pass to callback function
+ *
+ * Request an asynchronous write of count bytes from @buffer into the
+ * @port. When the operation is finished @callback will be called. You
+ * can then call spice_port_write_finish() to get the result of
+ * the operation.
+ *
+ * Since: 0.35
+ **/
+void spice_port_channel_write_async(SpicePortChannel *self,
+                                    const void *buffer, gsize count,
+                                    GCancellable *cancellable,
+                                    GAsyncReadyCallback callback,
+                                    gpointer user_data)
 {
     SpicePortChannelPrivate *c;
 
@@ -292,7 +319,7 @@ void spice_port_write_async(SpicePortChannel *self,
 
     if (!c->opened) {
         g_task_report_new_error(self, callback,
-            user_data, spice_port_write_async,
+            user_data, spice_port_channel_write_async,
             SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
             "The port is not opened");
         return;
@@ -313,9 +340,28 @@ void spice_port_write_async(SpicePortChannel *self,
  *
  * Returns: a #gssize containing the number of bytes written to the stream.
  * Since: 0.15
+ * Deprecated: 0.35: use spice_port_channel_write_finish() instead.
  **/
 gssize spice_port_write_finish(SpicePortChannel *self,
                                GAsyncResult *result, GError **error)
+{
+    return spice_port_channel_write_finish(self, result, error);
+}
+
+/**
+ * spice_port_channel_write_finish:
+ * @port: a #SpicePortChannel
+ * @result: a #GAsyncResult
+ * @error: a #GError location to store the error occurring, or %NULL
+ * to ignore
+ *
+ * Finishes a port write operation.
+ *
+ * Returns: a #gssize containing the number of bytes written to the stream.
+ * Since: 0.35
+ **/
+gssize spice_port_channel_write_finish(SpicePortChannel *self,
+                                       GAsyncResult *result, GError **error)
 {
     g_return_val_if_fail(SPICE_IS_PORT_CHANNEL(self), -1);
 
@@ -334,8 +380,27 @@ gssize spice_port_write_finish(SpicePortChannel *self,
  * state.
  *
  * Since: 0.15
+ * Deprecated: 0.35: use spice_port_channel_event() instead.
  **/
 void spice_port_event(SpicePortChannel *self, guint8 event)
+{
+    spice_port_channel_event(self, event);
+}
+
+/**
+ * spice_port_channel_event:
+ * @port: a #SpicePortChannel
+ * @event: a SPICE_PORT_EVENT value
+ *
+ * Send an event to the port.
+ *
+ * Note: The values SPICE_PORT_EVENT_CLOSED and
+ * SPICE_PORT_EVENT_OPENED are managed by the channel connection
+ * state.
+ *
+ * Since: 0.35
+ **/
+void spice_port_channel_event(SpicePortChannel *self, guint8 event)
 {
     SpiceMsgcPortEvent e;
     SpiceMsgOut *msg;
