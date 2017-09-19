@@ -503,10 +503,10 @@ static void stream_read_callback(pa_stream *s, size_t length, void *data)
         g_return_if_fail(length > 0);
 
         if (p->rchannel != NULL)
-            spice_record_send_data(SPICE_RECORD_CHANNEL(p->rchannel),
-                                   /* FIXME: server side doesn't care about ts?
-                                      what is the unit? ms apparently */
-                                   (gpointer)snddata, length, 0);
+            spice_record_channel_send_data(SPICE_RECORD_CHANNEL(p->rchannel),
+                                           /* FIXME: server side doesn't care about ts?
+                                           what is the unit? ms apparently */
+                                           (gpointer)snddata, length, 0);
 
         if (pa_stream_drop(s) < 0) {
             g_warning("pa_stream_drop() failed: %s",

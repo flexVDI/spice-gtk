@@ -216,6 +216,7 @@ SpiceRecordChannel
 SpiceRecordChannelClass
 <SUBSECTION>
 spice_record_send_data
+spice_record_channel_send_data
 <SUBSECTION Standard>
 SPICE_RECORD_CHANNEL
 SPICE_IS_RECORD_CHANNEL

@@ -312,9 +312,28 @@ static void spice_record_start_mark(SpiceRecordChannel *channel, uint32_t time)
  * @time: stream timestamp
  *
  * Send recorded PCM data to the guest.
+ *
+ * Deprecated: 0.35: use spice_record_channel_send_data() instead.
  **/
 void spice_record_send_data(SpiceRecordChannel *channel, gpointer data,
                             gsize bytes, uint32_t time)
+{
+    spice_record_channel_send_data(channel, data, bytes, time);
+}
+
+/**
+ * spice_record_channel_send_data:
+ * @channel: a #SpiceRecordChannel
+ * @data: PCM data
+ * @bytes: size of @data
+ * @time: stream timestamp
+ *
+ * Send recorded PCM data to the guest.
+ *
+ * Since: 0.35
+ **/
+void spice_record_channel_send_data(SpiceRecordChannel *channel, gpointer data,
+                                    gsize bytes, uint32_t time)
 {
     SpiceRecordChannelPrivate *rc;
     SpiceMsgcRecordPacket p = {0, };
