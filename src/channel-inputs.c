@@ -284,9 +284,28 @@ static void channel_set_handlers(SpiceChannelClass *klass)
  * @button_state: SPICE_MOUSE_BUTTON_MASK flags
  *
  * Change mouse position (used in SPICE_MOUSE_MODE_CLIENT).
+ *
+ * Deprecated: 0.35: use spice_inputs_channel_motion() instead.
  **/
 void spice_inputs_motion(SpiceInputsChannel *channel, gint dx, gint dy,
                          gint button_state)
+{
+    spice_inputs_channel_motion(channel, dx, dy, button_state);
+}
+
+/**
+ * spice_inputs_channel_motion:
+ * @channel: a #SpiceInputsChannel
+ * @dx: delta X mouse coordinates
+ * @dy: delta Y mouse coordinates
+ * @button_state: SPICE_MOUSE_BUTTON_MASK flags
+ *
+ * Change mouse position (used in SPICE_MOUSE_MODE_CLIENT).
+ *
+ * Since: 0.35
+ **/
+void spice_inputs_channel_motion(SpiceInputsChannel *channel, gint dx, gint dy,
+                                 gint button_state)
 {
     SpiceInputsChannelPrivate *c;
 
@@ -317,9 +336,29 @@ void spice_inputs_motion(SpiceInputsChannel *channel, gint dx, gint dy,
  * @button_state: SPICE_MOUSE_BUTTON_MASK flags
  *
  * Change mouse position (used in SPICE_MOUSE_MODE_CLIENT).
+ *
+ * Deprecated: 0.35: use spice_inputs_channel_position() instead.
  **/
 void spice_inputs_position(SpiceInputsChannel *channel, gint x, gint y,
                            gint display, gint button_state)
+{
+    spice_inputs_channel_position(channel, x, y, display, button_state);
+}
+
+/**
+ * spice_inputs_channel_position:
+ * @channel: a #SpiceInputsChannel
+ * @x: X mouse coordinates
+ * @y: Y mouse coordinates
+ * @display: display channel id
+ * @button_state: SPICE_MOUSE_BUTTON_MASK flags
+ *
+ * Change mouse position (used in SPICE_MOUSE_MODE_CLIENT).
+ *
+ * Since: 0.35
+ **/
+void spice_inputs_channel_position(SpiceInputsChannel *channel, gint x, gint y,
+                                   gint display, gint button_state)
 {
     SpiceInputsChannelPrivate *c;
 
@@ -348,9 +387,27 @@ void spice_inputs_position(SpiceInputsChannel *channel, gint x, gint y,
  * @button_state: SPICE_MOUSE_BUTTON_MASK flags
  *
  * Press a mouse button.
+ *
+ * Deprecated: 0.35: use spice_inputs_channel_button_press() instead.
  **/
 void spice_inputs_button_press(SpiceInputsChannel *channel, gint button,
                                gint button_state)
+{
+    spice_inputs_channel_button_press(channel, button, button_state);
+}
+
+/**
+ * spice_inputs_channel_button_press:
+ * @channel: a #SpiceInputsChannel
+ * @button: a SPICE_MOUSE_BUTTON
+ * @button_state: SPICE_MOUSE_BUTTON_MASK flags
+ *
+ * Press a mouse button.
+ *
+ * Since: 0.35
+ **/
+void spice_inputs_channel_button_press(SpiceInputsChannel *channel, gint button,
+                                       gint button_state)
 {
     SpiceInputsChannelPrivate *c;
     SpiceMsgcMousePress press;
@@ -395,9 +452,27 @@ void spice_inputs_button_press(SpiceInputsChannel *channel, gint button,
  * @button_state: SPICE_MOUSE_BUTTON_MASK flags
  *
  * Release a button.
+ *
+ * Deprecated: 0.35: use spice_inputs_channel_button_release() instead.
  **/
 void spice_inputs_button_release(SpiceInputsChannel *channel, gint button,
                                  gint button_state)
+{
+    spice_inputs_channel_button_release(channel, button, button_state);
+}
+
+/**
+ * spice_inputs_channel_button_release:
+ * @channel: a #SpiceInputsChannel
+ * @button: a SPICE_MOUSE_BUTTON
+ * @button_state: SPICE_MOUSE_BUTTON_MASK flags
+ *
+ * Release a button.
+ *
+ * Since: 0.35
+ **/
+void spice_inputs_channel_button_release(SpiceInputsChannel *channel, gint button,
+                                         gint button_state)
 {
     SpiceInputsChannelPrivate *c;
     SpiceMsgcMouseRelease release;
@@ -442,8 +517,25 @@ void spice_inputs_button_release(SpiceInputsChannel *channel, gint button,
  *            prefix, drop the prefix and OR the scancode with %0x100.
  *
  * Press a key.
+ *
+ * Deprecated: 0.35: use spice_inputs_channel_key_press() instead.
  **/
 void spice_inputs_key_press(SpiceInputsChannel *channel, guint scancode)
+{
+    spice_inputs_channel_key_press(channel, scancode);
+}
+
+/**
+ * spice_inputs_channel_key_press:
+ * @channel: a #SpiceInputsChannel
+ * @scancode: a PC XT (set 1) key scancode.  For scancodes with an %0xe0
+ *            prefix, drop the prefix and OR the scancode with %0x100.
+ *
+ * Press a key.
+ *
+ * Since: 0.35
+ **/
+void spice_inputs_channel_key_press(SpiceInputsChannel *channel, guint scancode)
 {
     SpiceMsgcKeyDown down;
     SpiceMsgOut *msg;
@@ -468,8 +560,25 @@ void spice_inputs_key_press(SpiceInputsChannel *channel, guint scancode)
  *            prefix, drop the prefix and OR the scancode with %0x100.
  *
  * Release a key.
+ *
+ * Deprecated: 0.35: use spice_inputs_channel_key_release() instead.
  **/
 void spice_inputs_key_release(SpiceInputsChannel *channel, guint scancode)
+{
+    spice_inputs_channel_key_release(channel, scancode);
+}
+
+/**
+ * spice_inputs_channel_key_release:
+ * @channel: a #SpiceInputsChannel
+ * @scancode: a PC XT (set 1) key scancode.  For scancodes with an %0xe0
+ *            prefix, drop the prefix and OR the scancode with %0x100.
+ *
+ * Release a key.
+ *
+ * Since: 0.35
+ **/
+void spice_inputs_channel_key_release(SpiceInputsChannel *channel, guint scancode)
 {
     SpiceMsgcKeyUp up;
     SpiceMsgOut *msg;
@@ -496,8 +605,25 @@ void spice_inputs_key_release(SpiceInputsChannel *channel, guint scancode)
  * Press and release a key event atomically (in the same message).
  *
  * Since: 0.13
+ *
+ * Deprecated: 0.35
  **/
 void spice_inputs_key_press_and_release(SpiceInputsChannel *input_channel, guint scancode)
+{
+    spice_inputs_channel_key_press_and_release(input_channel, scancode);
+}
+
+/**
+ * spice_inputs_channel_key_press_and_release:
+ * @channel: a #SpiceInputsChannel
+ * @scancode: a PC XT (set 1) key scancode.  For scancodes with an %0xe0
+ *            prefix, drop the prefix and OR the scancode with %0x100.
+ *
+ * Press and release a key event atomically (in the same message).
+ *
+ * Since: 0.35
+ **/
+void spice_inputs_channel_key_press_and_release(SpiceInputsChannel *input_channel, guint scancode)
 {
     SpiceChannel *channel = SPICE_CHANNEL(input_channel);
 
@@ -531,8 +657,8 @@ void spice_inputs_key_press_and_release(SpiceInputsChannel *input_channel, guint
         spice_msg_out_send(msg);
     } else {
         CHANNEL_DEBUG(channel, "The server doesn't support atomic press and release");
-        spice_inputs_key_press(input_channel, scancode);
-        spice_inputs_key_release(input_channel, scancode);
+        spice_inputs_channel_key_press(input_channel, scancode);
+        spice_inputs_channel_key_release(input_channel, scancode);
     }
 }
 
@@ -566,8 +692,24 @@ static SpiceMsgOut* set_key_locks(SpiceInputsChannel *channel, guint locks)
  * @locks: #SpiceInputsLock modifiers flags
  *
  * Set the keyboard locks on the guest (Caps, Num, Scroll..)
+ *
+ * Deprecated: 0.35: use spice_inputs_channel_set_key_locks() instead.
  **/
 void spice_inputs_set_key_locks(SpiceInputsChannel *channel, guint locks)
+{
+    spice_inputs_channel_set_key_locks(channel, locks);
+}
+
+/**
+ * spice_inputs_channel_set_key_locks:
+ * @channel: a #SpiceInputsChannel
+ * @locks: #SpiceInputsLock modifiers flags
+ *
+ * Set the keyboard locks on the guest (Caps, Num, Scroll..)
+ *
+ * Since: 0.35
+ **/
+void spice_inputs_channel_set_key_locks(SpiceInputsChannel *channel, guint locks)
 {
     SpiceMsgOut *msg;
 

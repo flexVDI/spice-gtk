@@ -1381,7 +1381,7 @@ static void key_press_and_release(SpiceDisplay *display)
     if (d->key_delayed_scancode == 0)
         return;
 
-    spice_inputs_key_press_and_release(d->inputs, d->key_delayed_scancode);
+    spice_inputs_channel_key_press_and_release(d->inputs, d->key_delayed_scancode);
     d->key_delayed_scancode = 0;
 
     if (d->key_delayed_id) {
@@ -1398,7 +1398,7 @@ static gboolean key_press_delayed(gpointer data)
     if (d->key_delayed_scancode == 0)
         return FALSE;
 
-    spice_inputs_key_press(d->inputs, d->key_delayed_scancode);
+    spice_inputs_channel_key_press(d->inputs, d->key_delayed_scancode);
     d->key_delayed_scancode = 0;
 
     if (d->key_delayed_id) {
@@ -1419,11 +1419,11 @@ static bool send_pause(SpiceDisplay *display, GdkEventType type)
      * 0x45 is the NumLock.
      */
     if (type == GDK_KEY_PRESS) {
-        spice_inputs_key_press(inputs, 0x21d);
-        spice_inputs_key_press(inputs, 0x45);
+        spice_inputs_channel_key_press(inputs, 0x21d);
+        spice_inputs_channel_key_press(inputs, 0x45);
     } else {
-        spice_inputs_key_release(inputs, 0x21d);
-        spice_inputs_key_release(inputs, 0x45);
+        spice_inputs_channel_key_release(inputs, 0x21d);
+        spice_inputs_channel_key_release(inputs, 0x45);
     }
     return true;
 }
@@ -1458,7 +1458,7 @@ static void send_key(SpiceDisplay *display, int scancode, SendKeyType type, gboo
             d->key_delayed_id = g_timeout_add(d->keypress_delay, key_press_delayed, display);
             d->key_delayed_scancode = scancode;
         } else
-            spice_inputs_key_press(d->inputs, scancode);
+            spice_inputs_channel_key_press(d->inputs, scancode);
 
         d->key_state[i] |= m;
         break;
@@ -1472,7 +1472,7 @@ static void send_key(SpiceDisplay *display, int scancode, SendKeyType type, gboo
         else {
             /* ensure delayed key is pressed before other key are released */
             key_press_delayed(display);
-            spice_inputs_key_release(d->inputs, scancode);
+            spice_inputs_channel_key_release(d->inputs, scancode);
         }
 
         d->key_state[i] &= ~m;
@@ -1989,8 +1989,8 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
     case SPICE_MOUSE_MODE_CLIENT:
         if (x >= 0 && x < d->area.width &&
             y >= 0 && y < d->area.height) {
-            spice_inputs_position(d->inputs, x, y, get_display_id(display),
-                                  button_mask_gdk_to_spice(motion->state));
+            spice_inputs_channel_position(d->inputs, x, y, get_display_id(display),
+                                          button_mask_gdk_to_spice(motion->state));
         }
         break;
     case SPICE_MOUSE_MODE_SERVER:
@@ -1998,8 +1998,8 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
             gint dx = d->mouse_last_x != -1 ? x - d->mouse_last_x : 0;
             gint dy = d->mouse_last_y != -1 ? y - d->mouse_last_y : 0;
 
-            spice_inputs_motion(d->inputs, dx, dy,
-                                button_mask_gdk_to_spice(motion->state));
+            spice_inputs_channel_motion(d->inputs, dx, dy,
+                                        button_mask_gdk_to_spice(motion->state));
 
             d->mouse_last_x = x;
             d->mouse_last_y = y;
@@ -2036,10 +2036,10 @@ static gboolean scroll_event(GtkWidget *widget, GdkEventScroll *scroll)
         return true;
     }
 
-    spice_inputs_button_press(d->inputs, button,
-                              button_mask_gdk_to_spice(scroll->state));
-    spice_inputs_button_release(d->inputs, button,
-                                button_mask_gdk_to_spice(scroll->state));
+    spice_inputs_channel_button_press(d->inputs, button,
+                                      button_mask_gdk_to_spice(scroll->state));
+    spice_inputs_channel_button_release(d->inputs, button,
+                                        button_mask_gdk_to_spice(scroll->state));
     return true;
 }
 
@@ -2091,14 +2091,14 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
 
     switch (button->type) {
     case GDK_BUTTON_PRESS:
-        spice_inputs_button_press(d->inputs,
-                                  button_gdk_to_spice(button->button),
-                                  button_mask_gdk_to_spice(button->state));
+        spice_inputs_channel_button_press(d->inputs,
+                                          button_gdk_to_spice(button->button),
+                                          button_mask_gdk_to_spice(button->state));
         break;
     case GDK_BUTTON_RELEASE:
-        spice_inputs_button_release(d->inputs,
-                                    button_gdk_to_spice(button->button),
-                                    button_mask_gdk_to_spice(button->state));
+        spice_inputs_channel_button_release(d->inputs,
+                                            button_gdk_to_spice(button->button),
+                                            button_mask_gdk_to_spice(button->state));
         break;
     default:
         break;

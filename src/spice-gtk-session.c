@@ -201,7 +201,7 @@ static void spice_gtk_session_sync_keyboard_modifiers_for_channel(SpiceGtkSessio
     if (force || client_modifiers != guest_modifiers) {
         CHANNEL_DEBUG(inputs, "client_modifiers:0x%x, guest_modifiers:0x%x",
                       client_modifiers, guest_modifiers);
-        spice_inputs_set_key_locks(inputs, client_modifiers);
+        spice_inputs_channel_set_key_locks(inputs, client_modifiers);
     }
 }
 
