@@ -587,7 +587,7 @@ gl_area_render(GtkGLArea *area, GdkGLContext *context, gpointer user_data)
     spice_egl_update_display(display);
     glFlush();
     if (d->egl.call_draw_done) {
-        spice_display_gl_draw_done(d->display);
+        spice_display_channel_gl_draw_done(d->display);
         d->egl.call_draw_done = FALSE;
     }
 
@@ -620,7 +620,7 @@ drawing_area_realize(GtkWidget *area, gpointer user_data)
     SpiceDisplay *display = SPICE_DISPLAY(user_data);
 
     if (GDK_IS_X11_DISPLAY(gdk_display_get_default()) &&
-        spice_display_get_gl_scanout(display->priv->display) != NULL) {
+        spice_display_channel_get_gl_scanout(display->priv->display) != NULL) {
         spice_display_widget_gl_scanout(display);
     }
 #endif
@@ -2523,7 +2523,7 @@ static void update_area(SpiceDisplay *display,
 #if HAVE_EGL
     if (egl_enabled(d)) {
         const SpiceGlScanout *so =
-            spice_display_get_gl_scanout(d->display);
+            spice_display_channel_get_gl_scanout(d->display);
         g_return_if_fail(so != NULL);
         primary = (GdkRectangle) {
             .width = so->width,
@@ -2891,7 +2891,7 @@ void spice_display_widget_gl_scanout(SpiceDisplay *display)
     if (d->egl.context_ready) {
         const SpiceGlScanout *scanout;
 
-        scanout = spice_display_get_gl_scanout(d->display);
+        scanout = spice_display_channel_get_gl_scanout(d->display);
         /* should only be called when the display has a scanout */
         g_return_if_fail(scanout != NULL);
 
@@ -2913,7 +2913,7 @@ static void gl_draw(SpiceDisplay *display,
 
     if (!d->egl.context_ready) {
         DISPLAY_DEBUG(display, "Draw without GL context, skipping");
-        spice_display_gl_draw_done(d->display);
+        spice_display_channel_gl_draw_done(d->display);
         return;
     }
 
@@ -2930,7 +2930,7 @@ static void gl_draw(SpiceDisplay *display,
 #endif
     {
         spice_egl_update_display(display);
-        spice_display_gl_draw_done(d->display);
+        spice_display_channel_gl_draw_done(d->display);
     }
 }
 #endif
@@ -2966,7 +2966,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         spice_g_signal_connect_object(channel, "notify::monitors",
                                       G_CALLBACK(spice_display_widget_update_monitor_area),
                                       display, G_CONNECT_AFTER | G_CONNECT_SWAPPED);
-        if (spice_display_get_primary(channel, 0, &primary)) {
+        if (spice_display_channel_get_primary(channel, 0, &primary)) {
             primary_create(channel, primary.format, primary.width, primary.height,
                            primary.stride, primary.shmid, primary.data, display);
             mark(display, primary.marked);

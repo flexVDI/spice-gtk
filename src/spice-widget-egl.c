@@ -278,7 +278,7 @@ end:
 
     d->egl.context_ready = TRUE;
 
-    if (spice_display_get_gl_scanout(d->display) != NULL) {
+    if (spice_display_channel_get_gl_scanout(d->display) != NULL) {
         DISPLAY_DEBUG(display, "scanout present during egl init, updating widget");
         spice_display_widget_gl_scanout(display);
         spice_display_widget_update_monitor_area(display);

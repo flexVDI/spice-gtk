@@ -227,7 +227,7 @@ static void spice_display_get_property(GObject    *object,
         break;
     }
     case PROP_GL_SCANOUT: {
-        g_value_set_static_boxed(value, spice_display_get_gl_scanout(channel));
+        g_value_set_static_boxed(value, spice_display_channel_get_gl_scanout(channel));
         break;
     }
     default:
@@ -472,9 +472,30 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
  *
  * Returns: %TRUE if the primary surface was found and its details
  * collected in @primary.
+ *
+ * Deprecated: 0.35: use spice_display_channel_get_primary() instead.
  */
 gboolean spice_display_get_primary(SpiceChannel *channel, guint32 surface_id,
                                    SpiceDisplayPrimary *primary)
+{
+    return spice_display_channel_get_primary(channel, surface_id, primary);
+}
+
+/**
+ * spice_display_channel_get_primary:
+ * @channel: a #SpiceDisplayChannel
+ * @surface_id: a surface id
+ * @primary: a #SpiceDisplayPrimary
+ *
+ * Retrieve primary display surface @surface_id.
+ *
+ * Returns: %TRUE if the primary surface was found and its details
+ * collected in @primary.
+ *
+ * Since: 0.35
+ */
+gboolean spice_display_channel_get_primary(SpiceChannel *channel, guint32 surface_id,
+                                           SpiceDisplayPrimary *primary)
 {
     g_return_val_if_fail(SPICE_IS_DISPLAY_CHANNEL(channel), FALSE);
     g_return_val_if_fail(primary != NULL, FALSE);
@@ -508,8 +529,24 @@ gboolean spice_display_get_primary(SpiceChannel *channel, guint32 surface_id,
  * for the @channel.
  *
  * Since: 0.31
+ * Deprecated: 0.35: use spice_display_channel_change_preferred_compression() instead.
  */
 void spice_display_change_preferred_compression(SpiceChannel *channel, gint compression)
+{
+    spice_display_channel_change_preferred_compression(channel, compression);
+}
+
+/**
+ * spice_display_channel_change_preferred_compression:
+ * @channel: a #SpiceDisplayChannel
+ * @compression: a #SpiceImageCompression
+ *
+ * Tells the spice server to change the preferred image compression
+ * for the @channel.
+ *
+ * Since: 0.35
+ */
+void spice_display_channel_change_preferred_compression(SpiceChannel *channel, gint compression)
 {
     SpiceMsgOut *out;
     SpiceMsgcDisplayPreferredCompression pref_comp_msg;
@@ -561,8 +598,25 @@ static void spice_display_send_client_preferred_video_codecs(SpiceChannel *chann
  * display channel.
  *
  * Since: 0.34
+ * Deprecated: 0.35: use spice_display_channel_change_preferred_video_codec_type() instead.
  */
 void spice_display_change_preferred_video_codec_type(SpiceChannel *channel, gint codec_type)
+{
+    spice_display_channel_change_preferred_video_codec_type(channel, codec_type);
+}
+
+/**
+ * spice_display_channel_change_preferred_video_codec_type:
+ * @channel: a #SpiceDisplayChannel
+ * @codec_type: a #SpiceVideoCodecType
+ *
+ * Tells the spice server to change the preferred video codec type for
+ * streaming in @channel. Application can set only one preferred video codec per
+ * display channel.
+ *
+ * Since: 0.35
+ */
+void spice_display_channel_change_preferred_video_codec_type(SpiceChannel *channel, gint codec_type)
 {
     GArray *codecs;
 
@@ -595,9 +649,26 @@ void spice_display_change_preferred_video_codec_type(SpiceChannel *channel, gint
  * Returns: the current GL scanout, or %NULL if none or not valid
  *
  * Since: 0.31
+ * Deprecated: 0.35: use spice_display_channel_get_gl_scanout() instead.
  **/
 const SpiceGlScanout *
 spice_display_get_gl_scanout(SpiceDisplayChannel *channel)
+{
+    return spice_display_channel_get_gl_scanout(channel);
+}
+
+/**
+ * spice_display_channel_get_gl_scanout:
+ * @channel: a #SpiceDisplayChannel
+ *
+ * Retrieves the GL scanout if available
+ *
+ * Returns: the current GL scanout, or %NULL if none or not valid
+ *
+ * Since: 0.35
+ **/
+const SpiceGlScanout *
+spice_display_channel_get_gl_scanout(SpiceDisplayChannel *channel)
 {
     g_return_val_if_fail(SPICE_IS_DISPLAY_CHANNEL(channel), NULL);
 
@@ -978,7 +1049,7 @@ static void spice_display_channel_up(SpiceChannel *channel)
     g_coroutine_object_notify(G_OBJECT(channel), "monitors");
 
     if (preferred_compression != SPICE_IMAGE_COMPRESSION_INVALID) {
-        spice_display_change_preferred_compression(channel, preferred_compression);
+        spice_display_channel_change_preferred_compression(channel, preferred_compression);
     }
 }
 
@@ -1896,8 +1967,25 @@ static void display_handle_gl_draw(SpiceChannel *channel, SpiceMsgIn *in)
  * (failing to do so for each gl-draw may result in a frozen display).
  *
  * Since: 0.31
+ * Deprecated: 0.35: use spice_display_channel_gl_draw_done() instead.
  **/
 void spice_display_gl_draw_done(SpiceDisplayChannel *display)
+{
+    spice_display_channel_gl_draw_done(display);
+}
+
+/**
+ * spice_display_channel_gl_draw_done:
+ * @channel: a #SpiceDisplayChannel
+ *
+ * After a SpiceDisplayChannel::gl-draw is emitted, the client should
+ * draw the current display with the current GL scanout, and must
+ * release the GL resource with a call to spice_display_gl_draw_done()
+ * (failing to do so for each gl-draw may result in a frozen display).
+ *
+ * Since: 0.35
+ **/
+void spice_display_channel_gl_draw_done(SpiceDisplayChannel *display)
 {
     SpiceChannel *channel;
     SpiceMsgOut *out;

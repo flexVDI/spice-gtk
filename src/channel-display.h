@@ -145,17 +145,31 @@ struct _SpiceDisplayChannelClass {
 };
 
 GType	        spice_display_channel_get_type(void);
-gboolean        spice_display_get_primary(SpiceChannel *channel, guint32 surface_id,
-                                          SpiceDisplayPrimary *primary);
+gboolean        spice_display_channel_get_primary(SpiceChannel *channel, guint32 surface_id,
+                                                  SpiceDisplayPrimary *primary);
 
-void spice_display_change_preferred_compression(SpiceChannel *channel, gint compression);
-void spice_display_change_preferred_video_codec_type(SpiceChannel *channel, gint codec_type);
+void spice_display_channel_change_preferred_compression(SpiceChannel *channel, gint compression);
+void spice_display_channel_change_preferred_video_codec_type(SpiceChannel *channel, gint codec_type);
 
 GType           spice_gl_scanout_get_type     (void) G_GNUC_CONST;
 void            spice_gl_scanout_free         (SpiceGlScanout *scanout);
 
+const SpiceGlScanout* spice_display_channel_get_gl_scanout(SpiceDisplayChannel *channel);
+void spice_display_channel_gl_draw_done(SpiceDisplayChannel *channel);
+
+#ifndef SPICE_DISABLE_DEPRECATED
+G_DEPRECATED_FOR(spice_display_channel_change_preferred_compression)
+void spice_display_change_preferred_compression(SpiceChannel *channel, gint compression);
+G_DEPRECATED_FOR(spice_display_channel_change_preferred_video_codec_type)
+void spice_display_change_preferred_video_codec_type(SpiceChannel *channel, gint codec_type);
+G_DEPRECATED_FOR(spice_display_channel_get_gl_scanout)
 const SpiceGlScanout* spice_display_get_gl_scanout(SpiceDisplayChannel *channel);
+G_DEPRECATED_FOR(spice_display_channel_get_primary)
+gboolean spice_display_get_primary(SpiceChannel *channel, guint32 surface_id,
+                                   SpiceDisplayPrimary *primary);
+G_DEPRECATED_FOR(spice_display_channel_gl_draw_done)
 void spice_display_gl_draw_done(SpiceDisplayChannel *channel);
+#endif
 
 G_END_DECLS
 

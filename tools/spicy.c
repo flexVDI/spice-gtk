@@ -1009,16 +1009,16 @@ static void compression_cb(GtkRadioAction *action G_GNUC_UNUSED,
                            GtkRadioAction *current,
                            gpointer user_data)
 {
-    spice_display_change_preferred_compression(SPICE_CHANNEL(user_data),
-                                               gtk_radio_action_get_current_value(current));
+    spice_display_channel_change_preferred_compression(SPICE_CHANNEL(user_data),
+                                                       gtk_radio_action_get_current_value(current));
 }
 
 static void video_codec_type_cb(GtkRadioAction *action G_GNUC_UNUSED,
                                 GtkRadioAction *current,
                                 gpointer user_data)
 {
-    spice_display_change_preferred_video_codec_type(SPICE_CHANNEL(user_data),
-                                                    gtk_radio_action_get_current_value(current));
+    spice_display_channel_change_preferred_video_codec_type(SPICE_CHANNEL(user_data),
+                                                            gtk_radio_action_get_current_value(current));
 }
 
 static void
