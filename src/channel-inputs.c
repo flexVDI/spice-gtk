@@ -283,7 +283,7 @@ static void channel_set_handlers(SpiceChannelClass *klass)
  * @dy: delta Y mouse coordinates
  * @button_state: SPICE_MOUSE_BUTTON_MASK flags
  *
- * Change mouse position (used in SPICE_MOUSE_MODE_CLIENT).
+ * Change mouse position (used in SPICE_MOUSE_MODE_SERVER).
  *
  * Deprecated: 0.35: use spice_inputs_channel_motion() instead.
  **/
@@ -300,7 +300,7 @@ void spice_inputs_motion(SpiceInputsChannel *channel, gint dx, gint dy,
  * @dy: delta Y mouse coordinates
  * @button_state: SPICE_MOUSE_BUTTON_MASK flags
  *
- * Change mouse position (used in SPICE_MOUSE_MODE_CLIENT).
+ * Change mouse position (used in SPICE_MOUSE_MODE_SERVER).
  *
  * Since: 0.35
  **/
