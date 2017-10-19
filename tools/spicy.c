@@ -2068,5 +2068,8 @@ int main(int argc, char *argv[])
     g_free(spicy_title);
 
     setup_terminal(true);
+#if HAVE_GSTAUDIO || HAVE_GSTVIDEO
+    gst_deinit();
+#endif
     return 0;
 }
