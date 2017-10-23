@@ -751,7 +751,7 @@ AC_SUBST(SPICE_GTK_REQUIRES)
 
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
-AM_CONDITIONAL([BUILD_TESTS], [false])
+AM_CONDITIONAL([BUILD_TESTS], [test x"$enable_static" = xyes])
 
 AC_OUTPUT([
 Makefile
