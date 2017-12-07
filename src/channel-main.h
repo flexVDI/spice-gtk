@@ -111,12 +111,12 @@ void spice_main_clipboard_notify(SpiceMainChannel *channel, guint32 type, const 
 G_DEPRECATED_FOR(spice_main_channel_clipboard_selection_request)
 void spice_main_clipboard_request(SpiceMainChannel *channel, guint32 type);
 
-G_DEPRECATED_FOR(spice_main_channel_set_display)
+G_DEPRECATED_FOR(spice_main_channel_update_display)
 void spice_main_set_display(SpiceMainChannel *channel, int id,int x, int y, int width, int height);
 G_DEPRECATED_FOR(spice_main_update_display)
 void spice_main_update_display(SpiceMainChannel *channel, int id, int x, int y, int width,
                                int height, gboolean update);
-G_DEPRECATED_FOR(spice_main_channel_set_display_enabled)
+G_DEPRECATED_FOR(spice_main_channel_update_display_enabled)
 void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled);
 G_DEPRECATED_FOR(spice_main_channel_update_display_enabled)
 void spice_main_update_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled,
