@@ -633,7 +633,7 @@ void spice_display_channel_change_preferred_video_codec_type(SpiceChannel *chann
      * decoding, store this information (as GArray) and send it to the server.
      * This array can be rearranged to have @codec_type in the front (which is
      * the preferred for the client side) */
-    CHANNEL_DEBUG(channel, "changing preferred video codec type to %d", codec_type);
+    CHANNEL_DEBUG(channel, "changing preferred video codec type to %s", gst_opts[codec_type].name);
     codecs = g_array_new(FALSE, FALSE, sizeof(gint));
     g_array_append_val(codecs, codec_type);
     spice_display_send_client_preferred_video_codecs(channel, codecs);
