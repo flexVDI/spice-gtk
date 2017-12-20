@@ -570,10 +570,10 @@ void spice_egl_update_display(SpiceDisplay *display)
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    tx = ((float)d->area.x / (float)d->egl.scanout.width);
-    ty = ((float)d->area.y / (float)d->egl.scanout.height);
-    tw = ((float)d->area.width / (float)d->egl.scanout.width);
-    th = ((float)d->area.height / (float)d->egl.scanout.height);
+    tx = (gdouble) d->area.x / d->egl.scanout.width;
+    ty = (gdouble) d->area.y / d->egl.scanout.height;
+    tw = (gdouble) d->area.width / d->egl.scanout.width;
+    th = (gdouble) d->area.height / d->egl.scanout.height;
 
     /* convert to opengl coordinates, 0 is bottom, 1 is top. ty should
      * be the bottom of the area, since th is upward */
