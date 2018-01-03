@@ -236,25 +236,15 @@ static void spice_gtk_session_init(SpiceGtkSession *self)
                                   G_CALLBACK(keymap_modifiers_changed), self, 0);
 }
 
-static GObject *
-spice_gtk_session_constructor(GType                  gtype,
-                              guint                  n_properties,
-                              GObjectConstructParam *properties)
+static void
+spice_gtk_session_constructed(GObject *gobject)
 {
-    GObject *obj;
     SpiceGtkSession *self;
     SpiceGtkSessionPrivate *s;
     GList *list;
     GList *it;
 
-    {
-        /* Always chain up to the parent constructor */
-        GObjectClass *parent_class;
-        parent_class = G_OBJECT_CLASS(spice_gtk_session_parent_class);
-        obj = parent_class->constructor(gtype, n_properties, properties);
-    }
-
-    self = SPICE_GTK_SESSION(obj);
+    self = SPICE_GTK_SESSION(gobject);
     s = self->priv;
     if (!s->session)
         g_error("SpiceGtKSession constructed without a session");
@@ -268,8 +258,6 @@ spice_gtk_session_constructor(GType                  gtype,
         channel_new(s->session, it->data, (gpointer*)self);
     }
     g_list_free(list);
-
-    return obj;
 }
 
 static void spice_gtk_session_dispose(GObject *gobject)
@@ -405,7 +393,7 @@ static void spice_gtk_session_class_init(SpiceGtkSessionClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 
-    gobject_class->constructor  = spice_gtk_session_constructor;
+    gobject_class->constructed  = spice_gtk_session_constructed;
     gobject_class->dispose      = spice_gtk_session_dispose;
     gobject_class->finalize     = spice_gtk_session_finalize;
     gobject_class->get_property = spice_gtk_session_get_property;

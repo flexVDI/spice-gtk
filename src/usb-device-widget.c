@@ -180,10 +180,8 @@ spice_usb_device_widget_show_info_bar(SpiceUsbDeviceWidget *self,
     gtk_widget_show_all(priv->info_bar);
 }
 
-static GObject *spice_usb_device_widget_constructor(
-    GType gtype, guint n_properties, GObjectConstructParam *properties)
+static void spice_usb_device_widget_constructed(GObject *gobject)
 {
-    GObject *obj;
     SpiceUsbDeviceWidget *self;
     SpiceUsbDeviceWidgetPrivate *priv;
     GPtrArray *devices = NULL;
@@ -191,14 +189,7 @@ static GObject *spice_usb_device_widget_constructor(
     gchar *str;
     int i;
 
-    {
-        /* Always chain up to the parent constructor */
-        GObjectClass *parent_class;
-        parent_class = G_OBJECT_CLASS(spice_usb_device_widget_parent_class);
-        obj = parent_class->constructor(gtype, n_properties, properties);
-    }
-
-    self = SPICE_USB_DEVICE_WIDGET(obj);
+    self = SPICE_USB_DEVICE_WIDGET(gobject);
     priv = self->priv;
     if (!priv->session)
         g_error("SpiceUsbDeviceWidget constructed without a session");
@@ -216,7 +207,7 @@ static GObject *spice_usb_device_widget_constructor(
                                               GTK_MESSAGE_WARNING,
                                               "dialog-warning");
         g_clear_error(&err);
-        return obj;
+        return;
     }
 
     g_signal_connect(priv->manager, "device-added",
@@ -237,8 +228,6 @@ static GObject *spice_usb_device_widget_constructor(
 
 end:
     spice_usb_device_widget_update_status(self);
-
-    return obj;
 }
 
 static void spice_usb_device_widget_finalize(GObject *object)
@@ -269,7 +258,7 @@ static void spice_usb_device_widget_class_init(
 
     g_type_class_add_private (klass, sizeof (SpiceUsbDeviceWidgetPrivate));
 
-    gobject_class->constructor  = spice_usb_device_widget_constructor;
+    gobject_class->constructed  = spice_usb_device_widget_constructed;
     gobject_class->finalize     = spice_usb_device_widget_finalize;
     gobject_class->get_property = spice_usb_device_widget_get_property;
     gobject_class->set_property = spice_usb_device_widget_set_property;

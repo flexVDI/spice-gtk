@@ -686,25 +686,15 @@ G_GNUC_END_IGNORE_DEPRECATIONS
     d->activeseq = g_new0(gboolean, d->grabseq->nkeysyms);
 }
 
-static GObject *
-spice_display_constructor(GType                  gtype,
-                          guint                  n_properties,
-                          GObjectConstructParam *properties)
+static void
+spice_display_constructed(GObject *gobject)
 {
-    GObject *obj;
     SpiceDisplay *display;
     SpiceDisplayPrivate *d;
     GList *list;
     GList *it;
 
-    {
-        /* Always chain up to the parent constructor */
-        GObjectClass *parent_class;
-        parent_class = G_OBJECT_CLASS(spice_display_parent_class);
-        obj = parent_class->constructor(gtype, n_properties, properties);
-    }
-
-    display = SPICE_DISPLAY(obj);
+    display = SPICE_DISPLAY(gobject);
     d = display->priv;
 
     if (!d->session)
@@ -730,8 +720,6 @@ spice_display_constructor(GType                  gtype,
     spice_g_signal_connect_object(d->session, "notify::inhibit-keyboard-grab",
                                   G_CALLBACK(session_inhibit_keyboard_grab_changed),
                                   display, 0);
-
-    return obj;
 }
 
 /**
@@ -2191,7 +2179,7 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
     gtkwidget_class->realize = realize;
     gtkwidget_class->unrealize = unrealize;
 
-    gobject_class->constructor = spice_display_constructor;
+    gobject_class->constructed = spice_display_constructed;
     gobject_class->dispose = spice_display_dispose;
     gobject_class->finalize = spice_display_finalize;
     gobject_class->get_property = spice_display_get_property;
