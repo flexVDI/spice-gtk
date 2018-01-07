@@ -383,8 +383,9 @@ if test "x$have_usbredir" = "xyes" && test "x$enable_polkit" != "xno"; then
   PKG_CHECK_MODULES([POLKIT], [polkit-gobject-1 >= 0.96],
                               [have_polkit=yes],
                               [have_polkit=no])
-  AC_CHECK_HEADER([acl/libacl.h], [], [have_polkit=no])
-  AC_CHECK_LIB([acl], [acl_get_file], [ACL_LIBS=-lacl], [have_polkit=no])
+  AC_CHECK_HEADER([sys/acl.h], [], [have_polkit=no])
+  AC_CHECK_LIB([c], [acl_get_file], [ACL_LIBS=""], [
+    AC_CHECK_LIB([acl], [acl_get_file], [ACL_LIBS=-lacl], [have_polkit=no])])
   if test "x$enable_polkit" = "xyes" && test "x$have_polkit" = "xno"; then
     AC_MSG_ERROR([PolicyKit support explicitly requested, but some required packages are not available])
   fi
