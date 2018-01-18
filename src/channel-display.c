@@ -1394,9 +1394,6 @@ void stream_display_frame(display_stream *st, SpiceFrame *frame,
     }
 
     st->surface->canvas->ops->put_image(st->surface->canvas,
-#ifdef G_OS_WIN32
-                                        SPICE_DISPLAY_CHANNEL(st->channel)->priv->dc,
-#endif
                                         &frame->dest, data,
                                         width, height, stride,
                                         st->have_region ? &st->region : NULL);
