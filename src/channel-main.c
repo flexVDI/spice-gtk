@@ -2026,11 +2026,6 @@ static void main_agent_handle_msg(SpiceChannel *channel,
         VDAgentReply *reply = payload;
         SPICE_DEBUG("%s: reply: type %d, %s", __FUNCTION__, reply->type,
                     reply->error == VD_AGENT_SUCCESS ? "success" : "error");
-        /* SLP: Our current SSO implementation sends us this code as a way
-           to tell us to quit */
-        if (reply->error == 6666) {
-            exit(0);
-        }
         break;
     }
     case VD_AGENT_FILE_XFER_STATUS:

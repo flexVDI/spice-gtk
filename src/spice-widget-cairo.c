@@ -22,10 +22,6 @@
 #include "spice-widget-priv.h"
 #include "spice-gtk-session-priv.h"
 
-#ifdef USE_VA
-#include "va_display_x11.h"
-#endif
-
 
 G_GNUC_INTERNAL
 int spicex_image_create(SpiceDisplay *display)
@@ -120,16 +116,6 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
             cairo_translate(cr, -d->area.x, -d->area.y);
         cairo_set_source_surface(cr, d->ximage, 0, 0);
         cairo_fill(cr);
-
-#ifdef USE_VA
-        GSList *va_sessions = NULL, *v;
-        g_object_get(d->display, "va-sessions", &va_sessions, NULL);
-        for (v = va_sessions; v != NULL; v = g_slist_next(v)) {
-            tinyjpeg_session *session = (tinyjpeg_session *)v->data;
-            va_x11_draw_frame(session, cr);
-        }
-        g_slist_free(va_sessions);
-#endif
 
         if (d->time_to_inactivity < 30000) {
             cairo_translate(cr, 0, 0);

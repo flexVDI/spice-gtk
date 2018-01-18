@@ -37,10 +37,6 @@ typedef struct _PhodavServer PhodavServer;
 
 G_BEGIN_DECLS
 
-#define IMAGES_CACHE_SIZE_DEFAULT (1024 * 1024 * 80)
-#define MIN_GLZ_WINDOW_SIZE_DEFAULT (1024 * 1024 * 12)
-#define MAX_GLZ_WINDOW_SIZE_DEFAULT MIN((LZ_MAX_WINDOW_SIZE * 4), 1024 * 1024 * 64)
-
 #define WEBDAV_MAGIC_SIZE 16
 
 SpiceSession *spice_session_new_from_session(SpiceSession *session);

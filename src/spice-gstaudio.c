@@ -285,7 +285,7 @@ static gboolean update_mmtime_timeout_cb(gpointer data)
         SPICE_DEBUG("got min latency %" GST_TIME_FORMAT ", max latency %"
                     GST_TIME_FORMAT ", live %d", GST_TIME_ARGS (minlat),
                     GST_TIME_ARGS (maxlat), live);
-        spice_playback_channel_set_delay(SPICE_PLAYBACK_CHANNEL(p->pchannel), GST_TIME_AS_MSECONDS(minlat));    
+        spice_playback_channel_set_delay(SPICE_PLAYBACK_CHANNEL(p->pchannel), GST_TIME_AS_MSECONDS(minlat));
     }
     gst_query_unref (q);
 

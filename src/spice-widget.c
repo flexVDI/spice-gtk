@@ -175,23 +175,6 @@ static void spice_display_get_property(GObject    *object,
     }
 }
 
-static void update_size_request(SpiceDisplay *display)
-{
-    SpiceDisplayPrivate *d = display->priv;
-    gint reqwidth, reqheight;
-
-    if (d->resize_guest_enable || d->allow_scaling) {
-        reqwidth = 640;
-        reqheight = 480;
-    } else {
-        reqwidth = d->area.width;
-        reqheight = d->area.height;
-    }
-
-    gtk_widget_set_size_request(GTK_WIDGET(display), reqwidth, reqheight);
-    recalc_geometry(GTK_WIDGET(display));
-}
-
 static void scaling_updated(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
@@ -201,7 +184,23 @@ static void scaling_updated(SpiceDisplay *display)
     if (d->ximage && window) { /* if not yet shown */
         gtk_widget_queue_draw(GTK_WIDGET(display));
     }
-    update_size_request(display);
+}
+
+static void update_size_request(SpiceDisplay *display)
+{
+    SpiceDisplayPrivate *d = display->priv;
+    gint reqwidth, reqheight;
+
+    if (d->resize_guest_enable) {
+        reqwidth = 640;
+        reqheight = 480;
+    } else {
+        reqwidth = d->area.width;
+        reqheight = d->area.height;
+    }
+
+    gtk_widget_set_size_request(GTK_WIDGET(display), reqwidth, reqheight);
+    recalc_geometry(GTK_WIDGET(display));
 }
 
 static void update_keyboard_focus(SpiceDisplay *display, gboolean state)

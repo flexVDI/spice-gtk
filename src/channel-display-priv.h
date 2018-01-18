@@ -20,7 +20,8 @@
 
 #include <pixman.h>
 #ifdef WIN32
-
+/* We need some hacks to avoid warnings from the jpeg headers */
+#define HAVE_BOOLEAN
 #define XMD_H
 #endif
 #include <jpeglib.h>
@@ -30,12 +31,6 @@
 #include "common/ring.h"
 #include "common/quic.h"
 #include "common/rop3.h"
-
-#ifdef USE_VA
-#include "tinyjpeg.h"
-#else
-typedef struct tinyjpeg_session tinyjpeg_session;
-#endif
 
 G_BEGIN_DECLS
 
@@ -59,18 +54,10 @@ typedef struct drops_sequence_stats {
     uint32_t duration;
 } drops_sequence_stats;
 
-typedef struct vaapi_source {
-    tinyjpeg_session *session;
-    int width;
-    int height;
-    int st_count_miss;
-} vaapi_source;
-
 typedef struct display_stream {
     SpiceMsgIn                  *msg_create;
     SpiceMsgIn                  *msg_clip;
     SpiceMsgIn                  *msg_data;
-    SpiceRect                   dst_rect;
 
     /* from messages */
     display_surface             *surface;
@@ -80,11 +67,9 @@ typedef struct display_stream {
     int                         codec;
 
     /* mjpeg decoder */
-    int                            hw_accel;
     struct jpeg_source_mgr         mjpeg_src;
     struct jpeg_decompress_struct  mjpeg_cinfo;
     struct jpeg_error_mgr          mjpeg_jerr;
-    tinyjpeg_session               *vaapi_session;
 
     uint8_t                     *out_frame;
     GQueue                      *msgq;
@@ -100,8 +85,6 @@ typedef struct display_stream {
     drops_sequence_stats cur_drops_seq_stats;
     GArray               *drops_seqs_stats_arr;
     uint32_t             num_drops_seqs;
-    guint64              acum_decode_time;
-    uint32_t             decoded_frames;
 
     uint32_t             playback_sync_drops_seq_len;
 
@@ -115,10 +98,6 @@ typedef struct display_stream {
     uint32_t report_num_frames;
     uint32_t report_num_drops;
     uint32_t report_drops_seq_len;
-
-    /* frame skipping */
-    uint8_t  fskip_level;
-    uint8_t  fskip_frame;
 } display_stream;
 
 void stream_get_dimensions(display_stream *st, int *width, int *height);

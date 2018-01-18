@@ -38,7 +38,6 @@
 #include "spice-session-priv.h"
 #include "channel-display-priv.h"
 #include "decode.h"
-#include "common/rect.h"
 
 /**
  * SECTION:channel-display
@@ -83,7 +82,6 @@ struct _SpiceDisplayChannelPrivate {
 #ifdef G_OS_WIN32
     HDC dc;
 #endif
-    char * report;
 };
 
 G_DEFINE_TYPE(SpiceDisplayChannel, spice_display_channel, SPICE_TYPE_CHANNEL)
@@ -94,9 +92,7 @@ enum {
     PROP_WIDTH,
     PROP_HEIGHT,
     PROP_MONITORS,
-    PROP_MONITORS_MAX,
-    PROP_REPORT,
-    PROP_VA_SESSIONS,
+    PROP_MONITORS_MAX
 };
 
 enum {
@@ -200,20 +196,6 @@ static void spice_display_get_property(GObject    *object,
         g_value_set_uint(value, c->monitors_max);
         break;
     }
-    case PROP_REPORT: {
-        g_value_set_static_string(value, c->report);
-        break;
-    }
-    case PROP_VA_SESSIONS: {
-        GSList *va_sessions = NULL;
-        int i;
-        for (i = 0; i < c->nstreams; ++i) {
-            if (c->streams[i] && c->streams[i]->hw_accel)
-                va_sessions = g_slist_prepend(va_sessions, c->streams[i]->vaapi_session);
-        }
-        g_value_set_pointer(value, va_sessions);
-        break;
-    }
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
         break;
@@ -308,23 +290,6 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
                            1, MONITORS_MAX, 1,
                            G_PARAM_READABLE |
                            G_PARAM_STATIC_STRINGS));
-
-    g_object_class_install_property
-        (gobject_class, PROP_REPORT,
-         g_param_spec_string("stream-report",
-                             "Stream report",
-                             "Report of stream properties",
-                             "",
-                             G_PARAM_READABLE |
-                             G_PARAM_STATIC_STRINGS));
-
-    g_object_class_install_property
-        (gobject_class, PROP_VA_SESSIONS,
-         g_param_spec_pointer("va-sessions",
-                              "VA Sessions",
-                              "VA sessions associated with streams where hw accel is active",
-                              G_PARAM_READABLE |
-                              G_PARAM_STATIC_STRINGS));
 
     /**
      * SpiceDisplayChannel::display-primary-create:
@@ -1045,13 +1010,6 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
         stream_mjpeg_init(st);
         break;
     }
-
-    char *str = g_strdup_printf(
-                    "HW accel %s, decode: 0ms, dropped 0, in rate 0, out rate 0",
-                    st->hw_accel ? "on" : "off");
-    g_free(c->report);
-    c->report = str;
-    g_coroutine_object_notify(G_OBJECT(channel), "stream-report");
 }
 
 /* coroutine or main context */
@@ -1099,17 +1057,17 @@ static gboolean display_stream_schedule(display_stream *st)
     return FALSE;
 }
 
-static void stream_get_dest(display_stream *st)
+static SpiceRect *stream_get_dest(display_stream *st)
 {
     if (st->msg_data == NULL ||
         spice_msg_in_type(st->msg_data) != SPICE_MSG_DISPLAY_STREAM_DATA_SIZED) {
         SpiceMsgDisplayStreamCreate *info = spice_msg_in_parsed(st->msg_create);
 
-        memcpy(&st->dst_rect, &info->dest, sizeof(SpiceRect));
+        return &info->dest;
     } else {
         SpiceMsgDisplayStreamDataSized *op = spice_msg_in_parsed(st->msg_data);
 
-        memcpy(&st->dst_rect, &op->dest, sizeof(SpiceRect));
+        return &op->dest;
    }
 
 }
@@ -1169,83 +1127,51 @@ void stream_get_dimensions(display_stream *st, int *width, int *height)
 static gboolean display_stream_render(display_stream *st)
 {
     SpiceMsgIn *in;
-    guint64 time1, time2;
-    guint64 delta;
 
     st->timeout = 0;
     do {
         in = g_queue_pop_head(st->msgq);
+
         g_return_val_if_fail(in != NULL, FALSE);
 
-        if (st->fskip_frame == 0) {
-            time1 = g_get_monotonic_time();
+        st->msg_data = in;
+        switch (st->codec) {
+        case SPICE_VIDEO_CODEC_TYPE_MJPEG:
+            stream_mjpeg_data(st);
+            break;
+        }
 
-            SpiceRect last_frame_dest;
-            memcpy(&last_frame_dest, &st->dst_rect, sizeof(SpiceRect));
-            st->msg_data = in;
-            stream_get_dest(st);
-            rect_union(&last_frame_dest, &st->dst_rect);
+        if (st->out_frame) {
+            int width;
+            int height;
+            SpiceRect *dest;
+            uint8_t *data;
+            int stride;
 
-            switch (st->codec) {
-            case SPICE_VIDEO_CODEC_TYPE_MJPEG:
-                stream_mjpeg_data(st);
-                break;
+            stream_get_dimensions(st, &width, &height);
+            dest = stream_get_dest(st);
+
+            data = st->out_frame;
+            stride = width * sizeof(uint32_t);
+            if (!(stream_get_flags(st) & SPICE_STREAM_FLAGS_TOP_DOWN)) {
+                data += stride * (height - 1);
+                stride = -stride;
             }
 
-            SpiceRect *dest = &st->dst_rect;
-            if (st->out_frame) {
-                int width;
-                int height;
-                uint8_t *data;
-                int stride;
-
-                stream_get_dimensions(st, &width, &height);
-
-                data = st->out_frame;
-                stride = width * sizeof(uint32_t);
-                if (!(stream_get_flags(st) & SPICE_STREAM_FLAGS_TOP_DOWN)) {
-                    data += stride * (height - 1);
-                    stride = -stride;
-                }
-
-                st->surface->canvas->ops->put_image(
-                    st->surface->canvas,
+            st->surface->canvas->ops->put_image(
+                st->surface->canvas,
 #ifdef G_OS_WIN32
                 SPICE_DISPLAY_CHANNEL(st->channel)->priv->dc,
 #endif
-                    dest, data,
-                    width, height, stride,
-                    st->have_region ? &st->region : NULL);
-            }
+                dest, data,
+                width, height, stride,
+                st->have_region ? &st->region : NULL);
 
-            if (st->hw_accel)
-                dest = &last_frame_dest;
             if (st->surface->primary)
                 g_signal_emit(st->channel, signals[SPICE_DISPLAY_INVALIDATE], 0,
                     dest->left, dest->top,
                     dest->right - dest->left,
                     dest->bottom - dest->top);
-
-            time2 = g_get_monotonic_time();
-            delta = (time2 - time1) / 1000;
-            st->acum_decode_time += delta;
-            st->decoded_frames++;
-            uint8_t new_fskip_level = 0;
-            if (delta > 120) {
-                new_fskip_level = 3;
-            } else if (delta > 80) {
-                new_fskip_level = 2;
-            } else if (delta > 40) {
-                new_fskip_level = 1;
-            }
-            if (st->fskip_level != new_fskip_level) {
-                SPICE_DEBUG("FSkip level: %u - MJPEG process time: %u ms\n", new_fskip_level,
-                            (unsigned int) delta);
-                st->fskip_level = new_fskip_level;
-            }
-            st->fskip_frame = st->fskip_level;
-        } else {
-            --st->fskip_frame;
         }
 
         st->msg_data = NULL;
@@ -1308,24 +1234,6 @@ static void display_update_stream_report(SpiceDisplayChannel *channel, uint32_t 
         } else {
             report.audio_delay = UINT_MAX;
         }
-
-        unsigned int dec_time = st->decoded_frames ?
-                                st->acum_decode_time / st->decoded_frames :
-                                0;
-        st->decoded_frames = st->acum_decode_time = 0;
-        guint64 elapsed = now - st->report_start_time;
-        int in_fps = st->report_num_frames * 1000000 / elapsed;
-        int out_fps = (st->report_num_frames - st-> report_num_drops) * 1000000 / elapsed;
-        g_free(channel->priv->report);
-        char *str = g_strdup_printf(
-            "HW accel %s, decode: %-3ums, dropped %-2d, in rate %-2d, out rate %-2d",
-            st->hw_accel ? "on" : "off",
-            dec_time,
-            st->report_num_drops,
-            in_fps, out_fps);
-        channel->priv->report = str;
-        SPICE_DEBUG("Reporting stream %d, elapsed %u: %s", stream_id, (unsigned int)elapsed, str);
-        g_coroutine_object_notify(G_OBJECT(channel), "stream-report");
 
         msg = spice_msg_out_new(SPICE_CHANNEL(channel), SPICE_MSGC_DISPLAY_STREAM_REPORT);
         msg->marshallers->msgc_display_stream_report(msg->marshaller, &report);
@@ -1586,13 +1494,6 @@ static void destroy_stream(SpiceChannel *channel, int id)
         break;
     }
 
-    // If HW decode, force repaint of last frame's area
-    if (st->hw_accel && st->surface->primary)
-        g_signal_emit(st->channel, signals[SPICE_DISPLAY_INVALIDATE], 0,
-            st->dst_rect.left, st->dst_rect.top,
-            st->dst_rect.right - st->dst_rect.left,
-            st->dst_rect.bottom - st->dst_rect.top);
-
     if (st->msg_clip)
         spice_msg_in_unref(st->msg_clip);
     spice_msg_in_unref(st->msg_create);
@@ -1603,10 +1504,6 @@ static void destroy_stream(SpiceChannel *channel, int id)
         g_source_remove(st->timeout);
     g_free(st);
     c->streams[id] = NULL;
-
-    g_free(c->report);
-    c->report = g_strdup("");
-    g_coroutine_object_notify(G_OBJECT(channel), "stream-report");
 }
 
 static void clear_streams(SpiceChannel *channel)

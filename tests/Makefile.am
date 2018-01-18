@@ -5,7 +5,6 @@ noinst_PROGRAMS =				\
 	util					\
 	session					\
 	test_port_forward			\
-	$(NULL)
 
 if WITH_PHODAV
 noinst_PROGRAMS += pipe
@@ -30,9 +29,6 @@ util_SOURCES = util.c
 coroutine_SOURCES = coroutine.c
 session_SOURCES = session.c
 pipe_SOURCES = pipe.c
-test_port_forward_SOURCES =			\
-	test-port-forward.c			\
-	$(NULL)
 
 
 -include $(top_srcdir)/git.mk

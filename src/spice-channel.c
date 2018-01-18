@@ -2167,9 +2167,8 @@ static void spice_channel_iterate_write(SpiceChannel *channel)
         STATIC_MUTEX_LOCK(c->xmit_queue_lock);
         out = g_queue_pop_head(&c->xmit_queue);
         STATIC_MUTEX_UNLOCK(c->xmit_queue_lock);
-        if (out) {
+        if (out)
             spice_channel_write_msg(channel, out);
-        }
     } while (out);
 
     spice_channel_flushed(channel, TRUE);

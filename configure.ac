@@ -686,25 +686,6 @@ fi
 
 SPICE_CHECK_LZ4([LZ4])
 
-AC_ARG_ENABLE([va],
-  AS_HELP_STRING([--enable-va=@<:@yes/no@:>@],
-                 [Enable hardware-accelerated video decoding @<:@default=no@:>@]),
-  [],
-  [enable_va="no"])
-
-if test "x$have_x11" = "xyes"; then
-    if test "x$enable_va" = "xyes"; then
-        PKG_CHECK_MODULES(VA, libva)
-        PKG_CHECK_MODULES(VA_X11, libva-x11)
-        AC_DEFINE([USE_VA], [1], [Define to build with libva support])
-    fi
-fi
-AM_CONDITIONAL(WITH_VA, [test "x$enable_va" = "xyes"])
-AC_SUBST(VA_CFLAGS)
-AC_SUBST(VA_LIBS)
-AC_SUBST(VA_X11_CFLAGS)
-AC_SUBST(VA_X11_LIBS)
-
 AC_ARG_ENABLE([spicy],
   AS_HELP_STRING([--enable-spicy=@<:@yes/no@:>@],
                  [Enable building spicy binary @<:@default=no@:>@]),
@@ -791,7 +772,6 @@ AC_MSG_NOTICE([
         DBus:                     ${have_dbus}
         WebDAV support:           ${have_phodav}
         LZ4 support:              ${enable_lz4}
-        libva support:            ${enable_va}
 
         Now type 'make' to build $PACKAGE
 

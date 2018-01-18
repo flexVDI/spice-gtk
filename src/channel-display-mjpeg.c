@@ -52,26 +52,6 @@ static void mjpeg_src_term(struct jpeg_decompress_struct *cinfo)
 G_GNUC_INTERNAL
 void stream_mjpeg_init(display_stream *st)
 {
-#ifdef USE_VA
-    // Try hardware acceleration first, fallback to soft decode if it fails
-    tinyjpeg_session *session;
-    SpiceRect *dest;
-
-    session = tinyjpeg_open_display();
-    if (session) {
-        st->hw_accel = 1;
-        dest = &st->dst_rect;
-        session->dst_rect.x = dest->left;
-        session->dst_rect.y = dest->top;
-        session->dst_rect.width = dest->right - dest->left;
-        session->dst_rect.height = dest->bottom - dest->top;
-        st->vaapi_session = session;
-        SPICE_DEBUG("New accelerated MJPEG stream of size %dx%d, pos %d,%d",
-                    session->dst_rect.width, session->dst_rect.height,
-                    session->dst_rect.x, session->dst_rect.y);
-        return;
-    }
-#endif
     st->mjpeg_cinfo.err = jpeg_std_error(&st->mjpeg_jerr);
     jpeg_create_decompress(&st->mjpeg_cinfo);
 
@@ -83,41 +63,6 @@ void stream_mjpeg_init(display_stream *st)
     st->mjpeg_cinfo.src               = &st->mjpeg_src;
 }
 
-#ifdef USE_VA
-static int stream_mjpeg_data_va(display_stream *st)
-{
-    tinyjpeg_session *session = st->vaapi_session;
-    uint8_t *data;
-    size_t length;
-    int width;
-    int height;
-
-    stream_get_dimensions(st, &width, &height);
-    session->src_rect.width = width;
-    session->src_rect.height = height;
-    SpiceRect *dest = &st->dst_rect;
-    session->dst_rect.x = dest->left;
-    session->dst_rect.y = dest->top;
-    session->dst_rect.width = dest->right - dest->left;
-    session->dst_rect.height = dest->bottom - dest->top;
-
-    length = stream_get_current_frame(st, &data);
-    if (tinyjpeg_parse_header(session, data, length) < 0) {
-        g_warning("MJPEG VAAPI failed parsing frame header");
-        st->hw_accel = 0;
-        return 0;
-    }
-    if (tinyjpeg_decode(session) < 0) {
-        g_warning("MJPEG VAAPI failed decoding JPEG frame");
-        st->hw_accel = 0;
-        return 0;
-    }
-    g_free(st->out_frame);
-    st->out_frame = NULL;
-    return 1;
-}
-#endif
-
 G_GNUC_INTERNAL
 void stream_mjpeg_data(display_stream *st)
 {
@@ -126,10 +71,6 @@ void stream_mjpeg_data(display_stream *st)
     int height;
     uint8_t *dest;
     uint8_t *lines[4];
-
-#ifdef USE_VA
-    if (st->hw_accel && stream_mjpeg_data_va(st)) return;
-#endif
 
     stream_get_dimensions(st, &width, &height);
     dest = g_malloc0(width * height * 4);
@@ -209,12 +150,6 @@ void stream_mjpeg_data(display_stream *st)
 G_GNUC_INTERNAL
 void stream_mjpeg_cleanup(display_stream *st)
 {
-#ifdef USE_VA
-    if (st->hw_accel) {
-        tinyjpeg_close_display(st->vaapi_session);
-        return;
-    }
-#endif
     jpeg_destroy_decompress(&st->mjpeg_cinfo);
     g_free(st->out_frame);
     st->out_frame = NULL;
