@@ -70,9 +70,6 @@ struct _SpiceDisplayChannelPrivate {
     GArray                      *monitors;
     guint                       monitors_max;
     gboolean                    enable_adaptive_streaming;
-#ifdef G_OS_WIN32
-    HDC dc;
-#endif
     SpiceGlScanout scanout;
 };
 
@@ -821,17 +818,6 @@ static SpiceImageSurfacesOps image_surfaces_ops = {
     .get = surfaces_get
 };
 
-#if defined(G_OS_WIN32)
-static HDC create_compatible_dc(void)
-{
-    HDC dc = CreateCompatibleDC(NULL);
-    if (!dc) {
-        g_warning("create compatible DC failed");
-    }
-    return dc;
-}
-#endif
-
 static void spice_display_channel_reset_capabilities(SpiceChannel *channel)
 {
     guint i;
@@ -880,9 +866,6 @@ static void spice_display_channel_init(SpiceDisplayChannel *channel)
     c->image_cache.ops = &image_cache_ops;
     c->palette_cache.ops = &palette_cache_ops;
     c->image_surfaces.ops = &image_surfaces_ops;
-#if defined(G_OS_WIN32)
-    c->dc = create_compatible_dc();
-#endif
     c->monitors_max = 1;
     c->scanout.fd = -1;
 
