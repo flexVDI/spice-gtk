@@ -57,15 +57,15 @@ GType spice_usb_acl_helper_get_type(void);
 
 SpiceUsbAclHelper *spice_usb_acl_helper_new(void);
 
-void spice_usb_acl_helper_open_acl(SpiceUsbAclHelper *self,
-                                   gint busnum, gint devnum,
-                                   GCancellable *cancellable,
-                                   GAsyncReadyCallback callback,
-                                   gpointer user_data);
+void spice_usb_acl_helper_open_acl_async(SpiceUsbAclHelper *self,
+                                         gint busnum, gint devnum,
+                                         GCancellable *cancellable,
+                                         GAsyncReadyCallback callback,
+                                         gpointer user_data);
 gboolean spice_usb_acl_helper_open_acl_finish(
     SpiceUsbAclHelper *self, GAsyncResult *res, GError **err);
 
-void spice_usb_acl_helper_close_acl(SpiceUsbAclHelper *self);
+void spice_usb_acl_helper_cancel(SpiceUsbAclHelper *self);
 
 G_END_DECLS
 

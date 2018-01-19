@@ -18,10 +18,14 @@
 #ifndef __SPICE_SMARTCARD_MANAGER_H__
 #define __SPICE_SMARTCARD_MANAGER_H__
 
-G_BEGIN_DECLS
+#if !defined(__SPICE_CLIENT_H_INSIDE__) && !defined(SPICE_COMPILATION)
+#warning "Only <spice-client.h> can be included directly"
+#endif
 
 #include "spice-types.h"
 #include "spice-util.h"
+
+G_BEGIN_DECLS
 
 #define SPICE_TYPE_SMARTCARD_MANAGER            (spice_smartcard_manager_get_type ())
 #define SPICE_SMARTCARD_MANAGER(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), SPICE_TYPE_SMARTCARD_MANAGER, SpiceSmartcardManager))
@@ -35,8 +39,19 @@ G_BEGIN_DECLS
 typedef struct _SpiceSmartcardManager SpiceSmartcardManager;
 typedef struct _SpiceSmartcardManagerClass SpiceSmartcardManagerClass;
 typedef struct _SpiceSmartcardManagerPrivate SpiceSmartcardManagerPrivate;
+
+/**
+ * SpiceSmartcardReader:
+ *
+ * The #SpiceSmartcardReader struct is opaque and cannot be accessed directly.
+ */
 typedef struct _SpiceSmartcardReader SpiceSmartcardReader;
 
+/**
+ * SpiceSmartcardManager:
+ *
+ * The #SpiceSmartcardManager struct is opaque and should not be accessed directly.
+ */
 struct _SpiceSmartcardManager
 {
     GObject parent;
@@ -46,6 +61,16 @@ struct _SpiceSmartcardManager
     /* Do not add fields to this struct */
 };
 
+/**
+ * SpiceSmartcardManagerClass:
+ * @parent_class: Parent class.
+ * @reader_added: Signal class handler for the #SpiceSmartcardManager::reader_added signal.
+ * @reader_removed: Signal class handler for the #SpiceSmartcardManager::reader_removed signal.
+ * @card_inserted: Signal class handler for the #SpiceSmartcardManager::card_inserted signal.
+ * @card_removed: Signal class handler for the #SpiceSmartcardManager::card_removed signal.
+ *
+ * Class structure for #SpiceSmartcardManager.
+ */
 struct _SpiceSmartcardManagerClass
 {
     GObjectClass parent_class;

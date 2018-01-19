@@ -18,6 +18,10 @@
 #ifndef SPICE_OPTION_H
 #define SPICE_OPTION_H
 
+#if !defined(__SPICE_CLIENT_H_INSIDE__) && !defined(SPICE_COMPILATION)
+#warning "Only <spice-client.h> can be included directly"
+#endif
+
 #include <glib.h>
 #include "spice-session.h"
 

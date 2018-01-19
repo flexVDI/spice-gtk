@@ -5,8 +5,8 @@ include Makefile
 
 flexvdi_SOURCES = spice-cmdline.c spicy-connect.c spicy.c
 flexvdi_OBJECTS = $(patsubst %.c, flexvdi/%.o, $(flexvdi_SOURCES))
-flexvdi_HEADERS = $(top_srcdir)/src/spice-cmdline.h $(top_srcdir)/src/spicy-connect.h
-flexvdi_LIBRARIES = "flexvdi-spice-client >= 2.2.5" spice-client-glib-2.0 spice-client-gtk-$(SPICE_GTK_API_VERSION)
+flexvdi_HEADERS = $(top_srcdir)/tools/spice-cmdline.h $(top_srcdir)/tools/spicy-connect.h
+flexvdi_LIBRARIES = "flexvdi-spice-client >= 2.2.5" spice-client-glib-2.0 spice-client-gtk-3.0 gstreamer-1.0
 
 CFLAGS += -g -Wall -Wno-deprecated-declarations -Wno-unused-variable -Wno-unused-function
 CFLAGS += -DWITH_FLEXVDI $(spicy_CPPFLAGS)
@@ -15,7 +15,7 @@ CFLAGS += -I$(top_builddir) -I$(top_srcdir)/src -I$(top_srcdir)/spice-common
 CFLAGS += $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --cflags $(flexvdi_LIBRARIES))
 LDFLAGS += $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --libs $(flexvdi_LIBRARIES))
 
-flexvdi/%.o: $(top_srcdir)/src/%.c $(flexvdi_HEADERS)
+flexvdi/%.o: $(top_srcdir)/tools/%.c $(flexvdi_HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 spicy-flexvdi: flexvdi/spicy$(EXEEXT)

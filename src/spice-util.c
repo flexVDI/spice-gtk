@@ -33,7 +33,7 @@
  * @title: Utilities
  * @section_id:
  * @stability: Stable
- * @include: spice-util.h
+ * @include: spice-client.h
  *
  * Various functions for debugging and informational purposes.
  */
@@ -42,18 +42,16 @@ static GOnce debug_once = G_ONCE_INIT;
 
 static void spice_util_enable_debug_messages(void)
 {
-#if GLIB_CHECK_VERSION(2, 31, 0)
     const gchar *doms = g_getenv("G_MESSAGES_DEBUG");
     if (!doms) {
         g_setenv("G_MESSAGES_DEBUG", G_LOG_DOMAIN, 1);
     } else if (g_str_equal(doms, "all")) {
-	return;
+        return;
     } else if (!strstr(doms, G_LOG_DOMAIN)) {
         gchar *newdoms = g_strdup_printf("%s %s", doms, G_LOG_DOMAIN);
         g_setenv("G_MESSAGES_DEBUG", newdoms, 1);
         g_free(newdoms);
     }
-#endif
 }
 
 /**
@@ -98,6 +96,8 @@ gboolean spice_util_get_debug(void)
 
 /**
  * spice_util_get_version_string:
+ *
+ * Gets the version string
  *
  * Returns: Spice-GTK version as a const string.
  **/
@@ -151,7 +151,7 @@ static WeakHandlerCtx *
 whc_new (GObject *instance,
          GObject *observer)
 {
-    WeakHandlerCtx *ctx = g_slice_new0 (WeakHandlerCtx);
+    WeakHandlerCtx *ctx = g_new0 (WeakHandlerCtx, 1);
 
     ctx->instance = instance;
     ctx->observer = observer;
@@ -162,7 +162,7 @@ whc_new (GObject *instance,
 static void
 whc_free (WeakHandlerCtx *ctx)
 {
-    g_slice_free (WeakHandlerCtx, ctx);
+    g_free (ctx);
 }
 
 static void observer_destroyed_cb (gpointer, GObject *);
@@ -266,22 +266,15 @@ const gchar* spice_yes_no(gboolean value)
 G_GNUC_INTERNAL
 guint16 spice_make_scancode(guint scancode, gboolean release)
 {
-    SPICE_DEBUG("%s: %s scancode %d",
+    SPICE_DEBUG("%s: %s scancode %u",
                 __FUNCTION__, release ? "release" : "", scancode);
 
-    if (release) {
-        if (scancode < 0x100)
-            return scancode | 0x80;
-        else
-            return 0x80e0 | ((scancode - 0x100) << 8);
-    } else {
-        if (scancode < 0x100)
-            return scancode;
-        else
-            return 0xe0 | ((scancode - 0x100) << 8);
-    }
-
-    g_return_val_if_reached(0);
+    scancode &= 0x37f;
+    if (release)
+        scancode |= 0x80;
+    if (scancode < 0x100)
+        return scancode;
+    return GUINT16_SWAP_LE_BE(0xe000 | (scancode - 0x100));
 }
 
 typedef enum {
@@ -290,8 +283,7 @@ typedef enum {
 } NewlineType;
 
 static gssize get_line(const gchar *str, gsize len,
-                       NewlineType type, gsize *nl_len,
-                       GError **error)
+                       NewlineType type, gsize *nl_len)
 {
     const gchar *p, *endl;
     gsize nl = 0;
@@ -310,19 +302,15 @@ static gssize get_line(const gchar *str, gsize len,
 
 static gchar* spice_convert_newlines(const gchar *str, gssize len,
                                      NewlineType from,
-                                     NewlineType to,
-                                     GError **error)
+                                     NewlineType to)
 {
-    GError *err = NULL;
     gssize length;
     gsize nl;
     GString *output;
-    gboolean free_segment = FALSE;
     gint i;
 
     g_return_val_if_fail(str != NULL, NULL);
     g_return_val_if_fail(len >= -1, NULL);
-    g_return_val_if_fail(error == NULL || *error == NULL, NULL);
     /* only 2 supported combinations */
     g_return_val_if_fail((from == NEWLINE_TYPE_LF &&
                           to == NEWLINE_TYPE_CR_LF) ||
@@ -343,7 +331,7 @@ static gchar* spice_convert_newlines(const gchar *str, gssize len,
     output = g_string_sized_new(len * 2 + 1);
 
     for (i = 0; i < len; i += length + nl) {
-        length = get_line(str + i, len - i, from, &nl, &err);
+        length = get_line(str + i, len - i, from, &nl);
         if (length < 0)
             break;
 
@@ -352,37 +340,30 @@ static gchar* spice_convert_newlines(const gchar *str, gssize len,
         if (nl) {
             /* let's not double \r if it's already in the line */
             if (to == NEWLINE_TYPE_CR_LF &&
-                output->str[output->len - 1] != '\r')
+                (output->len == 0 || output->str[output->len - 1] != '\r'))
                 g_string_append_c(output, '\r');
 
             g_string_append_c(output, '\n');
         }
     }
 
-    if (err) {
-        g_propagate_error(error, err);
-        free_segment = TRUE;
-    }
-
-    return g_string_free(output, free_segment);
+    return g_string_free(output, FALSE);
 }
 
 //G_GNUC_INTERNAL
-gchar* spice_dos2unix(const gchar *str, gssize len, GError **error)
+gchar* spice_dos2unix(const gchar *str, gssize len)
 {
     return spice_convert_newlines(str, len,
                                   NEWLINE_TYPE_CR_LF,
-                                  NEWLINE_TYPE_LF,
-                                  error);
+                                  NEWLINE_TYPE_LF);
 }
 
 //G_GNUC_INTERNAL
-gchar* spice_unix2dos(const gchar *str, gssize len, GError **error)
+gchar* spice_unix2dos(const gchar *str, gssize len)
 {
     return spice_convert_newlines(str, len,
                                   NEWLINE_TYPE_LF,
-                                  NEWLINE_TYPE_CR_LF,
-                                  error);
+                                  NEWLINE_TYPE_CR_LF);
 }
 
 static bool buf_is_ones(unsigned size, const guint8 *data)

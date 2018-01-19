@@ -18,6 +18,10 @@
 #ifndef __SPICE_CLIENT_AUDIO_H__
 #define __SPICE_CLIENT_AUDIO_H__
 
+#if !defined(__SPICE_CLIENT_H_INSIDE__) && !defined(SPICE_COMPILATION)
+#warning "Only <spice-client.h> can be included directly"
+#endif
+
 #include <glib-object.h>
 #include <gio/gio.h>
 #include "spice-util.h"
@@ -100,7 +104,7 @@ GType spice_audio_get_type(void);
 SpiceAudio* spice_audio_get(SpiceSession *session, GMainContext *context);
 
 #ifndef SPICE_DISABLE_DEPRECATED
-SPICE_DEPRECATED_FOR(spice_audio_get)
+G_DEPRECATED_FOR(spice_audio_get)
 SpiceAudio* spice_audio_new(SpiceSession *session, GMainContext *context, const char *name);
 #endif
 

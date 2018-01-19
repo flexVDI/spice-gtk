@@ -1,8 +1,9 @@
+src/channel-main.c
 src/channel-usbredir.c
 src/desktop-integration.c
 src/spice-channel.c
-src/spice-cmdline.c
 src/spice-option.c
 src/usb-device-manager.c
 src/usb-device-widget.c
 src/usbutil.c
+tools/spice-cmdline.c

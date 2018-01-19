@@ -25,6 +25,7 @@
 #include "spice-marshal.h"
 
 #include "common/snd_codec.h"
+#include "channel-playback-priv.h"
 
 /**
  * SECTION:channel-playback
@@ -33,7 +34,7 @@
  * @section_id:
  * @see_also: #SpiceChannel, and #SpiceAudio
  * @stability: Stable
- * @include: channel-playback.h
+ * @include: spice-client.h
  *
  * #SpicePlaybackChannel class handles an audio playback stream. The
  * audio data is received via #SpicePlaybackChannel::playback-data
@@ -114,8 +115,7 @@ static void spice_playback_channel_finalize(GObject *obj)
 
     snd_codec_destroy(&c->codec);
 
-    g_free(c->volume);
-    c->volume = NULL;
+    g_clear_pointer(&c->volume, g_free);
 
     if (G_OBJECT_CLASS(spice_playback_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_playback_channel_parent_class)->finalize(obj);
@@ -309,11 +309,11 @@ static void playback_handle_data(SpiceChannel *channel, SpiceMsgIn *in)
     SpiceMsgPlaybackPacket *packet = spice_msg_in_parsed(in);
 
 #ifdef DEBUG
-    CHANNEL_DEBUG(channel, "%s: time %d data %p size %d", __FUNCTION__,
+    CHANNEL_DEBUG(channel, "%s: time %u data %p size %d", __FUNCTION__,
                   packet->time, packet->data, packet->data_size);
 #endif
 
-    if (c->last_time > packet->time)
+    if (spice_mmtime_diff(c->last_time, packet->time) > 0)
         g_warn_if_reached();
 
     c->last_time = packet->time;
@@ -346,7 +346,7 @@ static void playback_handle_mode(SpiceChannel *channel, SpiceMsgIn *in)
     SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackMode *mode = spice_msg_in_parsed(in);
 
-    CHANNEL_DEBUG(channel, "%s: time %d mode %d data %p size %d", __FUNCTION__,
+    CHANNEL_DEBUG(channel, "%s: time %u mode %u data %p size %u", __FUNCTION__,
                   mode->time, mode->mode, mode->data, mode->data_size);
 
     c->mode = mode->mode;
@@ -367,8 +367,9 @@ static void playback_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
     SpicePlaybackChannelPrivate *c = SPICE_PLAYBACK_CHANNEL(channel)->priv;
     SpiceMsgPlaybackStart *start = spice_msg_in_parsed(in);
 
-    CHANNEL_DEBUG(channel, "%s: fmt %d channels %d freq %d time %d", __FUNCTION__,
-                  start->format, start->channels, start->frequency, start->time);
+    CHANNEL_DEBUG(channel, "%s: fmt %u channels %u freq %u time %u mode %s", __FUNCTION__,
+                  start->format, start->channels, start->frequency, start->time,
+                  spice_audio_data_mode_to_string(c->mode));
 
     c->frame_count = 0;
     c->last_time = start->time;
@@ -449,6 +450,13 @@ static void channel_set_handlers(SpiceChannelClass *klass)
     spice_channel_set_handlers(klass, handlers, G_N_ELEMENTS(handlers));
 }
 
+/**
+ * spice_playback_channel_set_delay:
+ * @channel: a #SpicePlaybackChannel
+ * @delay_ms: the delay in ms
+ *
+ * Adjust the multimedia time according to the delay.
+ **/
 void spice_playback_channel_set_delay(SpicePlaybackChannel *channel, guint32 delay_ms)
 {
     SpicePlaybackChannelPrivate *c;

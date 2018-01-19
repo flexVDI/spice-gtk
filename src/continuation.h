@@ -21,6 +21,7 @@
 #ifndef _CONTINUATION_H_
 #define _CONTINUATION_H_
 
+#include "spice-common.h"
 #include <stddef.h>
 #include <ucontext.h>
 #include <setjmp.h>
@@ -48,8 +49,9 @@ int cc_release(struct continuation *cc);
 int cc_swap(struct continuation *from, struct continuation *to);
 
 #define offset_of(type, member) ((unsigned long)(&((type *)0)->member))
-#define container_of(obj, type, member) \
-        (type *)(((char *)obj) - offset_of(type, member))
+#define container_of(obj, type, member)                                 \
+        SPICE_ALIGNED_CAST(type *,                                      \
+                           (((char *)obj) - offset_of(type, member)))
 
 #endif
 /*

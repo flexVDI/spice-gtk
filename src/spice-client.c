@@ -21,6 +21,13 @@
 
 #include "spice-client.h"
 
+/**
+ * spice_client_error_quark:
+ *
+ * Gets a #GQuark representing the string "spice-client-error-quark"
+ *
+ * Returns: the #GQuark representing the string.
+ **/
 GQuark spice_client_error_quark(void)
 {
     return g_quark_from_static_string("spice-client-error-quark");

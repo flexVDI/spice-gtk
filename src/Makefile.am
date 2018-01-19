@@ -5,7 +5,6 @@ if WITH_CONTROLLER
 SUBDIRS += controller
 endif
 
-# Avoid need for perl(Text::CSV) by end users
 KEYMAPS =					\
 	vncdisplaykeymap_xorgevdev2xtkbd.c	\
 	vncdisplaykeymap_xorgkbd2xtkbd.c	\
@@ -26,32 +25,23 @@ GLIBGENS =					\
 	spice-widget-enums.h			\
 	$(NULL)
 
-CLEANFILES = $(GLIBGENS)
+CLEANFILES = $(GLIBGENS) $(KEYMAPS)
 BUILT_SOURCES = $(GLIBGENS) $(KEYMAPS)
 
 EXTRA_DIST =					\
-	$(KEYMAPS)				\
 	decode-glz-tmpl.c			\
-	keymap-gen.pl				\
-	keymaps.csv				\
+	$(KEYMAPS)				\
+	$(KEYMAP_CSV)				\
+	$(KEYMAP_GEN)				\
 	map-file				\
 	spice-glib-sym-file			\
 	spice-gtk-sym-file			\
-	spice-client-gtk-manual.defs		\
-	spice-client-gtk.override		\
 	spice-marshal.txt			\
 	spice-version.h.in			\
 	$(NULL)
 
 DISTCLEANFILES = spice-version.h
 
-bin_PROGRAMS =
-if WITH_PROGRAMS
-bin_PROGRAMS += spicy-stats spicy-screenshot
-if WITH_GTK
-bin_PROGRAMS += spicy
-endif
-endif
 if WITH_POLKIT
 acldir = $(ACL_HELPER_DIR)
 acl_PROGRAMS = spice-client-glib-usb-acl-helper
@@ -60,11 +50,7 @@ endif
 lib_LTLIBRARIES = libspice-client-glib-2.0.la
 
 if WITH_GTK
-if HAVE_GTK_2
-lib_LTLIBRARIES += libspice-client-gtk-2.0.la
-else
 lib_LTLIBRARIES += libspice-client-gtk-3.0.la
-endif
 endif
 
 if HAVE_LD_VERSION_SCRIPT
@@ -79,15 +65,15 @@ GTK_SYMBOLS_LDFLAGS = -export-symbols ${srcdir}/spice-gtk-sym-file
 GTK_SYMBOLS_FILE = spice-gtk-sym-file
 endif
 
-KEYMAP_GEN = $(srcdir)/keymap-gen.pl
+KEYMAP_GEN = keycodemapdb/tools/keymap-gen
+KEYMAP_CSV = keycodemapdb/data/keymaps.csv
 
 SPICE_COMMON_CPPFLAGS =						\
+	-DSPICE_COMPILATION					\
 	-DG_LOG_DOMAIN=\"GSpice\"				\
-	-DSPICE_NO_DEPRECATED					\
 	-DSPICE_GTK_LOCALEDIR=\"${SPICE_GTK_LOCALEDIR}\"	\
 	-DPNP_IDS=\""$(PNP_IDS)"\"				\
 	-DUSB_IDS=\""$(USB_IDS)"\"				\
-	-DSPICE_DISABLE_ABORT					\
 	-I$(top_srcdir)						\
 	$(COMMON_CFLAGS)					\
 	$(PIXMAN_CFLAGS)					\
@@ -99,24 +85,27 @@ SPICE_COMMON_CPPFLAGS =						\
 	$(GOBJECT2_CFLAGS)					\
 	$(SSL_CFLAGS)						\
 	$(SASL_CFLAGS)						\
-	$(GST_CFLAGS)						\
+	$(GSTAUDIO_CFLAGS)					\
+	$(GSTVIDEO_CFLAGS)					\
 	$(SMARTCARD_CFLAGS)					\
 	$(USBREDIR_CFLAGS)					\
 	$(GUDEV_CFLAGS)						\
 	$(SOUP_CFLAGS)						\
 	$(PHODAV_CFLAGS)					\
 	$(NOPOLL_CFLAGS)					\
+	$(X11_CFLAGS)					\
 	$(LZ4_CFLAGS)					\
 	$(NULL)
 
 AM_CPPFLAGS =					\
+	-DLOCALE_DIR=\""$(datadir)/locale"\"	\
 	$(SPICE_COMMON_CPPFLAGS)		\
 	$(SPICE_CFLAGS)				\
 	$(NULL)
 
 # http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 SPICE_GTK_LDFLAGS_COMMON =		\
-	-version-info 4:0:0		\
+	-version-info 5:0:0		\
 	-no-undefined			\
 	$(GTK_SYMBOLS_LDFLAGS)		\
 	$(NULL)
@@ -125,23 +114,23 @@ SPICE_GTK_LIBADD_COMMON =		\
 	libspice-client-glib-2.0.la	\
 	$(GTK_LIBS)			\
 	$(CAIRO_LIBS)			\
-	$(XRANDR_LIBS)			\
+	$(X11_LIBS)			\
 	$(LIBM)				\
 	$(NULL)
 
 SPICE_GTK_SOURCES_COMMON =		\
-	glib-compat.h			\
-	gtk-compat.h			\
 	spice-util.c			\
 	spice-util-priv.h		\
 	spice-gtk-session.c		\
 	spice-gtk-session-priv.h	\
 	spice-widget.c			\
 	spice-widget-priv.h		\
+	spice-file-transfer-task.h \
 	vncdisplaykeymap.c		\
 	vncdisplaykeymap.h		\
 	spice-grabsequence.c		\
 	spice-grabsequence.h		\
+	spice-grabsequence-priv.h	\
 	desktop-integration.c		\
 	desktop-integration.h		\
 	usb-device-widget.c		\
@@ -152,33 +141,26 @@ nodist_SPICE_GTK_SOURCES_COMMON =	\
 	spice-marshal.c			\
 	$(NULL)
 
-if WITH_X11
-SPICE_GTK_SOURCES_COMMON +=		\
-	spice-widget-x11.c		\
-	$(NULL)
-else
 SPICE_GTK_SOURCES_COMMON +=		\
 	spice-widget-cairo.c		\
+	$(NULL)
+
+if HAVE_EGL
+SPICE_GTK_SOURCES_COMMON +=		\
+	spice-widget-egl.c		\
 	$(NULL)
 endif
 
 if WITH_GTK
-if HAVE_GTK_2
-libspice_client_gtk_2_0_la_DEPEDENCIES = $(GTK_SYMBOLS_FILE)
-libspice_client_gtk_2_0_la_LDFLAGS = $(SPICE_GTK_LDFLAGS_COMMON)
-libspice_client_gtk_2_0_la_LIBADD = $(SPICE_GTK_LIBADD_COMMON)
-libspice_client_gtk_2_0_la_SOURCES = $(SPICE_GTK_SOURCES_COMMON)
-nodist_libspice_client_gtk_2_0_la_SOURCES = $(nodist_SPICE_GTK_SOURCES_COMMON)
-else
-libspice_client_gtk_3_0_la_DEPEDENCIES = $(GTK_SYMBOLS_FILE)
+EXTRA_libspice_client_gtk_3_0_la_DEPENDENCIES = $(GTK_SYMBOLS_FILE)
 libspice_client_gtk_3_0_la_LDFLAGS = $(SPICE_GTK_LDFLAGS_COMMON)
 libspice_client_gtk_3_0_la_LIBADD = $(SPICE_GTK_LIBADD_COMMON)
 libspice_client_gtk_3_0_la_SOURCES = $(SPICE_GTK_SOURCES_COMMON)
 nodist_libspice_client_gtk_3_0_la_SOURCES = $(nodist_SPICE_GTK_SOURCES_COMMON)
-endif
 
-libspice_client_gtkincludedir = $(includedir)/spice-client-gtk-$(SPICE_GTK_API_VERSION)
+libspice_client_gtkincludedir = $(includedir)/spice-client-gtk-3.0
 libspice_client_gtkinclude_HEADERS =	\
+	spice-client-gtk.h		\
 	spice-gtk-session.h		\
 	spice-widget.h			\
 	spice-grabsequence.h		\
@@ -190,10 +172,10 @@ nodist_libspice_client_gtkinclude_HEADERS =	\
 	$(NULL)
 endif
 
-libspice_client_glib_2_0_la_DEPENDENCIES = $(GLIB_SYMBOLS_FILE)
+EXTRA_libspice_client_glib_2_0_la_DEPENDENCIES = $(GLIB_SYMBOLS_FILE)
 
 libspice_client_glib_2_0_la_LDFLAGS =	\
-	-version-info 13:0:5		\
+	-version-info 14:0:6		\
 	-no-undefined			\
 	$(GLIB_SYMBOLS_LDFLAGS)		\
 	$(NULL)
@@ -212,7 +194,8 @@ libspice_client_glib_2_0_la_LIBADD =					\
 	$(PIXMAN_LIBS)							\
 	$(SSL_LIBS)							\
 	$(PULSE_LIBS)							\
-	$(GST_LIBS)							\
+	$(GSTAUDIO_LIBS)						\
+	$(GSTVIDEO_LIBS)						\
 	$(SASL_LIBS)							\
 	$(SMARTCARD_LIBS)						\
 	$(USBREDIR_LIBS)						\
@@ -233,8 +216,6 @@ endif
 libspice_client_glib_2_0_la_SOURCES =			\
 	bio-gio.c					\
 	bio-gio.h					\
-	glib-compat.c					\
-	glib-compat.h					\
 	spice-audio.c					\
 	spice-audio-priv.h				\
 	spice-common.h					\
@@ -249,6 +230,8 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	spice-channel.c					\
 	spice-channel-cache.h				\
 	spice-channel-priv.h				\
+	spice-file-transfer-task.c			\
+	spice-file-transfer-task-priv.h			\
 	coroutine.h					\
 	gio-coroutine.c					\
 	gio-coroutine.h					\
@@ -258,7 +241,6 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	channel-cursor.c				\
 	channel-display.c				\
 	channel-display-priv.h				\
-	channel-display-mjpeg.c				\
 	channel-inputs.c				\
 	channel-main.c					\
 	channel-playback.c				\
@@ -290,6 +272,8 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	client_sw_canvas.c	\
 	client_sw_canvas.h	\
 	port-forward.c	\
+							\
+	spice-glib-main.c				\
 	$(NULL)
 
 nodist_libspice_client_glib_2_0_la_SOURCES =	\
@@ -321,6 +305,7 @@ libspice_client_glibinclude_HEADERS =	\
 	channel-webdav.h		\
 	usb-device-manager.h		\
 	smartcard-manager.h		\
+	spice-file-transfer-task.h	\
 	$(NULL)
 
 nodist_libspice_client_glibinclude_HEADERS =	\
@@ -332,17 +317,29 @@ dist_libspice_client_glibinclude_DATA =	\
 	spice-channel-enums.h		\
 	$(NULL)
 
-if WITH_PULSE
+if HAVE_PULSE
 libspice_client_glib_2_0_la_SOURCES +=	\
 	spice-pulse.c			\
 	spice-pulse.h			\
 	$(NULL)
 endif
 
-if WITH_GSTAUDIO
+if HAVE_GSTAUDIO
 libspice_client_glib_2_0_la_SOURCES +=	\
 	spice-gstaudio.c		\
 	spice-gstaudio.h		\
+	$(NULL)
+endif
+
+if HAVE_BUILTIN_MJPEG
+libspice_client_glib_2_0_la_SOURCES +=	\
+	channel-display-mjpeg.c		\
+	$(NULL)
+endif
+
+if HAVE_GSTVIDEO
+libspice_client_glib_2_0_la_SOURCES +=	\
+	channel-display-gst.c		\
 	$(NULL)
 endif
 
@@ -370,9 +367,6 @@ endif
 WIN_USB_FILES= \
 	win-usb-dev.h			\
 	win-usb-dev.c			\
-	win-usb-clerk.h			\
-	win-usb-driver-install.h	\
-	win-usb-driver-install.c	\
 	usbdk_api.h			\
 	usbdk_api.c			\
 	$(NULL)
@@ -385,35 +379,8 @@ endif
 libspice_client_glib_2_0_la_LIBADD += -lws2_32 -lgdi32
 endif
 
-spicy_SOURCES =					\
-	spicy.c					\
-	spicy-connect.h 			\
-	spicy-connect.c 			\
-	spice-cmdline.h				\
-	spice-cmdline.c				\
-	$(NULL)
-
-spicy_LDADD =						\
-	libspice-client-gtk-$(SPICE_GTK_API_VERSION).la	\
-	libspice-client-glib-2.0.la			\
-	$(XRANDR_LIBS)					\
-	$(GTHREAD_LIBS)					\
-	$(GTK_LIBS)					\
-	$(LIBM)						\
-	$(NULL)
-
-spicy_CPPFLAGS =			\
-	$(AM_CPPFLAGS)			\
-	$(XRANDR_CFLAGS)		\
-	$(GTHREAD_CFLAGS)		\
-	-DSPICE_DISABLE_DEPRECATED	\
-	$(NULL)
-
-
 if WITH_POLKIT
 spice_client_glib_usb_acl_helper_SOURCES =	\
-	glib-compat.c				\
-	glib-compat.h				\
 	spice-client-glib-usb-acl-helper.c	\
 	$(NULL)
 
@@ -440,38 +407,10 @@ install-data-hook:
 endif
 
 
-spicy_screenshot_SOURCES =			\
-	spicy-screenshot.c			\
-	spice-cmdline.h				\
-	spice-cmdline.c				\
-	$(NULL)
-
-spicy_screenshot_LDADD =			\
-	libspice-client-glib-2.0.la		\
-	$(GOBJECT2_LIBS)			\
-	$(NULL)
-
-spicy_stats_SOURCES =			\
-	spicy-stats.c			\
-	spice-cmdline.h			\
-	spice-cmdline.c			\
-	$(NULL)
-
-spicy_stats_LDADD =				\
-	libspice-client-glib-2.0.la		\
-	$(GOBJECT2_LIBS)			\
-	$(NULL)
-
-
-
 $(libspice_client_glib_2_0_la_SOURCES): spice-glib-enums.h spice-marshal.h
 
 if WITH_GTK
-if HAVE_GTK_2
-$(libspice_client_gtk_2_0_la_SOURCES): spice-glib-enums.h spice-widget-enums.h
-else
 $(libspice_client_gtk_3_0_la_SOURCES): spice-glib-enums.h spice-widget-enums.h
-endif
 endif
 
 spice-marshal.c: spice-marshal.h
@@ -546,66 +485,28 @@ spice-widget-enums.h: spice-widget.h
 
 
 vncdisplaykeymap.c: $(KEYMAPS)
+$(KEYMAPS): $(srcdir)/$(KEYMAP_GEN) $(srcdir)/$(KEYMAP_CSV)
 
-$(KEYMAPS): $(KEYMAP_GEN) keymaps.csv
-
-# Note despite being autogenerated these are not part of CLEANFILES, they
-# are actually a part of EXTRA_DIST to avoid the need for perl(Text::CSV) by
-# end users
 vncdisplaykeymap_xorgevdev2xtkbd.c:
-	$(AM_V_GEN)$(KEYMAP_GEN) $(srcdir)/keymaps.csv xorgevdev xtkbd > $@ || rm $@
+	$(AM_V_GEN)$(PYTHON) $(srcdir)/$(KEYMAP_GEN) --lang glib2 --varname keymap_xorgevdev2xtkbd code-map $(srcdir)/$(KEYMAP_CSV) xorgevdev xtkbd > $@ || rm $@
 
 vncdisplaykeymap_xorgkbd2xtkbd.c:
-	$(AM_V_GEN)$(KEYMAP_GEN) $(srcdir)/keymaps.csv xorgkbd xtkbd > $@ || rm $@
+	$(AM_V_GEN)$(PYTHON) $(srcdir)/$(KEYMAP_GEN) --lang glib2 --varname keymap_xorgkbd2xtkbd code-map $(srcdir)/$(KEYMAP_CSV) xorgkbd xtkbd > $@ || rm $@
 
 vncdisplaykeymap_xorgxquartz2xtkbd.c:
-	$(AM_V_GEN)$(KEYMAP_GEN) $(srcdir)/keymaps.csv xorgxquartz xtkbd > $@ || rm $@
+	$(AM_V_GEN)$(PYTHON) $(srcdir)/$(KEYMAP_GEN) --lang glib2 --varname keymap_xorgxquartz2xtkbd code-map $(srcdir)/$(KEYMAP_CSV) xorgxquartz xtkbd > $@ || rm $@
 
 vncdisplaykeymap_xorgxwin2xtkbd.c:
-	$(AM_V_GEN)$(KEYMAP_GEN) $(srcdir)/keymaps.csv xorgxwin xtkbd > $@ || rm $@
+	$(AM_V_GEN)$(PYTHON) $(srcdir)/$(KEYMAP_GEN) --lang glib2 --varname keymap_xorgxwin2xtkbd code-map $(srcdir)/$(KEYMAP_CSV) xorgxwin xtkbd > $@ || rm $@
 
 vncdisplaykeymap_osx2xtkbd.c:
-	$(AM_V_GEN)$(KEYMAP_GEN) $(srcdir)/keymaps.csv osx xtkbd > $@ || rm $@
+	$(AM_V_GEN)$(PYTHON) $(srcdir)/$(KEYMAP_GEN) --lang glib2 --varname keymap_osx2xtkbd code-map $(srcdir)/$(KEYMAP_CSV) osx xtkbd > $@ || rm $@
 
 vncdisplaykeymap_win322xtkbd.c:
-	$(AM_V_GEN)$(KEYMAP_GEN) $(srcdir)/keymaps.csv win32 xtkbd > $@ || rm $@
+	$(AM_V_GEN)$(PYTHON) $(srcdir)/$(KEYMAP_GEN) --lang glib2 --varname keymap_win322xtkbd code-map $(srcdir)/$(KEYMAP_CSV) win32 xtkbd > $@ || rm $@
 
 vncdisplaykeymap_x112xtkbd.c:
-	$(AM_V_GEN)$(KEYMAP_GEN) $(srcdir)/keymaps.csv x11 xtkbd > $@ || rm $@
-
-if WITH_PYTHON
-pyexec_LTLIBRARIES = SpiceClientGtk.la
-
-# workaround for broken parallel install support in automake with LTLIBRARIES
-# http://debbugs.gnu.org/cgi/bugreport.cgi?bug=7328
-install_pyexecLTLIBRARIES = install-pyexecLTLIBRARIES
-$(install_pyexecLTLIBRARIES): install-libLTLIBRARIES
-
-SpiceClientGtk_la_LIBADD = libspice-client-gtk-2.0.la libspice-client-glib-2.0.la $(PYGTK_LIBS)
-SpiceClientGtk_la_CFLAGS = $(GTK_CFLAGS) $(PYTHON_INCLUDES) $(PYGTK_CFLAGS) $(WARN_PYFLAGS)
-SpiceClientGtk_la_LDFLAGS = -module -avoid-version -fPIC
-SpiceClientGtk_la_SOURCES = spice-client-gtk-module.c
-nodist_SpiceClientGtk_la_SOURCES = spice-client-gtk-module.defs.c
-
-CODEGENDIR = `pkg-config --variable=codegendir pygtk-2.0`
-DEFSDIR = `pkg-config --variable=defsdir pygtk-2.0`
-
-spice-client-gtk.defs: $(libspice_client_gtkinclude_HEADERS) $(nodist_libspice_client_gtkinclude_HEADERS) $(libspice_client_glibinclude_HEADERS) $(nodist_libspice_client_glibinclude_HEADERS)
-	$(AM_V_GEN)$(PYTHON) $(CODEGENDIR)/h2def.py \
-		-f $(srcdir)/spice-client-gtk-manual.defs \
-		$^ > $@
-
-spice-client-gtk-module.defs.c: spice-client-gtk.override spice-client-gtk.defs spice-client-gtk-manual.defs
-	@cat spice-client-gtk.defs $(srcdir)/spice-client-gtk-manual.defs > tmp.defs
-	$(AM_V_GEN)pygobject-codegen-2.0 --prefix spice \
-			  --register $(DEFSDIR)/gdk-types.defs \
-			  --register $(DEFSDIR)/gtk-types.defs \
-			  --override $(srcdir)/spice-client-gtk.override \
-			  tmp.defs > $@
-	@rm tmp.defs
-
-CLEANFILES += spice-client-gtk-module.defs.c spice-client-gtk.defs
-endif
+	$(AM_V_GEN)$(PYTHON) $(srcdir)/$(KEYMAP_GEN) --lang glib2 --varname keymap_x112xtkbd code-map $(srcdir)/$(KEYMAP_CSV) x11 xtkbd > $@ || rm $@
 
 -include $(INTROSPECTION_MAKEFILE)
 
@@ -663,15 +564,6 @@ SpiceClientGLib_2_0_gir_SCANNERFLAGS = --c-include="spice-client.h"
 INTROSPECTION_GIRS += SpiceClientGLib-2.0.gir
 
 if WITH_GTK
-if HAVE_GTK_2
-SpiceClientGtk-2.0.gir: libspice-client-gtk-2.0.la SpiceClientGLib-2.0.gir
-SpiceClientGtk_2_0_gir_INCLUDES = GObject-2.0 Gtk-2.0 SpiceClientGLib-2.0
-SpiceClientGtk_2_0_gir_CFLAGS = $(SPICE_COMMON_CPPFLAGS)
-SpiceClientGtk_2_0_gir_LIBS = libspice-client-gtk-2.0.la libspice-client-glib-2.0.la
-SpiceClientGtk_2_0_gir_FILES = $(gtk_introspection_files)
-SpiceClientGtk_2_0_gir_EXPORT_PACKAGES = spice-client-gtk-2.0
-SpiceClientGtk_2_0_gir_SCANNERFLAGS = --c-include="spice-widget.h"
-else
 SpiceClientGtk-3.0.gir: libspice-client-gtk-3.0.la SpiceClientGLib-2.0.gir
 SpiceClientGtk_3_0_gir_INCLUDES = GObject-2.0 Gtk-3.0 SpiceClientGLib-2.0
 SpiceClientGtk_3_0_gir_CFLAGS = $(SPICE_COMMON_CPPFLAGS)
@@ -679,8 +571,7 @@ SpiceClientGtk_3_0_gir_LIBS = libspice-client-gtk-3.0.la libspice-client-glib-2.
 SpiceClientGtk_3_0_gir_FILES = $(gtk_introspection_files)
 SpiceClientGtk_3_0_gir_EXPORT_PACKAGES = spice-client-gtk-3.0
 SpiceClientGtk_3_0_gir_SCANNERFLAGS = --c-include="spice-widget.h"
-endif
-INTROSPECTION_GIRS += SpiceClientGtk-$(SPICE_GTK_API_VERSION).gir
+INTROSPECTION_GIRS += SpiceClientGtk-3.0.gir
 endif
 
 girdir = $(datadir)/gir-1.0

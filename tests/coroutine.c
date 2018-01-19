@@ -36,17 +36,15 @@ static void test_coroutine_simple(void)
     result = coroutine_yieldto(&co, GINT_TO_POINTER(42));
     g_assert_cmpint(GPOINTER_TO_INT(result), ==, 0x42);
 
-#if GLIB_CHECK_VERSION(2,34,0)
     g_test_expect_message(G_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL, "*!to->exited*");
     coroutine_yieldto(&co, GINT_TO_POINTER(42));
     g_test_assert_expected_messages();
-#endif
 
     g_assert(self == coroutine_self());
     g_assert(coroutine_self_is_main());
 }
 
-static gpointer co_entry_two(gpointer data)
+static gpointer co_entry_two(gpointer data G_GNUC_UNUSED)
 {
     struct coroutine *self = coroutine_self();
     struct coroutine co = {
@@ -117,11 +115,9 @@ static void test_coroutine_yield(void)
     g_assert(self == coroutine_self());
     g_assert(val == NULL);
 
-#if GLIB_CHECK_VERSION(2,34,0)
     g_test_expect_message(G_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL, "*!to->exited*");
     coroutine_yieldto(&co, GINT_TO_POINTER(42));
     g_test_assert_expected_messages();
-#endif
 }
 
 int main(int argc, char* argv[])

@@ -24,6 +24,7 @@
 #include <gdk/gdk.h>
 
 #include "spice-grabsequence.h"
+#include "spice-grabsequence-priv.h"
 
 GType spice_grab_sequence_get_type(void)
 {
@@ -56,7 +57,7 @@ SpiceGrabSequence *spice_grab_sequence_new(guint nkeysyms, guint *keysyms)
 {
 	SpiceGrabSequence *sequence;
 
-	sequence = g_slice_new0(SpiceGrabSequence);
+	sequence = g_new0(SpiceGrabSequence, 1);
 	sequence->nkeysyms = nkeysyms;
 	sequence->keysyms = g_new0(guint, nkeysyms);
 	memcpy(sequence->keysyms, keysyms, sizeof(guint)*nkeysyms);
@@ -67,7 +68,9 @@ SpiceGrabSequence *spice_grab_sequence_new(guint nkeysyms, guint *keysyms)
 
 /**
  * spice_grab_sequence_new_from_string:
- * @str: a string of '+' seperated key names (ex: "Control_L+Alt_L")
+ * @str: a string of '+' separated key names (ex: "Control_L+Alt_L")
+ *
+ * Creates a new #SpiceGrabSequence from the string representation.
  *
  * Returns: a new #SpiceGrabSequence.
  **/
@@ -77,7 +80,7 @@ SpiceGrabSequence *spice_grab_sequence_new_from_string(const gchar *str)
 	int i;
 	SpiceGrabSequence *sequence;
 
-	sequence = g_slice_new0(SpiceGrabSequence);
+	sequence = g_new0(SpiceGrabSequence, 1);
 
 	keysymstr = g_strsplit(str, "+", 5);
 
@@ -104,13 +107,16 @@ SpiceGrabSequence *spice_grab_sequence_new_from_string(const gchar *str)
  * spice_grab_sequence_copy:
  * @sequence: sequence to copy
  *
+ * Creates a copy of the @sequence.
+ *
  * Returns: (transfer full): a copy of @sequence
  **/
 SpiceGrabSequence *spice_grab_sequence_copy(SpiceGrabSequence *srcSequence)
 {
 	SpiceGrabSequence *sequence;
 
-	sequence = g_slice_dup(SpiceGrabSequence, srcSequence);
+	sequence = g_new0(SpiceGrabSequence, 1);
+	sequence->nkeysyms = srcSequence->nkeysyms;
 	sequence->keysyms = g_new0(guint, srcSequence->nkeysyms);
 	memcpy(sequence->keysyms, srcSequence->keysyms,
 	       sizeof(guint) * sequence->nkeysyms);
@@ -121,20 +127,22 @@ SpiceGrabSequence *spice_grab_sequence_copy(SpiceGrabSequence *srcSequence)
 
 /**
  * spice_grab_sequence_free:
- * @sequence:
+ * @sequence: a #SpiceGrabSequence
  *
  * Free @sequence.
  **/
 void spice_grab_sequence_free(SpiceGrabSequence *sequence)
 {
 	g_free(sequence->keysyms);
-	g_slice_free(SpiceGrabSequence, sequence);
+	g_free(sequence);
 }
 
 
 /**
  * spice_grab_sequence_as_string:
- * @sequence:
+ * @sequence: a #SpiceGrabSequence
+ *
+ * Creates a string representing the @sequence.
  *
  * Returns: (transfer full): a newly allocated string representing the key sequence
  **/

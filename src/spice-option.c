@@ -19,8 +19,7 @@
 
 #include <stdlib.h>
 #include <glib-object.h>
-#include <glib/gi18n.h>
-#include "glib-compat.h"
+#include <glib/gi18n-lib.h>
 #include "spice-session.h"
 #include "spice-util.h"
 #include "spice-channel-priv.h"
@@ -101,8 +100,7 @@ static gboolean parse_disable_effects(const gchar *option_name, const gchar *val
              */
             g_set_error(error, G_OPTION_ERROR, G_OPTION_ERROR_FAILED,
                     _("invalid effect name (%s), must be 'wallpaper', 'font-smooth', 'animation' or 'all'"), *it);
-            g_strfreev(disable_effects);
-            disable_effects = NULL;
+            g_clear_pointer(&disable_effects, g_strfreev);
             return FALSE;
         }
     }
@@ -180,7 +178,11 @@ static gboolean parse_preferred_compression(const gchar *option_name, const gcha
 }
 
 /**
- * spice_get_option_group: (skip)
+ * spice_get_option_group:
+ *
+ * Gets commandline options.
+ *
+ * Bindings for other languages are available since 0.32
  *
  * Returns: (transfer full): a #GOptionGroup for the commandline
  * arguments specific to Spice.  You have to call
@@ -195,7 +197,7 @@ GOptionGroup* spice_get_option_group(void)
         { "spice-disable-effects", '\0', 0, G_OPTION_ARG_CALLBACK, parse_disable_effects,
           N_("Disable guest display effects"), "<wallpaper,font-smooth,animation,all>" },
         { "spice-color-depth", '\0', 0, G_OPTION_ARG_CALLBACK, parse_color_depth,
-          N_("Guest display color depth"), "<16,32>" },
+          N_("Guest display color depth (deprecated)"), "<16,32>" },
         { "spice-ca-file", '\0', 0, G_OPTION_ARG_FILENAME, &ca_file,
           N_("Truststore file for secure connections"), N_("<file>") },
         { "spice-host-subject", '\0', 0, G_OPTION_ARG_STRING, &host_subject,
@@ -218,9 +220,9 @@ GOptionGroup* spice_get_option_group(void)
         { "spice-usbredir-redirect-on-connect", '\0', 0, G_OPTION_ARG_STRING, &usbredir_redirect_on_connect,
           N_("Filter selecting USB devices to redirect on connect"), N_("<filter-string>") },
         { "spice-cache-size", '\0', 0, G_OPTION_ARG_INT, &cache_size,
-          N_("Image cache size"), N_("<bytes>") },
+          N_("Image cache size (deprecated)"), N_("<bytes>") },
         { "spice-glz-window-size", '\0', 0, G_OPTION_ARG_INT, &glz_window_size,
-          N_("Glz compression history size"), N_("<bytes>") },
+          N_("Glz compression history size (deprecated)"), N_("<bytes>") },
         { "spice-shared-dir", '\0', 0, G_OPTION_ARG_FILENAME, &shared_dir,
           N_("Shared directory"), N_("<dir>") },
         { "spice-preferred-compression", '\0', 0, G_OPTION_ARG_CALLBACK, parse_preferred_compression,

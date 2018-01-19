@@ -26,7 +26,7 @@
  * @section_id:
  * @see_also: #SpiceRecordChannel, and #SpicePlaybackChannel
  * @stability: Stable
- * @include: spice-audio.h
+ * @include: spice-client.h
  *
  * A class that handles the playback and record channels for your
  * application, and connect them to the default sound system.
@@ -42,14 +42,12 @@
 #include "spice-channel-priv.h"
 #include "spice-audio-priv.h"
 
-#ifdef WITH_PULSE
+#ifdef HAVE_PULSE
 #include "spice-pulse.h"
 #endif
-#if defined(WITH_GSTAUDIO)
+#ifdef HAVE_GSTAUDIO
 #include "spice-gstaudio.h"
 #endif
-
-#include "glib-compat.h"
 
 #define SPICE_AUDIO_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_AUDIO, SpiceAudioPrivate))
@@ -67,10 +65,7 @@ static void spice_audio_finalize(GObject *gobject)
     SpiceAudio *self = SPICE_AUDIO(gobject);
     SpiceAudioPrivate *priv = self->priv;
 
-    if (priv->main_context) {
-        g_main_context_unref(priv->main_context);
-        priv->main_context = NULL;
-    }
+    g_clear_pointer(&priv->main_context, g_main_context_unref);
 
     if (G_OBJECT_CLASS(spice_audio_parent_class)->finalize)
         G_OBJECT_CLASS(spice_audio_parent_class)->finalize(gobject);
@@ -169,7 +164,7 @@ static void update_audio_channels(SpiceAudio *self, SpiceSession *session)
     GList *list, *tmp;
 
     if (!spice_session_get_audio_enabled(session)) {
-        g_debug("FIXME: disconnect audio channels");
+        SPICE_DEBUG("FIXME: disconnect audio channels");
         return;
     }
 
@@ -197,6 +192,7 @@ void spice_audio_get_playback_volume_info_async(SpiceAudio *audio,
                                                 GAsyncReadyCallback callback,
                                                 gpointer user_data)
 {
+    g_return_if_fail(audio != NULL);
     SPICE_AUDIO_GET_CLASS(audio)->get_playback_volume_info_async(audio,
             cancellable, main_channel, callback, user_data);
 }
@@ -208,6 +204,7 @@ gboolean spice_audio_get_playback_volume_info_finish(SpiceAudio *audio,
                                                      guint16 **volume,
                                                      GError **error)
 {
+    g_return_val_if_fail(audio != NULL, FALSE);
     return SPICE_AUDIO_GET_CLASS(audio)->get_playback_volume_info_finish(audio,
             res, mute, nchannels, volume, error);
 }
@@ -218,6 +215,7 @@ void spice_audio_get_record_volume_info_async(SpiceAudio *audio,
                                               GAsyncReadyCallback callback,
                                               gpointer user_data)
 {
+    g_return_if_fail(audio != NULL);
     SPICE_AUDIO_GET_CLASS(audio)->get_record_volume_info_async(audio,
             cancellable, main_channel, callback, user_data);
 }
@@ -229,8 +227,37 @@ gboolean spice_audio_get_record_volume_info_finish(SpiceAudio *audio,
                                                    guint16 **volume,
                                                    GError **error)
 {
+    g_return_val_if_fail(audio != NULL, FALSE);
     return SPICE_AUDIO_GET_CLASS(audio)->get_record_volume_info_finish(audio,
             res, mute, nchannels, volume, error);
+}
+
+G_GNUC_INTERNAL
+SpiceAudio *spice_audio_new_priv(SpiceSession *session, GMainContext *context,
+                                 const char *name)
+{
+    SpiceAudio *self = NULL;
+
+    if (context == NULL)
+        context = g_main_context_default();
+    if (name == NULL)
+        name = g_get_application_name();
+
+#ifdef HAVE_PULSE
+    self = SPICE_AUDIO(spice_pulse_new(session, context, name));
+#endif
+#ifdef HAVE_GSTAUDIO
+    if (!self)
+        self = SPICE_AUDIO(spice_gstaudio_new(session, context, name));
+#endif
+    if (!self)
+        return NULL;
+
+    spice_g_signal_connect_object(session, "notify::enable-audio", G_CALLBACK(session_enable_audio), self, 0);
+    spice_g_signal_connect_object(session, "channel-new", G_CALLBACK(channel_new), self, G_CONNECT_AFTER);
+    update_audio_channels(self, session);
+
+    return self;
 }
 
 /**
@@ -250,25 +277,5 @@ gboolean spice_audio_get_record_volume_info_finish(SpiceAudio *audio,
 SpiceAudio *spice_audio_new(SpiceSession *session, GMainContext *context,
                             const char *name)
 {
-    SpiceAudio *self = NULL;
-
-    if (context == NULL)
-        context = g_main_context_default();
-    if (name == NULL)
-        name = g_get_application_name();
-
-#ifdef WITH_PULSE
-    self = SPICE_AUDIO(spice_pulse_new(session, context, name));
-#endif
-#if defined(WITH_GSTAUDIO)
-    self = SPICE_AUDIO(spice_gstaudio_new(session, context, name));
-#endif
-    if (!self)
-        return NULL;
-
-    spice_g_signal_connect_object(session, "notify::enable-audio", G_CALLBACK(session_enable_audio), self, 0);
-    spice_g_signal_connect_object(session, "channel-new", G_CALLBACK(channel_new), self, G_CONNECT_AFTER);
-    update_audio_channels(self, session);
-
-    return self;
+    return spice_audio_new_priv(session, context, name);
 }

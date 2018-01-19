@@ -14,6 +14,9 @@ SPICE_IS_PLAYBACK_CHANNEL_CLASS
 SPICE_PLAYBACK_CHANNEL_GET_CLASS
 <SUBSECTION Private>
 SpicePlaybackChannelPrivate
+spice_playback_channel_get_latency
+spice_playback_channel_is_active
+spice_playback_channel_sync_latency
 </SECTION>
 
 <SECTION>
@@ -53,6 +56,8 @@ SPICE_TYPE_SESSION_MIGRATION
 spice_session_migration_get_type
 <SUBSECTION Private>
 SpiceSessionPrivate
+SPICE_CLIENT_USB_DEVICE_LOST
+SPICE_CLIENT_USB_DEVICE_REJECTED
 </SECTION>
 
 <SECTION>
@@ -63,8 +68,11 @@ SpiceMainChannelClass
 <SUBSECTION>
 spice_main_set_display
 spice_main_set_display_enabled
+spice_main_update_display
+spice_main_update_display_enabled
 spice_main_send_monitor_config
 spice_main_agent_test_capability
+spice_main_request_mouse_mode
 spice_main_clipboard_selection_grab
 spice_main_clipboard_selection_notify
 spice_main_clipboard_selection_release
@@ -73,6 +81,8 @@ spice_main_clipboard_grab
 spice_main_clipboard_release
 spice_main_clipboard_notify
 spice_main_clipboard_request
+spice_main_file_copy_async
+spice_main_file_copy_finish
 <SUBSECTION Standard>
 SPICE_MAIN_CHANNEL
 SPICE_IS_MAIN_CHANNEL
@@ -118,6 +128,7 @@ SPICE_CHANNEL_GET_CLASS
 <SUBSECTION Private>
 SpiceMsgIn
 SpiceMsgOut
+SpiceChannelClassPrivate
 SpiceChannelPrivate
 spice_msg_handler
 spice_msg_in
@@ -149,6 +160,16 @@ SpiceAudioPrivate
 <TITLE>SpiceDisplayChannel</TITLE>
 SpiceDisplayChannel
 SpiceDisplayChannelClass
+SpiceDisplayMonitorConfig
+SpiceDisplayPrimary
+SpiceGlScanout
+<SUBSECTION>
+spice_display_get_gl_scanout
+spice_display_gl_draw_done
+spice_display_get_primary
+spice_display_change_preferred_compression
+spice_display_change_preferred_video_codec_type
+spice_gl_scanout_free
 <SUBSECTION Standard>
 SPICE_DISPLAY_CHANNEL
 SPICE_IS_DISPLAY_CHANNEL
@@ -157,6 +178,10 @@ spice_display_channel_get_type
 SPICE_DISPLAY_CHANNEL_CLASS
 SPICE_IS_DISPLAY_CHANNEL_CLASS
 SPICE_DISPLAY_CHANNEL_GET_CLASS
+SPICE_TYPE_GL_SCANOUT
+spice_gl_scanout_get_type
+SPICE_TYPE_CURSOR_SHAPE
+spice_cursor_shape_get_type
 <SUBSECTION Private>
 SpiceDisplayChannelPrivate
 </SECTION>
@@ -166,6 +191,7 @@ SpiceDisplayChannelPrivate
 <TITLE>SpiceCursorChannel</TITLE>
 SpiceCursorChannel
 SpiceCursorChannelClass
+SpiceCursorShape
 <SUBSECTION Standard>
 SPICE_CURSOR_CHANNEL
 SPICE_IS_CURSOR_CHANNEL
@@ -292,7 +318,6 @@ SpiceUsbredirChannelPrivate
 <SECTION>
 <FILE>usb-device-manager</FILE>
 <TITLE>SpiceUsbDeviceManager</TITLE>
-SPICE_TYPE_USB_DEVICE
 SpiceUsbDeviceManager
 SpiceUsbDeviceManagerClass
 <SUBSECTION>
@@ -300,10 +325,13 @@ spice_usb_device_manager_get
 spice_usb_device_manager_get_devices
 spice_usb_device_manager_get_devices_with_filter
 spice_usb_device_manager_is_device_connected
-spice_usb_device_manager_disconnect_device
+spice_usb_device_manager_is_redirecting
 spice_usb_device_manager_can_redirect_device
 spice_usb_device_manager_connect_device_async
 spice_usb_device_manager_connect_device_finish
+spice_usb_device_manager_disconnect_device
+spice_usb_device_manager_disconnect_device_async
+spice_usb_device_manager_disconnect_device_finish
 <SUBSECTION>
 SpiceUsbDevice
 spice_usb_device_get_description
@@ -311,6 +339,7 @@ spice_usb_device_get_libusb_device
 <SUBSECTION Standard>
 SPICE_USB_DEVICE_MANAGER
 SPICE_IS_USB_DEVICE_MANAGER
+SPICE_TYPE_USB_DEVICE
 SPICE_TYPE_USB_DEVICE_MANAGER
 spice_usb_device_manager_get_type
 spice_usb_device_get_type
@@ -350,8 +379,6 @@ SpiceDisplayKeyEvent
 spice_display_new
 spice_display_new_with_monitor
 spice_display_mouse_ungrab
-spice_display_copy_to_guest
-spice_display_paste_from_guest
 spice_display_set_grab_keys
 spice_display_get_grab_keys
 spice_display_send_keys
@@ -396,24 +423,26 @@ SPICE_USB_DEVICE_WIDGET_GET_CLASS
 SPICE_TYPE_USB_DEVICE_WIDGET
 <SUBSECTION Private>
 SpiceUsbDeviceWidgetPrivate
-SpiceGtkBox
-SpiceGtkBoxClass
 </SECTION>
 
 <SECTION>
 <FILE>spice-util</FILE>
 spice_util_set_debug
 spice_util_get_version_string
-SPICE_GTK_CHECK_VERSION
-SPICE_GTK_MAJOR_VERSION
-SPICE_GTK_MICRO_VERSION
-SPICE_GTK_MINOR_VERSION
+spice_uuid_to_string
 <SUBSECTION Private>
 SPICE_DEBUG
 spice_util_get_debug
 SPICE_RESERVED_PADDING
-SPICE_DEPRECATED_FOR
 spice_g_signal_connect_object
+</SECTION>
+
+<SECTION>
+<FILE>spice-version</FILE>
+SPICE_GTK_CHECK_VERSION
+SPICE_GTK_MAJOR_VERSION
+SPICE_GTK_MICRO_VERSION
+SPICE_GTK_MINOR_VERSION
 </SECTION>
 
 <SECTION>
@@ -479,4 +508,27 @@ SPICE_WEBDAV_CHANNEL_GET_CLASS
 spice_webdav_channel_get_type
 <SUBSECTION Private>
 SpiceWebdavChannelPrivate
+</SECTION>
+
+<SECTION>
+<FILE>file-transfer-task</FILE>
+<TITLE>SpiceFileTransferTask</TITLE>
+<SUBSECTION>
+spice_file_transfer_task_get_progress
+spice_file_transfer_task_get_filename
+spice_file_transfer_task_get_total_bytes
+spice_file_transfer_task_get_transferred_bytes
+spice_file_transfer_task_cancel
+<SUBSECTION Standard>
+SPICE_FILE_TRANSFER_TASK
+SPICE_IS_FILE_TRANSFER_TASK
+SPICE_TYPE_FILE_TRANSFER_TASK
+spice_file_transfer_task_get_type
+SPICE_FILE_TRANSFER_TASK_CLASS
+SPICE_IS_FILE_TRANSFER_TASK_CLASS
+SPICE_FILE_TRANSFER_TASK_GET_CLASS
+<SUBSECTION Private>
+SpiceFileTransferTask
+SpiceFileTransferTaskClass
+SpiceFileTransferTaskPrivate
 </SECTION>

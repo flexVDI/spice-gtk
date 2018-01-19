@@ -17,7 +17,6 @@
 */
 #include "config.h"
 
-#include "glib-compat.h"
 #include "spice-client.h"
 #include "spice-common.h"
 
@@ -32,13 +31,14 @@
  * @section_id:
  * @see_also: #SpiceChannel, and the GTK widget #SpiceDisplay
  * @stability: Stable
- * @include: channel-cursor.h
+ * @include: spice-client.h
  *
  * The Spice protocol defines a set of messages for controlling cursor
  * shape and position on the remote display area. The cursor changes
  * that should be reflected on the display are notified by
- * signals. See for example #SpiceCursorChannel::cursor-set
- * #SpiceCursorChannel::cursor-move signals.
+ * signals. See for example #SpiceCursorChannel::cursor-set and
+ * #SpiceCursorChannel::cursor-move signals and the #SpiceCursorChannel:cursor
+ * property.
  */
 
 #define SPICE_CURSOR_CHANNEL_GET_PRIVATE(obj)                                  \
@@ -56,6 +56,13 @@ struct display_cursor {
 struct _SpiceCursorChannelPrivate {
     display_cache               *cursors;
     gboolean                    init_done;
+    SpiceCursorShape            last_cursor;
+};
+
+/* Properties */
+enum {
+    PROP_0,
+    PROP_CURSOR,
 };
 
 enum {
@@ -75,7 +82,34 @@ static void channel_set_handlers(SpiceChannelClass *klass);
 
 G_DEFINE_TYPE(SpiceCursorChannel, spice_cursor_channel, SPICE_TYPE_CHANNEL)
 
+static SpiceCursorShape *spice_cursor_shape_copy(const SpiceCursorShape *cursor);
+static void spice_cursor_shape_free(SpiceCursorShape *cursor);
+
+G_DEFINE_BOXED_TYPE(SpiceCursorShape, spice_cursor_shape,
+                    (GBoxedCopyFunc)spice_cursor_shape_copy,
+                    (GBoxedFreeFunc)spice_cursor_shape_free)
+
 /* ------------------------------------------------------------------ */
+static SpiceCursorShape *spice_cursor_shape_copy(const SpiceCursorShape *cursor)
+{
+    SpiceCursorShape *new_cursor;
+
+    g_return_val_if_fail(cursor != NULL, NULL);
+
+    new_cursor = g_new(SpiceCursorShape, 1);
+    *new_cursor = *cursor;
+    new_cursor->data = g_memdup(cursor->data, cursor->width * cursor->height * 4);
+
+    return new_cursor;
+}
+
+static void spice_cursor_shape_free(SpiceCursorShape *cursor)
+{
+    g_return_if_fail(cursor != NULL);
+
+    g_free(cursor->data);
+    g_free(cursor);
+}
 
 static void spice_cursor_channel_init(SpiceCursorChannel *channel)
 {
@@ -91,7 +125,7 @@ static void spice_cursor_channel_finalize(GObject *obj)
     SpiceCursorChannel *channel = SPICE_CURSOR_CHANNEL(obj);
     SpiceCursorChannelPrivate *c = channel->priv;
 
-    g_clear_pointer(&c->cursors, cache_unref);
+    g_clear_pointer(&c->cursors, cache_free);
 
     if (G_OBJECT_CLASS(spice_cursor_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_cursor_channel_parent_class)->finalize(obj);
@@ -108,14 +142,59 @@ static void spice_cursor_channel_reset(SpiceChannel *channel, gboolean migrating
     SPICE_CHANNEL_CLASS(spice_cursor_channel_parent_class)->channel_reset(channel, migrating);
 }
 
+static void spice_cursor_channel_dispose(GObject *object)
+{
+    SpiceCursorChannelPrivate *c = SPICE_CURSOR_CHANNEL(object)->priv;
+
+    g_clear_pointer(&c->last_cursor.data, g_free);
+
+    if (G_OBJECT_CLASS(spice_cursor_channel_parent_class)->dispose)
+        G_OBJECT_CLASS(spice_cursor_channel_parent_class)->dispose(object);
+}
+
+static void spice_cursor_channel_get_property(GObject    *object,
+                                              guint       prop_id,
+                                              GValue     *value,
+                                              GParamSpec *pspec)
+{
+    SpiceCursorChannel *channel = SPICE_CURSOR_CHANNEL(object);
+    SpiceCursorChannelPrivate *c = channel->priv;
+
+    switch (prop_id) {
+    case PROP_CURSOR:
+        g_value_set_static_boxed(value, c->last_cursor.data ? &c->last_cursor : NULL);
+        break;
+    default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+        break;
+    }
+}
+
 static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
     SpiceChannelClass *channel_class = SPICE_CHANNEL_CLASS(klass);
 
+    gobject_class->dispose      = spice_cursor_channel_dispose;
     gobject_class->finalize     = spice_cursor_channel_finalize;
+    gobject_class->get_property = spice_cursor_channel_get_property;
     channel_class->channel_reset = spice_cursor_channel_reset;
 
+    /**
+     * SpiceCursorChannel:cursor:
+     *
+     * The last #SpiceCursorShape received.
+     *
+     * Since: 0.34
+     */
+    g_object_class_install_property
+        (gobject_class, PROP_CURSOR,
+         g_param_spec_boxed("cursor",
+                            "Last cursor shape",
+                            "Last cursor shape received from the server",
+                            SPICE_TYPE_CURSOR_SHAPE,
+                            G_PARAM_READABLE |
+                            G_PARAM_STATIC_STRINGS));
     /**
      * SpiceCursorChannel::cursor-set:
      * @cursor: the #SpiceCursorChannel that emitted the signal
@@ -129,11 +208,13 @@ static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
      *
      * The #SpiceCursorChannel::cursor-set signal is emitted to modify
      * cursor aspect and position on the display area.
+     *
+     * Deprecated: 0.34: Use #SpiceCursorChannel:cursor notify instead.
      **/
     signals[SPICE_CURSOR_SET] =
         g_signal_new("cursor-set",
                      G_OBJECT_CLASS_TYPE(gobject_class),
-                     G_SIGNAL_RUN_FIRST,
+                     G_SIGNAL_RUN_FIRST | G_SIGNAL_DEPRECATED,
                      G_STRUCT_OFFSET(SpiceCursorChannelClass, cursor_set),
                      NULL, NULL,
                      g_cclosure_user_marshal_VOID__INT_INT_INT_INT_POINTER,
@@ -300,12 +381,13 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
     SpiceCursorHeader *hdr = &scursor->header;
     display_cursor *cursor;
     size_t size;
-    gint i, pix_mask, pix;
+    guint32 i, pix_mask, pix;
     const guint8* data;
     guint8 *rgba;
     guint8 val;
+    guint32 palette[16];
 
-    CHANNEL_DEBUG(channel, "%s: flags %d, size %d", __FUNCTION__,
+    CHANNEL_DEBUG(channel, "%s: flags %x, size %u", __FUNCTION__,
                   scursor->flags, scursor->data_size);
 
     if (scursor->flags & SPICE_CURSOR_FLAGS_NONE)
@@ -323,6 +405,18 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
 
     g_return_val_if_fail(scursor->data_size != 0, NULL);
 
+    if (hdr->hot_spot_x > hdr->width) {
+        CHANNEL_DEBUG(channel,
+                      "hot spot X position (%d) is outside cursor area, capping to cursor width (%d)",
+                      hdr->hot_spot_x, hdr->width);
+        hdr->hot_spot_x = hdr->width;
+    }
+    if (hdr->hot_spot_y > hdr->height) {
+        CHANNEL_DEBUG(channel,
+                      "hot spot Y position (%d) is outside cursor area, capping to cursor height (%d)",
+                      hdr->hot_spot_y, hdr->height);
+        hdr->hot_spot_y = hdr->height;
+    }
     size = 4u * hdr->width * hdr->height;
     cursor = g_malloc0(sizeof(*cursor) + size);
     cursor->hdr = *hdr;
@@ -341,7 +435,7 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
         memcpy(cursor->data, data, size);
         for (i = 0; i < hdr->width * hdr->height; i++) {
             pix_mask = get_pix_mask(data, size, i);
-            if (pix_mask && *((guint32*)data + i) == 0xffffff) {
+            if (pix_mask && cursor->data[i] == 0xffffff) {
                 cursor->data[i] = get_pix_hack(i, hdr->width);
             } else {
                 cursor->data[i] |= (pix_mask ? 0 : 0xff000000);
@@ -349,9 +443,10 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
         }
         break;
     case SPICE_CURSOR_TYPE_COLOR16:
+        size /= 2u;
         for (i = 0; i < hdr->width * hdr->height; i++) {
             pix_mask = get_pix_mask(data, size, i);
-            pix = *((guint16*)data + i);
+            pix = *(SPICE_UNALIGNED_CAST(guint16 *, data) + i);
             if (pix_mask && pix == 0x7fff) {
                 cursor->data[i] = get_pix_hack(i, hdr->width);
             } else {
@@ -362,10 +457,11 @@ static display_cursor *set_cursor(SpiceChannel *channel, SpiceCursor *scursor)
         break;
     case SPICE_CURSOR_TYPE_COLOR4:
         size = ((unsigned int)(SPICE_ALIGN(hdr->width, 2) / 2)) * hdr->height;
+        memcpy(palette, data + size, sizeof(palette));
         for (i = 0; i < hdr->width * hdr->height; i++) {
             pix_mask = get_pix_mask(data, size + (sizeof(uint32_t) << 4), i);
             int idx = (i & 1) ? (data[i >> 1] & 0x0f) : ((data[i >> 1] & 0xf0) >> 4);
-            pix = *((uint32_t*)(data + size) + idx);
+            pix = palette[idx];
             if (pix_mask && pix == 0xffffff) {
                 cursor->data[i] = get_pix_hack(i, hdr->width);
             } else {
@@ -400,7 +496,22 @@ cache_add:
 /* coroutine context */
 static void emit_cursor_set(SpiceChannel *channel, display_cursor *cursor)
 {
+    SpiceCursorChannelPrivate *c;
+
     g_return_if_fail(cursor != NULL);
+
+    c = SPICE_CURSOR_CHANNEL(channel)->priv;
+
+    c->last_cursor.type = cursor->hdr.type;
+    c->last_cursor.width = cursor->hdr.width;
+    c->last_cursor.height = cursor->hdr.height;
+    c->last_cursor.hot_spot_x = cursor->hdr.hot_spot_x;
+    c->last_cursor.hot_spot_y = cursor->hdr.hot_spot_y;
+    g_free(c->last_cursor.data);
+    c->last_cursor.data = g_memdup(cursor->data,
+                                   cursor->hdr.width * cursor->hdr.height * 4);
+
+    g_coroutine_object_notify(G_OBJECT(channel), "cursor");
     g_coroutine_signal_emit(channel, signals[SPICE_CURSOR_SET], 0,
                             cursor->hdr.width, cursor->hdr.height,
                             cursor->hdr.hot_spot_x, cursor->hdr.hot_spot_y,

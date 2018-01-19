@@ -18,28 +18,48 @@
 #ifndef __SPICE_WIDGET_PRIV_H__
 #define __SPICE_WIDGET_PRIV_H__
 
-G_BEGIN_DECLS
-
 #include "config.h"
-
-#ifdef WITH_X11
-#include <X11/Xlib.h>
-#include <X11/extensions/XShm.h>
-#include <gdk/gdkx.h>
-#endif
 
 #ifdef WIN32
 #include <windows.h>
+#endif
+
+#ifdef HAVE_EPOXY_EGL_H
+#include <epoxy/egl.h>
 #endif
 
 #include "spice-widget.h"
 #include "spice-common.h"
 #include "spice-gtk-session.h"
 
+G_BEGIN_DECLS
+
+#define DISPLAY_DEBUG(display, fmt, ...) \
+    SPICE_DEBUG("%d:%d " fmt, \
+                SPICE_DISPLAY(display)->priv->channel_id, \
+                SPICE_DISPLAY(display)->priv->monitor_id, \
+                ## __VA_ARGS__)
+
+typedef struct _SpiceDisplayPrivate SpiceDisplayPrivate;
+
+struct _SpiceDisplay {
+    GtkEventBox parent;
+    SpiceDisplayPrivate *priv;
+};
+
+struct _SpiceDisplayClass {
+    GtkEventBoxClass parent_class;
+
+    /* signals */
+    void (*mouse_grab)(SpiceChannel *channel, gint grabbed);
+    void (*keyboard_grab)(SpiceChannel *channel, gint grabbed);
+};
+
 #define SPICE_DISPLAY_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_DISPLAY, SpiceDisplayPrivate))
 
 struct _SpiceDisplayPrivate {
+    GtkStack                *stack;
     gint                    channel_id;
     gint                    monitor_id;
 
@@ -52,37 +72,26 @@ struct _SpiceDisplayPrivate {
     /* state */
     gboolean                ready;
     gboolean                monitor_ready;
-    enum SpiceSurfaceFmt    format;
-    gint                    width, height, stride;
-    gint                    shmid;
-    gpointer                data_origin; /* the original display image data */
-    gpointer                data; /* converted if necessary to 32 bits */
-
+    struct {
+        enum SpiceSurfaceFmt    format;
+        gint                    width, height, stride;
+        gpointer                data_origin; /* the original display image data */
+        gpointer                data; /* converted if necessary to 32 bits */
+        bool                    convert;
+        cairo_surface_t         *surface;
+    } canvas;
     GdkRectangle            area;
     /* window border */
     gint                    ww, wh, mx, my;
 
-    bool                    convert;
-    bool                    have_mitshm;
     gboolean                allow_scaling;
     gboolean                only_downscale;
     gboolean                disable_inputs;
 
-    /* TODO: make a display object instead? */
-#ifdef WITH_X11
-    Display                 *dpy;
-    XVisualInfo             *vi;
-    XImage                  *ximage;
-    XShmSegmentInfo         *shminfo;
-    GC                      gc;
-#else
-    cairo_surface_t         *ximage;
-#endif
-
     SpiceSession            *session;
     SpiceGtkSession         *gtk_session;
     SpiceMainChannel        *main;
-    SpiceChannel            *display;
+    SpiceDisplayChannel     *display;
     SpiceCursorChannel      *cursor;
     SpiceInputsChannel      *inputs;
     SpiceSmartcardChannel   *smartcard;
@@ -126,17 +135,46 @@ struct _SpiceDisplayPrivate {
 #endif
     gint                    time_to_inactivity;
     gint64                  last_input_time;
+#if HAVE_EGL
+    struct {
+        gboolean            context_ready;
+        gboolean            enabled;
+        EGLSurface          surface;
+        EGLDisplay          display;
+        EGLConfig           conf;
+        EGLContext          ctx;
+        gint                mproj, attr_pos, attr_tex;
+        guint               vbuf_id;
+        guint               tex_id;
+        guint               tex_pointer_id;
+        guint               prog;
+        EGLImageKHR         image;
+        gboolean            call_draw_done;
+        SpiceGlScanout      scanout;
+    } egl;
+#endif // HAVE_EGL
 };
 
-int      spicex_image_create                 (SpiceDisplay *display);
-void     spicex_image_destroy                (SpiceDisplay *display);
-#if GTK_CHECK_VERSION (2, 91, 0)
-void     spicex_draw_event                   (SpiceDisplay *display, cairo_t *cr);
-#else
-void     spicex_expose_event                 (SpiceDisplay *display, GdkEventExpose *ev);
-#endif
-gboolean spicex_is_scaled                    (SpiceDisplay *display);
+int      spice_cairo_image_create                 (SpiceDisplay *display);
+void     spice_cairo_image_destroy                (SpiceDisplay *display);
+void     spice_cairo_draw_event                   (SpiceDisplay *display, cairo_t *cr);
+gboolean spice_cairo_is_scaled                    (SpiceDisplay *display);
 void     spice_display_get_scaling           (SpiceDisplay *display, double *s, int *x, int *y, int *w, int *h);
+gboolean spice_egl_init                      (SpiceDisplay *display, GError **err);
+gboolean spice_egl_realize_display           (SpiceDisplay *display, GdkWindow *win,
+                                              GError **err);
+void     spice_egl_unrealize_display         (SpiceDisplay *display);
+void     spice_egl_update_display            (SpiceDisplay *display);
+void     spice_egl_resize_display            (SpiceDisplay *display, int w, int h);
+gboolean spice_egl_update_scanout            (SpiceDisplay *display,
+                                              const SpiceGlScanout *scanout,
+                                              GError **err);
+void     spice_egl_cursor_set                (SpiceDisplay *display);
+
+#ifdef HAVE_EGL
+void     spice_display_widget_gl_scanout     (SpiceDisplay *display);
+#endif
+void     spice_display_widget_update_monitor_area(SpiceDisplay *display);
 
 G_END_DECLS
 

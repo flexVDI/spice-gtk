@@ -40,6 +40,7 @@ guint8 spice_usb_device_get_busnum(const SpiceUsbDevice *device);
 guint8 spice_usb_device_get_devaddr(const SpiceUsbDevice *device);
 guint16 spice_usb_device_get_vid(const SpiceUsbDevice *device);
 guint16 spice_usb_device_get_pid(const SpiceUsbDevice *device);
+gboolean spice_usb_device_is_isochronous(const SpiceUsbDevice *device);
 
 #endif
 

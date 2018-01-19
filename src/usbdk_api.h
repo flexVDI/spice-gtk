@@ -24,11 +24,11 @@
 
 typedef struct tag_usbdk_api_wrapper usbdk_api_wrapper;
 
+usbdk_api_wrapper *usbdk_api_load(void);
+void     usbdk_api_unload(usbdk_api_wrapper *usbdk_api);
 BOOL     usbdk_is_driver_installed(void);
 HANDLE   usbdk_create_hider_handle(usbdk_api_wrapper *usbdk_api);
+void     usbdk_api_set_hide_rules(usbdk_api_wrapper *usbdk_api, HANDLE hider_handle, gchar *redirect_on_connect);
 BOOL     usbdk_clear_hide_rules(usbdk_api_wrapper *usbdk_api, HANDLE hider_handle);
 void     usbdk_close_hider_handle(usbdk_api_wrapper *usbdk_api, HANDLE hider_handle);
-BOOL     usbdk_api_load(usbdk_api_wrapper **usbdk_api);
-void     usbdk_api_unload(usbdk_api_wrapper *usbdk_api);
-void     usbdk_api_set_hide_rules(usbdk_api_wrapper *usbdk_api, HANDLE hider_handle, gchar *redirect_on_connect);
 #endif

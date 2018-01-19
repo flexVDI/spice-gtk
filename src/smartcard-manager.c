@@ -20,12 +20,14 @@
 #include <glib-object.h>
 #include <string.h>
 
-#include "glib-compat.h"
-
-#ifdef USE_SMARTCARD
+#ifdef USE_SMARTCARD_012
 #include <vcard_emul.h>
 #include <vevent.h>
 #include <vreader.h>
+#else
+#ifdef USE_SMARTCARD
+#include <libcacard.h>
+#endif
 #endif
 
 #include "spice-client.h"
@@ -40,7 +42,7 @@
  * @section_id:
  * @see_also:
  * @stability: Stable
- * @include: smartcard-manager.h
+ * @include: spice-client.h
  *
  * #SpiceSmartcardManager monitors smartcard reader plugging/unplugging,
  * and smartcard insertions/removals. It also provides methods to handle
@@ -125,10 +127,7 @@ static void spice_smartcard_manager_finalize(GObject *gobject)
     }
 
 #ifdef USE_SMARTCARD
-    if (priv->software_reader != NULL) {
-        vreader_free(priv->software_reader);
-        priv->software_reader = NULL;
-    }
+    g_clear_pointer(&priv->software_reader, vreader_free);
 #endif
 
     /* Chain up to the parent class */
@@ -273,8 +272,7 @@ static gboolean smartcard_monitor_dispatch(VEvent *event, gpointer user_data)
         case VEVENT_READER_REMOVE:
             if (spice_smartcard_reader_is_software((SpiceSmartcardReader*)event->reader)) {
                 g_warn_if_fail(manager->priv->software_reader != NULL);
-                vreader_free(manager->priv->software_reader);
-                manager->priv->software_reader = NULL;
+                g_clear_pointer(&manager->priv->software_reader, vreader_free);
             }
             SPICE_DEBUG("smartcard: reader-removed");
             g_signal_emit(G_OBJECT(user_data),
@@ -353,10 +351,7 @@ static void smartcard_source_finalize(GSource *source)
 {
     SmartcardSource *smartcard_source = (SmartcardSource *)source;
 
-    if (smartcard_source->pending_event) {
-        vevent_delete(smartcard_source->pending_event);
-        smartcard_source->pending_event = NULL;
-    }
+    g_clear_pointer(&smartcard_source->pending_event, vevent_delete);
 }
 
 static GSource *smartcard_monitor_source_new(void)
@@ -472,8 +467,9 @@ end:
     return retval;
 }
 
-static void smartcard_manager_init_helper(GSimpleAsyncResult *res,
-                                          GObject *object,
+static void smartcard_manager_init_helper(GTask *task,
+                                          gpointer object,
+                                          gpointer task_data,
                                           GCancellable *cancellable)
 {
     static GOnce smartcard_manager_once = G_ONCE_INIT;
@@ -487,10 +483,11 @@ static void smartcard_manager_init_helper(GSimpleAsyncResult *res,
     g_once(&smartcard_manager_once,
            (GThreadFunc)smartcard_manager_init,
            &args);
-    if (args.err != NULL) {
-        g_simple_async_result_set_from_error(res, args.err);
-        g_error_free(args.err);
-    }
+
+    if (args.err != NULL)
+        g_task_return_error(task, args.err);
+    else
+        g_task_return_boolean(task, TRUE);
 }
 
 
@@ -500,17 +497,10 @@ void spice_smartcard_manager_init_async(SpiceSession *session,
                                         GAsyncReadyCallback callback,
                                         gpointer opaque)
 {
-    GSimpleAsyncResult *res;
+    GTask *task = g_task_new(session, cancellable, callback, opaque);
 
-    res = g_simple_async_result_new(G_OBJECT(session),
-                                    callback,
-                                    opaque,
-                                    spice_smartcard_manager_init);
-    g_simple_async_result_run_in_thread(res,
-                                        smartcard_manager_init_helper,
-                                        G_PRIORITY_DEFAULT,
-                                        cancellable);
-    g_object_unref(res);
+    g_task_run_in_thread(task, smartcard_manager_init_helper);
+    g_object_unref(task);
 }
 
 G_GNUC_INTERNAL
@@ -518,21 +508,16 @@ gboolean spice_smartcard_manager_init_finish(SpiceSession *session,
                                              GAsyncResult *result,
                                              GError **err)
 {
-    GSimpleAsyncResult *simple;
+    GTask *task = G_TASK(result);
 
     g_return_val_if_fail(SPICE_IS_SESSION(session), FALSE);
-    g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(result), FALSE);
+    g_return_val_if_fail(G_IS_TASK(task), FALSE);
 
     SPICE_DEBUG("smartcard_manager_finish");
 
-    simple = G_SIMPLE_ASYNC_RESULT(result);
-    g_return_val_if_fail(g_simple_async_result_get_source_tag(simple) == spice_smartcard_manager_init, FALSE);
-    if (g_simple_async_result_propagate_error(simple, err))
-        return FALSE;
-
     spice_smartcard_manager_update_monitor();
 
-    return TRUE;
+    return g_task_propagate_boolean(task, err);
 }
 
 /**
@@ -596,8 +581,7 @@ gboolean spice_smartcard_reader_remove_card(SpiceSmartcardReader *reader)
 
 /**
  * spice_smartcard_manager_get_readers:
- *
- * manager: a #SpiceSmartcardManager
+ * @manager: a #SpiceSmartcardManager
  *
  * Gets the list of smartcard readers that are currently available, they
  * can be either software (emulated) readers, or hardware ones.

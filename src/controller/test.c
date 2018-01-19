@@ -49,7 +49,7 @@ void write_to_pipe (const void* data, size_t len)
 #ifdef WIN32
     DWORD written;
     if (!WriteFile (pipe, data, len, &written, NULL) || written != len) {
-        printf("Write to pipe failed %u\n", GetLastError());
+        printf("Write to pipe failed %lu\n", GetLastError());
     }
 #else
     if (send (sock, data, len, 0) != len) {
@@ -107,7 +107,7 @@ ssize_t read_from_pipe (void* data, size_t size)
 #ifdef WIN32
     DWORD bytes;
     if (!ReadFile (pipe, data, size, &bytes, NULL)) {
-        printf ("Read from pipe failed %u\n", GetLastError());
+        printf ("Read from pipe failed %lu\n", GetLastError());
     }
     read = bytes;
 #else
@@ -212,9 +212,6 @@ int main (int argc, char *argv[])
     ControllerValue msg;
     ssize_t read;
 
-#if !GLIB_CHECK_VERSION(2,36,0)
-    g_type_init ();
-#endif
     ctrl = spice_ctrl_controller_new ();
     loop = g_main_loop_new (NULL, FALSE);
     g_signal_connect (ctrl, "notify", G_CALLBACK (notified), NULL);
@@ -227,7 +224,7 @@ int main (int argc, char *argv[])
     printf ("Creating Spice controller connection %s\n", pipe_name);
     pipe = CreateFile (pipe_name, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
     if (pipe == INVALID_HANDLE_VALUE) {
-        printf ("Could not open pipe %u\n", GetLastError());
+        printf ("Could not open pipe %lu\n", GetLastError());
         return -1;
     }
 #else
@@ -259,7 +256,7 @@ int main (int argc, char *argv[])
     send_data (CONTROLLER_PASSWORD, (uint8_t*)PWD, strlen(PWD) + 1);
     send_data (CONTROLLER_SECURE_CHANNELS, (uint8_t*)SECURE_CHANNELS, strlen(SECURE_CHANNELS) + 1);
     send_data (CONTROLLER_DISABLE_CHANNELS, (uint8_t*)DISABLED_CHANNELS, strlen(DISABLED_CHANNELS) + 1);
-    send_data (CONTROLLER_TLS_CIPHERS, (uint8_t*)TLS_CIPHERS, sizeof(TLS_CIPHERS) + 1);
+    send_data (CONTROLLER_TLS_CIPHERS, (uint8_t*)TLS_CIPHERS, strlen(TLS_CIPHERS) + 1);
     send_data (CONTROLLER_CA_FILE, (uint8_t*)CA_FILE, strlen(CA_FILE) + 1);
     send_data (CONTROLLER_HOST_SUBJECT, (uint8_t*)HOST_SUBJECT, strlen(HOST_SUBJECT) + 1);
     send_data (CONTROLLER_SET_TITLE, (uint8_t*)TITLE, strlen(TITLE) + 1);

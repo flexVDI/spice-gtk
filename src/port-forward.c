@@ -60,7 +60,7 @@ static void unref_connection(gpointer value)
 {
     Connection * conn = (Connection *) value;
     if (!--conn->refs) {
-        SPICE_DEBUG("Closing connection %d", conn->id);
+        SPICE_DEBUG("Closing connection %u", conn->id);
         g_object_unref(conn->cancellable);
         if (conn->conn) {
             g_io_stream_close((GIOStream *)conn->conn, NULL, NULL);
@@ -106,7 +106,7 @@ static void close_agent_connection(PortForwarder *pf, int id)
 
 static void close_connection_no_notify(Connection * conn)
 {
-    SPICE_DEBUG("Start closing connection %d with %d refs", conn->id, conn->refs);
+    SPICE_DEBUG("Start closing connection %u with %d refs", conn->id, conn->refs);
     if (!g_cancellable_is_cancelled(conn->cancellable))
         g_cancellable_cancel(conn->cancellable);
     if (!g_hash_table_remove(conn->pf->connections, GUINT_TO_POINTER(conn->id)))
@@ -137,6 +137,8 @@ typedef struct _AddressPortClass
 {
     GObjectClass parent_class;
 } AddressPortClass;
+
+static GType address_port_get_type(void);
 
 G_DEFINE_TYPE(AddressPort, address_port, G_TYPE_OBJECT);
 
@@ -364,9 +366,9 @@ static void connection_read_callback(GObject *source_object, GAsyncResult *res,
     if (error || bytes == 0) {
         /* Error or connection closed by peer */
         if (error)
-            SPICE_DEBUG("Read error on connection %d: %s", conn->id, error->message);
+            SPICE_DEBUG("Read error on connection %u: %s", conn->id, error->message);
         else
-            SPICE_DEBUG("Connection %d reset by peer", conn->id);
+            SPICE_DEBUG("Connection %u reset by peer", conn->id);
         close_connection(conn);
         unref_connection(conn);
     } else {
@@ -396,15 +398,15 @@ static void connection_write_callback(GObject *source_object, GAsyncResult *res,
 
     if (error != NULL) {
         /* Error or connection closed by peer */
-        SPICE_DEBUG("Write error on connection %d: %s", conn->id, error->message);
+        SPICE_DEBUG("Write error on connection %u: %s", conn->id, error->message);
         close_connection(conn);
         unref_connection(conn);
     } else {
         bytes = (GBytes *)g_queue_pop_head(conn->write_buffer);
-        SPICE_DEBUG("Written %d bytes on connection %d", num_written, conn->id);
+        SPICE_DEBUG("Written %d bytes on connection %u", num_written, conn->id);
         remaining = g_bytes_get_size(bytes) - num_written;
         if (remaining) {
-            SPICE_DEBUG("Still %d bytes to go on connection %d", remaining, conn->id);
+            SPICE_DEBUG("Still %d bytes to go on connection %u", remaining, conn->id);
             new_bytes = g_bytes_new_from_bytes(bytes, num_written, remaining);
             g_queue_push_head(conn->write_buffer, new_bytes);
         }
@@ -443,7 +445,7 @@ static void connection_connect_callback(GObject *source_object, GAsyncResult *re
     conn->conn = g_socket_client_connect_to_host_finish((GSocketClient *)source_object, res, NULL);
     if (!conn->conn) {
         /* Error */
-        SPICE_DEBUG("Connection %d could not connect", conn->id);
+        SPICE_DEBUG("Connection %u could not connect", conn->id);
         close_connection(conn);
         unref_connection(conn);
     } else {
@@ -460,12 +462,12 @@ static void handle_accepted(PortForwarder *pf, VDAgentPortForwardAcceptedMessage
     AddressPort *local;
     Connection *conn = g_hash_table_lookup(pf->connections, id);
     if (conn) {
-        g_warning("Connection %d already exists.", msg->id);
+        g_warning("Connection %u already exists.", msg->id);
         close_connection_no_notify(conn);
     }
 
     local = ADDRESS_PORT(g_hash_table_lookup(pf->remote_assocs, rport));
-    SPICE_DEBUG("Connection command, id %d on remote port %d -> %s port %d",
+    SPICE_DEBUG("Connection command, id %u on remote port %d -> %s port %d",
                 msg->id, msg->port, local->address, local->port);
     if (local) {
         conn = new_connection_with_socket(pf, msg->id, msg->ack_interval);
@@ -493,9 +495,9 @@ static void handle_data(PortForwarder *pf, VDAgentPortForwardDataMessage *msg)
 
     if (!conn) {
         /* Ignore, this is usually an already closed connection */
-        SPICE_DEBUG("Connection %d does not exist.", msg->id);
+        SPICE_DEBUG("Connection %u does not exist.", msg->id);
     } else if (conn->connecting) {
-        g_warning("Connection %d is still not connected!", conn->id);
+        g_warning("Connection %u is still not connected!", conn->id);
     } else {
         chunk = g_bytes_new(msg->data, msg->size);
         g_queue_push_tail(conn->write_buffer, chunk);
@@ -513,11 +515,11 @@ static void handle_close(PortForwarder *pf, VDAgentPortForwardCloseMessage *msg)
 {
     Connection *conn = g_hash_table_lookup(pf->connections, GUINT_TO_POINTER(msg->id));
     if (conn) {
-        SPICE_DEBUG("Close command for connection %d", conn->id);
+        SPICE_DEBUG("Close command for connection %u", conn->id);
         close_connection_no_notify(conn);
     } else {
         /* This is usually an already closed connection */
-        SPICE_DEBUG("Connection %d does not exists.", msg->id);
+        SPICE_DEBUG("Connection %u does not exists.", msg->id);
         close_agent_connection(pf, msg->id);
     }
 }
@@ -525,7 +527,7 @@ static void handle_close(PortForwarder *pf, VDAgentPortForwardCloseMessage *msg)
 static void handle_ack(PortForwarder *pf, VDAgentPortForwardAckMessage *msg)
 {
     Connection *conn = g_hash_table_lookup(pf->connections, GUINT_TO_POINTER(msg->id));
-    SPICE_DEBUG("ACK command for connection %d with %d bytes", msg->id, (int)msg->size);
+    SPICE_DEBUG("ACK command for connection %u with %d bytes", msg->id, (int)msg->size);
     if (conn) {
         if (conn->connecting) {
             conn->connecting = FALSE;
@@ -542,7 +544,7 @@ static void handle_ack(PortForwarder *pf, VDAgentPortForwardAckMessage *msg)
         }
     } else {
         /* Ignore, this is usually an already closed connection */
-        SPICE_DEBUG("Connection %d does not exists.", msg->id);
+        SPICE_DEBUG("Connection %u does not exists.", msg->id);
     }
 }
 

@@ -21,6 +21,10 @@
 #ifndef __SPICE_USB_DEVICE_MANAGER_H__
 #define __SPICE_USB_DEVICE_MANAGER_H__
 
+#if !defined(__SPICE_CLIENT_H_INSIDE__) && !defined(SPICE_COMPILATION)
+#warning "Only <spice-client.h> can be included directly"
+#endif
+
 #include "spice-client.h"
 #include <gio/gio.h>
 
@@ -39,6 +43,11 @@ typedef struct _SpiceUsbDeviceManager SpiceUsbDeviceManager;
 typedef struct _SpiceUsbDeviceManagerClass SpiceUsbDeviceManagerClass;
 typedef struct _SpiceUsbDeviceManagerPrivate SpiceUsbDeviceManagerPrivate;
 
+/**
+ * SpiceUsbDevice:
+ *
+ * The #SpiceUsbDevice struct is opaque and cannot be accessed directly.
+ */
 typedef struct _SpiceUsbDevice SpiceUsbDevice;
 
 /**
@@ -61,6 +70,7 @@ struct _SpiceUsbDeviceManager
  * @device_added: Signal class handler for the #SpiceUsbDeviceManager::device-added signal.
  * @device_removed: Signal class handler for the #SpiceUsbDeviceManager::device-removed signal.
  * @auto_connect_failed: Signal class handler for the #SpiceUsbDeviceManager::auto-connect-failed signal.
+ * @device_error: Signal class handler for the #SpiceUsbDeviceManager::device_error signal.
  *
  * Class structure for #SpiceUsbDeviceManager.
  */
@@ -101,21 +111,37 @@ GPtrArray* spice_usb_device_manager_get_devices_with_filter(
 gboolean spice_usb_device_manager_is_device_connected(SpiceUsbDeviceManager *manager,
                                                       SpiceUsbDevice *device);
 void spice_usb_device_manager_connect_device_async(
-                                             SpiceUsbDeviceManager *manager,
+                                             SpiceUsbDeviceManager *self,
                                              SpiceUsbDevice *device,
                                              GCancellable *cancellable,
                                              GAsyncReadyCallback callback,
                                              gpointer user_data);
+
+void spice_usb_device_manager_disconnect_device_async(
+                                             SpiceUsbDeviceManager *self,
+                                             SpiceUsbDevice *device,
+                                             GCancellable *cancellable,
+                                             GAsyncReadyCallback callback,
+                                             gpointer user_data);
+
 gboolean spice_usb_device_manager_connect_device_finish(
     SpiceUsbDeviceManager *self, GAsyncResult *res, GError **err);
 
+gboolean spice_usb_device_manager_disconnect_device_finish(
+    SpiceUsbDeviceManager *self, GAsyncResult *res, GError **err);
+
+#ifndef SPICE_DISABLE_DEPRECATED
+G_DEPRECATED_FOR(spice_usb_device_manager_disconnect_device_async)
 void spice_usb_device_manager_disconnect_device(SpiceUsbDeviceManager *manager,
                                                 SpiceUsbDevice *device);
+#endif
 
 gboolean
 spice_usb_device_manager_can_redirect_device(SpiceUsbDeviceManager  *self,
                                              SpiceUsbDevice         *device,
                                              GError                **err);
+
+gboolean spice_usb_device_manager_is_redirecting(SpiceUsbDeviceManager *self);
 
 G_END_DECLS
 

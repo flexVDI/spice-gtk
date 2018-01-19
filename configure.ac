@@ -13,20 +13,17 @@ m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 LT_INIT([disable-static win32-dll])
 AM_MAINTAINER_MODE
 
-IT_PROG_INTLTOOL([0.40.0])
-GETTEXT_PACKAGE=spice-gtk
+GETTEXT_PACKAGE=AC_PACKAGE_TARNAME
 AC_SUBST(GETTEXT_PACKAGE)
-AC_DEFINE_UNQUOTED([GETTEXT_PACKAGE],"$GETTEXT_PACKAGE", [GETTEXT package name])
-AM_GLIB_GNU_GETTEXT
+AC_DEFINE_UNQUOTED([GETTEXT_PACKAGE], "$GETTEXT_PACKAGE", [GETTEXT package name])
+AM_GNU_GETTEXT_VERSION([0.18.2])
+AM_GNU_GETTEXT([external])
 
 
 SPICE_GTK_LOCALEDIR=[${datadir}/locale]
 AC_SUBST(SPICE_GTK_LOCALEDIR)
 
 GTK_DOC_CHECK([1.14],[--flavour no-tmpl])
-
-# no opengl support yet
-AM_CONDITIONAL(SUPPORT_GL, false)
 
 AC_PROG_CC
 AC_PROG_CC_C99
@@ -46,7 +43,7 @@ AC_CANONICAL_HOST
 AC_PROG_LIBTOOL
 AM_PROG_CC_C_O
 AC_C_BIGENDIAN
-AC_PATH_PROGS(PYTHON, python2 python)
+AM_PATH_PYTHON(,, [:])
 RRA_LD_VERSION_SCRIPT
 
 AC_MSG_CHECKING([for native Win32])
@@ -65,17 +62,36 @@ esac
 AC_MSG_RESULT([$os_win32])
 AM_CONDITIONAL([OS_WIN32],[test "$os_win32" = "yes"])
 
-AC_CHECK_HEADERS([sys/ipc.h sys/shm.h])
+AC_MSG_CHECKING([for native macOS])
+case "$host_os" in
+     *darwin*)
+        os_mac=yes
+        ;;
+     *)
+        os_mac=no
+        ;;
+esac
+AC_MSG_RESULT([$os_mac])
+AM_CONDITIONAL([OS_MAC],[test "$os_mac" = "yes"])
+
 AC_CHECK_HEADERS([sys/socket.h netinet/in.h arpa/inet.h])
 AC_CHECK_HEADERS([termios.h])
+AC_CHECK_HEADERS([epoxy/egl.h],
+                 [have_egl=yes],
+                 [have_egl=no])
+AC_MSG_CHECKING([if we can use EGL in libepoxy])
+AC_MSG_RESULT([$have_egl])
+AM_CONDITIONAL([HAVE_EGL],[test "$have_egl" = "yes"])
+AS_IF([test "$have_egl" = "yes"],
+       AC_DEFINE([HAVE_EGL], [1], [Define if supporting EGL]))
 
 AC_CHECK_LIBM
 AC_SUBST(LIBM)
 
 AC_CONFIG_SUBDIRS([spice-common])
-PKG_CHECK_MODULES([SPICE_PROTOCOL], [spice-protocol >= 0.12.10])
+PKG_CHECK_MODULES([SPICE_PROTOCOL], [spice-protocol >= 0.12.13])
 
-COMMON_CFLAGS='-I ${top_srcdir}/spice-common/ ${SPICE_PROTOCOL_CFLAGS}'
+COMMON_CFLAGS='-I${top_builddir}/spice-common/ -I${top_srcdir}/spice-common/ ${SPICE_PROTOCOL_CFLAGS}'
 AC_SUBST(COMMON_CFLAGS)
 
 SPICE_GTK_MAJOR_VERSION=`echo $PACKAGE_VERSION | cut -d. -f1`
@@ -90,150 +106,63 @@ AC_SUBST(SPICE_GTK_MICRO_VERSION)
 dnl =========================================================================
 dnl Chek optional features
 
-srcdir="$(dirname $0)"
-if test ! -e "$srcdir/src/vncdisplaykeymap_osx2xtkbd.c"; then
-  AC_MSG_CHECKING([for Text::CSV Perl module])
-  perl -MText::CSV -e "" >/dev/null 2>&1
-  if test $? -ne 0 ; then
-    AC_MSG_RESULT([not found])
-    AC_MSG_ERROR([Text::CSV Perl module is required to compile this package])
-  fi
-  AC_MSG_RESULT([found])
-fi
-
-SPICE_GLIB_REQUIRES="spice-protocol >= 0.12.10"
+SPICE_GLIB_REQUIRES=""
 SPICE_GTK_REQUIRES=""
 
 PKG_CHECK_MODULES(PIXMAN, pixman-1 >= 0.17.7)
-AC_SUBST(PIXMAN_CFLAGS)
-AC_SUBST(PIXMAN_LIBS)
+
 SPICE_GLIB_REQUIRES="${SPICE_GLIB_REQUIRES} pixman-1 >= 0.17.7"
 
 PKG_CHECK_MODULES(SSL, openssl)
-AC_SUBST(SSL_CFLAGS)
-AC_SUBST(SSL_LIBS)
+
 SPICE_GLIB_REQUIRES="${SPICE_GLIB_REQUIRES} openssl"
 
-dnl Cyrus SASL
-AC_ARG_WITH([sasl],
-  [AS_HELP_STRING([--with-sasl=@<:@yes/no/auto@:>@], [use cyrus SASL for authentication @<:@default=auto@:>@])],
-  [],
-  [with_sasl="auto"])
-
-SASL_CFLAGS=
-SASL_LIBS=
-enable_sasl=no
-if test "x$with_sasl" != "xno"; then
-  if test "x$with_sasl" != "xyes" && test "x$with_sasl" != "xauto"; then
-    SASL_CFLAGS="-I$with_sasl"
-    SASL_LIBS="-L$with_sasl"
-  fi
-  old_cflags="$CFLAGS"
-  old_libs="$LIBS"
-  CFLAGS="$CFLAGS $SASL_CFLAGS"
-  LIBS="$LIBS $SASL_LIBS"
-  AC_CHECK_HEADER([sasl/sasl.h],[with_sasl=yes])
-  if test "x$with_sasl" = "xyes" ; then
-    AC_CHECK_LIB([sasl2], [sasl_client_init],[with_sasl2=yes],[with_sasl2=no])
-  fi
-  if test "x$with_sasl2" = "xno" && test "x$with_sasl" = "xyes" ; then
-    AC_CHECK_LIB([sasl], [sasl_client_init],[with_sasl=yes],[with_sasl=no])
-  fi
-  if test "x$with_sasl2" = "xyes"; then
-    SASL_LIBS="$SASL_LIBS -lsasl2"
-  elif test "x$with_sasl" = "xyes"; then
-    SASL_LIBS="$SASL_LIBS -lsasl"
-  elif test "x$with_sasl" != "xauto"; then
-    AC_MSG_ERROR([You must install the Cyrus SASL development package in order to compile spice-gtk])
-  fi
-  CFLAGS="$old_cflags"
-  LIBS="$old_libs"
-  if test "x$with_sasl2" = "xyes" || test "x$with_sasl" = "xyes" ; then
-    AC_DEFINE_UNQUOTED([HAVE_SASL], 1,
-      [whether Cyrus SASL is available for authentication])
-    enable_sasl=yes
-  fi
-fi
-AM_CONDITIONAL([HAVE_SASL], [test "x$with_sasl2" = "xyes" || test "x$with_sasl" = "xyes"])
-AC_SUBST([SASL_CFLAGS])
-AC_SUBST([SASL_LIBS])
-
+SPICE_CHECK_SASL
 
 AC_MSG_CHECKING([which gtk+ version to compile against])
 AC_ARG_WITH([gtk],
-  [AS_HELP_STRING([--with-gtk=@<:@2.0/3.0/no@:>@],[which gtk+ version to compile against @<:@default=3.0@:>@])],
+  [AS_HELP_STRING([--with-gtk=@<:@3.0/no@:>@],[which gtk+ version to compile against @<:@default=3.0@:>@])],
   [case "$with_gtk" in
-     2.0|3.0) AC_MSG_RESULT([$with_gtk]) ;;
+     3.0) AC_MSG_RESULT([$with_gtk]) ;;
      no) AC_MSG_RESULT([none]) ;;
      *) AC_MSG_ERROR([invalid gtk version specified]) ;;
    esac],
   [with_gtk=3.0])
 
 case "$with_gtk" in
-  2.0) GTK_API_VERSION=2.0
-       GTK_REQUIRED=2.18.0
-       SPICE_GTK_API_VERSION=2.0
-       ;;
-  3.0) GTK_API_VERSION=3.0
-       GTK_REQUIRED=2.91.3
-       SPICE_GTK_API_VERSION=3.0
+  3.0) GTK_REQUIRED=3.12
+       GTK_ENCODED_VERSION="GDK_VERSION_3_12"
        ;;
   no)
        AS_IF([test x$enable_gtk_doc = xyes],
              [AC_MSG_ERROR([Without GTK+, gtk-doc must be disabled])])
 esac
 
-AC_SUBST([GTK_API_VERSION])
 AC_SUBST([GTK_REQUIRED])
-AC_SUBST([SPICE_GTK_API_VERSION])
 AM_CONDITIONAL([WITH_GTK],[test "$with_gtk" != "no"])
-AM_CONDITIONAL([HAVE_GTK_2],[test "$with_gtk" = "2.0"])
-AM_CONDITIONAL([HAVE_GTK_3],[test "$with_gtk" = "3.0"])
 
 AS_IF([test "x$with_gtk" != "xno"],
-      [PKG_CHECK_MODULES(GTK, gtk+-$GTK_API_VERSION >= $GTK_REQUIRED)])
-AC_SUBST(GTK_CFLAGS)
-AC_SUBST(GTK_LIBS)
-SPICE_GTK_REQUIRES="${SPICE_GTK_REQUIRES} gtk+-$GTK_API_VERSION >= $GTK_REQUIRED"
+      [AS_IF([test "x$os_win32" = "xyes"],
+             [PKG_CHECK_MODULES(GTK, gtk+-3.0 >= $GTK_REQUIRED)],
+             [PKG_CHECK_MODULES(GTK, gtk+-3.0 >= $GTK_REQUIRED epoxy)])]
+      [GTK_CFLAGS="$GTK_CFLAGS -DGDK_VERSION_MIN_REQUIRED=$GTK_ENCODED_VERSION \
+                               -DGDK_VERSION_MAX_ALLOWED=$GTK_ENCODED_VERSION"])
+SPICE_GTK_REQUIRES="${SPICE_GTK_REQUIRES} gtk+-3.0 >= $GTK_REQUIRED"
 
-PKG_CHECK_EXISTS([gtk+-x11-$with_gtk], [have_x11=yes], [have_x11=no])
-AS_IF([test "x$have_x11" = "xyes"], [AC_DEFINE([HAVE_X11], 1, [Have x11?])])
-AM_CONDITIONAL([WITH_DISPLAY_X11], [test "x$have_x11" = "xyes"])
+# Check for gdk_event_get_scancode function
+# This was added in Gdk 3.22
+# The check allows the usage of the function in case the function is
+# backported or in case of compilation from Gdk master branch
+old_LIBS="$LIBS"
+old_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $GTK_CFLAGS"
+LIBS="$LIBS $GTK_LIBS"
+AC_CHECK_FUNCS(gdk_event_get_scancode)
+LIBS="$old_LIBS"
+CFLAGS="$old_CFLAGS"
 
-PKG_CHECK_EXISTS([gtk+-quartz-$with_gtk], [have_quartz=yes], [have_quartz=no])
-AS_IF([test "x$have_quartz" = "xyes"], [AC_DEFINE([HAVE_QUARTZ], 1, [Have Quartz?])])
-AM_CONDITIONAL([WITH_DISPLAY_QUARTZ], [test "x$have_quartz" = "xyes"])
-
-PKG_CHECK_EXISTS([gtk+-win32-$with_gtk], [have_win32=yes], [have_win32=no])
-AS_IF([test "x$have_win32" = "xyes"], [AC_DEFINE([HAVE_WINDOWS], 1, [Have Win32?])])
-AM_CONDITIONAL([WITH_DISPLAY_WINDOWS], [test "x$have_win32" = "xyes"])
-
-if [test "x$have_x11" = "xyes" ]
-then
-  PKG_CHECK_MODULES(XRANDR, x11 xrandr, [have_xrandr=yes], [have_xrandr=no])
-  AC_SUBST(XRANDR_CFLAGS)
-  AC_SUBST(XRANDR_LIBS)
-  AS_IF([test "x$have_xrandr" = "xyes"], [AC_DEFINE([HAVE_RANDR], 1, [Have xrandr?])])
-
-  AC_CHECK_HEADERS([X11/XKBlib.h])
-fi
-
-AC_ARG_WITH([x11],
-  AS_HELP_STRING([--with-x11], [Use x11/shm display backend instead of cairo @<:@default=no@:>@]))
-
-AC_MSG_CHECKING([What rendering backend to use..])
-if [test "x$with_x11" = "xyes" ]
-then
-  if [test "$GTK_API_VERSION" = "3.0" ]
-  then
-    AC_MSG_ERROR([X11 SHM backend is not compatible with GTK3])
-  fi
-  AC_MSG_RESULT([x11])
-  AC_DEFINE([WITH_X11], 1, [Use X11 backend?])
-else
-  AC_MSG_RESULT([cairo])
-fi
-AM_CONDITIONAL([WITH_X11], [test "x$with_x11" = "xyes"])
+PKG_CHECK_EXISTS([gtk+-x11-$with_gtk], [PKG_CHECK_MODULES(X11, x11)])
+AC_CHECK_HEADERS([X11/XKBlib.h])
 
 AC_ARG_WITH([pnp-ids-path],
   AC_HELP_STRING([--with-pnp-ids-path],
@@ -252,25 +181,21 @@ fi
 
 AC_CHECK_FUNCS(clearenv strtok_r)
 
-PKG_CHECK_MODULES(GLIB2, glib-2.0 >= 2.28)
-AC_SUBST(GLIB2_CFLAGS)
-AC_SUBST(GLIB2_LIBS)
+# Keep these two definitions in agreement.
+GLIB2_REQUIRED="2.36"
+GLIB2_ENCODED_VERSION="GLIB_VERSION_2_36"
+
+PKG_CHECK_MODULES(GLIB2, glib-2.0 >= $GLIB2_REQUIRED)
+GLIB2_CFLAGS="$GLIB2_CFLAGS -DGLIB_VERSION_MIN_REQUIRED=$GLIB2_ENCODED_VERSION \
+  -DGLIB_VERSION_MAX_ALLOWED=$GLIB2_ENCODED_VERSION"
 
 PKG_CHECK_MODULES(GOBJECT2, gobject-2.0)
-AC_SUBST(GOBJECT2_CFLAGS)
-AC_SUBST(GOBJECT2_LIBS)
 
-PKG_CHECK_MODULES(GIO, gio-2.0 >= 2.10.0 $gio_os)
-AC_SUBST(GIO_CFLAGS)
-AC_SUBST(GIO_LIBS)
+PKG_CHECK_MODULES(GIO, gio-2.0 >= 2.36 $gio_os)
 
 PKG_CHECK_MODULES(CAIRO, cairo >= 1.2.0)
-AC_SUBST(CAIRO_CFLAGS)
-AC_SUBST(CAIRO_LIBS)
 
-PKG_CHECK_MODULES(GTHREAD, gthread-2.0 > 2.0.0)
-AC_SUBST(GTHREAD_CFLAGS)
-AC_SUBST(GTHREAD_LIBS)
+PKG_CHECK_MODULES(GTHREAD, gthread-2.0)
 
 AC_ARG_ENABLE([webdav],
   AS_HELP_STRING([--enable-webdav=@<:@auto/yes/no@:>@],
@@ -282,8 +207,6 @@ if test "x$enable_webdav" = "xno"; then
   have_phodav="no"
 else
   PKG_CHECK_MODULES(PHODAV, [libphodav-2.0 glib-2.0 >= 2.43.90 libsoup-2.4 >= 2.49.91], [have_phodav=yes], [have_phodav=no])
-  AC_SUBST(PHODAV_CFLAGS)
-  AC_SUBST(PHODAV_LIBS)
 
   if test "x$have_phodav" = "xno" && test "x$enable_webdav" = "xyes"; then
     AC_MSG_ERROR([webdav support explicitly requested, but some required packages are not available])
@@ -295,48 +218,85 @@ AS_IF([test "x$have_phodav" = "xyes"],
 AM_CONDITIONAL([WITH_PHODAV], [test "x$have_phodav" = "xyes"])
 
 AC_ARG_WITH([audio],
-  AS_HELP_STRING([--with-audio=@<:@gstreamer/pulse/auto/no@:>@], [Select audio backend @<:@default=auto@:>@]),
+  AS_HELP_STRING([--with-audio=@<:@gstreamer/pulse/auto/no@:>@], [For legacy compatibility only]),
+  [SPICE_WARNING([--with-audio is deprecated. Use --enable-pulse and/or --enable-gstaudio instead])
+   case "$with_audio" in
+   pulse)     enable_pulse="yes"; enable_gstaudio="no" ;;
+   gstreamer) enable_pulse="no";  enable_gstaudio="yes" ;;
+   no)        enable_pulse="no";  enable_gstaudio="no" ;;
+   esac
+])
+
+AC_ARG_ENABLE([pulse],
+  AS_HELP_STRING([--enable-pulse=@<:@yes/auto/no@:>@], [Enable the PulseAudio backend @<:@default=auto@:>@]),
   [],
-  [with_audio="auto"])
-
-case "$with_audio" in
-  gstreamer|pulse|auto*)
-    PKG_CHECK_MODULES(GST, gstreamer-1.0 gstreamer-base-1.0 gstreamer-app-1.0 gstreamer-audio-1.0, [have_gst=yes], [have_gst=no])
-    PKG_CHECK_MODULES(PULSE, libpulse libpulse-mainloop-glib, [have_pulse=yes], [have_pulse=no])
-    ;;
-  no*)
-    ;;
-  *) AC_MSG_ERROR(Unsupported audio backend)
-esac
-
-AS_IF([test "x$with_audio" = "xauto" && test "x$have_pulse" = "xyes"],
-      [with_audio=pulse])
-
-AS_IF([test "x$with_audio" = "xauto" && test "x$have_gst" = "xyes"],
-      [with_audio=gstreamer])
-
-AS_IF([test "x$with_audio" = "xauto"],
-      [with_audio=no])
-
-AS_IF([test "x$with_audio" = "xpulse"],
-      [AS_IF([test "x$have_pulse" = "xyes"],
-             [AC_DEFINE([WITH_PULSE], 1, [Have pulseaudio?])],
-             [AC_MSG_ERROR([PulseAudio requested but not found])
+  [enable_pulse="auto"])
+AS_IF([test "x$enable_pulse" != "xno"],
+      [PKG_CHECK_MODULES(PULSE, [libpulse libpulse-mainloop-glib],
+         [AC_DEFINE([HAVE_PULSE], 1, [Have PulseAudio support?])
+          enable_pulse="yes"],
+         [AS_IF([test "x$enable_pulse" = "xyes"],
+                AC_MSG_ERROR([PulseAudio requested but not found]))
+          enable_pulse="no"
       ])
 ])
-AM_CONDITIONAL([WITH_PULSE], [test "x$have_pulse" = "xyes"])
-AC_SUBST(PULSE_CFLAGS)
-AC_SUBST(PULSE_LIBS)
+AM_CONDITIONAL([HAVE_PULSE], [test "x$enable_pulse" = "xyes"])
 
-AS_IF([test "x$with_audio" = "xgstreamer"],
-      [AS_IF([test "x$have_gst" = "xyes"],
-             [AC_DEFINE([WITH_GSTAUDIO], 1, [Have GStreamer 1.0?])],
-             [AC_MSG_ERROR([GStreamer 1.0 requested but not found])
-      ])
+AC_ARG_ENABLE([gstaudio],
+  AS_HELP_STRING([--enable-gstaudio=@<:@yes/auto/no@:>@], [Enable the GStreamer 1.0 audio backend @<:@default=auto@:>@]),
+  [],
+  [enable_gstaudio="auto"])
+AS_IF([test "x$enable_gstaudio" != "xno"],
+      [SPICE_CHECK_GSTREAMER(GSTAUDIO, 1.0, [gstreamer-1.0 gstreamer-base-1.0 gstreamer-app-1.0 gstreamer-audio-1.0],
+         [SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-base 1.0], [audioconvert audioresample appsink])
+          SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-good 1.0], [autoaudiosrc])
+          AS_IF([test x"$missing_gstreamer_elements" = "xyes"],
+                SPICE_WARNING([The GStreamer 1.0 audio backend can be built but may not work.]))
+         ],
+         [AS_IF([test "x$enable_gstaudio" = "xyes"],
+                AC_MSG_ERROR([GStreamer 1.0 audio requested but not found]))
+         ])
+      ], [have_gstaudio="no"]
+)
+AM_CONDITIONAL([HAVE_GSTAUDIO], [test "x$have_gstaudio" = "xyes"])
+
+AS_IF([test "x$enable_pulse$have_gstaudio" = "xnono"],
+      [SPICE_WARNING([No PulseAudio or GStreamer 1.0 audio decoder, audio will not be streamed])
 ])
-AM_CONDITIONAL([WITH_GSTAUDIO], [test "x$have_gst" = "xyes"])
-AC_SUBST(GST_CFLAGS)
-AC_SUBST(GST_LIBS)
+
+AC_ARG_ENABLE([gstvideo],
+  AS_HELP_STRING([--enable-gstvideo=@<:@auto/yes/no@:>@],
+                 [Enable GStreamer video support @<:@default=auto@:>@]),
+  [],
+  [enable_gstvideo="auto"])
+AS_IF([test "x$enable_gstvideo" != "xno"],
+      [SPICE_CHECK_GSTREAMER(GSTVIDEO, 1.0,
+         [gstreamer-1.0 gstreamer-base-1.0 gstreamer-app-1.0 gstreamer-video-1.0],
+         [missing_gstreamer_elements=""
+          SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-base 1.0], [appsrc videoconvert appsink])
+          SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-good 1.0], [jpegdec vp8dec vp9dec])
+          SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-bad 1.0], [h264parse])
+          SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gstreamer-libav 1.0], [avdec_h264])
+          AS_IF([test x"$missing_gstreamer_elements" = "xyes"],
+                SPICE_WARNING([The GStreamer video decoder can be built but may not work.]))
+         ],
+         [AS_IF([test "x$enable_gstvideo" = "xyes"],
+                AC_MSG_ERROR([GStreamer 1.0 video requested but not found]))
+         ])
+      ], [have_gstvideo="no"]
+)
+AM_CONDITIONAL([HAVE_GSTVIDEO], [test "x$have_gstvideo" = "xyes"])
+
+AC_ARG_ENABLE([builtin-mjpeg],
+  AS_HELP_STRING([--enable-builtin-mjpeg], [Enable the builtin mjpeg video decoder @<:@default=yes@:>@]),
+  [],
+  enable_builtin_mjpeg="yes")
+AS_IF([test "x$enable_builtin_mjpeg" = "xyes"],
+      [AC_DEFINE([HAVE_BUILTIN_MJPEG], 1, [Use the builtin mjpeg decoder?])])
+AM_CONDITIONAL(HAVE_BUILTIN_MJPEG, [test "x$enable_builtin_mjpeg" != "xno"])
+
+AS_IF([test "x$enable_builtin_mjpeg$enable_gstvideo" = "xnono"],
+      [SPICE_WARNING([No builtin MJPEG or GStreamer decoder, video will not be streamed])])
 
 AC_CHECK_LIB(jpeg, jpeg_destroy_decompress,
     AC_MSG_CHECKING([for jpeglib.h])
@@ -359,7 +319,7 @@ AC_SUBST(NOPOLL_LIBS)
 AC_CHECK_LIB(z, deflate, Z_LIBS='-lz', AC_MSG_ERROR([zlib not found]))
 AC_SUBST(Z_LIBS)
 
-SPICE_CHECK_SMARTCARD([SMARTCARD])
+SPICE_CHECK_SMARTCARD
 AM_CONDITIONAL([WITH_SMARTCARD], [test "x$have_smartcard" = "xyes"])
 
 AC_ARG_ENABLE([usbredir],
@@ -524,6 +484,9 @@ esac
 if test "$with_coroutine" = "auto"; then
   if test "$os_win32" = "yes"; then
     with_coroutine=winfiber
+  elif test "$os_mac" = "yes"; then
+    with_coroutine=ucontext
+    AC_DEFINE([_XOPEN_SOURCE], [1], [Define _XOPEN_SOURCE on macOS for ucontext])
   else
     with_coroutine=ucontext
   fi
@@ -592,82 +555,6 @@ AM_CONDITIONAL(WITH_VALA, [test "x$enable_vala" = "xyes"])
 VAPIDIR="${datadir}/vala/vapi"
 AC_SUBST(VAPIDIR)
 
-
-AC_ARG_WITH([python],
-  AS_HELP_STRING([--with-python], [build python bindings @<:@default=auto@:>@]),
-  [case "$withval" in
-   yes|no|auto) with_python="$withval";;
-   *) AC_MSG_ERROR([bad value $withval for python option]) ;;
-   esac],
-  [AS_IF([test "$with_gtk" != "2.0" || test "x$os_win32" = "xyes"],
-         [with_python=no],[with_python=auto])]
-)
-
-if test "x$with_python" != "xno"; then
-  PKG_CHECK_MODULES(PYGTK, [pygtk-2.0 >= 2.0.0], [have_pygtk=yes], [have_pygtk=no])
-  AC_SUBST(PYGTK_CFLAGS)
-  AC_SUBST(PYGTK_LIBS)
-  if test "x$have_pygtk" != "xyes"
-  then
-    if test "x$with_python" = "xyes"
-    then
-      AC_MSG_ERROR("No pygtk found")
-    else
-      with_python=no
-    fi
-  fi
-fi
-
-if test "x$with_python" != "xno"; then
-  AM_PATH_PYTHON([], [have_python=yes], [have_python=no])
-  if test "x$have_python" != "xyes"
-  then
-    if test "x$with_python" = "xyes"
-    then
-      AC_MSG_ERROR("No python found")
-    else
-      with_python=no
-    fi
-  fi
-fi
-
-if test "x$with_python" != "xno"; then
-  AC_MSG_CHECKING([whether $PYTHON version >= 2.0])
-  HAVE_PYTHON_REQUIRED=no
-  AM_PYTHON_CHECK_VERSION([$PYTHON], [2.0],
-      [HAVE_PYTHON_REQUIRED="yes"],
-      [HAVE_PYTHON_REQUIRED="no"])
-
-  AC_MSG_RESULT($HAVE_PYTHON_REQUIRED)
-
-  if test "x$HAVE_PYTHON_REQUIRED" != "xyes"
-  then
-    if test "x$with_python" = "xyes"
-    then
-      AC_MSG_ERROR("No suitable python found")
-    else
-      with_python=no
-    fi
-  fi
-fi
-
-if test "x$with_python" != "xno"; then
-  AM_CHECK_PYTHON_HEADERS(have_python_headers=yes,have_python_headers=no)
-
-  if test "x$have_python_headers" != "xyes"
-  then
-    if test "x$with_python" = "xyes"
-    then
-      AC_MSG_ERROR("No python development headers found")
-    else
-      with_python=no
-    fi
-  fi
-fi
-
-AM_CONDITIONAL(WITH_PYTHON, [test "x$with_python" != "xno"])
-
-
 AC_ARG_ENABLE([dbus],
   AS_HELP_STRING([--enable-dbus=@<:@auto/yes/no@:>@],
                  [Enable dbus support for desktop integration (disabling automount) @<:@default=auto@:>@]),
@@ -678,42 +565,40 @@ have_dbus=no
 if test "x$enable_dbus" != "xno"; then
   AC_DEFINE([USE_GDBUS], [1], [Define if supporting gdbus])
   have_dbus=yes
-
-  if test "x$enable_dbus" = "xyes" && test "x$have_dbus" = "xno"; then
-    AC_MSG_ERROR([D-Bus support explicitly requested, but some required packages are not available])
-  fi
+else
+  SPICE_WARNING([No D-Bus support, desktop integration and USB redirection may not work properly])
 fi
 
-SPICE_CHECK_LZ4([LZ4])
-
-AC_ARG_ENABLE([spicy],
-  AS_HELP_STRING([--enable-spicy=@<:@yes/no@:>@],
-                 [Enable building spicy binary @<:@default=no@:>@]),
+AC_ARG_ENABLE([alignment-checks],
+  AS_HELP_STRING([--enable-alignment-checks],
+                 [Enable runtime checks for cast alignment @<:@default=no@:>@]),
   [],
-  [enable_spicy="no"])
+  enable_alignment_checks="no")
+AS_IF([test "x$enable_alignment_checks" = "xyes"],
+      [AC_DEFINE([SPICE_DEBUG_ALIGNMENT], 1, [Enable runtime checks for cast alignment])])
 
-AM_CONDITIONAL(WITH_PROGRAMS, [test "x$enable_spicy" = "xyes"])
+SPICE_CHECK_LZ4
+
+AC_ARG_ENABLE([tools],
+  AS_HELP_STRING([--enable-tools=@<:@yes/no@:>@],
+                 [Enable building spicy tools @<:@default=no@:>@]),
+  [],
+  [enable_tools="no"])
+
+AM_CONDITIONAL(BUILD_TOOLS, [test "x$enable_tools" = "xyes"])
 
 AH_BOTTOM([
 #ifdef HAVE_WINDOWS
     #include <winsock2.h>
 #endif])
 
-AC_CONFIG_FILES([src/Makefile.flexVDI])
+AC_CONFIG_FILES([tools/Makefile.flexVDI])
 
 dnl ===========================================================================
 dnl check compiler flags
 
-# We want to enable these, but need to sort out the
-# decl mess with  src/generated_*.c
-dontwarn="-Wmissing-prototypes -Wmissing-declarations"
-
-# We want to enable these, but Gtk+2.0 has a bad decl
-# gtk-2.0/gtk/gtkitemfactory.h:47:1: error: function declaration
-# isn't a prototype.
-if test "$with_gtk" = "2.0"; then
-  dontwarn="$dontwarn -Wstrict-prototypes"
-fi
+# some glib/gstreamer enums use 1 << 31
+dontwarn="-Wshift-overflow=2"
 
 SPICE_COMPILE_WARNINGS([$dontwarn])
 
@@ -721,7 +606,7 @@ SPICE_CFLAGS="$SPICE_CFLAGS $WARN_CFLAGS"
 
 AC_SUBST(SPICE_CFLAGS)
 
-SPICE_GLIB_CFLAGS="$PIXMAN_CFLAGS $PULSE_CFLAGS $GST_CFLAGS $GLIB2_CFLAGS $GIO_CFLAGS $GOBJECT2_CFLAGS $SSL_CFLAGS $SASL_CFLAGS"
+SPICE_GLIB_CFLAGS="$PIXMAN_CFLAGS $PULSE_CFLAGS $GSTAUDIO_CFLAGS $GSTVIDEO_CFLAGS $GLIB2_CFLAGS $GIO_CFLAGS $GOBJECT2_CFLAGS $SSL_CFLAGS $SASL_CFLAGS"
 SPICE_GTK_CFLAGS="$SPICE_GLIB_CFLAGS $GTK_CFLAGS "
 
 AC_SUBST(SPICE_GLIB_CFLAGS)
@@ -737,15 +622,14 @@ AM_CONDITIONAL([BUILD_TESTS], [test x"$enable_static" = xyes])
 AC_OUTPUT([
 Makefile
 spice-client-glib-2.0.pc
-spice-client-gtk-2.0.pc
 spice-client-gtk-3.0.pc
 spice-controller.pc
 data/Makefile
-data/spicy.nsis
 po/Makefile.in
 src/Makefile
 src/spice-version.h
 src/controller/Makefile
+tools/Makefile
 doc/Makefile
 doc/reference/Makefile
 man/Makefile
@@ -765,17 +649,17 @@ AC_MSG_NOTICE([
 
         Gtk:                      ${with_gtk}
         Coroutine:                ${with_coroutine}
-        Audio:                    ${with_audio}
-        SASL support:             ${enable_sasl}
+        PulseAudio:               ${enable_pulse}
+        GStreamer Audio:          ${have_gstaudio}
+        GStreamer Video:          ${have_gstvideo}
+        SASL support:             ${have_sasl}
         Smartcard support:        ${have_smartcard}
         USB redirection support:  ${have_usbredir} ${with_usbredir_hotplug}
         DBus:                     ${have_dbus}
         WebDAV support:           ${have_phodav}
-        LZ4 support:              ${enable_lz4}
+        LZ4 support:              ${have_lz4}
 
         Now type 'make' to build $PACKAGE
 
 ])
-if test "x$have_dbus" = "xno"; then
-  AC_MSG_WARN([No D-Bus support, desktop integration and USB redirection may not work properly])
-fi
+SPICE_PRINT_MESSAGES

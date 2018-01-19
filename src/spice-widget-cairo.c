@@ -17,56 +17,52 @@
 */
 #include "config.h"
 
-#include "gtk-compat.h"
 #include "spice-widget.h"
 #include "spice-widget-priv.h"
 #include "spice-gtk-session-priv.h"
 
 
 G_GNUC_INTERNAL
-int spicex_image_create(SpiceDisplay *display)
+int spice_cairo_image_create(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
 
-    if (d->ximage != NULL)
+    if (d->canvas.surface != NULL)
         return 0;
 
-    if (d->format == SPICE_SURFACE_FMT_16_555 ||
-        d->format == SPICE_SURFACE_FMT_16_565) {
-        d->convert = TRUE;
-        d->data = g_malloc0(d->area.width * d->area.height * 4);
+    if (d->canvas.format == SPICE_SURFACE_FMT_16_555 ||
+        d->canvas.format == SPICE_SURFACE_FMT_16_565) {
+        d->canvas.convert = TRUE;
+        d->canvas.data = g_malloc0(d->area.width * d->area.height * 4);
 
-        d->ximage = cairo_image_surface_create_for_data
-            (d->data, CAIRO_FORMAT_RGB24, d->area.width, d->area.height, d->area.width * 4);
+        d->canvas.surface = cairo_image_surface_create_for_data
+            (d->canvas.data, CAIRO_FORMAT_RGB24,
+             d->area.width, d->area.height, d->area.width * 4);
 
     } else {
-        d->convert = FALSE;
+        d->canvas.convert = FALSE;
 
-        d->ximage = cairo_image_surface_create_for_data
-            (d->data, CAIRO_FORMAT_RGB24, d->width, d->height, d->stride);
+        d->canvas.surface = cairo_image_surface_create_for_data
+            (d->canvas.data, CAIRO_FORMAT_RGB24,
+             d->canvas.width, d->canvas.height, d->canvas.stride);
     }
 
     return 0;
 }
 
 G_GNUC_INTERNAL
-void spicex_image_destroy(SpiceDisplay *display)
+void spice_cairo_image_destroy(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
 
-    if (d->ximage) {
-        cairo_surface_destroy(d->ximage);
-        d->ximage = NULL;
-    }
-    if (d->convert && d->data) {
-        g_free(d->data);
-        d->data = NULL;
-    }
-    d->convert = FALSE;
+    g_clear_pointer(&d->canvas.surface, cairo_surface_destroy);
+    if (d->canvas.convert)
+        g_clear_pointer(&d->canvas.data, g_free);
+    d->canvas.convert = FALSE;
 }
 
 G_GNUC_INTERNAL
-void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
+void spice_cairo_draw_event(SpiceDisplay *display, cairo_t *cr)
 {
     SpiceDisplayPrivate *d = display->priv;
     cairo_rectangle_int_t rect;
@@ -78,7 +74,8 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
 
     spice_display_get_scaling(display, &s, &x, &y, &w, &h);
 
-    gdk_drawable_get_size(gtk_widget_get_window(GTK_WIDGET(display)), &ww, &wh);
+    ww = gtk_widget_get_allocated_width(GTK_WIDGET(display));
+    wh = gtk_widget_get_allocated_height(GTK_WIDGET(display));
 
     /* We need to paint the bg color around the image */
     rect.x = 0;
@@ -90,7 +87,7 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
     /* Optionally cut out the inner area where the pixmap
        will be drawn. This avoids 'flashing' since we're
        not double-buffering. */
-    if (d->ximage) {
+    if (d->canvas.surface) {
         rect.x = x;
         rect.y = y;
         rect.width = w;
@@ -108,18 +105,18 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
     cairo_fill(cr);
 
     /* Draw the display */
-    if (d->ximage) {
+    if (d->canvas.surface) {
         cairo_translate(cr, x, y);
         cairo_rectangle(cr, 0, 0, w, h);
         cairo_scale(cr, s, s);
-        if (!d->convert)
+        if (!d->canvas.convert)
             cairo_translate(cr, -d->area.x, -d->area.y);
-        cairo_set_source_surface(cr, d->ximage, 0, 0);
+        cairo_set_source_surface(cr, d->canvas.surface, 0, 0);
         cairo_fill(cr);
 
         if (d->time_to_inactivity < 30000) {
             cairo_translate(cr, 0, 0);
-            cairo_rectangle(cr, 0, 0, d->width, d->height);
+            cairo_rectangle(cr, 0, 0, d->area.width, d->area.height);
             const double fadeout = 10000.0;
             const double alpha_max = 0.8;
             double alpha = ((30000.0 - d->time_to_inactivity) / fadeout) * alpha_max;
@@ -133,14 +130,14 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
             cairo_select_font_face(cr, "sans-serif", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
             cairo_set_font_size(cr, size);
             cairo_text_extents(cr, pattern, &extents);
-            size *= (d->width*0.8)/extents.width;
+            size *= (d->area.width*0.8)/extents.width;
             cairo_set_font_size(cr, size);
 
             int seconds = (d->time_to_inactivity + 999) / 1000;
             char * msg = g_strdup_printf(pattern, seconds);
             cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, alpha);
             cairo_text_extents(cr, msg, &extents);
-            cairo_move_to(cr, (d->width - extents.width)/2, (d->height - extents.height)/2);
+            cairo_move_to(cr, (d->area.width - extents.width)/2, (d->area.height - extents.height)/2);
             cairo_show_text(cr, msg);
             g_free(msg);
         }
@@ -160,28 +157,8 @@ void spicex_draw_event(SpiceDisplay *display, cairo_t *cr)
     }
 }
 
-#if ! GTK_CHECK_VERSION (2, 91, 0)
 G_GNUC_INTERNAL
-void spicex_expose_event(SpiceDisplay *display, GdkEventExpose *expose)
-{
-    cairo_t *cr;
-
-    cr = gdk_cairo_create(gtk_widget_get_window(GTK_WIDGET(display)));
-    cairo_rectangle(cr,
-                    expose->area.x,
-                    expose->area.y,
-                    expose->area.width,
-                    expose->area.height);
-    cairo_clip(cr);
-
-    spicex_draw_event(display, cr);
-
-    cairo_destroy(cr);
-}
-#endif
-
-G_GNUC_INTERNAL
-gboolean spicex_is_scaled(SpiceDisplay *display)
+gboolean spice_cairo_is_scaled(SpiceDisplay *display)
 {
     SpiceDisplayPrivate *d = display->priv;
     return d->allow_scaling;

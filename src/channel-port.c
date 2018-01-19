@@ -21,7 +21,6 @@
 #include "spice-common.h"
 #include "spice-channel-priv.h"
 #include "spice-marshal.h"
-#include "glib-compat.h"
 
 /**
  * SECTION:channel-port
@@ -30,7 +29,7 @@
  * @section_id:
  * @see_also: #SpiceChannel
  * @stability: Stable
- * @include: channel-port.h
+ * @include: spice-client.h
  *
  * A Spice port channel carry arbitrary data between the Spice client
  * and the Spice server. It may be used to provide additional
@@ -151,7 +150,7 @@ static void spice_port_channel_class_init(SpicePortChannelClass *klass)
                               G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
 
     /**
-     * SpicePort::port-data:
+     * SpicePortChannel::port-data:
      * @channel: the channel that emitted the signal
      * @data: the data received
      * @size: number of bytes read
@@ -173,7 +172,7 @@ static void spice_port_channel_class_init(SpicePortChannelClass *klass)
 
 
     /**
-     * SpicePort::port-event:
+     * SpicePortChannel::port-event:
      * @channel: the channel that emitted the signal
      * @event: the event received
      * @size: number of bytes read
@@ -292,7 +291,8 @@ void spice_port_write_async(SpicePortChannel *self,
     c = self->priv;
 
     if (!c->opened) {
-        g_simple_async_report_error_in_idle(G_OBJECT(self), callback, user_data,
+        g_task_report_new_error(self, callback,
+            user_data, spice_port_write_async,
             SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
             "The port is not opened");
         return;

@@ -22,7 +22,6 @@
 #include "spice-session-priv.h"
 #include "spice-channel-priv.h"
 #include "spice-util-priv.h"
-#include "glib-compat.h"
 
 #include <pulse/glib-mainloop.h>
 #include <pulse/pulseaudio.h>
@@ -34,13 +33,12 @@
 struct async_task {
     SpicePulse                 *pulse;
     SpiceMainChannel           *main_channel;
-    GSimpleAsyncResult         *res;
+    GTask                      *gtask;
     GAsyncReadyCallback        callback;
     gpointer                   user_data;
     gboolean                   is_playback;
     pa_operation               *pa_op;
     gulong                     cancel_id;
-    GCancellable               *cancellable;
 };
 
 struct stream {
@@ -133,21 +131,10 @@ static void spice_pulse_dispose(GObject *obj)
     SPICE_DEBUG("%s", __FUNCTION__);
     p = pulse->priv;
 
-    if (p->playback.uncork_op)
-        pa_operation_unref(p->playback.uncork_op);
-    p->playback.uncork_op = NULL;
-
-    if (p->playback.cork_op)
-        pa_operation_unref(p->playback.cork_op);
-    p->playback.cork_op = NULL;
-
-    if (p->record.uncork_op)
-        pa_operation_unref(p->record.uncork_op);
-    p->record.uncork_op = NULL;
-
-    if (p->record.cork_op)
-        pa_operation_unref(p->record.cork_op);
-    p->record.cork_op = NULL;
+    g_clear_pointer(&p->playback.uncork_op, pa_operation_unref);
+    g_clear_pointer(&p->playback.cork_op, pa_operation_unref);
+    g_clear_pointer(&p->record.uncork_op, pa_operation_unref);
+    g_clear_pointer(&p->record.cork_op, pa_operation_unref);
 
     if (p->results != NULL)
         spice_pulse_complete_all_async_tasks(pulse, "PulseAudio is being dispose");
@@ -196,8 +183,7 @@ static void pulse_uncork_cb(pa_stream *pastream, int success, void *data)
     if (!success)
         g_warning("pulseaudio uncork operation failed");
 
-    pa_operation_unref(s->uncork_op);
-    s->uncork_op = NULL;
+    g_clear_pointer(&s->uncork_op, pa_operation_unref);
 }
 
 static void stream_uncork(SpicePulse *pulse, struct stream *s)
@@ -209,8 +195,7 @@ static void stream_uncork(SpicePulse *pulse, struct stream *s)
 
     if (s->cork_op) {
         pa_operation_cancel(s->cork_op);
-        pa_operation_unref(s->cork_op);
-        s->cork_op = NULL;
+        g_clear_pointer(&s->cork_op, pa_operation_unref);
     }
 
     if (pa_stream_is_corked(s->stream) && !s->uncork_op) {
@@ -229,8 +214,7 @@ static void pulse_flush_cb(pa_stream *pastream, int success, void *data)
     if (!success)
         g_warning("pulseaudio flush operation failed");
 
-    pa_operation_unref(s->cork_op);
-    s->cork_op = NULL;
+    g_clear_pointer(&s->cork_op, pa_operation_unref);
 }
 
 static void pulse_cork_flush_cb(pa_stream *pastream, int success, void *data)
@@ -255,8 +239,7 @@ static void pulse_cork_cb(pa_stream *pastream, int success, void *data)
     if (!success)
         g_warning("pulseaudio cork operation failed");
 
-    pa_operation_unref(s->cork_op);
-    s->cork_op = NULL;
+    g_clear_pointer(&s->cork_op, pa_operation_unref);
 }
 
 static void stream_cork(SpicePulse *pulse, struct stream *s, gboolean with_flush)
@@ -266,8 +249,7 @@ static void stream_cork(SpicePulse *pulse, struct stream *s, gboolean with_flush
 
     if (s->uncork_op) {
         pa_operation_cancel(s->uncork_op);
-        pa_operation_unref(s->uncork_op);
-        s->uncork_op = NULL;
+        g_clear_pointer(&s->uncork_op, pa_operation_unref);
     }
 
     if (!pa_stream_is_corked(s->stream) && !s->cork_op) {
@@ -290,8 +272,7 @@ static void stream_stop(SpicePulse *pulse, struct stream *s)
         g_warning("pa_stream_disconnect() failed: %s",
                   pa_strerror(pa_context_errno(p->context)));
     }
-    pa_stream_unref(s->stream);
-    s->stream = NULL;
+    g_clear_pointer(&s->stream, pa_stream_unref);
 }
 
 static void stream_state_callback(pa_stream *s, void *userdata)
@@ -663,7 +644,7 @@ static void playback_mute_changed(GObject *object, GParamSpec *pspec, gpointer d
     pa_operation *op;
 
     g_object_get(object, "mute", &mute, NULL);
-    SPICE_DEBUG("playback mute changed %u", mute);
+    SPICE_DEBUG("playback mute changed %d", mute);
 
     if (!p->playback.stream ||
         pa_stream_get_index(p->playback.stream) == PA_INVALID_INDEX)
@@ -690,11 +671,11 @@ static void playback_min_latency_changed(GObject *object, GParamSpec *pspec, gpo
     p->target_delay = min_latency;
 
     if (p->last_delay < p->target_delay) {
-        spice_debug("%s: corking", __FUNCTION__);
+        SPICE_DEBUG("%s: corking", __FUNCTION__);
         if (p->playback.stream)
             stream_cork(pulse, &p->playback, FALSE);
     } else {
-        spice_debug("%s: not corking. The current delay satisfies the requirement", __FUNCTION__);
+        SPICE_DEBUG("%s: not corking. The current delay satisfies the requirement", __FUNCTION__);
     }
 }
 
@@ -706,7 +687,7 @@ static void record_mute_changed(GObject *object, GParamSpec *pspec, gpointer dat
     pa_operation *op;
 
     g_object_get(object, "mute", &mute, NULL);
-    SPICE_DEBUG("record mute changed %u", mute);
+    SPICE_DEBUG("record mute changed %d", mute);
 
     if (!p->record.stream ||
         pa_stream_get_device_index(p->record.stream) == PA_INVALID_INDEX)
@@ -930,8 +911,7 @@ static gboolean free_async_task(gpointer user_data)
 
     if (task->pa_op != NULL) {
         pa_operation_cancel(task->pa_op);
-        pa_operation_unref(task->pa_op);
-        task->pa_op = NULL;
+        g_clear_pointer(&task->pa_op, pa_operation_unref);
     }
 
     if (task->pulse) {
@@ -941,19 +921,16 @@ static gboolean free_async_task(gpointer user_data)
         g_object_unref(task->pulse);
     }
 
-    if (task->res)
-        g_object_unref(task->res);
-
     if (task->main_channel)
         g_object_unref(task->main_channel);
 
     if (task->pa_op != NULL)
         pa_operation_unref(task->pa_op);
 
-    if (task->cancel_id != 0) {
-        g_cancellable_disconnect(task->cancellable, task->cancel_id);
-        g_clear_object(&task->cancellable);
-    }
+    g_cancellable_disconnect(g_task_get_cancellable(task->gtask), task->cancel_id);
+
+    if (task->gtask)
+        g_object_unref(task->gtask);
 
     g_free(task);
     return G_SOURCE_REMOVE;
@@ -971,8 +948,7 @@ static void cancel_task(GCancellable *cancellable, gpointer user_data)
      * cancelled task operation before free_async_task is called */
     if (task->pa_op != NULL) {
         pa_operation_cancel(task->pa_op);
-        pa_operation_unref(task->pa_op);
-        task->pa_op = NULL;
+        g_clear_pointer(&task->pa_op, pa_operation_unref);
     }
 
     /* Clear the pending_restore_task reference to avoid triggering a
@@ -981,14 +957,6 @@ static void cancel_task(GCancellable *cancellable, gpointer user_data)
         task->pulse->priv->pending_restore_task = NULL;
     }
 
-#if !GLIB_CHECK_VERSION(2,32,0)
-    /* g_simple_async_result_set_check_cancellable is not present. Set an error
-     * in the GSimpleAsyncResult in case of _finish functions is called */
-    g_simple_async_result_set_error(task->res,
-                                    SPICE_CLIENT_ERROR,
-                                    SPICE_CLIENT_ERROR_FAILED,
-                                    "Operation was cancelled");
-#endif
     /* FIXME: https://bugzilla.gnome.org/show_bug.cgi?id=705395
      * Free the memory in idle */
     g_idle_add(free_async_task, task);
@@ -1001,27 +969,21 @@ static void complete_task(SpicePulse *pulse, struct async_task *task, const gcha
 
     /* If we do have any err_msg, we failed */
     if (err_msg != NULL) {
-        g_simple_async_result_set_op_res_gboolean(task->res, FALSE);
-        g_simple_async_result_set_error(task->res,
-                                        SPICE_CLIENT_ERROR,
-                                        SPICE_CLIENT_ERROR_FAILED,
-                                        "restore-info failed due %s",
-                                        err_msg);
+        g_task_return_new_error(task->gtask,
+                                SPICE_CLIENT_ERROR,
+                                SPICE_CLIENT_ERROR_FAILED,
+                                "restore-info failed: %s",
+                                err_msg);
     /* Volume-info does not change if stream is not found */
     } else if ((task->is_playback == TRUE && p->playback.info_updated == FALSE) ||
                (task->is_playback == FALSE && p->record.info_updated == FALSE)) {
-        g_simple_async_result_set_op_res_gboolean(task->res, FALSE);
-        g_simple_async_result_set_error(task->res,
-                                        SPICE_CLIENT_ERROR,
-                                        SPICE_CLIENT_ERROR_FAILED,
-                                        "Stream not found by pulse");
+        g_task_return_new_error(task->gtask,
+                                SPICE_CLIENT_ERROR,
+                                SPICE_CLIENT_ERROR_FAILED,
+                                "Stream not found by pulse");
     } else {
-        g_simple_async_result_set_op_res_gboolean(task->res, TRUE);
+        g_task_return_boolean(task->gtask, TRUE);
     }
-
-    /* As all async calls to PulseAudio are done with glib mainloop, it is
-     * safe to complete the operation synchronously here. */
-    g_simple_async_result_complete(task->res);
 }
 
 static void spice_pulse_complete_async_task(struct async_task *task, const gchar *err_msg)
@@ -1034,7 +996,7 @@ static void spice_pulse_complete_async_task(struct async_task *task, const gchar
     complete_task(task->pulse, task, err_msg);
     if (p->results != NULL) {
         p->results = g_list_remove(p->results, task);
-        SPICE_DEBUG("Number of async task is %d", g_list_length(p->results));
+        SPICE_DEBUG("Number of async task is %u", g_list_length(p->results));
     }
     free_async_task(task);
 }
@@ -1053,8 +1015,7 @@ static void spice_pulse_complete_all_async_tasks(SpicePulse *pulse, const gchar 
         complete_task(pulse, task, err_msg);
         free_async_task(task);
     }
-    g_list_free(p->results);
-    p->results = NULL;
+    g_clear_pointer(&p->results, g_list_free);
     SPICE_DEBUG("All async tasks completed");
 }
 
@@ -1157,19 +1118,13 @@ static void pulse_stream_restore_info_async(gboolean is_playback,
                                             gpointer user_data)
 {
     SpicePulsePrivate *p = SPICE_PULSE(audio)->priv;
-    GSimpleAsyncResult *simple;
+    GTask *gtask;
     struct async_task *task = g_malloc0(sizeof(struct async_task));
     pa_operation *op = NULL;
 
-    simple = g_simple_async_result_new(G_OBJECT(audio),
-                                       callback,
-                                       user_data,
-                                       pulse_stream_restore_info_async);
-#if GLIB_CHECK_VERSION(2,32,0)
-    g_simple_async_result_set_check_cancellable (simple, cancellable);
-#endif
+    gtask = g_task_new(audio, cancellable, callback, user_data);
 
-    task->res = simple;
+    task->gtask = gtask;
     task->pulse = g_object_ref(audio);
     task->callback = callback;
     task->user_data = user_data;
@@ -1177,10 +1132,8 @@ static void pulse_stream_restore_info_async(gboolean is_playback,
     task->main_channel = g_object_ref(main_channel);
     task->pa_op = NULL;
 
-    if (cancellable) {
-        task->cancellable = g_object_ref(cancellable);
+    if (cancellable)
         task->cancel_id = g_cancellable_connect(cancellable, G_CALLBACK(cancel_task), task, NULL);
-    }
 
     /* If Playback/Record stream is created we use pulse API to get volume-info
      * from those streams directly. If the stream is not created, retrieve last
@@ -1252,18 +1205,19 @@ static void pulse_stream_restore_info_async(gboolean is_playback,
     }
 
     p->results = g_list_append(p->results, task);
-    SPICE_DEBUG ("Number of async task is %d", g_list_length(p->results));
+    SPICE_DEBUG ("Number of async task is %u", g_list_length(p->results));
     return;
 
 fail:
     if (!op) {
-        g_simple_async_report_error_in_idle(G_OBJECT(audio),
-                                            callback,
-                                            user_data,
-                                            SPICE_CLIENT_ERROR,
-                                            SPICE_CLIENT_ERROR_FAILED,
-                                            "Volume-Info failed: %s",
-                                            pa_strerror(pa_context_errno(p->context)));
+        g_task_report_new_error(audio,
+                                callback,
+                                user_data,
+                                pulse_stream_restore_info_async,
+                                SPICE_CLIENT_ERROR,
+                                SPICE_CLIENT_ERROR_FAILED,
+                                "Volume-Info failed: %s",
+                                pa_strerror(pa_context_errno(p->context)));
         free_async_task(task);
     }
 }
@@ -1279,17 +1233,16 @@ static gboolean pulse_stream_restore_info_finish(gboolean is_playback,
 {
     SpicePulsePrivate *p = SPICE_PULSE(audio)->priv;
     struct stream *pstream = (is_playback) ? &p->playback : &p->record;
-    GSimpleAsyncResult *simple = (GSimpleAsyncResult *) res;
+    GTask *task = G_TASK(res);
 
-    g_return_val_if_fail(g_simple_async_result_is_valid(res,
-        G_OBJECT(audio), pulse_stream_restore_info_async), FALSE);
+    g_return_val_if_fail(g_task_is_valid(task, G_OBJECT(audio)), FALSE);
 
-    if (g_simple_async_result_propagate_error(simple, error)) {
+    if (g_task_had_error(task)) {
         /* set out args that should have new alloc'ed memory to NULL */
         if (volume != NULL) {
             *volume = NULL;
         }
-        return FALSE;
+        return g_task_propagate_boolean(task, error);
     }
 
     if (mute != NULL) {
@@ -1310,7 +1263,7 @@ static gboolean pulse_stream_restore_info_finish(gboolean is_playback,
         }
     }
 
-    return g_simple_async_result_get_op_res_gboolean(simple);
+    return g_task_propagate_boolean(task, error);
 }
 
 static void spice_pulse_get_playback_volume_info_async(SpiceAudio *audio,

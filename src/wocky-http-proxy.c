@@ -22,7 +22,6 @@
 
 #include "config.h"
 
-#include "glib-compat.h"
 #include "wocky-http-proxy.h"
 
 #include <string.h>
@@ -223,8 +222,7 @@ wocky_http_proxy_connect (GProxy *proxy,
   g_free (buffer);
   buffer = g_data_input_stream_read_until (data_in, HTTP_END_MARKER, NULL,
       cancellable, error);
-  g_object_unref (data_in);
-  data_in = NULL;
+  g_clear_object(&data_in);
 
   if (buffer == NULL)
     {
@@ -254,14 +252,12 @@ error:
 
 typedef struct
 {
-  GSimpleAsyncResult *simple;
   GIOStream *io_stream;
   gchar *buffer;
   gssize length;
   gssize offset;
   GDataInputStream *data_in;
   gboolean has_cred;
-  GCancellable *cancellable;
 } ConnectAsyncData;
 
 static void request_write_cb (GObject *source,
@@ -282,45 +278,39 @@ free_connect_data (ConnectAsyncData *data)
   if (data->data_in != NULL)
     g_object_unref (data->data_in);
 
-  if (data->cancellable != NULL)
-    g_object_unref (data->cancellable);
-
-  g_slice_free (ConnectAsyncData, data);
+  g_free (data);
 }
 
 static void
-complete_async_from_error (ConnectAsyncData *data, GError *error)
+complete_async_from_error (GTask *task, GError *error)
 {
-  GSimpleAsyncResult *simple = data->simple;
-
   if (error == NULL)
     g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_PROXY_FAILED,
         "HTTP proxy server closed connection unexpectedly.");
 
-  g_simple_async_result_set_from_error (data->simple, error);
-  g_error_free (error);
-  g_simple_async_result_set_op_res_gpointer (simple, NULL, NULL);
-  g_simple_async_result_complete (simple);
-  g_object_unref (simple);
+  g_task_return_error (task, error);
+  g_object_unref (task);
 }
 
 static void
-do_write (GAsyncReadyCallback callback, ConnectAsyncData *data)
+do_write (GAsyncReadyCallback callback, GTask *task)
 {
   GOutputStream *out;
+  ConnectAsyncData *data = g_task_get_task_data (task);
   out = g_io_stream_get_output_stream (data->io_stream);
   g_output_stream_write_async (out,
       data->buffer + data->offset,
       data->length - data->offset,
-      G_PRIORITY_DEFAULT, data->cancellable,
-      callback, data);
+      G_PRIORITY_DEFAULT, g_task_get_cancellable(task),
+      callback, task);
 }
 
 static void
-stream_connected (ConnectAsyncData *data,
+stream_connected (GTask *task,
                   GIOStream *io_stream)
 {
   GInputStream *in;
+  ConnectAsyncData *data = g_task_get_task_data (task);
 
   data->io_stream = g_object_ref (io_stream);
   in = g_io_stream_get_input_stream (io_stream);
@@ -328,7 +318,7 @@ stream_connected (ConnectAsyncData *data,
   g_filter_input_stream_set_close_base_stream (G_FILTER_INPUT_STREAM (data->data_in),
                                                FALSE);
 
-  do_write (request_write_cb, data);
+  do_write (request_write_cb, task);
 }
 
 static void
@@ -337,16 +327,16 @@ handshake_completed (GObject *source_object,
                      gpointer user_data)
 {
   GTlsConnection *conn = G_TLS_CONNECTION (source_object);
-  ConnectAsyncData *data = user_data;
+  GTask *task = G_TASK (user_data);
   GError *error = NULL;
 
   if (!g_tls_connection_handshake_finish (conn, res, &error))
     {
-      complete_async_from_error (data, error);
+      complete_async_from_error (task, error);
       return;
     }
 
-  stream_connected (data, G_IO_STREAM (conn));
+  stream_connected (task, G_IO_STREAM (conn));
 }
 
 static void
@@ -357,24 +347,21 @@ wocky_http_proxy_connect_async (GProxy *proxy,
     GAsyncReadyCallback callback,
     gpointer user_data)
 {
-  GSimpleAsyncResult *simple;
+  GTask *task;
   ConnectAsyncData *data;
 
-  simple = g_simple_async_result_new (G_OBJECT (proxy),
-                                      callback, user_data,
-                                      wocky_http_proxy_connect_async);
+  task = g_task_new (proxy,
+                     cancellable,
+                     callback,
+                     user_data);
 
-  data = g_slice_new0 (ConnectAsyncData);
-  if (cancellable != NULL)
-    data->cancellable = g_object_ref (cancellable);
-  data->simple = simple;
+  data = g_new0 (ConnectAsyncData, 1);
 
   data->buffer = create_request (proxy_address, &data->has_cred);
   data->length = strlen (data->buffer);
   data->offset = 0;
 
-  g_simple_async_result_set_op_res_gpointer (simple, data,
-                                             (GDestroyNotify) free_connect_data);
+  g_task_set_task_data (task, data, (GDestroyNotify)free_connect_data);
 
   if (WOCKY_IS_HTTPS_PROXY (proxy))
     {
@@ -386,7 +373,7 @@ wocky_http_proxy_connect_async (GProxy *proxy,
                                              &error);
       if (!tlsconn)
         {
-          complete_async_from_error (data, error);
+          complete_async_from_error (task, error);
           return;
         }
 
@@ -400,11 +387,11 @@ wocky_http_proxy_connect_async (GProxy *proxy,
                                                     tls_validation_flags);
       g_tls_connection_handshake_async (G_TLS_CONNECTION (tlsconn),
                                         G_PRIORITY_DEFAULT, cancellable,
-                                        handshake_completed, data);
+                                        handshake_completed, task);
     }
   else
     {
-      stream_connected (data, io_stream);
+      stream_connected (task, io_stream);
     }
 }
 
@@ -414,14 +401,15 @@ request_write_cb (GObject *source,
     gpointer user_data)
 {
   GError *error = NULL;
-  ConnectAsyncData *data = user_data;
+  GTask *task = G_TASK(user_data);
+  ConnectAsyncData *data = g_task_get_task_data (task);
   gssize written;
 
   written = g_output_stream_write_finish (G_OUTPUT_STREAM (source),
       res, &error);
   if (written < 0)
     {
-      complete_async_from_error (data, error);
+      complete_async_from_error (task, error);
       return;
     }
 
@@ -429,19 +417,18 @@ request_write_cb (GObject *source,
 
    if (data->offset == data->length)
     {
-      g_free (data->buffer);
-      data->buffer = NULL;
+      g_clear_pointer(&data->buffer, g_free);
 
       g_data_input_stream_read_until_async (data->data_in,
           HTTP_END_MARKER,
           G_PRIORITY_DEFAULT,
-          data->cancellable,
-          reply_read_cb, data);
+          g_task_get_cancellable(task),
+          reply_read_cb, task);
 
     }
   else
     {
-      do_write (request_write_cb, data);
+      do_write (request_write_cb, task);
     }
 }
 
@@ -451,25 +438,27 @@ reply_read_cb (GObject *source,
     gpointer user_data)
 {
   GError *error = NULL;
-  ConnectAsyncData *data = user_data;
+  GTask *task = G_TASK(user_data);
+  ConnectAsyncData *data = g_task_get_task_data (task);
 
   data->buffer = g_data_input_stream_read_until_finish (data->data_in,
       res, NULL, &error);
 
   if (data->buffer == NULL)
     {
-      complete_async_from_error (data, error);
+      complete_async_from_error (task, error);
       return;
     }
 
   if (!check_reply (data->buffer, data->has_cred, &error))
     {
-      complete_async_from_error (data, error);
+      complete_async_from_error (task, error);
       return;
     }
 
-  g_simple_async_result_complete (data->simple);
-  g_object_unref (data->simple);
+  g_task_return_pointer (task, data->io_stream, (GDestroyNotify) g_object_unref);
+  data->io_stream = NULL;
+  g_object_unref (task);
 }
 
 static GIOStream *
@@ -477,13 +466,9 @@ wocky_http_proxy_connect_finish (GProxy *proxy,
     GAsyncResult *result,
     GError **error)
 {
-  GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT (result);
-  ConnectAsyncData *data = g_simple_async_result_get_op_res_gpointer (simple);
+  GTask *task = G_TASK (result);
 
-  if (g_simple_async_result_propagate_error (simple, error))
-    return NULL;
-
-  return g_object_ref (data->io_stream);
+  return g_task_propagate_pointer (task, error);
 }
 
 static gboolean

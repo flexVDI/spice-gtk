@@ -15,13 +15,13 @@ libspice-client-glib-2.0
       * SpiceAudio (see spice-audio.h).
       * Various Spice<Type>Channel (see channel-<type>.h).
 
-libspice-client-gtk-{2.0,3.0}
+libspice-client-gtk-3.0
    provides gtk widget to show spice display and accept user input.
       * SpiceDisplay (see spice-widget.h)
 
 spicy
    a gtk test client. The recommended client for end user is
-   virt-viewer (http://git.fedorahosted.org/cgit/virt-viewer.git/)
+   virt-viewer (https://pagure.io/virt-viewer)
 
 spicy-screenshot
    Command line tool, connects to spice server and writes out a
@@ -31,23 +31,21 @@ spicy-stats
    Command line tool, connects to spice server and writes out a
    summary of connection details, amount of bytes transferred...
 
-SpiceClientGtk python module (only built with Gtk+ 2.0)
-
 SpiceClientGlib and SpiceClientGtk GObject-introspection modules.
 
 Build dependencies:
 ------------------
 
-. On Fedora: (gtk2-devel if building with --with-gtk=2.0)
+. On Fedora use:
 
-gtk3-devel spice-protocol intltool
+dnf builddep spice-gtk
+
+. or install:
+
+gtk3-devel spice-protocol
 openssl-devel pulseaudio-libs-devel pixman-devel
 gobject-introspection-devel libjpeg-turbo-devel zlib-devel
 cyrus-sasl-devel gtk-doc
-
-. To build python bindings for virt-manager, you need gtk2, and:
-
-pygtk2-devel python
 
 . The GStreamer backend needs:
 
@@ -55,4 +53,4 @@ gstreamer1-devel gstreamer1-plugins-base-devel gstreamer1-plugins-good gstreamer
 
 . If you build from git, you'll also need:
 
-libtool automake vala vala-tools perl-Text-CSV
+libtool automake gettext-devel vala vala-tools python2/python3

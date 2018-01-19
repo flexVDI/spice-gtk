@@ -44,7 +44,7 @@ typedef void(__cdecl *USBDK_CLOSEHIDERHANDLE)(HANDLE hider_handle);
 struct tag_usbdk_api_wrapper
 {
     HMODULE                                 module;
-    USBDK_CREATEHIDERHANDLE                 CreateHandle;
+    USBDK_CREATEHIDERHANDLE                 CreateHiderHandle;
     USBDK_ADDHIDERULE                       AddRule;
     USBDK_CLEARHIDERULES                    ClearRules;
     USBDK_CLOSEHIDERHANDLE                  CloseHiderHandle;
@@ -70,70 +70,69 @@ BOOL usbdk_is_driver_installed(void)
 
 void usbdk_api_unload(usbdk_api_wrapper *usbdk_api)
 {
-    if (usbdk_api->module != NULL) {
-        SPICE_DEBUG("Unloading UsbDk API DLL");
-        FreeLibrary(usbdk_api->module);
-    }
-
     if (usbdk_api != NULL) {
+        if (usbdk_api->module != NULL) {
+            SPICE_DEBUG("Unloading UsbDk API DLL");
+            FreeLibrary(usbdk_api->module);
+        }
         g_free(usbdk_api);
     }
 }
 
-BOOL usbdk_api_load(usbdk_api_wrapper **usbdk_api)
+usbdk_api_wrapper *usbdk_api_load(void)
 {
-    *usbdk_api = g_new0(usbdk_api_wrapper, 1);
+    usbdk_api_wrapper *usbdk_api = g_new0(usbdk_api_wrapper, 1);
 
     SPICE_DEBUG("Loading UsbDk API DLL");
-    (*usbdk_api)->module = LoadLibraryA("UsbDkHelper");
-    if ((*usbdk_api)->module == NULL) {
+    usbdk_api->module = LoadLibraryA("UsbDkHelper");
+    if (usbdk_api->module == NULL) {
         g_warning("Failed to load UsbDkHelper.dll, error %lu", GetLastError());
         goto error_unload;
     }
 
-    (*usbdk_api)->CreateHandle = (USBDK_CREATEHIDERHANDLE)
-        GetProcAddress((*usbdk_api)->module, "UsbDk_CreateHiderHandle");
-    if ((*usbdk_api)->CreateHandle == NULL) {
+    usbdk_api->CreateHiderHandle = (USBDK_CREATEHIDERHANDLE)
+        GetProcAddress(usbdk_api->module, "UsbDk_CreateHiderHandle");
+    if (usbdk_api->CreateHiderHandle == NULL) {
         g_warning("Failed to find CreateHandle entry point");
         goto error_unload;
     }
 
-    (*usbdk_api)->AddRule = (USBDK_ADDHIDERULE)
-        GetProcAddress((*usbdk_api)->module, "UsbDk_AddHideRule");
-    if ((*usbdk_api)->AddRule == NULL) {
+    usbdk_api->AddRule = (USBDK_ADDHIDERULE)
+        GetProcAddress(usbdk_api->module, "UsbDk_AddHideRule");
+    if (usbdk_api->AddRule == NULL) {
         g_warning("Failed to find AddRule entry point");
         goto error_unload;
     }
 
-    (*usbdk_api)->ClearRules = (USBDK_CLEARHIDERULES)
-        GetProcAddress((*usbdk_api)->module, "UsbDk_ClearHideRules");
-    if ((*usbdk_api)->ClearRules == NULL) {
+    usbdk_api->ClearRules = (USBDK_CLEARHIDERULES)
+        GetProcAddress(usbdk_api->module, "UsbDk_ClearHideRules");
+    if (usbdk_api->ClearRules == NULL) {
         g_warning("Failed to find ClearRules entry point");
         goto error_unload;
     }
 
-    (*usbdk_api)->CloseHiderHandle = (USBDK_CLOSEHIDERHANDLE)
-        GetProcAddress((*usbdk_api)->module, "UsbDk_CloseHiderHandle");
-    if ((*usbdk_api)->CloseHiderHandle == NULL) {
+    usbdk_api->CloseHiderHandle = (USBDK_CLOSEHIDERHANDLE)
+        GetProcAddress(usbdk_api->module, "UsbDk_CloseHiderHandle");
+    if (usbdk_api->CloseHiderHandle == NULL) {
         g_warning("Failed to find CloseHiderHandle  entry point");
         goto error_unload;
     }
-    return TRUE;
+    return usbdk_api;
 
 error_unload:
-    usbdk_api_unload(*usbdk_api);
-    return FALSE;
+    usbdk_api_unload(usbdk_api);
+    return NULL;
 }
 
 static uint64_t usbdk_usbredir_field_to_usbdk(int value)
 {
-    if (value >= 0)
+    if (value >= 0) {
         return value;
-    else if (value == -1)
-        return USB_DK_HIDE_RULE_MATCH_ALL;
+    }
 
-    /* value is < -1 */
-    g_return_val_if_reached(USB_DK_HIDE_RULE_MATCH_ALL);
+    g_warn_if_fail(value == -1);
+
+    return USB_DK_HIDE_RULE_MATCH_ALL;
 }
 
 static BOOL usbdk_add_hide_rule(usbdk_api_wrapper *usbdk_api,
@@ -163,7 +162,7 @@ void usbdk_api_set_hide_rules(usbdk_api_wrapper *usbdk_api, HANDLE hider_handle,
         rule.VID   = usbdk_usbredir_field_to_usbdk(rules[i].vendor_id);
         rule.PID   = usbdk_usbredir_field_to_usbdk(rules[i].product_id);
         rule.BCD   = usbdk_usbredir_field_to_usbdk(rules[i].device_version_bcd);
-        if (usbdk_add_hide_rule(usbdk_api, hider_handle, &rule)) {
+        if (!usbdk_add_hide_rule(usbdk_api, hider_handle, &rule)) {
             SPICE_DEBUG("UsbDk add hide rule API failed");
         }
     }
@@ -173,7 +172,8 @@ void usbdk_api_set_hide_rules(usbdk_api_wrapper *usbdk_api, HANDLE hider_handle,
 
 HANDLE usbdk_create_hider_handle(usbdk_api_wrapper *usbdk_api)
 {
-    return usbdk_api->CreateHandle();
+    HANDLE handle = usbdk_api->CreateHiderHandle();
+    return (handle == INVALID_HANDLE_VALUE) ? NULL : handle;
 }
 
 BOOL usbdk_clear_hide_rules(usbdk_api_wrapper *usbdk_api, HANDLE hider_handle)

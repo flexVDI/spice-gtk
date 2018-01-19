@@ -44,6 +44,8 @@ G_BEGIN_DECLS
 #define CHANNEL_DEBUG(channel, fmt, ...) \
     SPICE_DEBUG("%s: " fmt, SPICE_CHANNEL(channel)->priv->name, ## __VA_ARGS__)
 
+#define spice_mmtime_diff(t1, t2)       ((int32_t) ((t1)-(t2)))
+
 struct _SpiceMsgOut {
     int                   refcount;
     SpiceChannel          *channel;
@@ -111,8 +113,9 @@ struct _SpiceChannelPrivate {
 
     GQueue                      xmit_queue;
     gboolean                    xmit_queue_blocked;
-    STATIC_MUTEX                xmit_queue_lock;
+    GMutex                      xmit_queue_lock;
     guint                       xmit_queue_wakeup_id;
+    guint64                     xmit_queue_size;
 
     char                        name[16];
     enum spice_channel_state    state;
@@ -129,7 +132,6 @@ struct _SpiceChannelPrivate {
     int                         channel_id;
     int                         channel_type;
     SpiceLinkHeader             link_hdr;
-    SpiceLinkMess               link_msg;
     SpiceLinkHeader             peer_hdr;
     SpiceLinkReply*             peer_msg;
     int                         peer_pos;
@@ -147,7 +149,8 @@ struct _SpiceChannelPrivate {
     GSList                      *flushing;
 
     gboolean                    disable_channel_msg;
-    gboolean                    auth_needs_username_and_password;
+    gboolean                    auth_needs_username;
+    gboolean                    auth_needs_password;
     GError                      *error;
 };
 
@@ -176,6 +179,7 @@ void spice_channel_wakeup(SpiceChannel *channel, gboolean cancel);
 
 SpiceSession* spice_channel_get_session(SpiceChannel *channel);
 enum spice_channel_state spice_channel_get_state(SpiceChannel *channel);
+guint64 spice_channel_get_queue_size (SpiceChannel *channel);
 
 /* coroutine context */
 typedef void (*handler_msg_in)(SpiceChannel *channel, SpiceMsgIn *msg, gpointer data);
@@ -207,6 +211,9 @@ void spice_vmc_write_async(SpiceChannel *self,
                            gpointer user_data);
 gssize spice_vmc_write_finish(SpiceChannel *self,
                               GAsyncResult *result, GError **error);
+#ifdef G_OS_UNIX
+gint spice_channel_unix_read_fd(SpiceChannel *channel);
+#endif
 
 G_END_DECLS
 

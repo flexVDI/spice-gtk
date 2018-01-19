@@ -22,13 +22,82 @@
 #include "spice-cmdline.h"
 
 /* config */
+static const char *outf      = "spicy-screenshot.ppm";
 static gboolean version = FALSE;
 
 /* state */
 static SpiceSession  *session;
 static GMainLoop     *mainloop;
 
+enum SpiceSurfaceFmt d_format;
+gint                 d_width, d_height, d_stride;
+gpointer             d_data;
+
 /* ------------------------------------------------------------------ */
+
+static void primary_create(SpiceChannel *channel, gint format,
+                           gint width, gint height, gint stride,
+                           gint shmid, gpointer imgdata, gpointer data)
+{
+    SPICE_DEBUG("%s: %dx%d, format %d", __FUNCTION__, width, height, format);
+    d_format = format;
+    d_width  = width;
+    d_height = height;
+    d_stride = stride;
+    d_data   = imgdata;
+}
+
+static int write_ppm_32(void)
+{
+    FILE *fp;
+    uint8_t *p;
+    int n;
+
+    fp = fopen(outf,"w");
+    if (NULL == fp) {
+	fprintf(stderr, "%s: can't open %s: %s\n", g_get_prgname(), outf, strerror(errno));
+	return -1;
+    }
+    fprintf(fp, "P6\n%d %d\n255\n",
+            d_width, d_height);
+    n = d_width * d_height;
+    p = d_data;
+    while (n > 0) {
+#ifdef WORDS_BIGENDIAN
+        fputc(p[1], fp);
+        fputc(p[2], fp);
+        fputc(p[3], fp);
+#else
+        fputc(p[2], fp);
+        fputc(p[1], fp);
+        fputc(p[0], fp);
+#endif
+        p += 4;
+        n--;
+    }
+    fclose(fp);
+    return 0;
+}
+
+static void invalidate(SpiceChannel *channel,
+                       gint x, gint y, gint w, gint h, gpointer *data)
+{
+    int rc;
+
+    switch (d_format) {
+    case SPICE_SURFACE_FMT_32_xRGB:
+        rc = write_ppm_32();
+        break;
+    default:
+        fprintf(stderr, "unsupported spice surface format %u\n", d_format);
+        rc = -1;
+        break;
+    }
+    if (rc == 0)
+        fprintf(stderr, "wrote screen shot to %s\n", outf);
+    g_main_loop_quit(mainloop);
+}
+
 static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
                                gpointer data)
 {
@@ -36,7 +105,7 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
     case SPICE_CHANNEL_OPENED:
         break;
     default:
-        g_warning("main channel event: %d", event);
+        g_warning("main channel event: %u", event);
         g_main_loop_quit(mainloop);
     }
 }
@@ -46,23 +115,36 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer *data)
     int id;
 
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
-        SPICE_DEBUG("new main channel");
         g_signal_connect(channel, "channel-event",
                          G_CALLBACK(main_channel_event), data);
+        return;
     }
 
-    if (SPICE_IS_DISPLAY_CHANNEL(channel)) {
-        g_object_get(channel, "channel-id", &id, NULL);
-        if (id != 0)
-            return;
-    }
+    if (!SPICE_IS_DISPLAY_CHANNEL(channel))
+        return;
 
+    g_object_get(channel, "channel-id", &id, NULL);
+    if (id != 0)
+        return;
+
+    g_signal_connect(channel, "display-primary-create",
+                     G_CALLBACK(primary_create), NULL);
+    g_signal_connect(channel, "display-invalidate",
+                     G_CALLBACK(invalidate), NULL);
     spice_channel_connect(channel);
 }
 
 /* ------------------------------------------------------------------ */
 
 static GOptionEntry app_entries[] = {
+    {
+        .long_name        = "out-file",
+        .short_name       = 'o',
+        .arg              = G_OPTION_ARG_FILENAME,
+        .arg_data         = &outf,
+        .description      = "Output file name (default spicy-screenshot.ppm)",
+        .arg_description  = "<filename>",
+    },
     {
         .long_name        = "version",
         .arg              = G_OPTION_ARG_NONE,
@@ -74,22 +156,14 @@ static GOptionEntry app_entries[] = {
     }
 };
 
-static void
-signal_handler(int signum)
-{
-    g_main_loop_quit(mainloop);
-}
-
 int main(int argc, char *argv[])
 {
     GError *error = NULL;
     GOptionContext *context;
 
-    signal(SIGINT, signal_handler);
-
     /* parse opts */
-    context = g_option_context_new(NULL);
-    g_option_context_set_summary(context, "A Spice client used for testing and measurements.");
+    context = g_option_context_new(" - make screen shots");
+    g_option_context_set_summary(context, "A Spice server client to take screenshots in ppm format.");
     g_option_context_set_description(context, "Report bugs to " PACKAGE_BUGREPORT ".");
     g_option_context_set_main_group(context, spice_cmdline_get_option_group());
     g_option_context_add_main_entries(context, app_entries, NULL);
@@ -99,13 +173,10 @@ int main(int argc, char *argv[])
     }
 
     if (version) {
-        g_print("spicy-stats " PACKAGE_VERSION "\n");
+        g_print("%s " PACKAGE_VERSION "\n", g_get_prgname());
         exit(0);
     }
 
-#if !GLIB_CHECK_VERSION(2,36,0)
-    g_type_init();
-#endif
     mainloop = g_main_loop_new(NULL, false);
 
     session = spice_session_new();
@@ -119,21 +190,5 @@ int main(int argc, char *argv[])
     }
 
     g_main_loop_run(mainloop);
-    {
-        GList *iter, *list = spice_session_get_channels(session);
-        gulong total_read_bytes;
-        gint  channel_type;
-        printf("total bytes read:\n");
-        for (iter = list ; iter ; iter = iter->next) {
-            g_object_get(iter->data,
-                "total-read-bytes", &total_read_bytes,
-                "channel-type", &channel_type,
-                NULL);
-            printf("%s: %lu\n",
-                   spice_channel_type_to_string(channel_type),
-                   total_read_bytes);
-        }
-        g_list_free(list);
-    }
     return 0;
 }

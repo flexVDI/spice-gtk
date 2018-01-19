@@ -18,6 +18,10 @@
 #ifndef __SPICE_CLIENT_MAIN_CHANNEL_H__
 #define __SPICE_CLIENT_MAIN_CHANNEL_H__
 
+#if !defined(__SPICE_CLIENT_H_INSIDE__) && !defined(SPICE_COMPILATION)
+#warning "Only <spice-client.h> can be included directly"
+#endif
+
 #include "spice-client.h"
 
 G_BEGIN_DECLS
@@ -72,6 +76,7 @@ void spice_main_set_display(SpiceMainChannel *channel, int id,
 void spice_main_update_display(SpiceMainChannel *channel, int id,
                                int x, int y, int width, int height, gboolean update);
 void spice_main_set_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled);
+void spice_main_update_display_enabled(SpiceMainChannel *channel, int id, gboolean enabled, gboolean update);
 gboolean spice_main_send_monitor_config(SpiceMainChannel *channel);
 
 void spice_main_clipboard_selection_grab(SpiceMainChannel *channel, guint selection, guint32 *types, int ntypes);
@@ -104,14 +109,16 @@ gboolean spice_main_port_forward_disassociate_local(SpiceMainChannel *channel,
 
 void spice_main_power_event_request(SpiceMainChannel *channel, SpicePowerEvent event_id);
 
+void spice_main_request_mouse_mode(SpiceMainChannel *channel, int mode);
+
 #ifndef SPICE_DISABLE_DEPRECATED
-SPICE_DEPRECATED_FOR(spice_main_clipboard_selection_grab)
+G_DEPRECATED_FOR(spice_main_clipboard_selection_grab)
 void spice_main_clipboard_grab(SpiceMainChannel *channel, guint32 *types, int ntypes);
-SPICE_DEPRECATED_FOR(spice_main_clipboard_selection_release)
+G_DEPRECATED_FOR(spice_main_clipboard_selection_release)
 void spice_main_clipboard_release(SpiceMainChannel *channel);
-SPICE_DEPRECATED_FOR(spice_main_clipboard_selection_notify)
+G_DEPRECATED_FOR(spice_main_clipboard_selection_notify)
 void spice_main_clipboard_notify(SpiceMainChannel *channel, guint32 type, const guchar *data, size_t size);
-SPICE_DEPRECATED_FOR(spice_main_clipboard_selection_request)
+G_DEPRECATED_FOR(spice_main_clipboard_selection_request)
 void spice_main_clipboard_request(SpiceMainChannel *channel, guint32 type);
 #endif
 

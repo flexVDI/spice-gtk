@@ -18,6 +18,10 @@
 #ifndef __SPICE_CLIENT_WIDGET_H__
 #define __SPICE_CLIENT_WIDGET_H__
 
+#if !defined(__SPICE_CLIENT_GTK_H_INSIDE__) && !defined(SPICE_COMPILATION)
+#warning "Only <spice-client-gtk.h> can be included directly"
+#endif
+
 #include "spice-client.h"
 
 #include <gtk/gtk.h>
@@ -36,31 +40,28 @@ G_BEGIN_DECLS
 #define SPICE_DISPLAY_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS((obj), SPICE_TYPE_DISPLAY, SpiceDisplayClass))
 
 
+/**
+ * SpiceDisplay:
+ *
+ * The #SpiceDisplay struct is opaque and should not be accessed directly.
+ */
 typedef struct _SpiceDisplay SpiceDisplay;
+
+/**
+ * SpiceDisplayClass:
+ *
+ * Class structure for #SpiceDisplay. It is opaque and should not be accessed directly.
+ */
 typedef struct _SpiceDisplayClass SpiceDisplayClass;
-typedef struct _SpiceDisplayPrivate SpiceDisplayPrivate;
 
-struct _SpiceDisplay {
-    GtkDrawingArea parent;
-    SpiceDisplayPrivate *priv;
-    /* Do not add fields to this struct */
-};
-
-struct _SpiceDisplayClass {
-    GtkDrawingAreaClass parent_class;
-
-    /* signals */
-    void (*mouse_grab)(SpiceChannel *channel, gint grabbed);
-    void (*keyboard_grab)(SpiceChannel *channel, gint grabbed);
-
-    /*< private >*/
-    /*
-     * If adding fields to this struct, remove corresponding
-     * amount of padding to avoid changing overall struct size
-     */
-    gchar _spice_reserved[SPICE_RESERVED_PADDING];
-};
-
+/**
+ * SpiceDisplayKeyEvent:
+ * @SPICE_DISPLAY_KEY_EVENT_PRESS: key press
+ * @SPICE_DISPLAY_KEY_EVENT_RELEASE: key release
+ * @SPICE_DISPLAY_KEY_EVENT_CLICK: key click (press and release)
+ *
+ * Constants for key events.
+ */
 typedef enum
 {
 	SPICE_DISPLAY_KEY_EVENT_PRESS = 1,
@@ -79,13 +80,6 @@ SpiceGrabSequence *spice_display_get_grab_keys(SpiceDisplay *display);
 void spice_display_send_keys(SpiceDisplay *display, const guint *keyvals,
                              int nkeyvals, SpiceDisplayKeyEvent kind);
 GdkPixbuf *spice_display_get_pixbuf(SpiceDisplay *display);
-
-#ifndef SPICE_DISABLE_DEPRECATED
-SPICE_DEPRECATED_FOR(spice_gtk_session_copy_to_guest)
-void spice_display_copy_to_guest(SpiceDisplay *display);
-SPICE_DEPRECATED_FOR(spice_gtk_session_paste_from_guest)
-void spice_display_paste_from_guest(SpiceDisplay *display);
-#endif
 
 G_END_DECLS
 

@@ -20,9 +20,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "glib-compat.h"
 #include "spice-client.h"
 #include "spice-uri.h"
+#include "spice-uri-priv.h"
 
 /**
  * SECTION:spice-uri
@@ -30,7 +30,7 @@
  * @title: SpiceURI
  * @section_id:
  * @stability: Stable
- * @include: spice-uri.h
+ * @include: spice-client.h
  *
  * A SpiceURI represents a (parsed) URI.
  * Since: 0.24
@@ -60,6 +60,35 @@ enum  {
     SPICE_URI_PORT
 };
 
+#ifndef HAVE_STRTOK_R
+static char *strtok_r(char *s, const char *delim, char **save_ptr)
+{
+    char *token;
+
+    if (s == NULL)
+        s = *save_ptr;
+
+    /* Scan leading delimiters. */
+    s += strspn (s, delim);
+    if (*s == '\0')
+        return NULL;
+
+    /* Find the end of the token. */
+    token = s;
+    s = strpbrk (token, delim);
+    if (s == NULL)
+        /* This token finishes the string. */
+        *save_ptr = strchr (token, '\0');
+    else
+    {
+        /* Terminate the token and make *SAVE_PTR point past it. */
+        *s = '\0';
+        *save_ptr = s + 1;
+    }
+    return token;
+}
+#endif
+
 G_GNUC_INTERNAL
 SpiceURI* spice_uri_new(void)
 {
@@ -68,30 +97,48 @@ SpiceURI* spice_uri_new(void)
     return self;
 }
 
+static void spice_uri_reset(SpiceURI *self)
+{
+    g_clear_pointer(&self->scheme, g_free);
+    g_clear_pointer(&self->hostname, g_free);
+    g_clear_pointer(&self->user, g_free);
+    g_clear_pointer(&self->password, g_free);
+    self->port = 0;
+}
+
 G_GNUC_INTERNAL
 gboolean spice_uri_parse(SpiceURI *self, const gchar *_uri, GError **error)
 {
-    gchar *dup, *uri;
+    gchar *dup, *uri, **uriv = NULL;
+    const gchar *uri_port = NULL;
+    char *uri_scheme = NULL;
     gboolean success = FALSE;
     size_t len;
 
     g_return_val_if_fail(self != NULL, FALSE);
+
+    spice_uri_reset(self);
+
     g_return_val_if_fail(_uri != NULL, FALSE);
 
     uri = dup = g_strdup(_uri);
     /* FIXME: use GUri when it is ready... only support http atm */
     /* the code is voluntarily not parsing thoroughly the uri */
-    if (g_ascii_strncasecmp("http://", uri, 7) == 0) {
-        uri += 7;
+    uri_scheme = g_uri_parse_scheme(uri);
+    if (uri_scheme == NULL) {
         spice_uri_set_scheme(self, "http");
+    } else {
+        spice_uri_set_scheme(self, uri_scheme);
+        uri += strlen(uri_scheme) + 3; /* scheme + "://" */
+    }
+    if (g_ascii_strcasecmp(spice_uri_get_scheme(self), "http") == 0) {
         spice_uri_set_port(self, 3128);
-    } else if (g_ascii_strncasecmp("https://", uri, 8) == 0) {
-        uri += 8;
-        spice_uri_set_scheme(self, "https");
+    } else if (g_ascii_strcasecmp(spice_uri_get_scheme(self), "https") == 0) {
         spice_uri_set_port(self, 3129);
     } else {
-        spice_uri_set_scheme(self, "http");
-        spice_uri_set_port(self, 3128);
+        g_set_error(error, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                    "Invalid uri scheme for proxy: %s", spice_uri_get_scheme(self));
+        goto end;
     }
     /* remove trailing slash */
     len = strlen(uri);
@@ -114,9 +161,26 @@ gboolean spice_uri_parse(SpiceURI *self, const gchar *_uri, GError **error)
         uri = next;
     }
 
-    /* max 2 parts, host:port */
-    gchar **uriv = g_strsplit(uri, ":", 2);
-    const gchar *uri_port = NULL;
+    if (*uri == '[') { /* ipv6 address */
+        uriv = g_strsplit(uri + 1, "]", 2);
+        if (uriv[1] == NULL) {
+            g_set_error(error, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                        "Missing ']' in ipv6 uri");
+            goto end;
+        }
+        if (*uriv[1] == ':') {
+            uri_port = uriv[1] + 1;
+        } else if (strlen(uriv[1]) > 0) { /* invalid string after the hostname */
+            g_set_error(error, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
+                        "Invalid uri address");
+            goto end;
+        }
+    } else {
+        /* max 2 parts, host:port */
+        uriv = g_strsplit(uri, ":", 2);
+        if (uriv[0] != NULL)
+            uri_port = uriv[1];
+    }
 
     if (uriv[0] == NULL || strlen(uriv[0]) == 0) {
         g_set_error(error, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
@@ -125,15 +189,20 @@ gboolean spice_uri_parse(SpiceURI *self, const gchar *_uri, GError **error)
     }
 
     spice_uri_set_hostname(self, uriv[0]);
-    if (uriv[0] != NULL)
-        uri_port = uriv[1];
 
     if (uri_port != NULL) {
-        char *endptr;
-        guint port = strtoul(uri_port, &endptr, 10);
+        gchar *endptr;
+        gint64 port = g_ascii_strtoll(uri_port, &endptr, 10);
         if (*endptr != '\0') {
             g_set_error(error, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED,
                         "Invalid uri port: %s", uri_port);
+            goto end;
+        } else if (endptr == uri_port) {
+            g_set_error(error, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED, "Missing uri port");
+            goto end;
+        }
+        if (port <= 0 || port > 65535) {
+            g_set_error(error, SPICE_CLIENT_ERROR, SPICE_CLIENT_ERROR_FAILED, "Port out of range");
             goto end;
         }
         spice_uri_set_port(self, port);
@@ -142,6 +211,7 @@ gboolean spice_uri_parse(SpiceURI *self, const gchar *_uri, GError **error)
     success = TRUE;
 
 end:
+    free(uri_scheme);
     g_free(dup);
     g_strfreev(uriv);
     return success;
@@ -304,15 +374,12 @@ static void spice_uri_finalize(GObject* obj)
     SpiceURI *self;
 
     self = G_TYPE_CHECK_INSTANCE_CAST(obj, SPICE_TYPE_URI, SpiceURI);
-    g_free(self->scheme);
-    g_free(self->hostname);
-    g_free(self->user);
-    g_free(self->password);
+    spice_uri_reset(self);
 
     G_OBJECT_CLASS (spice_uri_parent_class)->finalize (obj);
 }
 
-static void spice_uri_init (SpiceURI *self)
+static void spice_uri_init (SpiceURI *self G_GNUC_UNUSED)
 {
 }
 

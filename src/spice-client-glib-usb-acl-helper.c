@@ -34,8 +34,6 @@
 #include <polkit/polkit.h>
 #include <acl/libacl.h>
 
-#include "glib-compat.h"
-
 #define FATAL_ERROR(...) \
     do { \
         /* We print the error both to stdout, for the app invoking us and \
@@ -141,8 +139,7 @@ update:
     /* update record */
     acl_calc_mask(&acl);
     ret = acl_set_file(filename, ACL_TYPE_ACCESS, acl);
-    if (ret != 0)
-        goto out;
+
 out:
     acl_free(acl);
     return ret;
@@ -150,8 +147,7 @@ out:
 
 static void cleanup(void)
 {
-    if (polkit_cancellable)
-        g_cancellable_cancel(polkit_cancellable);
+    g_cancellable_cancel(polkit_cancellable);
 
     if (state == STATE_WAITING_FOR_STDIN_EOF)
         set_facl(path, getuid(), 0);
@@ -161,7 +157,7 @@ static void cleanup(void)
 }
 
 /* Not available in polkit < 0.101 */
-#if !HAVE_POLKIT_AUTHORIZATION_RESULT_GET_DISMISSED
+#ifndef HAVE_POLKIT_AUTHORIZATION_RESULT_GET_DISMISSED
 static gboolean
 polkit_authorization_result_get_dismissed(PolkitAuthorizationResult *result)
 {
@@ -290,13 +286,13 @@ static void stdin_read_complete(GObject *src, GAsyncResult *res, gpointer data)
                                             NULL, stdin_read_complete, NULL);
         break;
     default:
-        FATAL_ERROR("Unexpected extra input in state %d: %s\n", state, s);
+        FATAL_ERROR("Unexpected extra input in state %u: %s\n", state, s);
     }
     g_free(s);
 }
 
 /* Fix for polkit 0.97 and later */
-#if !HAVE_POLKIT_AUTHORITY_GET_SYNC
+#ifndef HAVE_POLKIT_AUTHORITY_GET_SYNC
 static PolkitAuthority *
 polkit_authority_get_sync (GCancellable *cancellable, GError **error)
 {
@@ -336,10 +332,6 @@ int main(void)
         return 1;
     }
 
-#if !GLIB_CHECK_VERSION(2,36,0)
-    g_type_init();
-#endif
-
     loop = g_main_loop_new(NULL, FALSE);
 
     authority = polkit_authority_get_sync(NULL, NULL);
@@ -361,8 +353,7 @@ int main(void)
 
     g_main_loop_run(loop);
 
-    if (polkit_cancellable)
-        g_clear_object(&polkit_cancellable);
+    g_clear_object(&polkit_cancellable);
     g_object_unref(stdin_stream);
     g_object_unref(authority);
     g_object_unref(subject);

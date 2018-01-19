@@ -74,12 +74,12 @@ can be disabled.
 
 =item --spice-color-depth=<16,32>
 
-Guest display color depth
+Guest display color depth - DEPRECATED
 
 This tells the SPICE client that it should attempt to force the guest OS
 color depth. A lower color depth should lower bandwith usage. This requires
 guest support, usually through a SPICE agent. This is currently only
-supported on Windows guests.
+supported on Windows 7 and older guests.
 
 =item --spice-ca-file=<file>
 
@@ -164,13 +164,13 @@ should be used for smartcard emulation.
 
 =item --spice-cache-size=<bytes>
 
-Image cache size
+Image cache size - DEPRECATED
 
 This option should only be used for testing/debugging.
 
 =item --spice-glz-window-size=<bytes>
 
-Glz compression history size
+Glz compression history size - DEPRECATED
 
 This option should only be used for testing/debugging.
 

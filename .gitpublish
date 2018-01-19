@@ -1,0 +1,4 @@
+[gitpublishprofile "default"]
+to = spice-devel@lists.freedesktop.org
+prefix = PATCH spice-gtk
+signoff = true

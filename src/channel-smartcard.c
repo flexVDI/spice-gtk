@@ -17,7 +17,7 @@
 */
 #include "config.h"
 
-#ifdef USE_SMARTCARD
+#ifdef USE_SMARTCARD_012
 #include <vreader.h>
 #endif
 
@@ -35,8 +35,8 @@
  * @title: Smartcard Channel
  * @section_id:
  * @see_also: #SpiceSmartcardManager, #SpiceSession
- * @stability: API Stable (channel in development)
- * @include: channel-smartcard.h
+ * @stability: Stable
+ * @include: spice-client.h
  *
  * The Spice protocol defines a set of messages to forward smartcard
  * information from the Spice client to the VM. This channel handles
@@ -161,26 +161,15 @@ static void spice_smartcard_channel_finalize(GObject *obj)
     SpiceSmartcardChannel *channel = SPICE_SMARTCARD_CHANNEL(obj);
     SpiceSmartcardChannelPrivate *c = channel->priv;
 
-    if (c->pending_card_insertions != NULL) {
-        g_hash_table_destroy(c->pending_card_insertions);
-        c->pending_card_insertions = NULL;
-    }
-    if (c->pending_reader_removals != NULL) {
-        g_hash_table_destroy(c->pending_reader_removals);
-        c->pending_reader_removals = NULL;
-    }
+    g_clear_pointer(&c->pending_card_insertions, g_hash_table_destroy);
+    g_clear_pointer(&c->pending_reader_removals, g_hash_table_destroy);
     if (c->message_queue != NULL) {
         g_queue_foreach(c->message_queue, (GFunc)smartcard_message_free, NULL);
         g_queue_free(c->message_queue);
         c->message_queue = NULL;
     }
-    if (c->in_flight_message != NULL) {
-        smartcard_message_free(c->in_flight_message);
-        c->in_flight_message = NULL;
-    }
-
-    g_list_free(c->pending_reader_additions);
-    c->pending_reader_additions = NULL;
+    g_clear_pointer(&c->in_flight_message, smartcard_message_free);
+    g_clear_pointer(&c->pending_reader_additions, g_list_free);
 
     if (G_OBJECT_CLASS(spice_smartcard_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_smartcard_channel_parent_class)->finalize(obj);
@@ -199,13 +188,8 @@ static void spice_smartcard_channel_reset(SpiceChannel *channel, gboolean migrat
         g_queue_clear(c->message_queue);
     }
 
-    if (c->in_flight_message != NULL) {
-        smartcard_message_free(c->in_flight_message);
-        c->in_flight_message = NULL;
-    }
-
-    g_list_free(c->pending_reader_additions);
-    c->pending_reader_additions = NULL;
+    g_clear_pointer(&c->in_flight_message, smartcard_message_free);
+    g_clear_pointer(&c->pending_reader_additions, g_list_free);
 
     SPICE_CHANNEL_CLASS(spice_smartcard_channel_parent_class)->channel_reset(channel, migrating);
 }
@@ -241,10 +225,10 @@ smartcard_message_free(SpiceSmartcardChannelMessage *message)
 {
     if (message->message)
         spice_msg_out_unref(message->message);
-    g_slice_free(SpiceSmartcardChannelMessage, message);
+    g_free(message);
 }
 
-#if USE_SMARTCARD
+#ifdef USE_SMARTCARD
 static gboolean is_attached_to_server(VReader *reader)
 {
     return (vreader_get_id(reader) != (vreader_id_t)-1);
@@ -301,7 +285,7 @@ smartcard_message_new(VSCMsgType msg_type, SpiceMsgOut *msg_out)
 {
     SpiceSmartcardChannelMessage *message;
 
-    message = g_slice_new0(SpiceSmartcardChannelMessage);
+    message = g_new0(SpiceSmartcardChannelMessage, 1);
     message->message = msg_out;
     message->message_type = msg_type;
 
@@ -332,7 +316,7 @@ static void smartcard_message_send(SpiceSmartcardChannel *channel,
     if (spice_channel_get_read_only(SPICE_CHANNEL(channel)))
         return;
 
-    CHANNEL_DEBUG(channel, "send message %d, %s",
+    CHANNEL_DEBUG(channel, "send message %u, %s",
                   msg_type, queue ? "queued" : "now");
     if (!queue) {
         spice_msg_out_send(msg_out);
@@ -512,11 +496,11 @@ static void handle_smartcard_msg(SpiceChannel *channel, SpiceMsgIn *in)
     SpiceMsgSmartcard *msg = spice_msg_in_parsed(in);
     VReader *reader;
 
-    CHANNEL_DEBUG(channel, "handle msg %d", msg->type);
+    CHANNEL_DEBUG(channel, "handle msg %u", msg->type);
     switch (msg->type) {
         case VSC_Error:
             g_return_if_fail(priv->in_flight_message != NULL);
-            CHANNEL_DEBUG(channel, "in flight %d", priv->in_flight_message->message_type);
+            CHANNEL_DEBUG(channel, "in flight %u", priv->in_flight_message->message_type);
             switch (priv->in_flight_message->message_type) {
                 case VSC_ReaderAdd:
                     g_return_if_fail(priv->pending_reader_additions != NULL);
@@ -545,7 +529,7 @@ static void handle_smartcard_msg(SpiceChannel *channel, SpiceMsgIn *in)
                 case VSC_ReaderRemove:
                     break;
                 default:
-                    g_warning("Unexpected message: %d", priv->in_flight_message->message_type);
+                    g_warning("Unexpected message: %u", priv->in_flight_message->message_type);
                     break;
             }
             smartcard_message_complete_in_flight(smartcard_channel);

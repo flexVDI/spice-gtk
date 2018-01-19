@@ -1,0 +1,71 @@
+{
+    "app-id": "org.spicespace.spicy",
+    "runtime": "org.gnome.Platform",
+    "runtime-version": "3.24",
+    "sdk": "org.gnome.Sdk",
+    "command": "spicy",
+    "tags": ["devel", "development", "nightly"],
+        "finish-args": [
+        "--share=ipc", "--socket=x11",
+        "--socket=wayland",
+        "--socket=pulseaudio",
+        "--share=network"
+    ],
+    "modules": [
+        {
+            "name": "python-six",
+            "buildsystem": "simple",
+            "build-commands": [
+                "pip3 install --target=/app six-1.10.0-py2.py3-none-any.whl"
+            ],
+            "sources": [
+                {
+                   "type": "file",
+                   "url": "https://pypi.python.org/packages/c8/0a/b6723e1bc4c516cb687841499455a8505b44607ab535be01091c0f24f079/six-1.10.0-py2.py3-none-any.whl#md5=3ab558cf5d4f7a72611d59a81a315dc8",
+                   "sha256": "0ff78c403d9bccf5a425a6d31a12aa6b47f1c21ca4dc2573a7e2f32a97335eb1"
+                }
+            ]
+        },
+        {
+            "name": "pyparsing",
+            "buildsystem": "simple",
+            "build-commands": [
+                "pip3 install --target=/app pyparsing-2.0.3-py2.py3-none-any.whl"
+            ],
+            "sources": [
+                {
+                    "type": "file",
+                    "url": "https://pypi.python.org/packages/8f/f4/3a70b5e5b865b1ec45fe48dc5a57cd4facb5c7bd80e5cb1255c362732e81/pyparsing-2.0.3-py2.py3-none-any.whl#md5=4c16ef222caea2e5de741ae503aae652",
+                    "sha256": "a9c896bab06dbf3759ad5fb63cfdb3777191e2c4ae640e6dd69ed37530f6ba56"
+                }
+            ]
+        },
+        {
+            "builddir": true,
+            "name": "spice-protocol",
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "git://anongit.freedesktop.org/spice/spice-protocol"
+                }
+            ]
+        },
+        {
+            "builddir": true,
+            "name": "spice-gtk",
+            "build-options": {
+                "env": {
+                    "PYTHONPATH": "/app"
+                }
+            },
+            "config-opts": [ "--disable-controller", "--disable-vala",
+                             "--disable-gtk-doc", "--enable-python-checks" ],
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "git://anongit.freedesktop.org/spice/spice-gtk"
+                }
+            ]
+        }
+    ]
+}

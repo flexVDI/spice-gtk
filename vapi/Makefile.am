@@ -10,12 +10,11 @@ dist_vapi_DATA =					\
 	$(NULL)
 
 if WITH_GTK
-vapi_DATA += spice-client-gtk-$(SPICE_GTK_API_VERSION).vapi
-dist_vapi_DATA += spice-client-gtk-$(SPICE_GTK_API_VERSION).deps
+vapi_DATA += spice-client-gtk-3.0.vapi
+dist_vapi_DATA += spice-client-gtk-3.0.deps
 endif
 
 EXTRA_DIST =						\
-	spice-client-gtk-2.0.deps			\
 	spice-client-gtk-3.0.deps			\
 	SpiceClientGLib-2.0.metadata			\
 	$(NULL)
@@ -29,13 +28,13 @@ spice-client-glib-2.0.vapi: $(top_builddir)/src/SpiceClientGLib-2.0.gir SpiceCli
 		--pkg gio-2.0			\
 		$<
 
-spice-client-gtk-$(SPICE_GTK_API_VERSION).vapi: $(top_builddir)/src/SpiceClientGtk-$(SPICE_GTK_API_VERSION).gir spice-client-glib-2.0.vapi
+spice-client-gtk-3.0.vapi: $(top_builddir)/src/SpiceClientGtk-3.0.gir spice-client-glib-2.0.vapi
 	$(AM_V_GEN)$(VAPIGEN) -q					\
 		--vapidir=$(builddir)					\
 		--girdir=$(top_builddir)/src				\
 		--pkg spice-client-glib-2.0				\
-		--pkg gtk+-$(GTK_API_VERSION)				\
-		--library spice-client-gtk-$(SPICE_GTK_API_VERSION)	\
+		--pkg gtk+-3.0						\
+		--library spice-client-gtk-3.0				\
 		$<
 
 -include $(top_srcdir)/git.mk

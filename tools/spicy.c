@@ -24,9 +24,8 @@
 #include <termios.h>
 #endif
 
-#ifdef USE_SMARTCARD
+#ifdef USE_SMARTCARD_012
 #include <vreader.h>
-#include "smartcard-manager.h"
 #endif
 
 #ifdef WITH_FLEXVDI
@@ -34,7 +33,6 @@
 #include "flexvdi_client_icon.h"
 #endif
 
-#include "glib-compat.h"
 #include "spice-widget.h"
 #include "spice-gtk-session.h"
 #include "spice-audio.h"
@@ -45,6 +43,9 @@
 #include <gdk/gdkkeysyms.h>
 
 #include "spicy-connect.h"
+#if HAVE_GSTAUDIO || HAVE_GSTVIDEO
+#include <gst/gst.h>
+#endif
 
 typedef struct spice_connection spice_connection;
 
@@ -83,8 +84,8 @@ struct _SpiceWindow {
     gint             win_x;
     gint             win_y;
 #endif
-    bool             enable_accels_save;
-    bool             enable_mnemonics_save;
+    gboolean         enable_accels_save;
+    gboolean         enable_mnemonics_save;
 };
 
 struct _SpiceWindowClass
@@ -92,10 +93,13 @@ struct _SpiceWindowClass
   GObjectClass parent_class;
 };
 
+static GType spice_window_get_type(void);
+
 G_DEFINE_TYPE (SpiceWindow, spice_window, G_TYPE_OBJECT);
 
 #define CHANNELID_MAX 4
 #define MONITORID_MAX 4
+
 
 // FIXME: turn this into an object, get rid of fixed wins array, use
 // signals to replace the various callback that iterate over wins array
@@ -110,6 +114,10 @@ struct spice_connection {
     gboolean         agent_connected;
     int              channels;
     int              disconnecting;
+
+    /* key: SpiceFileTransferTask, value: TransferTaskWidgets */
+    GHashTable *transfers;
+    GtkWidget *transfer_dialog;
 };
 
 static enum {
@@ -160,9 +168,9 @@ static int ask_user(GtkWidget *parent, char *title, char *message,
     dialog = gtk_dialog_new_with_buttons(title,
                                          parent ? GTK_WINDOW(parent) : NULL,
                                          GTK_DIALOG_DESTROY_WITH_PARENT,
-                                         GTK_STOCK_OK,
+                                         "_OK",
                                          GTK_RESPONSE_ACCEPT,
-                                         GTK_STOCK_CANCEL,
+                                         "_Cancel",
                                          GTK_RESPONSE_REJECT,
                                          NULL);
     gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_ACCEPT);
@@ -197,23 +205,25 @@ static int ask_user(GtkWidget *parent, char *title, char *message,
 
 static void update_status_window(SpiceWindow *win)
 {
-    gchar *status;
+    GString *status;
 
     if (win == NULL)
         return;
 
+    status = g_string_new(NULL);
+    g_string_printf(status, "mouse: %6s, agent: %3s",
+                    win->conn->mouse_state,
+                    win->conn->agent_state);
+
     if (win->mouse_grabbed) {
         SpiceGrabSequence *sequence = spice_display_get_grab_keys(SPICE_DISPLAY(win->spice));
         gchar *seq = spice_grab_sequence_as_string(sequence);
-        status = g_strdup_printf("Use %s to ungrab mouse.", seq);
+        g_string_append_printf(status, "\tUse %s to ungrab mouse", seq);
         g_free(seq);
-    } else {
-        status = g_strdup_printf("mouse: %s, agent: %s",
-                 win->conn->mouse_state, win->conn->agent_state);
     }
 
-    gtk_label_set_text(GTK_LABEL(win->status), status);
-    g_free(status);
+    gtk_label_set_text(GTK_LABEL(win->status), status->str);
+    g_string_free(status, TRUE);
 }
 
 static void update_status(struct spice_connection *conn)
@@ -239,7 +249,7 @@ static void update_edit_menu_window(SpiceWindow *win)
     gboolean disabled_entries[G_N_ELEMENTS(spice_edit_properties)] = {
         disable_copy_to_guest,
         disable_paste_from_guest,
-        false };
+    };
 
     if (win == NULL) {
         return;
@@ -382,6 +392,21 @@ static void menu_cb_remove_smartcard(GtkAction *action, void *data)
 }
 #endif
 
+static void menu_cb_mouse_mode(GtkAction *action, void *data)
+{
+    SpiceWindow *win = data;
+    SpiceMainChannel *cmain = win->conn->main;
+    int mode;
+
+    g_object_get(cmain, "mouse-mode", &mode, NULL);
+    if (mode == SPICE_MOUSE_MODE_CLIENT)
+        mode = SPICE_MOUSE_MODE_SERVER;
+    else
+        mode = SPICE_MOUSE_MODE_CLIENT;
+
+    spice_main_request_mouse_mode(cmain, mode);
+}
+
 #ifdef USE_USBREDIR
 static void remove_cb(GtkContainer *container, GtkWidget *widget, void *data)
 {
@@ -398,7 +423,7 @@ static void menu_cb_select_usb_devices(GtkAction *action, void *data)
                     "Select USB devices for redirection",
                     GTK_WINDOW(win->toplevel),
                     GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-                    GTK_STOCK_CLOSE, GTK_RESPONSE_ACCEPT,
+                    "_Close", GTK_RESPONSE_ACCEPT,
                     NULL);
     gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_ACCEPT);
     gtk_container_set_border_width(GTK_CONTAINER(dialog), 12);
@@ -544,7 +569,7 @@ static void menu_cb_about(GtkAction *action, void *data)
                           "authors",         authors,
                           "comments",        comments,
                           "copyright",       copyright,
-                          "logo-icon-name",  GTK_STOCK_ABOUT,
+                          "logo-icon-name",  "help-about",
                           "website",         website,
                           "website-label",   website,
                           "version",         PACKAGE_VERSION,
@@ -677,6 +702,61 @@ static void keyboard_grab_cb(GtkWidget *widget, gint grabbed, gpointer data)
     }
 }
 
+static void menu_cb_resize_to(GtkAction *action G_GNUC_UNUSED,
+                              gpointer data)
+{
+    SpiceWindow *win = data;
+    GtkWidget *dialog;
+    GtkWidget *spin_width, *spin_height, *spin_x, *spin_y;
+    GtkGrid *grid;
+    gint width, height;
+    dialog = gtk_dialog_new_with_buttons("Resize guest to",
+                                         GTK_WINDOW(win->toplevel),
+                                         GTK_DIALOG_DESTROY_WITH_PARENT,
+                                         "_Apply",
+                                         GTK_RESPONSE_APPLY,
+                                         "_Cancel",
+                                         GTK_RESPONSE_CANCEL,
+                                         NULL);
+
+    spin_width = gtk_spin_button_new_with_range(0, G_MAXINT, 10);
+    spin_height = gtk_spin_button_new_with_range(0, G_MAXINT, 10);
+    spin_x = gtk_spin_button_new_with_range(0, G_MAXINT, 10);
+    spin_y = gtk_spin_button_new_with_range(0, G_MAXINT, 10);
+
+    gtk_widget_get_preferred_width(win->spice, NULL, &width);
+    gtk_widget_get_preferred_height(win->spice, NULL, &height);
+
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_width), width);
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_height), height);
+
+    grid = GTK_GRID(gtk_grid_new());
+    gtk_container_add(GTK_CONTAINER(gtk_dialog_get_content_area(GTK_DIALOG(dialog))),
+                      GTK_WIDGET(grid));
+    gtk_grid_attach(grid, gtk_label_new("Resize the guest display:"), 0, 0, 2, 1);
+    gtk_grid_attach(grid, gtk_label_new("width:"), 0, 2, 1, 1);
+    gtk_grid_attach(grid, spin_width, 1, 2, 1, 1);
+    gtk_grid_attach(grid, gtk_label_new("height:"), 0, 3, 1, 1);
+    gtk_grid_attach(grid, spin_height, 1, 3, 1, 1);
+    gtk_grid_attach(grid, gtk_label_new("x:"), 0, 4, 1, 1);
+    gtk_grid_attach(grid, spin_x, 1, 4, 1, 1);
+    gtk_grid_attach(grid, gtk_label_new("y:"), 0, 5, 1, 1);
+    gtk_grid_attach(grid, spin_y, 1, 5, 1, 1);
+
+    gtk_widget_show_all(dialog);
+    if (gtk_dialog_run(GTK_DIALOG (dialog)) == GTK_RESPONSE_APPLY) {
+        spice_main_update_display_enabled(win->conn->main, win->id + win->monitor_id, TRUE, FALSE);
+        spice_main_set_display(win->conn->main,
+                               win->id + win->monitor_id,
+                               gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_x)),
+                               gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_y)),
+                               gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_width)),
+                               gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_height)));
+        spice_main_send_monitor_config(win->conn->main);
+    }
+    gtk_widget_destroy(dialog);
+}
+
 static void restore_configuration(SpiceWindow *win)
 {
     gboolean state;
@@ -765,18 +845,24 @@ static const GtkActionEntry entries[] = {
         .name        = "OptionMenu",
         .label       = "_Options",
     },{
+        .name        = "CompressionMenu",
+        .label       = "_Preferred image compression",
+    },{
+        .name        = "VideoCodecTypeMenu",
+        .label       = "_Preferred video codec type",
+    },{
         .name        = "HelpMenu",
         .label       = "_Help",
     },{
 
         /* File menu */
         .name        = "Connect",
-        .stock_id    = GTK_STOCK_CONNECT,
+        .stock_id    = "_Connect",
         .label       = "_Connect ...",
         .callback    = G_CALLBACK(menu_cb_connect),
     },{
         .name        = "Close",
-        .stock_id    = GTK_STOCK_CLOSE,
+        .stock_id    = "window-close",
         .label       = "_Close",
         .callback    = G_CALLBACK(menu_cb_close),
         .accelerator = "", /* none (disable default "<control>W") */
@@ -785,14 +871,14 @@ static const GtkActionEntry entries[] = {
 
         /* Edit menu */
         .name        = "CopyToGuest",
-        .stock_id    = GTK_STOCK_COPY,
+        .stock_id    = "edit-copy",
         .label       = "_Copy to guest",
         .callback    = G_CALLBACK(menu_cb_copy),
         .accelerator = "", /* none (disable default "<control>C") */
         .tooltip     = "Copy to guest",
     },{
         .name        = "PasteFromGuest",
-        .stock_id    = GTK_STOCK_PASTE,
+        .stock_id    = "edit-paste",
         .label       = "_Paste from guest",
         .callback    = G_CALLBACK(menu_cb_paste),
         .accelerator = "", /* none (disable default "<control>V") */
@@ -801,7 +887,7 @@ static const GtkActionEntry entries[] = {
 
         /* View menu */
         .name        = "Fullscreen",
-        .stock_id    = GTK_STOCK_FULLSCREEN,
+        .stock_id    = "view-fullscreen",
         .label       = "_Fullscreen",
         .callback    = G_CALLBACK(menu_cb_fullscreen),
         .accelerator = "<shift>F11",
@@ -819,6 +905,11 @@ static const GtkActionEntry entries[] = {
         .label       = "_Minimize",
         .callback    = G_CALLBACK(menu_cb_minimize),
         .tooltip     = "Minimize",
+    },{
+        .name        = "ResizeTo",
+        .label       = "_Resize to",
+        .callback    = G_CALLBACK(menu_cb_resize_to),
+        .accelerator = "",
     },{
 #ifdef USE_SMARTCARD
 	.name        = "InsertSmartcard",
@@ -929,9 +1020,15 @@ static const GtkActionEntry entries[] = {
         .tooltip     = "Shutdown immediately",
     },{
 
+        .name        = "MouseMode",
+        .label       = "Toggle _mouse mode",
+        .callback    = G_CALLBACK(menu_cb_mouse_mode),
+        .accelerator = "<shift>F7",
+
+    },{
         /* Help menu */
         .name        = "About",
-        .stock_id    = GTK_STOCK_ABOUT,
+        .stock_id    = "help-about",
         .label       = "_About ...",
         .callback    = G_CALLBACK(menu_cb_about),
     }
@@ -948,6 +1045,7 @@ static const char *spice_display_properties[] = {
 static const char *spice_gtk_session_properties[] = {
     "auto-clipboard",
     "auto-usbredir",
+    "sync-modifiers",
 };
 
 static const GtkToggleActionEntry tentries[] = {
@@ -957,7 +1055,7 @@ static const GtkToggleActionEntry tentries[] = {
         .callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
         .name        = "grab-mouse",
-        .label       = "Grab mouse in server mode (no tabled/vdagent)",
+        .label       = "Grab mouse in server mode (no tablet/vdagent)",
         .callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
         .name        = "resize-guest",
@@ -972,8 +1070,12 @@ static const GtkToggleActionEntry tentries[] = {
         .label       = "Disable inputs",
         .callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
+        .name        = "sync-modifiers",
+        .label       = "Sync modifiers",
+        .callback    = G_CALLBACK(menu_cb_bool_prop),
+    },{
         .name        = "auto-clipboard",
-        .label       = "Automagic clipboard sharing between host and guest",
+        .label       = "Automatic clipboard sharing between host and guest",
         .callback    = G_CALLBACK(menu_cb_bool_prop),
     },{
         .name        = "auto-usbredir",
@@ -987,6 +1089,60 @@ static const GtkToggleActionEntry tentries[] = {
         .name        = "Toolbar",
         .label       = "Toolbar",
         .callback    = G_CALLBACK(menu_cb_toolbar),
+    }
+};
+
+static const GtkRadioActionEntry compression_entries[] = {
+    {
+        .name  = "auto-glz",
+        .label = "auto-glz",
+        .value = SPICE_IMAGE_COMPRESSION_AUTO_GLZ,
+    },{
+        .name  = "auto-lz",
+        .label = "auto-lz",
+        .value = SPICE_IMAGE_COMPRESSION_AUTO_LZ,
+    },{
+        .name  = "quic",
+        .label = "quic",
+        .value = SPICE_IMAGE_COMPRESSION_QUIC,
+    },{
+        .name  = "glz",
+        .label = "glz",
+        .value = SPICE_IMAGE_COMPRESSION_GLZ,
+    },{
+        .name  = "lz",
+        .label = "lz",
+        .value = SPICE_IMAGE_COMPRESSION_LZ,
+    },{
+#ifdef USE_LZ4
+        .name  = "lz4",
+        .label = "lz4",
+        .value = SPICE_IMAGE_COMPRESSION_LZ4,
+    },{
+#endif
+        .name  = "off",
+        .label = "off",
+        .value = SPICE_IMAGE_COMPRESSION_OFF,
+    }
+};
+
+static const GtkRadioActionEntry video_codec_type_entries[] = {
+    {
+        .name  = "mjpeg",
+        .label = "mjpeg",
+        .value = SPICE_VIDEO_CODEC_TYPE_MJPEG,
+    },{
+        .name  = "vp8",
+        .label = "vp8",
+        .value = SPICE_VIDEO_CODEC_TYPE_VP8,
+    },{
+        .name  = "vp9",
+        .label = "vp9",
+        .value = SPICE_VIDEO_CODEC_TYPE_VP9,
+    },{
+        .name  = "h264",
+        .label = "h264",
+        .value = SPICE_VIDEO_CODEC_TYPE_H264,
     }
 };
 
@@ -1047,11 +1203,30 @@ static char ui_xml[] =
 "    <menu action='OptionMenu'>\n"
 "      <menuitem action='grab-keyboard'/>\n"
 "      <menuitem action='grab-mouse'/>\n"
+"      <menuitem action='MouseMode'/>\n"
 "      <menuitem action='resize-guest'/>\n"
 "      <menuitem action='scaling'/>\n"
 "      <menuitem action='disable-inputs'/>\n"
+"      <menuitem action='sync-modifiers'/>\n"
 "      <menuitem action='auto-clipboard'/>\n"
 "      <menuitem action='auto-usbredir'/>\n"
+"      <menu action='CompressionMenu'>\n"
+"        <menuitem action='auto-glz'/>\n"
+"        <menuitem action='auto-lz'/>\n"
+"        <menuitem action='quic'/>\n"
+"        <menuitem action='glz'/>\n"
+"        <menuitem action='lz'/>\n"
+#ifdef USE_LZ4
+"        <menuitem action='lz4'/>\n"
+#endif
+"        <menuitem action='off'/>\n"
+"      </menu>\n"
+"      <menu action='VideoCodecTypeMenu'>\n"
+"        <menuitem action='mjpeg'/>\n"
+"        <menuitem action='vp8'/>\n"
+"        <menuitem action='vp9'/>\n"
+"        <menuitem action='h264'/>\n"
+"      </menu>\n"
 "    </menu>\n"
 "    <menu action='HelpMenu'>\n"
 "      <menuitem action='About'/>\n"
@@ -1064,6 +1239,8 @@ static char ui_xml[] =
 "    <toolitem action='PasteFromGuest'/>\n"
 "    <separator/>\n"
 "    <toolitem action='Fullscreen'/>\n"
+"    <separator/>\n"
+"    <toolitem action='ResizeTo'/>\n"
 "    <separator/>\n"
 "    <toolitem action='Reset'/>\n"
 "    <toolitem action='Powerdown'/>\n"
@@ -1125,21 +1302,20 @@ static void recent_item_activated_cb(GtkRecentChooser *chooser, gpointer data)
     connection_connect(conn);
 }
 
-static gboolean configure_event_cb(GtkWidget         *widget,
-                                   GdkEventConfigure *event,
-                                   gpointer           data)
+static void compression_cb(GtkRadioAction *action G_GNUC_UNUSED,
+                           GtkRadioAction *current,
+                           gpointer user_data)
 {
-    gboolean resize_guest;
-    SpiceWindow *win = data;
+    spice_display_change_preferred_compression(SPICE_CHANNEL(user_data),
+                                               gtk_radio_action_get_current_value(current));
+}
 
-    g_return_val_if_fail(win != NULL, FALSE);
-    g_return_val_if_fail(win->conn != NULL, FALSE);
-
-    g_object_get(win->spice, "resize-guest", &resize_guest, NULL);
-    if (resize_guest && win->conn->agent_connected)
-        return FALSE;
-
-    return FALSE;
+static void video_codec_type_cb(GtkRadioAction *action G_GNUC_UNUSED,
+                                GtkRadioAction *current,
+                                gpointer user_data)
+{
+    spice_display_change_preferred_video_codec_type(SPICE_CHANNEL(user_data),
+                                                    gtk_radio_action_get_current_value(current));
 }
 
 #if GTK_CHECK_VERSION(3,10,0)
@@ -1266,7 +1442,7 @@ static void share_current_printers(gpointer data)
 
 #endif
 
-void realize_window(GtkWidget * toplevel, gpointer data)
+static void realize_window(GtkWidget * toplevel, gpointer data)
 {
     if (fullscreen_on_all_monitors) {
         gdk_window_set_fullscreen_mode(gtk_widget_get_window(toplevel),
@@ -1319,6 +1495,23 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     gtk_action_group_add_actions(win->ag, entries, G_N_ELEMENTS(entries), win);
     gtk_action_group_add_toggle_actions(win->ag, tentries,
                                         G_N_ELEMENTS(tentries), win);
+    gtk_action_group_add_radio_actions(win->ag, compression_entries,
+                                       G_N_ELEMENTS(compression_entries), -1,
+                                       G_CALLBACK(compression_cb), win->display_channel);
+    if (!spice_channel_test_capability(win->display_channel, SPICE_DISPLAY_CAP_PREF_COMPRESSION)) {
+        GtkAction *compression_menu_action = gtk_action_group_get_action(win->ag, "CompressionMenu");
+        gtk_action_set_sensitive(compression_menu_action, FALSE);
+    }
+    gtk_action_group_add_radio_actions(win->ag, video_codec_type_entries,
+                                       G_N_ELEMENTS(video_codec_type_entries), -1,
+                                       G_CALLBACK(video_codec_type_cb), win->display_channel);
+    if (!spice_channel_test_capability(win->display_channel,
+                                       SPICE_DISPLAY_CAP_PREF_VIDEO_CODEC_TYPE)) {
+        GtkAction *video_codec_type_menu_action =
+            gtk_action_group_get_action(win->ag, "VideoCodecTypeMenu");
+        gtk_action_set_sensitive(video_codec_type_menu_action, FALSE);
+    }
+
     gtk_ui_manager_insert_action_group(win->ui, win->ag, 0);
     gtk_window_add_accel_group(GTK_WINDOW(win->toplevel),
                                gtk_ui_manager_get_accel_group(win->ui));
@@ -1374,7 +1567,6 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
 
     /* spice display */
     win->spice = GTK_WIDGET(spice_display_new_with_monitor(conn->session, id, monitor_id));
-    g_signal_connect(win->spice, "configure-event", G_CALLBACK(configure_event_cb), win);
     seq = spice_grab_sequence_new_from_string("Shift_L+F12");
     spice_display_set_grab_keys(SPICE_DISPLAY(win->spice), seq);
     spice_grab_sequence_free(seq);
@@ -1391,11 +1583,7 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
                      G_CALLBACK(leave_window_cb), win);
 
     /* status line */
-#if GTK_CHECK_VERSION(3,0,0)
     win->statusbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-#else
-    win->statusbar = gtk_hbox_new(FALSE, 1);
-#endif
 
     win->status = gtk_label_new("status line");
     gtk_misc_set_alignment(GTK_MISC(win->status), 0, 0.5);
@@ -1415,11 +1603,7 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     }
 
     /* Make a vbox and put stuff in */
-#if GTK_CHECK_VERSION(3,0,0)
     vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
-#else
-    vbox = gtk_vbox_new(FALSE, 1);
-#endif
     gtk_container_set_border_width(GTK_CONTAINER(vbox), 0);
     gtk_box_pack_start(GTK_BOX(vbox), win->menubar, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(vbox), win->toolbar, FALSE, FALSE, 0);
@@ -1626,7 +1810,7 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
         break;
     default:
         /* TODO: more sophisticated error handling */
-        g_warning("unknown main channel event: %d", event);
+        g_warning("unknown main channel event: %u", event);
         /* connection_disconnect(conn); */
         break;
     }
@@ -1833,6 +2017,8 @@ static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
 #endif
 
 #ifndef WITH_FLEXVDI
+static void watch_stdin(void);
+
 static void port_opened(SpiceChannel *channel, GParamSpec *pspec,
                         spice_connection *conn)
 {
@@ -1856,6 +2042,7 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec,
 
         /* handle the first spicy port and connect it to stdin/out */
         if (g_strcmp0(name, "org.spice.spicy") == 0 && stdin_port == NULL) {
+            watch_stdin();
             stdin_port = port;
         }
     } else {
@@ -1881,6 +2068,155 @@ static void port_data(SpicePortChannel *port,
 }
 #endif
 
+typedef struct {
+    GtkWidget *vbox;
+    GtkWidget *hbox;
+    GtkWidget *progress;
+    GtkWidget *label;
+    GtkWidget *cancel;
+} TransferTaskWidgets;
+
+static void transfer_update_progress(GObject *object,
+                                     GParamSpec *pspec,
+                                     gpointer user_data)
+{
+    spice_connection *conn = user_data;
+    TransferTaskWidgets *widgets = g_hash_table_lookup(conn->transfers, object);
+    g_return_if_fail(widgets);
+    gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(widgets->progress),
+                                  spice_file_transfer_task_get_progress(SPICE_FILE_TRANSFER_TASK(object)));
+}
+
+static void transfer_task_finished(SpiceFileTransferTask *task, GError *error, spice_connection *conn)
+{
+    if (error)
+        g_warning("%s", error->message);
+    g_hash_table_remove(conn->transfers, task);
+    if (!g_hash_table_size(conn->transfers))
+        gtk_widget_hide(conn->transfer_dialog);
+}
+
+static gboolean dialog_delete_cb(GtkWidget *widget,
+                                 GdkEvent *event G_GNUC_UNUSED,
+                                 gpointer user_data G_GNUC_UNUSED)
+{
+    gtk_dialog_response(GTK_DIALOG(widget), GTK_RESPONSE_CANCEL);
+    return TRUE;
+}
+
+static void dialog_response_cb(GtkDialog *dialog,
+                               gint response_id,
+                               gpointer user_data)
+{
+    spice_connection *conn = user_data;
+    g_print("Reponse: %i\n", response_id);
+
+    if (response_id == GTK_RESPONSE_CANCEL) {
+        GHashTableIter iter;
+        gpointer key, value;
+
+        g_hash_table_iter_init(&iter, conn->transfers);
+        while (g_hash_table_iter_next(&iter, &key, &value)) {
+            SpiceFileTransferTask *task = key;
+            spice_file_transfer_task_cancel(task);
+        }
+    }
+}
+
+static void
+task_cancel_cb(GtkButton *button,
+               gpointer user_data)
+{
+    SpiceFileTransferTask *task = SPICE_FILE_TRANSFER_TASK(user_data);
+    spice_file_transfer_task_cancel(task);
+}
+
+static TransferTaskWidgets *
+transfer_task_widgets_new(SpiceFileTransferTask *task)
+{
+    char *filename;
+    TransferTaskWidgets *widgets = g_new0(TransferTaskWidgets, 1);
+
+    widgets->vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    widgets->hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
+    widgets->cancel = gtk_button_new_with_label("Cancel");
+
+    widgets->progress = gtk_progress_bar_new();
+    filename = spice_file_transfer_task_get_filename(task);
+    widgets->label = gtk_label_new(filename);
+    g_free(filename);
+
+    gtk_widget_set_halign(widgets->label, GTK_ALIGN_START);
+    gtk_widget_set_valign(widgets->label, GTK_ALIGN_BASELINE);
+    gtk_widget_set_valign(widgets->progress, GTK_ALIGN_CENTER);
+    gtk_widget_set_hexpand(widgets->progress, TRUE);
+    gtk_widget_set_valign(widgets->cancel, GTK_ALIGN_CENTER);
+    gtk_widget_set_hexpand(widgets->progress, FALSE);
+
+    gtk_box_pack_start(GTK_BOX(widgets->hbox), widgets->progress,
+                       TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(widgets->hbox), widgets->cancel,
+                       FALSE, TRUE, 0);
+
+    gtk_box_pack_start(GTK_BOX(widgets->vbox), widgets->label,
+                       TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(widgets->vbox), widgets->hbox,
+                       TRUE, TRUE, 0);
+
+    g_signal_connect(widgets->cancel, "clicked",
+                     G_CALLBACK(task_cancel_cb), task);
+
+    gtk_widget_show_all(widgets->vbox);
+
+    return widgets;
+}
+
+static void
+transfer_task_widgets_free(TransferTaskWidgets *widgets)
+{
+    /* child widgets will be destroyed automatically */
+    gtk_widget_destroy(widgets->vbox);
+    g_free(widgets);
+}
+
+static void spice_connection_add_task(spice_connection *conn, SpiceFileTransferTask *task)
+{
+    TransferTaskWidgets *widgets;
+    GtkWidget *content = NULL;
+
+    g_signal_connect(task, "notify::progress",
+                     G_CALLBACK(transfer_update_progress), conn);
+    g_signal_connect(task, "finished",
+                     G_CALLBACK(transfer_task_finished), conn);
+    if (!conn->transfer_dialog) {
+        conn->transfer_dialog = gtk_dialog_new_with_buttons("File Transfers",
+                                                            GTK_WINDOW(conn->wins[0]->toplevel), 0,
+                                                            "Cancel", GTK_RESPONSE_CANCEL, NULL);
+        gtk_dialog_set_default_response(GTK_DIALOG(conn->transfer_dialog),
+                                        GTK_RESPONSE_CANCEL);
+        gtk_window_set_resizable(GTK_WINDOW(conn->transfer_dialog), FALSE);
+        g_signal_connect(conn->transfer_dialog, "response",
+                         G_CALLBACK(dialog_response_cb), conn);
+        g_signal_connect(conn->transfer_dialog, "delete-event",
+                         G_CALLBACK(dialog_delete_cb), conn);
+    }
+    gtk_widget_show(conn->transfer_dialog);
+    content = gtk_dialog_get_content_area(GTK_DIALOG(conn->transfer_dialog));
+    gtk_container_set_border_width(GTK_CONTAINER(content), 12);
+
+    widgets = transfer_task_widgets_new(task);
+    g_hash_table_insert(conn->transfers, g_object_ref(task), widgets);
+    gtk_box_pack_start(GTK_BOX(content),
+                       widgets->vbox, TRUE, TRUE, 6);
+}
+
+static void new_file_transfer(SpiceMainChannel *main, SpiceFileTransferTask *task, gpointer user_data)
+{
+    spice_connection *conn = user_data;
+    g_debug("new file transfer task");
+    spice_connection_add_task(conn, task);
+}
+
 static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 {
     spice_connection *conn = data;
@@ -1899,6 +2235,8 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
                          G_CALLBACK(main_mouse_update), conn);
         g_signal_connect(channel, "main-agent-update",
                          G_CALLBACK(main_agent_update), conn);
+        g_signal_connect(channel, "new-file-transfer",
+                         G_CALLBACK(new_file_transfer), conn);
         main_mouse_update(channel, conn);
         main_agent_update(channel, conn);
     }
@@ -2018,6 +2356,9 @@ static spice_connection *connection_new(void)
                          G_CALLBACK(usb_connect_failed), NULL);
     }
 
+    conn->transfers = g_hash_table_new_full(g_direct_hash, g_direct_equal,
+                                            g_object_unref,
+                                            (GDestroyNotify)transfer_task_widgets_free);
     connections++;
     SPICE_DEBUG("%s (%d)", __FUNCTION__, connections);
     return conn;
@@ -2041,6 +2382,7 @@ static void connection_disconnect(spice_connection *conn, int reason)
 static void connection_destroy(spice_connection *conn)
 {
     g_object_unref(conn->session);
+    g_hash_table_unref(conn->transfers);
     free(conn);
 
     connections--;
@@ -2135,14 +2477,18 @@ static void setup_terminal(gboolean reset)
         return;
 
 #ifdef HAVE_TERMIOS_H
-    static struct termios saved_tios;
     struct termios tios;
+    static struct termios saved_tios;
+    static bool saved = false;
 
-    if (reset)
+    if (reset) {
+        if (!saved)
+            return;
         tios = saved_tios;
-    else {
+    } else {
         tcgetattr(stdinfd, &tios);
         saved_tios = tios;
+        saved = true;
         tios.c_lflag &= ~(ICANON | ECHO);
     }
 
@@ -2171,9 +2517,6 @@ int main(int argc, char *argv[])
     char *host = NULL, *port = NULL, *tls_port = NULL, *ws_port = NULL, *unix_path = NULL;
     disconnect_reason = DISCONNECT_NO_ERROR;
 
-#if !GLIB_CHECK_VERSION(2,31,18)
-    g_thread_init(NULL);
-#endif
     keyfile = g_key_file_new();
 
     int mode = S_IRWXU;
@@ -2191,6 +2534,9 @@ int main(int argc, char *argv[])
 
     /* parse opts */
     gtk_init(&argc, &argv);
+#if HAVE_GSTAUDIO || HAVE_GSTVIDEO
+    gst_init(&argc, &argv);
+#endif
     context = g_option_context_new("- spice client test application");
     g_option_context_set_summary(context, "Gtk+ test client to connect to Spice servers.");
     g_option_context_set_description(context, "Report bugs to " PACKAGE_BUGREPORT ".");
@@ -2200,6 +2546,9 @@ int main(int argc, char *argv[])
     g_option_context_add_group(context, gtk_get_option_group(TRUE));
 #ifdef WITH_FLEXVDI
     g_option_context_add_group(context, flexvdi_get_option_group());
+#endif
+#if HAVE_GSTAUDIO || HAVE_GSTVIDEO
+    g_option_context_add_group(context, gst_init_get_option_group());
 #endif
     if (!g_option_context_parse (context, &argc, &argv, &error)) {
         g_print("option parsing failed: %s\n", error->message);
@@ -2212,9 +2561,6 @@ int main(int argc, char *argv[])
         exit(0);
     }
 
-#if !GLIB_CHECK_VERSION(2,36,0)
-    g_type_init();
-#endif
     mainloop = g_main_loop_new(NULL, false);
 
     conn = connection_new();
@@ -2244,10 +2590,6 @@ int main(int argc, char *argv[])
     g_free(tls_port);
     g_free(ws_port);
     g_free(unix_path);
-
-#ifndef WITH_FLEXVDI
-    watch_stdin();
-#endif
 
     connection_connect(conn);
     if (connections > 0)

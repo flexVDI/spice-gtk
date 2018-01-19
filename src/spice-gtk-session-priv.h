@@ -22,12 +22,29 @@
 
 G_BEGIN_DECLS
 
+typedef struct _SpiceGtkSessionPrivate SpiceGtkSessionPrivate;
+
+struct _SpiceGtkSession
+{
+    GObject parent;
+    SpiceGtkSessionPrivate *priv;
+};
+
+struct _SpiceGtkSessionClass
+{
+    GObjectClass parent_class;
+};
+
 void spice_gtk_session_request_auto_usbredir(SpiceGtkSession *self,
                                              gboolean state);
 gboolean spice_gtk_session_get_read_only(SpiceGtkSession *self);
 void spice_gtk_session_sync_keyboard_modifiers(SpiceGtkSession *self);
 void spice_gtk_session_set_pointer_grabbed(SpiceGtkSession *self, gboolean grabbed);
 gboolean spice_gtk_session_get_pointer_grabbed(SpiceGtkSession *self);
+void spice_gtk_session_set_keyboard_has_focus(SpiceGtkSession *self, gboolean keyboard_has_focus);
+void spice_gtk_session_set_mouse_has_pointer(SpiceGtkSession *self, gboolean  mouse_has_pointer);
+gboolean spice_gtk_session_get_keyboard_has_focus(SpiceGtkSession *self);
+gboolean spice_gtk_session_get_mouse_has_pointer(SpiceGtkSession *self);
 
 G_END_DECLS
 

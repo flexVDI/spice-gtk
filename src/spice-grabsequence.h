@@ -22,6 +22,10 @@
 #ifndef SPICE_GRAB_SEQUENCE_H
 #define SPICE_GRAB_SEQUENCE_H
 
+#if !defined(__SPICE_CLIENT_GTK_H_INSIDE__) && !defined(SPICE_COMPILATION)
+#warning "Only <spice-client-gtk.h> can be included directly"
+#endif
+
 #include <glib.h>
 #include <glib-object.h>
 
@@ -29,15 +33,12 @@ G_BEGIN_DECLS
 
 #define SPICE_TYPE_GRAB_SEQUENCE            (spice_grab_sequence_get_type ())
 
+/**
+ * SpiceGrabSequence:
+ *
+ * An opaque type that represents a grab sequence.
+ **/
 typedef struct _SpiceGrabSequence SpiceGrabSequence;
-
-struct _SpiceGrabSequence {
-        /*< private >*/
-	guint nkeysyms;
-	guint *keysyms;
-
-	/* Do not add fields to this struct */
-};
 
 GType spice_grab_sequence_get_type(void);
 

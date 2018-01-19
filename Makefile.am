@@ -3,6 +3,10 @@ NULL =
 
 SUBDIRS = spice-common src man po doc data
 
+if BUILD_TOOLS
+SUBDIRS += tools
+endif
+
 if BUILD_TESTS
 SUBDIRS += tests
 endif
@@ -19,59 +23,28 @@ pkgconfig_DATA =					\
 	$(NULL)
 
 if WITH_GTK
-pkgconfig_DATA += spice-client-gtk-$(SPICE_GTK_API_VERSION).pc
+pkgconfig_DATA += spice-client-gtk-3.0.pc
 endif
 
 if WITH_CONTROLLER
 pkgconfig_DATA += spice-controller.pc
 endif
 
-INTLTOOL_FILES =				\
-	intltool-extract.in			\
-	intltool-merge.in			\
-	intltool-update.in			\
-	$(NULL)
-
-DISTCLEANFILES =				\
-	$(pkgconfig_DATA)			\
-	intltool-extract			\
-	intltool-merge				\
-	intltool-update				\
-	gnome-doc-utils.make			\
-	po/.intltool-merge-cache		\
-	$(NULL)
+DISTCLEANFILES = $(pkgconfig_DATA)
 
 EXTRA_DIST =					\
 	build-aux/git-version-gen		\
 	gtk-doc.make				\
 	.version				\
-	$(INTLTOOL_FILES)			\
 	$(NULL)
 
-MAINTAINERCLEANFILES =				\
-	ABOUT-NLS				\
-	aclocal.m4				\
-	config.h.in				\
-	m4/gtk-doc.m4				\
-	m4/intltool.m4				\
-	m4/libtool.m4				\
-	m4/ltoptions.m4				\
-	m4/ltsugar.m4				\
-	m4/ltversion.m4				\
-	m4/lt~obsolete.m4			\
-	build-aux/ar-lib			\
-	build-aux/compile			\
-	build-aux/config.guess			\
-	build-aux/config.rpath			\
-	build-aux/config.sub			\
-	build-aux/depcomp			\
-	build-aux/install-sh			\
-	build-aux/ltmain.sh			\
-	build-aux/missing			\
-	build-aux/mkinstalldirs			\
-	build-aux/test-driver			\
-	po/Makefile.in.in			\
-	gtk-doc.make				\
+MAINTAINERCLEANFILES =					\
+	$(GITIGNORE_MAINTAINERCLEANFILES_TOPLEVEL)	\
+	$(GITIGNORE_MAINTAINERCLEANFILES_MAKEFILE_IN)	\
+	$(GITIGNORE_MAINTAINERCLEANFILES_M4_LIBTOOL)	\
+	$(GITIGNORE_MAINTAINERCLEANFILES_M4_GETTEXT)	\
+	m4/gtk-doc.m4					\
+	gtk-doc.make					\
 	$(NULL)
 
 # Generate the ChangeLog file

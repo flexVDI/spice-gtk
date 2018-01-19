@@ -55,7 +55,7 @@ static struct glz_image *glz_image_new(struct glz_image_hdr *hdr,
     img = g_new0(struct glz_image, 1);
     img->hdr = *hdr;
     img->surface = alloc_lz_image_surface
-        (opaque, type == LZ_IMAGE_TYPE_RGBA ? PIXMAN_a8r8g8b8 : PIXMAN_x8r8g8b8,
+        (opaque, type == LZ_IMAGE_TYPE_RGBA ? PIXMAN_LE_a8r8g8b8 : PIXMAN_LE_x8r8g8b8,
          img->hdr.width, img->hdr.height, img->hdr.gross_pixels, img->hdr.top_down);
     pixman_image_ref(img->surface);
     img->data = (uint8_t *)pixman_image_get_data(img->surface);
@@ -92,7 +92,7 @@ static void glz_decoder_window_resize(SpiceGlzDecoderWindow *w)
     struct glz_image  **new_images;
     int i, new_slot;
 
-    SPICE_DEBUG("%s: array resize %d -> %d", __FUNCTION__,
+    SPICE_DEBUG("%s: array resize %u -> %u", __FUNCTION__,
                 w->nimages, w->nimages * 2);
     new_images = g_new0(struct glz_image*, w->nimages * 2);
     for (i = 0; i < w->nimages; i++) {
@@ -173,8 +173,7 @@ static void glz_decoder_window_release(SpiceGlzDecoderWindow *w,
 
     while (w->oldest < oldest) {
         slot = w->oldest % w->nimages;
-        glz_image_destroy(w->images[slot]);
-        w->images[slot] = NULL;
+        g_clear_pointer(&w->images[slot], glz_image_destroy);
         w->oldest++;
     }
 }
@@ -239,9 +238,6 @@ typedef uint16_t rgb16_pixel_t;
 #undef ATTR_PACKED
 
 #define LZ_PLT
-#include "decode-glz-tmpl.c"
-
-#define LZ_PLT
 #define PLT8
 #define TO_RGB32
 #include "decode-glz-tmpl.c"
@@ -268,12 +264,7 @@ typedef uint16_t rgb16_pixel_t;
 
 
 #define LZ_RGB16
-#include "decode-glz-tmpl.c"
-#define LZ_RGB16
 #define TO_RGB32
-#include "decode-glz-tmpl.c"
-
-#define LZ_RGB24
 #include "decode-glz-tmpl.c"
 
 #define LZ_RGB32
@@ -299,19 +290,6 @@ const decode_function DECODE_TO_RGB32[] = {
     glz_plt8_to_rgb32_decode,
     glz_rgb16_to_rgb32_decode,
     glz_rgb32_decode,
-    glz_rgb32_decode,
-    glz_rgb32_decode
-};
-
-const decode_function DECODE_TO_SAME[] = {
-    NULL,
-    glz_plt_decode,
-    glz_plt_decode,
-    glz_plt_decode,
-    glz_plt_decode,
-    glz_plt_decode,
-    glz_rgb16_decode,
-    glz_rgb24_decode,
     glz_rgb32_decode,
     glz_rgb32_decode
 };
@@ -368,7 +346,7 @@ static void decode_header(GlibGlzDecoder *d)
     d->image.id = decode_64(d);
     d->image.win_head_dist = decode_32(d);
 
-    SPICE_DEBUG("%s: %dx%d, id %" PRId64 ", ref %" PRId64,
+    SPICE_DEBUG("%s: %ux%u, id %" PRIu64 ", ref %" PRIu64,
             __FUNCTION__,
             d->image.width, d->image.height, d->image.id,
             d->image.id - d->image.win_head_dist);

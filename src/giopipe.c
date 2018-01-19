@@ -81,6 +81,8 @@ static void pipe_input_stream_pollable_iface_init (GPollableInputStreamInterface
 static void pipe_input_stream_check_source (PipeInputStream *self);
 static void pipe_output_stream_check_source (PipeOutputStream *self);
 
+static GType pipe_input_stream_get_type(void);
+
 G_DEFINE_TYPE_WITH_CODE (PipeInputStream, pipe_input_stream, G_TYPE_INPUT_STREAM,
                          G_IMPLEMENT_INTERFACE (G_TYPE_POLLABLE_INPUT_STREAM,
                                                 pipe_input_stream_pollable_iface_init))
@@ -267,6 +269,8 @@ pipe_input_stream_pollable_iface_init (GPollableInputStreamInterface *iface)
 
 static void pipe_output_stream_pollable_iface_init (GPollableOutputStreamInterface *iface);
 
+static GType pipe_output_stream_get_type(void);
+
 G_DEFINE_TYPE_WITH_CODE (PipeOutputStream, pipe_output_stream, G_TYPE_OUTPUT_STREAM,
                          G_IMPLEMENT_INTERFACE (G_TYPE_POLLABLE_OUTPUT_STREAM,
                                                 pipe_output_stream_pollable_iface_init))
@@ -438,7 +442,7 @@ pipe_output_stream_pollable_iface_init (GPollableOutputStreamInterface *iface)
     iface->create_source = pipe_output_stream_create_source;
 }
 
-G_GNUC_INTERNAL void
+static void
 make_gio_pipe(GInputStream **input, GOutputStream **output)
 {
     PipeInputStream *in;
@@ -474,8 +478,10 @@ spice_make_pipe(GIOStream **p1, GIOStream **p2)
     make_gio_pipe(&in1, &out2);
     make_gio_pipe(&in2, &out1);
 
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     *p1 = g_simple_io_stream_new(in1, out1);
     *p2 = g_simple_io_stream_new(in2, out2);
+G_GNUC_END_IGNORE_DEPRECATIONS
 
     g_object_unref(in1);
     g_object_unref(in2);

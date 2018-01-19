@@ -18,6 +18,10 @@
 #ifndef __SPICE_CLIENT_GTK_SESSION_H__
 #define __SPICE_CLIENT_GTK_SESSION_H__
 
+#if !defined(__SPICE_CLIENT_GTK_H_INSIDE__) && !defined(SPICE_COMPILATION)
+#warning "Only <spice-client-gtk.h> can be included directly"
+#endif
+
 #include "spice-client.h"
 
 G_BEGIN_DECLS
@@ -29,30 +33,19 @@ G_BEGIN_DECLS
 #define SPICE_IS_GTK_SESSION_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), SPICE_TYPE_GTK_SESSION))
 #define SPICE_GTK_SESSION_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), SPICE_TYPE_GTK_SESSION, SpiceGtkSessionClass))
 
+/**
+ * SpiceGtkSession:
+ *
+ * The #SpiceGtkSession struct is opaque and should not be accessed directly.
+ */
 typedef struct _SpiceGtkSession SpiceGtkSession;
+
+/**
+ * SpiceGtkSessionClass:
+ *
+ * Class structure for #SpiceGtkSession. It is opaque and should not be accessed directly.
+ */
 typedef struct _SpiceGtkSessionClass SpiceGtkSessionClass;
-typedef struct _SpiceGtkSessionPrivate SpiceGtkSessionPrivate;
-
-struct _SpiceGtkSession
-{
-    GObject parent;
-    SpiceGtkSessionPrivate *priv;
-    /* Do not add fields to this struct */
-};
-
-struct _SpiceGtkSessionClass
-{
-    GObjectClass parent_class;
-
-    /* signals */
-
-    /*< private >*/
-    /*
-     * If adding fields to this struct, remove corresponding
-     * amount of padding to avoid changing overall struct size
-     */
-    gchar _spice_reserved[SPICE_RESERVED_PADDING];
-};
 
 GType spice_gtk_session_get_type(void);
 

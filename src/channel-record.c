@@ -33,7 +33,7 @@
  * @section_id:
  * @see_also: #SpiceChannel, and #SpiceAudio
  * @stability: Stable
- * @include: channel-record.h
+ * @include: spice-client.h
  *
  * #SpiceRecordChannel class handles an audio recording stream. The
  * audio stream should start when #SpiceRecordChannel::record-start is
@@ -108,13 +108,11 @@ static void spice_record_channel_finalize(GObject *obj)
 {
     SpiceRecordChannelPrivate *c = SPICE_RECORD_CHANNEL(obj)->priv;
 
-    g_free(c->last_frame);
-    c->last_frame = NULL;
+    g_clear_pointer(&c->last_frame, g_free);
 
     snd_codec_destroy(&c->codec);
 
-    g_free(c->volume);
-    c->volume = NULL;
+    g_clear_pointer(&c->volume, g_free);
 
     if (G_OBJECT_CLASS(spice_record_channel_parent_class)->finalize)
         G_OBJECT_CLASS(spice_record_channel_parent_class)->finalize(obj);
@@ -166,8 +164,7 @@ static void channel_reset(SpiceChannel *channel, gboolean migrating)
 {
     SpiceRecordChannelPrivate *c = SPICE_RECORD_CHANNEL(channel)->priv;
 
-    g_free(c->last_frame);
-    c->last_frame = NULL;
+    g_clear_pointer(&c->last_frame, g_free);
 
     g_coroutine_signal_emit(channel, signals[SPICE_RECORD_STOP], 0);
     c->started = FALSE;
@@ -200,8 +197,8 @@ static void spice_record_channel_class_init(SpiceRecordChannelClass *klass)
     g_object_class_install_property
         (gobject_class, PROP_VOLUME,
          g_param_spec_pointer("volume",
-                              "Playback volume",
-                              "",
+                              "Record volume",
+                              "Record volume",
                               G_PARAM_READWRITE |
                               G_PARAM_STATIC_STRINGS));
 
@@ -309,7 +306,7 @@ static void spice_record_start_mark(SpiceRecordChannel *channel, uint32_t time)
 
 /**
  * spice_record_send_data:
- * @channel:
+ * @channel: a #SpiceRecordChannel
  * @data: PCM data
  * @bytes: size of @data
  * @time: stream timestamp
@@ -408,8 +405,9 @@ static void record_handle_start(SpiceChannel *channel, SpiceMsgIn *in)
 
     c->mode = spice_record_desired_mode(channel, start->frequency);
 
-    CHANNEL_DEBUG(channel, "%s: fmt %d channels %d freq %d", __FUNCTION__,
-                  start->format, start->channels, start->frequency);
+    CHANNEL_DEBUG(channel, "%s: fmt %u channels %u freq %u mode %s", __FUNCTION__,
+                  start->format, start->channels, start->frequency,
+                  spice_audio_data_mode_to_string(c->mode));
 
     g_return_if_fail(start->format == SPICE_AUDIO_FMT_S16);
 

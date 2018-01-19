@@ -1,5 +1,5 @@
-# manywarnings.m4 serial 7
-dnl Copyright (C) 2008-2014 Free Software Foundation, Inc.
+# manywarnings.m4 serial 8
+dnl Copyright (C) 2008-2016 Free Software Foundation, Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
 dnl with or without modifications, as long as this notice is preserved.
@@ -108,12 +108,13 @@ AC_DEFUN([gl_MANYWARN_ALL_GCC],
     -Waddress \
     -Waggressive-loop-optimizations \
     -Wall \
-    -Warray-bounds \
     -Wattributes \
     -Wbad-function-cast \
+    -Wbool-compare \
     -Wbuiltin-macro-redefined \
     -Wcast-align \
     -Wchar-subscripts \
+    -Wchkp \
     -Wclobbered \
     -Wcomment \
     -Wcomments \
@@ -122,9 +123,13 @@ AC_DEFUN([gl_MANYWARN_ALL_GCC],
     -Wdate-time \
     -Wdeprecated \
     -Wdeprecated-declarations \
+    -Wdesignated-init \
     -Wdisabled-optimization \
+    -Wdiscarded-array-qualifiers \
+    -Wdiscarded-qualifiers \
     -Wdiv-by-zero \
     -Wdouble-promotion \
+    -Wduplicated-cond \
     -Wempty-body \
     -Wendif-labels \
     -Wenum-compare \
@@ -133,22 +138,31 @@ AC_DEFUN([gl_MANYWARN_ALL_GCC],
     -Wformat-extra-args \
     -Wformat-nonliteral \
     -Wformat-security \
+    -Wformat-signedness \
     -Wformat-y2k \
     -Wformat-zero-length \
+    -Wframe-address \
     -Wfree-nonheap-object \
+    -Whsa \
+    -Wignored-attributes \
     -Wignored-qualifiers \
     -Wimplicit \
     -Wimplicit-function-declaration \
     -Wimplicit-int \
+    -Wincompatible-pointer-types \
     -Winit-self \
     -Winline \
+    -Wint-conversion \
     -Wint-to-pointer-cast \
     -Winvalid-memory-model \
     -Winvalid-pch \
     -Wjump-misses-init \
+    -Wlogical-not-parentheses \
     -Wlogical-op \
     -Wmain \
     -Wmaybe-uninitialized \
+    -Wmemset-transposed-args \
+    -Wmisleading-indentation \
     -Wmissing-braces \
     -Wmissing-declarations \
     -Wmissing-field-initializers \
@@ -159,6 +173,9 @@ AC_DEFUN([gl_MANYWARN_ALL_GCC],
     -Wnarrowing \
     -Wnested-externs \
     -Wnonnull \
+    -Wnonnull-compare \
+    -Wnull-dereference \
+    -Wodr \
     -Wold-style-declaration \
     -Wold-style-definition \
     -Wopenmp-simd \
@@ -174,8 +191,13 @@ AC_DEFUN([gl_MANYWARN_ALL_GCC],
     -Wpragmas \
     -Wreturn-local-addr \
     -Wreturn-type \
+    -Wscalar-storage-order \
     -Wsequence-point \
     -Wshadow \
+    -Wshift-count-negative \
+    -Wshift-count-overflow \
+    -Wshift-negative-value \
+    -Wsizeof-array-argument \
     -Wsizeof-pointer-memaccess \
     -Wstack-protector \
     -Wstrict-aliasing \
@@ -185,10 +207,14 @@ AC_DEFUN([gl_MANYWARN_ALL_GCC],
     -Wsuggest-attribute=format \
     -Wsuggest-attribute=noreturn \
     -Wsuggest-attribute=pure \
+    -Wsuggest-final-methods \
+    -Wsuggest-final-types \
     -Wswitch \
+    -Wswitch-bool \
     -Wswitch-default \
     -Wsync-nand \
     -Wsystem-headers \
+    -Wtautological-compare \
     -Wtrampolines \
     -Wtrigraphs \
     -Wtype-limits \
@@ -217,9 +243,12 @@ AC_DEFUN([gl_MANYWARN_ALL_GCC],
     gl_manywarn_set="$gl_manywarn_set $gl_manywarn_item"
   done
 
-  # gcc --help=warnings outputs an unusual form for this option; list
-  # it here so that the above 'comm' command doesn't report a false match.
+  # gcc --help=warnings outputs an unusual form for these options; list
+  # them here so that the above 'comm' command doesn't report a false match.
+  gl_manywarn_set="$gl_manywarn_set -Warray-bounds=2"
   gl_manywarn_set="$gl_manywarn_set -Wnormalized=nfc"
+  gl_manywarn_set="$gl_manywarn_set -Wshift-overflow=2"
+  gl_manywarn_set="$gl_manywarn_set -Wunused-const-variable=2"
 
   # These are needed for older GCC versions.
   if test -n "$GCC"; then

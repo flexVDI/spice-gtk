@@ -1,9 +1,12 @@
 NULL =
 
+# FIXME: We need to disable the deprecation warnings until valac stops
+#        generating code that uses the deprecated GSimpleAsyncResult class.
 AM_CPPFLAGS =					\
 	-DG_LOG_DOMAIN=\"GSpiceController\"	\
 	$(GIO_CFLAGS)				\
 	$(COMMON_CFLAGS)			\
+	-Wno-deprecated-declarations		\
 	$(NULL)
 
 # http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html

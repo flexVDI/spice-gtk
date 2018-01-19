@@ -18,6 +18,10 @@
 #ifndef __SPICE_CLIENT_CURSOR_CHANNEL_H__
 #define __SPICE_CLIENT_CURSOR_CHANNEL_H__
 
+#if !defined(__SPICE_CLIENT_H_INSIDE__) && !defined(SPICE_COMPILATION)
+#warning "Only <spice-client.h> can be included directly"
+#endif
+
 #include "spice-client.h"
 
 G_BEGIN_DECLS
@@ -32,6 +36,29 @@ G_BEGIN_DECLS
 typedef struct _SpiceCursorChannel SpiceCursorChannel;
 typedef struct _SpiceCursorChannelClass SpiceCursorChannelClass;
 typedef struct _SpiceCursorChannelPrivate SpiceCursorChannelPrivate;
+
+#define SPICE_TYPE_CURSOR_SHAPE (spice_cursor_shape_get_type())
+/**
+ * SpiceCursorShape:
+ * @type: a #SpiceCursorType of @data
+ * @width: a width of the remote cursor
+ * @height: a height of the remote cursor
+ * @hot_spot_x: a 'x' coordinate of the remote cursor
+ * @hot_spot_y: a 'y' coordinate of the remote cursor
+ * @data: image data of the remote cursor
+ *
+ * The #SpiceCursorShape structure defines the remote cursor's shape.
+ *
+ */
+typedef struct _SpiceCursorShape SpiceCursorShape;
+struct _SpiceCursorShape {
+    SpiceCursorType type;
+    guint16 width;
+    guint16 height;
+    guint16 hot_spot_x;
+    guint16 hot_spot_y;
+    gpointer data;
+};
 
 /**
  * SpiceCursorChannel:
@@ -71,6 +98,8 @@ struct _SpiceCursorChannelClass {
 };
 
 GType spice_cursor_channel_get_type(void);
+
+GType spice_cursor_shape_get_type(void) G_GNUC_CONST;
 
 G_END_DECLS
 

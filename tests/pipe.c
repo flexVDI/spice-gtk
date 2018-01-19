@@ -41,9 +41,9 @@ stop_loop (gpointer data)
 
 static void
 fixture_set_up(Fixture *fixture,
-               gconstpointer user_data)
+               gconstpointer user_data G_GNUC_UNUSED)
 {
-    int i;
+    unsigned int i;
 
     spice_make_pipe(&fixture->p1, &fixture->p2);
     g_assert_true(G_IS_IO_STREAM(fixture->p1));
@@ -70,7 +70,7 @@ fixture_set_up(Fixture *fixture,
 
 static void
 fixture_tear_down(Fixture *fixture,
-                  gconstpointer user_data)
+                  gconstpointer user_data G_GNUC_UNUSED)
 {
     g_clear_object(&fixture->p1);
     g_clear_object(&fixture->p2);
@@ -85,7 +85,7 @@ fixture_tear_down(Fixture *fixture,
 }
 
 static void
-test_pipe_readblock(Fixture *f, gconstpointer user_data)
+test_pipe_readblock(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
 {
     GError *error = NULL;
     gssize size;
@@ -93,13 +93,14 @@ test_pipe_readblock(Fixture *f, gconstpointer user_data)
     size = g_input_stream_read(f->ip2, f->buf, 1,
                                f->cancellable, &error);
 
+    g_assert_cmpint(size, ==, -1);
     g_assert_error(error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK);
 
     g_clear_error(&error);
 }
 
 static void
-test_pipe_writeblock(Fixture *f, gconstpointer user_data)
+test_pipe_writeblock(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
 {
     GError *error = NULL;
     gssize size;
@@ -107,6 +108,7 @@ test_pipe_writeblock(Fixture *f, gconstpointer user_data)
     size = g_output_stream_write(f->op1, "", 1,
                                  f->cancellable, &error);
 
+    g_assert_cmpint(size, ==, -1);
     g_assert_error(error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK);
 
     g_clear_error(&error);
@@ -142,7 +144,7 @@ read_cb(GObject *source, GAsyncResult *result, gpointer user_data)
 }
 
 static void
-test_pipe_writeread(Fixture *f, gconstpointer user_data)
+test_pipe_writeread(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
 {
     g_output_stream_write_async(f->op1, "", 1, G_PRIORITY_DEFAULT,
                                 f->cancellable, write_cb, f->loop);
@@ -160,7 +162,7 @@ test_pipe_writeread(Fixture *f, gconstpointer user_data)
 }
 
 static void
-test_pipe_readwrite(Fixture *f, gconstpointer user_data)
+test_pipe_readwrite(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
 {
     g_input_stream_read_async(f->ip2, f->buf, 1, G_PRIORITY_DEFAULT,
                               f->cancellable, read_cb, GINT_TO_POINTER(1));
@@ -207,6 +209,7 @@ readclose_cb(GObject *source, GAsyncResult *result, gpointer user_data)
 
     nbytes = g_input_stream_read_finish(G_INPUT_STREAM(source), result, &error);
 
+    g_assert_cmpint(nbytes, ==, -1);
     g_assert_error(error, G_IO_ERROR, G_IO_ERROR_CLOSED);
     g_clear_error(&error);
 
@@ -214,7 +217,7 @@ readclose_cb(GObject *source, GAsyncResult *result, gpointer user_data)
 }
 
 static void
-test_pipe_readclosestream(Fixture *f, gconstpointer user_data)
+test_pipe_readclosestream(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
 {
     GError *error = NULL;
 
@@ -226,7 +229,7 @@ test_pipe_readclosestream(Fixture *f, gconstpointer user_data)
 }
 
 static void
-test_pipe_readclose(Fixture *f, gconstpointer user_data)
+test_pipe_readclose(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
 {
     GError *error = NULL;
 
@@ -246,6 +249,7 @@ readcancel_cb(GObject *source, GAsyncResult *result, gpointer user_data)
 
     nbytes = g_input_stream_read_finish(G_INPUT_STREAM(source), result, &error);
 
+    g_assert_cmpint(nbytes, ==, -1);
     g_assert_error(error, G_IO_ERROR, G_IO_ERROR_CLOSED);
     g_clear_error(&error);
 
@@ -253,7 +257,7 @@ readcancel_cb(GObject *source, GAsyncResult *result, gpointer user_data)
 }
 
 static void
-test_pipe_readcancel(Fixture *f, gconstpointer user_data)
+test_pipe_readcancel(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
 {
     GError *error = NULL;
 
@@ -316,7 +320,7 @@ read_chunk_cb(GObject *source, GAsyncResult *result, gpointer user_data)
 }
 
 static void
-test_pipe_write_all_64_read_chunks_16(Fixture *f, gconstpointer user_data)
+test_pipe_write_all_64_read_chunks_16(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
 {
     f->data_len = 64;
     f->data = get_test_data(f->data_len);
@@ -357,7 +361,7 @@ read_chunk_cb_and_try_write(GObject *source, GAsyncResult *result, gpointer user
 }
 
 static void
-test_pipe_concurrent_write(Fixture *f, gconstpointer user_data)
+test_pipe_concurrent_write(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
 {
     f->data_len = 64;
     f->data = get_test_data(f->data_len);
@@ -393,7 +397,7 @@ write_all_cb_zombie_check(GObject *source, GAsyncResult *result, gpointer user_d
 }
 
 static gboolean
-source_cb (gpointer user_data)
+source_cb (gpointer user_data G_GNUC_UNUSED)
 {
     return G_SOURCE_REMOVE;
 }
@@ -452,9 +456,8 @@ read_chunk_cb_and_do_zombie(GObject *source, GAsyncResult *result, gpointer user
 }
 
 static void
-test_pipe_zombie_sources(Fixture *f, gconstpointer user_data)
+test_pipe_zombie_sources(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
 {
-    gint i;
     f->data_len = 64;
     f->data = get_test_data(f->data_len);
     f->read_size = 16;

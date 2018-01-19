@@ -24,8 +24,8 @@
 #include "spice-channel-priv.h"
 
 /* coroutine context */
-G_GNUC_INTERNAL
-void spice_channel_handle_set_ack(SpiceChannel *channel, SpiceMsgIn *in)
+static void
+spice_channel_handle_set_ack(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceChannelPrivate *c = channel->priv;
     SpiceMsgSetAck* ack = spice_msg_in_parsed(in);
@@ -40,8 +40,8 @@ void spice_channel_handle_set_ack(SpiceChannel *channel, SpiceMsgIn *in)
 }
 
 /* coroutine context */
-G_GNUC_INTERNAL
-void spice_channel_handle_ping(SpiceChannel *channel, SpiceMsgIn *in)
+static void
+spice_channel_handle_ping(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceChannelPrivate *c = channel->priv;
     SpiceMsgPing *ping = spice_msg_in_parsed(in);
@@ -52,8 +52,8 @@ void spice_channel_handle_ping(SpiceChannel *channel, SpiceMsgIn *in)
 }
 
 /* coroutine context */
-G_GNUC_INTERNAL
-void spice_channel_handle_notify(SpiceChannel *channel, SpiceMsgIn *in)
+static void
+spice_channel_handle_notify(SpiceChannel *channel, SpiceMsgIn *in)
 {
     static const char* severity_strings[] = {"info", "warn", "error"};
     static const char* visibility_strings[] = {"!", "!!", "!!!"};
@@ -77,13 +77,13 @@ void spice_channel_handle_notify(SpiceChannel *channel, SpiceMsgIn *in)
 
     CHANNEL_DEBUG(channel, "%s -- %s%s #%u%s%.*s", __FUNCTION__,
             severity, visibility, notify->what,
-            message_str ? ": " : "", notify->message_len,
+            message_str ? ": " : "", (int)notify->message_len,
             message_str ? message_str : "");
 }
 
 /* coroutine context */
-G_GNUC_INTERNAL
-void spice_channel_handle_disconnect(SpiceChannel *channel, SpiceMsgIn *in)
+static void
+spice_channel_handle_disconnect(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceMsgDisconnect *disconnect = spice_msg_in_parsed(in);
 
@@ -148,8 +148,8 @@ get_msg_handler(SpiceChannel *channel, SpiceMsgIn *in, gpointer data)
 }
 
 /* coroutine context */
-G_GNUC_INTERNAL
-void spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in)
+static void
+spice_channel_handle_migrate(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceMsgOut *out;
     SpiceMsgIn *data = NULL;
@@ -240,10 +240,12 @@ void spice_channel_set_handlers(SpiceChannelClass *klass,
 static void
 vmc_write_free_cb(uint8_t *data, void *user_data)
 {
-    GSimpleAsyncResult *result = user_data;
+    GTask *task = user_data;
+    gsize count = GPOINTER_TO_SIZE(g_task_get_task_data(task));
 
-    g_simple_async_result_complete_in_idle(result);
-    g_object_unref(result);
+    g_task_return_int(task, count);
+
+    g_object_unref(task);
 }
 
 G_GNUC_INTERNAL
@@ -254,15 +256,14 @@ void spice_vmc_write_async(SpiceChannel *self,
                            gpointer user_data)
 {
     SpiceMsgOut *msg;
-    GSimpleAsyncResult *simple;
+    GTask *task;
 
-    simple = g_simple_async_result_new(G_OBJECT(self), callback, user_data,
-                                       spice_port_write_async);
-    g_simple_async_result_set_op_res_gssize(simple, count);
+    task = g_task_new(self, cancellable, callback, user_data);
+    g_task_set_task_data(task, GSIZE_TO_POINTER(count), NULL);
 
     msg = spice_msg_out_new(SPICE_CHANNEL(self), SPICE_MSGC_SPICEVMC_DATA);
-    spice_marshaller_add_ref_full(msg->marshaller, (uint8_t*)buffer, count,
-                                  vmc_write_free_cb, simple);
+    spice_marshaller_add_by_ref_full(msg->marshaller, (uint8_t*)buffer, count,
+                                     vmc_write_free_cb, task);
     spice_msg_out_send(msg);
 }
 
@@ -270,17 +271,13 @@ G_GNUC_INTERNAL
 gssize spice_vmc_write_finish(SpiceChannel *self,
                               GAsyncResult *result, GError **error)
 {
-    GSimpleAsyncResult *simple;
+    GTask *task;
 
     g_return_val_if_fail(result != NULL, -1);
 
-    simple = (GSimpleAsyncResult *)result;
+    task = G_TASK(result);
 
-    if (g_simple_async_result_propagate_error(simple, error))
-        return -1;
+    g_return_val_if_fail(g_task_is_valid(task, self), -1);
 
-    g_return_val_if_fail(g_simple_async_result_is_valid(result, G_OBJECT(self),
-                                                        spice_port_write_async), -1);
-
-    return g_simple_async_result_get_op_res_gssize(simple);
+    return g_task_propagate_int(task, error);
 }

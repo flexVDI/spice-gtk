@@ -21,6 +21,10 @@
 #ifndef __SPICE_USB_DEVICE_WIDGET_H__
 #define __SPICE_USB_DEVICE_WIDGET_H__
 
+#if !defined(__SPICE_CLIENT_GTK_H_INSIDE__) && !defined(SPICE_COMPILATION)
+#warning "Only <spice-client-gtk.h> can be included directly"
+#endif
+
 #include <gtk/gtk.h>
 #include "spice-client.h"
 
@@ -33,44 +37,19 @@ G_BEGIN_DECLS
 #define SPICE_IS_USB_DEVICE_WIDGET_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), SPICE_TYPE_USB_DEVICE_WIDGET))
 #define SPICE_USB_DEVICE_WIDGET_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), SPICE_TYPE_USB_DEVICE_WIDGET, SpiceUsbDeviceWidgetClass))
 
-typedef struct _SpiceUsbDeviceWidget SpiceUsbDeviceWidget;
-typedef struct _SpiceUsbDeviceWidgetClass SpiceUsbDeviceWidgetClass;
-typedef struct _SpiceUsbDeviceWidgetPrivate SpiceUsbDeviceWidgetPrivate;
-
 /**
  * SpiceUsbDeviceWidget:
  *
  * The #SpiceUsbDeviceWidget struct is opaque and should not be accessed directly.
  */
-struct _SpiceUsbDeviceWidget
-{
-    GtkVBox parent;
-
-    /*< private >*/
-    SpiceUsbDeviceWidgetPrivate *priv;
-    /* Do not add fields to this struct */
-};
-
+typedef struct _SpiceUsbDeviceWidget SpiceUsbDeviceWidget;
 /**
  * SpiceUsbDeviceWidgetClass:
- * @connect_failed: Signal class handler for the #SpiceUsbDeviceWidget::connect-failed signal.
  *
- * Class structure for #SpiceUsbDeviceWidget.
+ * Class structure for #SpiceUsbDeviceWidget. It is opaque and should not be accessed directly.
  */
-struct _SpiceUsbDeviceWidgetClass
-{
-    GtkVBoxClass parent_class;
-
-    /* signals */
-    void (*connect_failed) (SpiceUsbDeviceWidget *widget,
-                            SpiceUsbDevice *device, GError *error);
-    /*< private >*/
-    /*
-     * If adding fields to this struct, remove corresponding
-     * amount of padding to avoid changing overall struct size
-     */
-    gchar _spice_reserved[SPICE_RESERVED_PADDING];
-};
+typedef struct _SpiceUsbDeviceWidgetClass SpiceUsbDeviceWidgetClass;
+typedef struct _SpiceUsbDeviceWidgetPrivate SpiceUsbDeviceWidgetPrivate;
 
 GType spice_usb_device_widget_get_type(void);
 GtkWidget *spice_usb_device_widget_new(SpiceSession    *session,

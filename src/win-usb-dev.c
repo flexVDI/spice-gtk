@@ -23,22 +23,25 @@
 #include "config.h"
 
 #include <windows.h>
-#include <stdio.h>
 #include <libusb.h>
 #include "win-usb-dev.h"
 #include "spice-marshal.h"
 #include "spice-util.h"
 #include "usbutil.h"
-#include <gio/gio.h>
 
 #define G_UDEV_CLIENT_GET_PRIVATE(obj) \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), G_UDEV_TYPE_CLIENT, GUdevClientPrivate))
 
+enum {
+    PROP_0,
+    PROP_REDIRECTING
+};
+
 struct _GUdevClientPrivate {
     libusb_context *ctx;
-    gssize udev_list_size;
     GList *udev_list;
     HWND hwnd;
+    gboolean redirecting;
 };
 
 #define G_UDEV_CLIENT_WINCLASS_NAME  TEXT("G_UDEV_CLIENT")
@@ -105,12 +108,11 @@ GQuark g_udev_client_error_quark(void)
 
 GUdevClient *g_udev_client_new(const gchar* const *subsystems)
 {
-    if (!singleton) {
-        singleton = g_initable_new(G_UDEV_TYPE_CLIENT, NULL, NULL, NULL);
-        return singleton;
-    } else {
+    if (singleton != NULL)
         return g_object_ref(singleton);
-    }
+
+    singleton = g_initable_new(G_UDEV_TYPE_CLIENT, NULL, NULL, NULL);
+    return singleton;
 }
 
 
@@ -139,7 +141,7 @@ g_udev_client_list_devices(GUdevClient *self, GList **devs,
     rc = libusb_get_device_list(priv->ctx, &lusb_list);
     if (rc < 0) {
         const char *errstr = spice_usbutil_libusb_strerror(rc);
-        g_warning("%s: libusb_get_device_list failed. Error %d: %s", name, rc, errstr);
+        g_warning("%s: libusb_get_device_list failed - %s", name, errstr);
         g_set_error(err, G_UDEV_CLIENT_ERROR, G_UDEV_CLIENT_LIBUSB_FAILED,
                     "%s: Error getting device list from libusb: %s [%"G_GSSIZE_FORMAT"]",
                     name, errstr, rc);
@@ -198,9 +200,7 @@ g_udev_client_initable_init(GInitable *initable, GCancellable *cancellable,
     }
 
     /* get initial device list */
-    priv->udev_list_size = g_udev_client_list_devices(self, &priv->udev_list,
-                                                      err, __FUNCTION__);
-    if (priv->udev_list_size < 0) {
+    if (g_udev_client_list_devices(self, &priv->udev_list, err, __FUNCTION__) < 0) {
         goto g_udev_client_init_failed;
     }
 
@@ -232,9 +232,6 @@ g_udev_client_initable_init(GInitable *initable, GCancellable *cancellable,
  g_udev_client_init_failed_unreg:
     UnregisterClass(G_UDEV_CLIENT_WINCLASS_NAME, NULL);
  g_udev_client_init_failed:
-    libusb_exit(priv->ctx);
-    priv->ctx = NULL;
-
     return FALSE;
 }
 
@@ -274,11 +271,60 @@ static void g_udev_client_finalize(GObject *gobject)
         G_OBJECT_CLASS(g_udev_client_parent_class)->finalize(gobject);
 }
 
+static void g_udev_client_get_property(GObject     *gobject,
+                                       guint        prop_id,
+                                       GValue      *value,
+                                       GParamSpec  *pspec)
+{
+    GUdevClient *self = G_UDEV_CLIENT(gobject);
+    GUdevClientPrivate *priv = self->priv;
+
+    switch (prop_id) {
+    case PROP_REDIRECTING:
+        g_value_set_boolean(value, priv->redirecting);
+        break;
+    default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
+        break;
+    }
+}
+
+static void handle_dev_change(GUdevClient *self);
+
+static void g_udev_client_set_property(GObject       *gobject,
+                                       guint          prop_id,
+                                       const GValue  *value,
+                                       GParamSpec    *pspec)
+{
+    GUdevClient *self = G_UDEV_CLIENT(gobject);
+    GUdevClientPrivate *priv = self->priv;
+    gboolean old_val;
+
+    switch (prop_id) {
+    case PROP_REDIRECTING:
+        old_val = priv->redirecting;
+        priv->redirecting = g_value_get_boolean(value);
+        if (old_val && !priv->redirecting) {
+            /* This is a redirection completion case.
+               Inject hotplug event in case we missed device changes
+               during redirection processing. */
+            handle_dev_change(self);
+        }
+        break;
+    default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
+        break;
+    }
+}
+
 static void g_udev_client_class_init(GUdevClientClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+    GParamSpec *pspec;
 
     gobject_class->finalize = g_udev_client_finalize;
+    gobject_class->get_property = g_udev_client_get_property;
+    gobject_class->set_property = g_udev_client_set_property;
 
     signals[UEVENT_SIGNAL] =
         g_signal_new("uevent",
@@ -291,6 +337,20 @@ static void g_udev_client_class_init(GUdevClientClass *klass)
                      2,
                      G_TYPE_STRING,
                      G_UDEV_TYPE_DEVICE);
+
+    /**
+    * GUdevClient::redirecting:
+    *
+    * This property indicates when a redirection operation
+    * is in progress on a device. It's set back to FALSE
+    * once the device is fully redirected to the guest.
+    */
+    pspec = g_param_spec_boolean("redirecting", "Redirecting",
+                                 "USB redirection operation is in progress",
+                                 FALSE,
+                                 G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+
+    g_object_class_install_property(gobject_class, PROP_REDIRECTING, pspec);
 
     g_type_class_add_private(klass, sizeof(GUdevClientPrivate));
 }
@@ -320,122 +380,70 @@ static gboolean get_usb_dev_info(libusb_device *dev, GUdevDeviceInfo *udevinfo)
     return TRUE;
 }
 
-/* Only vid:pid are compared */
-static gboolean gudev_devices_are_equal(GUdevDevice *a, GUdevDevice *b)
+/* Only bus:addr are compared */
+static gint gudev_devices_differ(gconstpointer a, gconstpointer b)
 {
     GUdevDeviceInfo *ai, *bi;
-    gboolean same_vid;
-    gboolean same_pid;
+    gboolean same_bus;
+    gboolean same_addr;
 
-    ai = a->priv->udevinfo;
-    bi = b->priv->udevinfo;
+    ai = G_UDEV_DEVICE(a)->priv->udevinfo;
+    bi = G_UDEV_DEVICE(b)->priv->udevinfo;
 
-    same_vid  = (ai->vid == bi->vid);
-    same_pid  = (ai->pid == bi->pid);
+    same_bus = (ai->bus == bi->bus);
+    same_addr = (ai->addr == bi->addr);
 
-    return (same_pid && same_vid);
+    return (same_bus && same_addr) ? 0 : -1;
 }
 
-static void handle_dev_change(GUdevClient *self);
-
-static gboolean handle_dev_change_cb(gpointer d)
+static void notify_dev_state_change(GUdevClient *self,
+                                    GList *old_list,
+                                    GList *new_list,
+                                    const gchar *action)
 {
-    handle_dev_change((GUdevClient *)d);
-    return FALSE;
+    GList *dev;
+
+    for (dev = g_list_first(old_list); dev != NULL; dev = g_list_next(dev)) {
+        if (g_list_find_custom(new_list, dev->data, gudev_devices_differ) == NULL) {
+            /* Found a device that changed its state */
+            g_udev_device_print(dev->data, action);
+            g_signal_emit(self, signals[UEVENT_SIGNAL], 0, action, dev->data);
+        }
+    }
 }
 
-
-/* Assumes each event stands for a single device change (at most) */
 static void handle_dev_change(GUdevClient *self)
 {
     GUdevClientPrivate *priv = self->priv;
-    GUdevDevice *changed_dev = NULL;
-    ssize_t dev_count;
-    int is_dev_change;
     GError *err = NULL;
     GList *now_devs = NULL;
-    GList *llist, *slist; /* long-list and short-list*/
-    GList *lit, *sit; /* iterators for long-list and short-list */
-    GUdevDevice *ldev, *sdev; /* devices on long-list and short-list */
 
-    dev_count = g_udev_client_list_devices(self, &now_devs, &err,
-                                           __FUNCTION__);
-    if (err != NULL)
-    {
-        /* Notice: G_UDEV_CLIENT_LIBUSB_FAILED is too coarse grained.
-         * -99 from libusb would be better. But this is the error code I get, 
-         * and it will suffice for now */
-        if (err->code == G_UDEV_CLIENT_LIBUSB_FAILED) 
-        {
-            g_warning("%s libusb error getting list of devices. Will try again in 500ms: %s",
-                 __FUNCTION__, err->message);
-            g_timeout_add_full(G_PRIORITY_HIGH, 500,
-                       handle_dev_change_cb,
-                       self, NULL);
-        } else {
-            g_warning("Error getting list of devices. Count %d, Error: %d - %s",
-                dev_count, err->code, err->message);
-        }
-
-        g_error_free(err);
-    }
-    g_return_if_fail(dev_count >= 0);
-
-    SPICE_DEBUG("number of current devices %"G_GSSIZE_FORMAT
-                ", I know about %"G_GSSIZE_FORMAT" devices",
-                dev_count, priv->udev_list_size);
-
-    is_dev_change = dev_count - priv->udev_list_size;
-    if (is_dev_change == 0) {
-        g_udev_client_free_device_list(&now_devs);
+    if (priv->redirecting == TRUE) {
+        /* On Windows, querying USB device list may return inconsistent results
+           if performed in parallel to redirection flow.
+           A simulated hotplug event will be injected after redirection
+           completion in order to process real device list changes that may
+           had taken place during redirection process. */
         return;
     }
 
-    if (is_dev_change > 0) {
-        llist  = now_devs;
-        slist = priv->udev_list;
-    } else {
-        llist = priv->udev_list;
-        slist  = now_devs;
+    if(g_udev_client_list_devices(self, &now_devs, &err, __FUNCTION__) < 0) {
+        g_warning("could not retrieve device list");
+        return;
     }
 
-    g_udev_device_print_list(llist, "handle_dev_change: long list:");
-    g_udev_device_print_list(slist, "handle_dev_change: short list:");
+    g_udev_device_print_list(now_devs, "handle_dev_change: current list:");
+    g_udev_device_print_list(priv->udev_list, "handle_dev_change: previous list:");
 
-    /* Go over the longer list */
-    for (lit = g_list_first(llist); lit != NULL; lit=g_list_next(lit)) {
-        ldev = lit->data;
-        /* Look for dev in the shorther list */
-        for (sit = g_list_first(slist); sit != NULL; sit=g_list_next(sit)) {
-            sdev = sit->data;
-            if (gudev_devices_are_equal(ldev, sdev))
-                break;
-        }
-        if (sit == NULL) {
-            /* Found a device which appears only in the longer list */
-            changed_dev = ldev;
-            break;
-        }
-    }
+    /* Unregister devices that are not present anymore */
+    notify_dev_state_change(self, priv->udev_list, now_devs, "remove");
 
-    if (!changed_dev) {
-        g_warning("couldn't find any device change");
-        goto leave;
-    }
+    /* Register newly inserted devices */
+    notify_dev_state_change(self, now_devs, priv->udev_list, "add");
 
-    if (is_dev_change > 0) {
-        g_udev_device_print(changed_dev, ">>> USB device inserted");
-        g_signal_emit(self, signals[UEVENT_SIGNAL], 0, "add", changed_dev);
-    } else {
-        g_udev_device_print(changed_dev, "<<< USB device removed");
-        g_signal_emit(self, signals[UEVENT_SIGNAL], 0, "remove", changed_dev);
-    }
-
-leave:
     /* keep most recent info: free previous list, and keep current list */
     g_udev_client_free_device_list(&priv->udev_list);
     priv->udev_list = now_devs;
-    priv->udev_list_size = dev_count;
 }
 
 static LRESULT CALLBACK wnd_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)

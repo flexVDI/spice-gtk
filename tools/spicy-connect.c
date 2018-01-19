@@ -141,7 +141,7 @@ gboolean spicy_connect_dialog(SpiceSession *session)
     GtkWidget *connect_button, *cancel_button, *label;
     GtkBox *main_box, *recent_box, *button_box;
     GtkWindow *window;
-    GtkTable *table;
+    GtkGrid *grid;
     int i;
 
     ConnectionInfo info = {
@@ -156,22 +156,22 @@ gboolean spicy_connect_dialog(SpiceSession *session)
     gtk_window_set_resizable(window, FALSE);
     gtk_container_set_border_width(GTK_CONTAINER(window), 5);
 
-    main_box = GTK_BOX(gtk_vbox_new(FALSE, 0));
+    main_box = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
     gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(main_box));
 
-    table = GTK_TABLE(gtk_table_new(3, 2, 0));
-    gtk_box_pack_start(main_box, GTK_WIDGET(table), FALSE, TRUE, 0);
-    gtk_container_set_border_width(GTK_CONTAINER(table), 5);
-    gtk_table_set_row_spacings(table, 5);
-    gtk_table_set_col_spacings(table, 5);
+    grid = GTK_GRID(gtk_grid_new());
+    gtk_box_pack_start(main_box, GTK_WIDGET(grid), FALSE, TRUE, 0);
+    gtk_container_set_border_width(GTK_CONTAINER(grid), 5);
+    gtk_grid_set_row_spacing(grid, 5);
+    gtk_grid_set_column_spacing(grid, 5);
 
     for (i = 0; i < SPICE_N_ELEMENTS(connect_entries); i++) {
         gchar *txt;
         label = gtk_label_new(connect_entries[i].text);
         gtk_misc_set_alignment(GTK_MISC(label), 0, 0.5);
-        gtk_table_attach_defaults(table, label, 0, 1, i, i+1);
+        gtk_grid_attach(grid, label, 0, i, 1, 1);
         connect_entries[i].entry = GTK_WIDGET(gtk_entry_new());
-        gtk_table_attach_defaults(table, connect_entries[i].entry, 1, 2, i, i+1);
+        gtk_grid_attach(grid, connect_entries[i].entry, 1, i, 1, 1);
         g_object_get(session, connect_entries[i].prop, &txt, NULL);
         SPICE_DEBUG("%s: #%i [%s]: \"%s\"",
                 __FUNCTION__, i, connect_entries[i].prop, txt);
@@ -181,7 +181,7 @@ gboolean spicy_connect_dialog(SpiceSession *session)
         }
     }
 
-    recent_box = GTK_BOX(gtk_vbox_new(FALSE, 0));
+    recent_box = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
     gtk_box_pack_start(main_box, GTK_WIDGET(recent_box), TRUE, TRUE, 0);
     gtk_container_set_border_width(GTK_CONTAINER(recent_box), 5);
 
@@ -189,7 +189,7 @@ gboolean spicy_connect_dialog(SpiceSession *session)
     gtk_box_pack_start(recent_box, label, FALSE, TRUE, 0);
     gtk_misc_set_alignment(GTK_MISC(label), 0, 0.5);
 
-    button_box = GTK_BOX(gtk_hbutton_box_new());
+    button_box = GTK_BOX(gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL));
     gtk_button_box_set_layout(GTK_BUTTON_BOX(button_box), GTK_BUTTONBOX_END);
     gtk_box_set_spacing(button_box, 5);
     gtk_container_set_border_width(GTK_CONTAINER(button_box), 5);

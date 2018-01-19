@@ -30,11 +30,10 @@
 #include "spice-util-priv.h"
 #include "spice-session-priv.h"
 #include "gio-coroutine.h"
-#include "glib-compat.h"
 #include "wocky-http-proxy.h"
 #include "spice-uri-priv.h"
 #include "channel-playback-priv.h"
-#include "spice-audio.h"
+#include "spice-audio-priv.h"
 
 struct channel {
     SpiceChannel      *channel;
@@ -141,7 +140,7 @@ struct _SpiceSessionPrivate {
  * @section_id:
  * @see_also: #SpiceChannel, and the GTK widget #SpiceDisplay
  * @stability: Stable
- * @include: spice-session.h
+ * @include: spice-client.h
  *
  * The #SpiceSession class handles all the #SpiceChannel connections.
  * It's also the class that contains connections informations, such as
@@ -293,6 +292,7 @@ static void spice_session_init(SpiceSession *session)
 {
     SpiceSessionPrivate *s;
     gchar *channels;
+    GError *err = NULL;
 
     SPICE_DEBUG("New session (compiled from package " PACKAGE_STRING ")");
     s = session->priv = SPICE_SESSION_GET_PRIVATE(session);
@@ -305,6 +305,12 @@ static void spice_session_init(SpiceSession *session)
     s->images = cache_image_new((GDestroyNotify)pixman_image_unref);
     s->glz_window = glz_decoder_window_new();
     update_proxy(session, NULL);
+
+    s->usb_manager = spice_usb_device_manager_get(session, &err);
+    if (err != NULL) {
+        SPICE_DEBUG("Could not initialize SpiceUsbDeviceManager - %s", err->message);
+        g_clear_error(&err);
+    }
 }
 
 static void
@@ -329,8 +335,7 @@ session_disconnect(SpiceSession *self, gboolean keep_main)
 
     s->connection_id = 0;
 
-    g_free(s->name);
-    s->name = NULL;
+    g_clear_pointer(&s->name, g_free);
     memset(s->uuid, 0, sizeof(s->uuid));
 
     spice_session_abort_migration(self);
@@ -386,7 +391,7 @@ spice_session_finalize(GObject *gobject)
     g_strfreev(s->redirected_rports);
     g_strfreev(s->redirected_lports);
 
-    g_clear_pointer(&s->images, cache_unref);
+    g_clear_pointer(&s->images, cache_free);
     glz_decoder_window_destroy(s->glz_window);
 
     g_clear_pointer(&s->pubkey, g_byte_array_unref);
@@ -436,7 +441,6 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
     gchar *host = NULL, *port = NULL, *tls_port = NULL, *ws_port = NULL;
     gchar *uri = NULL, *username = NULL, *password = NULL;
     gchar *path = NULL;
-    gchar *unescaped_path = NULL;
     gchar *authority = NULL;
     gchar *query = NULL;
     gchar *tmp = NULL;
@@ -497,7 +501,7 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
         }
         tmp[0] = '\0';
         tmp++;
-        host = g_strdup(authority + 1);
+        host = g_strdup_printf("[%s]", authority + 1);
         if (tmp[0] == ':')
             port = g_strdup(tmp + 1);
     } else {
@@ -515,7 +519,6 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
         g_warning("Unexpected path data '%s' for URI '%s'", path, uri);
         /* don't fail, just ignore */
     }
-    unescaped_path = g_uri_unescape_string(path, NULL);
     path = NULL;
 
     while (query && query[0] != '\0') {
@@ -524,13 +527,13 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
 
         int len;
         if (sscanf(query, "%31[-a-zA-Z0-9]=%n", key, &len) != 1) {
-            spice_warning("Failed to parse key in URI '%s'", query);
+            g_warning("Failed to parse key in URI '%s'", query);
             goto fail;
         }
 
         query += len;
         if (*query == '\0') {
-            spice_warning ("key '%s' without value", key);
+            SPICE_DEBUG("key '%s' without value", key);
             break;
         } else if (*query == ';' || *query == '&') {
             /* another argument */
@@ -539,7 +542,7 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
         }
 
         if (sscanf(query, "%127[^;&]%n", value, &len) != 1) {
-            spice_warning("Failed to parse value of key '%s' in URI '%s'", key, query);
+            g_warning("Failed to parse value of key '%s' in URI '%s'", key, query);
             goto fail;
         }
 
@@ -577,8 +580,6 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
 
 end:
     /* parsed ok -> apply */
-    g_free(uri);
-    g_free(unescaped_path);
     g_free(s->unix_path);
     g_free(s->host);
     g_free(s->port);
@@ -587,6 +588,7 @@ end:
     g_free(s->username);
     g_free(s->password);
     s->unix_path = g_strdup(path);
+    g_free(uri);
     s->host = host;
     s->port = port;
     s->tls_port = tls_port;
@@ -597,7 +599,6 @@ end:
 
 fail:
     g_free(uri);
-    g_free(unescaped_path);
     g_free(host);
     g_free(port);
     g_free(tls_port);
@@ -1665,12 +1666,16 @@ SpiceSession *spice_session_new_from_session(SpiceSession *session)
 
 /**
  * spice_session_connect:
- * @session:
+ * @session: a #SpiceSession
  *
  * Open the session using the #SpiceSession:host and
  * #SpiceSession:port.
  *
- * Returns: %FALSE if the connection failed.
+ * Returns: %FALSE if the session state is invalid for connection
+ * request. %TRUE if the connection is initiated. To know whether the
+ * connection is established, you must watch for channels creation
+ * (#SpiceSession::channel-new) and the channels state
+ * (#SpiceChannel::channel-event).
  **/
 gboolean spice_session_connect(SpiceSession *session)
 {
@@ -1694,7 +1699,7 @@ gboolean spice_session_connect(SpiceSession *session)
 
 /**
  * spice_session_open_fd:
- * @session:
+ * @session: a #SpiceSession
  * @fd: a file descriptor (socket) or -1
  *
  * Open the session using the provided @fd socket file
@@ -1712,7 +1717,7 @@ gboolean spice_session_connect(SpiceSession *session)
  * @fd this call since you will have to hook to SpiceChannel::open-fd signal
  * anyway.
  *
- * Returns:
+ * Returns: %TRUE on success.
  **/
 gboolean spice_session_open_fd(SpiceSession *session, int fd)
 {
@@ -1815,7 +1820,7 @@ void spice_session_start_migrating(SpiceSession *session,
 
     g_warn_if_fail(ring_get_length(&s->channels) == ring_get_length(&m->channels));
 
-    SPICE_DEBUG("migration channels left:%d (in migration:%d)",
+    SPICE_DEBUG("migration channels left:%u (in migration:%u)",
                 ring_get_length(&s->channels), ring_get_length(&m->channels));
     s->migration_left = spice_session_get_channels(session);
 }
@@ -1882,11 +1887,9 @@ void spice_session_abort_migration(SpiceSession *session)
     }
 
 end:
-    g_list_free(s->migration_left);
-    s->migration_left = NULL;
+    g_clear_pointer(&s->migration_left, g_list_free);
     session_disconnect(s->migration, FALSE);
-    g_object_unref(s->migration);
-    s->migration = NULL;
+    g_clear_pointer(&s->migration, g_object_unref);
 
     s->migrate_wait_init = FALSE;
     if (s->after_main_init) {
@@ -1925,8 +1928,7 @@ void spice_session_channel_migrate(SpiceSession *session, SpiceChannel *channel)
     if (g_list_length(s->migration_left) == 0) {
         CHANNEL_DEBUG(channel, "migration: all channel migrated, success");
         session_disconnect(s->migration, FALSE);
-        g_object_unref(s->migration);
-        s->migration = NULL;
+        g_clear_pointer(&s->migration, g_object_unref);
         spice_session_set_migration_state(session, SPICE_SESSION_MIGRATION_NONE);
     }
 }
@@ -2018,7 +2020,9 @@ void spice_session_migrate_end(SpiceSession *self)
  * spice_session_get_read_only:
  * @session: a #SpiceSession
  *
- * Returns: wether the @session is in read-only mode.
+ * Checks whether the @session is read-only.
+ *
+ * Returns: whether the @session is in read-only mode.
  **/
 gboolean spice_session_get_read_only(SpiceSession *self)
 {
@@ -2041,7 +2045,7 @@ static gboolean session_disconnect_idle(SpiceSession *self)
 
 /**
  * spice_session_disconnect:
- * @session:
+ * @session: a #SpiceSession
  *
  * Disconnect the @session, and destroy all channels.
  **/
@@ -2053,7 +2057,7 @@ void spice_session_disconnect(SpiceSession *session)
 
     s = session->priv;
 
-    SPICE_DEBUG("session: disconnecting %d", s->disconnecting);
+    SPICE_DEBUG("session: disconnecting %u", s->disconnecting);
     if (s->disconnecting != 0)
         return;
 
@@ -2094,6 +2098,7 @@ GList *spice_session_get_channels(SpiceSession *session)
 /**
  * spice_session_has_channel_type:
  * @session: a #SpiceSession
+ * @type: a #SpiceChannel:channel-type
  *
  * See if there is a @type channel in the channels associated with this
  * @session.
@@ -2241,7 +2246,7 @@ static gboolean open_host_idle_cb(gpointer data)
 #endif
         } else {
             SPICE_DEBUG("open host %s:%d", s->host, open_host->port);
-            address = g_network_address_new(s->host, open_host->port);
+            address = g_network_address_parse(s->host, open_host->port, &open_host->error);
         }
 
         if (address == NULL || open_host->error != NULL) {
@@ -2292,16 +2297,14 @@ GSocketConnection* spice_session_channel_open_host(SpiceSession *session, SpiceC
             return NULL;
         }
     } else {
-        if (s->ws_port != NULL) {
+        port = *use_tls ? s->tls_port : s->port;
+        if (port == NULL) {
+            SPICE_DEBUG("Missing port value, not attempting %s connection.",
+                    *use_tls?"TLS":"unencrypted");
+            return NULL;
+        } else if (s->ws_port != NULL) {
+            *ws_token = port;
             port = s->ws_port;
-            *ws_token = s->port;
-        } else {
-            port = *use_tls ? s->tls_port : s->port;
-            if (port == NULL) {
-                g_debug("Missing port value, not attempting %s connection.",
-                        *use_tls?"TLS":"unencrypted");
-                return NULL;
-            }
         }
 
         open_host.port = strtol(port, &endptr, 10);
@@ -2459,8 +2462,8 @@ void spice_session_set_mm_time(SpiceSession *session, guint32 time)
     s->mm_time = time;
     s->mm_time_at_clock = g_get_monotonic_time();
     SPICE_DEBUG("set mm time: %u", spice_session_get_mm_time(session));
-    if (time > old_time + MM_TIME_DIFF_RESET_THRESH ||
-        time < old_time) {
+    if (spice_mmtime_diff(time, old_time + MM_TIME_DIFF_RESET_THRESH) > 0 ||
+        spice_mmtime_diff(time, old_time) < 0) {
         SPICE_DEBUG("%s: mm-time-reset, old %u, new %u", __FUNCTION__, old_time, s->mm_time);
         g_coroutine_signal_emit(session, signals[SPICE_SESSION_MM_TIME_RESET], 0);
     }
@@ -2725,9 +2728,24 @@ void spice_session_set_shared_dir(SpiceSession *session, const gchar *dir)
     s->shared_dir = g_strdup(dir);
 }
 
+G_GNUC_INTERNAL
+const gchar* spice_audio_data_mode_to_string(gint mode)
+{
+    static const char *str[] = {
+        [ SPICE_AUDIO_DATA_MODE_INVALID ] = "invalid",
+        [ SPICE_AUDIO_DATA_MODE_RAW ] = "raw",
+        [ SPICE_AUDIO_DATA_MODE_CELT_0_5_1 ] = "celt",
+        [ SPICE_AUDIO_DATA_MODE_OPUS ] = "opus",
+    };
+    return (mode >= 0 && mode < G_N_ELEMENTS(str)) ? str[mode] : "unknown audio codec";
+}
+
+
 /**
  * spice_session_get_proxy_uri:
  * @session: a #SpiceSession
+ *
+ * Gets the @session proxy uri.
  *
  * Returns: (transfer none): the session proxy #SpiceURI or %NULL.
  * Since: 0.24
@@ -2761,18 +2779,18 @@ SpiceURI *spice_session_get_proxy_uri(SpiceSession *session)
  **/
 SpiceAudio *spice_audio_get(SpiceSession *session, GMainContext *context)
 {
-    static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
+    static GMutex mutex;
     SpiceAudio *self;
 
     g_return_val_if_fail(SPICE_IS_SESSION(session), NULL);
 
-    g_static_mutex_lock(&mutex);
+    g_mutex_lock(&mutex);
     self = session->priv->audio_manager;
     if (self == NULL) {
-        self = spice_audio_new(session, context, NULL);
+        self = spice_audio_new_priv(session, context, NULL);
         session->priv->audio_manager = self;
     }
-    g_static_mutex_unlock(&mutex);
+    g_mutex_unlock(&mutex);
 
     return self;
 }
@@ -2780,6 +2798,7 @@ SpiceAudio *spice_audio_get(SpiceSession *session, GMainContext *context)
 /**
  * spice_usb_device_manager_get:
  * @session: #SpiceSession for which to get the #SpiceUsbDeviceManager
+ * @err: (allow-none): a return location for #GError, or %NULL.
  *
  * Gets the #SpiceUsbDeviceManager associated with the passed in #SpiceSession.
  * A new #SpiceUsbDeviceManager instance will be created the first time this
@@ -2794,19 +2813,19 @@ SpiceUsbDeviceManager *spice_usb_device_manager_get(SpiceSession *session,
                                                     GError **err)
 {
     SpiceUsbDeviceManager *self;
-    static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
+    static GMutex mutex;
 
     g_return_val_if_fail(SPICE_IS_SESSION(session), NULL);
     g_return_val_if_fail(err == NULL || *err == NULL, NULL);
 
-    g_static_mutex_lock(&mutex);
+    g_mutex_lock(&mutex);
     self = session->priv->usb_manager;
     if (self == NULL) {
         self = g_initable_new(SPICE_TYPE_USB_DEVICE_MANAGER, NULL, err,
                               "session", session, NULL);
         session->priv->usb_manager = self;
     }
-    g_static_mutex_unlock(&mutex);
+    g_mutex_unlock(&mutex);
 
     return self;
 }
@@ -2848,7 +2867,7 @@ PhodavServer* spice_session_get_webdav_server(SpiceSession *session)
 
     const gchar *shared_dir = spice_session_get_shared_dir(session);
     if (shared_dir == NULL) {
-        g_debug("No shared dir set, not creating webdav server");
+        SPICE_DEBUG("No shared dir set, not creating webdav server");
         return NULL;
     }
 

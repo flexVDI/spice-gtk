@@ -18,12 +18,17 @@
 #ifndef __SPICE_CLIENT_CHANNEL_H__
 #define __SPICE_CLIENT_CHANNEL_H__
 
-G_BEGIN_DECLS
+#if !defined(__SPICE_CLIENT_H_INSIDE__) && !defined(SPICE_COMPILATION)
+#warning "Only <spice-client.h> can be included directly"
+#endif
 
 #include <gio/gio.h>
+
 #include "spice-types.h"
 #include "spice-glib-enums.h"
 #include "spice-util.h"
+
+G_BEGIN_DECLS
 
 #define SPICE_TYPE_CHANNEL            (spice_channel_get_type ())
 #define SPICE_CHANNEL(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), SPICE_TYPE_CHANNEL, SpiceChannel))
@@ -39,6 +44,7 @@ typedef struct _SpiceMsgOut SpiceMsgOut;
  * SpiceChannelEvent:
  * @SPICE_CHANNEL_NONE: no event, or ignored event
  * @SPICE_CHANNEL_OPENED: connection is authentified and ready
+ * @SPICE_CHANNEL_SWITCHING: disconnecting from the current host and connecting to the target host.
  * @SPICE_CHANNEL_CLOSED: connection is closed normally (sent if channel was ready)
  * @SPICE_CHANNEL_ERROR_CONNECT: connection error
  * @SPICE_CHANNEL_ERROR_TLS: SSL error
@@ -61,6 +67,11 @@ typedef enum
     SPICE_CHANNEL_ERROR_IO,
 } SpiceChannelEvent;
 
+/**
+ * SpiceChannel:
+ *
+ * The #SpiceChannel struct is opaque and should not be accessed directly.
+ */
 struct _SpiceChannel
 {
     GObject parent;
@@ -70,6 +81,14 @@ struct _SpiceChannel
 
 typedef struct _SpiceChannelClassPrivate SpiceChannelClassPrivate;
 
+/**
+ * SpiceChannelClass:
+ * @parent_class: Parent class.
+ * @channel_event: Signal class handler for the #SpiceChannel::channel_event signal.
+ * @open_fd: Signal class handler for the #SpiceChannel::open_fd signal.
+ *
+ * Class structure for #SpiceChannel.
+ */
 struct _SpiceChannelClass
 {
     GObjectClass parent_class;
@@ -117,9 +136,9 @@ gboolean spice_channel_test_common_capability(SpiceChannel *channel, guint32 cap
 void spice_channel_flush_async(SpiceChannel *channel, GCancellable *cancellable, GAsyncReadyCallback callback, gpointer user_data);
 gboolean spice_channel_flush_finish(SpiceChannel *channel, GAsyncResult *result, GError **error);
 #ifndef SPICE_DISABLE_DEPRECATED
-SPICE_DEPRECATED
+G_DEPRECATED
 void spice_channel_set_capability(SpiceChannel *channel, guint32 cap);
-SPICE_DEPRECATED
+G_DEPRECATED
 void spice_channel_destroy(SpiceChannel *channel);
 #endif
 

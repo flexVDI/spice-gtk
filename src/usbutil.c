@@ -22,17 +22,18 @@
 #include "config.h"
 
 #include <glib-object.h>
-#include <glib/gi18n.h>
+#include <glib/gi18n-lib.h>
 #include <ctype.h>
 #include <stdlib.h>
 
-#include "glib-compat.h"
-
 #ifdef USE_USBREDIR
-#ifdef __linux__
 #include <stdio.h>
+#ifdef __linux__
 #include <unistd.h>
+#include <sys/sysmacros.h>
+#ifndef major /* major and minor macros were moved to sys/sysmacros.h from sys/types.h */
 #include <sys/types.h>
+#endif
 #include <sys/stat.h>
 #endif
 #include "usbutil.h"
@@ -53,7 +54,7 @@ typedef struct _usb_vendor_info {
     char name[VENDOR_NAME_LEN];
 } usb_vendor_info;
 
-static GStaticMutex usbids_load_mutex = G_STATIC_MUTEX_INIT;
+static GMutex usbids_load_mutex;
 static int usbids_vendor_count = 0; /* < 0: failed, 0: empty, > 0: loaded */
 static usb_vendor_info *usbids_vendor_info = NULL;
 
@@ -108,7 +109,7 @@ static gchar *spice_usbutil_get_sysfs_attribute(int bus, int address,
     if (stat(filename, &stat_buf) != 0)
         return NULL;
 
-    snprintf(filename, sizeof(filename), "/sys/dev/char/%d:%d/%s",
+    snprintf(filename, sizeof(filename), "/sys/dev/char/%u:%u/%s",
              major(stat_buf.st_rdev), minor(stat_buf.st_rdev), attribute);
     if (!g_file_get_contents(filename, &contents, NULL, NULL))
         return NULL;
@@ -217,7 +218,7 @@ static gboolean spice_usbutil_load_usbids(void)
 {
     gboolean success = FALSE;
 
-    g_static_mutex_lock(&usbids_load_mutex);
+    g_mutex_lock(&usbids_load_mutex);
     if (usbids_vendor_count) {
         success = usbids_vendor_count > 0;
         goto leave;
@@ -244,7 +245,7 @@ static gboolean spice_usbutil_load_usbids(void)
 #endif
 
 leave:
-    g_static_mutex_unlock(&usbids_load_mutex);
+    g_mutex_unlock(&usbids_load_mutex);
     return success;
 }
 

@@ -1,11 +1,8 @@
 NULL=
 
-EXTRA_DIST =					\
-	spicy.nsis				\
-	spice-protocol.vapi			\
-	gtkrc					\
-	$(desktop_in_files)			\
-	org.spice-space.lowlevelusbaccess.policy \
+EXTRA_DIST =						\
+	spice-protocol.vapi				\
+	org.spice-space.lowlevelusbaccess.policy	\
 	$(NULL)
 
 vapidir = $(VAPIDIR)

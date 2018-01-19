@@ -22,7 +22,6 @@
 #include "spice-channel-priv.h"
 #include "spice-session-priv.h"
 #include "spice-marshal.h"
-#include "glib-compat.h"
 #include "vmcstream.h"
 #include "giopipe.h"
 
@@ -33,7 +32,7 @@
  * @section_id:
  * @see_also: #SpiceChannel
  * @stability: Stable
- * @include: channel-webdav.h
+ * @include: spice-client.h
  *
  * The "webdav" channel exports a directory to the guest for file
  * manipulation (read/write/copy etc). The underlying protocol is
@@ -219,19 +218,16 @@ client_ref(Client *client)
     return client;
 }
 
-static void client_start_read(SpiceWebdavChannel *self, Client *client);
+static void client_start_read(Client *client);
 
-static void remove_client(SpiceWebdavChannel *self, Client *client)
+static void remove_client(Client *client)
 {
-    SpiceWebdavChannelPrivate *c;
-
     if (g_cancellable_is_cancelled(client->cancellable))
         return;
 
     g_cancellable_cancel(client->cancellable);
 
-    c = self->priv;
-    g_hash_table_remove(c->clients, &client->id);
+    g_hash_table_remove(client->self->priv->clients, &client->id);
 }
 
 static void mux_pushed_cb(OutputQueue *q, gpointer user_data)
@@ -239,9 +235,9 @@ static void mux_pushed_cb(OutputQueue *q, gpointer user_data)
     Client *client = user_data;
 
     if (client->mux.size == 0) {
-        remove_client(client->self, client);
+        remove_client(client);
     } else {
-        client_start_read(client->self, client);
+        client_start_read(client);
     }
 
     client_unref(client);
@@ -254,8 +250,7 @@ static void server_reply_cb(GObject *source_object,
                             gpointer user_data)
 {
     Client *client = user_data;
-    SpiceWebdavChannel *self = client->self;
-    SpiceWebdavChannelPrivate *c = self->priv;
+    SpiceWebdavChannelPrivate *c = client->self->priv;
     GError *err = NULL;
     gssize size;
 
@@ -278,14 +273,14 @@ end:
     if (err) {
         if (!g_cancellable_is_cancelled(client->cancellable))
             g_warning("read error: %s", err->message);
-        remove_client(self, client);
+        remove_client(client);
         g_clear_error(&err);
     }
 
     client_unref(client);
 }
 
-static void client_start_read(SpiceWebdavChannel *self, Client *client)
+static void client_start_read(Client *client)
 {
     GInputStream *input;
 
@@ -298,13 +293,13 @@ static void client_start_read(SpiceWebdavChannel *self, Client *client)
 static void start_demux(SpiceWebdavChannel *self);
 
 #ifdef USE_PHODAV
-static void demux_to_client_finish(SpiceWebdavChannel *self,
-                                   Client *client, gboolean fail)
+static void demux_to_client_finish(Client *client, gboolean fail)
 {
+    SpiceWebdavChannel *self = client->self;
     SpiceWebdavChannelPrivate *c = self->priv;
 
     if (fail) {
-        remove_client(self, client);
+        remove_client(client);
     }
 
     c->demuxing = FALSE;
@@ -319,7 +314,9 @@ static void demux_to_client_cb(GObject *source, GAsyncResult *result, gpointer u
     gboolean fail;
     gsize size;
 
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     g_output_stream_write_all_finish(G_OUTPUT_STREAM(source), result, &size, &error);
+G_GNUC_END_IGNORE_DEPRECATIONS
 
     if (error) {
         CHANNEL_DEBUG(client->self, "write failed: %s", error->message);
@@ -328,27 +325,28 @@ static void demux_to_client_cb(GObject *source, GAsyncResult *result, gpointer u
 
     fail = (size != c->demux.size);
     g_warn_if_fail(size == c->demux.size);
-    demux_to_client_finish(client->self, client, fail);
+    demux_to_client_finish(client, fail);
 }
 #endif
 
-static void demux_to_client(SpiceWebdavChannel *self,
-                            Client *client)
+static void demux_to_client(Client *client)
 {
 #ifdef USE_PHODAV
-    SpiceWebdavChannelPrivate *c = self->priv;
+    SpiceWebdavChannelPrivate *c = client->self->priv;
     gsize size = c->demux.size;
 
-    CHANNEL_DEBUG(self, "pushing %"G_GSIZE_FORMAT" to client %p", size, client);
+    CHANNEL_DEBUG(client->self, "pushing %"G_GSIZE_FORMAT" to client %p", size, client);
 
     if (size > 0) {
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
         g_output_stream_write_all_async(g_io_stream_get_output_stream(client->pipe),
                                         c->demux.buf, size, G_PRIORITY_DEFAULT,
                                         c->cancellable, demux_to_client_cb, client);
+G_GNUC_END_IGNORE_DEPRECATIONS
         return;
     } else {
         /* Nothing to write */
-        demux_to_client_finish(self, client, FALSE);
+        demux_to_client_finish(client, FALSE);
     }
 #endif
 }
@@ -378,14 +376,16 @@ static void start_client(SpiceWebdavChannel *self)
     client->cancellable = g_cancellable_new();
     spice_make_pipe(&client->pipe, &peer);
 
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     addr = g_inet_socket_address_new_from_string ("127.0.0.1", 0);
+G_GNUC_END_IGNORE_DEPRECATIONS
     if (!soup_server_accept_iostream(server, peer, addr, addr, &error))
         goto fail;
 
     g_hash_table_insert(c->clients, &client->id, client);
 
-    client_start_read(self, client);
-    demux_to_client(self, client);
+    client_start_read(client);
+    demux_to_client(client);
 
     g_clear_object(&addr);
     return;
@@ -424,7 +424,7 @@ static void data_read_cb(GObject *source_object,
     client = g_hash_table_lookup(c->clients, &c->demux.client);
 
     if (client)
-        demux_to_client(self, client);
+        demux_to_client(client);
     else
         start_client(self);
 }
@@ -507,7 +507,8 @@ static void port_event(SpiceWebdavChannel *self, gint event)
 
     CHANNEL_DEBUG(self, "port event:%d", event);
     if (event == SPICE_PORT_EVENT_OPENED) {
-        g_cancellable_reset(c->cancellable);
+        g_clear_object(&c->cancellable);
+        c->cancellable = g_cancellable_new();
         start_demux(self);
     } else {
         g_cancellable_cancel(c->cancellable);
@@ -530,7 +531,6 @@ static void spice_webdav_channel_init(SpiceWebdavChannel *channel)
 
     channel->priv = c;
     c->stream = spice_vmc_stream_new(SPICE_CHANNEL(channel));
-    c->cancellable = g_cancellable_new();
     c->clients = g_hash_table_new_full(g_int64_hash, g_int64_equal,
                                        NULL, client_remove_unref);
     c->demux.buf = g_malloc0(MAX_MUX_SIZE);
@@ -584,7 +584,7 @@ static void spice_webdav_channel_class_init(SpiceWebdavChannelClass *klass)
 }
 
 /* coroutine context */
-static void webdav_handle_msg(SpiceChannel *channel, SpiceMsgIn *in)
+static void webdav_handle_data_msg(SpiceChannel *channel, SpiceMsgIn *in)
 {
     SpiceWebdavChannel *self = SPICE_WEBDAV_CHANNEL(channel);
     SpiceWebdavChannelPrivate *c = self->priv;
@@ -609,9 +609,13 @@ static void spice_webdav_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg)
     parent_class = SPICE_CHANNEL_CLASS(spice_webdav_channel_parent_class);
 
     if (type == SPICE_MSG_SPICEVMC_DATA)
-        webdav_handle_msg(channel, msg);
-    else if (parent_class->handle_msg)
-        parent_class->handle_msg(channel, msg);
-    else
-        g_return_if_reached();
+        webdav_handle_data_msg(channel, msg);
+
+    /* The only message that we need to handle ourselves is SPICE_MSG_SPICEVMC_DATA
+     * as we want to read it with spice_vmc_input/output_stream to handle
+     * channel-webdav inner protocol easily ($client, $data_size, $data).
+     * Everything else is handled by port-event signal from channel-port.c so we
+     * let it read the message for us. */
+    g_return_if_fail(parent_class->handle_msg != NULL);
+    parent_class->handle_msg(channel, msg);
 }
