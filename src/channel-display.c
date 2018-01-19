@@ -1019,13 +1019,12 @@ static gboolean display_stream_schedule(display_stream *st)
     guint32 time, d;
     SpiceStreamDataHeader *op;
     SpiceMsgIn *in;
-    gboolean invalid_mm_time;
 
     SPICE_DEBUG("%s", __FUNCTION__);
     if (st->timeout || !session)
         return TRUE;
 
-    time = spice_session_get_mm_time(session, &invalid_mm_time);
+    time = spice_session_get_mm_time(session);
     in = g_queue_peek_head(st->msgq);
 
     if (in == NULL) {
@@ -1033,11 +1032,6 @@ static gboolean display_stream_schedule(display_stream *st)
     }
 
     op = spice_msg_in_parsed(in);
-    if (invalid_mm_time) {
-        SPICE_DEBUG("scheduling next stream render in %u ms", 0);
-        st->timeout = g_timeout_add(0, (GSourceFunc)display_stream_render, st);
-        return TRUE;
-    }
     if (time < op->multi_media_time) {
         d = op->multi_media_time - time;
         SPICE_DEBUG("scheduling next stream render in %u ms", d);
@@ -1192,7 +1186,7 @@ static gboolean display_stream_render(display_stream *st)
 #define STREAM_REPORT_DROP_SEQ_LEN_LIMIT 3
 
 static void display_update_stream_report(SpiceDisplayChannel *channel, uint32_t stream_id,
-                                         uint32_t frame_time, int32_t latency, gboolean invalid_mm_time)
+                                         uint32_t frame_time, int32_t latency)
 {
     display_stream *st = channel->priv->streams[stream_id];
     guint64 now;
@@ -1208,7 +1202,7 @@ static void display_update_stream_report(SpiceDisplayChannel *channel, uint32_t 
     }
     st->report_num_frames++;
 
-    if (latency < 0 && !invalid_mm_time) { // drop
+    if (latency < 0) { // drop
         st->report_num_drops++;
         st->report_drops_seq_len++;
     } else {
@@ -1351,14 +1345,13 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
     display_stream *st;
     guint32 mmtime;
     int32_t latency;
-    gboolean invalid_mm_time;
 
     g_return_if_fail(c != NULL);
     g_return_if_fail(c->streams != NULL);
     g_return_if_fail(c->nstreams > op->id);
 
     st =  c->streams[op->id];
-    mmtime = spice_session_get_mm_time(spice_channel_get_session(channel), &invalid_mm_time);
+    mmtime = spice_session_get_mm_time(spice_channel_get_session(channel));
 
     if (spice_msg_in_type(in) == SPICE_MSG_DISPLAY_STREAM_DATA_SIZED) {
         CHANNEL_DEBUG(channel, "stream %d contains sized data", op->id);
@@ -1375,7 +1368,7 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
     st->num_input_frames++;
 
     latency = op->multi_media_time - mmtime;
-    if (!invalid_mm_time && latency < 0) {
+    if (latency < 0) {
         CHANNEL_DEBUG(channel, "stream data too late by %u ms (ts: %u, mmtime: %u), dropping",
                       mmtime - op->multi_media_time, op->multi_media_time, mmtime);
         st->arrive_late_time += mmtime - op->multi_media_time;
@@ -1387,11 +1380,7 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
         st->cur_drops_seq_stats.len++;
         st->playback_sync_drops_seq_len++;
     } else {
-        if (invalid_mm_time) {
-            CHANNEL_DEBUG(channel, "Invalid mm_time. Not checking video-audio sync");
-        } else {
-            CHANNEL_DEBUG(channel, "video latency: %d", latency );
-        }
+        CHANNEL_DEBUG(channel, "video latency: %d", latency);
         spice_msg_in_ref(in);
         display_stream_test_frames_mm_time_reset(st, in, mmtime);
         g_queue_push_tail(st->msgq, in);
@@ -1408,7 +1397,7 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
     }
     if (c->enable_adaptive_streaming) {
         display_update_stream_report(SPICE_DISPLAY_CHANNEL(channel), op->id,
-                                     op->multi_media_time, latency, invalid_mm_time);
+                                     op->multi_media_time, latency);
         if (st->playback_sync_drops_seq_len >= STREAM_PLAYBACK_SYNC_DROP_SEQ_LEN_LIMIT) {
             spice_session_sync_playback_latency(spice_channel_get_session(channel));
             st->playback_sync_drops_seq_len = 0;
