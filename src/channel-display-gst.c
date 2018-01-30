@@ -333,7 +333,7 @@ static void app_source_setup(GstElement *pipeline G_GNUC_UNUSED,
                  "caps", caps,
                  "is-live", TRUE,
                  "format", GST_FORMAT_TIME,
-                 "max-bytes", 0,
+                 "max-bytes", G_GINT64_CONSTANT(0),
                  "block", TRUE,
                  NULL);
     gst_caps_unref(caps);
