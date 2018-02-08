@@ -9,6 +9,7 @@ typedef struct {
     const gchar *uri_input;
     const gchar *uri_output;
     const gchar *message;
+    const gchar *unix_path;
 } TestCase;
 
 static void test_session_uri_bad(void)
@@ -139,7 +140,7 @@ static void test_session_uri_good(const TestCase *tests, const guint cases)
 
     /* Set URI and check URI, port and tls_port */
     for (i = 0; i < cases; i++) {
-        gchar *uri, *port, *tls_port, *host, *username, *password;
+        gchar *uri, *port, *tls_port, *host, *username, *password, *unix_path;
 
         s = spice_session_new();
         if (tests[i].message != NULL)
@@ -152,20 +153,23 @@ static void test_session_uri_good(const TestCase *tests, const guint cases)
                      "host", &host,
                      "username", &username,
                      "password", &password,
+                     "unix-path", &unix_path,
                       NULL);
-        g_assert_cmpstr(tests[i].uri_output, ==, uri);
+        g_assert_cmpstr(tests[i].uri_output ?: tests[i].uri_input, ==, uri);
         g_assert_cmpstr(tests[i].port, ==, port);
         g_assert_cmpstr(tests[i].tls_port, ==, tls_port);
         g_assert_cmpstr(tests[i].host, ==, host);
         g_assert_cmpstr(tests[i].username, ==, username);
         g_assert_cmpstr(tests[i].password, ==, password);
         g_test_assert_expected_messages();
+        g_assert_cmpstr(tests[i].unix_path, ==, unix_path);
         g_clear_pointer(&uri, g_free);
         g_clear_pointer(&port, g_free);
         g_clear_pointer(&tls_port, g_free);
         g_clear_pointer(&host, g_free);
         g_clear_pointer(&username, g_free);
         g_clear_pointer(&password, g_free);
+        g_clear_pointer(&unix_path, g_free);
         g_object_unref(s);
     }
 
@@ -180,9 +184,10 @@ static void test_session_uri_good(const TestCase *tests, const guint cases)
                      "host", tests[i].host,
                      "username", tests[i].username,
                      "password", tests[i].password,
+                     "unix-path", tests[i].unix_path,
                       NULL);
         g_object_get(s, "uri", &uri, NULL);
-        g_assert_cmpstr(tests[i].uri_output, ==, uri);
+        g_assert_cmpstr(tests[i].uri_output ?: tests[i].uri_input, ==, uri);
         g_clear_pointer(&uri, g_free);
         g_object_unref(s);
     }
@@ -278,6 +283,22 @@ static void test_session_uri_ipv6_good(void)
     test_session_uri_good(tests, G_N_ELEMENTS(tests));
 }
 
+static void test_session_uri_unix_good(void)
+{
+    const TestCase tests[] = {
+        { .uri_input = "spice+unix:///tmp/foo.sock",
+          .unix_path = "/tmp/foo.sock" },
+        /* perhaps not very clever, but this doesn't raise an error/warning */
+        { .uri_input = "spice+unix://",
+          .unix_path = "" },
+        /* unix uri don't support passing password or other kind of options */
+        { .uri_input = "spice+unix:///tmp/foo.sock?password=frobnicate",
+          .unix_path = "/tmp/foo.sock?password=frobnicate" },
+    };
+
+    test_session_uri_good(tests, G_N_ELEMENTS(tests));
+}
+
 int main(int argc, char* argv[])
 {
     g_test_init(&argc, &argv, NULL);
@@ -285,6 +306,7 @@ int main(int argc, char* argv[])
     g_test_add_func("/session/bad-uri", test_session_uri_bad);
     g_test_add_func("/session/good-ipv4-uri", test_session_uri_ipv4_good);
     g_test_add_func("/session/good-ipv6-uri", test_session_uri_ipv6_good);
+    g_test_add_func("/session/good-unix", test_session_uri_unix_good);
 
     return g_test_run();
 }
