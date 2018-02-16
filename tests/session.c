@@ -21,7 +21,7 @@ static void test_session_uri_bad(void)
         struct {
             const GLogLevelFlags log_level;
             const gchar *message;
-        } messages[2];
+        } messages[4];
     } uris[] = {
         {
             "scheme://host?port",
@@ -106,6 +106,25 @@ static void test_session_uri_bad(void)
                 {
                     G_LOG_LEVEL_WARNING,
                     "Double set of 'port' in URI*",
+                },{
+                    G_LOG_LEVEL_CRITICAL,
+                    "*assertion 's->port != NULL || s->tls_port != NULL' failed",
+                },
+            }
+        },{
+            "spice+tls://hostname?tls-port=1234&port=3456",
+            {
+                {
+                    G_LOG_LEVEL_WARNING,
+                    "spice+tls:// scheme doesn't accept 'tls-port'",
+                },
+                {
+                    G_LOG_LEVEL_WARNING,
+                    "spice+tls:// scheme doesn't accept 'port'",
+                },
+                {
+                    G_LOG_LEVEL_WARNING,
+                    "Missing port or tls-port in spice URI *",
                 },{
                     G_LOG_LEVEL_CRITICAL,
                     "*assertion 's->port != NULL || s->tls_port != NULL' failed",
@@ -233,6 +252,9 @@ static void test_session_uri_ipv4_good(void)
           NULL, NULL,
           "spice://127.0.0.1:42?tls-port=5930",
           "spice://127.0.0.1?port=42&tls-port=5930" },
+        { .uri_input  = "spice+tls://hostname:39",
+          .host = "hostname",
+          .tls_port = "39" }
     };
 
     test_session_uri_good(tests, G_N_ELEMENTS(tests));
