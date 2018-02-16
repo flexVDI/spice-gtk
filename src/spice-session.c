@@ -400,19 +400,24 @@ static gchar* spice_uri_create(SpiceSession *session)
     if (s->unix_path != NULL) {
         return g_strdup_printf(URI_SCHEME_SPICE_UNIX "%s", s->unix_path);
     } else if (s->host != NULL) {
+        const char *port, *scheme;
         g_return_val_if_fail(s->port != NULL || s->tls_port != NULL, NULL);
 
-        GString *str = g_string_new(URI_SCHEME_SPICE);
+        if (s->tls_port && s->port) {
+            /* both set, use spice://foo?port=4390&tls-port= form */
+            return g_strdup_printf(URI_SCHEME_SPICE "%s?port=%s&tls-port=%s",
+                                   s->host, s->port, s->tls_port);
+        }
 
-        g_string_append(str, s->host);
-        g_string_append(str, "?");
-        if (s->port != NULL) {
-            g_string_append_printf(str, "port=%s&", s->port);
+        /* one set, use spice://foo:4390 or spice+tls://.. form */
+        if (s->tls_port) {
+            scheme = URI_SCHEME_SPICE_TLS;
+            port = s->tls_port;
+        } else {
+            scheme = URI_SCHEME_SPICE;
+            port = s->port;
         }
-        if (s->tls_port != NULL) {
-            g_string_append_printf(str, "tls-port=%s", s->tls_port);
-        }
-        return g_string_free(str, FALSE);
+        return g_strdup_printf("%s%s:%s", scheme, s->host, port);
     }
 
     g_return_val_if_reached(NULL);
