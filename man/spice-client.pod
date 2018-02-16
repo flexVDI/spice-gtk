@@ -12,23 +12,24 @@ can be used to tweak some SPICE-specific option.
 
 =head1 URI
 
-The most basic SPICE URI which can be used is in the form
+To initiate a plain SPICE connection (the connection will be
+unencrypted) to hostname.example.com and port 5900, use the following
+URI:
+
   spice://hostname.example.com:5900
 
-This will try to initiate a SPICE connection to hostname.example.com
-to port 5900. This connection will be unencrypted. This URI is
-equivalent to
-  spice://hostname.example.com?port=5900
+In order to start a TLS connection, one would use:
 
-In order to start a TLS connection, one would use
-  spice://hostname.example.com?tls-port=5900
+  spice+tls://hostname.example.com:5900
 
-Other valid URI parameters are 'username' and 'password'. Be careful that
-passing a password through a SPICE URI might cause the password to be
-visible by any local user through 'ps'.
+Note: 'spice+tls' is available since v0.35, you have to use the
+spice:// query string with the 'tls-port' parameter before that.
 
-Several parameters can be specified at once if they are separated
-by & or ;
+=head1 URI query string
+
+spice URI accepts query string. Several parameters can be specified at
+once if they are separated by & or ;
+
   spice://hostname.example.com?port=5900;tls-port=5901
 
 When using 'tls-port', it's recommended to not specify any non-TLS port.
@@ -38,6 +39,10 @@ Otherwise, Spice-GTK first attempts a connection to the non-TLS port, and
 then try to use the TLS port. This means a man-in-the-middle could force
 the whole SPICE session to go in clear text regardless of the TLS settings
 of the SPICE server.
+
+Other valid URI parameters are 'username' and 'password'. Be careful that
+passing a password through a SPICE URI might cause the password to be
+visible by any local user through 'ps'.
 
 =head1 OPTIONS
 

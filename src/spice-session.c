@@ -389,6 +389,7 @@ spice_session_finalize(GObject *gobject)
 
 #define URI_SCHEME_SPICE "spice://"
 #define URI_SCHEME_SPICE_UNIX "spice+unix://"
+#define URI_SCHEME_SPICE_TLS "spice+tls://"
 #define URI_QUERY_START ";?"
 #define URI_QUERY_SEP   ";&"
 
@@ -425,6 +426,7 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
     gchar *authority = NULL;
     gchar *query = NULL;
     gchar *tmp = NULL;
+    bool tls_scheme = false;
 
     g_return_val_if_fail(original_uri != NULL, -1);
 
@@ -438,12 +440,16 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
     /* Break up the URI into its various parts, scheme, authority,
      * path (ignored) and query
      */
-    if (!g_str_has_prefix(uri, URI_SCHEME_SPICE)) {
+    if (g_str_has_prefix(uri, URI_SCHEME_SPICE)) {
+        authority = uri + strlen(URI_SCHEME_SPICE);
+    } else if (g_str_has_prefix(uri, URI_SCHEME_SPICE_TLS)) {
+        authority = uri + strlen(URI_SCHEME_SPICE_TLS);
+        tls_scheme = true;
+    } else {
         g_warning("Expected a URI scheme of '%s' in URI '%s'",
                   URI_SCHEME_SPICE, uri);
         goto fail;
     }
-    authority = uri + strlen(URI_SCHEME_SPICE);
 
     tmp = strchr(authority, '@');
     if (tmp) {
@@ -531,6 +537,11 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
         if (*query)
             query++;
 
+        if (tls_scheme && (g_str_equal(key, "port") || g_str_equal(key, "tls-port"))) {
+            g_warning(URI_SCHEME_SPICE_TLS " scheme doesn't accept '%s'", key);
+            continue;
+        }
+
         target_key = NULL;
         if (g_str_equal(key, "port")) {
             target_key = &port;
@@ -568,8 +579,12 @@ end:
     s->unix_path = g_strdup(path);
     g_free(uri);
     s->host = host;
-    s->port = port;
-    s->tls_port = tls_port;
+    if (tls_scheme) {
+        s->tls_port = port;
+    } else {
+        s->port = port;
+        s->tls_port = tls_port;
+    }
     s->username = username;
     s->password = password;
     return 0;
