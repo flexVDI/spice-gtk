@@ -545,7 +545,7 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
         }
         if (target_key) {
             if (*target_key) {
-                g_warning("Double set of '%s' in URI '%s'", key, uri);
+                g_warning("Double set of '%s' in URI '%s'", key, original_uri);
                 goto fail;
             }
             *target_key = g_uri_unescape_string(value, NULL);
@@ -553,7 +553,7 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
     }
 
     if (port == NULL && tls_port == NULL) {
-        g_warning("Missing port or tls-port in spice URI '%s'", uri);
+        g_warning("Missing port or tls-port in spice URI '%s'", original_uri);
         goto fail;
     }
 
