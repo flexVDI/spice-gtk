@@ -635,11 +635,11 @@ static int usbredir_read_callback(void *user_data, uint8_t *data, int count)
     SpiceUsbredirChannel *channel = user_data;
     SpiceUsbredirChannelPrivate *priv = channel->priv;
 
-    if (priv->read_buf_size < count) {
-        count = priv->read_buf_size;
-    }
+    count = MIN(priv->read_buf_size, count);
 
-    memcpy(data, priv->read_buf, count);
+    if (count != 0) {
+        memcpy(data, priv->read_buf, count);
+    }
 
     priv->read_buf_size -= count;
     if (priv->read_buf_size) {
