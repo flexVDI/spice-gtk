@@ -1430,7 +1430,7 @@ static void send_key(SpiceDisplay *display, int scancode, SendKeyType type, gboo
 
     i = scancode / 32;
     b = scancode % 32;
-    m = (1 << b);
+    m = (1u << b);
     g_return_if_fail(i < SPICE_N_ELEMENTS(d->key_state));
 
     switch (type) {
