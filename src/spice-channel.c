@@ -1355,8 +1355,11 @@ static void spice_channel_send_link(SpiceChannel *channel)
 
     c->link_hdr.size = GUINT32_TO_LE(c->link_hdr.size);
 
-    memcpy(p, &c->link_hdr, sizeof(c->link_hdr)); p += sizeof(c->link_hdr);
-    memcpy(p, &link_msg, sizeof(link_msg)); p += sizeof(link_msg);
+    memcpy(p, &c->link_hdr, sizeof(c->link_hdr));
+    p += sizeof(c->link_hdr);
+
+    memcpy(p, &link_msg, sizeof(link_msg));
+    p += sizeof(link_msg);
 
     caps = SPICE_UNALIGNED_CAST(uint32_t *,p);
     for (i = 0; i < c->common_caps->len; i++) {

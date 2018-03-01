@@ -622,11 +622,13 @@ static void usbredir_log(void *user_data, int level, const char *msg)
 
     switch (level) {
         case usbredirparser_error:
-            g_critical("%s", msg); break;
+            g_critical("%s", msg);
+            break;
         case usbredirparser_warning:
-            g_warning("%s", msg); break;
+            g_warning("%s", msg);
+            break;
         default:
-            CHANNEL_DEBUG(channel, "%s", msg); break;
+            CHANNEL_DEBUG(channel, "%s", msg);
     }
 }
 
