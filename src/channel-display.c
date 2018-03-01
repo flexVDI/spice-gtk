@@ -106,7 +106,7 @@ static display_surface *find_surface(SpiceDisplayChannelPrivate *c, guint32 surf
 static void spice_display_channel_reset(SpiceChannel *channel, gboolean migrating);
 static void spice_display_channel_reset_capabilities(SpiceChannel *channel);
 static void destroy_canvas(display_surface *surface);
-static void destroy_display_stream(display_stream *st, int id);
+static void destroy_display_stream(gpointer st);
 static void display_session_mm_time_reset_cb(SpiceSession *session, gpointer data);
 static SpiceGlScanout* spice_gl_scanout_copy(const SpiceGlScanout *scanout);
 
@@ -1236,13 +1236,15 @@ gint64 get_stream_id_by_stream(SpiceChannel *channel, display_stream *st)
 }
 
 /* coroutine context */
-static display_stream *display_stream_create(SpiceChannel *channel, uint32_t surface_id,
+static display_stream *display_stream_create(SpiceChannel *channel,
+                                             uint32_t id, uint32_t surface_id,
                                              uint32_t flags, uint32_t codec_type,
                                              const SpiceRect *dest, const SpiceClip *clip)
 {
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     display_stream *st = g_new0(display_stream, 1);
 
+    st->id = id;
     st->flags = flags;
     st->dest = *dest;
     st->clip = *clip;
@@ -1267,8 +1269,7 @@ static display_stream *display_stream_create(SpiceChannel *channel, uint32_t sur
     }
     if (st->video_decoder == NULL) {
         spice_printerr("could not create a video decoder for codec %u", codec_type);
-        destroy_display_stream(st, 0);
-        st = NULL;
+        g_clear_pointer(&st, destroy_display_stream);
     }
     return st;
 }
@@ -1281,10 +1282,7 @@ static void destroy_stream(SpiceChannel *channel, int id)
     g_return_if_fail(c->streams != NULL);
     g_return_if_fail(c->nstreams > id);
 
-    if (c->streams[id]) {
-        destroy_display_stream(c->streams[id], id);
-        c->streams[id] = NULL;
-    }
+    g_clear_pointer(&c->streams[id], destroy_display_stream);
 }
 
 static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
@@ -1307,7 +1305,7 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
     }
     g_return_if_fail(c->streams[op->id] == NULL);
 
-    c->streams[op->id] = display_stream_create(channel, op->surface_id,
+    c->streams[op->id] = display_stream_create(channel, op->id, op->surface_id,
                                                op->flags, op->codec_type,
                                                &op->dest, &op->clip);
     if (c->streams[op->id] == NULL) {
@@ -1598,17 +1596,18 @@ static void display_handle_stream_clip(SpiceChannel *channel, SpiceMsgIn *in)
     display_update_stream_region(st);
 }
 
-static void destroy_display_stream(display_stream *st, int id)
+static void destroy_display_stream(gpointer st_pointer)
 {
     int i;
+    display_stream *st = st_pointer;
 
     if (st->num_input_frames > 0) {
         guint64 drops_duration_total = 0;
         guint32 num_out_frames = st->num_input_frames - st->arrive_late_count - st->num_drops_on_playback;
-        CHANNEL_DEBUG(st->channel, "%s: id=%d #in-frames=%u out/in=%.2f "
+        CHANNEL_DEBUG(st->channel, "%s: id=%u #in-frames=%u out/in=%.2f "
             "#drops-on-receive=%u avg-late-time(ms)=%.2f "
             "#drops-on-playback=%u", __FUNCTION__,
-            id,
+            st->id,
             st->num_input_frames,
             num_out_frames / (double)st->num_input_frames,
             st->arrive_late_count,

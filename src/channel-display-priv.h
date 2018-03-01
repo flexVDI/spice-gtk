@@ -115,6 +115,7 @@ typedef struct drops_sequence_stats {
 
 struct display_stream {
     /* from messages */
+    uint32_t                    id;
     uint32_t                    flags;
     SpiceRect                   dest;
     display_surface             *surface;
