@@ -293,9 +293,8 @@ static gboolean handle_pipeline_message(GstBus *bus, GstMessage *msg, gpointer v
         break;
     }
     case GST_MESSAGE_STREAM_START: {
-        gchar *filename = g_strdup_printf("spice-gtk-gst-pipeline-debug-%" G_GINT64_FORMAT "-%s",
-                                          get_stream_id_by_stream(decoder->base.stream->channel,
-                                                                  decoder->base.stream),
+        gchar *filename = g_strdup_printf("spice-gtk-gst-pipeline-debug-%" G_GUINT32_FORMAT "-%s",
+                                          decoder->base.stream->id,
                                           gst_opts[decoder->base.codec_type].name);
         GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(decoder->pipeline),
                                   GST_DEBUG_GRAPH_SHOW_ALL

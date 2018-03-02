@@ -1218,23 +1218,6 @@ static display_stream *get_stream_by_id(SpiceChannel *channel, uint32_t id)
     return NULL;
 }
 
-G_GNUC_INTERNAL
-gint64 get_stream_id_by_stream(SpiceChannel *channel, display_stream *st)
-{
-    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
-    guint i;
-
-    g_return_val_if_fail(c->streams != NULL, -1);
-    g_return_val_if_fail(c->nstreams > 0, -1);
-
-    for (i = 0; i < c->nstreams; i++) {
-        if (c->streams[i] == st)
-            return i;
-    }
-
-    return -1;
-}
-
 /* coroutine context */
 static display_stream *display_stream_create(SpiceChannel *channel,
                                              uint32_t id, uint32_t surface_id,
