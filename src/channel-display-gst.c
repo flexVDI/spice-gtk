@@ -41,6 +41,8 @@ typedef struct SpiceGstDecoder {
     GstElement *pipeline;
     GstClock *clock;
 
+    guintptr win_handle;
+
     /* ---------- Decoding and display queues ---------- */
 
     uint32_t last_mm_time;
@@ -265,7 +267,9 @@ static void free_pipeline(SpiceGstDecoder *decoder)
 
     gst_element_set_state(decoder->pipeline, GST_STATE_NULL);
     gst_object_unref(decoder->appsrc);
-    gst_object_unref(decoder->appsink);
+    if (decoder->appsink) {
+        gst_object_unref(decoder->appsink);
+    }
     gst_object_unref(decoder->pipeline);
     gst_object_unref(decoder->clock);
     decoder->pipeline = NULL;
@@ -306,6 +310,18 @@ static gboolean handle_pipeline_message(GstBus *bus, GstMessage *msg, gpointer v
         g_free(filename);
         break;
     }
+    case GST_MESSAGE_ELEMENT: {
+        if (gst_is_video_overlay_prepare_window_handle_message(msg)) {
+            GstVideoOverlay *overlay;
+
+            SPICE_DEBUG("prepare-window-handle msg received (handle: %" PRIuPTR ")", decoder->win_handle);
+            if (decoder->win_handle != 0) {
+                overlay = GST_VIDEO_OVERLAY(GST_MESSAGE_SRC(msg));
+                gst_video_overlay_set_window_handle(overlay, decoder->win_handle);
+            }
+        }
+        break;
+    }
     default:
         /* not being handled */
         break;
@@ -342,7 +358,6 @@ static void app_source_setup(GstElement *pipeline G_GNUC_UNUSED,
 
 static gboolean create_pipeline(SpiceGstDecoder *decoder)
 {
-    GstAppSinkCallbacks appsink_cbs = { NULL };
     GstBus *bus;
 #if GST_CHECK_VERSION(1,9,0)
     GstElement *playbin, *sink;
@@ -355,26 +370,56 @@ static gboolean create_pipeline(SpiceGstDecoder *decoder)
         return FALSE;
     }
 
-    sink = gst_element_factory_make("appsink", "sink");
-    if (sink == NULL) {
-        spice_warning("error upon creation of 'appsink' element");
-        gst_object_unref(playbin);
-        return FALSE;
-    }
-
-    caps = gst_caps_from_string("video/x-raw,format=BGRx");
-    g_object_set(sink,
+    /* Will try to get window handle in order to apply the GstVideoOverlay
+     * interface, setting overlay to this window will happen only when
+     * prepare-window-handle message is received
+     */
+    decoder->win_handle = get_window_handle(decoder->base.stream);
+    SPICE_DEBUG("Creating Gstreamer pipline (handle for overlay %s)\n",
+                decoder->win_handle ? "received" : "not received");
+    if (decoder->win_handle == 0) {
+        sink = gst_element_factory_make("appsink", "sink");
+        if (sink == NULL) {
+            spice_warning("error upon creation of 'appsink' element");
+            gst_object_unref(playbin);
+            return FALSE;
+        }
+        caps = gst_caps_from_string("video/x-raw,format=BGRx");
+        g_object_set(sink,
                  "caps", caps,
                  "sync", FALSE,
                  "drop", FALSE,
                  NULL);
-    gst_caps_unref(caps);
+        gst_caps_unref(caps);
+        g_object_set(playbin,
+                 "video-sink", gst_object_ref(sink),
+                 NULL);
+
+        decoder->appsink = GST_APP_SINK(sink);
+    } else {
+        /* handle has received, it means playbin will render directly into
+         * widget using the gstvideoooverlay interface instead of app-sink.
+         * Also avoid using vaapisink if exist since vaapisink could be
+         * buggy when it is combined with playbin. changing its rank to
+         * none will make playbin to avoid of using it.
+         */
+        GstRegistry *registry = NULL;
+        GstPluginFeature *vaapisink = NULL;
+
+        registry = gst_registry_get();
+        if (registry) {
+            vaapisink = gst_registry_lookup_feature(registry, "vaapisink");
+        }
+        if (vaapisink) {
+            gst_plugin_feature_set_rank(vaapisink, GST_RANK_NONE);
+            gst_object_unref(vaapisink);
+        }
+    }
 
     g_signal_connect(playbin, "source-setup", G_CALLBACK(app_source_setup), decoder);
 
     g_object_set(playbin,
                  "uri", "appsrc://",
-                 "video-sink", gst_object_ref(sink),
                  NULL);
 
     /* Disable audio in playbin */
@@ -383,7 +428,6 @@ static gboolean create_pipeline(SpiceGstDecoder *decoder)
     g_object_set(playbin, "flags", flags, NULL);
 
     g_warn_if_fail(decoder->appsrc == NULL);
-    decoder->appsink = GST_APP_SINK(sink);
     decoder->pipeline = playbin;
 #else
     gchar *desc;
@@ -415,8 +459,11 @@ static gboolean create_pipeline(SpiceGstDecoder *decoder)
     decoder->appsink = GST_APP_SINK(gst_bin_get_by_name(GST_BIN(decoder->pipeline), "sink"));
 #endif
 
-    appsink_cbs.new_sample = new_sample;
-    gst_app_sink_set_callbacks(decoder->appsink, &appsink_cbs, decoder, NULL);
+    if (decoder->appsink) {
+        GstAppSinkCallbacks appsink_cbs = { NULL };
+        appsink_cbs.new_sample = new_sample;
+        gst_app_sink_set_callbacks(decoder->appsink, &appsink_cbs, decoder, NULL);
+    }
     bus = gst_pipeline_get_bus(GST_PIPELINE(decoder->pipeline));
     gst_bus_add_watch(bus, handle_pipeline_message, decoder);
     gst_object_unref(bus);
@@ -565,13 +612,18 @@ static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
     GST_BUFFER_DTS(buffer) = GST_CLOCK_TIME_NONE;
     GST_BUFFER_PTS(buffer) = gst_clock_get_time(decoder->clock) - gst_element_get_base_time(decoder->pipeline) + ((uint64_t)MAX(0, latency)) * 1000 * 1000;
 
-    SpiceGstFrame *gst_frame = create_gst_frame(buffer, frame);
-    g_mutex_lock(&decoder->queues_mutex);
-    g_queue_push_tail(decoder->decoding_queue, gst_frame);
-    g_mutex_unlock(&decoder->queues_mutex);
+    if (decoder->appsink != NULL) {
+        SpiceGstFrame *gst_frame = create_gst_frame(buffer, frame);
+        g_mutex_lock(&decoder->queues_mutex);
+        g_queue_push_tail(decoder->decoding_queue, gst_frame);
+        g_mutex_unlock(&decoder->queues_mutex);
+    } else {
+        frame->free(frame);
+        frame = NULL;
+    }
 
     if (gst_app_src_push_buffer(decoder->appsrc, buffer) != GST_FLOW_OK) {
-        SPICE_DEBUG("GStreamer error: unable to push frame of size %u", frame->size);
+        SPICE_DEBUG("GStreamer error: unable to push frame");
         stream_dropped_frame_on_playback(decoder->base.stream);
     }
     return TRUE;

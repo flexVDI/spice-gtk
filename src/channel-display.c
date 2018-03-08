@@ -91,6 +91,7 @@ enum {
     SPICE_DISPLAY_INVALIDATE,
     SPICE_DISPLAY_MARK,
     SPICE_DISPLAY_GL_DRAW,
+    SPICE_DISPLAY_STREAMING_MODE,
 
     SPICE_DISPLAY_LAST_SIGNAL,
 };
@@ -453,6 +454,30 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
                      G_TYPE_NONE,
                      4,
                      G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
+
+    /**
+     * SpiceDisplayChannel::streaming-mode:
+     * @display: the #SpiceDisplayChannel that emitted the signal
+     * @streaming_mode: %TRUE when it's streaming mode
+     *
+     * Return: handle for the display window if possible
+     *
+     * The #SpiceDisplayChannel::streaming_mode signal is emitted when
+     * spice server is working in streaming mode.
+     *
+     * Since 0.35
+     **/
+    signals[SPICE_DISPLAY_STREAMING_MODE] =
+        g_signal_new("streaming-mode",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     0,
+                     G_STRUCT_OFFSET(SpiceDisplayChannelClass,
+                                     streaming_mode),
+                     NULL, NULL,
+                     g_cclosure_user_marshal_POINTER__BOOLEAN,
+                     G_TYPE_POINTER,
+                     1,
+                     G_TYPE_BOOLEAN);
 
     g_type_class_add_private(klass, sizeof(SpiceDisplayChannelPrivate));
 
@@ -1370,6 +1395,15 @@ void stream_display_frame(display_stream *st, SpiceFrame *frame,
     }
 }
 
+guintptr get_window_handle(display_stream *st)
+{
+   void* handle = 0;
+
+   g_signal_emit(st->channel, signals[SPICE_DISPLAY_STREAMING_MODE], 0,
+                 st->surface->streaming_mode, &handle);
+   return st->surface->streaming_mode ? (guintptr)handle : 0;
+}
+
 /* after a sequence of 3 drops, push a report to the server, even
  * if the report window is bigger */
 #define STREAM_REPORT_DROP_SEQ_LEN_LIMIT 3
@@ -1774,6 +1808,7 @@ static void display_handle_surface_create(SpiceChannel *channel, SpiceMsgIn *in)
     surface->height = create->height;
     surface->stride = create->width * 4;
     surface->size   = surface->height * surface->stride;
+    surface->streaming_mode = !!(create->flags & SPICE_SURFACE_FLAGS_STREAMING_MODE);
 
     if (create->flags & SPICE_SURFACE_FLAGS_PRIMARY) {
         SPICE_DEBUG("surface flags: %x", create->flags);

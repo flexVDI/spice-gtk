@@ -98,6 +98,7 @@ gboolean gstvideo_has_codec(int codec_type);
 typedef struct display_surface {
     guint32                     surface_id;
     bool                        primary;
+    bool                        streaming_mode;
     enum SpiceSurfaceFmt        format;
     int                         width, height, stride, size;
     uint8_t                     *data;
@@ -195,6 +196,7 @@ guint32 stream_get_time(display_stream *st);
 void stream_dropped_frame_on_playback(display_stream *st);
 #define SPICE_UNKNOWN_STRIDE 0
 void stream_display_frame(display_stream *st, SpiceFrame *frame, uint32_t width, uint32_t height, int stride, uint8_t* data);
+guintptr get_window_handle(display_stream *st);
 
 
 G_END_DECLS

@@ -660,6 +660,10 @@ G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 G_GNUC_END_IGNORE_DEPRECATIONS
 #endif
 #endif
+    area = gtk_drawing_area_new();
+    gtk_stack_add_named(d->stack, area, "gst-area");
+    gtk_widget_set_double_buffered(area, true);
+
     gtk_widget_show_all(widget);
 
     g_signal_connect(display, "grab-broken-event", G_CALLBACK(grab_broken), NULL);
@@ -2589,6 +2593,28 @@ static void queue_draw_area(SpiceDisplay *display, gint x, gint y,
                                x, y, width, height);
 }
 
+static void* prepare_streaming_mode(SpiceChannel *channel, bool streaming_mode, gpointer data)
+{
+#ifdef GDK_WINDOWING_X11
+    SpiceDisplay *display = data;
+    SpiceDisplayPrivate *d = display->priv;
+
+    /* GstVideoOverlay will currently be used only under x */
+    if (!g_getenv("DISABLE_GSTVIDEOOVERLAY") &&
+        streaming_mode &&
+        GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
+        GdkWindow *window;
+
+        window = gtk_widget_get_window(GTK_WIDGET(display));
+        if (window && gdk_window_ensure_native(window)) {
+            gtk_stack_set_visible_child_name(d->stack, "gst-area");
+            return (void*)(uintptr_t)GDK_WINDOW_XID(window);
+        }
+    }
+#endif
+    return NULL;
+}
+
 static void invalidate(SpiceChannel *channel,
                        gint x, gint y, gint w, gint h, gpointer data)
 {
@@ -2962,6 +2988,8 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         spice_g_signal_connect_object(channel, "notify::monitors",
                                       G_CALLBACK(spice_display_widget_update_monitor_area),
                                       display, G_CONNECT_AFTER | G_CONNECT_SWAPPED);
+        spice_g_signal_connect_object(channel, "streaming-mode",
+                                      G_CALLBACK(prepare_streaming_mode), display, G_CONNECT_AFTER);
         if (spice_display_channel_get_primary(channel, 0, &primary)) {
             primary_create(channel, primary.format, primary.width, primary.height,
                            primary.stride, primary.shmid, primary.data, display);
