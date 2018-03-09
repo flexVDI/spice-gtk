@@ -174,11 +174,13 @@ const guint16 *vnc_display_keymap_gdk2xtkbd_table(GdkWindow *window,
 			VNC_DEBUG("Using xquartz keycode mapping");
 			*maplen = G_N_ELEMENTS(keymap_xorgxquartz2xtkbd);
 			return keymap_xorgxquartz2xtkbd;
-		} else if (keycodes && STRPREFIX(keycodes, "evdev")) {
+		} else if ((keycodes && STRPREFIX(keycodes, "evdev")) ||
+			   (XKeysymToKeycode(xdisplay, XK_Page_Up) == 0x70)) {
 			VNC_DEBUG("Using evdev keycode mapping");
 			*maplen = G_N_ELEMENTS(keymap_xorgevdev2xtkbd);
 			return keymap_xorgevdev2xtkbd;
-		} else if (keycodes && STRPREFIX(keycodes, "xfree86")) {
+		} else if ((keycodes && STRPREFIX(keycodes, "xfree86")) ||
+			   (XKeysymToKeycode(xdisplay, XK_Page_Up) == 0x63)) {
 			VNC_DEBUG("Using xfree86 keycode mapping");
 			*maplen = G_N_ELEMENTS(keymap_xorgkbd2xtkbd);
 			return keymap_xorgkbd2xtkbd;
