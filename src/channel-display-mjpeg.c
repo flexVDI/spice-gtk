@@ -191,7 +191,6 @@ static gboolean mjpeg_decoder_decode_frame(gpointer video_decoder)
 
 static void mjpeg_decoder_schedule(MJpegDecoder *decoder)
 {
-    SPICE_DEBUG("%s", __FUNCTION__);
     if (decoder->timer_id) {
         return;
     }
@@ -246,8 +245,6 @@ static gboolean mjpeg_decoder_queue_frame(VideoDecoder *video_decoder,
 {
     MJpegDecoder *decoder = (MJpegDecoder*)video_decoder;
     SpiceFrame *last_frame;
-
-    SPICE_DEBUG("%s", __FUNCTION__);
 
     last_frame = g_queue_peek_tail(decoder->msgq);
     if (last_frame) {
