@@ -106,7 +106,7 @@ static display_surface *find_surface(SpiceDisplayChannelPrivate *c, guint32 surf
 static void spice_display_channel_reset(SpiceChannel *channel, gboolean migrating);
 static void spice_display_channel_reset_capabilities(SpiceChannel *channel);
 static void destroy_canvas(display_surface *surface);
-static void destroy_display_stream(gpointer st);
+static void display_stream_destroy(gpointer st);
 static void display_session_mm_time_reset_cb(SpiceSession *session, gpointer data);
 static SpiceGlScanout* spice_gl_scanout_copy(const SpiceGlScanout *scanout);
 
@@ -1269,7 +1269,7 @@ static display_stream *display_stream_create(SpiceChannel *channel,
     }
     if (st->video_decoder == NULL) {
         spice_printerr("could not create a video decoder for codec %u", codec_type);
-        g_clear_pointer(&st, destroy_display_stream);
+        g_clear_pointer(&st, display_stream_destroy);
     }
     return st;
 }
@@ -1282,7 +1282,7 @@ static void destroy_stream(SpiceChannel *channel, int id)
     g_return_if_fail(c->streams != NULL);
     g_return_if_fail(c->nstreams > id);
 
-    g_clear_pointer(&c->streams[id], destroy_display_stream);
+    g_clear_pointer(&c->streams[id], display_stream_destroy);
 }
 
 static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
@@ -1596,7 +1596,7 @@ static void display_handle_stream_clip(SpiceChannel *channel, SpiceMsgIn *in)
     display_update_stream_region(st);
 }
 
-static void destroy_display_stream(gpointer st_pointer)
+static void display_stream_destroy(gpointer st_pointer)
 {
     int i;
     display_stream *st = st_pointer;
