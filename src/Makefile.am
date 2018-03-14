@@ -67,7 +67,6 @@ KEYMAP_CSV = keycodemapdb/data/keymaps.csv
 SPICE_COMMON_CPPFLAGS =						\
 	-DSPICE_COMPILATION					\
 	-DG_LOG_DOMAIN=\"GSpice\"				\
-	-DSPICE_GTK_LOCALEDIR=\"${SPICE_GTK_LOCALEDIR}\"	\
 	-DPNP_IDS=\""$(PNP_IDS)"\"				\
 	-DUSB_IDS=\""$(USB_IDS)"\"				\
 	-I$(top_srcdir)						\

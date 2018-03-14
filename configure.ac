@@ -20,9 +20,6 @@ AM_GNU_GETTEXT_VERSION([0.18.2])
 AM_GNU_GETTEXT([external])
 
 
-SPICE_GTK_LOCALEDIR=[${datadir}/locale]
-AC_SUBST(SPICE_GTK_LOCALEDIR)
-
 GTK_DOC_CHECK([1.14],[--flavour no-tmpl])
 
 AC_PROG_CC
