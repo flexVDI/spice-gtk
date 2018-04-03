@@ -2653,6 +2653,9 @@ static void cursor_set(SpiceCursorChannel *channel,
     g_object_get(G_OBJECT(channel), "cursor", &cursor_shape, NULL);
     if (G_UNLIKELY(cursor_shape == NULL || cursor_shape->data == NULL)) {
         g_warn_if_reached();
+        if (cursor_shape != NULL) {
+            g_boxed_free(SPICE_TYPE_CURSOR_SHAPE, cursor_shape);
+        }
         return;
     }
 
@@ -2667,6 +2670,7 @@ static void cursor_set(SpiceCursorChannel *channel,
                                                NULL, NULL);
     d->mouse_hotspot.x = cursor_shape->hot_spot_x;
     d->mouse_hotspot.y = cursor_shape->hot_spot_y;
+    g_boxed_free(SPICE_TYPE_CURSOR_SHAPE, cursor_shape);
     cursor = gdk_cursor_new_from_pixbuf(gtk_widget_get_display(GTK_WIDGET(display)),
                                         d->mouse_pixbuf,
                                         d->mouse_hotspot.x,
