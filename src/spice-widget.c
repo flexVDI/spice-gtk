@@ -2992,6 +2992,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
 
         g_object_get(G_OBJECT(channel), "cursor", &cursor_shape, NULL);
         if (cursor_shape != NULL) {
+            g_boxed_free(SPICE_TYPE_CURSOR_SHAPE, cursor_shape);
             cursor_set(d->cursor, NULL, display);
         }
         return;
