@@ -2659,7 +2659,6 @@ static void cursor_set(SpiceCursorChannel *channel,
 
     g_object_get(G_OBJECT(channel), "cursor", &cursor_shape, NULL);
     if (G_UNLIKELY(cursor_shape == NULL || cursor_shape->data == NULL)) {
-        g_warn_if_reached();
         if (cursor_shape != NULL) {
             g_boxed_free(SPICE_TYPE_CURSOR_SHAPE, cursor_shape);
         }
