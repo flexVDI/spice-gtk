@@ -2531,7 +2531,7 @@ static void *spice_channel_coroutine(void *data)
     int rc, delay_val = 1;
     /* When some other SSL/TLS version becomes obsolete, add it to this
      * variable. */
-    long ssl_options = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3;
+    long ssl_options = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1;
 
     CHANNEL_DEBUG(channel, "Started background coroutine %p", &c->coroutine);
 
