@@ -817,6 +817,7 @@ static void spice_usbredir_channel_up(SpiceChannel *c)
     SpiceUsbredirChannel *channel = SPICE_USBREDIR_CHANNEL(c);
     SpiceUsbredirChannelPrivate *priv = channel->priv;
 
+    g_return_if_fail(priv->host != NULL);
     /* Flush any pending writes */
     usbredirhost_write_guest_data(priv->host);
 }
