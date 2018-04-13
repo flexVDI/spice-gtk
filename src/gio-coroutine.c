@@ -24,8 +24,8 @@
 
 typedef struct _GConditionWaitSource
 {
+    GSource parent; // this MUST be the first field
     GCoroutine *self;
-    GSource src;
     GConditionWaitFunc func;
     gpointer data;
 } GConditionWaitSource;
