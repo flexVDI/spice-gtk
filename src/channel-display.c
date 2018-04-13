@@ -1776,7 +1776,7 @@ static void display_handle_surface_create(SpiceChannel *channel, SpiceMsgIn *in)
     surface->size   = surface->height * surface->stride;
 
     if (create->flags & SPICE_SURFACE_FLAGS_PRIMARY) {
-        SPICE_DEBUG("primary flags: %x", create->flags);
+        SPICE_DEBUG("surface flags: %x", create->flags);
         surface->primary = true;
         create_canvas(channel, surface);
         if (c->mark_false_event_id != 0) {
