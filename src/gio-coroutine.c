@@ -118,7 +118,7 @@ static gboolean g_condition_wait_dispatch(GSource *src G_GNUC_UNUSED,
     return cb(data);
 }
 
-GSourceFuncs waitFuncs = {
+static GSourceFuncs waitFuncs = {
     .prepare = g_condition_wait_prepare,
     .check = g_condition_wait_check,
     .dispatch = g_condition_wait_dispatch,
