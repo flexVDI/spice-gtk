@@ -25,7 +25,6 @@
 typedef struct _GConditionWaitSource
 {
     GSource parent; // this MUST be the first field
-    GCoroutine *self;
     GConditionWaitFunc func;
     gpointer data;
 } GConditionWaitSource;
@@ -167,7 +166,6 @@ gboolean g_coroutine_condition_wait(GCoroutine *self, GConditionWaitFunc func, g
 
     vsrc->func = func;
     vsrc->data = data;
-    vsrc->self = self;
 
     self->condition_id = g_source_attach(src, NULL);
     g_source_set_callback(src, g_condition_wait_helper, self, NULL);
