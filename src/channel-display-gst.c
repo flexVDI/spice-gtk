@@ -438,9 +438,15 @@ static gboolean create_pipeline(SpiceGstDecoder *decoder)
 static void spice_gst_decoder_reschedule(VideoDecoder *video_decoder)
 {
     SpiceGstDecoder *decoder = (SpiceGstDecoder*)video_decoder;
-    if (decoder->timer_id != 0) {
-        g_source_remove(decoder->timer_id);
-        decoder->timer_id = 0;
+    guint timer_id;
+
+    g_mutex_lock(&decoder->queues_mutex);
+    timer_id = decoder->timer_id;
+    decoder->timer_id = 0;
+    g_mutex_unlock(&decoder->queues_mutex);
+
+    if (timer_id != 0) {
+        g_source_remove(timer_id);
     }
     schedule_frame(decoder);
 }
