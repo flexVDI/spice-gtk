@@ -884,13 +884,12 @@ static void spice_channel_flush_sasl(SpiceChannel *channel, const void *data, si
 static void spice_channel_write(SpiceChannel *channel, const void *data, size_t len)
 {
 #ifdef HAVE_SASL
-    SpiceChannelPrivate *c = channel->priv;
-
-    if (c->sasl_conn)
+    if (channel->priv->sasl_conn) {
         spice_channel_flush_sasl(channel, data, len);
-    else
+        return;
+    }
 #endif
-        spice_channel_flush_wire(channel, data, len);
+    spice_channel_flush_wire(channel, data, len);
 }
 
 /* coroutine context */
