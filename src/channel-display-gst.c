@@ -559,8 +559,9 @@ static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
     GST_BUFFER_DTS(buffer) = GST_CLOCK_TIME_NONE;
     GST_BUFFER_PTS(buffer) = gst_clock_get_time(decoder->clock) - gst_element_get_base_time(decoder->pipeline) + ((uint64_t)MAX(0, latency)) * 1000 * 1000;
 
+    SpiceGstFrame *gst_frame = create_gst_frame(buffer, frame);
     g_mutex_lock(&decoder->queues_mutex);
-    g_queue_push_tail(decoder->decoding_queue, create_gst_frame(buffer, frame));
+    g_queue_push_tail(decoder->decoding_queue, gst_frame);
     g_mutex_unlock(&decoder->queues_mutex);
 
     if (gst_app_src_push_buffer(decoder->appsrc, buffer) != GST_FLOW_OK) {
