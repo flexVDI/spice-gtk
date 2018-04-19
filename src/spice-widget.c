@@ -2641,6 +2641,13 @@ static void mark(SpiceDisplay *display, gint mark)
     update_ready(display);
 }
 
+static void cursor_shape_destroy(G_GNUC_UNUSED guchar *pixels, gpointer data)
+{
+    SpiceCursorShape *cursor_shape = data;
+
+    g_boxed_free(SPICE_TYPE_CURSOR_SHAPE, cursor_shape);
+}
+
 static void cursor_set(SpiceCursorChannel *channel,
                        G_GNUC_UNUSED GParamSpec *pspec,
                        gpointer data)
@@ -2667,10 +2674,9 @@ static void cursor_set(SpiceCursorChannel *channel,
                                                cursor_shape->width,
                                                cursor_shape->height,
                                                cursor_shape->width * 4,
-                                               NULL, NULL);
+                                               cursor_shape_destroy, cursor_shape);
     d->mouse_hotspot.x = cursor_shape->hot_spot_x;
     d->mouse_hotspot.y = cursor_shape->hot_spot_y;
-    g_boxed_free(SPICE_TYPE_CURSOR_SHAPE, cursor_shape);
     cursor = gdk_cursor_new_from_pixbuf(gtk_widget_get_display(GTK_WIDGET(display)),
                                         d->mouse_pixbuf,
                                         d->mouse_hotspot.x,
