@@ -862,7 +862,7 @@ static void spice_display_channel_init(SpiceDisplayChannel *channel)
 
     c = channel->priv = SPICE_DISPLAY_CHANNEL_GET_PRIVATE(channel);
 
-    c->surfaces = g_hash_table_new_full(NULL, NULL, NULL, destroy_surface);
+    c->surfaces = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, destroy_surface);
     c->image_cache.ops = &image_cache_ops;
     c->palette_cache.ops = &palette_cache_ops;
     c->image_surfaces.ops = &image_surfaces_ops;
