@@ -86,6 +86,11 @@ AC_DEFUN([SPICE_COMPILE_WARNINGS],[
     # We use some deprecated functions to avoid #ifdef hell while maintaining
     # compat with older gtk / glib versions
     gl_WARN_ADD([-Wno-error=deprecated-declarations])
+    # g_source_set_callback() can't be compatible with this warning. Its API
+    # doc states:
+    # "The exact type of func depends on the type of source; ie. you should
+    # not count on func being called with data as its first parameter."
+    gl_WARN_ADD([-Wno-cast-function-type])
 
 
 
