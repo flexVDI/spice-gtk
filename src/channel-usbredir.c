@@ -712,7 +712,7 @@ static int try_write_compress_LZ4(SpiceUsbredirChannel *channel, uint8_t *data, 
                                          compressed_data_msg.compressed_data,
                                          compressed_data_count,
                                          (spice_marshaller_item_free_func)g_free,
-                                         channel);
+                                         NULL);
         spice_msg_out_send(msg_out_compressed);
         return TRUE;
     }
