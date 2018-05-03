@@ -32,9 +32,13 @@ BOOL WINAPI DllMain (HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
     if (fdwReason == DLL_PROCESS_ATTACH) {
         char *basedir =
             g_win32_get_package_installation_directory_of_module(hinstDLL);
-        char *localedir = g_build_filename(basedir, "share", "locale", NULL);
+        char *utf8_localedir = g_build_filename(basedir, "share", "locale", NULL);
+        /* bindtextdomain's 2nd argument is not UTF-8 aware */
+        char *localedir = g_win32_locale_filename_from_utf8 (utf8_localedir);
+
         bindtextdomain(GETTEXT_PACKAGE, localedir);
         g_free(localedir);
+        g_free(utf8_localedir);
         g_free(basedir);
         bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
     }
