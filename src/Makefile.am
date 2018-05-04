@@ -301,11 +301,6 @@ nodist_libspice_client_glibinclude_HEADERS =	\
 	spice-glib-enums.h			\
 	$(NULL)
 
-# file for API compatibility, but we don't want warning during our compilation
-dist_libspice_client_glibinclude_DATA =	\
-	spice-channel-enums.h		\
-	$(NULL)
-
 if HAVE_PULSE
 libspice_client_glib_2_0_la_SOURCES +=	\
 	spice-pulse.c			\
