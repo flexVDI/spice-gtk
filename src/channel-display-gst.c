@@ -318,6 +318,7 @@ static gboolean handle_pipeline_message(GstBus *bus, GstMessage *msg, gpointer v
             if (decoder->win_handle != 0) {
                 overlay = GST_VIDEO_OVERLAY(GST_MESSAGE_SRC(msg));
                 gst_video_overlay_set_window_handle(overlay, decoder->win_handle);
+                gst_video_overlay_handle_events(overlay, false);
             }
         }
         break;
