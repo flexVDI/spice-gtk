@@ -1623,9 +1623,9 @@ G_GNUC_END_IGNORE_DEPRECATIONS
         return true;
 
     if (key->keyval == GDK_KEY_Pause
-#ifdef G_OS_WIN32
-        /* for some reason GDK does not fill keyval for VK_PAUSE
-         * See https://bugzilla.gnome.org/show_bug.cgi?id=769214
+#if defined(G_OS_WIN32) && !GTK_CHECK_VERSION(3, 22, 0)
+        /* Bug https://bugzilla.gnome.org/show_bug.cgi?id=769214
+         * Fixed in 3.22 with 125ef35
          */
         || key->hardware_keycode == VK_PAUSE
 #endif
