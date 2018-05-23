@@ -470,9 +470,7 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
     signals[SPICE_DISPLAY_STREAMING_MODE] =
         g_signal_new("streaming-mode",
                      G_OBJECT_CLASS_TYPE(gobject_class),
-                     0,
-                     G_STRUCT_OFFSET(SpiceDisplayChannelClass,
-                                     streaming_mode),
+                     0, 0,
                      NULL, NULL,
                      g_cclosure_user_marshal_POINTER__BOOLEAN,
                      G_TYPE_POINTER,

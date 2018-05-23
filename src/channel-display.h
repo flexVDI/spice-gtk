@@ -141,8 +141,6 @@ struct _SpiceDisplayChannelClass {
                                gint x, gint y, gint w, gint h);
     void (*display_mark)(SpiceChannel *channel,
                          gboolean mark);
-    void (*streaming_mode)(SpiceChannel *channel,
-                           gboolean streaming_mode);
 
     /*< private >*/
 };
