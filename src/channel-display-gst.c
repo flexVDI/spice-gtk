@@ -591,6 +591,7 @@ static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
     if (decoder->pipeline == NULL) {
         /* An error occurred, causing the GStreamer pipeline to be freed */
         spice_warning("An error occurred, stopping the video stream");
+        frame->free(frame);
         return FALSE;
     }
 
@@ -598,6 +599,7 @@ static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
     if (decoder->appsrc == NULL) {
         spice_warning("Error: Playbin has not yet initialized the Appsrc element");
         stream_dropped_frame_on_playback(decoder->base.stream);
+        frame->free(frame);
         return TRUE;
     }
 #endif
