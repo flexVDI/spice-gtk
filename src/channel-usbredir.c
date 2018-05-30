@@ -151,7 +151,6 @@ static void _channel_reset_cb(GObject *gobject,
     SPICE_CHANNEL_CLASS(spice_usbredir_channel_parent_class)->channel_reset(spice_channel, migrating);
 
     spice_usbredir_channel_disconnect_device_finish(channel, result, &err);
-    g_object_unref(result);
 }
 
 static void spice_usbredir_channel_reset(SpiceChannel *c, gboolean migrating)
