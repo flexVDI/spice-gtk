@@ -94,6 +94,7 @@ struct _SpiceSessionPrivate {
     int               protocol;
     SpiceChannel      *cmain; /* weak reference */
     Ring              channels;
+    guint             channels_destroying;
     guint32           mm_time;
     gboolean          client_provided_sockets;
     guint64           mm_time_at_clock;
@@ -210,6 +211,7 @@ enum {
     SPICE_SESSION_CHANNEL_NEW,
     SPICE_SESSION_CHANNEL_DESTROY,
     SPICE_SESSION_MM_TIME_RESET,
+    SPICE_SESSION_DISCONNECTED,
     SPICE_SESSION_LAST_SIGNAL,
 };
 
@@ -343,6 +345,8 @@ spice_session_dispose(GObject *gobject)
     g_warn_if_fail(s->migration_left == NULL);
     g_warn_if_fail(s->after_main_init == 0);
     g_warn_if_fail(s->disconnecting == 0);
+    g_warn_if_fail(s->channels_destroying == 0);
+    g_warn_if_fail(ring_is_empty(&s->channels));
 
     g_clear_object(&s->audio_manager);
     g_clear_object(&s->usb_manager);
@@ -1314,6 +1318,23 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                      SPICE_TYPE_CHANNEL);
 
     /**
+     * SpiceSession::disconnected:
+     * @session: the session that emitted the signal
+     *
+     * The #SpiceSession::disconnected signal is emitted when all channels have been destroyed.
+     * Since: 0.35
+     **/
+    signals[SPICE_SESSION_DISCONNECTED] =
+        g_signal_new("disconnected",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_FIRST,
+                     0, NULL, NULL,
+                     g_cclosure_marshal_VOID__VOID,
+                     G_TYPE_NONE,
+                     0,
+                     NULL);
+
+    /**
      * SpiceSession::mm-time-reset:
      * @session: the session that emitted the signal
      *
@@ -2269,6 +2290,17 @@ void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel)
     g_signal_emit(session, signals[SPICE_SESSION_CHANNEL_NEW], 0, channel);
 }
 
+static void channel_finally_destroyed(gpointer data, GObject *channel)
+{
+    SpiceSession *session = SPICE_SESSION(data);
+    SpiceSessionPrivate *s = session->priv;
+    s->channels_destroying--;
+    if (ring_is_empty(&s->channels) && (s->channels_destroying == 0)) {
+        g_signal_emit(session, signals[SPICE_SESSION_DISCONNECTED], 0);
+    }
+    g_object_unref(session);
+}
+
 static void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel)
 {
     g_return_if_fail(SPICE_IS_SESSION(session));
@@ -2302,6 +2334,12 @@ static void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *c
 
     g_clear_object(&channel->priv->session);
     spice_channel_disconnect(channel, SPICE_CHANNEL_NONE);
+
+    /* Wait until the channel is properly freed so that we can emit a
+     * 'disconnected' signal */
+    s->channels_destroying++;
+    g_object_weak_ref(G_OBJECT(channel), channel_finally_destroyed, g_object_ref(session));
+
     g_object_unref(channel);
 }
 
