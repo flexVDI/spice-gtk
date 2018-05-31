@@ -86,7 +86,7 @@ AC_CHECK_LIBM
 AC_SUBST(LIBM)
 
 AC_CONFIG_SUBDIRS([spice-common])
-PKG_CHECK_MODULES([SPICE_PROTOCOL], [spice-protocol >= 0.12.13])
+PKG_CHECK_MODULES([SPICE_PROTOCOL], [spice-protocol >= 0.12.14])
 
 COMMON_CFLAGS='-I${top_builddir}/spice-common/ -I${top_srcdir}/spice-common/ ${SPICE_PROTOCOL_CFLAGS}'
 AC_SUBST(COMMON_CFLAGS)
