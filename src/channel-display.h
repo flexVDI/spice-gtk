@@ -125,7 +125,6 @@ struct _SpiceDisplayChannel {
  * @display_primary_destroy: Signal class handler for the #SpiceDisplayChannel::display-primary-destroy signal.
  * @display_invalidate: Signal class handler for the #SpiceDisplayChannel::display-invalidate signal.
  * @display_mark: Signal class handler for the #SpiceDisplayChannel::display-mark signal.
- * @streaming_mode: Signal class handler for the #SpiceDisplayChannel::streaming-mode signal.
  *
  * Class structure for #SpiceDisplayChannel.
  */

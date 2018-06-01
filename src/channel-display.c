@@ -462,7 +462,7 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
      *
      * Return: handle for the display window if possible
      *
-     * The #SpiceDisplayChannel::streaming_mode signal is emitted when
+     * The #SpiceDisplayChannel::streaming-mode signal is emitted when
      * spice server is working in streaming mode.
      *
      * Since 0.35
