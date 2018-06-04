@@ -1970,14 +1970,14 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
 #ifdef HAVE_SASL
         if (spice_channel_test_common_capability(channel, SPICE_COMMON_CAP_AUTH_SASL)) {
             CHANNEL_DEBUG(channel, "Choosing SASL mechanism");
-            auth.auth_mechanism = SPICE_COMMON_CAP_AUTH_SASL;
+            auth.auth_mechanism = GUINT32_TO_LE(SPICE_COMMON_CAP_AUTH_SASL);
             spice_channel_write(channel, &auth, sizeof(auth));
             if (!spice_channel_perform_auth_sasl(channel))
                 return FALSE;
         } else
 #endif
         if (spice_channel_test_common_capability(channel, SPICE_COMMON_CAP_AUTH_SPICE)) {
-            auth.auth_mechanism = SPICE_COMMON_CAP_AUTH_SPICE;
+            auth.auth_mechanism = GUINT32_TO_LE(SPICE_COMMON_CAP_AUTH_SPICE);
             spice_channel_write(channel, &auth, sizeof(auth));
             if ((event = spice_channel_send_spice_ticket(channel)) != SPICE_CHANNEL_NONE)
                 goto error;
