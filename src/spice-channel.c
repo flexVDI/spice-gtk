@@ -1509,6 +1509,12 @@ spice_channel_gather_sasl_credentials(SpiceChannel *channel,
     return ret;
 }
 
+static void spice_channel_write_u32_le(SpiceChannel *channel, guint32 n)
+{
+    n = GUINT32_TO_LE(n);
+    spice_channel_write(channel, &n, sizeof(n));
+}
+
 /*
  *
  * Init msg from server
@@ -1708,17 +1714,17 @@ restart:
 
     /* Send back the chosen mechname */
     len = strlen(mechname);
-    spice_channel_write(channel, &len, sizeof(guint32));
+    spice_channel_write_u32_le(channel, len);
     spice_channel_write(channel, mechname, len);
 
     /* NB, distinction of NULL vs "" is *critical* in SASL */
     if (clientout) {
         len = clientoutlen + 1;
-        spice_channel_write(channel, &len, sizeof(guint32));
+        spice_channel_write_u32_le(channel, len);
         spice_channel_write(channel, clientout, len);
     } else {
         len = 0;
-        spice_channel_write(channel, &len, sizeof(guint32));
+        spice_channel_write_u32_le(channel, len);
     }
 
     if (c->has_error)
@@ -1794,11 +1800,11 @@ restart:
         /* NB, distinction of NULL vs "" is *critical* in SASL */
         if (clientout) {
             len = clientoutlen + 1;
-            spice_channel_write(channel, &len, sizeof(guint32));
+            spice_channel_write_u32_le(channel, len);
             spice_channel_write(channel, clientout, len);
         } else {
             len = 0;
-            spice_channel_write(channel, &len, sizeof(guint32));
+            spice_channel_write_u32_le(channel, len);
         }
 
         if (c->has_error)
