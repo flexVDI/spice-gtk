@@ -11,11 +11,6 @@ typedef struct _Fixture {
     GHashTable     *xfer_tasks;
 } Fixture;
 
-typedef struct _AgentAsync {
-    SpiceFileTransferTask          *xfer_task;
-    VDAgentFileXferStatusMessage    msg;
-} AgentAsync;
-
 #define SINGLE_FILE     1
 #define MULTIPLE_FILES  10
 
