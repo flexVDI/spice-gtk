@@ -682,6 +682,8 @@ G_GNUC_END_IGNORE_DEPRECATIONS
                           GDK_ENTER_NOTIFY_MASK |
                           GDK_LEAVE_NOTIFY_MASK |
                           GDK_KEY_PRESS_MASK |
+                          /* on Wayland, only smooth-scroll events are emitted */
+                          GDK_SMOOTH_SCROLL_MASK |
                           GDK_SCROLL_MASK);
     gtk_widget_set_can_focus(widget, true);
     gtk_event_box_set_above_child(GTK_EVENT_BOX(widget), true);
@@ -2005,11 +2007,20 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
     return true;
 }
 
+static void press_and_release(SpiceDisplay *display,
+                              gint button, gint button_state)
+{
+    SpiceDisplayPrivate *d = display->priv;
+
+    spice_inputs_channel_button_press(d->inputs, button, button_state);
+    spice_inputs_channel_button_release(d->inputs, button, button_state);
+}
+
 static gboolean scroll_event(GtkWidget *widget, GdkEventScroll *scroll)
 {
-    int button;
     SpiceDisplay *display = SPICE_DISPLAY(widget);
     SpiceDisplayPrivate *d = display->priv;
+    gint button_state = button_mask_gdk_to_spice(scroll->state);
 
     DISPLAY_DEBUG(display, "%s", __FUNCTION__);
 
@@ -2018,19 +2029,29 @@ static gboolean scroll_event(GtkWidget *widget, GdkEventScroll *scroll)
     if (d->disable_inputs)
         return true;
 
-    if (scroll->direction == GDK_SCROLL_UP)
-        button = SPICE_MOUSE_BUTTON_UP;
-    else if (scroll->direction == GDK_SCROLL_DOWN)
-        button = SPICE_MOUSE_BUTTON_DOWN;
-    else {
+    switch (scroll->direction) {
+    case GDK_SCROLL_UP:
+        press_and_release(display, SPICE_MOUSE_BUTTON_UP, button_state);
+        break;
+    case GDK_SCROLL_DOWN:
+        press_and_release(display, SPICE_MOUSE_BUTTON_DOWN, button_state);
+        break;
+    case GDK_SCROLL_SMOOTH:
+        d->scroll_delta_y += scroll->delta_y;
+        while (ABS(d->scroll_delta_y) > 1) {
+            if (d->scroll_delta_y < 0) {
+                press_and_release(display, SPICE_MOUSE_BUTTON_UP, button_state);
+                d->scroll_delta_y += 1;
+            } else {
+                press_and_release(display, SPICE_MOUSE_BUTTON_DOWN, button_state);
+                d->scroll_delta_y -= 1;
+            }
+        }
+        break;
+    default:
         DISPLAY_DEBUG(display, "unsupported scroll direction");
-        return true;
     }
 
-    spice_inputs_channel_button_press(d->inputs, button,
-                                      button_mask_gdk_to_spice(scroll->state));
-    spice_inputs_channel_button_release(d->inputs, button,
-                                        button_mask_gdk_to_spice(scroll->state));
     return true;
 }
 

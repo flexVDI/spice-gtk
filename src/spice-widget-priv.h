@@ -151,6 +151,7 @@ struct _SpiceDisplayPrivate {
         SpiceGlScanout      scanout;
     } egl;
 #endif // HAVE_EGL
+    double scroll_delta_y;
 };
 
 int      spice_cairo_image_create                 (SpiceDisplay *display);
