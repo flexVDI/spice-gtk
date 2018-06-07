@@ -305,7 +305,7 @@ static void playback_start(SpicePlaybackChannel *channel, gint format, gint chan
                             "layout=interleaved", channels, frequency);
         gchar *pipeline = g_strdup (g_getenv("SPICE_GST_AUDIOSINK"));
         if (pipeline == NULL)
-            pipeline = g_strdup_printf("appsrc is-live=1 do-timestamp=0 caps=\"%s\" name=\"appsrc\" ! queue ! "
+            pipeline = g_strdup_printf("appsrc is-live=1 do-timestamp=0 format=time caps=\"%s\" name=\"appsrc\" ! queue ! "
                                        "audioconvert ! audioresample ! autoaudiosink name=\"audiosink\"", audio_caps);
         SPICE_DEBUG("audio pipeline: %s", pipeline);
         p->playback.pipe = gst_parse_launch(pipeline, &error);
