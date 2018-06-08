@@ -52,7 +52,7 @@
 #define SPICE_AUDIO_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_AUDIO, SpiceAudioPrivate))
 
-G_DEFINE_ABSTRACT_TYPE(SpiceAudio, spice_audio, G_TYPE_OBJECT)
+G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE(SpiceAudio, spice_audio, G_TYPE_OBJECT)
 
 enum {
     PROP_0,
@@ -141,8 +141,6 @@ static void spice_audio_class_init(SpiceAudioClass *klass)
                                G_TYPE_MAIN_CONTEXT,
                                G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
     g_object_class_install_property(gobject_class, PROP_MAIN_CONTEXT, pspec);
-
-    g_type_class_add_private(klass, sizeof(SpiceAudioPrivate));
 }
 
 static void spice_audio_init(SpiceAudio *self)

@@ -73,7 +73,7 @@ struct _SpiceDisplayChannelPrivate {
     SpiceGlScanout scanout;
 };
 
-G_DEFINE_TYPE(SpiceDisplayChannel, spice_display_channel, SPICE_TYPE_CHANNEL)
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceDisplayChannel, spice_display_channel, SPICE_TYPE_CHANNEL)
 
 /* Properties */
 enum {
@@ -476,8 +476,6 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
                      G_TYPE_POINTER,
                      1,
                      G_TYPE_BOOLEAN);
-
-    g_type_class_add_private(klass, sizeof(SpiceDisplayChannelPrivate));
 
     channel_set_handlers(SPICE_CHANNEL_CLASS(klass));
 }

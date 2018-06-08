@@ -69,7 +69,7 @@ struct _SpicePulsePrivate {
     GList                   *results;
 };
 
-G_DEFINE_TYPE(SpicePulse, spice_pulse, SPICE_TYPE_AUDIO)
+G_DEFINE_TYPE_WITH_PRIVATE(SpicePulse, spice_pulse, SPICE_TYPE_AUDIO)
 
 static const char *stream_state_names[] = {
     [ PA_STREAM_UNCONNECTED ] = "unconnected",
@@ -171,8 +171,6 @@ static void spice_pulse_class_init(SpicePulseClass *klass)
 
     gobject_class->finalize = spice_pulse_finalize;
     gobject_class->dispose = spice_pulse_dispose;
-
-    g_type_class_add_private(klass, sizeof(SpicePulsePrivate));
 }
 
 /* ------------------------------------------------------------------ */

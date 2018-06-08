@@ -88,7 +88,7 @@ struct _SpiceSmartcardChannelPrivate {
     SpiceSmartcardChannelMessage *in_flight_message;
 };
 
-G_DEFINE_TYPE(SpiceSmartcardChannel, spice_smartcard_channel, SPICE_TYPE_CHANNEL)
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceSmartcardChannel, spice_smartcard_channel, SPICE_TYPE_CHANNEL)
 
 enum {
 
@@ -213,7 +213,6 @@ static void spice_smartcard_channel_class_init(SpiceSmartcardChannelClass *klass
     channel_class->channel_up   = spice_smartcard_channel_up;
     channel_class->channel_reset = spice_smartcard_channel_reset;
 
-    g_type_class_add_private(klass, sizeof(SpiceSmartcardChannelPrivate));
     channel_set_handlers(SPICE_CHANNEL_CLASS(klass));
 }
 

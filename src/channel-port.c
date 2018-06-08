@@ -60,7 +60,7 @@ struct _SpicePortChannelPrivate {
     gboolean opened;
 };
 
-G_DEFINE_TYPE(SpicePortChannel, spice_port_channel, SPICE_TYPE_CHANNEL)
+G_DEFINE_TYPE_WITH_PRIVATE(SpicePortChannel, spice_port_channel, SPICE_TYPE_CHANNEL)
 
 /* Properties */
 enum {
@@ -192,7 +192,6 @@ static void spice_port_channel_class_init(SpicePortChannelClass *klass)
                      1,
                      G_TYPE_INT);
 
-    g_type_class_add_private(klass, sizeof(SpicePortChannelPrivate));
     channel_set_handlers(SPICE_CHANNEL_CLASS(klass));
 }
 

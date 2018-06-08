@@ -69,7 +69,7 @@
  * save to disk).
  */
 
-G_DEFINE_TYPE(SpiceDisplay, spice_display, GTK_TYPE_EVENT_BOX)
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceDisplay, spice_display, GTK_TYPE_EVENT_BOX)
 
 /* Properties */
 enum {
@@ -2439,8 +2439,6 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                      g_cclosure_marshal_VOID__VOID,
                      G_TYPE_NONE,
                      0);
-
-    g_type_class_add_private(klass, sizeof(SpiceDisplayPrivate));
 }
 
 /* ---------------------------------------------------------------- */

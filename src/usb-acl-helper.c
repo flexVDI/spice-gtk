@@ -41,7 +41,7 @@ struct _SpiceUsbAclHelperPrivate {
     gulong cancellable_id;
 };
 
-G_DEFINE_TYPE(SpiceUsbAclHelper, spice_usb_acl_helper, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceUsbAclHelper, spice_usb_acl_helper, G_TYPE_OBJECT);
 
 static void spice_usb_acl_helper_init(SpiceUsbAclHelper *self)
 {
@@ -75,8 +75,6 @@ static void spice_usb_acl_helper_class_init(SpiceUsbAclHelperClass *klass)
     GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
     gobject_class->finalize     = spice_usb_acl_helper_finalize;
-
-    g_type_class_add_private(klass, sizeof(SpiceUsbAclHelperPrivate));
 }
 
 /* ------------------------------------------------------------------ */

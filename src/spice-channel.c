@@ -85,6 +85,7 @@ static RSA *EVP_PKEY_get0_RSA(EVP_PKEY *pkey)
     (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_CHANNEL, SpiceChannelPrivate))
 
 G_DEFINE_TYPE_WITH_CODE (SpiceChannel, spice_channel, G_TYPE_OBJECT,
+                         G_ADD_PRIVATE (SpiceChannel)
                          g_type_add_class_private (g_define_type_id, sizeof (SpiceChannelClassPrivate)));
 
 /* Properties */
@@ -389,8 +390,6 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
                      G_TYPE_NONE,
                      1,
                      G_TYPE_INT);
-
-    g_type_class_add_private(klass, sizeof(SpiceChannelPrivate));
 
     SSL_library_init();
     SSL_load_error_strings();

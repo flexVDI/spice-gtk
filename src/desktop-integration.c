@@ -45,7 +45,7 @@ struct _SpiceDesktopIntegrationPrivate {
     guint gnome_automount_inhibit_cookie;
 };
 
-G_DEFINE_TYPE(SpiceDesktopIntegration, spice_desktop_integration, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceDesktopIntegration, spice_desktop_integration, G_TYPE_OBJECT);
 
 /* ------------------------------------------------------------------ */
 /* Gnome specific code                                                */
@@ -189,8 +189,6 @@ static void spice_desktop_integration_class_init(SpiceDesktopIntegrationClass *k
     GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
     gobject_class->dispose      = spice_desktop_integration_dispose;
-
-    g_type_class_add_private(klass, sizeof(SpiceDesktopIntegrationPrivate));
 }
 
 SpiceDesktopIntegration *spice_desktop_integration_get(SpiceSession *session)

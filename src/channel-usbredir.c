@@ -106,9 +106,12 @@ static void usbredir_lock_lock(void *user_data);
 static void usbredir_unlock_lock(void *user_data);
 static void usbredir_free_lock(void *user_data);
 
+#else
+struct _SpiceUsbredirChannelPrivate {
+};
 #endif
 
-G_DEFINE_TYPE(SpiceUsbredirChannel, spice_usbredir_channel, SPICE_TYPE_CHANNEL)
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceUsbredirChannel, spice_usbredir_channel, SPICE_TYPE_CHANNEL)
 
 /* ------------------------------------------------------------------ */
 
@@ -182,7 +185,6 @@ static void spice_usbredir_channel_class_init(SpiceUsbredirChannelClass *klass)
     channel_class->channel_up    = spice_usbredir_channel_up;
     channel_class->channel_reset = spice_usbredir_channel_reset;
 
-    g_type_class_add_private(klass, sizeof(SpiceUsbredirChannelPrivate));
     channel_set_handlers(SPICE_CHANNEL_CLASS(klass));
 #endif
 }

@@ -136,7 +136,7 @@ struct spice_migrate {
     uint32_t src_mig_version;
 };
 
-G_DEFINE_TYPE(SpiceMainChannel, spice_main_channel, SPICE_TYPE_CHANNEL)
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceMainChannel, spice_main_channel, SPICE_TYPE_CHANNEL)
 
 /* Properties */
 enum {
@@ -851,7 +851,6 @@ static void spice_main_channel_class_init(SpiceMainChannelClass *klass)
                      1,
                      G_TYPE_OBJECT);
 
-    g_type_class_add_private(klass, sizeof(SpiceMainChannelPrivate));
     channel_set_handlers(SPICE_CHANNEL_CLASS(klass));
 }
 

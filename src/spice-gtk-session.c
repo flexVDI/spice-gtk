@@ -110,7 +110,7 @@ static gboolean read_only(SpiceGtkSession *self);
 #define SPICE_GTK_SESSION_GET_PRIVATE(obj) \
     (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_GTK_SESSION, SpiceGtkSessionPrivate))
 
-G_DEFINE_TYPE (SpiceGtkSession, spice_gtk_session, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceGtkSession, spice_gtk_session, G_TYPE_OBJECT);
 
 /* Properties */
 enum {
@@ -487,8 +487,6 @@ static void spice_gtk_session_class_init(SpiceGtkSessionClass *klass)
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
                               G_PARAM_STATIC_STRINGS));
-
-    g_type_class_add_private(klass, sizeof(SpiceGtkSessionPrivate));
 }
 
 /* ---------------------------------------------------------------- */

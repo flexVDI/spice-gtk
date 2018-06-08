@@ -62,7 +62,7 @@ struct _SpiceRecordChannelPrivate {
     guint8                      mute;
 };
 
-G_DEFINE_TYPE(SpiceRecordChannel, spice_record_channel, SPICE_TYPE_CHANNEL)
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceRecordChannel, spice_record_channel, SPICE_TYPE_CHANNEL)
 
 /* Properties */
 enum {
@@ -247,7 +247,6 @@ static void spice_record_channel_class_init(SpiceRecordChannelClass *klass)
                      G_TYPE_NONE,
                      0);
 
-    g_type_class_add_private(klass, sizeof(SpiceRecordChannelPrivate));
     channel_set_handlers(SPICE_CHANNEL_CLASS(klass));
 }
 

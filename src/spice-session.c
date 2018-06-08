@@ -163,7 +163,7 @@ struct _SpiceSessionPrivate {
 #define SPICE_SESSION_GET_PRIVATE(obj) \
     (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_SESSION, SpiceSessionPrivate))
 
-G_DEFINE_TYPE (SpiceSession, spice_session, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceSession, spice_session, G_TYPE_OBJECT);
 
 /* Properties */
 enum {
@@ -1498,8 +1498,6 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                            SPICE_IMAGE_COMPRESSION_INVALID,
                            G_PARAM_READWRITE |
                            G_PARAM_STATIC_STRINGS));
-
-    g_type_class_add_private(klass, sizeof(SpiceSessionPrivate));
 }
 
 /* ------------------------------------------------------------------ */

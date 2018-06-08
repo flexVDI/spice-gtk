@@ -62,7 +62,7 @@ struct _SpicePlaybackChannelPrivate {
     guint32                     min_latency;
 };
 
-G_DEFINE_TYPE(SpicePlaybackChannel, spice_playback_channel, SPICE_TYPE_CHANNEL)
+G_DEFINE_TYPE_WITH_PRIVATE(SpicePlaybackChannel, spice_playback_channel, SPICE_TYPE_CHANNEL)
 
 /* Properties */
 enum {
@@ -296,7 +296,6 @@ static void spice_playback_channel_class_init(SpicePlaybackChannelClass *klass)
                      G_TYPE_NONE,
                      0);
 
-    g_type_class_add_private(klass, sizeof(SpicePlaybackChannelPrivate));
     channel_set_handlers(SPICE_CHANNEL_CLASS(klass));
 }
 

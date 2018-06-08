@@ -30,8 +30,6 @@
 #define SPICE_GSTAUDIO_GET_PRIVATE(obj)                                  \
     (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_GSTAUDIO, SpiceGstaudioPrivate))
 
-G_DEFINE_TYPE(SpiceGstaudio, spice_gstaudio, SPICE_TYPE_AUDIO)
-
 struct stream {
     GstElement              *pipe;
     GstElement              *src;
@@ -48,6 +46,8 @@ struct _SpiceGstaudioPrivate {
     struct stream           record;
     guint                   mmtime_id;
 };
+
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceGstaudio, spice_gstaudio, SPICE_TYPE_AUDIO)
 
 static gboolean connect_channel(SpiceAudio *audio, SpiceChannel *channel);
 static void channel_weak_notified(gpointer data, GObject *where_the_object_was);
@@ -118,8 +118,6 @@ static void spice_gstaudio_class_init(SpiceGstaudioClass *klass)
 
     gobject_class->finalize = spice_gstaudio_finalize;
     gobject_class->dispose = spice_gstaudio_dispose;
-
-    g_type_class_add_private(klass, sizeof(SpiceGstaudioPrivate));
 }
 
 static GstFlowReturn record_new_buffer(GstAppSink *appsink, gpointer data)

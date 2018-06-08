@@ -64,7 +64,7 @@ struct _SpiceWebdavChannelPrivate {
     } demux;
 };
 
-G_DEFINE_TYPE(SpiceWebdavChannel, spice_webdav_channel, SPICE_TYPE_PORT_CHANNEL)
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceWebdavChannel, spice_webdav_channel, SPICE_TYPE_PORT_CHANNEL)
 
 static void spice_webdav_handle_msg(SpiceChannel *channel, SpiceMsgIn *msg);
 
@@ -584,8 +584,6 @@ static void spice_webdav_channel_class_init(SpiceWebdavChannelClass *klass)
     g_signal_override_class_handler("port-event",
                                     SPICE_TYPE_WEBDAV_CHANNEL,
                                     G_CALLBACK(port_event));
-
-    g_type_class_add_private(klass, sizeof(SpiceWebdavChannelPrivate));
 }
 
 /* coroutine context */

@@ -261,6 +261,7 @@ static void spice_usb_device_manager_initable_iface_init(GInitableIface *iface);
 static guint signals[LAST_SIGNAL] = { 0, };
 
 G_DEFINE_TYPE_WITH_CODE(SpiceUsbDeviceManager, spice_usb_device_manager, G_TYPE_OBJECT,
+     G_ADD_PRIVATE(SpiceUsbDeviceManager)
      G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE, spice_usb_device_manager_initable_iface_init));
 
 static void spice_usb_device_manager_init(SpiceUsbDeviceManager *self)
@@ -731,8 +732,6 @@ static void spice_usb_device_manager_class_init(SpiceUsbDeviceManagerClass *klas
                      2,
                      SPICE_TYPE_USB_DEVICE,
                      G_TYPE_ERROR);
-
-    g_type_class_add_private(klass, sizeof(SpiceUsbDeviceManagerPrivate));
 }
 
 #ifdef USE_USBREDIR
