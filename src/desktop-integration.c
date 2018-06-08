@@ -30,12 +30,6 @@
 
 #define GNOME_SESSION_INHIBIT_AUTOMOUNT 16
 
-/* ------------------------------------------------------------------ */
-/* gobject glue                                                       */
-
-#define SPICE_DESKTOP_INTEGRATION_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_DESKTOP_INTEGRATION, SpiceDesktopIntegrationPrivate))
-
 struct _SpiceDesktopIntegrationPrivate {
 #if defined(USE_GDBUS)
     GDBusProxy *gnome_session_proxy;
@@ -159,14 +153,11 @@ static void gnome_integration_dispose(SpiceDesktopIntegration *self)
     g_clear_object(&priv->gnome_session_proxy);
 }
 
-/* ------------------------------------------------------------------ */
-/* gobject glue                                                       */
-
 static void spice_desktop_integration_init(SpiceDesktopIntegration *self)
 {
     SpiceDesktopIntegrationPrivate *priv;
 
-    priv = SPICE_DESKTOP_INTEGRATION_GET_PRIVATE(self);
+    priv = spice_desktop_integration_get_instance_private(self);
     self->priv = priv;
 
     if (!gnome_integration_init(self))

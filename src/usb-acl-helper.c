@@ -27,12 +27,6 @@
 
 #include "usb-acl-helper.h"
 
-/* ------------------------------------------------------------------ */
-/* gobject glue                                                       */
-
-#define SPICE_USB_ACL_HELPER_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_USB_ACL_HELPER, SpiceUsbAclHelperPrivate))
-
 struct _SpiceUsbAclHelperPrivate {
     GTask *task;
     GIOChannel *in_ch;
@@ -45,7 +39,7 @@ G_DEFINE_TYPE_WITH_PRIVATE(SpiceUsbAclHelper, spice_usb_acl_helper, G_TYPE_OBJEC
 
 static void spice_usb_acl_helper_init(SpiceUsbAclHelper *self)
 {
-    self->priv = SPICE_USB_ACL_HELPER_GET_PRIVATE(self);
+    self->priv = spice_usb_acl_helper_get_instance_private(self);
 }
 
 static void spice_usb_acl_helper_cleanup(SpiceUsbAclHelper *self)

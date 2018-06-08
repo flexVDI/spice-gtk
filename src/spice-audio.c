@@ -49,9 +49,6 @@
 #include "spice-gstaudio.h"
 #endif
 
-#define SPICE_AUDIO_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_AUDIO, SpiceAudioPrivate))
-
 G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE(SpiceAudio, spice_audio, G_TYPE_OBJECT)
 
 enum {
@@ -145,7 +142,7 @@ static void spice_audio_class_init(SpiceAudioClass *klass)
 
 static void spice_audio_init(SpiceAudio *self)
 {
-    self->priv = SPICE_AUDIO_GET_PRIVATE(self);
+    self->priv = spice_audio_get_instance_private(self);
 }
 
 static void connect_channel(SpiceAudio *self, SpiceChannel *channel)

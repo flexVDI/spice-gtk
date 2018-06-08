@@ -40,9 +40,6 @@
  * is emitted with #SpiceInputsChannel::inputs-modifiers signal.
  */
 
-#define SPICE_INPUTS_CHANNEL_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_INPUTS_CHANNEL, SpiceInputsChannelPrivate))
-
 struct _SpiceInputsChannelPrivate {
     int                         bs;
     int                         dx, dy;
@@ -77,7 +74,7 @@ static void channel_set_handlers(SpiceChannelClass *klass);
 
 static void spice_inputs_channel_init(SpiceInputsChannel *channel)
 {
-    channel->priv = SPICE_INPUTS_CHANNEL_GET_PRIVATE(channel);
+    channel->priv = spice_inputs_channel_get_instance_private(channel);
 }
 
 static void spice_inputs_get_property(GObject    *object,

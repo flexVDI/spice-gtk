@@ -27,9 +27,6 @@
 #include <pulse/pulseaudio.h>
 #include <pulse/ext-stream-restore.h>
 
-#define SPICE_PULSE_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_PULSE, SpicePulsePrivate))
-
 struct async_task {
     SpicePulse                 *pulse;
     SpiceMainChannel           *main_channel;
@@ -155,7 +152,7 @@ static void spice_pulse_dispose(GObject *obj)
 
 static void spice_pulse_init(SpicePulse *pulse)
 {
-    pulse->priv = SPICE_PULSE_GET_PRIVATE(pulse);
+    pulse->priv = spice_pulse_get_instance_private(pulse);
 }
 
 static void spice_pulse_class_init(SpicePulseClass *klass)

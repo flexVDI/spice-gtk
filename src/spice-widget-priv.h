@@ -55,9 +55,6 @@ struct _SpiceDisplayClass {
     void (*keyboard_grab)(SpiceChannel *channel, gint grabbed);
 };
 
-#define SPICE_DISPLAY_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_DISPLAY, SpiceDisplayPrivate))
-
 struct _SpiceDisplayPrivate {
     GtkStack                *stack;
     gint                    channel_id;

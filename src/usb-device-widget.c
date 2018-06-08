@@ -64,13 +64,6 @@ static void device_error_cb(SpiceUsbDeviceManager *manager,
     SpiceUsbDevice *device, GError *err, gpointer user_data);
 static gboolean spice_usb_device_widget_update_status(gpointer user_data);
 
-/* ------------------------------------------------------------------ */
-/* gobject glue                                                       */
-
-#define SPICE_USB_DEVICE_WIDGET_GET_PRIVATE(obj) \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_USB_DEVICE_WIDGET, \
-                                 SpiceUsbDeviceWidgetPrivate))
-
 enum {
     PROP_0,
     PROP_SESSION,
@@ -314,7 +307,7 @@ static void spice_usb_device_widget_class_init(
 
 static void spice_usb_device_widget_init(SpiceUsbDeviceWidget *self)
 {
-    self->priv = SPICE_USB_DEVICE_WIDGET_GET_PRIVATE(self);
+    self->priv = spice_usb_device_widget_get_instance_private(self);
 }
 
 /* ------------------------------------------------------------------ */

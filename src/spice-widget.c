@@ -632,7 +632,7 @@ static void spice_display_init(SpiceDisplay *display)
     SpiceDisplayPrivate *d;
     GtkTargetEntry targets = { "text/uri-list", 0, 0 };
 
-    d = display->priv = SPICE_DISPLAY_GET_PRIVATE(display);
+    d = display->priv = spice_display_get_instance_private(display);
     d->stack = GTK_STACK(gtk_stack_new());
     gtk_container_add(GTK_CONTAINER(display), GTK_WIDGET(d->stack));
     area = gtk_drawing_area_new();

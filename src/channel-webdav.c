@@ -45,9 +45,6 @@
  * Since: 0.24
  */
 
-#define SPICE_WEBDAV_CHANNEL_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_WEBDAV_CHANNEL, SpiceWebdavChannelPrivate))
-
 typedef struct _OutputQueue OutputQueue;
 
 struct _SpiceWebdavChannelPrivate {
@@ -532,7 +529,7 @@ static void client_remove_unref(gpointer data)
 
 static void spice_webdav_channel_init(SpiceWebdavChannel *channel)
 {
-    SpiceWebdavChannelPrivate *c = SPICE_WEBDAV_CHANNEL_GET_PRIVATE(channel);
+    SpiceWebdavChannelPrivate *c = spice_webdav_channel_get_instance_private(channel);
 
     channel->priv = c;
     c->stream = spice_vmc_stream_new(SPICE_CHANNEL(channel));

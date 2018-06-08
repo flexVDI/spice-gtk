@@ -78,12 +78,6 @@ static RSA *EVP_PKEY_get0_RSA(EVP_PKEY *pkey)
  * #SpiceInputsChannel.
  */
 
-/* ------------------------------------------------------------------ */
-/* gobject glue                                                       */
-
-#define SPICE_CHANNEL_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_CHANNEL, SpiceChannelPrivate))
-
 G_DEFINE_TYPE_WITH_CODE (SpiceChannel, spice_channel, G_TYPE_OBJECT,
                          G_ADD_PRIVATE (SpiceChannel)
                          g_type_add_class_private (g_define_type_id, sizeof (SpiceChannelClassPrivate)));
@@ -115,7 +109,7 @@ static void spice_channel_init(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c;
 
-    c = channel->priv = SPICE_CHANNEL_GET_PRIVATE(channel);
+    c = channel->priv = spice_channel_get_instance_private(channel);
 
     c->out_serial = 1;
     c->in_serial = 1;

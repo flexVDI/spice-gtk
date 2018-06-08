@@ -56,9 +56,6 @@
 #ifdef USE_USBREDIR
 
 #define COMPRESS_THRESHOLD 1000
-#define SPICE_USBREDIR_CHANNEL_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_USBREDIR_CHANNEL, SpiceUsbredirChannelPrivate))
-
 enum SpiceUsbredirChannelState {
     STATE_DISCONNECTED,
 #ifdef USE_POLKIT
@@ -118,7 +115,7 @@ G_DEFINE_TYPE_WITH_PRIVATE(SpiceUsbredirChannel, spice_usbredir_channel, SPICE_T
 static void spice_usbredir_channel_init(SpiceUsbredirChannel *channel)
 {
 #ifdef USE_USBREDIR
-    channel->priv = SPICE_USBREDIR_CHANNEL_GET_PRIVATE(channel);
+    channel->priv = spice_usbredir_channel_get_instance_private(channel);
     g_mutex_init(&channel->priv->device_connect_mutex);
 #endif
 }

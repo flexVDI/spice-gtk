@@ -27,9 +27,6 @@
 #include "spice-session.h"
 #include "spice-util.h"
 
-#define SPICE_GSTAUDIO_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_GSTAUDIO, SpiceGstaudioPrivate))
-
 struct stream {
     GstElement              *pipe;
     GstElement              *src;
@@ -102,7 +99,7 @@ static void spice_gstaudio_dispose(GObject *obj)
 
 static void spice_gstaudio_init(SpiceGstaudio *gstaudio)
 {
-    gstaudio->priv = SPICE_GSTAUDIO_GET_PRIVATE(gstaudio);
+    gstaudio->priv = spice_gstaudio_get_instance_private(gstaudio);
 }
 
 static void spice_gstaudio_class_init(SpiceGstaudioClass *klass)

@@ -49,9 +49,6 @@
  * #SpiceDisplayChannel::display-invalidate signals.
  */
 
-#define SPICE_DISPLAY_CHANNEL_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_DISPLAY_CHANNEL, SpiceDisplayChannelPrivate))
-
 #define MONITORS_MAX 256
 
 struct _SpiceDisplayChannelPrivate {
@@ -881,7 +878,7 @@ static void spice_display_channel_init(SpiceDisplayChannel *channel)
 {
     SpiceDisplayChannelPrivate *c;
 
-    c = channel->priv = SPICE_DISPLAY_CHANNEL_GET_PRIVATE(channel);
+    c = channel->priv = spice_display_channel_get_instance_private(channel);
 
     c->surfaces = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, destroy_surface);
     c->image_cache.ops = &image_cache_ops;

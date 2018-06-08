@@ -92,7 +92,7 @@ static void apply_ortho(guint mproj, float left, float right,
 
 static gboolean spice_egl_init_shaders(SpiceDisplay *display, GError **err)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     GLuint fs = 0, vs = 0, buf;
     GLint status, tex_loc, prog;
     gboolean success = FALSE;
@@ -182,7 +182,7 @@ end:
 G_GNUC_INTERNAL
 gboolean spice_egl_init(SpiceDisplay *display, GError **err)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     static const EGLint conf_att[] = {
         EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
@@ -290,7 +290,7 @@ end:
 static gboolean
 gl_make_current(SpiceDisplay *display, GError **err)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     g_return_val_if_fail(d->egl.context_ready, FALSE);
 
@@ -328,7 +328,7 @@ gl_make_current(SpiceDisplay *display, GError **err)
 static gboolean spice_widget_init_egl_win(SpiceDisplay *display, GdkWindow *win,
                                           GError **err)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     EGLNativeWindowType native = 0;
 
     if (d->egl.surface)
@@ -378,7 +378,7 @@ gboolean spice_egl_realize_display(SpiceDisplay *display, GdkWindow *win, GError
 G_GNUC_INTERNAL
 void spice_egl_unrealize_display(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     DISPLAY_DEBUG(display, "egl unrealize %p", d->egl.surface);
 
@@ -437,7 +437,7 @@ void spice_egl_unrealize_display(SpiceDisplay *display)
 G_GNUC_INTERNAL
 void spice_egl_resize_display(SpiceDisplay *display, int w, int h)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     int prog;
 
     if (!gl_make_current(display, NULL))
@@ -458,7 +458,7 @@ void spice_egl_resize_display(SpiceDisplay *display, int w, int h)
 static void
 draw_rect_from_arrays(SpiceDisplay *display, const void *verts, const void *tex)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
 
     glBindBuffer(GL_ARRAY_BUFFER, d->egl.vbuf_id);
 
@@ -530,7 +530,7 @@ client_draw_rect_tex(SpiceDisplay *display,
 G_GNUC_INTERNAL
 void spice_egl_cursor_set(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     GdkPixbuf *image = d->mouse_pixbuf;
 
     g_return_if_fail(d->egl.enabled);
@@ -555,7 +555,7 @@ void spice_egl_cursor_set(SpiceDisplay *display)
 G_GNUC_INTERNAL
 void spice_egl_update_display(SpiceDisplay *display)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     double s;
     int x, y, w, h;
     gdouble tx, ty, tw, th;
@@ -644,7 +644,7 @@ gboolean spice_egl_update_scanout(SpiceDisplay *display,
                                   const SpiceGlScanout *scanout,
                                   GError **err)
 {
-    SpiceDisplayPrivate *d = SPICE_DISPLAY_GET_PRIVATE(display);
+    SpiceDisplayPrivate *d = display->priv;
     EGLint attrs[13];
     guint32 format;
 

@@ -48,9 +48,6 @@
  *
  */
 
-#define SPICE_MAIN_CHANNEL_GET_PRIVATE(obj)                             \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_MAIN_CHANNEL, SpiceMainChannelPrivate))
-
 #define MAX_DISPLAY 16 /* Note must fit in a guint32, see monitors_align */
 
 typedef struct spice_migrate spice_migrate;
@@ -253,7 +250,7 @@ static void spice_main_channel_init(SpiceMainChannel *channel)
 {
     SpiceMainChannelPrivate *c;
 
-    c = channel->priv = SPICE_MAIN_CHANNEL_GET_PRIVATE(channel);
+    c = channel->priv = spice_main_channel_get_instance_private(channel);
     c->agent_msg_queue = g_queue_new();
     c->file_xfer_tasks = g_hash_table_new(g_direct_hash, g_direct_equal);
     c->flushing = g_hash_table_new(g_direct_hash, g_direct_equal);

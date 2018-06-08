@@ -104,12 +104,6 @@ static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
                             gpointer user_data);
 static gboolean read_only(SpiceGtkSession *self);
 
-/* ------------------------------------------------------------------ */
-/* gobject glue                                                       */
-
-#define SPICE_GTK_SESSION_GET_PRIVATE(obj) \
-    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_GTK_SESSION, SpiceGtkSessionPrivate))
-
 G_DEFINE_TYPE_WITH_PRIVATE(SpiceGtkSession, spice_gtk_session, G_TYPE_OBJECT);
 
 /* Properties */
@@ -224,7 +218,7 @@ static void spice_gtk_session_init(SpiceGtkSession *self)
     SpiceGtkSessionPrivate *s;
     GdkKeymap *keymap = gdk_keymap_get_default();
 
-    s = self->priv = SPICE_GTK_SESSION_GET_PRIVATE(self);
+    s = self->priv = spice_gtk_session_get_instance_private(self);
 
     s->clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
     g_signal_connect(G_OBJECT(s->clipboard), "owner-change",

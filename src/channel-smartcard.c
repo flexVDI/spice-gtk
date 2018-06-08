@@ -49,9 +49,6 @@
  * insertion/removal.
  */
 
-#define SPICE_SMARTCARD_CHANNEL_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_SMARTCARD_CHANNEL, SpiceSmartcardChannelPrivate))
-
 struct _SpiceSmartcardChannelMessage {
 #ifdef USE_SMARTCARD
     VSCMsgType message_type;
@@ -115,7 +112,7 @@ static void spice_smartcard_channel_init(SpiceSmartcardChannel *channel)
 {
     SpiceSmartcardChannelPrivate *priv;
 
-    channel->priv = SPICE_SMARTCARD_CHANNEL_GET_PRIVATE(channel);
+    channel->priv = spice_smartcard_channel_get_instance_private(channel);
     priv = channel->priv;
     priv->message_queue = g_queue_new();
 

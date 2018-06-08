@@ -157,12 +157,6 @@ struct _SpiceSessionPrivate {
  * a Spice server.
  */
 
-/* ------------------------------------------------------------------ */
-/* gobject glue                                                       */
-
-#define SPICE_SESSION_GET_PRIVATE(obj) \
-    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_SESSION, SpiceSessionPrivate))
-
 G_DEFINE_TYPE_WITH_PRIVATE(SpiceSession, spice_session, G_TYPE_OBJECT);
 
 /* Properties */
@@ -285,7 +279,7 @@ static void spice_session_init(SpiceSession *session)
     GError *err = NULL;
 
     SPICE_DEBUG("New session (compiled from package " PACKAGE_STRING ")");
-    s = session->priv = SPICE_SESSION_GET_PRIVATE(session);
+    s = session->priv = spice_session_get_instance_private(session);
 
     channels = spice_channel_supported_string();
     SPICE_DEBUG("Supported channels: %s", channels);

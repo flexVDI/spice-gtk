@@ -41,9 +41,6 @@
  * property.
  */
 
-#define SPICE_CURSOR_CHANNEL_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_CURSOR_CHANNEL, SpiceCursorChannelPrivate))
-
 typedef struct display_cursor display_cursor;
 
 struct display_cursor {
@@ -115,7 +112,7 @@ static void spice_cursor_channel_init(SpiceCursorChannel *channel)
 {
     SpiceCursorChannelPrivate *c;
 
-    c = channel->priv = SPICE_CURSOR_CHANNEL_GET_PRIVATE(channel);
+    c = channel->priv = spice_cursor_channel_get_instance_private(channel);
 
     c->cursors = cache_new((GDestroyNotify)display_cursor_unref);
 }
