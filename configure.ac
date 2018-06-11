@@ -86,7 +86,7 @@ AC_CHECK_LIBM
 AC_SUBST(LIBM)
 
 AC_CONFIG_SUBDIRS([spice-common])
-PKG_CHECK_MODULES([SPICE_PROTOCOL], [spice-protocol >= 0.12.14])
+PKG_CHECK_MODULES([SPICE_PROTOCOL], [spice-protocol >= 0.12.15])
 
 COMMON_CFLAGS='-I${top_builddir}/spice-common/ -I${top_srcdir}/spice-common/ ${SPICE_PROTOCOL_CFLAGS}'
 AC_SUBST(COMMON_CFLAGS)
@@ -260,8 +260,8 @@ AS_IF([test "x$enable_gstvideo" != "xno"],
          [missing_gstreamer_elements=""
           SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-base 1.0], [appsrc videoconvert appsink])
           SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-good 1.0], [jpegdec vp8dec vp9dec])
-          SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-bad 1.0], [h264parse])
-          SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gstreamer-libav 1.0], [avdec_h264])
+          SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-bad 1.0], [h264parse h265parse])
+          SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gstreamer-libav 1.0], [avdec_h264 avdec_h265])
           AS_IF([test x"$missing_gstreamer_elements" = "xyes"],
                 SPICE_WARNING([The GStreamer video decoder can be built but may not work.]))
          ],
