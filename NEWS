@@ -1,3 +1,27 @@
+v0.35
+=====
+
+- TLS v1.0 was disabled (rhbz#1521053)
+- New SpiceSession::disconnected signal
+- Use GstVideoOverlay if possible to render directly on Gstreamer's sink element
+- Handling smooth-scroll for scroll events on touchpads in Wayland
+- CELT codec is disabled by default but configure will error out if detects that
+  its headers are available unless --enable-celt051/--disable-051 is used.
+- Glib requirement bumped to 2.46
+- Spice-protocol bumped to 0.12.14
+- The spice-controller library was removed
+- Fix migration regression introduced in v0.34 (rhbz#1558043)
+- Fix connecting from big endian machine including SASL authentication
+- Webdav: Fix some runtime warnings
+- Introspection: Fixes for SpicePortChannel, SpiceDisplayChannel,
+  SpiceRecordChannel, SpiceInputsChannel, SpiceMainChannel
+- Enable ACL support on FreeBSD (fdo#104525)
+- win32: Convert locale dir from UTF-8 to local encoding
+- Fix width computation for palette images (rhbz#1508847)
+- Introduction of spice+tls:// URI format to tls all channels
+- Fix keycodes on Xwayland (rhbz#1479682)
+- Memory leak fixes, new tests
+
 v0.34
 =====
 
