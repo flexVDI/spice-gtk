@@ -59,6 +59,7 @@ $(top_srcdir)/.version:
 
 DISTCHECK_CONFIGURE_FLAGS =			\
 	--enable-introspection			\
+	--disable-celt051			\
 	--disable-vala				\
 	--disable-usbredir			\
 	--enable-gtk-doc			\
