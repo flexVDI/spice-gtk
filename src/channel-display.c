@@ -1211,7 +1211,7 @@ static void report_invalid_stream(SpiceChannel *channel, uint32_t id)
         /* Send a special stream report (UINT_MAX dropped frames out of zero)
          * to indicate there is no such stream.
          */
-        spice_printerr("notify the server that stream %u does not exist", id);
+        g_warning("notify the server that stream %u does not exist", id);
         memset(&report, 0, sizeof(report));
         report.stream_id = id;
         report.num_frames = 0;
@@ -1269,7 +1269,7 @@ static display_stream *display_stream_create(SpiceChannel *channel,
         break;
     }
     if (st->video_decoder == NULL) {
-        spice_printerr("could not create a video decoder for codec %u", codec_type);
+        g_warning("could not create a video decoder for codec %u", codec_type);
         g_clear_pointer(&st, display_stream_destroy);
     }
     return st;
@@ -1310,7 +1310,7 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
                                                op->flags, op->codec_type,
                                                &op->dest, &op->clip);
     if (c->streams[op->id] == NULL) {
-        spice_printerr("could not create the %u video stream", op->id);
+        g_warning("could not create the %u video stream", op->id);
         destroy_stream(channel, op->id);
         report_invalid_stream(channel, op->id);
     }
