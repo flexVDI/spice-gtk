@@ -512,6 +512,10 @@ static gboolean create_pipeline(SpiceGstDecoder *decoder)
 static void spice_gst_decoder_reschedule(VideoDecoder *video_decoder)
 {
     SpiceGstDecoder *decoder = (SpiceGstDecoder*)video_decoder;
+
+    if (!decoder->appsink) {
+        return;
+    }
     guint timer_id;
 
     g_mutex_lock(&decoder->queues_mutex);
