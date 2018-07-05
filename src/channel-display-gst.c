@@ -570,20 +570,27 @@ static void spice_gst_decoder_destroy(VideoDecoder *video_decoder)
  *    decoding.
  * 3) As soon as the GStreamer pipeline no longer needs the compressed frame it
  *    will call frame->unref_data() to free it.
- * 4) Once the decompressed frame is available the GStreamer pipeline calls
- *    new_sample() in the GStreamer thread.
- * 5) new_sample() then matches the decompressed frame to a SpiceGstFrame from
- *    the decoding queue using the GStreamer timestamp information to deal with
- *    dropped frames. The SpiceGstFrame is popped from the decoding_queue.
- * 6) new_sample() then attaches the decompressed frame to the SpiceGstFrame,
- *    set into display_frame and calls schedule_frame().
- * 7) schedule_frame() then uses gstframe->frame->mm_time to arrange for
- *    display_frame() to be called, in the main thread, at the right time for
- *    the next frame.
- * 8) display_frame() use SpiceGstFrame from display_frame and
- *    calls stream_display_frame().
- * 9) display_frame() then frees the SpiceGstFrame, which frees the SpiceFrame
- *    and decompressed frame with it.
+ *
+ * If GstVideoOverlay is used (win_handle was obtained by pipeline creation):
+ *   4) Decompressed frames will be renderd to widget directly from gstreamer's pipeline
+ *      using some gstreamer sink plugin which implements the GstVideoOverlay interface
+ *      (last step).
+ *
+ * Otherwise appsink is used:
+ *   4) Once the decompressed frame is available the GStreamer pipeline calls
+ *      new_sample() in the GStreamer thread.
+ *   5) new_sample() then matches the decompressed frame to a SpiceGstFrame from
+ *      the decoding queue using the GStreamer timestamp information to deal with
+ *      dropped frames. The SpiceGstFrame is popped from the decoding_queue.
+ *   6) new_sample() then attaches the decompressed frame to the SpiceGstFrame,
+ *      set into display_frame and calls schedule_frame().
+ *   7) schedule_frame() then uses gstframe->frame->mm_time to arrange for
+ *      display_frame() to be called, in the main thread, at the right time for
+ *      the next frame.
+ *   8) display_frame() use SpiceGstFrame from display_frame and
+ *      calls stream_display_frame().
+ *   9) display_frame() then frees the SpiceGstFrame, which frees the SpiceFrame
+ *      and decompressed frame with it.
  */
 static gboolean spice_gst_decoder_queue_frame(VideoDecoder *video_decoder,
                                               SpiceFrame *frame, int latency)
