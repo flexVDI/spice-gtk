@@ -1043,14 +1043,11 @@ static int spice_channel_read_wire_nonblocking(SpiceChannel *channel,
     if (c->ws) {
         ret = nopoll_conn_read(c->np_conn, data, len, nopoll_false, 0);
         if (ret < 0) {
-            if (ret == -3) {
-                /* nopoll is telling us he got a WS PING, and we should ignore it */
-                c->error_was_ping = TRUE;
-            } else if (errno == EAGAIN
+            if (errno == EAGAIN
 #ifdef WIN32
-                    || errno == WSAEWOULDBLOCK
+                || errno == WSAEWOULDBLOCK
 #endif
-                ) {
+            ) {
                 *cond = G_IO_IN;
             }
             ret = -1;
@@ -1093,7 +1090,7 @@ static int spice_channel_read_wire_nonblocking(SpiceChannel *channel,
  * into the requested buffer.
  */
 /* coroutine context */
-static int spice_channel_read_wire(SpiceChannel *channel, void *data, size_t len)
+static int spice_channel_read_wire(SpiceChannel *channel, void *data, size_t len, gboolean first)
 {
     SpiceChannelPrivate *c = channel->priv;
 
@@ -1109,11 +1106,13 @@ static int spice_channel_read_wire(SpiceChannel *channel, void *data, size_t len
         ret = spice_channel_read_wire_nonblocking(channel, data, len, &cond);
 
         if (ret == -1) {
-            if (cond != 0) {
+            if (cond != 0 && !first) {
                 // TODO: should use g_pollable_input/output_stream_create_source() ?
                 g_coroutine_socket_wait(&c->coroutine, c->sock, cond);
                 continue;
             } else {
+                if (first && cond != 0)
+                    c->error_was_ping = TRUE;
                 c->has_error = TRUE;
                 return -errno;
             }
@@ -1181,7 +1180,7 @@ static int spice_channel_read_sasl(SpiceChannel *channel, void *data, size_t len
  * Fill the 'data' buffer up with exactly 'len' bytes worth of data
  */
 /* coroutine context */
-static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
+static int _spice_channel_read(SpiceChannel *channel, void *data, size_t length, gboolean with_ping)
 {
     SpiceChannelPrivate *c = channel->priv;
     gsize len = length;
@@ -1195,7 +1194,7 @@ static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
             ret = spice_channel_read_sasl(channel, data, len);
         else
 #endif
-            ret = spice_channel_read_wire(channel, data, len);
+            ret = spice_channel_read_wire(channel, data, len, len == length && with_ping);
         if (ret < 0)
             return ret;
         g_assert(ret <= len);
@@ -1209,6 +1208,16 @@ static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
     c->total_read_bytes += length;
 
     return length;
+}
+
+static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
+{
+    return _spice_channel_read(channel, data, length, FALSE);
+}
+
+static int spice_channel_read_with_ping(SpiceChannel *channel, void *data, size_t length)
+{
+    return _spice_channel_read(channel, data, length, TRUE);
 }
 
 #if HAVE_SASL
@@ -2078,8 +2087,8 @@ void spice_channel_recv_msg(SpiceChannel *channel,
     in = spice_msg_in_new(channel);
 
     /* receive message */
-    spice_channel_read(channel, in->header,
-                       spice_header_get_header_size(c->use_mini_header));
+    spice_channel_read_with_ping(channel, in->header,
+                                 spice_header_get_header_size(c->use_mini_header));
     if (c->has_error) {
         if (c->error_was_ping) {
             c->has_error = FALSE;
@@ -2093,11 +2102,7 @@ void spice_channel_recv_msg(SpiceChannel *channel,
      * this would avoid malloc/free on each message?
      */
     in->data = g_malloc0(msg_size);
-    do {
-        c->has_error = FALSE;
-        c->error_was_ping = FALSE;
-        spice_channel_read(channel, in->data, msg_size);
-    } while (c->has_error && c->error_was_ping);
+    spice_channel_read(channel, in->data, msg_size);
     if (c->has_error)
         goto end;
     in->dpos = msg_size;
