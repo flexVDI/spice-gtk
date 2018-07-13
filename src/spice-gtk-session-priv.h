@@ -37,7 +37,6 @@ struct _SpiceGtkSessionClass
 
 void spice_gtk_session_request_auto_usbredir(SpiceGtkSession *self,
                                              gboolean state);
-gboolean spice_gtk_session_get_read_only(SpiceGtkSession *self);
 void spice_gtk_session_sync_keyboard_modifiers(SpiceGtkSession *self);
 void spice_gtk_session_set_pointer_grabbed(SpiceGtkSession *self, gboolean grabbed);
 gboolean spice_gtk_session_get_pointer_grabbed(SpiceGtkSession *self);

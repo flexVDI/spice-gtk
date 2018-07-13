@@ -256,8 +256,7 @@ static void update_ready(SpiceDisplay *display)
      * application will manage the state of the displays.
      */
     if (d->resize_guest_enable) {
-        spice_main_update_display_enabled(d->main, get_display_id(display),
-                                          ready, TRUE);
+        spice_main_channel_update_display_enabled(d->main, get_display_id(display), ready, TRUE);
     }
 
     if (d->ready == ready)
@@ -537,7 +536,7 @@ static void file_transfer_callback(GObject *source_object,
     SpiceMainChannel *channel = SPICE_MAIN_CHANNEL(source_object);
     GError *error = NULL;
 
-    if (spice_main_file_copy_finish(channel, result, &error))
+    if (spice_main_channel_file_copy_finish(channel, result, &error))
         return;
 
     if (error != NULL && error->message != NULL)
@@ -579,8 +578,8 @@ static void drag_data_received_callback(SpiceDisplay *self,
     }
     g_strfreev(file_urls);
 
-    spice_main_file_copy_async(d->main, files, 0, NULL, NULL,
-                               NULL, file_transfer_callback, NULL);
+    spice_main_channel_file_copy_async(d->main, files, 0, NULL, NULL, NULL, file_transfer_callback,
+                                       NULL);
     for (i = 0; i < n_files; i++) {
         g_object_unref(files[i]);
     }
@@ -610,7 +609,7 @@ gl_area_render(GtkGLArea *area, GdkGLContext *context, gpointer user_data)
     spice_egl_update_display(display);
     glFlush();
     if (d->egl.call_draw_done) {
-        spice_display_gl_draw_done(d->display);
+        spice_display_channel_gl_draw_done(d->display);
         d->egl.call_draw_done = FALSE;
     }
 
@@ -643,7 +642,7 @@ drawing_area_realize(GtkWidget *area, gpointer user_data)
     SpiceDisplay *display = SPICE_DISPLAY(user_data);
 
     if (GDK_IS_X11_DISPLAY(gdk_display_get_default()) &&
-        spice_display_get_gl_scanout(display->priv->display) != NULL) {
+        spice_display_channel_get_gl_scanout(display->priv->display) != NULL) {
         spice_display_widget_gl_scanout(display);
     }
 #endif
@@ -712,25 +711,15 @@ G_GNUC_END_IGNORE_DEPRECATIONS
     d->time_to_inactivity = 100*1000; // 100 seconds
 }
 
-static GObject *
-spice_display_constructor(GType                  gtype,
-                          guint                  n_properties,
-                          GObjectConstructParam *properties)
+static void
+spice_display_constructed(GObject *gobject)
 {
-    GObject *obj;
     SpiceDisplay *display;
     SpiceDisplayPrivate *d;
     GList *list;
     GList *it;
 
-    {
-        /* Always chain up to the parent constructor */
-        GObjectClass *parent_class;
-        parent_class = G_OBJECT_CLASS(spice_display_parent_class);
-        obj = parent_class->constructor(gtype, n_properties, properties);
-    }
-
-    display = SPICE_DISPLAY(obj);
+    display = SPICE_DISPLAY(gobject);
     d = display->priv;
 
     if (!d->session)
@@ -756,8 +745,6 @@ spice_display_constructor(GType                  gtype,
     spice_g_signal_connect_object(d->session, "notify::inhibit-keyboard-grab",
                                   G_CALLBACK(session_inhibit_keyboard_grab_changed),
                                   display, 0);
-
-    return obj;
 }
 
 /**
@@ -1282,8 +1269,8 @@ static void recalc_geometry(GtkWidget *widget)
                   d->ww, d->wh, zoom);
 
     if (d->resize_guest_enable)
-        spice_main_set_display(d->main, get_display_id(display),
-                               d->area.x, d->area.y, d->ww / zoom, d->wh / zoom);
+        spice_main_channel_update_display(d->main, get_display_id(display),
+                                          d->area.x, d->area.y, d->ww / zoom, d->wh / zoom, TRUE);
 }
 
 /* ---------------------------------------------------------------- */
@@ -1407,7 +1394,7 @@ static void key_press_and_release(SpiceDisplay *display)
         return;
 
     d->last_input_time = g_get_monotonic_time();
-    spice_inputs_key_press_and_release(d->inputs, d->key_delayed_scancode);
+    spice_inputs_channel_key_press_and_release(d->inputs, d->key_delayed_scancode);
     d->key_delayed_scancode = 0;
 
     if (d->key_delayed_id) {
@@ -1425,7 +1412,7 @@ static gboolean key_press_delayed(gpointer data)
         return FALSE;
 
     d->last_input_time = g_get_monotonic_time();
-    spice_inputs_key_press(d->inputs, d->key_delayed_scancode);
+    spice_inputs_channel_key_press(d->inputs, d->key_delayed_scancode);
     d->key_delayed_scancode = 0;
 
     if (d->key_delayed_id) {
@@ -1446,11 +1433,11 @@ static bool send_pause(SpiceDisplay *display, GdkEventType type)
      * 0x45 is the NumLock.
      */
     if (type == GDK_KEY_PRESS) {
-        spice_inputs_key_press(inputs, 0x21d);
-        spice_inputs_key_press(inputs, 0x45);
+        spice_inputs_channel_key_press(inputs, 0x21d);
+        spice_inputs_channel_key_press(inputs, 0x45);
     } else {
-        spice_inputs_key_release(inputs, 0x21d);
-        spice_inputs_key_release(inputs, 0x45);
+        spice_inputs_channel_key_release(inputs, 0x21d);
+        spice_inputs_channel_key_release(inputs, 0x45);
     }
     return true;
 }
@@ -1486,7 +1473,7 @@ static void send_key(SpiceDisplay *display, int scancode, SendKeyType type, gboo
             d->key_delayed_scancode = scancode;
         } else {
             d->last_input_time = g_get_monotonic_time();
-            spice_inputs_key_press(d->inputs, scancode);
+            spice_inputs_channel_key_press(d->inputs, scancode);
         }
 
         d->key_state[i] |= m;
@@ -1502,7 +1489,7 @@ static void send_key(SpiceDisplay *display, int scancode, SendKeyType type, gboo
             /* ensure delayed key is pressed before other key are released */
             key_press_delayed(display);
             d->last_input_time = g_get_monotonic_time();
-            spice_inputs_key_release(d->inputs, scancode);
+            spice_inputs_channel_key_release(d->inputs, scancode);
         }
 
         d->key_state[i] &= ~m;
@@ -1607,6 +1594,7 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
      * This API is available from 3.22 or if backported.
      */
 #if HAVE_GDK_EVENT_GET_SCANCODE
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     native_scancode = gdk_event_get_scancode((GdkEvent *) key);
     if (native_scancode) {
         scancode = native_scancode & 0x1ff;
@@ -1614,6 +1602,7 @@ static gboolean key_event(GtkWidget *widget, GdkEventKey *key)
         if (scancode == (0x100|DIK_NUMLOCK) || scancode == (0x100|DIK_RSHIFT))
             scancode &= 0xff;
     }
+G_GNUC_END_IGNORE_DEPRECATIONS
 #else
     native_scancode = 0;
 #endif
@@ -2018,8 +2007,8 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
         if (x >= 0 && x < d->area.width &&
             y >= 0 && y < d->area.height) {
             d->last_input_time = g_get_monotonic_time();
-            spice_inputs_position(d->inputs, x, y, get_display_id(display),
-                                  button_mask_gdk_to_spice(motion->state));
+            spice_inputs_channel_position(d->inputs, x, y, get_display_id(display),
+                                          button_mask_gdk_to_spice(motion->state));
         }
         break;
     case SPICE_MOUSE_MODE_SERVER:
@@ -2028,8 +2017,8 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
             gint dy = d->mouse_last_y != -1 ? y - d->mouse_last_y : 0;
 
             d->last_input_time = g_get_monotonic_time();
-            spice_inputs_motion(d->inputs, dx, dy,
-                                button_mask_gdk_to_spice(motion->state));
+            spice_inputs_channel_motion(d->inputs, dx, dy,
+                                        button_mask_gdk_to_spice(motion->state));
 
             d->mouse_last_x = x;
             d->mouse_last_y = y;
@@ -2067,10 +2056,10 @@ static gboolean scroll_event(GtkWidget *widget, GdkEventScroll *scroll)
     }
 
     d->last_input_time = g_get_monotonic_time();
-    spice_inputs_button_press(d->inputs, button,
-                              button_mask_gdk_to_spice(scroll->state));
-    spice_inputs_button_release(d->inputs, button,
-                                button_mask_gdk_to_spice(scroll->state));
+    spice_inputs_channel_button_press(d->inputs, button,
+                                      button_mask_gdk_to_spice(scroll->state));
+    spice_inputs_channel_button_release(d->inputs, button,
+                                        button_mask_gdk_to_spice(scroll->state));
     return true;
 }
 
@@ -2123,15 +2112,15 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
     switch (button->type) {
     case GDK_BUTTON_PRESS:
         d->last_input_time = g_get_monotonic_time();
-        spice_inputs_button_press(d->inputs,
-                                  button_gdk_to_spice(button->button),
-                                  button_mask_gdk_to_spice(button->state));
+        spice_inputs_channel_button_press(d->inputs,
+                                          button_gdk_to_spice(button->button),
+                                          button_mask_gdk_to_spice(button->state));
         break;
     case GDK_BUTTON_RELEASE:
         d->last_input_time = g_get_monotonic_time();
-        spice_inputs_button_release(d->inputs,
-                                    button_gdk_to_spice(button->button),
-                                    button_mask_gdk_to_spice(button->state));
+        spice_inputs_channel_button_release(d->inputs,
+                                            button_gdk_to_spice(button->button),
+                                            button_mask_gdk_to_spice(button->state));
         break;
     default:
         break;
@@ -2225,7 +2214,7 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
     gtkwidget_class->realize = realize;
     gtkwidget_class->unrealize = unrealize;
 
-    gobject_class->constructor = spice_display_constructor;
+    gobject_class->constructed = spice_display_constructed;
     gobject_class->dispose = spice_display_dispose;
     gobject_class->finalize = spice_display_finalize;
     gobject_class->get_property = spice_display_get_property;
@@ -2556,7 +2545,7 @@ static void update_area(SpiceDisplay *display,
 #if HAVE_EGL
     if (egl_enabled(d)) {
         const SpiceGlScanout *so =
-            spice_display_get_gl_scanout(d->display);
+            spice_display_channel_get_gl_scanout(d->display);
         g_return_if_fail(so != NULL);
         primary = (GdkRectangle) {
             .width = so->width,
@@ -2924,7 +2913,7 @@ void spice_display_widget_gl_scanout(SpiceDisplay *display)
     if (d->egl.context_ready) {
         const SpiceGlScanout *scanout;
 
-        scanout = spice_display_get_gl_scanout(d->display);
+        scanout = spice_display_channel_get_gl_scanout(d->display);
         /* should only be called when the display has a scanout */
         g_return_if_fail(scanout != NULL);
 
@@ -2946,7 +2935,7 @@ static void gl_draw(SpiceDisplay *display,
 
     if (!d->egl.context_ready) {
         DISPLAY_DEBUG(display, "Draw without GL context, skipping");
-        spice_display_gl_draw_done(d->display);
+        spice_display_channel_gl_draw_done(d->display);
         return;
     }
 
@@ -2963,7 +2952,7 @@ static void gl_draw(SpiceDisplay *display,
 #endif
     {
         spice_egl_update_display(display);
-        spice_display_gl_draw_done(d->display);
+        spice_display_channel_gl_draw_done(d->display);
     }
 }
 #endif
@@ -2999,7 +2988,7 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
         spice_g_signal_connect_object(channel, "notify::monitors",
                                       G_CALLBACK(spice_display_widget_update_monitor_area),
                                       display, G_CONNECT_AFTER | G_CONNECT_SWAPPED);
-        if (spice_display_get_primary(channel, 0, &primary)) {
+        if (spice_display_channel_get_primary(channel, 0, &primary)) {
             primary_create(channel, primary.format, primary.width, primary.height,
                            primary.stride, primary.shmid, primary.data, display);
             mark(display, primary.marked);

@@ -209,9 +209,8 @@ readclose_cb(GObject *source, GAsyncResult *result, gpointer user_data)
 
     nbytes = g_input_stream_read_finish(G_INPUT_STREAM(source), result, &error);
 
-    g_assert_cmpint(nbytes, ==, -1);
-    g_assert_error(error, G_IO_ERROR, G_IO_ERROR_CLOSED);
-    g_clear_error(&error);
+    g_assert_cmpint(nbytes, ==, 0);
+    g_assert_no_error(error);
 
     g_main_loop_quit (loop);
 }
@@ -224,6 +223,7 @@ test_pipe_readclosestream(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
     g_input_stream_read_async(f->ip2, f->buf, 1, G_PRIORITY_DEFAULT,
                               f->cancellable, readclose_cb, f->loop);
     g_io_stream_close(f->p1, f->cancellable, &error);
+    g_assert_no_error(error);
 
     g_main_loop_run (f->loop);
 }
@@ -236,6 +236,7 @@ test_pipe_readclose(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
     g_input_stream_read_async(f->ip2, f->buf, 1, G_PRIORITY_DEFAULT,
                               f->cancellable, readclose_cb, f->loop);
     g_output_stream_close(f->op1, f->cancellable, &error);
+    g_assert_no_error(error);
 
     g_main_loop_run (f->loop);
 }
@@ -250,7 +251,7 @@ readcancel_cb(GObject *source, GAsyncResult *result, gpointer user_data)
     nbytes = g_input_stream_read_finish(G_INPUT_STREAM(source), result, &error);
 
     g_assert_cmpint(nbytes, ==, -1);
-    g_assert_error(error, G_IO_ERROR, G_IO_ERROR_CLOSED);
+    g_assert_error(error, G_IO_ERROR, G_IO_ERROR_CANCELLED);
     g_clear_error(&error);
 
     g_main_loop_quit (loop);
@@ -259,11 +260,79 @@ readcancel_cb(GObject *source, GAsyncResult *result, gpointer user_data)
 static void
 test_pipe_readcancel(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
 {
-    GError *error = NULL;
-
     g_input_stream_read_async(f->ip2, f->buf, 1, G_PRIORITY_DEFAULT,
                               f->cancellable, readcancel_cb, f->loop);
-    g_output_stream_close(f->op1, f->cancellable, &error);
+    g_cancellable_cancel(f->cancellable);
+
+    g_main_loop_run (f->loop);
+}
+
+static void
+writeclose_cb(GObject *source, GAsyncResult *result, gpointer user_data)
+{
+    GError *error = NULL;
+    gssize nbytes;
+    GMainLoop *loop = user_data;
+
+    nbytes = g_output_stream_write_finish(G_OUTPUT_STREAM(source),
+                                          result, &error);
+
+    g_assert_cmpint(nbytes, ==, -1);
+    g_assert_error(error, G_IO_ERROR, G_IO_ERROR_CLOSED);
+    g_clear_error(&error);
+
+    g_main_loop_quit (loop);
+}
+
+static void
+test_pipe_writeclosestream(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
+{
+    GError *error = NULL;
+
+    g_output_stream_write_async(f->op1, f->buf, 1, G_PRIORITY_DEFAULT,
+                                f->cancellable, writeclose_cb, f->loop);
+    g_io_stream_close(f->p2, f->cancellable, &error);
+    g_assert_no_error(error);
+
+    g_main_loop_run (f->loop);
+}
+
+static void
+test_pipe_writeclose(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
+{
+    GError *error = NULL;
+
+    g_output_stream_write_async(f->op1, f->buf, 1, G_PRIORITY_DEFAULT,
+                                f->cancellable, writeclose_cb, f->loop);
+    g_input_stream_close(f->ip2, f->cancellable, &error);
+    g_assert_no_error(error);
+
+    g_main_loop_run (f->loop);
+}
+
+static void
+writecancel_cb(GObject *source, GAsyncResult *result, gpointer user_data)
+{
+    GError *error = NULL;
+    gssize nbytes;
+    GMainLoop *loop = user_data;
+
+    nbytes = g_output_stream_write_finish(G_OUTPUT_STREAM(source),
+                                          result, &error);
+
+    g_assert_cmpint(nbytes, ==, -1);
+    g_assert_error(error, G_IO_ERROR, G_IO_ERROR_CANCELLED);
+    g_clear_error(&error);
+
+    g_main_loop_quit (loop);
+}
+
+static void
+test_pipe_writecancel(Fixture *f, gconstpointer user_data G_GNUC_UNUSED)
+{
+    g_output_stream_write_async(f->op1, f->buf, 1, G_PRIORITY_DEFAULT,
+                                f->cancellable, writecancel_cb, f->loop);
+    g_cancellable_cancel(f->cancellable);
 
     g_main_loop_run (f->loop);
 }
@@ -522,6 +591,18 @@ int main(int argc, char* argv[])
 
     g_test_add("/pipe/readcancel", Fixture, NULL,
                fixture_set_up, test_pipe_readcancel,
+               fixture_tear_down);
+
+    g_test_add("/pipe/writeclosestream", Fixture, NULL,
+               fixture_set_up, test_pipe_writeclosestream,
+               fixture_tear_down);
+
+    g_test_add("/pipe/writeclose", Fixture, NULL,
+               fixture_set_up, test_pipe_writeclose,
+               fixture_tear_down);
+
+    g_test_add("/pipe/writecancel", Fixture, NULL,
+               fixture_set_up, test_pipe_writecancel,
                fixture_tear_down);
 
     return g_test_run();

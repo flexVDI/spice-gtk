@@ -107,6 +107,7 @@ dnl =========================================================================
 dnl Chek optional features
 
 SPICE_GLIB_REQUIRES=""
+SPICE_GLIB_LIBS=""
 SPICE_GTK_REQUIRES=""
 
 PKG_CHECK_MODULES(PIXMAN, pixman-1 >= 0.17.7)
@@ -115,7 +116,9 @@ SPICE_GLIB_REQUIRES="${SPICE_GLIB_REQUIRES} pixman-1 >= 0.17.7"
 
 PKG_CHECK_MODULES(SSL, openssl)
 
-SPICE_GLIB_REQUIRES="${SPICE_GLIB_REQUIRES} openssl"
+PKG_CHECK_EXISTS(openssl,
+  [SPICE_GLIB_REQUIRES="${SPICE_GLIB_REQUIRES} openssl"],
+  [SPICE_GLIB_LIBS="${SPICE_GLIB_LIBS} ${SSL_LIBS}"])
 
 SPICE_CHECK_SASL
 
@@ -182,8 +185,8 @@ fi
 AC_CHECK_FUNCS(clearenv strtok_r)
 
 # Keep these two definitions in agreement.
-GLIB2_REQUIRED="2.36"
-GLIB2_ENCODED_VERSION="GLIB_VERSION_2_36"
+GLIB2_REQUIRED="2.46"
+GLIB2_ENCODED_VERSION="GLIB_VERSION_2_46"
 
 PKG_CHECK_MODULES(GLIB2, glib-2.0 >= $GLIB2_REQUIRED)
 GLIB2_CFLAGS="$GLIB2_CFLAGS -DGLIB_VERSION_MIN_REQUIRED=$GLIB2_ENCODED_VERSION \
@@ -387,8 +390,9 @@ if test "x$have_usbredir" = "xyes" && test "x$enable_polkit" != "xno"; then
   PKG_CHECK_MODULES([POLKIT], [polkit-gobject-1 >= 0.96],
                               [have_polkit=yes],
                               [have_polkit=no])
-  AC_CHECK_HEADER([acl/libacl.h], [], [have_polkit=no])
-  AC_CHECK_LIB([acl], [acl_get_file], [ACL_LIBS=-lacl], [have_polkit=no])
+  AC_CHECK_HEADER([sys/acl.h], [], [have_polkit=no])
+  AC_CHECK_LIB([c], [acl_get_file], [ACL_LIBS=""], [
+    AC_CHECK_LIB([acl], [acl_get_file], [ACL_LIBS=-lacl], [have_polkit=no])])
   if test "x$enable_polkit" = "xyes" && test "x$have_polkit" = "xno"; then
     AC_MSG_ERROR([PolicyKit support explicitly requested, but some required packages are not available])
   fi
@@ -527,13 +531,6 @@ m4_ifdef([GOBJECT_INTROSPECTION_CHECK],[
 ])
 AM_CONDITIONAL([G_IR_SCANNER_SYMBOL_PREFIX], [test "x$has_symbol_prefix" = "xyes"])
 
-AC_ARG_ENABLE([controller],
-  AS_HELP_STRING([--enable-controller], [Enable controller build @<:@default=yes@:>@]),
-  [],
-  enable_controller="yes")
-
-AM_CONDITIONAL(WITH_CONTROLLER, [test "x$enable_controller" != "xno"])
-
 AC_ARG_ENABLE([vala],
   AS_HELP_STRING([--enable-vala], [Check for vala requirements @<:@default=no@:>@]),
   [],
@@ -613,6 +610,7 @@ AC_SUBST(SPICE_GLIB_CFLAGS)
 AC_SUBST(SPICE_GTK_CFLAGS)
 
 AC_SUBST(SPICE_GLIB_REQUIRES)
+AC_SUBST(SPICE_GLIB_LIBS)
 AC_SUBST(SPICE_GTK_REQUIRES)
 
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
@@ -623,12 +621,10 @@ AC_OUTPUT([
 Makefile
 spice-client-glib-2.0.pc
 spice-client-gtk-3.0.pc
-spice-controller.pc
 data/Makefile
 po/Makefile.in
 src/Makefile
 src/spice-version.h
-src/controller/Makefile
 tools/Makefile
 doc/Makefile
 doc/reference/Makefile

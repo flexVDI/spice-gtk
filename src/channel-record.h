@@ -73,8 +73,14 @@ struct _SpiceRecordChannelClass {
 };
 
 GType	        spice_record_channel_get_type(void);
+void            spice_record_channel_send_data(SpiceRecordChannel *channel, gpointer data,
+                                               gsize bytes, guint32 time);
+
+#ifndef SPICE_DISABLE_DEPRECATED
+G_DEPRECATED_FOR(spice_record_channel_send_data)
 void            spice_record_send_data(SpiceRecordChannel *channel, gpointer data,
                                        gsize bytes, guint32 time);
+#endif
 
 G_END_DECLS
 

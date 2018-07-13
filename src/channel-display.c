@@ -70,9 +70,6 @@ struct _SpiceDisplayChannelPrivate {
     GArray                      *monitors;
     guint                       monitors_max;
     gboolean                    enable_adaptive_streaming;
-#ifdef G_OS_WIN32
-    HDC dc;
-#endif
     SpiceGlScanout scanout;
 };
 
@@ -227,7 +224,7 @@ static void spice_display_get_property(GObject    *object,
         break;
     }
     case PROP_GL_SCANOUT: {
-        g_value_set_static_boxed(value, spice_display_get_gl_scanout(channel));
+        g_value_set_static_boxed(value, spice_display_channel_get_gl_scanout(channel));
         break;
     }
     default:
@@ -472,9 +469,30 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
  *
  * Returns: %TRUE if the primary surface was found and its details
  * collected in @primary.
+ *
+ * Deprecated: 0.35: use spice_display_channel_get_primary() instead.
  */
 gboolean spice_display_get_primary(SpiceChannel *channel, guint32 surface_id,
                                    SpiceDisplayPrimary *primary)
+{
+    return spice_display_channel_get_primary(channel, surface_id, primary);
+}
+
+/**
+ * spice_display_channel_get_primary:
+ * @channel: a #SpiceDisplayChannel
+ * @surface_id: a surface id
+ * @primary: a #SpiceDisplayPrimary
+ *
+ * Retrieve primary display surface @surface_id.
+ *
+ * Returns: %TRUE if the primary surface was found and its details
+ * collected in @primary.
+ *
+ * Since: 0.35
+ */
+gboolean spice_display_channel_get_primary(SpiceChannel *channel, guint32 surface_id,
+                                           SpiceDisplayPrimary *primary)
 {
     g_return_val_if_fail(SPICE_IS_DISPLAY_CHANNEL(channel), FALSE);
     g_return_val_if_fail(primary != NULL, FALSE);
@@ -508,8 +526,24 @@ gboolean spice_display_get_primary(SpiceChannel *channel, guint32 surface_id,
  * for the @channel.
  *
  * Since: 0.31
+ * Deprecated: 0.35: use spice_display_channel_change_preferred_compression() instead.
  */
 void spice_display_change_preferred_compression(SpiceChannel *channel, gint compression)
+{
+    spice_display_channel_change_preferred_compression(channel, compression);
+}
+
+/**
+ * spice_display_channel_change_preferred_compression:
+ * @channel: a #SpiceDisplayChannel
+ * @compression: a #SpiceImageCompression
+ *
+ * Tells the spice server to change the preferred image compression
+ * for the @channel.
+ *
+ * Since: 0.35
+ */
+void spice_display_channel_change_preferred_compression(SpiceChannel *channel, gint compression)
 {
     SpiceMsgOut *out;
     SpiceMsgcDisplayPreferredCompression pref_comp_msg;
@@ -561,8 +595,25 @@ static void spice_display_send_client_preferred_video_codecs(SpiceChannel *chann
  * display channel.
  *
  * Since: 0.34
+ * Deprecated: 0.35: use spice_display_channel_change_preferred_video_codec_type() instead.
  */
 void spice_display_change_preferred_video_codec_type(SpiceChannel *channel, gint codec_type)
+{
+    spice_display_channel_change_preferred_video_codec_type(channel, codec_type);
+}
+
+/**
+ * spice_display_channel_change_preferred_video_codec_type:
+ * @channel: a #SpiceDisplayChannel
+ * @codec_type: a #SpiceVideoCodecType
+ *
+ * Tells the spice server to change the preferred video codec type for
+ * streaming in @channel. Application can set only one preferred video codec per
+ * display channel.
+ *
+ * Since: 0.35
+ */
+void spice_display_channel_change_preferred_video_codec_type(SpiceChannel *channel, gint codec_type)
 {
     GArray *codecs;
 
@@ -579,7 +630,7 @@ void spice_display_change_preferred_video_codec_type(SpiceChannel *channel, gint
      * decoding, store this information (as GArray) and send it to the server.
      * This array can be rearranged to have @codec_type in the front (which is
      * the preferred for the client side) */
-    CHANNEL_DEBUG(channel, "changing preferred video codec type to %d", codec_type);
+    CHANNEL_DEBUG(channel, "changing preferred video codec type to %s", gst_opts[codec_type].name);
     codecs = g_array_new(FALSE, FALSE, sizeof(gint));
     g_array_append_val(codecs, codec_type);
     spice_display_send_client_preferred_video_codecs(channel, codecs);
@@ -595,9 +646,26 @@ void spice_display_change_preferred_video_codec_type(SpiceChannel *channel, gint
  * Returns: the current GL scanout, or %NULL if none or not valid
  *
  * Since: 0.31
+ * Deprecated: 0.35: use spice_display_channel_get_gl_scanout() instead.
  **/
 const SpiceGlScanout *
 spice_display_get_gl_scanout(SpiceDisplayChannel *channel)
+{
+    return spice_display_channel_get_gl_scanout(channel);
+}
+
+/**
+ * spice_display_channel_get_gl_scanout:
+ * @channel: a #SpiceDisplayChannel
+ *
+ * Retrieves the GL scanout if available
+ *
+ * Returns: the current GL scanout, or %NULL if none or not valid
+ *
+ * Since: 0.35
+ **/
+const SpiceGlScanout *
+spice_display_channel_get_gl_scanout(SpiceDisplayChannel *channel)
 {
     g_return_val_if_fail(SPICE_IS_DISPLAY_CHANNEL(channel), NULL);
 
@@ -750,17 +818,6 @@ static SpiceImageSurfacesOps image_surfaces_ops = {
     .get = surfaces_get
 };
 
-#if defined(G_OS_WIN32)
-static HDC create_compatible_dc(void)
-{
-    HDC dc = CreateCompatibleDC(NULL);
-    if (!dc) {
-        g_warning("create compatible DC failed");
-    }
-    return dc;
-}
-#endif
-
 static void spice_display_channel_reset_capabilities(SpiceChannel *channel)
 {
     guint i;
@@ -809,9 +866,6 @@ static void spice_display_channel_init(SpiceDisplayChannel *channel)
     c->image_cache.ops = &image_cache_ops;
     c->palette_cache.ops = &palette_cache_ops;
     c->image_surfaces.ops = &image_surfaces_ops;
-#if defined(G_OS_WIN32)
-    c->dc = create_compatible_dc();
-#endif
     c->monitors_max = 1;
     c->scanout.fd = -1;
 
@@ -978,7 +1032,7 @@ static void spice_display_channel_up(SpiceChannel *channel)
     g_coroutine_object_notify(G_OBJECT(channel), "monitors");
 
     if (preferred_compression != SPICE_IMAGE_COMPRESSION_INVALID) {
-        spice_display_change_preferred_compression(channel, preferred_compression);
+        spice_display_channel_change_preferred_compression(channel, preferred_compression);
     }
 }
 
@@ -1323,9 +1377,6 @@ void stream_display_frame(display_stream *st, SpiceFrame *frame,
     }
 
     st->surface->canvas->ops->put_image(st->surface->canvas,
-#ifdef G_OS_WIN32
-                                        SPICE_DISPLAY_CHANNEL(st->channel)->priv->dc,
-#endif
                                         &frame->dest, data,
                                         width, height, stride,
                                         st->have_region ? &st->region : NULL);
@@ -1511,14 +1562,14 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
      * decoding and best decide if/when to drop them when they are late,
      * taking into account the impact on later frames.
      */
-    frame = spice_new(SpiceFrame, 1);
+    frame = g_new(SpiceFrame, 1);
     frame->mm_time = op->multi_media_time;
     frame->dest = *stream_get_dest(st, in);
     frame->size = spice_msg_in_frame_data(in, &frame->data);
     frame->data_opaque = in;
     frame->ref_data = (void*)spice_msg_in_ref;
     frame->unref_data = (void*)spice_msg_in_unref;
-    frame->free = (void*)free;
+    frame->free = (void*)g_free;
     if (!st->video_decoder->queue_frame(st->video_decoder, frame, latency)) {
         destroy_stream(channel, op->id);
         report_invalid_stream(channel, op->id);
@@ -1896,8 +1947,25 @@ static void display_handle_gl_draw(SpiceChannel *channel, SpiceMsgIn *in)
  * (failing to do so for each gl-draw may result in a frozen display).
  *
  * Since: 0.31
+ * Deprecated: 0.35: use spice_display_channel_gl_draw_done() instead.
  **/
 void spice_display_gl_draw_done(SpiceDisplayChannel *display)
+{
+    spice_display_channel_gl_draw_done(display);
+}
+
+/**
+ * spice_display_channel_gl_draw_done:
+ * @channel: a #SpiceDisplayChannel
+ *
+ * After a SpiceDisplayChannel::gl-draw is emitted, the client should
+ * draw the current display with the current GL scanout, and must
+ * release the GL resource with a call to spice_display_gl_draw_done()
+ * (failing to do so for each gl-draw may result in a frozen display).
+ *
+ * Since: 0.35
+ **/
+void spice_display_channel_gl_draw_done(SpiceDisplayChannel *display)
 {
     SpiceChannel *channel;
     SpiceMsgOut *out;

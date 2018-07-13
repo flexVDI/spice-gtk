@@ -56,7 +56,7 @@ static void spice_channel_reset_capabilities(SpiceChannel *channel);
 static void spice_channel_send_migration_handshake(SpiceChannel *channel);
 static gboolean channel_connect(SpiceChannel *channel, gboolean tls);
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000
+#if OPENSSL_VERSION_NUMBER < 0x10100000 || defined(LIBRESSL_VERSION_NUMBER)
 static RSA *EVP_PKEY_get0_RSA(EVP_PKEY *pkey)
 {
     if (pkey->type != EVP_PKEY_RSA) {
@@ -1932,14 +1932,20 @@ cleanup:
 #endif /* HAVE_SASL */
 
 /* coroutine context */
-static void store_caps(const uint8_t *caps_src, const GArray *caps_dst)
+static void store_caps(const uint8_t *caps_src, uint32_t ncaps,
+                       GArray *caps_dst)
 {
     uint32_t *caps;
     guint i;
 
+    g_array_set_size(caps_dst, ncaps);
+    if (ncaps == 0)
+        return;
+
     caps = &g_array_index(caps_dst, uint32_t, 0);
-    memcpy(caps, caps_src, caps_dst->len * sizeof(uint32_t));
-    for (i = 0; i < caps_dst->len; i++, caps++) {
+    memcpy(caps, caps_src, ncaps * sizeof(uint32_t));
+
+    for (i = 0; i < ncaps; i++, caps++) {
         *caps = GUINT32_FROM_LE(*caps);
         SPICE_DEBUG("\t%u:0x%X", i, *caps);
     }
@@ -1992,14 +1998,12 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
     /* g_return_if_fail(c->peer_msg + c->peer_msg->caps_offset * sizeof(uint32_t) > c->peer_msg + c->peer_hdr.size); */
 
     caps_src = (uint8_t *)c->peer_msg + GUINT32_FROM_LE(c->peer_msg->caps_offset);
-    g_array_set_size(c->remote_common_caps, num_common_caps);
     CHANNEL_DEBUG(channel, "got remote common caps:");
-    store_caps(caps_src, c->remote_common_caps);
+    store_caps(caps_src, num_common_caps, c->remote_common_caps);
 
     caps_src += num_common_caps * sizeof(uint32_t);
-    g_array_set_size(c->remote_caps, num_channel_caps);
     CHANNEL_DEBUG(channel, "got remote channel caps:");
-    store_caps(caps_src, c->remote_caps);
+    store_caps(caps_src, num_channel_caps, c->remote_caps);
 
     if (!spice_channel_test_common_capability(channel,
             SPICE_COMMON_CAP_PROTOCOL_AUTH_SELECTION)) {
@@ -2193,7 +2197,7 @@ const gchar* spice_channel_type_to_string(gint type)
         str = to_string[type];
     }
 
-    return str ? str : "unknown channel type";
+    return str ? str : "unknown";
 }
 
 /**

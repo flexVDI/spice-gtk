@@ -205,7 +205,7 @@ static void spice_gtk_session_sync_keyboard_modifiers_for_channel(SpiceGtkSessio
     if (force || client_modifiers != guest_modifiers) {
         CHANNEL_DEBUG(inputs, "client_modifiers:0x%x, guest_modifiers:0x%x",
                       client_modifiers, guest_modifiers);
-        spice_inputs_set_key_locks(inputs, client_modifiers);
+        spice_inputs_channel_set_key_locks(inputs, client_modifiers);
     }
 }
 
@@ -223,25 +223,15 @@ static void spice_gtk_session_init(SpiceGtkSession *self)
                      G_CALLBACK(clipboard_owner_change), self);
 }
 
-static GObject *
-spice_gtk_session_constructor(GType                  gtype,
-                              guint                  n_properties,
-                              GObjectConstructParam *properties)
+static void
+spice_gtk_session_constructed(GObject *gobject)
 {
-    GObject *obj;
     SpiceGtkSession *self;
     SpiceGtkSessionPrivate *s;
     GList *list;
     GList *it;
 
-    {
-        /* Always chain up to the parent constructor */
-        GObjectClass *parent_class;
-        parent_class = G_OBJECT_CLASS(spice_gtk_session_parent_class);
-        obj = parent_class->constructor(gtype, n_properties, properties);
-    }
-
-    self = SPICE_GTK_SESSION(obj);
+    self = SPICE_GTK_SESSION(gobject);
     s = self->priv;
     if (!s->session)
         g_error("SpiceGtKSession constructed without a session");
@@ -255,8 +245,6 @@ spice_gtk_session_constructor(GType                  gtype,
         channel_new(s->session, it->data, (gpointer*)self);
     }
     g_list_free(list);
-
-    return obj;
 }
 
 static void spice_gtk_session_dispose(GObject *gobject)
@@ -404,7 +392,7 @@ static void spice_gtk_session_class_init(SpiceGtkSessionClass *klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 
-    gobject_class->constructor  = spice_gtk_session_constructor;
+    gobject_class->constructed  = spice_gtk_session_constructed;
     gobject_class->dispose      = spice_gtk_session_dispose;
     gobject_class->finalize     = spice_gtk_session_finalize;
     gobject_class->get_property = spice_gtk_session_get_property;
@@ -702,8 +690,8 @@ static void clipboard_get_targets(GtkClipboard *clipboard,
 
     s->clip_grabbed[selection] = TRUE;
 
-    if (spice_main_agent_test_capability(s->main, VD_AGENT_CAP_CLIPBOARD_BY_DEMAND))
-        spice_main_clipboard_selection_grab(s->main, selection, types, num_types);
+    if (spice_main_channel_agent_test_capability(s->main, VD_AGENT_CAP_CLIPBOARD_BY_DEMAND))
+        spice_main_channel_clipboard_selection_grab(s->main, selection, types, num_types);
 
     /* Sending a grab causes the agent to do an implicit release */
     s->nclip_targets[selection] = 0;
@@ -727,8 +715,8 @@ static void clipboard_owner_change(GtkClipboard        *clipboard,
 
     if (s->clip_grabbed[selection]) {
         s->clip_grabbed[selection] = FALSE;
-        if (spice_main_agent_test_capability(s->main, VD_AGENT_CAP_CLIPBOARD_BY_DEMAND))
-            spice_main_clipboard_selection_release(s->main, selection);
+        if (spice_main_channel_agent_test_capability(s->main, VD_AGENT_CAP_CLIPBOARD_BY_DEMAND))
+            spice_main_channel_clipboard_selection_release(s->main, selection);
     }
 
     switch (event->reason) {
@@ -772,7 +760,7 @@ static void clipboard_got_from_guest(SpiceMainChannel *main, guint selection,
     if (atom2agent[ri->info].vdagent == VD_AGENT_CLIPBOARD_UTF8_TEXT) {
         /* on windows, gtk+ would already convert to LF endings, but
            not on unix */
-        if (spice_main_agent_test_capability(s->main, VD_AGENT_CAP_GUEST_LINEEND_CRLF)) {
+        if (spice_main_channel_agent_test_capability(s->main, VD_AGENT_CAP_GUEST_LINEEND_CRLF)) {
             conv = spice_dos2unix((gchar*)data, size);
             size = strlen(conv);
         }
@@ -832,8 +820,8 @@ static void clipboard_get(GtkClipboard *clipboard,
                                      G_CALLBACK(clipboard_agent_connected),
                                      &ri);
 
-    spice_main_clipboard_selection_request(s->main, selection,
-                                           atom2agent[info].vdagent);
+    spice_main_channel_clipboard_selection_request(s->main, selection,
+                                                   atom2agent[info].vdagent);
 
 
     g_object_get(s->main, "agent-connected", &agent_connected, NULL);
@@ -953,7 +941,8 @@ static char *fixup_clipboard_text(SpiceGtkSession *self, const char *text, int *
 {
     char *conv = NULL;
 
-    if (spice_main_agent_test_capability(self->priv->main, VD_AGENT_CAP_GUEST_LINEEND_CRLF)) {
+    if (spice_main_channel_agent_test_capability(self->priv->main,
+                                                 VD_AGENT_CAP_GUEST_LINEEND_CRLF)) {
         conv = spice_unix2dos(text, *len);
         *len = strlen(conv);
     } else {
@@ -1008,10 +997,10 @@ static void clipboard_received_text_cb(GtkClipboard *clipboard,
 
     data = (const guchar *) (conv != NULL ? conv : text);
 notify_agent:
-    spice_main_clipboard_selection_notify(self->priv->main, selection,
-                                          VD_AGENT_CLIPBOARD_UTF8_TEXT,
-                                          data,
-                                          (data != NULL) ? len : 0);
+    spice_main_channel_clipboard_selection_notify(self->priv->main, selection,
+                                                  VD_AGENT_CLIPBOARD_UTF8_TEXT,
+                                                  data,
+                                                  (data != NULL) ? len : 0);
     g_free(conv);
 }
 
@@ -1064,8 +1053,7 @@ static void clipboard_received_cb(GtkClipboard *clipboard,
      */
     g_warn_if_fail(type != VD_AGENT_CLIPBOARD_UTF8_TEXT);
 
-    spice_main_clipboard_selection_notify(s->main, selection, type,
-                                          data, len);
+    spice_main_channel_clipboard_selection_notify(s->main, selection, type, data, len);
 }
 
 static gboolean clipboard_request(SpiceMainChannel *main, guint selection,

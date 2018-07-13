@@ -10,4 +10,5 @@ Version: @VERSION@
 Requires: spice-protocol
 Requires.private: @SPICE_GLIB_REQUIRES@
 Libs: -L${libdir} -lspice-client-glib-2.0
+Libs.private: @SPICE_GLIB_LIBS@
 Cflags: -I${includedir}/spice-client-glib-2.0

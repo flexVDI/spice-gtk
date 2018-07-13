@@ -71,7 +71,7 @@ static void glz_image_destroy(struct glz_image *img)
         return;
 
     pixman_image_unref(img->surface);
-    free(img);
+    g_free(img);
 }
 
 /* ------------------------------------------------------------------ */
@@ -108,7 +108,7 @@ static void glz_decoder_window_resize(SpiceGlzDecoderWindow *w)
         new_slot = w->images[i]->hdr.id % (w->nimages * 2);
         new_images[new_slot] = w->images[i];
     }
-    free(w->images);
+    g_free(w->images);
     w->images = new_images;
     w->nimages *= 2;
 }
@@ -435,8 +435,8 @@ void glz_decoder_window_destroy(SpiceGlzDecoderWindow *w)
         return;
 
     glz_decoder_window_clear(w);
-    free(w->images);
-    free(w);
+    g_free(w->images);
+    g_free(w);
 }
 
 SpiceGlzDecoder *glz_decoder_new(SpiceGlzDecoderWindow *w)
@@ -449,5 +449,5 @@ SpiceGlzDecoder *glz_decoder_new(SpiceGlzDecoderWindow *w)
 
 void glz_decoder_destroy(SpiceGlzDecoder *d)
 {
-    free(d);
+    g_free(d);
 }

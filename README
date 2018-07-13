@@ -53,4 +53,7 @@ gstreamer1-devel gstreamer1-plugins-base-devel gstreamer1-plugins-good gstreamer
 
 . If you build from git, you'll also need:
 
-libtool automake gettext-devel vala vala-tools python2/python3
+libtool automake gettext-devel vala vala-tools
+  python2 python2-pyparsing
+or
+  python3 python3-pyparsing

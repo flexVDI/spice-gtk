@@ -19,11 +19,6 @@
 #include <spice-client.h>
 #include "spice-uri-priv.h"
 
-/* GLIB_CHECK_VERSION(2, 40, 0) */
-#ifndef g_assert_nonnull
-#define g_assert_nonnull g_assert
-#endif
-
 struct test_case {
     gchar *uri;
     gchar *scheme;

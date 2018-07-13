@@ -98,7 +98,11 @@ pipe_input_stream_read (GInputStream  *stream,
 
     g_return_val_if_fail(count > 0, -1);
 
-    if (g_input_stream_is_closed (stream) || self->peer_closed) {
+    if (self->peer_closed) {
+        return 0;
+    }
+
+    if (g_input_stream_is_closed (stream)) {
         g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_CLOSED,
                              "Stream is already closed");
         return -1;
@@ -416,7 +420,7 @@ pipe_output_stream_is_writable (GPollableOutputStream *stream)
     PipeOutputStream *self = PIPE_OUTPUT_STREAM(stream);
     gboolean writable;
 
-    writable = self->buffer == NULL || self->peer->read >= 0;
+    writable = self->buffer == NULL || self->peer->read >= 0 || self->peer_closed;
     //g_debug("writable %p %d", self, writable);
 
     return writable;

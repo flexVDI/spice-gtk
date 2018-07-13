@@ -83,18 +83,36 @@ struct _SpiceInputsChannelClass {
 
 GType spice_inputs_channel_get_type(void);
 
-void spice_inputs_motion(SpiceInputsChannel *channel, gint dx, gint dy,
-                         gint button_state);
-void spice_inputs_position(SpiceInputsChannel *channel, gint x, gint y,
-                           gint display, gint button_state);
-void spice_inputs_button_press(SpiceInputsChannel *channel, gint button,
-                               gint button_state);
-void spice_inputs_button_release(SpiceInputsChannel *channel, gint button,
-                                 gint button_state);
+void spice_inputs_channel_motion(SpiceInputsChannel *channel, gint dx, gint dy, gint button_state);
+void spice_inputs_channel_position(SpiceInputsChannel *channel, gint x, gint y, gint display,
+                                   gint button_state);
+void spice_inputs_channel_button_press(SpiceInputsChannel *channel, gint button, gint button_state);
+void spice_inputs_channel_button_release(SpiceInputsChannel *channel, gint button,
+                                         gint button_state);
+void spice_inputs_channel_key_press(SpiceInputsChannel *channel, guint scancode);
+void spice_inputs_channel_key_release(SpiceInputsChannel *channel, guint scancode);
+void spice_inputs_channel_set_key_locks(SpiceInputsChannel *channel, guint locks);
+void spice_inputs_channel_key_press_and_release(SpiceInputsChannel *channel, guint scancode);
+
+#ifndef SPICE_DISABLE_DEPRECATED
+G_DEPRECATED_FOR(spice_inputs_channel_motion)
+void spice_inputs_motion(SpiceInputsChannel *channel, gint dx, gint dy, gint button_state);
+G_DEPRECATED_FOR(spice_inputs_channel_position)
+void spice_inputs_position(SpiceInputsChannel *channel, gint x, gint y, gint display,
+                           gint button_state);
+G_DEPRECATED_FOR(spice_inputs_channel_button_press)
+void spice_inputs_button_press(SpiceInputsChannel *channel, gint button, gint button_state);
+G_DEPRECATED_FOR(spice_inputs_channel_button_release)
+void spice_inputs_button_release(SpiceInputsChannel *channel, gint button, gint button_state);
+G_DEPRECATED_FOR(spice_inputs_channel_key_press)
 void spice_inputs_key_press(SpiceInputsChannel *channel, guint scancode);
+G_DEPRECATED_FOR(spice_inputs_channel_key_release)
 void spice_inputs_key_release(SpiceInputsChannel *channel, guint scancode);
+G_DEPRECATED_FOR(spice_inputs_channel_set_key_locks)
 void spice_inputs_set_key_locks(SpiceInputsChannel *channel, guint locks);
+G_DEPRECATED_FOR(spice_inputs_channel_key_press_and_release)
 void spice_inputs_key_press_and_release(SpiceInputsChannel *channel, guint scancode);
+#endif
 
 G_END_DECLS
 

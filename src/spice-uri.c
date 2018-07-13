@@ -211,7 +211,7 @@ gboolean spice_uri_parse(SpiceURI *self, const gchar *_uri, GError **error)
     success = TRUE;
 
 end:
-    free(uri_scheme);
+    g_free(uri_scheme);
     g_free(dup);
     g_strfreev(uriv);
     return success;

@@ -32,7 +32,7 @@
 #include <sys/stat.h>
 #include <gio/gunixinputstream.h>
 #include <polkit/polkit.h>
-#include <acl/libacl.h>
+#include <sys/acl.h>
 
 #define FATAL_ERROR(...) \
     do { \

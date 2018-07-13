@@ -187,5 +187,5 @@ void jpeg_decoder_destroy(SpiceJpegDecoder *decoder)
     GlibJpegDecoder *d = SPICE_CONTAINEROF(decoder, GlibJpegDecoder, base);
 
     jpeg_destroy_decompress(&d->_cinfo);
-    free(d);
+    g_free(d);
 }

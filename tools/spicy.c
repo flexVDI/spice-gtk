@@ -404,7 +404,7 @@ static void menu_cb_mouse_mode(GtkAction *action, void *data)
     else
         mode = SPICE_MOUSE_MODE_CLIENT;
 
-    spice_main_request_mouse_mode(cmain, mode);
+    spice_main_channel_request_mouse_mode(cmain, mode);
 }
 
 #ifdef USE_USBREDIR
@@ -745,14 +745,17 @@ static void menu_cb_resize_to(GtkAction *action G_GNUC_UNUSED,
 
     gtk_widget_show_all(dialog);
     if (gtk_dialog_run(GTK_DIALOG (dialog)) == GTK_RESPONSE_APPLY) {
-        spice_main_update_display_enabled(win->conn->main, win->id + win->monitor_id, TRUE, FALSE);
-        spice_main_set_display(win->conn->main,
-                               win->id + win->monitor_id,
-                               gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_x)),
-                               gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_y)),
-                               gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_width)),
-                               gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_height)));
-        spice_main_send_monitor_config(win->conn->main);
+        spice_main_channel_update_display_enabled(win->conn->main, win->id + win->monitor_id, TRUE,
+                                                  FALSE);
+        spice_main_channel_update_display(
+            win->conn->main,
+            win->id + win->monitor_id,
+            gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_x)),
+            gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_y)),
+            gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_width)),
+            gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(spin_height)),
+            TRUE);
+        spice_main_channel_send_monitor_config(win->conn->main);
     }
     gtk_widget_destroy(dialog);
 }
@@ -1306,16 +1309,16 @@ static void compression_cb(GtkRadioAction *action G_GNUC_UNUSED,
                            GtkRadioAction *current,
                            gpointer user_data)
 {
-    spice_display_change_preferred_compression(SPICE_CHANNEL(user_data),
-                                               gtk_radio_action_get_current_value(current));
+    spice_display_channel_change_preferred_compression(SPICE_CHANNEL(user_data),
+                                                       gtk_radio_action_get_current_value(current));
 }
 
 static void video_codec_type_cb(GtkRadioAction *action G_GNUC_UNUSED,
                                 GtkRadioAction *current,
                                 gpointer user_data)
 {
-    spice_display_change_preferred_video_codec_type(SPICE_CHANNEL(user_data),
-                                                    gtk_radio_action_get_current_value(current));
+    spice_display_channel_change_preferred_video_codec_type(SPICE_CHANNEL(user_data),
+                                                            gtk_radio_action_get_current_value(current));
 }
 
 #if GTK_CHECK_VERSION(3,10,0)
@@ -1925,10 +1928,10 @@ static void del_window(spice_connection *conn, SpiceWindow *win)
     g_debug("del display monitor %d:%d", win->id, win->monitor_id);
     conn->wins[win->id * CHANNELID_MAX + win->monitor_id] = NULL;
     if (win->id > 0)
-        spice_main_set_display_enabled(conn->main, win->id, FALSE);
+        spice_main_channel_update_display_enabled(conn->main, win->id, FALSE, TRUE);
     else
-        spice_main_set_display_enabled(conn->main, win->monitor_id, FALSE);
-    spice_main_send_monitor_config(conn->main);
+        spice_main_channel_update_display_enabled(conn->main, win->monitor_id, FALSE, TRUE);
+    spice_main_channel_send_monitor_config(conn->main);
 
     destroy_spice_window(win);
 }
@@ -1975,7 +1978,7 @@ static void port_write_cb(GObject *source_object,
     SpicePortChannel *port = SPICE_PORT_CHANNEL(source_object);
     GError *error = NULL;
 
-    spice_port_write_finish(port, res, &error);
+    spice_port_channel_write_finish(port, res, &error);
     if (error != NULL)
         g_warning("%s", error->message);
     g_clear_error(&error);
@@ -2010,7 +2013,7 @@ static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
         return FALSE;
 
     if (stdin_port != NULL)
-        spice_port_write_async(stdin_port, buf, bytes_read, NULL, port_write_cb, NULL);
+        spice_port_channel_write_async(stdin_port, buf, bytes_read, NULL, port_write_cb, NULL);
 
     return TRUE;
 }
@@ -2036,7 +2039,7 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec,
     if (opened) {
         /* only send a break event and disconnect */
         if (g_strcmp0(name, "org.spice.spicy.break") == 0) {
-            spice_port_event(port, SPICE_PORT_EVENT_BREAK);
+            spice_port_channel_event(port, SPICE_PORT_EVENT_BREAK);
             spice_channel_flush_async(channel, NULL, port_flushed_cb, conn);
         }
 
@@ -2383,7 +2386,7 @@ static void connection_destroy(spice_connection *conn)
 {
     g_object_unref(conn->session);
     g_hash_table_unref(conn->transfers);
-    free(conn);
+    g_free(conn);
 
     connections--;
     SPICE_DEBUG("%s (%d)", __FUNCTION__, connections);
@@ -2615,6 +2618,8 @@ int main(int argc, char *argv[])
 
 #ifndef WITH_FLEXVDI
     setup_terminal(true);
+#if HAVE_GSTAUDIO || HAVE_GSTVIDEO
+    gst_deinit();
 #endif
     return disconnect_reason;
 }

@@ -503,10 +503,10 @@ static void stream_read_callback(pa_stream *s, size_t length, void *data)
         g_return_if_fail(length > 0);
 
         if (p->rchannel != NULL)
-            spice_record_send_data(SPICE_RECORD_CHANNEL(p->rchannel),
-                                   /* FIXME: server side doesn't care about ts?
-                                      what is the unit? ms apparently */
-                                   (gpointer)snddata, length, 0);
+            spice_record_channel_send_data(SPICE_RECORD_CHANNEL(p->rchannel),
+                                           /* FIXME: server side doesn't care about ts?
+                                           what is the unit? ms apparently */
+                                           (gpointer)snddata, length, 0);
 
         if (pa_stream_drop(s) < 0) {
             g_warning("pa_stream_drop() failed: %s",
@@ -941,26 +941,7 @@ static void cancel_task(GCancellable *cancellable, gpointer user_data)
     struct async_task *task = user_data;
     g_return_if_fail(task != NULL);
 
-#if GLIB_CHECK_VERSION(2,40,0)
     free_async_task(task);
-#else
-    /* This must be done now otherwise pulseaudio may return to a
-     * cancelled task operation before free_async_task is called */
-    if (task->pa_op != NULL) {
-        pa_operation_cancel(task->pa_op);
-        g_clear_pointer(&task->pa_op, pa_operation_unref);
-    }
-
-    /* Clear the pending_restore_task reference to avoid triggering a
-     * pa_operation when context state is in READY state */
-    if (task->pulse->priv->pending_restore_task == task) {
-        task->pulse->priv->pending_restore_task = NULL;
-    }
-
-    /* FIXME: https://bugzilla.gnome.org/show_bug.cgi?id=705395
-     * Free the memory in idle */
-    g_idle_add(free_async_task, task);
-#endif
 }
 
 static void complete_task(SpicePulse *pulse, struct async_task *task, const gchar *err_msg)

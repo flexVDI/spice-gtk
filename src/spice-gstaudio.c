@@ -175,7 +175,7 @@ static gboolean record_bus_cb(GstBus *bus, GstMessage *msg, gpointer data)
             return TRUE;
         }
 
-        spice_record_send_data(SPICE_RECORD_CHANNEL(p->rchannel),
+        spice_record_channel_send_data(SPICE_RECORD_CHANNEL(p->rchannel),
                                /* FIXME: server side doesn't care about ts?
                                   what is the unit? ms apparently */
                                mapping.data, mapping.size, 0);

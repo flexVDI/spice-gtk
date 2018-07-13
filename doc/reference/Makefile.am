@@ -28,7 +28,6 @@ IGNORE_HFILES=					\
 	channel-usbredir-priv.h			\
 	client_sw_canvas.h			\
 	continuation.h				\
-	controller				\
 	coroutine.h				\
 	decode.h				\
 	desktop-integration.h			\
@@ -59,7 +58,6 @@ IGNORE_HFILES=					\
 	vmcstream.h				\
 	vncdisplaykeymap.h			\
 	win-usb-dev.h				\
-	wocky-http-proxy.h			\
 	$(NULL)
 
 # CFLAGS and LDFLAGS for compiling gtkdoc-scangobj with your library.
