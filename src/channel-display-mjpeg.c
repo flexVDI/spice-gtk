@@ -262,6 +262,7 @@ static gboolean mjpeg_decoder_queue_frame(VideoDecoder *video_decoder,
      * So drop late frames as early as possible to save on processing time.
      */
     if (latency < 0) {
+        SPICE_DEBUG("dropping a late MJPEG frame");
         frame->free(frame);
         return TRUE;
     }

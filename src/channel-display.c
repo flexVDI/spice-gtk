@@ -1544,11 +1544,14 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
 
     latency = op->multi_media_time - mmtime;
     if (latency < 0) {
-        CHANNEL_DEBUG(channel, "stream data too late by %u ms (ts: %u, mmtime: %u), dropping",
+        CHANNEL_DEBUG(channel, "stream data too late by %u ms (ts: %u, mmtime: %u)",
                       mmtime - op->multi_media_time, op->multi_media_time, mmtime);
         st->arrive_late_time += mmtime - op->multi_media_time;
         st->arrive_late_count++;
 
+        /* Late frames are counted as drops in the stats but aren't necessarily dropped - depends
+         * on codec and decoder
+         */
         if (!st->cur_drops_seq_stats.len) {
             st->cur_drops_seq_stats.start_mm_time = op->multi_media_time;
         }
