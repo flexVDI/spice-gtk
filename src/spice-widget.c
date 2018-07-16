@@ -255,7 +255,7 @@ static void update_ready(SpiceDisplay *display)
      * state here. If 'resize-guest' is false, we can assume that the
      * application will manage the state of the displays.
      */
-    if (d->resize_guest_enable) {
+    if (d->resize_guest_enable && d->main) {
         spice_main_channel_update_display_enabled(d->main, get_display_id(display), ready, TRUE);
     }
 
@@ -1268,7 +1268,7 @@ static void recalc_geometry(GtkWidget *widget)
                   d->area.width, d->area.height,
                   d->ww, d->wh, zoom);
 
-    if (d->resize_guest_enable)
+    if (d->resize_guest_enable && d->main)
         spice_main_channel_update_display(d->main, get_display_id(display),
                                           d->area.x, d->area.y, d->ww / zoom, d->wh / zoom, TRUE);
 }
