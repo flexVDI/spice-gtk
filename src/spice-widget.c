@@ -111,8 +111,8 @@ static void update_mouse_grab(SpiceDisplay *display);
 static void try_mouse_grab(SpiceDisplay *display);
 static void try_mouse_ungrab(SpiceDisplay *display);
 static void recalc_geometry(GtkWidget *widget);
-static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data);
-static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer data);
+static void channel_new(SpiceSession *s, SpiceChannel *channel, SpiceDisplay *display);
+static void channel_destroy(SpiceSession *s, SpiceChannel *channel, SpiceDisplay *display);
 static void cursor_invalidate(SpiceDisplay *display);
 static void update_area(SpiceDisplay *display, gint x, gint y, gint width, gint height);
 static void release_keys(SpiceDisplay *display);
@@ -713,13 +713,13 @@ spice_display_constructed(GObject *gobject)
     list = spice_session_get_channels(d->session);
     for (it = g_list_first(list); it != NULL; it = g_list_next(it)) {
         if (SPICE_IS_MAIN_CHANNEL(it->data)) {
-            channel_new(d->session, it->data, (gpointer*)display);
+            channel_new(d->session, it->data, display);
             break;
         }
     }
     for (it = g_list_first(list); it != NULL; it = g_list_next(it)) {
         if (!SPICE_IS_MAIN_CHANNEL(it->data))
-            channel_new(d->session, it->data, (gpointer*)display);
+            channel_new(d->session, it->data, display);
     }
     g_list_free(list);
 
@@ -2976,9 +2976,8 @@ static void gl_draw(SpiceDisplay *display,
 }
 #endif
 
-static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
+static void channel_new(SpiceSession *s, SpiceChannel *channel, SpiceDisplay *display)
 {
-    SpiceDisplay *display = data;
     SpiceDisplayPrivate *d = display->priv;
     int id;
 
@@ -3069,9 +3068,8 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     return;
 }
 
-static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer data)
+static void channel_destroy(SpiceSession *s, SpiceChannel *channel, SpiceDisplay *display)
 {
-    SpiceDisplay *display = data;
     SpiceDisplayPrivate *d = display->priv;
     int id;
 
