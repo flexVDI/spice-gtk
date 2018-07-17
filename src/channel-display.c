@@ -1896,9 +1896,9 @@ static void display_handle_monitors_config(SpiceChannel *channel, SpiceMsgIn *in
         SpiceDisplayMonitorConfig *mc = &g_array_index(c->monitors, SpiceDisplayMonitorConfig, i);
         SpiceHead *head = &config->heads[i];
         CHANNEL_DEBUG(channel, "monitor id: %u, surface id: %u, +%u+%u-%ux%u",
-                    head->id, head->surface_id,
+                    head->monitor_id, head->surface_id,
                     head->x, head->y, head->width, head->height);
-        mc->id = head->id;
+        mc->id = head->monitor_id;
         mc->surface_id = head->surface_id;
         mc->x = head->x;
         mc->y = head->y;
