@@ -258,9 +258,11 @@ guint16 vnc_display_keymap_gdk2xtkbd(const guint16 *keycode_map,
 void vnc_display_keyval_set_entries(void)
 {
 	size_t i;
+	GdkKeymap *keymap = gdk_keymap_get_for_display(gdk_display_get_default());
+
 	if (ref_count_for_untranslated_keys == 0)
 		for (i = 0; i < sizeof(untranslated_keys) / sizeof(untranslated_keys[0]); i++)
-			gdk_keymap_get_entries_for_keyval(gdk_keymap_get_default(),
+			gdk_keymap_get_entries_for_keyval(keymap,
 							  untranslated_keys[i].keyval,
 							  &untranslated_keys[i].keys,
 							  &untranslated_keys[i].n_keys);

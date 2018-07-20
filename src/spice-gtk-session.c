@@ -120,8 +120,7 @@ static guint32 get_keyboard_lock_modifiers(void)
 {
     guint32 modifiers = 0;
 /* Ignore GLib's too-new warnings */
-G_GNUC_BEGIN_IGNORE_DEPRECATIONS
-    GdkKeymap *keyboard = gdk_keymap_get_default();
+    GdkKeymap *keyboard = gdk_keymap_get_for_display(gdk_display_get_default());
 
     if (gdk_keymap_get_caps_lock_state(keyboard)) {
         modifiers |= SPICE_INPUTS_CAPS_LOCK;
@@ -134,7 +133,6 @@ G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     if (gdk_keymap_get_scroll_lock_state(keyboard)) {
         modifiers |= SPICE_INPUTS_SCROLL_LOCK;
     }
-G_GNUC_END_IGNORE_DEPRECATIONS
     return modifiers;
 }
 
@@ -178,7 +176,7 @@ static void guest_modifiers_changed(SpiceInputsChannel *inputs, gpointer data)
 static void spice_gtk_session_init(SpiceGtkSession *self)
 {
     SpiceGtkSessionPrivate *s;
-    GdkKeymap *keymap = gdk_keymap_get_default();
+    GdkKeymap *keymap = gdk_keymap_get_for_display(gdk_display_get_default());
 
     s = self->priv = spice_gtk_session_get_instance_private(self);
 

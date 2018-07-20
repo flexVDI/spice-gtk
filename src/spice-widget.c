@@ -1699,9 +1699,9 @@ static guint get_scancode_from_keyval(SpiceDisplay *display, guint keyval)
     guint keycode = 0;
     GdkKeymapKey *keys = NULL;
     gint n_keys = 0;
+    GdkKeymap *keymap = gdk_keymap_get_for_display(gdk_display_get_default());
 
-    if (gdk_keymap_get_entries_for_keyval(gdk_keymap_get_default(),
-                                          keyval, &keys, &n_keys)) {
+    if (gdk_keymap_get_entries_for_keyval(keymap, keyval, &keys, &n_keys)) {
         /* FIXME what about levels? */
         keycode = keys[0].keycode;
         g_free(keys);
