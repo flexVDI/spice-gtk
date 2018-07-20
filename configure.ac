@@ -130,8 +130,8 @@ AC_ARG_WITH([gtk],
   [with_gtk=3.0])
 
 case "$with_gtk" in
-  3.0) GTK_REQUIRED=3.12
-       GTK_ENCODED_VERSION="GDK_VERSION_3_12"
+  3.0) GTK_REQUIRED=3.22
+       GTK_ENCODED_VERSION="GDK_VERSION_3_22"
        ;;
   no)
        AS_IF([test x$enable_gtk_doc = xyes],
@@ -148,18 +148,6 @@ AS_IF([test "x$with_gtk" != "xno"],
       [GTK_CFLAGS="$GTK_CFLAGS -DGDK_VERSION_MIN_REQUIRED=$GTK_ENCODED_VERSION \
                                -DGDK_VERSION_MAX_ALLOWED=$GTK_ENCODED_VERSION"])
 SPICE_GTK_REQUIRES="${SPICE_GTK_REQUIRES} gtk+-3.0 >= $GTK_REQUIRED"
-
-# Check for gdk_event_get_scancode function
-# This was added in Gdk 3.22
-# The check allows the usage of the function in case the function is
-# backported or in case of compilation from Gdk master branch
-old_LIBS="$LIBS"
-old_CFLAGS="$CFLAGS"
-CFLAGS="$CFLAGS $GTK_CFLAGS"
-LIBS="$LIBS $GTK_LIBS"
-AC_CHECK_FUNCS(gdk_event_get_scancode)
-LIBS="$old_LIBS"
-CFLAGS="$old_CFLAGS"
 
 PKG_CHECK_EXISTS([gtk+-x11-$with_gtk], [PKG_CHECK_MODULES(X11, x11)])
 AC_CHECK_HEADERS([X11/XKBlib.h])

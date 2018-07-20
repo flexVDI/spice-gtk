@@ -119,7 +119,6 @@ enum {
 static guint32 get_keyboard_lock_modifiers(void)
 {
     guint32 modifiers = 0;
-#if GTK_CHECK_VERSION(3,18,0)
 /* Ignore GLib's too-new warnings */
 G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     GdkKeymap *keyboard = gdk_keymap_get_default();
@@ -136,43 +135,6 @@ G_GNUC_BEGIN_IGNORE_DEPRECATIONS
         modifiers |= SPICE_INPUTS_SCROLL_LOCK;
     }
 G_GNUC_END_IGNORE_DEPRECATIONS
-#else
-#ifdef HAVE_X11_XKBLIB_H
-    Display *x_display = NULL;
-    XKeyboardState keyboard_state;
-
-    GdkScreen *screen = gdk_screen_get_default();
-    if (!GDK_IS_X11_DISPLAY(gdk_screen_get_display(screen))) {
-        SPICE_DEBUG("FIXME: gtk backend is not X11");
-        return 0;
-    }
-
-    x_display = GDK_SCREEN_XDISPLAY(screen);
-    XGetKeyboardControl(x_display, &keyboard_state);
-
-    if (keyboard_state.led_mask & 0x01) {
-        modifiers |= SPICE_INPUTS_CAPS_LOCK;
-    }
-    if (keyboard_state.led_mask & 0x02) {
-        modifiers |= SPICE_INPUTS_NUM_LOCK;
-    }
-    if (keyboard_state.led_mask & 0x04) {
-        modifiers |= SPICE_INPUTS_SCROLL_LOCK;
-    }
-#elif defined(G_OS_WIN32)
-    if (GetKeyState(VK_CAPITAL) & 1) {
-        modifiers |= SPICE_INPUTS_CAPS_LOCK;
-    }
-    if (GetKeyState(VK_NUMLOCK) & 1) {
-        modifiers |= SPICE_INPUTS_NUM_LOCK;
-    }
-    if (GetKeyState(VK_SCROLL) & 1) {
-        modifiers |= SPICE_INPUTS_SCROLL_LOCK;
-    }
-#else
-    g_warning("get_keyboard_lock_modifiers not implemented");
-#endif // HAVE_X11_XKBLIB_H
-#endif // GTK_CHECK_VERSION(3,18,0)
     return modifiers;
 }
 
