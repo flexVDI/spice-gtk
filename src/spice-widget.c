@@ -637,7 +637,6 @@ static void spice_display_init(SpiceDisplay *display)
                      "signal::realize", drawing_area_realize, display,
                      NULL);
     gtk_stack_add_named(d->stack, area, "draw-area");
-    gtk_widget_set_double_buffered(area, true);
     gtk_stack_set_visible_child(d->stack, area);
 
 #if HAVE_EGL
@@ -652,7 +651,6 @@ static void spice_display_init(SpiceDisplay *display)
 #endif
     area = gtk_drawing_area_new();
     gtk_stack_add_named(d->stack, area, "gst-area");
-    gtk_widget_set_double_buffered(area, true);
 
     gtk_widget_show_all(widget);
 
@@ -1277,7 +1275,9 @@ static void set_egl_enabled(SpiceDisplay *display, bool enabled)
          * only way I found to prevent glitches when the window is
          * resized. */
         GtkWidget *area = gtk_stack_get_child_by_name(d->stack, "draw-area");
+        G_GNUC_BEGIN_IGNORE_DEPRECATIONS
         gtk_widget_set_double_buffered(GTK_WIDGET(area), !enabled);
+        G_GNUC_END_IGNORE_DEPRECATIONS
     } else
 #endif
     {
