@@ -574,8 +574,6 @@ static void grab_notify(SpiceDisplay *display, gboolean was_grabbed)
 }
 
 #if HAVE_EGL
-/* Ignore GLib's too-new warnings */
-G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 static gboolean
 gl_area_render(GtkGLArea *area, GdkGLContext *context, gpointer user_data)
 {
@@ -607,7 +605,6 @@ gl_area_realize(GtkGLArea *area, gpointer user_data)
         g_clear_error(&err);
     }
 }
-G_GNUC_END_IGNORE_DEPRECATIONS
 #endif
 
 static void
@@ -644,8 +641,6 @@ static void spice_display_init(SpiceDisplay *display)
     gtk_stack_set_visible_child(d->stack, area);
 
 #if HAVE_EGL
-/* Ignore GLib's too-new warnings */
-G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     area = gtk_gl_area_new();
     gtk_gl_area_set_required_version(GTK_GL_AREA(area), 3, 2);
     gtk_gl_area_set_auto_render(GTK_GL_AREA(area), false);
@@ -654,7 +649,6 @@ G_GNUC_BEGIN_IGNORE_DEPRECATIONS
                      "signal::realize", gl_area_realize, display,
                      NULL);
     gtk_stack_add_named(d->stack, area, "gl-area");
-G_GNUC_END_IGNORE_DEPRECATIONS
 #endif
     area = gtk_drawing_area_new();
     gtk_stack_add_named(d->stack, area, "gst-area");
@@ -813,9 +807,7 @@ static GdkSeat *spice_display_get_default_seat(SpiceDisplay *display)
 {
     GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(display));
     GdkDisplay *gdk_display = gdk_window_get_display(window);
-    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     return gdk_display_get_default_seat(gdk_display);
-    G_GNUC_END_IGNORE_DEPRECATIONS
 }
 
 /* FIXME: gdk_keyboard_grab/ungrab() is deprecated */
@@ -1028,7 +1020,6 @@ static gboolean do_pointer_grab(SpiceDisplay *display)
 #endif
 
     try_keyboard_grab(display);
-    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     status = gdk_seat_grab(spice_display_get_default_seat(display),
                            window,
                            GDK_SEAT_CAPABILITY_ALL_POINTING,
@@ -1037,7 +1028,6 @@ static gboolean do_pointer_grab(SpiceDisplay *display)
                            NULL,
                            NULL,
                            NULL);
-    G_GNUC_END_IGNORE_DEPRECATIONS
     grab_successful = (status == GDK_GRAB_SUCCESS);
     if (!grab_successful) {
         d->mouse_grab_active = false;
@@ -2400,9 +2390,7 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
 static GdkDevice *spice_gdk_window_get_pointing_device(GdkWindow *window)
 {
     GdkDisplay *gdk_display = gdk_window_get_display(window);
-    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     return gdk_seat_get_pointer(gdk_display_get_default_seat(gdk_display));
-    G_GNUC_END_IGNORE_DEPRECATIONS
 }
 
 static GdkModifierType spice_display_get_modifiers_state(SpiceDisplay *display)
@@ -2909,10 +2897,7 @@ static void gl_draw(SpiceDisplay *display,
     gl = gtk_stack_get_child_by_name(d->stack, "gl-area");
 
     if (gtk_stack_get_visible_child(d->stack) == gl) {
-        /* Ignore GLib's too-new warnings */
-        G_GNUC_BEGIN_IGNORE_DEPRECATIONS
         gtk_gl_area_queue_render(GTK_GL_AREA(gl));
-        G_GNUC_END_IGNORE_DEPRECATIONS
         d->egl.call_draw_done = TRUE;
     } else {
         spice_egl_update_display(display);
