@@ -1120,16 +1120,22 @@ static void mouse_wrap(SpiceDisplay *display, GdkEventMotion *motion)
     d->mouse_last_x = -1;
     d->mouse_last_y = -1;
 #else
-    GdkScreen *screen = gtk_widget_get_screen(GTK_WIDGET(display));
-    xr = gdk_screen_get_width(screen) / 2;
-    yr = gdk_screen_get_height(screen) / 2;
+    GdkRectangle geom;
+    GdkWindow *gdk_window = gtk_widget_get_window(GTK_WIDGET(display));
+    GdkDisplay *gdk_display = gdk_window_get_display(gdk_window);
+    GdkMonitor *monitor = gdk_display_get_primary_monitor(gdk_display);
+    gdk_monitor_get_geometry(monitor, &geom);
+
+    xr = geom.width / 2;
+    yr = geom.height / 2;
 
     if (xr != (gint)motion->x_root || yr != (gint)motion->y_root) {
-        GdkWindow *window = gtk_widget_get_window(GTK_WIDGET(display));
         /* FIXME: we try our best to ignore that next pointer move event.. */
-        gdk_display_sync(gdk_screen_get_display(screen));
+        gdk_display_sync(gdk_display);
 
-        gdk_device_warp(spice_gdk_window_get_pointing_device(window), screen, xr, yr);
+        gdk_device_warp(spice_gdk_window_get_pointing_device(gdk_window),
+                        gdk_window_get_screen(gdk_window),
+                        xr, yr);
         d->mouse_last_x = -1;
         d->mouse_last_y = -1;
     }
