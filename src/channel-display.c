@@ -788,7 +788,10 @@ static void image_put_lossy(SpiceImageCache *cache, uint64_t id,
 static void image_replace_lossy(SpiceImageCache *cache, uint64_t id,
                                 pixman_image_t *surface)
 {
-    image_put(cache, id, surface);
+    SpiceDisplayChannelPrivate *c =
+        SPICE_CONTAINEROF(cache, SpiceDisplayChannelPrivate, image_cache);
+
+    cache_replace_lossy(c->images, id, pixman_image_ref(surface), FALSE);
 }
 
 static pixman_image_t* image_get_lossless(SpiceImageCache *cache, uint64_t id)

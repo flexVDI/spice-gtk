@@ -101,6 +101,23 @@ static inline void cache_add_lossy(display_cache *cache, uint64_t id,
     g_hash_table_replace(cache->table, item, value);
 }
 
+static inline void cache_replace_lossy(display_cache *cache, uint64_t id,
+                                       gpointer value, gboolean lossy)
+{
+    display_cache_item *item = cache_item_new(id, lossy);
+
+    // If image is currently in the table consider its reference count before replacing it
+    if (cache->ref_counted) {
+        display_cache_item *current_item;
+        gpointer current_image;
+        if (g_hash_table_lookup_extended(cache->table, &id, (gpointer*) &current_item,
+                                         &current_image)) {
+            item->ref_count = current_item->ref_count;
+        }
+    }
+    g_hash_table_replace(cache->table, item, value);
+}
+
 static inline void cache_add(display_cache *cache, uint64_t id, gpointer value)
 {
     cache_add_lossy(cache, id, value, FALSE);
