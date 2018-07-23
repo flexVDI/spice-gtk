@@ -12,7 +12,7 @@ test -z "$srcdir" && srcdir=.
     autoreconf -v --force --install
 )
 
-CONFIGURE_ARGS="--enable-maintainer-mode --enable-gtk-doc --with-gtk=3.0 --enable-vala --enable-python-checks"
+CONFIGURE_ARGS="--enable-maintainer-mode --enable-gtk-doc --with-gtk=3.0 --enable-vala --enable-python-checks --disable-celt051"
 
 if [ -z "$NOCONFIGURE" ]; then
     echo "Running configure with $CONFIGURE_ARGS $@"
