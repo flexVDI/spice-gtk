@@ -89,7 +89,7 @@ struct _SpiceWindowClass
 
 static GType spice_window_get_type(void);
 
-G_DEFINE_TYPE (SpiceWindow, spice_window, G_TYPE_OBJECT);
+G_DEFINE_TYPE (SpiceWindow, spice_window, G_TYPE_OBJECT)
 
 #define CHANNELID_MAX 4
 #define MONITORID_MAX 4

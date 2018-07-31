@@ -39,7 +39,7 @@ struct _SpiceDesktopIntegrationPrivate {
     guint gnome_automount_inhibit_cookie;
 };
 
-G_DEFINE_TYPE_WITH_PRIVATE(SpiceDesktopIntegration, spice_desktop_integration, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceDesktopIntegration, spice_desktop_integration, G_TYPE_OBJECT)
 
 /* ------------------------------------------------------------------ */
 /* Gnome specific code                                                */

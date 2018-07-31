@@ -157,7 +157,7 @@ struct _SpiceSessionPrivate {
  * a Spice server.
  */
 
-G_DEFINE_TYPE_WITH_PRIVATE(SpiceSession, spice_session, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceSession, spice_session, G_TYPE_OBJECT)
 
 /* Properties */
 enum {

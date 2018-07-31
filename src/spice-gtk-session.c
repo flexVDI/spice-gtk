@@ -104,7 +104,7 @@ static void channel_destroy(SpiceSession *session, SpiceChannel *channel,
                             gpointer user_data);
 static gboolean read_only(SpiceGtkSession *self);
 
-G_DEFINE_TYPE_WITH_PRIVATE(SpiceGtkSession, spice_gtk_session, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceGtkSession, spice_gtk_session, G_TYPE_OBJECT)
 
 /* Properties */
 enum {

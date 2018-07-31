@@ -81,7 +81,7 @@ static RSA *EVP_PKEY_get0_RSA(EVP_PKEY *pkey)
 
 G_DEFINE_TYPE_WITH_CODE (SpiceChannel, spice_channel, G_TYPE_OBJECT,
                          G_ADD_PRIVATE (SpiceChannel)
-                         g_type_add_class_private (g_define_type_id, sizeof (SpiceChannelClassPrivate)));
+                         g_type_add_class_private (g_define_type_id, sizeof (SpiceChannelClassPrivate)))
 
 /* Properties */
 enum {

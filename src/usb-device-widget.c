@@ -87,7 +87,7 @@ struct _SpiceUsbDeviceWidgetPrivate {
 
 static guint signals[LAST_SIGNAL] = { 0, };
 
-G_DEFINE_TYPE_WITH_PRIVATE(SpiceUsbDeviceWidget, spice_usb_device_widget, GTK_TYPE_BOX);
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceUsbDeviceWidget, spice_usb_device_widget, GTK_TYPE_BOX)
 
 static void spice_usb_device_widget_get_property(GObject     *gobject,
                                                  guint        prop_id,

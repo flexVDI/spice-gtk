@@ -35,7 +35,7 @@ struct _SpiceUsbAclHelperPrivate {
     gulong cancellable_id;
 };
 
-G_DEFINE_TYPE_WITH_PRIVATE(SpiceUsbAclHelper, spice_usb_acl_helper, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceUsbAclHelper, spice_usb_acl_helper, G_TYPE_OBJECT)
 
 static void spice_usb_acl_helper_init(SpiceUsbAclHelper *self)
 {
