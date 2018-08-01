@@ -4,7 +4,7 @@ AC_INIT([spice-gtk], [m4_esyscmd(build-aux/git-version-gen .tarball-version)],
         [spice-devel@lists.freedesktop.org])
 
 AC_CONFIG_MACRO_DIR([m4])
-m4_include([spice-common/m4/spice-deps.m4])
+m4_include([subprojects/spice-common/m4/spice-deps.m4])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_AUX_DIR([build-aux])
 
@@ -85,11 +85,14 @@ AS_IF([test "$have_egl" = "yes"],
 AC_CHECK_LIBM
 AC_SUBST(LIBM)
 
-AC_CONFIG_SUBDIRS([spice-common])
+AC_CONFIG_SUBDIRS([subprojects/spice-common])
 PKG_CHECK_MODULES([SPICE_PROTOCOL], [spice-protocol >= 0.12.15])
 
-COMMON_CFLAGS='-I${top_builddir}/spice-common/ -I${top_srcdir}/spice-common/ ${SPICE_PROTOCOL_CFLAGS}'
+COMMON_CFLAGS='-I${top_builddir}/subprojects/spice-common/ -I${top_srcdir}/subprojects/spice-common/ ${SPICE_PROTOCOL_CFLAGS}'
 AC_SUBST(COMMON_CFLAGS)
+
+SPICE_COMMON_DIR='${top_builddir}/subprojects/spice-common'
+AC_SUBST(SPICE_COMMON_DIR)
 
 SPICE_GTK_MAJOR_VERSION=`echo $PACKAGE_VERSION | cut -d. -f1`
 SPICE_GTK_MINOR_VERSION=`echo $PACKAGE_VERSION | cut -d. -f2`

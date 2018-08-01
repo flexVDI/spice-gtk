@@ -1,5 +1,5 @@
 [submodule "spice-common"]
-	path = spice-common
+	path = subprojects/spice-common
 	url = ../spice-common.git
 [submodule "src/keycodemapdb"]
 	path = src/keycodemapdb

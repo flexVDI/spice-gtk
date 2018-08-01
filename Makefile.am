@@ -1,7 +1,7 @@
 ACLOCAL_AMFLAGS = -I m4
 NULL =
 
-SUBDIRS = spice-common src man po doc data tools
+SUBDIRS = subprojects/spice-common src man po doc data tools
 
 if BUILD_TESTS
 SUBDIRS += tests
