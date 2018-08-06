@@ -46,7 +46,7 @@
             "sources": [
                 {
                     "type": "git",
-                    "url": "git://anongit.freedesktop.org/spice/spice-protocol"
+                    "url": "https://gitlab.freedesktop.org/spice/spice-protocol.git"
                 }
             ]
         },
@@ -63,7 +63,7 @@
             "sources": [
                 {
                     "type": "git",
-                    "url": "git://anongit.freedesktop.org/spice/spice-gtk"
+                    "url": "https://gitlab.freedesktop.org/spice/spice-gtk.git"
                 }
             ]
         }
