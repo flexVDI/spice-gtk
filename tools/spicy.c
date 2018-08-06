@@ -2618,6 +2618,7 @@ int main(int argc, char *argv[])
 
 #ifndef WITH_FLEXVDI
     setup_terminal(true);
+#endif
 #if HAVE_GSTAUDIO || HAVE_GSTVIDEO
     gst_deinit();
 #endif
