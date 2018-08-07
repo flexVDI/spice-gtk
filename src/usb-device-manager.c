@@ -303,6 +303,12 @@ static gboolean spice_usb_device_manager_initable_init(GInitable  *initable,
         return FALSE;
     }
 
+#ifdef G_OS_WIN32
+#if LIBUSB_API_VERSION >= 0x01000106
+    libusb_set_option(priv->context, LIBUSB_OPTION_USE_USBDK);
+#endif
+#endif
+
     /* Start listening for usb devices plug / unplug */
 #ifdef USE_GUDEV
     priv->udev = g_udev_client_new(subsystems);
