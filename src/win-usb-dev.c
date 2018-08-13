@@ -200,6 +200,11 @@ g_udev_client_initable_init(GInitable *initable, GCancellable *cancellable,
                     "Error initializing USB support: %s [%i]", errstr, rc);
         return FALSE;
     }
+#ifdef G_OS_WIN32
+#if LIBUSB_API_VERSION >= 0x01000106
+    libusb_set_option(priv->ctx, LIBUSB_OPTION_USE_USBDK);
+#endif
+#endif
 
     /* get initial device list */
     if (g_udev_client_list_devices(self, &priv->udev_list, err, __FUNCTION__) < 0) {
