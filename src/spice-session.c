@@ -95,9 +95,8 @@ struct _SpiceSessionPrivate {
     SpiceChannel      *cmain; /* weak reference */
     Ring              channels;
     guint             channels_destroying;
-    guint32           mm_time;
     gboolean          client_provided_sockets;
-    guint64           mm_time_at_clock;
+    guint64           mm_time_offset;
     SpiceSession      *migration;
     GList             *migration_left;
     SpiceSessionMigration migration_state;
@@ -2357,7 +2356,7 @@ guint32 spice_session_get_mm_time(SpiceSession *session)
 
     /* FIXME: we may want to estimate the drift of clocks, and well,
        do something better than this trivial approach */
-    return s->mm_time + (g_get_monotonic_time() - s->mm_time_at_clock) / 1000;
+    return (g_get_monotonic_time() - s->mm_time_offset) / 1000;
 }
 
 #define MM_TIME_DIFF_RESET_THRESH 500 // 0.5 sec
@@ -2372,12 +2371,11 @@ void spice_session_set_mm_time(SpiceSession *session, guint32 time)
 
     old_time = spice_session_get_mm_time(session);
 
-    s->mm_time = time;
-    s->mm_time_at_clock = g_get_monotonic_time();
-    SPICE_DEBUG("set mm time: %u", spice_session_get_mm_time(session));
+    s->mm_time_offset = g_get_monotonic_time() - time * (guint64) 1000;
+    SPICE_DEBUG("set mm time: %u", time);
     if (spice_mmtime_diff(time, old_time + MM_TIME_DIFF_RESET_THRESH) > 0 ||
         spice_mmtime_diff(time, old_time) < 0) {
-        SPICE_DEBUG("%s: mm-time-reset, old %u, new %u", __FUNCTION__, old_time, s->mm_time);
+        SPICE_DEBUG("%s: mm-time-reset, old %u, new %u", __FUNCTION__, old_time, time);
         g_coroutine_signal_emit(session, signals[SPICE_SESSION_MM_TIME_RESET], 0);
     }
 }
