@@ -352,7 +352,8 @@ static void spice_usbredir_channel_open_acl_cb(
         spice_usbredir_channel_open_device(channel, &err);
     }
     if (err) {
-        g_clear_pointer(&priv->device, libusb_unref_device);
+        libusb_unref_device(priv->device);
+        priv->device = NULL;
         g_boxed_free(spice_usb_device_get_type(), priv->spice_device);
         priv->spice_device = NULL;
         priv->state  = STATE_DISCONNECTED;
@@ -383,7 +384,8 @@ _open_device_async_cb(GTask *task,
     spice_usbredir_channel_lock(channel);
 
     if (!spice_usbredir_channel_open_device(channel, &err)) {
-        g_clear_pointer(&priv->device, libusb_unref_device);
+        libusb_unref_device(priv->device);
+        priv->device = NULL;
         g_boxed_free(spice_usb_device_get_type(), priv->spice_device);
         priv->spice_device = NULL;
     }
@@ -504,7 +506,8 @@ void spice_usbredir_channel_disconnect_device(SpiceUsbredirChannel *channel)
 
         /* This also closes the libusb handle we passed from open_device */
         usbredirhost_set_device(priv->host, NULL);
-        g_clear_pointer(&priv->device, libusb_unref_device);
+        libusb_unref_device(priv->device);
+        priv->device = NULL;
         g_boxed_free(spice_usb_device_get_type(), priv->spice_device);
         priv->spice_device = NULL;
         priv->state  = STATE_DISCONNECTED;
