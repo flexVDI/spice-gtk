@@ -133,8 +133,6 @@ struct _SpiceDisplayPrivate {
     int                     x11_accel_denominator;
     int                     x11_threshold;
 #endif
-    gint                    time_to_inactivity;
-    gint64                  last_input_time;
 #if HAVE_EGL
     struct {
         gboolean            context_ready;

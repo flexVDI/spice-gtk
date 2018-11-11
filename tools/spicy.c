@@ -28,11 +28,6 @@
 #include <vreader.h>
 #endif
 
-#ifdef WITH_FLEXVDI
-#include <flexvdi-port.h>
-#include "flexvdi_client_icon.h"
-#endif
-
 #include "spice-widget.h"
 #include "spice-gtk-session.h"
 #include "spice-audio.h"
@@ -40,7 +35,6 @@
 #include "spice-cmdline.h"
 #include "spice-option.h"
 #include "usb-device-widget.h"
-#include <gdk/gdkkeysyms.h>
 
 #include "spicy-connect.h"
 #if HAVE_GSTAUDIO || HAVE_GSTVIDEO
@@ -72,7 +66,7 @@ struct _SpiceWindow {
     gint             id;
     gint             monitor_id;
     GtkWidget        *toplevel, *spice;
-    GtkWidget        *menubar, *toolbar, *fullscreen_menubar;
+    GtkWidget        *menubar, *toolbar;
     GtkWidget        *ritem, *rmenu;
     GtkWidget        *statusbar, *status, *st[STATE_MAX];
     GtkActionGroup   *ag;
@@ -120,16 +114,9 @@ struct spice_connection {
     GtkWidget *transfer_dialog;
 };
 
-static enum {
-    DISCONNECT_NO_ERROR = 0,
-    DISCONNECT_CONN_ERROR,
-    DISCONNECT_IO_ERROR,
-    DISCONNECT_AUTH_ERROR,
-} disconnect_reason;
-
 static spice_connection *connection_new(void);
 static void connection_connect(spice_connection *conn);
-static void connection_disconnect(spice_connection *conn, int reason);
+static void connection_disconnect(spice_connection *conn);
 static void connection_destroy(spice_connection *conn);
 static void usb_connect_failed(GObject               *object,
                                SpiceUsbDevice        *device,
@@ -140,20 +127,13 @@ static void del_window(spice_connection *conn, SpiceWindow *win);
 
 /* options */
 static gboolean fullscreen = false;
-static gboolean fullscreen_on_all_monitors = false;
 static gboolean version = false;
 static char *spicy_title = NULL;
-static gboolean kiosk_mode = false;
-static gboolean disable_power_events = false;
-static gboolean disable_copy_to_guest = false;
-static gboolean disable_paste_from_guest = false;
 /* globals */
 static GMainLoop     *mainloop = NULL;
 static int           connections = 0;
 static GKeyFile      *keyfile = NULL;
-#ifndef WITH_FLEXVDI
 static SpicePortChannel*stdin_port = NULL;
-#endif
 
 /* ------------------------------------------------------------------ */
 
@@ -246,10 +226,6 @@ static void update_edit_menu_window(SpiceWindow *win)
 {
     int i;
     GtkAction *toggle;
-    gboolean disabled_entries[G_N_ELEMENTS(spice_edit_properties)] = {
-        disable_copy_to_guest,
-        disable_paste_from_guest,
-    };
 
     if (win == NULL) {
         return;
@@ -260,7 +236,7 @@ static void update_edit_menu_window(SpiceWindow *win)
     for (i = 0; i < G_N_ELEMENTS(spice_edit_properties); i++) {
         toggle = gtk_action_group_get_action(win->ag, spice_edit_properties[i]);
         if (toggle) {
-            gtk_action_set_sensitive(toggle, win->conn->agent_connected && !disabled_entries[i]);
+            gtk_action_set_sensitive(toggle, win->conn->agent_connected);
         }
     }
 }
@@ -288,7 +264,7 @@ static void menu_cb_close(GtkAction *action, void *data)
 {
     SpiceWindow *win = data;
 
-    connection_disconnect(win->conn, DISCONNECT_NO_ERROR);
+    connection_disconnect(win->conn);
 }
 
 static void menu_cb_copy(GtkAction *action, void *data)
@@ -325,13 +301,6 @@ static void menu_cb_fullscreen(GtkAction *action, void *data)
     SpiceWindow *win = data;
 
     window_set_fullscreen(win, !win->fullscreen);
-}
-
-static void menu_cb_minimize(GtkAction *action, void *data)
-{
-    SpiceWindow *win = data;
-
-    gtk_window_iconify(GTK_WINDOW(win->toplevel));
 }
 
 #ifdef USE_SMARTCARD
@@ -448,57 +417,6 @@ static void menu_cb_select_usb_devices(GtkAction *action, void *data)
 }
 #endif
 
-static void send_keystroke_cb(GtkAction *action, void *data)
-{
-    SpiceWindow *win = data;
-    guint keyvals[3] = {
-        GDK_KEY_Control_L,
-        GDK_KEY_Alt_L,
-        GDK_KEY_F1
-    };
-    int numKeys = 3;
-    if (!strcmp(gtk_action_get_name(action), "CAD")) {
-        keyvals[2] = GDK_KEY_Delete;
-    } else if (!strcmp(gtk_action_get_name(action), "WCR")) {
-        keyvals[1] = GDK_KEY_Meta_L;
-        keyvals[2] = GDK_KEY_Right;
-    } else if (!strcmp(gtk_action_get_name(action), "WCL")) {
-        keyvals[1] = GDK_KEY_Meta_L;
-        keyvals[2] = GDK_KEY_Left;
-    } else if (!strcmp(gtk_action_get_name(action), "WL")) {
-        keyvals[0] = GDK_KEY_Meta_L;
-        keyvals[1] = GDK_KEY_l;
-        numKeys = 2;
-    } else if (!strcmp(gtk_action_get_name(action), "CAF1")) {
-        keyvals[2] = GDK_KEY_F1;
-    } else if (!strcmp(gtk_action_get_name(action), "CAF2")) {
-        keyvals[2] = GDK_KEY_F2;
-    } else if (!strcmp(gtk_action_get_name(action), "CAF3")) {
-        keyvals[2] = GDK_KEY_F3;
-    } else if (!strcmp(gtk_action_get_name(action), "CAF4")) {
-        keyvals[2] = GDK_KEY_F4;
-    } else if (!strcmp(gtk_action_get_name(action), "CAF5")) {
-        keyvals[2] = GDK_KEY_F5;
-    } else if (!strcmp(gtk_action_get_name(action), "CAF6")) {
-        keyvals[2] = GDK_KEY_F6;
-    } else if (!strcmp(gtk_action_get_name(action), "CAF7")) {
-        keyvals[2] = GDK_KEY_F7;
-    } else if (!strcmp(gtk_action_get_name(action), "CAF8")) {
-        keyvals[2] = GDK_KEY_F8;
-    } else if (!strcmp(gtk_action_get_name(action), "CAF9")) {
-        keyvals[2] = GDK_KEY_F9;
-    } else if (!strcmp(gtk_action_get_name(action), "CAF10")) {
-        keyvals[2] = GDK_KEY_F10;
-    } else if (!strcmp(gtk_action_get_name(action), "CAF11")) {
-        keyvals[2] = GDK_KEY_F11;
-    } else if (!strcmp(gtk_action_get_name(action), "CAF12")) {
-        keyvals[2] = GDK_KEY_F12;
-    } else return;
-
-    spice_display_send_keys(SPICE_DISPLAY(win->spice), keyvals, numKeys,
-                            SPICE_DISPLAY_KEY_EVENT_PRESS | SPICE_DISPLAY_KEY_EVENT_RELEASE);
-}
-
 static void menu_cb_bool_prop(GtkToggleAction *action, gpointer data)
 {
     SpiceWindow *win = data;
@@ -553,51 +471,24 @@ static void menu_cb_statusbar(GtkToggleAction *action, gpointer data)
 
 static void menu_cb_about(GtkAction *action, void *data)
 {
-    char *comments = "Based on spicy,\nSPICE remote desktop protocol";
-    static const char *program_name = "flexVDI Client";
-    static const char *copyright = "(c) 2010 Red Hat, (c) 2014-2016 flexVDI";
-    static const char *website = "http://www.flexvdi.com";
-    static const char *authors[] = { "Javier Celaya <javier.celaya@flexvdi.com>",
-                                     "Sergio L. Pascual <sergiolpascual@flexvdi.com>",
-                                     "Gerd Hoffmann <kraxel@redhat.com>",
-                                     "Marc-André Lureau <marcandre.lureau@redhat.com>",
-                                     NULL };
+    char *comments = "gtk test client app for the\n"
+        "spice remote desktop protocol";
+    static const char *copyright = "(c) 2010 Red Hat";
+    static const char *website = "http://www.spice-space.org";
+    static const char *authors[] = { "Gerd Hoffmann <kraxel@redhat.com>",
+                               "Marc-André Lureau <marcandre.lureau@redhat.com>",
+                               NULL };
     SpiceWindow *win = data;
 
     gtk_show_about_dialog(GTK_WINDOW(win->toplevel),
-                          "program-name",    program_name,
                           "authors",         authors,
                           "comments",        comments,
                           "copyright",       copyright,
                           "logo-icon-name",  "help-about",
                           "website",         website,
-                          "website-label",   website,
                           "version",         PACKAGE_VERSION,
                           "license",         "LGPLv2.1",
                           NULL);
-}
-
-static void power_event_cb(GtkAction *action, void *data)
-{
-    SpiceWindow *win = data;
-    GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(win->toplevel),
-                                               GTK_DIALOG_DESTROY_WITH_PARENT | GTK_DIALOG_MODAL,
-                                               GTK_MESSAGE_WARNING, GTK_BUTTONS_YES_NO,
-                                               "WARNING: Are you sure you want to perform a %s action?",
-                                               gtk_action_get_name(action));
-
-    gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_YES);
-    gint result = gtk_dialog_run(GTK_DIALOG(dialog));
-    gtk_widget_destroy(dialog);
-    if (result == GTK_RESPONSE_YES) {
-        if (!strcmp(gtk_action_get_name(action), "Reset")) {
-            spice_main_power_event_request(win->conn->main, SPICE_POWER_EVENT_RESET);
-        } else if (!strcmp(gtk_action_get_name(action), "Powerdown")) {
-            spice_main_power_event_request(win->conn->main, SPICE_POWER_EVENT_POWERDOWN);
-        } else if (!strcmp(gtk_action_get_name(action), "Shutdown")) {
-            spice_main_power_event_request(win->conn->main, SPICE_POWER_EVENT_SHUTDOWN);
-        }
-    }
 }
 
 static gboolean delete_cb(GtkWidget *widget, GdkEvent *event, gpointer data)
@@ -605,23 +496,11 @@ static gboolean delete_cb(GtkWidget *widget, GdkEvent *event, gpointer data)
     SpiceWindow *win = data;
 
     if (win->monitor_id == 0)
-        connection_disconnect(win->conn, DISCONNECT_NO_ERROR);
+        connection_disconnect(win->conn);
     else
         del_window(win->conn, win);
 
     return true;
-}
-
-static void switch_sub_menu(SpiceWindow *win, const char *src, const char *dst)
-{
-    GtkWidget *menu_item, *sub_menu;
-    menu_item = gtk_ui_manager_get_widget(win->ui, src);
-    sub_menu = gtk_menu_item_get_submenu(GTK_MENU_ITEM(menu_item));
-    g_object_ref(sub_menu);
-    gtk_menu_item_set_submenu(GTK_MENU_ITEM(menu_item), NULL);
-    menu_item = gtk_ui_manager_get_widget(win->ui, dst);
-    gtk_menu_item_set_submenu(GTK_MENU_ITEM(menu_item), sub_menu);
-    g_object_unref(sub_menu);
 }
 
 static gboolean window_state_cb(GtkWidget *widget, GdkEventWindowState *event,
@@ -635,11 +514,6 @@ static gboolean window_state_cb(GtkWidget *widget, GdkEventWindowState *event,
             gtk_widget_hide(win->toolbar);
             gtk_widget_hide(win->statusbar);
             gtk_widget_grab_focus(win->spice);
-            switch_sub_menu(win, "/MainMenu/InputMenu", "/FullscreenMenu/InputMenu");
-            switch_sub_menu(win, "/MainMenu/OptionMenu", "/FullscreenMenu/OptionMenu");
-#if defined(WITH_FLEXVDI) && defined(ENABLE_PRINTING)
-            switch_sub_menu(win, "/MainMenu/SharePrinterMenu", "/FullscreenMenu/SharePrinterMenu");
-#endif
         } else {
             gboolean state;
             GtkAction *toggle;
@@ -651,12 +525,6 @@ static gboolean window_state_cb(GtkWidget *widget, GdkEventWindowState *event,
             toggle = gtk_action_group_get_action(win->ag, "Statusbar");
             state = gtk_toggle_action_get_active(GTK_TOGGLE_ACTION(toggle));
             gtk_widget_set_visible(win->statusbar, state);
-            gtk_widget_hide(win->fullscreen_menubar);
-            switch_sub_menu(win, "/FullscreenMenu/InputMenu", "/MainMenu/InputMenu");
-            switch_sub_menu(win, "/FullscreenMenu/OptionMenu", "/MainMenu/OptionMenu");
-#if defined(WITH_FLEXVDI) && defined(ENABLE_PRINTING)
-            switch_sub_menu(win, "/FullscreenMenu/SharePrinterMenu", "/MainMenu/SharePrinterMenu");
-#endif
         }
     }
     return TRUE;
@@ -666,9 +534,10 @@ static void grab_keys_pressed_cb(GtkWidget *widget, gpointer data)
 {
     SpiceWindow *win = data;
 
-    if (kiosk_mode) {
-        connection_disconnect(win->conn, DISCONNECT_NO_ERROR);
-    }
+    /* since mnemonics are disabled, we leave fullscreen when
+       ungrabbing mouse. Perhaps we should have a different handling
+       of fullscreen key, or simply use a UI, like vinagre */
+    window_set_fullscreen(win, FALSE);
 }
 
 static void mouse_grab_cb(GtkWidget *widget, gint grabbed, gpointer data)
@@ -839,12 +708,6 @@ static const GtkActionEntry entries[] = {
         .name        = "InputMenu",
         .label       = "_Input",
     },{
-        .name        = "SharePrinterMenu",
-        .label       = "_Printers",
-    },{
-        .name        = "PowerMenu",
-        .label       = "_Power",
-    },{
         .name        = "OptionMenu",
         .label       = "_Options",
     },{
@@ -869,7 +732,6 @@ static const GtkActionEntry entries[] = {
         .label       = "_Close",
         .callback    = G_CALLBACK(menu_cb_close),
         .accelerator = "", /* none (disable default "<control>W") */
-        .tooltip     = "Exit the client",
     },{
 
         /* Edit menu */
@@ -878,14 +740,12 @@ static const GtkActionEntry entries[] = {
         .label       = "_Copy to guest",
         .callback    = G_CALLBACK(menu_cb_copy),
         .accelerator = "", /* none (disable default "<control>C") */
-        .tooltip     = "Copy to guest",
     },{
         .name        = "PasteFromGuest",
         .stock_id    = "edit-paste",
         .label       = "_Paste from guest",
         .callback    = G_CALLBACK(menu_cb_paste),
         .accelerator = "", /* none (disable default "<control>V") */
-        .tooltip     = "Paste from guest",
     },{
 
         /* View menu */
@@ -894,20 +754,6 @@ static const GtkActionEntry entries[] = {
         .label       = "_Fullscreen",
         .callback    = G_CALLBACK(menu_cb_fullscreen),
         .accelerator = "<shift>F11",
-        .tooltip     = "Go fullscreen",
-    },{
-        .name        = "Restore",
-        .stock_id    = "view-restore",
-        .label       = "_Restore",
-        .callback    = G_CALLBACK(menu_cb_fullscreen),
-        .accelerator = "<shift>F11",
-        .tooltip     = "Leave fullscreen",
-    },{
-        .name        = "Minimize",
-        .stock_id    = "go-bottom",
-        .label       = "_Minimize",
-        .callback    = G_CALLBACK(menu_cb_minimize),
-        .tooltip     = "Minimize",
     },{
         .name        = "ResizeTo",
         .label       = "_Resize to",
@@ -934,94 +780,6 @@ static const GtkActionEntry entries[] = {
         .accelerator = "<shift>F10",
     },{
 #endif
-        .name        = "CAD",
-        .label       = "Ctrl+Alt+Supr",
-        .callback    = G_CALLBACK(send_keystroke_cb),
-    },{
-
-#ifdef G_OS_WIN32
-        .name        = "WCR",
-        .label       = "Ctrl+Win+Right",
-        .callback    = G_CALLBACK(send_keystroke_cb),
-    },{
-        .name        = "WCL",
-        .label       = "Ctrl+Win+Left",
-        .callback    = G_CALLBACK(send_keystroke_cb),
-    },{
-        .name        = "WL",
-        .label       = "Win+L",
-        .callback    = G_CALLBACK(send_keystroke_cb),
-    },{
-#else
-        .name        = "CAF1",
-        .label       = "Ctrl+Alt+F1",
-        .callback    = G_CALLBACK(send_keystroke_cb),
-    },{
-        .name        = "CAF2",
-        .label       = "Ctrl+Alt+F2",
-        .callback    = G_CALLBACK(send_keystroke_cb),
-    },{
-        .name        = "CAF3",
-        .label       = "Ctrl+Alt+F3",
-        .callback    = G_CALLBACK(send_keystroke_cb),
-    },{
-        .name        = "CAF4",
-        .label       = "Ctrl+Alt+F4",
-        .callback    = G_CALLBACK(send_keystroke_cb),
-    },{
-        .name        = "CAF5",
-        .label       = "Ctrl+Alt+F5",
-        .callback    = G_CALLBACK(send_keystroke_cb),
-    },{
-        .name        = "CAF6",
-        .label       = "Ctrl+Alt+F6",
-        .callback    = G_CALLBACK(send_keystroke_cb),
-    },{
-        .name        = "CAF7",
-        .label       = "Ctrl+Alt+F7",
-        .callback    = G_CALLBACK(send_keystroke_cb),
-    },{
-        .name        = "CAF8",
-        .label       = "Ctrl+Alt+F8",
-        .callback    = G_CALLBACK(send_keystroke_cb),
-    },{
-        .name        = "CAF9",
-        .label       = "Ctrl+Alt+F9",
-        .callback    = G_CALLBACK(send_keystroke_cb),
-    },{
-        .name        = "CAF10",
-        .label       = "Ctrl+Alt+F10",
-        .callback    = G_CALLBACK(send_keystroke_cb),
-    },{
-        .name        = "CAF11",
-        .label       = "Ctrl+Alt+F11",
-        .callback    = G_CALLBACK(send_keystroke_cb),
-    },{
-        .name        = "CAF12",
-        .label       = "Ctrl+Alt+F12",
-        .callback    = G_CALLBACK(send_keystroke_cb),
-    },{
-#endif
-
-        /* Power events */
-        .name        = "Reset",
-        .stock_id    = "system-reboot",
-        .label       = "_Reset",
-        .callback    = G_CALLBACK(power_event_cb),
-        .tooltip     = "Reset immediately",
-    },{
-        .name        = "Powerdown",
-        .stock_id    = "system-log-out",
-        .label       = "_Powerdown cycle",
-        .callback    = G_CALLBACK(power_event_cb),
-        .tooltip     = "Powerdown cycle",
-    },{
-        .name        = "Shutdown",
-        .stock_id    = "system-shutdown",
-        .label       = "_Shutdown immediately",
-        .callback    = G_CALLBACK(power_event_cb),
-        .tooltip     = "Shutdown immediately",
-    },{
 
         .name        = "MouseMode",
         .label       = "Toggle _mouse mode",
@@ -1175,34 +933,7 @@ static char ui_xml[] =
 #ifdef USE_USBREDIR
 "      <menuitem action='SelectUsbDevices'/>\n"
 #endif
-"      <menuitem action='CAD'/>\n"
-#ifdef G_OS_WIN32
-"      <menuitem action='WCR'/>\n"
-"      <menuitem action='WCL'/>\n"
-"      <menuitem action='WL'/>\n"
-#else
-"      <menuitem action='CAF1'/>\n"
-"      <menuitem action='CAF2'/>\n"
-"      <menuitem action='CAF3'/>\n"
-"      <menuitem action='CAF4'/>\n"
-"      <menuitem action='CAF5'/>\n"
-"      <menuitem action='CAF6'/>\n"
-"      <menuitem action='CAF7'/>\n"
-"      <menuitem action='CAF8'/>\n"
-"      <menuitem action='CAF9'/>\n"
-"      <menuitem action='CAF10'/>\n"
-"      <menuitem action='CAF11'/>\n"
-"      <menuitem action='CAF12'/>\n"
-#endif
 "    </menu>\n"
-"    <menu action='PowerMenu'>\n"
-"      <menuitem action='Reset'/>\n"
-"      <menuitem action='Powerdown'/>\n"
-"      <menuitem action='Shutdown'/>\n"
-"    </menu>\n"
-#if defined(WITH_FLEXVDI) && defined(ENABLE_PRINTING)
-"    <menu action='SharePrinterMenu'/>\n"
-#endif
 "    <menu action='OptionMenu'>\n"
 "      <menuitem action='grab-keyboard'/>\n"
 "      <menuitem action='grab-mouse'/>\n"
@@ -1245,35 +976,7 @@ static char ui_xml[] =
 "    <separator/>\n"
 "    <toolitem action='ResizeTo'/>\n"
 "    <separator/>\n"
-"    <toolitem action='Reset'/>\n"
-"    <toolitem action='Powerdown'/>\n"
-"    <toolitem action='Shutdown'/>\n"
 "  </toolbar>\n"
-"  <toolbar action='KioskBar'>\n"
-"    <toolitem action='Close'/>\n"
-"    <separator/>\n"
-"    <toolitem action='CopyToGuest'/>\n"
-"    <toolitem action='PasteFromGuest'/>\n"
-"  </toolbar>\n"
-"  <toolbar action='FullscreenBar'>\n"
-"    <toolitem action='Close'/>\n"
-"    <separator/>\n"
-"    <toolitem action='CopyToGuest'/>\n"
-"    <toolitem action='PasteFromGuest'/>\n"
-"    <separator/>\n"
-"    <toolitem action='Restore'/>\n"
-"    <toolitem action='Minimize'/>\n"
-"    <toolitem action='Reset'/>\n"
-"    <toolitem action='Powerdown'/>\n"
-"    <toolitem action='Shutdown'/>\n"
-"  </toolbar>\n"
-"  <menubar action='FullscreenMenu'>\n"
-"    <menu action='InputMenu' />\n"
-#if defined(WITH_FLEXVDI) && defined(ENABLE_PRINTING)
-"    <menu action='SharePrinterMenu'/>\n"
-#endif
-"    <menu action='OptionMenu' />\n"
-"  </menubar>\n"
 "</ui>\n";
 
 static gboolean is_gtk_session_property(const gchar *property)
@@ -1321,62 +1024,6 @@ static void video_codec_type_cb(GtkRadioAction *action G_GNUC_UNUSED,
                                                             gtk_radio_action_get_current_value(current));
 }
 
-#if GTK_CHECK_VERSION(3,10,0)
-static gboolean hide_widget_cb(gpointer data) {
-    GtkWidget *widget = data;
-    if (!gtk_revealer_get_reveal_child(GTK_REVEALER(widget)))
-        gtk_widget_hide(widget);
-    return FALSE;
-}
-
-static gboolean motion_notify_event_cb(GtkWidget * widget, GdkEventMotion * event,
-                                       gpointer data) {
-    SpiceWindow *win = data;
-    GtkRevealer *revealer = GTK_REVEALER(win->fullscreen_menubar);
-    if (win->fullscreen) {
-        if (event->y == 0.0) {
-            gtk_widget_show(win->fullscreen_menubar);
-            gtk_revealer_set_reveal_child(revealer, TRUE);
-        } else if (gtk_revealer_get_reveal_child(revealer)) {
-            gtk_revealer_set_reveal_child(revealer, FALSE);
-            g_timeout_add(gtk_revealer_get_transition_duration(revealer),
-                          hide_widget_cb, revealer);
-        }
-    }
-    return FALSE;
-}
-#else
-static gboolean motion_notify_event_cb(GtkWidget *widget, GdkEventMotion *event,
-                                       gpointer data) {
-    SpiceWindow *win = data;
-    if (win->fullscreen) {
-        if (event->y <= 0.0) {
-            gtk_widget_show(win->fullscreen_menubar);
-#if !GTK_CHECK_VERSION(3,2,0)
-            GtkRequisition size;
-            gint window_width;
-            GtkWidget *fixed = gtk_widget_get_parent(win->fullscreen_menubar);
-            gtk_window_get_size(GTK_WINDOW(win->toplevel), &window_width, NULL);
-            gtk_widget_size_request(win->fullscreen_menubar, &size);
-            int x = (window_width - size.width) / 2;
-            gtk_fixed_move(GTK_FIXED(fixed), win->fullscreen_menubar, x, 0);
-#endif
-        } else {
-            gtk_widget_hide(win->fullscreen_menubar);
-        }
-    }
-    return FALSE;
-}
-#endif
-
-static gboolean leave_window_cb(GtkWidget *widget, GdkEventCrossing *event,
-                                gpointer data) {
-    GdkEventMotion mevent = {
-        .y = event->y
-    };
-    return motion_notify_event_cb(widget, &mevent, data);
-}
-
 static void
 spice_window_class_init (SpiceWindowClass *klass)
 {
@@ -1387,82 +1034,13 @@ spice_window_init (SpiceWindow *self)
 {
 }
 
-#if defined(WITH_FLEXVDI) && defined(ENABLE_PRINTING)
-void printer_toggled(GtkWidget *widget, gpointer win)
-{
-    const char * printer = gtk_menu_item_get_label(GTK_MENU_ITEM(widget));
-    gboolean active = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget));
-    g_key_file_set_boolean(keyfile, "printers", printer, active);
-    if (active) {
-        flexvdi_share_printer(printer);
-    } else {
-        flexvdi_unshare_printer(printer);
-    }
-}
-
-static GtkWidget * get_printers_menu(SpiceWindow *win)
-{
-    GtkWidget * sharePrinterMenu = gtk_menu_new();
-    GSList * printers, * printer;
-    flexvdi_get_printer_list(&printers);
-    for (printer = printers; printer != NULL; printer = g_slist_next(printer)) {
-        const char * printerName = (const char *)printer->data;
-        gboolean state = g_key_file_get_boolean(keyfile, "printers", printerName, NULL);
-        GtkWidget * item = gtk_check_menu_item_new_with_label(printerName);
-        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), state);
-        gtk_menu_shell_append(GTK_MENU_SHELL(sharePrinterMenu), item);
-        gtk_widget_set_visible(item, TRUE);
-        g_signal_connect(G_OBJECT(item), "activate",
-                         G_CALLBACK(printer_toggled), win);
-    }
-    g_slist_free_full(printers, g_free);
-    return sharePrinterMenu;
-}
-
-static void share_current_printers(gpointer data)
-{
-    SpiceWindow *win = data;
-    GtkWidget *mainSPMenu = gtk_ui_manager_get_widget(win->ui, "/MainMenu/SharePrinterMenu");
-    GtkWidget *fullSPMenu = gtk_ui_manager_get_widget(win->ui, "/FullscreenMenu/SharePrinterMenu");
-    if (!flexvdi_agent_supports_capability(FLEXVDI_CAP_PRINTING)) {
-        gtk_widget_hide(mainSPMenu);
-        gtk_widget_hide(fullSPMenu);
-    } else {
-        gtk_widget_show(mainSPMenu);
-        gtk_widget_show(fullSPMenu);
-        GtkWidget *subMenu = win->fullscreen ?
-            gtk_menu_item_get_submenu(GTK_MENU_ITEM(fullSPMenu)) :
-            gtk_menu_item_get_submenu(GTK_MENU_ITEM(mainSPMenu));
-        GList *children = gtk_container_get_children(GTK_CONTAINER(subMenu)), *child;
-        for (child = children; child != NULL; child = g_list_next(child)) {
-            if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(child->data))) {
-                const char * printer = gtk_menu_item_get_label(GTK_MENU_ITEM(child->data));
-                flexvdi_share_printer(printer);
-            }
-        }
-    }
-}
-
-#endif
-
-static void realize_window(GtkWidget * toplevel, gpointer data)
-{
-    if (fullscreen_on_all_monitors) {
-        gdk_window_set_fullscreen_mode(gtk_widget_get_window(toplevel),
-                                       GDK_FULLSCREEN_ON_ALL_MONITORS);
-        fullscreen = TRUE;
-    }
-    if (fullscreen || kiosk_mode)
-        gtk_window_fullscreen(GTK_WINDOW(toplevel));
-}
-
 static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *channel, int id, gint monitor_id)
 {
     char title[32];
     SpiceWindow *win;
     GtkAction *toggle;
     gboolean state;
-    GtkWidget *vbox, *hbox, *frame, *overlay, *fsBar, *fsMenu;
+    GtkWidget *vbox, *frame;
     GError *err = NULL;
     int i;
     SpiceGrabSequence *seq;
@@ -1486,11 +1064,6 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
                      G_CALLBACK(window_state_cb), win);
     g_signal_connect(G_OBJECT(win->toplevel), "delete-event",
                      G_CALLBACK(delete_cb), win);
-
-#ifdef WITH_FLEXVDI
-    gtk_window_set_icon(GTK_WINDOW(win->toplevel),
-                        gdk_pixbuf_new_from_inline(-1, flexvdi_icon_data, FALSE, NULL));
-#endif
 
     /* menu + toolbar */
     win->ui = gtk_ui_manager_new();
@@ -1527,30 +1100,6 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     }
     win->menubar = gtk_ui_manager_get_widget(win->ui, "/MainMenu");
     win->toolbar = gtk_ui_manager_get_widget(win->ui, "/ToolBar");
-#if GTK_CHECK_VERSION(3,10,0)
-    win->fullscreen_menubar = gtk_revealer_new();
-    gtk_revealer_set_transition_type(GTK_REVEALER(win->fullscreen_menubar),
-                                     GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
-    hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-#else
-    win->fullscreen_menubar = gtk_hbox_new(FALSE, 0);
-    hbox = gtk_hbox_new(FALSE, 1);
-#endif
-    GtkWidget * event_box = gtk_event_box_new();
-    gtk_container_add(GTK_CONTAINER(win->fullscreen_menubar), event_box);
-    gtk_container_add(GTK_CONTAINER(event_box), hbox);
-    GtkStyle *default_style = gtk_widget_get_default_style();
-    gtk_widget_modify_bg(event_box, GTK_STATE_NORMAL, &default_style->bg[GTK_STATE_NORMAL]);
-    gtk_container_set_border_width(GTK_CONTAINER(hbox), 0);
-    gtk_box_set_spacing(GTK_BOX(hbox), 0);
-    fsBar = kiosk_mode ?
-                gtk_ui_manager_get_widget(win->ui, "/KioskBar") :
-                gtk_ui_manager_get_widget(win->ui, "/FullscreenBar");
-    g_object_set(fsBar, "show-arrow", FALSE, NULL);
-    gtk_toolbar_insert(GTK_TOOLBAR(fsBar), gtk_separator_tool_item_new(), -1);
-    fsMenu = gtk_ui_manager_get_widget(win->ui, "/FullscreenMenu");
-    gtk_box_pack_start(GTK_BOX(hbox), fsBar, TRUE, TRUE, 0);
-    gtk_box_pack_end(GTK_BOX(hbox), fsMenu, FALSE, FALSE, 0);
 
     /* recent menu */
     win->ritem  = gtk_ui_manager_get_widget
@@ -1580,10 +1129,6 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
                      G_CALLBACK(keyboard_grab_cb), win);
     g_signal_connect(G_OBJECT(win->spice), "grab-keys-pressed",
                      G_CALLBACK(grab_keys_pressed_cb), win);
-    g_signal_connect(G_OBJECT(win->spice), "motion-notify-event",
-                     G_CALLBACK(motion_notify_event_cb), win);
-    g_signal_connect(G_OBJECT(win->spice), "leave-notify-event",
-                     G_CALLBACK(leave_window_cb), win);
 
     /* status line */
     win->statusbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
@@ -1608,32 +1153,17 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
     /* Make a vbox and put stuff in */
     vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
     gtk_container_set_border_width(GTK_CONTAINER(vbox), 0);
+    gtk_container_add(GTK_CONTAINER(win->toplevel), vbox);
     gtk_box_pack_start(GTK_BOX(vbox), win->menubar, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(vbox), win->toolbar, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(vbox), win->spice, TRUE, TRUE, 0);
     gtk_box_pack_end(GTK_BOX(vbox), win->statusbar, FALSE, TRUE, 0);
 
-#if GTK_CHECK_VERSION(3,2,0)
-    overlay = gtk_overlay_new();
-    g_object_set(win->fullscreen_menubar, "valign", GTK_ALIGN_START, NULL);
-    g_object_set(win->fullscreen_menubar, "halign", GTK_ALIGN_CENTER, NULL);
-    gtk_overlay_add_overlay(GTK_OVERLAY(overlay), win->fullscreen_menubar);
-    gtk_container_add(GTK_CONTAINER(overlay), vbox);
-#else
-    overlay = gtk_vbox_new(FALSE, 0);
-    GtkWidget *fixed = gtk_fixed_new();
-    gtk_box_pack_start(GTK_BOX(overlay), fixed, FALSE, FALSE, 0);
-    gtk_fixed_put(GTK_FIXED(fixed), win->fullscreen_menubar, 0, 0);
-    gtk_widget_set_size_request(fixed, -1, 0);
-    gtk_box_pack_start(GTK_BOX(overlay), vbox, TRUE, TRUE, 0);
-#endif
-    gtk_container_add(GTK_CONTAINER(win->toplevel), overlay);
-
     /* show window */
-    g_signal_connect(win->toplevel, "realize", (GCallback)realize_window, NULL);
+    if (fullscreen)
+        gtk_window_fullscreen(GTK_WINDOW(win->toplevel));
 
-    gtk_widget_show_all(overlay);
-    gtk_widget_hide(win->fullscreen_menubar);
+    gtk_widget_show_all(vbox);
     restore_configuration(win);
 
     /* init toggle actions */
@@ -1658,16 +1188,6 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
         spice_g_signal_connect_object(win->conn->gtk_session, notify,
                                       G_CALLBACK(menu_cb_conn_bool_prop_changed),
                                       win, 0);
-    }
-
-    if (disable_power_events) {
-        gtk_widget_hide(gtk_ui_manager_get_widget(win->ui, "/MainMenu/PowerMenu"));
-        gtk_widget_hide(gtk_ui_manager_get_widget(win->ui, "/ToolBar/Reset"));
-        gtk_widget_hide(gtk_ui_manager_get_widget(win->ui, "/FullscreenBar/Reset"));
-        gtk_widget_hide(gtk_ui_manager_get_widget(win->ui, "/ToolBar/Powerdown"));
-        gtk_widget_hide(gtk_ui_manager_get_widget(win->ui, "/FullscreenBar/Powerdown"));
-        gtk_widget_hide(gtk_ui_manager_get_widget(win->ui, "/ToolBar/Shutdown"));
-        gtk_widget_hide(gtk_ui_manager_get_widget(win->ui, "/FullscreenBar/Shutdown"));
     }
 
     update_edit_menu_window(win);
@@ -1705,18 +1225,6 @@ static SpiceWindow *create_spice_window(spice_connection *conn, SpiceChannel *ch
 #endif
 
     gtk_widget_grab_focus(win->spice);
-
-#if defined(WITH_FLEXVDI) && defined(ENABLE_PRINTING)
-    // Printers menu
-    GtkWidget * sPMenu = gtk_ui_manager_get_widget(win->ui, "/MainMenu/SharePrinterMenu");
-    gtk_menu_item_set_submenu(GTK_MENU_ITEM(sPMenu), get_printers_menu(win));
-    gtk_widget_hide(sPMenu);
-    gtk_widget_hide(gtk_ui_manager_get_widget(win->ui, "/FullscreenMenu/SharePrinterMenu"));
-    if (flexvdi_is_agent_connected())
-        share_current_printers(win);
-    else
-        flexvdi_on_agent_connected(share_current_printers, win);
-#endif
 
     return win;
 }
@@ -1781,10 +1289,10 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
     case SPICE_CHANNEL_CLOSED:
         /* this event is only sent if the channel was succesfully opened before */
         g_message("main channel: closed");
-        connection_disconnect(conn, DISCONNECT_NO_ERROR);
+        connection_disconnect(conn);
         break;
     case SPICE_CHANNEL_ERROR_IO:
-        connection_disconnect(conn, DISCONNECT_IO_ERROR);
+        connection_disconnect(conn);
         break;
     case SPICE_CHANNEL_ERROR_TLS:
     case SPICE_CHANNEL_ERROR_LINK:
@@ -1795,7 +1303,11 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
             g_message("channel error: %s", error->message);
         }
 
-        connection_disconnect(conn, DISCONNECT_CONN_ERROR);
+        if (spicy_connect_dialog(conn->session)) {
+            connection_connect(conn);
+        } else {
+            connection_disconnect(conn);
+        }
         break;
     case SPICE_CHANNEL_ERROR_AUTH:
         g_warning("main channel: auth failure (wrong password?)");
@@ -1808,7 +1320,7 @@ static void main_channel_event(SpiceChannel *channel, SpiceChannelEvent event,
             g_object_set(conn->session, "password", password, NULL);
             connection_connect(conn);
         } else {
-            connection_disconnect(conn, DISCONNECT_AUTH_ERROR);
+            connection_disconnect(conn);
         }
         break;
     default:
@@ -1957,8 +1469,6 @@ static void display_monitors(SpiceChannel *display, GParamSpec *pspec,
             add_window(conn, w);
             spice_g_signal_connect_object(display, "display-mark",
                                           G_CALLBACK(display_mark), w, 0);
-            if (monitors->len == 1)
-                gtk_window_set_position(GTK_WINDOW(w->toplevel), GTK_WIN_POS_CENTER_ALWAYS);
             gtk_widget_show(w->toplevel);
             update_auto_usbredir_sensitive(conn);
         }
@@ -1970,7 +1480,6 @@ static void display_monitors(SpiceChannel *display, GParamSpec *pspec,
     g_clear_pointer(&monitors, g_array_unref);
 }
 
-#ifndef WITH_FLEXVDI
 static void port_write_cb(GObject *source_object,
                           GAsyncResult *res,
                           gpointer user_data)
@@ -2017,9 +1526,7 @@ static gboolean input_cb(GIOChannel *gin, GIOCondition condition, gpointer data)
 
     return TRUE;
 }
-#endif
 
-#ifndef WITH_FLEXVDI
 static void watch_stdin(void);
 
 static void port_opened(SpiceChannel *channel, GParamSpec *pspec,
@@ -2069,7 +1576,6 @@ static void port_data(SpicePortChannel *port,
         g_warning("port write failed result %d/%d errno %d", r, size, errno);
     }
 }
-#endif
 
 typedef struct {
     GtkWidget *vbox;
@@ -2271,12 +1777,10 @@ static void channel_new(SpiceSession *s, SpiceChannel *channel, gpointer data)
     }
 
     if (SPICE_IS_PORT_CHANNEL(channel)) {
-#ifndef WITH_FLEXVDI
         g_signal_connect(channel, "notify::port-opened",
                          G_CALLBACK(port_opened), conn);
         g_signal_connect(channel, "port-data",
                          G_CALLBACK(port_data), conn);
-#endif
         spice_channel_connect(channel);
     }
 }
@@ -2307,12 +1811,10 @@ static void channel_destroy(SpiceSession *s, SpiceChannel *channel, gpointer dat
         update_auto_usbredir_sensitive(conn);
     }
 
-#ifndef WITH_FLEXVDI
     if (SPICE_IS_PORT_CHANNEL(channel)) {
         if (SPICE_PORT_CHANNEL(channel) == stdin_port)
             stdin_port = NULL;
     }
-#endif
 
     conn->channels--;
     if (conn->channels > 0) {
@@ -2340,10 +1842,6 @@ static spice_connection *connection_new(void)
     conn = g_new0(spice_connection, 1);
     conn->session = spice_session_new();
     conn->gtk_session = spice_gtk_session_get(conn->session);
-    g_object_set(conn->gtk_session,
-                 "disable-copy-to-guest", disable_copy_to_guest,
-                 "disable-paste-from-guest", disable_paste_from_guest,
-                 NULL);
     g_signal_connect(conn->session, "channel-new",
                      G_CALLBACK(channel_new), conn);
     g_signal_connect(conn->session, "channel-destroy",
@@ -2373,12 +1871,11 @@ static void connection_connect(spice_connection *conn)
     spice_session_connect(conn->session);
 }
 
-static void connection_disconnect(spice_connection *conn, int reason)
+static void connection_disconnect(spice_connection *conn)
 {
     if (conn->disconnecting)
         return;
     conn->disconnecting = true;
-    disconnect_reason = reason;
     spice_session_disconnect(conn->session);
 }
 
@@ -2407,12 +1904,6 @@ static GOptionEntry cmd_entries[] = {
         .arg_data         = &fullscreen,
         .description      = "Open in full screen mode",
     },{
-        .long_name        = "full-screen-on-all-monitors",
-        .short_name       = 'F',
-        .arg              = G_OPTION_ARG_NONE,
-        .arg_data         = &fullscreen_on_all_monitors,
-        .description      = "Open in full screen mode on all monitors",
-    },{
         .long_name        = "version",
         .arg              = G_OPTION_ARG_NONE,
         .arg_data         = &version,
@@ -2423,30 +1914,6 @@ static GOptionEntry cmd_entries[] = {
         .arg_data         = &spicy_title,
         .description      = "Set the window title",
         .arg_description  = "<title>",
-    },{
-        .long_name        = "kiosk-mode",
-        .short_name       = 'k',
-        .arg              = G_OPTION_ARG_NONE,
-        .arg_data         = &kiosk_mode,
-        .description      = "Use kiosk mode",
-    },{
-        .long_name        = "disable-power-events",
-        .short_name       = '\0',
-        .arg              = G_OPTION_ARG_NONE,
-        .arg_data         = &disable_power_events,
-        .description      = "Disable power events",
-    },{
-        .long_name        = "disable-copy-to-guest",
-        .short_name       = '\0',
-        .arg              = G_OPTION_ARG_NONE,
-        .arg_data         = &disable_copy_to_guest,
-        .description      = "Disable copy to guest",
-    },{
-        .long_name        = "disable-paste-from-guest",
-        .short_name       = '\0',
-        .arg              = G_OPTION_ARG_NONE,
-        .arg_data         = &disable_paste_from_guest,
-        .description      = "Disable paste from guest",
     },{
         /* end of list */
     }
@@ -2471,7 +1938,6 @@ static void usb_connect_failed(GObject               *object,
     gtk_widget_destroy(dialog);
 }
 
-#ifndef WITH_FLEXVDI
 static void setup_terminal(gboolean reset)
 {
     int stdinfd = fileno(stdin);
@@ -2509,7 +1975,6 @@ static void watch_stdin(void)
     g_io_channel_set_flags(gin, G_IO_FLAG_NONBLOCK, NULL);
     g_io_add_watch(gin, G_IO_IN|G_IO_ERR|G_IO_HUP|G_IO_NVAL, input_cb, NULL);
 }
-#endif
 
 int main(int argc, char *argv[])
 {
@@ -2517,8 +1982,7 @@ int main(int argc, char *argv[])
     GOptionContext *context;
     spice_connection *conn;
     gchar *conf_file, *conf;
-    char *host = NULL, *port = NULL, *tls_port = NULL, *ws_port = NULL, *unix_path = NULL;
-    disconnect_reason = DISCONNECT_NO_ERROR;
+    char *host = NULL, *port = NULL, *tls_port = NULL, *unix_path = NULL;
 
     keyfile = g_key_file_new();
 
@@ -2547,9 +2011,6 @@ int main(int argc, char *argv[])
     g_option_context_set_main_group(context, spice_cmdline_get_option_group());
     g_option_context_add_main_entries(context, cmd_entries, NULL);
     g_option_context_add_group(context, gtk_get_option_group(TRUE));
-#ifdef WITH_FLEXVDI
-    g_option_context_add_group(context, flexvdi_get_option_group());
-#endif
 #if HAVE_GSTAUDIO || HAVE_GSTVIDEO
     g_option_context_add_group(context, gst_init_get_option_group());
 #endif
@@ -2569,17 +2030,12 @@ int main(int argc, char *argv[])
     conn = connection_new();
     spice_set_session_option(conn->session);
     spice_cmdline_session_setup(conn->session);
-#ifdef WITH_FLEXVDI
-    flexvdi_port_register_session(conn->session);
-#endif
-    g_object_set(gtk_settings_get_default(), "gtk-icon-theme-name", "flexvdi", NULL);
 
     g_object_get(conn->session,
                  "unix-path", &unix_path,
                  "host", &host,
                  "port", &port,
                  "tls-port", &tls_port,
-                 "ws-port", &ws_port,
                  NULL);
     /* If user doesn't provide hostname and port, show the dialog window
        instead of connecting to server automatically */
@@ -2591,17 +2047,12 @@ int main(int argc, char *argv[])
     g_free(host);
     g_free(port);
     g_free(tls_port);
-    g_free(ws_port);
     g_free(unix_path);
 
     connection_connect(conn);
     if (connections > 0)
         g_main_loop_run(mainloop);
     g_main_loop_unref(mainloop);
-
-#ifdef WITH_FLEXVDI
-    flexvdi_cleanup();
-#endif
 
     if ((conf = g_key_file_to_data(keyfile, NULL, &error)) == NULL ||
         !g_file_set_contents(conf_file, conf, -1, &error)) {
@@ -2616,11 +2067,9 @@ int main(int argc, char *argv[])
 
     g_free(spicy_title);
 
-#ifndef WITH_FLEXVDI
     setup_terminal(true);
-#endif
 #if HAVE_GSTAUDIO || HAVE_GSTVIDEO
     gst_deinit();
 #endif
-    return disconnect_reason;
+    return 0;
 }

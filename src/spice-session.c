@@ -127,8 +127,6 @@ struct _SpiceSessionPrivate {
     /* redirected TCP ports */
     GStrv             redirected_rports;
     GStrv             redirected_lports;
-
-    gint inactivity_timeout;
 };
 
 
@@ -213,7 +211,6 @@ enum {
     PROP_PREF_COMPRESSION,
     PROP_REDIR_RPORTS,
     PROP_REDIR_LPORTS,
-    PROP_INACTIVITY_TIMEOUT,
 };
 
 /* signals */
@@ -727,9 +724,6 @@ static void spice_session_get_property(GObject    *gobject,
     case PROP_REDIR_LPORTS:
         g_value_set_boxed(value, s->redirected_lports);
         break;
-    case PROP_INACTIVITY_TIMEOUT:
-        g_value_set_int(value, s->inactivity_timeout);
-        break;
     default:
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
 	break;
@@ -880,9 +874,6 @@ static void spice_session_set_property(GObject      *gobject,
     case PROP_REDIR_LPORTS:
         g_strfreev(s->redirected_lports);
         s->redirected_lports = g_value_dup_boxed(value);
-        break;
-    case PROP_INACTIVITY_TIMEOUT:
-        s->inactivity_timeout = g_value_get_int(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(gobject, prop_id, pspec);
@@ -1562,22 +1553,6 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                            SPICE_IMAGE_COMPRESSION_INVALID,
                            G_PARAM_READWRITE |
                            G_PARAM_STATIC_STRINGS));
-
-    /**
-     * SpiceSession:inactivity-timeout:
-     *
-     * Timeout before closing the client due to inactivity. If 0, don't set.
-     *
-     * Since: 0.29
-     **/
-    g_object_class_install_property
-        (gobject_class, PROP_INACTIVITY_TIMEOUT,
-         g_param_spec_int("inactivity-timeout",
-                          "Inactivity timeout",
-                          "Inactivity timeout (minutes)",
-                          0, 24*60*60, 0,
-                          G_PARAM_READWRITE |
-                          G_PARAM_STATIC_STRINGS));
 
     g_type_class_add_private(klass, sizeof(SpiceSessionPrivate));
 }

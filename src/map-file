@@ -146,8 +146,6 @@ spice_smartcard_reader_get_type;
 spice_smartcard_reader_insert_card;
 spice_smartcard_reader_is_software;
 spice_smartcard_reader_remove_card;
-spice_unix2dos;
-spice_dos2unix;
 spice_uri_get_hostname;
 spice_uri_get_password;
 spice_uri_get_port;

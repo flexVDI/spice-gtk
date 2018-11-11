@@ -57,8 +57,6 @@ struct coroutine
 
 void coroutine_init(struct coroutine *co);
 
-void coroutine_system_stop(void);
-
 int coroutine_release(struct coroutine *co);
 
 void *coroutine_swap(struct coroutine *from, struct coroutine *to, void *arg);

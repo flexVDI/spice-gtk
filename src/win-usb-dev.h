@@ -22,7 +22,7 @@
 #ifndef __WIN_USB_DEV_H__
 #define __WIN_USB_DEV_H__
 
-#include <glib-object.h>
+#include <gtk/gtk.h>
 
 G_BEGIN_DECLS
 

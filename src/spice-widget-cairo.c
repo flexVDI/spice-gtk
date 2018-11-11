@@ -114,34 +114,6 @@ void spice_cairo_draw_event(SpiceDisplay *display, cairo_t *cr)
         cairo_set_source_surface(cr, d->canvas.surface, 0, 0);
         cairo_fill(cr);
 
-        if (d->time_to_inactivity < 30000) {
-            cairo_translate(cr, 0, 0);
-            cairo_rectangle(cr, 0, 0, d->area.width, d->area.height);
-            const double fadeout = 10000.0;
-            const double alpha_max = 0.8;
-            double alpha = ((30000.0 - d->time_to_inactivity) / fadeout) * alpha_max;
-            if (alpha > alpha_max) alpha = alpha_max;
-            cairo_set_source_rgba(cr, 0, 0, 0, alpha);
-            cairo_fill(cr);
-
-            cairo_text_extents_t extents;
-            double size = 20.0;
-            const char * pattern = "Your connection will close in %d seconds due to inactivity";
-            cairo_select_font_face(cr, "sans-serif", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-            cairo_set_font_size(cr, size);
-            cairo_text_extents(cr, pattern, &extents);
-            size *= (d->area.width*0.8)/extents.width;
-            cairo_set_font_size(cr, size);
-
-            int seconds = (d->time_to_inactivity + 999) / 1000;
-            char * msg = g_strdup_printf(pattern, seconds);
-            cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, alpha);
-            cairo_text_extents(cr, msg, &extents);
-            cairo_move_to(cr, (d->area.width - extents.width)/2, (d->area.height - extents.height)/2);
-            cairo_show_text(cr, msg);
-            g_free(msg);
-        }
-
         if (d->mouse_mode == SPICE_MOUSE_MODE_SERVER &&
             d->mouse_guest_x != -1 && d->mouse_guest_y != -1 &&
             !d->show_cursor &&

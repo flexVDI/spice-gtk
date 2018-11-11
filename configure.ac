@@ -576,20 +576,10 @@ AS_IF([test "x$enable_alignment_checks" = "xyes"],
 
 SPICE_CHECK_LZ4
 
-AC_ARG_ENABLE([tools],
-  AS_HELP_STRING([--enable-tools=@<:@yes/no@:>@],
-                 [Enable building spicy tools @<:@default=no@:>@]),
-  [],
-  [enable_tools="no"])
-
-AM_CONDITIONAL(BUILD_TOOLS, [test "x$enable_tools" = "xyes"])
-
 AH_BOTTOM([
 #ifdef HAVE_WINDOWS
     #include <winsock2.h>
 #endif])
-
-AC_CONFIG_FILES([tools/Makefile.flexVDI])
 
 dnl ===========================================================================
 dnl check compiler flags

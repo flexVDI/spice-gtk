@@ -38,7 +38,6 @@ static gboolean disable_audio = FALSE;
 static gboolean disable_usbredir = FALSE;
 static gint cache_size = 0;
 static gint glz_window_size = 0;
-static gint inactivity_timeout = 0;
 static gchar *secure_channels = NULL;
 static gchar *shared_dir = NULL;
 static SpiceImageCompression preferred_compression = SPICE_IMAGE_COMPRESSION_INVALID;
@@ -237,8 +236,6 @@ GOptionGroup* spice_get_option_group(void)
           N_("Enable Spice-GTK debugging"), NULL },
         { "spice-gtk-version", '\0', G_OPTION_FLAG_NO_ARG, G_OPTION_ARG_CALLBACK, option_version,
           N_("Display Spice-GTK version information"), NULL },
-        { "spice-inactivity-timeout", '\0', 0, G_OPTION_ARG_INT, &inactivity_timeout,
-          N_("Timeout of inactivity before closing the client"), N_("<seconds>") },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
     GOptionGroup *grp;
@@ -323,6 +320,4 @@ void spice_set_session_option(SpiceSession *session)
         g_object_set(session, "shared-dir", shared_dir, NULL);
     if (preferred_compression != SPICE_IMAGE_COMPRESSION_INVALID)
         g_object_set(session, "preferred-compression", preferred_compression, NULL);
-    if (inactivity_timeout)
-        g_object_set(session, "inactivity-timeout", inactivity_timeout, NULL);
 }

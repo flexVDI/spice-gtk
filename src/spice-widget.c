@@ -255,7 +255,7 @@ static void update_ready(SpiceDisplay *display)
      * state here. If 'resize-guest' is false, we can assume that the
      * application will manage the state of the displays.
      */
-    if (d->resize_guest_enable && d->main) {
+    if (d->resize_guest_enable) {
         spice_main_channel_update_display_enabled(d->main, get_display_id(display), ready, TRUE);
     }
 
@@ -331,27 +331,6 @@ whole:
     set_monitor_ready(display, true);
 }
 
-static gboolean check_inactivity(gpointer user_data)
-{
-    SpiceDisplay *display = user_data;
-    SpiceDisplayPrivate *d = display->priv;
-    gint inactivity_timeout;
-    g_object_get(d->session, "inactivity-timeout", &inactivity_timeout, NULL);
-    if (inactivity_timeout >= 40) {
-        gint64 now = g_get_monotonic_time();
-        d->time_to_inactivity = (d->last_input_time - now)/1000 + inactivity_timeout*1000;
-        gtk_widget_queue_draw(GTK_WIDGET(display));
-        if (d->time_to_inactivity <= 0) {
-            spice_session_disconnect(d->session);
-        } else if (d->time_to_inactivity <= 30000) {
-            g_timeout_add(100, check_inactivity, display);
-        } else {
-            g_timeout_add(d->time_to_inactivity - 30000, check_inactivity, display);
-        }
-    }
-    return FALSE;
-}
-
 static void
 spice_display_set_keypress_delay(SpiceDisplay *display, guint delay)
 {
@@ -384,8 +363,6 @@ static void spice_display_set_property(GObject      *object,
         spice_g_signal_connect_object(d->gtk_session, "notify::pointer-grabbed",
                                       G_CALLBACK(cursor_invalidate), object,
                                       G_CONNECT_SWAPPED);
-        d->last_input_time = g_get_monotonic_time();
-        check_inactivity(display);
         break;
     case PROP_CHANNEL_ID:
         d->channel_id = g_value_get_int(value);
@@ -707,8 +684,6 @@ G_GNUC_END_IGNORE_DEPRECATIONS
 
     d->grabseq = spice_grab_sequence_new_from_string("Control_L+Alt_L");
     d->activeseq = g_new0(gboolean, d->grabseq->nkeysyms);
-
-    d->time_to_inactivity = 100*1000; // 100 seconds
 }
 
 static void
@@ -1268,7 +1243,7 @@ static void recalc_geometry(GtkWidget *widget)
                   d->area.width, d->area.height,
                   d->ww, d->wh, zoom);
 
-    if (d->resize_guest_enable && d->main)
+    if (d->resize_guest_enable)
         spice_main_channel_update_display(d->main, get_display_id(display),
                                           d->area.x, d->area.y, d->ww / zoom, d->wh / zoom, TRUE);
 }
@@ -1393,7 +1368,6 @@ static void key_press_and_release(SpiceDisplay *display)
     if (d->key_delayed_scancode == 0)
         return;
 
-    d->last_input_time = g_get_monotonic_time();
     spice_inputs_channel_key_press_and_release(d->inputs, d->key_delayed_scancode);
     d->key_delayed_scancode = 0;
 
@@ -1411,7 +1385,6 @@ static gboolean key_press_delayed(gpointer data)
     if (d->key_delayed_scancode == 0)
         return FALSE;
 
-    d->last_input_time = g_get_monotonic_time();
     spice_inputs_channel_key_press(d->inputs, d->key_delayed_scancode);
     d->key_delayed_scancode = 0;
 
@@ -1471,10 +1444,8 @@ static void send_key(SpiceDisplay *display, int scancode, SendKeyType type, gboo
             g_warn_if_fail(d->key_delayed_id == 0);
             d->key_delayed_id = g_timeout_add(d->keypress_delay, key_press_delayed, display);
             d->key_delayed_scancode = scancode;
-        } else {
-            d->last_input_time = g_get_monotonic_time();
+        } else
             spice_inputs_channel_key_press(d->inputs, scancode);
-        }
 
         d->key_state[i] |= m;
         break;
@@ -1488,7 +1459,6 @@ static void send_key(SpiceDisplay *display, int scancode, SendKeyType type, gboo
         else {
             /* ensure delayed key is pressed before other key are released */
             key_press_delayed(display);
-            d->last_input_time = g_get_monotonic_time();
             spice_inputs_channel_key_release(d->inputs, scancode);
         }
 
@@ -2006,7 +1976,6 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
     case SPICE_MOUSE_MODE_CLIENT:
         if (x >= 0 && x < d->area.width &&
             y >= 0 && y < d->area.height) {
-            d->last_input_time = g_get_monotonic_time();
             spice_inputs_channel_position(d->inputs, x, y, get_display_id(display),
                                           button_mask_gdk_to_spice(motion->state));
         }
@@ -2016,7 +1985,6 @@ static gboolean motion_event(GtkWidget *widget, GdkEventMotion *motion)
             gint dx = d->mouse_last_x != -1 ? x - d->mouse_last_x : 0;
             gint dy = d->mouse_last_y != -1 ? y - d->mouse_last_y : 0;
 
-            d->last_input_time = g_get_monotonic_time();
             spice_inputs_channel_motion(d->inputs, dx, dy,
                                         button_mask_gdk_to_spice(motion->state));
 
@@ -2055,7 +2023,6 @@ static gboolean scroll_event(GtkWidget *widget, GdkEventScroll *scroll)
         return true;
     }
 
-    d->last_input_time = g_get_monotonic_time();
     spice_inputs_channel_button_press(d->inputs, button,
                                       button_mask_gdk_to_spice(scroll->state));
     spice_inputs_channel_button_release(d->inputs, button,
@@ -2111,13 +2078,11 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
 
     switch (button->type) {
     case GDK_BUTTON_PRESS:
-        d->last_input_time = g_get_monotonic_time();
         spice_inputs_channel_button_press(d->inputs,
                                           button_gdk_to_spice(button->button),
                                           button_mask_gdk_to_spice(button->state));
         break;
     case GDK_BUTTON_RELEASE:
-        d->last_input_time = g_get_monotonic_time();
         spice_inputs_channel_button_release(d->inputs,
                                             button_gdk_to_spice(button->button),
                                             button_mask_gdk_to_spice(button->state));
@@ -2276,7 +2241,7 @@ static void spice_display_class_init(SpiceDisplayClass *klass)
                               "Resize guest",
                               "Try to adapt guest display on window resize. "
                               "Requires guest cooperation.",
-                              TRUE,
+                              FALSE,
                               G_PARAM_READWRITE |
                               G_PARAM_CONSTRUCT |
                               G_PARAM_STATIC_STRINGS));
