@@ -27,7 +27,6 @@
 
 #include <glib/gi18n-lib.h>
 
-#include <nopoll.h>
 #include <openssl/rsa.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
@@ -788,17 +787,7 @@ static gint spice_channel_flush_wire_nonblocking(SpiceChannel *channel,
     g_assert(cond != NULL);
     *cond = 0;
 
-    if (c->ws) {
-        ret = nopoll_conn_send_binary(c->np_conn, ptr, len);
-        if (ret < 0) {
-            if (errno == EAGAIN) {
-                *cond = G_IO_OUT;
-            } else {
-                g_warning("Error writting to websocket: %s", strerror(errno));
-            }
-            ret = -1;
-        }
-    } else if (c->tls) {
+    if (c->tls) {
         ret = SSL_write(c->ssl, ptr, len);
         if (ret < 0) {
             ret = SSL_get_error(c->ssl, ret);
@@ -840,7 +829,6 @@ static void spice_channel_flush_wire(SpiceChannel *channel,
     const char *ptr = data;
     size_t offset = 0;
     GIOCondition cond;
-    int pending_bytes;
 
     while (offset < datalen) {
         gssize ret;
@@ -865,21 +853,6 @@ static void spice_channel_flush_wire(SpiceChannel *channel,
             return;
         }
         offset += ret;
-    }
-
-    if (c->ws) {
-        while ((pending_bytes = nopoll_conn_complete_pending_write(c->np_conn) != 0)) {
-            g_debug("Writing %d pending bytes", pending_bytes);
-            if (pending_bytes < 0 && errno != EAGAIN
-#ifdef WIN32
-                && WSAGetLastError() != WSAEWOULDBLOCK
-#endif
-            ) {
-                c->has_error = TRUE;
-                return;
-            }
-            g_coroutine_socket_wait(&c->coroutine, c->sock, G_IO_OUT);
-        }
     }
 }
 
@@ -1040,23 +1013,7 @@ static int spice_channel_read_wire_nonblocking(SpiceChannel *channel,
     g_assert(cond != NULL);
     *cond = 0;
 
-    if (c->ws) {
-        ret = nopoll_conn_read(c->np_conn, data, len, nopoll_false, 0);
-        if (ret < 0) {
-            if (errno == EAGAIN
-#ifdef WIN32
-                || errno == WSAEWOULDBLOCK
-#endif
-            ) {
-                *cond = G_IO_IN;
-            }
-            ret = -1;
-        }
-#ifdef WIN32
-        // Reset socket state
-        g_socket_receive(c->sock, data, 0, NULL, NULL);
-#endif
-    } else if (c->tls) {
+    if (c->tls) {
         ret = SSL_read(c->ssl, data, len);
         if (ret < 0) {
             ret = SSL_get_error(c->ssl, ret);
@@ -1090,7 +1047,7 @@ static int spice_channel_read_wire_nonblocking(SpiceChannel *channel,
  * into the requested buffer.
  */
 /* coroutine context */
-static int spice_channel_read_wire(SpiceChannel *channel, void *data, size_t len, gboolean first)
+static int spice_channel_read_wire(SpiceChannel *channel, void *data, size_t len)
 {
     SpiceChannelPrivate *c = channel->priv;
 
@@ -1106,13 +1063,11 @@ static int spice_channel_read_wire(SpiceChannel *channel, void *data, size_t len
         ret = spice_channel_read_wire_nonblocking(channel, data, len, &cond);
 
         if (ret == -1) {
-            if (cond != 0 && !first) {
+            if (cond != 0) {
                 // TODO: should use g_pollable_input/output_stream_create_source() ?
                 g_coroutine_socket_wait(&c->coroutine, c->sock, cond);
                 continue;
             } else {
-                if (first && cond != 0)
-                    c->error_was_ping = TRUE;
                 c->has_error = TRUE;
                 return -errno;
             }
@@ -1180,7 +1135,7 @@ static int spice_channel_read_sasl(SpiceChannel *channel, void *data, size_t len
  * Fill the 'data' buffer up with exactly 'len' bytes worth of data
  */
 /* coroutine context */
-static int _spice_channel_read(SpiceChannel *channel, void *data, size_t length, gboolean with_ping)
+static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
 {
     SpiceChannelPrivate *c = channel->priv;
     gsize len = length;
@@ -1194,7 +1149,7 @@ static int _spice_channel_read(SpiceChannel *channel, void *data, size_t length,
             ret = spice_channel_read_sasl(channel, data, len);
         else
 #endif
-            ret = spice_channel_read_wire(channel, data, len, len == length && with_ping);
+            ret = spice_channel_read_wire(channel, data, len);
         if (ret < 0)
             return ret;
         g_assert(ret <= len);
@@ -1208,16 +1163,6 @@ static int _spice_channel_read(SpiceChannel *channel, void *data, size_t length,
     c->total_read_bytes += length;
 
     return length;
-}
-
-static int spice_channel_read(SpiceChannel *channel, void *data, size_t length)
-{
-    return _spice_channel_read(channel, data, length, FALSE);
-}
-
-static int spice_channel_read_with_ping(SpiceChannel *channel, void *data, size_t length)
-{
-    return _spice_channel_read(channel, data, length, TRUE);
 }
 
 #if HAVE_SASL
@@ -2087,15 +2032,10 @@ void spice_channel_recv_msg(SpiceChannel *channel,
     in = spice_msg_in_new(channel);
 
     /* receive message */
-    spice_channel_read_with_ping(channel, in->header,
-                                 spice_header_get_header_size(c->use_mini_header));
-    if (c->has_error) {
-        if (c->error_was_ping) {
-            c->has_error = FALSE;
-            c->error_was_ping = FALSE;
-        }
+    spice_channel_read(channel, in->header,
+                       spice_header_get_header_size(c->use_mini_header));
+    if (c->has_error)
         goto end;
-    }
 
     msg_size = spice_header_get_msg_size(in->header, c->use_mini_header);
     /* FIXME: do not allow others to take ref on in, and use realloc here?
@@ -2391,15 +2331,13 @@ static void spice_channel_iterate_read(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c = channel->priv;
 
-    if (!c->ws || !nopoll_conn_read_pending(c->np_conn))
-        g_coroutine_socket_wait(&c->coroutine, c->sock, G_IO_IN);
+    g_coroutine_socket_wait(&c->coroutine, c->sock, G_IO_IN);
 
     /* treat all incoming data (block on message completion) */
     while (!c->has_error &&
            c->state != SPICE_CHANNEL_STATE_MIGRATING &&
-           ((c->ws && nopoll_conn_read_pending(c->np_conn)) ||
-            g_pollable_input_stream_is_readable(G_POLLABLE_INPUT_STREAM(c->in)))) {
-        do
+           g_pollable_input_stream_is_readable(G_POLLABLE_INPUT_STREAM(c->in))
+    ) { do
             spice_channel_recv_msg(channel,
                                    (handler_msg_in)SPICE_CHANNEL_GET_CLASS(channel)->handle_msg, NULL);
 #ifdef HAVE_SASL
@@ -2583,29 +2521,6 @@ const GError* spice_channel_get_error(SpiceChannel *self)
     return c->error;
 }
 
-static void nopoll_log_handler(noPollCtx *ctx, noPollDebugLevel level,
-                               const char *log_msg, noPollPtr user_data)
-{
-    GLogLevelFlags slevel;
-    if (level == NOPOLL_LEVEL_DEBUG) slevel = G_LOG_LEVEL_DEBUG;
-    else {
-        slevel = G_LOG_LEVEL_WARNING;
-#ifdef WIN32
-        if (WSAGetLastError() == WSAEWOULDBLOCK) return; // Ignore these errors
-#else
-        if (errno == EAGAIN) return; // Ignore these errors
-#endif
-    }
-    g_log("nopoll", slevel, "%s", log_msg);
-}
-
-static noPollCtx * nopoll_get_context(void)
-{
-    static noPollCtx *np_ctx = NULL;
-    if (!np_ctx) np_ctx = nopoll_ctx_new();
-    return np_ctx;
-}
-
 /* coroutine context */
 static void *spice_channel_coroutine(void *data)
 {
@@ -2616,12 +2531,6 @@ static void *spice_channel_coroutine(void *data)
     /* When some other SSL/TLS version becomes obsolete, add it to this
      * variable. */
     long ssl_options = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3;
-    gchar wsportstr[32];
-    GSocketAddress *addr = NULL;
-    GInetSocketAddress *iaddr = NULL;
-    GInetAddress *host;
-    char *ws_token = NULL;
-    noPollConnOpts *opts;
 
     CHANNEL_DEBUG(channel, "Started background coroutine %p", &c->coroutine);
 
@@ -2646,7 +2555,7 @@ static void *spice_channel_coroutine(void *data)
 
 
 reconnect:
-    c->conn = spice_session_channel_open_host(c->session, channel, &c->tls, &ws_token, &c->error);
+    c->conn = spice_session_channel_open_host(c->session, channel, &c->tls, &c->error);
     if (c->conn == NULL) {
         if (!c->error && !c->tls) {
             CHANNEL_DEBUG(channel, "trying with TLS port");
@@ -2660,57 +2569,7 @@ reconnect:
     }
     c->sock = g_object_ref(g_socket_connection_get_socket(c->conn));
 
-    c->has_error = FALSE;
-    c->error_was_ping = FALSE;
-
-    if (ws_token != NULL) {
-        c->ws = TRUE;
-
-        c->np_ctx = nopoll_get_context();
-        if (c->np_ctx == NULL) {
-            g_critical("Can't allocate noPoll context");
-            g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_TLS);
-            goto cleanup;
-        }
-
-        nopoll_log_set_handler(c->np_ctx, nopoll_log_handler, NULL);
-        //nopoll_log_enable(c->np_ctx, nopoll_true);
-
-        addr = g_socket_get_remote_address(c->sock, NULL);
-        if (!addr) {
-            g_critical("failed to get peer address");
-            goto cleanup;
-        }
-
-        iaddr = G_INET_SOCKET_ADDRESS(addr);
-        host = g_inet_socket_address_get_address(iaddr);
-        snprintf(&wsportstr[0], 32, "/?ver=2&token=%s", ws_token);
-
-        // TODO: Check server certificates
-        opts = nopoll_conn_opts_new();
-        nopoll_conn_opts_ssl_peer_verify(opts, nopoll_false);
-        c->np_conn = nopoll_conn_tls_new_with_socket(c->np_ctx, opts, g_socket_get_fd(c->sock),
-                                                     g_inet_address_to_string(host), NULL,
-                                                     spice_session_get_host(c->session),
-                                                     &wsportstr[0], "binary", NULL);
-        if (nopoll_conn_is_ok(c->np_conn) != nopoll_true) {
-            g_critical("Can't connect to websocket");
-            g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_TLS);
-            goto cleanup;
-        }
-
-        if (nopoll_conn_wait_until_connection_ready(c->np_conn, 100) == nopoll_false) {
-            g_critical("Time out waiting for websocket connection");
-            g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_TLS);
-            goto cleanup;
-        }
-
-        if (nopoll_conn_is_ready(c->np_conn) != nopoll_true) {
-            g_critical("Websocket connection is NOT ready");
-            g_coroutine_signal_emit(channel, signals[SPICE_CHANNEL_EVENT], 0, SPICE_CHANNEL_ERROR_TLS);
-            goto cleanup;
-        }
-    } else if (c->tls) {
+    if (c->tls) {
         c->ctx = SSL_CTX_new(SSLv23_method());
         if (c->ctx == NULL) {
             g_critical("SSL_CTX_new failed");
@@ -2802,10 +2661,8 @@ connected:
     spice_channel_send_link(channel);
     if (!spice_channel_recv_link_hdr(channel) ||
         !spice_channel_recv_link_msg(channel) ||
-        !spice_channel_recv_auth(channel)) {
-        g_warning("%s: error in recv_link: %s", c->name, strerror(errno));
+        !spice_channel_recv_auth(channel))
         goto cleanup;
-    }
 
     while (spice_channel_iterate(channel))
         ;

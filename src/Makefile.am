@@ -88,7 +88,6 @@ SPICE_COMMON_CPPFLAGS =						\
 	$(GUDEV_CFLAGS)						\
 	$(SOUP_CFLAGS)						\
 	$(PHODAV_CFLAGS)					\
-	$(NOPOLL_CFLAGS)					\
 	$(X11_CFLAGS)					\
 	$(LZ4_CFLAGS)					\
 	$(NULL)
@@ -184,7 +183,6 @@ libspice_client_glib_2_0_la_LIBADD =					\
 	$(GIO_LIBS)							\
 	$(GOBJECT2_LIBS)						\
 	$(JPEG_LIBS)							\
-	$(NOPOLL_LIBS)							\
 	$(Z_LIBS)							\
 	$(LZ4_LIBS)							\
 	$(PIXMAN_LIBS)							\

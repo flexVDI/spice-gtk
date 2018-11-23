@@ -20,7 +20,6 @@
 
 #include "config.h"
 
-#include <nopoll.h>
 #include <openssl/ssl.h>
 #include <gio/gio.h>
 
@@ -108,7 +107,6 @@ struct _SpiceChannelPrivate {
     GCoroutine                  coroutine;
     int                         fd;
     gboolean                    has_error;
-    gboolean                    error_was_ping;
     guint                       connect_delayed_id;
 
     GQueue                      xmit_queue;
@@ -125,9 +123,6 @@ struct _SpiceChannelPrivate {
     SpiceMessageMarshallers     *marshallers;
     guint                       channel_watch;
     int                         tls;
-    int                         ws;
-    noPollConn                  *np_conn;
-    noPollCtx                   *np_ctx;
 
     int                         channel_id;
     int                         channel_type;

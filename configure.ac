@@ -315,10 +315,6 @@ AC_CHECK_LIB(jpeg, jpeg_destroy_decompress,
     AC_MSG_ERROR([libjpeg not found]))
 AC_SUBST(JPEG_LIBS)
 
-PKG_CHECK_MODULES(NOPOLL, nopoll)
-AC_SUBST(NOPOLL_CFLAGS)
-AC_SUBST(NOPOLL_LIBS)
-
 AC_CHECK_LIB(z, deflate, Z_LIBS='-lz', AC_MSG_ERROR([zlib not found]))
 AC_SUBST(Z_LIBS)
 
@@ -575,11 +571,6 @@ AS_IF([test "x$enable_alignment_checks" = "xyes"],
       [AC_DEFINE([SPICE_DEBUG_ALIGNMENT], 1, [Enable runtime checks for cast alignment])])
 
 SPICE_CHECK_LZ4
-
-AH_BOTTOM([
-#ifdef HAVE_WINDOWS
-    #include <winsock2.h>
-#endif])
 
 dnl ===========================================================================
 dnl check compiler flags
