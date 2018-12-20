@@ -63,8 +63,6 @@ struct _SpiceGtkSessionPrivate {
     gboolean                auto_usbredir_enable;
     int                     auto_usbredir_reqs;
     gboolean                pointer_grabbed;
-    gboolean                disable_copy_to_guest;
-    gboolean                disable_paste_from_guest;
     gboolean                keyboard_has_focus;
     gboolean                mouse_has_pointer;
     gboolean                sync_modifiers;
@@ -121,8 +119,6 @@ enum {
     PROP_AUTO_CLIPBOARD,
     PROP_AUTO_USBREDIR,
     PROP_POINTER_GRABBED,
-    PROP_DISABLE_COPY_TO_GUEST,
-    PROP_DISABLE_PASTE_FROM_GUEST,
     PROP_SYNC_MODIFIERS,
 };
 
@@ -334,12 +330,6 @@ static void spice_gtk_session_get_property(GObject    *gobject,
     case PROP_POINTER_GRABBED:
         g_value_set_boolean(value, s->pointer_grabbed);
         break;
-    case PROP_DISABLE_COPY_TO_GUEST:
-        g_value_set_boolean(value, s->disable_copy_to_guest);
-        break;
-    case PROP_DISABLE_PASTE_FROM_GUEST:
-        g_value_set_boolean(value, s->disable_paste_from_guest);
-        break;
     case PROP_SYNC_MODIFIERS:
         g_value_set_boolean(value, s->sync_modifiers);
         break;
@@ -390,12 +380,6 @@ static void spice_gtk_session_set_property(GObject      *gobject,
         }
         break;
     }
-    case PROP_DISABLE_COPY_TO_GUEST:
-        s->disable_copy_to_guest = g_value_get_boolean(value);
-        break;
-    case PROP_DISABLE_PASTE_FROM_GUEST:
-        s->disable_paste_from_guest = g_value_get_boolean(value);
-        break;
     case PROP_SYNC_MODIFIERS:
         s->sync_modifiers = g_value_get_boolean(value);
         break;
@@ -485,38 +469,6 @@ static void spice_gtk_session_class_init(SpiceGtkSessionClass *klass)
                               "Whether the pointer is grabbed",
                               FALSE,
                               G_PARAM_READABLE |
-                              G_PARAM_STATIC_STRINGS));
-
-    /**
-     * SpiceGtkSession:disable-copy-to-guest:
-     *
-     * When this is true the clipboard does not work from client to guest.
-     *
-     * Since: 0.29
-     **/
-    g_object_class_install_property
-        (gobject_class, PROP_DISABLE_COPY_TO_GUEST,
-         g_param_spec_boolean("disable-copy-to-guest",
-                              "Disable copy to guest",
-                              "Disable clipboard from client to guest.",
-                              FALSE,
-                              G_PARAM_READWRITE |
-                              G_PARAM_STATIC_STRINGS));
-
-    /**
-     * SpiceGtkSession:disable-paste-from-guest:
-     *
-     * When this is true the clipboard does not work from guest to client.
-     *
-     * Since: 0.29
-     **/
-    g_object_class_install_property
-        (gobject_class, PROP_DISABLE_PASTE_FROM_GUEST,
-         g_param_spec_boolean("disable-paste-from-guest",
-                              "Disable paste from guest",
-                              "Disable clipboard from guest to client.",
-                              FALSE,
-                              G_PARAM_READWRITE |
                               G_PARAM_STATIC_STRINGS));
 
     /**
@@ -743,7 +695,7 @@ static void clipboard_owner_change(GtkClipboard        *clipboard,
 
         s->clipboard_by_guest[selection] = FALSE;
         s->clip_hasdata[selection] = TRUE;
-        if (s->auto_clipboard_enable && !read_only(self) && !s->disable_copy_to_guest)
+        if (s->auto_clipboard_enable && !read_only(self))
             gtk_clipboard_request_targets(clipboard, clipboard_get_targets,
                                           get_weak_ref(self));
         break;
@@ -914,7 +866,6 @@ static gboolean clipboard_grab(SpiceMainChannel *main, guint selection,
 
     if (read_only(self) ||
         !s->auto_clipboard_enable ||
-        s->disable_paste_from_guest ||
         s->nclip_targets[selection] == 0)
         goto skip_grab_clipboard;
 
@@ -1275,7 +1226,6 @@ void spice_gtk_session_copy_to_guest(SpiceGtkSession *self)
     g_return_if_fail(read_only(self) == FALSE);
 
     SpiceGtkSessionPrivate *s = self->priv;
-    if (s->disable_copy_to_guest) return;
     int selection = VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD;
 
     if (s->clip_hasdata[selection] && !s->clip_grabbed[selection]) {
@@ -1298,7 +1248,6 @@ void spice_gtk_session_paste_from_guest(SpiceGtkSession *self)
     g_return_if_fail(read_only(self) == FALSE);
 
     SpiceGtkSessionPrivate *s = self->priv;
-    if (s->disable_paste_from_guest) return;
     int selection = VD_AGENT_CLIPBOARD_SELECTION_CLIPBOARD;
 
     if (s->nclip_targets[selection] == 0) {
