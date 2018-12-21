@@ -154,8 +154,6 @@ gboolean spice_main_port_forward_local(SpiceMainChannel *channel, const char *bi
 gboolean spice_main_port_forward_disassociate_local(SpiceMainChannel *channel,
                                                     uint16_t lport);
 
-void spice_main_power_event_request(SpiceMainChannel *channel, SpicePowerEvent event_id);
-
 G_DEPRECATED_FOR(spice_main_channel_request_mouse_mode)
 void spice_main_request_mouse_mode(SpiceMainChannel *channel, int mode);
 #endif
