@@ -64,13 +64,6 @@ static void device_error_cb(SpiceUsbDeviceManager *manager,
     SpiceUsbDevice *device, GError *err, gpointer user_data);
 static gboolean spice_usb_device_widget_update_status(gpointer user_data);
 
-/* ------------------------------------------------------------------ */
-/* gobject glue                                                       */
-
-#define SPICE_USB_DEVICE_WIDGET_GET_PRIVATE(obj) \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_USB_DEVICE_WIDGET, \
-                                 SpiceUsbDeviceWidgetPrivate))
-
 enum {
     PROP_0,
     PROP_SESSION,
@@ -94,7 +87,7 @@ struct _SpiceUsbDeviceWidgetPrivate {
 
 static guint signals[LAST_SIGNAL] = { 0, };
 
-G_DEFINE_TYPE(SpiceUsbDeviceWidget, spice_usb_device_widget, GTK_TYPE_BOX);
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceUsbDeviceWidget, spice_usb_device_widget, GTK_TYPE_BOX);
 
 static void spice_usb_device_widget_get_property(GObject     *gobject,
                                                  guint        prop_id,
@@ -187,7 +180,6 @@ static void spice_usb_device_widget_constructed(GObject *gobject)
     GPtrArray *devices = NULL;
     GError *err = NULL;
     gchar *str;
-    int i;
 
     self = SPICE_USB_DEVICE_WIDGET(gobject);
     priv = self->priv;
@@ -218,15 +210,15 @@ static void spice_usb_device_widget_constructed(GObject *gobject)
                      G_CALLBACK(device_error_cb), self);
 
     devices = spice_usb_device_manager_get_devices(priv->manager);
-    if (!devices)
-        goto end;
+    if (devices != NULL) {
+        int i;
+        for (i = 0; i < devices->len; i++) {
+            device_added_cb(NULL, g_ptr_array_index(devices, i), self);
+        }
 
-    for (i = 0; i < devices->len; i++)
-        device_added_cb(NULL, g_ptr_array_index(devices, i), self);
+        g_ptr_array_unref(devices);
+    }
 
-    g_ptr_array_unref(devices);
-
-end:
     spice_usb_device_widget_update_status(self);
 }
 
@@ -255,8 +247,6 @@ static void spice_usb_device_widget_class_init(
 {
     GObjectClass *gobject_class = (GObjectClass *)klass;
     GParamSpec *pspec;
-
-    g_type_class_add_private (klass, sizeof (SpiceUsbDeviceWidgetPrivate));
 
     gobject_class->constructed  = spice_usb_device_widget_constructed;
     gobject_class->finalize     = spice_usb_device_widget_finalize;
@@ -317,7 +307,7 @@ static void spice_usb_device_widget_class_init(
 
 static void spice_usb_device_widget_init(SpiceUsbDeviceWidget *self)
 {
-    self->priv = SPICE_USB_DEVICE_WIDGET_GET_PRIVATE(self);
+    self->priv = spice_usb_device_widget_get_instance_private(self);
 }
 
 /* ------------------------------------------------------------------ */

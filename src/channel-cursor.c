@@ -41,9 +41,6 @@
  * property.
  */
 
-#define SPICE_CURSOR_CHANNEL_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_CURSOR_CHANNEL, SpiceCursorChannelPrivate))
-
 typedef struct display_cursor display_cursor;
 
 struct display_cursor {
@@ -80,7 +77,7 @@ static display_cursor * display_cursor_ref(display_cursor *cursor);
 static void display_cursor_unref(display_cursor *cursor);
 static void channel_set_handlers(SpiceChannelClass *klass);
 
-G_DEFINE_TYPE(SpiceCursorChannel, spice_cursor_channel, SPICE_TYPE_CHANNEL)
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceCursorChannel, spice_cursor_channel, SPICE_TYPE_CHANNEL)
 
 static SpiceCursorShape *spice_cursor_shape_copy(const SpiceCursorShape *cursor);
 static void spice_cursor_shape_free(SpiceCursorShape *cursor);
@@ -115,7 +112,7 @@ static void spice_cursor_channel_init(SpiceCursorChannel *channel)
 {
     SpiceCursorChannelPrivate *c;
 
-    c = channel->priv = SPICE_CURSOR_CHANNEL_GET_PRIVATE(channel);
+    c = channel->priv = spice_cursor_channel_get_instance_private(channel);
 
     c->cursors = cache_new((GDestroyNotify)display_cursor_unref);
 }
@@ -278,7 +275,6 @@ static void spice_cursor_channel_class_init(SpiceCursorChannelClass *klass)
                      G_TYPE_NONE,
                      0);
 
-    g_type_class_add_private(klass, sizeof(SpiceCursorChannelPrivate));
     channel_set_handlers(SPICE_CHANNEL_CLASS(klass));
 }
 

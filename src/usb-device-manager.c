@@ -78,12 +78,6 @@
  * spice_usb_device_manager_get() which ensures this 1:1 relation.
  */
 
-/* ------------------------------------------------------------------ */
-/* gobject glue                                                       */
-
-#define SPICE_USB_DEVICE_MANAGER_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_USB_DEVICE_MANAGER, SpiceUsbDeviceManagerPrivate))
-
 enum {
     PROP_0,
     PROP_SESSION,
@@ -261,13 +255,14 @@ static void spice_usb_device_manager_initable_iface_init(GInitableIface *iface);
 static guint signals[LAST_SIGNAL] = { 0, };
 
 G_DEFINE_TYPE_WITH_CODE(SpiceUsbDeviceManager, spice_usb_device_manager, G_TYPE_OBJECT,
+     G_ADD_PRIVATE(SpiceUsbDeviceManager)
      G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE, spice_usb_device_manager_initable_iface_init));
 
 static void spice_usb_device_manager_init(SpiceUsbDeviceManager *self)
 {
     SpiceUsbDeviceManagerPrivate *priv;
 
-    priv = SPICE_USB_DEVICE_MANAGER_GET_PRIVATE(self);
+    priv = spice_usb_device_manager_get_instance_private(self);
     self->priv = priv;
 
 #if defined(G_OS_WIN32) && defined(USE_USBREDIR)
@@ -737,8 +732,6 @@ static void spice_usb_device_manager_class_init(SpiceUsbDeviceManagerClass *klas
                      2,
                      SPICE_TYPE_USB_DEVICE,
                      G_TYPE_ERROR);
-
-    g_type_class_add_private(klass, sizeof(SpiceUsbDeviceManagerPrivate));
 }
 
 #ifdef USE_USBREDIR

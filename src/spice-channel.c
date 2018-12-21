@@ -78,13 +78,8 @@ static RSA *EVP_PKEY_get0_RSA(EVP_PKEY *pkey)
  * #SpiceInputsChannel.
  */
 
-/* ------------------------------------------------------------------ */
-/* gobject glue                                                       */
-
-#define SPICE_CHANNEL_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_CHANNEL, SpiceChannelPrivate))
-
 G_DEFINE_TYPE_WITH_CODE (SpiceChannel, spice_channel, G_TYPE_OBJECT,
+                         G_ADD_PRIVATE (SpiceChannel)
                          g_type_add_class_private (g_define_type_id, sizeof (SpiceChannelClassPrivate)));
 
 /* Properties */
@@ -114,7 +109,7 @@ static void spice_channel_init(SpiceChannel *channel)
 {
     SpiceChannelPrivate *c;
 
-    c = channel->priv = SPICE_CHANNEL_GET_PRIVATE(channel);
+    c = channel->priv = spice_channel_get_instance_private(channel);
 
     c->out_serial = 1;
     c->in_serial = 1;
@@ -389,8 +384,6 @@ static void spice_channel_class_init(SpiceChannelClass *klass)
                      G_TYPE_NONE,
                      1,
                      G_TYPE_INT);
-
-    g_type_class_add_private(klass, sizeof(SpiceChannelPrivate));
 
     SSL_library_init();
     SSL_load_error_strings();
@@ -885,13 +878,12 @@ static void spice_channel_flush_sasl(SpiceChannel *channel, const void *data, si
 static void spice_channel_write(SpiceChannel *channel, const void *data, size_t len)
 {
 #ifdef HAVE_SASL
-    SpiceChannelPrivate *c = channel->priv;
-
-    if (c->sasl_conn)
+    if (channel->priv->sasl_conn) {
         spice_channel_flush_sasl(channel, data, len);
-    else
+        return;
+    }
 #endif
-        spice_channel_flush_wire(channel, data, len);
+    spice_channel_flush_wire(channel, data, len);
 }
 
 /* coroutine context */
@@ -1357,8 +1349,11 @@ static void spice_channel_send_link(SpiceChannel *channel)
 
     c->link_hdr.size = GUINT32_TO_LE(c->link_hdr.size);
 
-    memcpy(p, &c->link_hdr, sizeof(c->link_hdr)); p += sizeof(c->link_hdr);
-    memcpy(p, &link_msg, sizeof(link_msg)); p += sizeof(link_msg);
+    memcpy(p, &c->link_hdr, sizeof(c->link_hdr));
+    p += sizeof(c->link_hdr);
+
+    memcpy(p, &link_msg, sizeof(link_msg));
+    p += sizeof(link_msg);
 
     caps = SPICE_UNALIGNED_CAST(uint32_t *,p);
     for (i = 0; i < c->common_caps->len; i++) {
@@ -1507,6 +1502,12 @@ spice_channel_gather_sasl_credentials(SpiceChannel *channel,
     CHANNEL_DEBUG(channel, "Filled SASL interact");
 
     return ret;
+}
+
+static void spice_channel_write_u32_le(SpiceChannel *channel, guint32 n)
+{
+    n = GUINT32_TO_LE(n);
+    spice_channel_write(channel, &n, sizeof(n));
 }
 
 /*
@@ -1708,17 +1709,17 @@ restart:
 
     /* Send back the chosen mechname */
     len = strlen(mechname);
-    spice_channel_write(channel, &len, sizeof(guint32));
+    spice_channel_write_u32_le(channel, len);
     spice_channel_write(channel, mechname, len);
 
     /* NB, distinction of NULL vs "" is *critical* in SASL */
     if (clientout) {
         len = clientoutlen + 1;
-        spice_channel_write(channel, &len, sizeof(guint32));
+        spice_channel_write_u32_le(channel, len);
         spice_channel_write(channel, clientout, len);
     } else {
         len = 0;
-        spice_channel_write(channel, &len, sizeof(guint32));
+        spice_channel_write_u32_le(channel, len);
     }
 
     if (c->has_error)
@@ -1794,11 +1795,11 @@ restart:
         /* NB, distinction of NULL vs "" is *critical* in SASL */
         if (clientout) {
             len = clientoutlen + 1;
-            spice_channel_write(channel, &len, sizeof(guint32));
+            spice_channel_write_u32_le(channel, len);
             spice_channel_write(channel, clientout, len);
         } else {
             len = 0;
-            spice_channel_write(channel, &len, sizeof(guint32));
+            spice_channel_write_u32_le(channel, len);
         }
 
         if (c->has_error)
@@ -1970,14 +1971,14 @@ static gboolean spice_channel_recv_link_msg(SpiceChannel *channel)
 #ifdef HAVE_SASL
         if (spice_channel_test_common_capability(channel, SPICE_COMMON_CAP_AUTH_SASL)) {
             CHANNEL_DEBUG(channel, "Choosing SASL mechanism");
-            auth.auth_mechanism = SPICE_COMMON_CAP_AUTH_SASL;
+            auth.auth_mechanism = GUINT32_TO_LE(SPICE_COMMON_CAP_AUTH_SASL);
             spice_channel_write(channel, &auth, sizeof(auth));
             if (!spice_channel_perform_auth_sasl(channel))
                 return FALSE;
         } else
 #endif
         if (spice_channel_test_common_capability(channel, SPICE_COMMON_CAP_AUTH_SPICE)) {
-            auth.auth_mechanism = SPICE_COMMON_CAP_AUTH_SPICE;
+            auth.auth_mechanism = GUINT32_TO_LE(SPICE_COMMON_CAP_AUTH_SPICE);
             spice_channel_write(channel, &auth, sizeof(auth));
             if ((event = spice_channel_send_spice_ticket(channel)) != SPICE_CHANNEL_NONE)
                 goto error;
@@ -2530,7 +2531,7 @@ static void *spice_channel_coroutine(void *data)
     int rc, delay_val = 1;
     /* When some other SSL/TLS version becomes obsolete, add it to this
      * variable. */
-    long ssl_options = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3;
+    long ssl_options = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1;
 
     CHANNEL_DEBUG(channel, "Started background coroutine %p", &c->coroutine);
 

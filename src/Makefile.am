@@ -67,8 +67,6 @@ KEYMAP_CSV = keycodemapdb/data/keymaps.csv
 SPICE_COMMON_CPPFLAGS =						\
 	-DSPICE_COMPILATION					\
 	-DG_LOG_DOMAIN=\"GSpice\"				\
-	-DSPICE_GTK_LOCALEDIR=\"${SPICE_GTK_LOCALEDIR}\"	\
-	-DPNP_IDS=\""$(PNP_IDS)"\"				\
 	-DUSB_IDS=\""$(USB_IDS)"\"				\
 	-I$(top_srcdir)						\
 	$(COMMON_CFLAGS)					\
@@ -302,11 +300,6 @@ libspice_client_glibinclude_HEADERS =	\
 
 nodist_libspice_client_glibinclude_HEADERS =	\
 	spice-glib-enums.h			\
-	$(NULL)
-
-# file for API compatibility, but we don't want warning during our compilation
-dist_libspice_client_glibinclude_DATA =	\
-	spice-channel-enums.h		\
 	$(NULL)
 
 if HAVE_PULSE

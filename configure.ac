@@ -20,9 +20,6 @@ AM_GNU_GETTEXT_VERSION([0.18.2])
 AM_GNU_GETTEXT([external])
 
 
-SPICE_GTK_LOCALEDIR=[${datadir}/locale]
-AC_SUBST(SPICE_GTK_LOCALEDIR)
-
 GTK_DOC_CHECK([1.14],[--flavour no-tmpl])
 
 AC_PROG_CC
@@ -89,7 +86,7 @@ AC_CHECK_LIBM
 AC_SUBST(LIBM)
 
 AC_CONFIG_SUBDIRS([spice-common])
-PKG_CHECK_MODULES([SPICE_PROTOCOL], [spice-protocol >= 0.12.13])
+PKG_CHECK_MODULES([SPICE_PROTOCOL], [spice-protocol >= 0.12.14])
 
 COMMON_CFLAGS='-I${top_builddir}/spice-common/ -I${top_srcdir}/spice-common/ ${SPICE_PROTOCOL_CFLAGS}'
 AC_SUBST(COMMON_CFLAGS)
@@ -166,21 +163,6 @@ CFLAGS="$old_CFLAGS"
 
 PKG_CHECK_EXISTS([gtk+-x11-$with_gtk], [PKG_CHECK_MODULES(X11, x11)])
 AC_CHECK_HEADERS([X11/XKBlib.h])
-
-AC_ARG_WITH([pnp-ids-path],
-  AC_HELP_STRING([--with-pnp-ids-path],
-                 [Specify the path to pnp.ids @<:@default=(internal)@:>@]),
-  [],
-  [with_pnp_ids_path="\${pnpdatadir}/pnp.ids"])
-
-AM_CONDITIONAL(USE_INTERNAL_PNP_IDS, test "x$with_pnp_ids_path" = "x\${pnpdatadir}/pnp.ids")
-PNP_IDS=$with_pnp_ids_path
-AC_SUBST(PNP_IDS)
-if test "x$with_pnp_ids_path" = "x\${pnpdatadir}/pnp.ids"; then
-        EXTERNAL_PNP_IDS="no (internal)"
-else
-        EXTERNAL_PNP_IDS="$with_pnp_ids_path"
-fi
 
 AC_CHECK_FUNCS(clearenv strtok_r)
 

@@ -24,8 +24,7 @@
 
 typedef struct _GConditionWaitSource
 {
-    GCoroutine *self;
-    GSource src;
+    GSource parent; // this MUST be the first field
     GConditionWaitFunc func;
     gpointer data;
 } GConditionWaitSource;
@@ -118,7 +117,7 @@ static gboolean g_condition_wait_dispatch(GSource *src G_GNUC_UNUSED,
     return cb(data);
 }
 
-GSourceFuncs waitFuncs = {
+static GSourceFuncs waitFuncs = {
     .prepare = g_condition_wait_prepare,
     .check = g_condition_wait_check,
     .dispatch = g_condition_wait_dispatch,
@@ -167,7 +166,6 @@ gboolean g_coroutine_condition_wait(GCoroutine *self, GConditionWaitFunc func, g
 
     vsrc->func = func;
     vsrc->data = data;
-    vsrc->self = self;
 
     self->condition_id = g_source_attach(src, NULL);
     g_source_set_callback(src, g_condition_wait_helper, self, NULL);

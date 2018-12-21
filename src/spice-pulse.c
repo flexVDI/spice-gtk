@@ -27,9 +27,6 @@
 #include <pulse/pulseaudio.h>
 #include <pulse/ext-stream-restore.h>
 
-#define SPICE_PULSE_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_PULSE, SpicePulsePrivate))
-
 struct async_task {
     SpicePulse                 *pulse;
     SpiceMainChannel           *main_channel;
@@ -69,7 +66,7 @@ struct _SpicePulsePrivate {
     GList                   *results;
 };
 
-G_DEFINE_TYPE(SpicePulse, spice_pulse, SPICE_TYPE_AUDIO)
+G_DEFINE_TYPE_WITH_PRIVATE(SpicePulse, spice_pulse, SPICE_TYPE_AUDIO)
 
 static const char *stream_state_names[] = {
     [ PA_STREAM_UNCONNECTED ] = "unconnected",
@@ -155,7 +152,7 @@ static void spice_pulse_dispose(GObject *obj)
 
 static void spice_pulse_init(SpicePulse *pulse)
 {
-    pulse->priv = SPICE_PULSE_GET_PRIVATE(pulse);
+    pulse->priv = spice_pulse_get_instance_private(pulse);
 }
 
 static void spice_pulse_class_init(SpicePulseClass *klass)
@@ -171,8 +168,6 @@ static void spice_pulse_class_init(SpicePulseClass *klass)
 
     gobject_class->finalize = spice_pulse_finalize;
     gobject_class->dispose = spice_pulse_dispose;
-
-    g_type_class_add_private(klass, sizeof(SpicePulsePrivate));
 }
 
 /* ------------------------------------------------------------------ */

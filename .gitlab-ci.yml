@@ -1,13 +1,16 @@
 image: fedora:latest
 
 before_script:
-  - dnf install 'dnf-command(copr)' git libtool make pyparsing redhat-rpm-config -y
+  - >
+    dnf install 'dnf-command(copr)' git libtool make redhat-rpm-config
+    python3 python3-six python3-pyparsing
+    -y
   - dnf copr enable @spice/nightly -y
   - dnf builddep spice-gtk -y
 
 makecheck:
   script:
-  - ./autogen.sh --enable-static
+  - ./autogen.sh --enable-static --disable-celt051
   - make -j4
   - make check
 
@@ -24,5 +27,6 @@ makecheck_simple:
         --enable-smartcard=no
         --enable-usbredir=no
         --enable-dbus=no
+        --disable-celt051
   - make -j4
   - make check

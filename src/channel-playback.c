@@ -46,9 +46,6 @@
  * record audio channels for your application.
  */
 
-#define SPICE_PLAYBACK_CHANNEL_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_PLAYBACK_CHANNEL, SpicePlaybackChannelPrivate))
-
 struct _SpicePlaybackChannelPrivate {
     int                         mode;
     SndCodec                    codec;
@@ -62,7 +59,7 @@ struct _SpicePlaybackChannelPrivate {
     guint32                     min_latency;
 };
 
-G_DEFINE_TYPE(SpicePlaybackChannel, spice_playback_channel, SPICE_TYPE_CHANNEL)
+G_DEFINE_TYPE_WITH_PRIVATE(SpicePlaybackChannel, spice_playback_channel, SPICE_TYPE_CHANNEL)
 
 /* Properties */
 enum {
@@ -104,7 +101,7 @@ static void spice_playback_channel_reset_capabilities(SpiceChannel *channel)
 
 static void spice_playback_channel_init(SpicePlaybackChannel *channel)
 {
-    channel->priv = SPICE_PLAYBACK_CHANNEL_GET_PRIVATE(channel);
+    channel->priv = spice_playback_channel_get_instance_private(channel);
 
     spice_playback_channel_reset_capabilities(SPICE_CHANNEL(channel));
 }
@@ -296,7 +293,6 @@ static void spice_playback_channel_class_init(SpicePlaybackChannelClass *klass)
                      G_TYPE_NONE,
                      0);
 
-    g_type_class_add_private(klass, sizeof(SpicePlaybackChannelPrivate));
     channel_set_handlers(SPICE_CHANNEL_CLASS(klass));
 }
 

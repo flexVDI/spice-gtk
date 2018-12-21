@@ -49,9 +49,6 @@
  * #SpiceDisplayChannel::display-invalidate signals.
  */
 
-#define SPICE_DISPLAY_CHANNEL_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_DISPLAY_CHANNEL, SpiceDisplayChannelPrivate))
-
 #define MONITORS_MAX 256
 
 struct _SpiceDisplayChannelPrivate {
@@ -73,7 +70,7 @@ struct _SpiceDisplayChannelPrivate {
     SpiceGlScanout scanout;
 };
 
-G_DEFINE_TYPE(SpiceDisplayChannel, spice_display_channel, SPICE_TYPE_CHANNEL)
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceDisplayChannel, spice_display_channel, SPICE_TYPE_CHANNEL)
 
 /* Properties */
 enum {
@@ -91,6 +88,7 @@ enum {
     SPICE_DISPLAY_INVALIDATE,
     SPICE_DISPLAY_MARK,
     SPICE_DISPLAY_GL_DRAW,
+    SPICE_DISPLAY_STREAMING_MODE,
 
     SPICE_DISPLAY_LAST_SIGNAL,
 };
@@ -106,7 +104,7 @@ static display_surface *find_surface(SpiceDisplayChannelPrivate *c, guint32 surf
 static void spice_display_channel_reset(SpiceChannel *channel, gboolean migrating);
 static void spice_display_channel_reset_capabilities(SpiceChannel *channel);
 static void destroy_canvas(display_surface *surface);
-static void destroy_display_stream(display_stream *st, int id);
+static void display_stream_destroy(gpointer st);
 static void display_session_mm_time_reset_cb(SpiceSession *session, gpointer data);
 static SpiceGlScanout* spice_gl_scanout_copy(const SpiceGlScanout *scanout);
 
@@ -454,7 +452,27 @@ static void spice_display_channel_class_init(SpiceDisplayChannelClass *klass)
                      4,
                      G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
 
-    g_type_class_add_private(klass, sizeof(SpiceDisplayChannelPrivate));
+    /**
+     * SpiceDisplayChannel::streaming-mode:
+     * @display: the #SpiceDisplayChannel that emitted the signal
+     * @streaming_mode: %TRUE when it's streaming mode
+     *
+     * Return: handle for the display window if possible
+     *
+     * The #SpiceDisplayChannel::streaming-mode signal is emitted when
+     * spice server is working in streaming mode.
+     *
+     * Since 0.35
+     **/
+    signals[SPICE_DISPLAY_STREAMING_MODE] =
+        g_signal_new("streaming-mode",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     0, 0,
+                     NULL, NULL,
+                     g_cclosure_user_marshal_POINTER__BOOLEAN,
+                     G_TYPE_POINTER,
+                     1,
+                     G_TYPE_BOOLEAN);
 
     channel_set_handlers(SPICE_CHANNEL_CLASS(klass));
 }
@@ -860,9 +878,9 @@ static void spice_display_channel_init(SpiceDisplayChannel *channel)
 {
     SpiceDisplayChannelPrivate *c;
 
-    c = channel->priv = SPICE_DISPLAY_CHANNEL_GET_PRIVATE(channel);
+    c = channel->priv = spice_display_channel_get_instance_private(channel);
 
-    c->surfaces = g_hash_table_new_full(NULL, NULL, NULL, destroy_surface);
+    c->surfaces = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, destroy_surface);
     c->image_cache.ops = &image_cache_ops;
     c->palette_cache.ops = &palette_cache_ops;
     c->image_surfaces.ops = &image_surfaces_ops;
@@ -1218,31 +1236,16 @@ static display_stream *get_stream_by_id(SpiceChannel *channel, uint32_t id)
     return NULL;
 }
 
-G_GNUC_INTERNAL
-gint64 get_stream_id_by_stream(SpiceChannel *channel, display_stream *st)
-{
-    SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
-    guint i;
-
-    g_return_val_if_fail(c->streams != NULL, -1);
-    g_return_val_if_fail(c->nstreams > 0, -1);
-
-    for (i = 0; i < c->nstreams; i++) {
-        if (c->streams[i] == st)
-            return i;
-    }
-
-    return -1;
-}
-
 /* coroutine context */
-static display_stream *display_stream_create(SpiceChannel *channel, uint32_t surface_id,
+static display_stream *display_stream_create(SpiceChannel *channel,
+                                             uint32_t id, uint32_t surface_id,
                                              uint32_t flags, uint32_t codec_type,
                                              const SpiceRect *dest, const SpiceClip *clip)
 {
     SpiceDisplayChannelPrivate *c = SPICE_DISPLAY_CHANNEL(channel)->priv;
     display_stream *st = g_new0(display_stream, 1);
 
+    st->id = id;
     st->flags = flags;
     st->dest = *dest;
     st->clip = *clip;
@@ -1267,8 +1270,7 @@ static display_stream *display_stream_create(SpiceChannel *channel, uint32_t sur
     }
     if (st->video_decoder == NULL) {
         spice_printerr("could not create a video decoder for codec %u", codec_type);
-        destroy_display_stream(st, 0);
-        st = NULL;
+        g_clear_pointer(&st, display_stream_destroy);
     }
     return st;
 }
@@ -1281,10 +1283,7 @@ static void destroy_stream(SpiceChannel *channel, int id)
     g_return_if_fail(c->streams != NULL);
     g_return_if_fail(c->nstreams > id);
 
-    if (c->streams[id]) {
-        destroy_display_stream(c->streams[id], id);
-        c->streams[id] = NULL;
-    }
+    g_clear_pointer(&c->streams[id], display_stream_destroy);
 }
 
 static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
@@ -1307,7 +1306,7 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
     }
     g_return_if_fail(c->streams[op->id] == NULL);
 
-    c->streams[op->id] = display_stream_create(channel, op->surface_id,
+    c->streams[op->id] = display_stream_create(channel, op->id, op->surface_id,
                                                op->flags, op->codec_type,
                                                &op->dest, &op->clip);
     if (c->streams[op->id] == NULL) {
@@ -1387,6 +1386,15 @@ void stream_display_frame(display_stream *st, SpiceFrame *frame,
                       frame->dest.right - frame->dest.left,
                       frame->dest.bottom - frame->dest.top);
     }
+}
+
+guintptr get_window_handle(display_stream *st)
+{
+   void* handle = 0;
+
+   g_signal_emit(st->channel, signals[SPICE_DISPLAY_STREAMING_MODE], 0,
+                 st->surface->streaming_mode, &handle);
+   return st->surface->streaming_mode ? (guintptr)handle : 0;
 }
 
 /* after a sequence of 3 drops, push a report to the server, even
@@ -1598,17 +1606,18 @@ static void display_handle_stream_clip(SpiceChannel *channel, SpiceMsgIn *in)
     display_update_stream_region(st);
 }
 
-static void destroy_display_stream(display_stream *st, int id)
+static void display_stream_destroy(gpointer st_pointer)
 {
     int i;
+    display_stream *st = st_pointer;
 
     if (st->num_input_frames > 0) {
         guint64 drops_duration_total = 0;
         guint32 num_out_frames = st->num_input_frames - st->arrive_late_count - st->num_drops_on_playback;
-        CHANNEL_DEBUG(st->channel, "%s: id=%d #in-frames=%u out/in=%.2f "
+        CHANNEL_DEBUG(st->channel, "%s: id=%u #in-frames=%u out/in=%.2f "
             "#drops-on-receive=%u avg-late-time(ms)=%.2f "
             "#drops-on-playback=%u", __FUNCTION__,
-            id,
+            st->id,
             st->num_input_frames,
             num_out_frames / (double)st->num_input_frames,
             st->arrive_late_count,
@@ -1792,9 +1801,10 @@ static void display_handle_surface_create(SpiceChannel *channel, SpiceMsgIn *in)
     surface->height = create->height;
     surface->stride = create->width * 4;
     surface->size   = surface->height * surface->stride;
+    surface->streaming_mode = !!(create->flags & SPICE_SURFACE_FLAGS_STREAMING_MODE);
 
     if (create->flags & SPICE_SURFACE_FLAGS_PRIMARY) {
-        SPICE_DEBUG("primary flags: %x", create->flags);
+        SPICE_DEBUG("surface flags: %x", create->flags);
         surface->primary = true;
         create_canvas(channel, surface);
         if (c->mark_false_event_id != 0) {

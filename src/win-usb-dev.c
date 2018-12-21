@@ -29,9 +29,6 @@
 #include "spice-util.h"
 #include "usbutil.h"
 
-#define G_UDEV_CLIENT_GET_PRIVATE(obj) \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), G_UDEV_TYPE_CLIENT, GUdevClientPrivate))
-
 enum {
     PROP_0,
     PROP_REDIRECTING
@@ -49,6 +46,7 @@ struct _GUdevClientPrivate {
 static void g_udev_client_initable_iface_init(GInitableIface  *iface);
 
 G_DEFINE_TYPE_WITH_CODE(GUdevClient, g_udev_client, G_TYPE_OBJECT,
+                        G_ADD_PRIVATE(GUdevClient)
                         G_IMPLEMENT_INTERFACE(G_TYPE_INITABLE, g_udev_client_initable_iface_init));
 
 
@@ -73,7 +71,7 @@ struct _GUdevDevicePrivate
     GUdevDeviceInfo *udevinfo;
 };
 
-G_DEFINE_TYPE(GUdevDevice, g_udev_device, G_TYPE_OBJECT)
+G_DEFINE_TYPE_WITH_PRIVATE(GUdevDevice, g_udev_device, G_TYPE_OBJECT)
 
 
 enum
@@ -254,7 +252,7 @@ GList *g_udev_client_query_by_subsystem(GUdevClient *self, const gchar *subsyste
 
 static void g_udev_client_init(GUdevClient *self)
 {
-    self->priv = G_UDEV_CLIENT_GET_PRIVATE(self);
+    self->priv = g_udev_client_get_instance_private(self);
 }
 
 static void g_udev_client_finalize(GObject *gobject)
@@ -356,8 +354,6 @@ static void g_udev_client_class_init(GUdevClientClass *klass)
                                  G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
 
     g_object_class_install_property(gobject_class, PROP_REDIRECTING, pspec);
-
-    g_type_class_add_private(klass, sizeof(GUdevClientPrivate));
 }
 
 static gboolean get_usb_dev_info(libusb_device *dev, GUdevDeviceInfo *udevinfo)
@@ -476,12 +472,11 @@ static void g_udev_device_class_init(GUdevDeviceClass *klass)
     GObjectClass *gobject_class = (GObjectClass *) klass;
 
     gobject_class->finalize = g_udev_device_finalize;
-    g_type_class_add_private (klass, sizeof(GUdevDevicePrivate));
 }
 
 static void g_udev_device_init(GUdevDevice *device)
 {
-    device->priv = G_TYPE_INSTANCE_GET_PRIVATE(device, G_UDEV_TYPE_DEVICE, GUdevDevicePrivate);
+    device->priv = g_udev_device_get_instance_private(device);
 }
 
 static GUdevDevice *g_udev_device_new(GUdevDeviceInfo *udevinfo)

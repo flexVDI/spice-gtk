@@ -56,9 +56,6 @@
 #ifdef USE_USBREDIR
 
 #define COMPRESS_THRESHOLD 1000
-#define SPICE_USBREDIR_CHANNEL_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_USBREDIR_CHANNEL, SpiceUsbredirChannelPrivate))
-
 enum SpiceUsbredirChannelState {
     STATE_DISCONNECTED,
 #ifdef USE_POLKIT
@@ -106,16 +103,19 @@ static void usbredir_lock_lock(void *user_data);
 static void usbredir_unlock_lock(void *user_data);
 static void usbredir_free_lock(void *user_data);
 
+#else
+struct _SpiceUsbredirChannelPrivate {
+};
 #endif
 
-G_DEFINE_TYPE(SpiceUsbredirChannel, spice_usbredir_channel, SPICE_TYPE_CHANNEL)
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceUsbredirChannel, spice_usbredir_channel, SPICE_TYPE_CHANNEL)
 
 /* ------------------------------------------------------------------ */
 
 static void spice_usbredir_channel_init(SpiceUsbredirChannel *channel)
 {
 #ifdef USE_USBREDIR
-    channel->priv = SPICE_USBREDIR_CHANNEL_GET_PRIVATE(channel);
+    channel->priv = spice_usbredir_channel_get_instance_private(channel);
     g_mutex_init(&channel->priv->device_connect_mutex);
 #endif
 }
@@ -151,7 +151,6 @@ static void _channel_reset_cb(GObject *gobject,
     SPICE_CHANNEL_CLASS(spice_usbredir_channel_parent_class)->channel_reset(spice_channel, migrating);
 
     spice_usbredir_channel_disconnect_device_finish(channel, result, &err);
-    g_object_unref(result);
 }
 
 static void spice_usbredir_channel_reset(SpiceChannel *c, gboolean migrating)
@@ -183,7 +182,6 @@ static void spice_usbredir_channel_class_init(SpiceUsbredirChannelClass *klass)
     channel_class->channel_up    = spice_usbredir_channel_up;
     channel_class->channel_reset = spice_usbredir_channel_reset;
 
-    g_type_class_add_private(klass, sizeof(SpiceUsbredirChannelPrivate));
     channel_set_handlers(SPICE_CHANNEL_CLASS(klass));
 #endif
 }
@@ -625,11 +623,13 @@ static void usbredir_log(void *user_data, int level, const char *msg)
 
     switch (level) {
         case usbredirparser_error:
-            g_critical("%s", msg); break;
+            g_critical("%s", msg);
+            break;
         case usbredirparser_warning:
-            g_warning("%s", msg); break;
+            g_warning("%s", msg);
+            break;
         default:
-            CHANNEL_DEBUG(channel, "%s", msg); break;
+            CHANNEL_DEBUG(channel, "%s", msg);
     }
 }
 
@@ -638,11 +638,11 @@ static int usbredir_read_callback(void *user_data, uint8_t *data, int count)
     SpiceUsbredirChannel *channel = user_data;
     SpiceUsbredirChannelPrivate *priv = channel->priv;
 
-    if (priv->read_buf_size < count) {
-        count = priv->read_buf_size;
-    }
+    count = MIN(priv->read_buf_size, count);
 
-    memcpy(data, priv->read_buf, count);
+    if (count != 0) {
+        memcpy(data, priv->read_buf, count);
+    }
 
     priv->read_buf_size -= count;
     if (priv->read_buf_size) {
@@ -713,7 +713,7 @@ static int try_write_compress_LZ4(SpiceUsbredirChannel *channel, uint8_t *data, 
                                          compressed_data_msg.compressed_data,
                                          compressed_data_count,
                                          (spice_marshaller_item_free_func)g_free,
-                                         channel);
+                                         NULL);
         spice_msg_out_send(msg_out_compressed);
         return TRUE;
     }

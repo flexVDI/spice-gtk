@@ -50,12 +50,6 @@
  * guest using 3 certificates available to the client).
  */
 
-/* ------------------------------------------------------------------ */
-/* gobject glue                                                       */
-
-#define SPICE_SMARTCARD_MANAGER_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_SMARTCARD_MANAGER, SpiceSmartcardManagerPrivate))
-
 struct _SpiceSmartcardManagerPrivate {
     guint monitor_id;
 
@@ -69,7 +63,7 @@ struct _SpiceSmartcardManagerPrivate {
 #endif
 };
 
-G_DEFINE_TYPE(SpiceSmartcardManager, spice_smartcard_manager, G_TYPE_OBJECT)
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceSmartcardManager, spice_smartcard_manager, G_TYPE_OBJECT)
 #ifdef USE_SMARTCARD
 G_DEFINE_BOXED_TYPE(VReader, spice_smartcard_reader, vreader_reference, vreader_free)
 #else
@@ -105,7 +99,7 @@ static void spice_smartcard_manager_init(SpiceSmartcardManager *smartcard_manage
 {
     SpiceSmartcardManagerPrivate *priv;
 
-    priv = SPICE_SMARTCARD_MANAGER_GET_PRIVATE(smartcard_manager);
+    priv = spice_smartcard_manager_get_instance_private(smartcard_manager);
     smartcard_manager->priv = priv;
 }
 
@@ -218,8 +212,6 @@ static void spice_smartcard_manager_class_init(SpiceSmartcardManagerClass *klass
                      SPICE_TYPE_SMARTCARD_READER);
     gobject_class->dispose      = spice_smartcard_manager_dispose;
     gobject_class->finalize     = spice_smartcard_manager_finalize;
-
-    g_type_class_add_private(klass, sizeof(SpiceSmartcardManagerPrivate));
 }
 
 /* ------------------------------------------------------------------ */

@@ -52,15 +52,12 @@
  * Since: 0.15
  */
 
-#define SPICE_PORT_CHANNEL_GET_PRIVATE(obj)                                  \
-    (G_TYPE_INSTANCE_GET_PRIVATE((obj), SPICE_TYPE_PORT_CHANNEL, SpicePortChannelPrivate))
-
 struct _SpicePortChannelPrivate {
     gchar *name;
     gboolean opened;
 };
 
-G_DEFINE_TYPE(SpicePortChannel, spice_port_channel, SPICE_TYPE_CHANNEL)
+G_DEFINE_TYPE_WITH_PRIVATE(SpicePortChannel, spice_port_channel, SPICE_TYPE_CHANNEL)
 
 /* Properties */
 enum {
@@ -81,7 +78,7 @@ static void channel_set_handlers(SpiceChannelClass *klass);
 
 static void spice_port_channel_init(SpicePortChannel *channel)
 {
-    channel->priv = SPICE_PORT_CHANNEL_GET_PRIVATE(channel);
+    channel->priv = spice_port_channel_get_instance_private(channel);
 }
 
 static void spice_port_get_property(GObject    *object,
@@ -192,7 +189,6 @@ static void spice_port_channel_class_init(SpicePortChannelClass *klass)
                      1,
                      G_TYPE_INT);
 
-    g_type_class_add_private(klass, sizeof(SpicePortChannelPrivate));
     channel_set_handlers(SPICE_CHANNEL_CLASS(klass));
 }
 

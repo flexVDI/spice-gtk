@@ -9,6 +9,7 @@ typedef struct {
     const gchar *uri_input;
     const gchar *uri_output;
     const gchar *message;
+    const gchar *unix_path;
 } TestCase;
 
 static void test_session_uri_bad(void)
@@ -20,7 +21,7 @@ static void test_session_uri_bad(void)
         struct {
             const GLogLevelFlags log_level;
             const gchar *message;
-        } messages[2];
+        } messages[4];
     } uris[] = {
         {
             "scheme://host?port",
@@ -110,6 +111,25 @@ static void test_session_uri_bad(void)
                     "*assertion 's->port != NULL || s->tls_port != NULL' failed",
                 },
             }
+        },{
+            "spice+tls://hostname?tls-port=1234&port=3456",
+            {
+                {
+                    G_LOG_LEVEL_WARNING,
+                    "spice+tls:// scheme doesn't accept 'tls-port'",
+                },
+                {
+                    G_LOG_LEVEL_WARNING,
+                    "spice+tls:// scheme doesn't accept 'port'",
+                },
+                {
+                    G_LOG_LEVEL_WARNING,
+                    "Missing port or tls-port in spice URI *",
+                },{
+                    G_LOG_LEVEL_CRITICAL,
+                    "*assertion 's->port != NULL || s->tls_port != NULL' failed",
+                },
+            }
         },
     };
 
@@ -139,7 +159,7 @@ static void test_session_uri_good(const TestCase *tests, const guint cases)
 
     /* Set URI and check URI, port and tls_port */
     for (i = 0; i < cases; i++) {
-        gchar *uri, *port, *tls_port, *host, *username, *password;
+        gchar *uri, *port, *tls_port, *host, *username, *password, *unix_path;
 
         s = spice_session_new();
         if (tests[i].message != NULL)
@@ -152,20 +172,23 @@ static void test_session_uri_good(const TestCase *tests, const guint cases)
                      "host", &host,
                      "username", &username,
                      "password", &password,
+                     "unix-path", &unix_path,
                       NULL);
-        g_assert_cmpstr(tests[i].uri_output, ==, uri);
+        g_assert_cmpstr(tests[i].uri_output ?: tests[i].uri_input, ==, uri);
         g_assert_cmpstr(tests[i].port, ==, port);
         g_assert_cmpstr(tests[i].tls_port, ==, tls_port);
         g_assert_cmpstr(tests[i].host, ==, host);
         g_assert_cmpstr(tests[i].username, ==, username);
         g_assert_cmpstr(tests[i].password, ==, password);
         g_test_assert_expected_messages();
+        g_assert_cmpstr(tests[i].unix_path, ==, unix_path);
         g_clear_pointer(&uri, g_free);
         g_clear_pointer(&port, g_free);
         g_clear_pointer(&tls_port, g_free);
         g_clear_pointer(&host, g_free);
         g_clear_pointer(&username, g_free);
         g_clear_pointer(&password, g_free);
+        g_clear_pointer(&unix_path, g_free);
         g_object_unref(s);
     }
 
@@ -180,9 +203,10 @@ static void test_session_uri_good(const TestCase *tests, const guint cases)
                      "host", tests[i].host,
                      "username", tests[i].username,
                      "password", tests[i].password,
+                     "unix-path", tests[i].unix_path,
                       NULL);
         g_object_get(s, "uri", &uri, NULL);
-        g_assert_cmpstr(tests[i].uri_output, ==, uri);
+        g_assert_cmpstr(tests[i].uri_output ?: tests[i].uri_input, ==, uri);
         g_clear_pointer(&uri, g_free);
         g_object_unref(s);
     }
@@ -196,38 +220,47 @@ static void test_session_uri_ipv4_good(void)
           "localhost",
           NULL, NULL,
           "spice://localhost?port=5900&tls-port=",
-          "spice://localhost?port=5900&" },
+          "spice://localhost:5900",
+          NULL, NULL },
         { "5910", NULL,
           "localhost",
           "user", NULL,
           "spice://user@localhost?tls-port=&port=5910",
-          "spice://localhost?port=5910&" },
+          "spice://localhost:5910",
+          NULL, NULL },
         { NULL, "5920",
           "localhost",
           "user", "password",
           "spice://user@localhost?tls-port=5920&port=&password=password",
-          "spice://localhost?tls-port=5920",
-          "password may be visible in process listings"},
+          "spice+tls://localhost:5920",
+          "password may be visible in process listings", NULL},
         { NULL, "5930",
           "localhost",
           NULL, NULL,
           "spice://localhost?port=&tls-port=5930",
-          "spice://localhost?tls-port=5930" },
+          "spice+tls://localhost:5930",
+          NULL, NULL },
         { "42", NULL,
           "localhost",
           NULL, NULL,
           "spice://localhost:42",
-          "spice://localhost?port=42&" },
+          "spice://localhost:42",
+          NULL, NULL },
         { "42", "5930",
           "localhost",
           NULL, NULL,
           "spice://localhost:42?tls-port=5930",
-          "spice://localhost?port=42&tls-port=5930" },
+          "spice://localhost?port=42&tls-port=5930",
+          NULL, NULL },
         { "42", "5930",
           "127.0.0.1",
           NULL, NULL,
           "spice://127.0.0.1:42?tls-port=5930",
-          "spice://127.0.0.1?port=42&tls-port=5930" },
+          "spice://127.0.0.1?port=42&tls-port=5930",
+          NULL, NULL },
+        { .uri_input  = "spice+tls://hostname:39",
+          .host = "hostname",
+          .tls_port = "39" }
     };
 
     test_session_uri_good(tests, G_N_ELEMENTS(tests));
@@ -241,38 +274,60 @@ static void test_session_uri_ipv6_good(void)
           "[2010:836B:4179::836B:4179]",
           NULL, NULL,
           "spice://[2010:836B:4179::836B:4179]?port=5900&tls-port=",
-          "spice://[2010:836B:4179::836B:4179]?port=5900&" },
+          "spice://[2010:836B:4179::836B:4179]:5900",
+          NULL, NULL },
         { "5910", NULL,
           "[::192.9.5.5]",
           "user", NULL,
           "spice://user@[::192.9.5.5]?tls-port=&port=5910",
-          "spice://[::192.9.5.5]?port=5910&" },
+          "spice://[::192.9.5.5]:5910",
+          NULL, NULL },
         { NULL, "5920",
           "[3ffe:2a00:100:7031::1]",
           "user", "password",
           "spice://user@[3ffe:2a00:100:7031::1]?tls-port=5920&port=&password=password",
-          "spice://[3ffe:2a00:100:7031::1]?tls-port=5920",
-          "password may be visible in process listings"},
+          "spice+tls://[3ffe:2a00:100:7031::1]:5920",
+          "password may be visible in process listings", NULL},
         { NULL, "5930",
           "[1080:0:0:0:8:800:200C:417A]",
           NULL, NULL,
           "spice://[1080:0:0:0:8:800:200C:417A]?port=&tls-port=5930",
-          "spice://[1080:0:0:0:8:800:200C:417A]?tls-port=5930" },
+          "spice+tls://[1080:0:0:0:8:800:200C:417A]:5930",
+          NULL, NULL },
         { "42", NULL,
           "[FEDC:BA98:7654:3210:FEDC:BA98:7654:3210]",
           NULL, NULL,
           "spice://[FEDC:BA98:7654:3210:FEDC:BA98:7654:3210]:42",
-          "spice://[FEDC:BA98:7654:3210:FEDC:BA98:7654:3210]?port=42&" },
+          "spice://[FEDC:BA98:7654:3210:FEDC:BA98:7654:3210]:42",
+          NULL, NULL },
         { "42", "5930",
           "[::192.9.5.5]",
           NULL, NULL,
           "spice://[::192.9.5.5]:42?tls-port=5930",
-          "spice://[::192.9.5.5]?port=42&tls-port=5930" },
+          "spice://[::192.9.5.5]?port=42&tls-port=5930",
+          NULL, NULL },
         { "42", "5930",
           "[::FFFF:129.144.52.38]",
           NULL, NULL,
           "spice://[::FFFF:129.144.52.38]:42?tls-port=5930",
-          "spice://[::FFFF:129.144.52.38]?port=42&tls-port=5930" },
+          "spice://[::FFFF:129.144.52.38]?port=42&tls-port=5930",
+          NULL, NULL },
+    };
+
+    test_session_uri_good(tests, G_N_ELEMENTS(tests));
+}
+
+static void test_session_uri_unix_good(void)
+{
+    const TestCase tests[] = {
+        { .uri_input = "spice+unix:///tmp/foo.sock",
+          .unix_path = "/tmp/foo.sock" },
+        /* perhaps not very clever, but this doesn't raise an error/warning */
+        { .uri_input = "spice+unix://",
+          .unix_path = "" },
+        /* unix uri don't support passing password or other kind of options */
+        { .uri_input = "spice+unix:///tmp/foo.sock?password=frobnicate",
+          .unix_path = "/tmp/foo.sock?password=frobnicate" },
     };
 
     test_session_uri_good(tests, G_N_ELEMENTS(tests));
@@ -285,6 +340,7 @@ int main(int argc, char* argv[])
     g_test_add_func("/session/bad-uri", test_session_uri_bad);
     g_test_add_func("/session/good-ipv4-uri", test_session_uri_ipv4_good);
     g_test_add_func("/session/good-ipv6-uri", test_session_uri_ipv6_good);
+    g_test_add_func("/session/good-unix", test_session_uri_unix_good);
 
     return g_test_run();
 }

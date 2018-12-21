@@ -94,6 +94,7 @@ struct _SpiceSessionPrivate {
     int               protocol;
     SpiceChannel      *cmain; /* weak reference */
     Ring              channels;
+    guint             channels_destroying;
     guint32           mm_time;
     gboolean          client_provided_sockets;
     guint64           mm_time_at_clock;
@@ -160,13 +161,7 @@ struct _SpiceSessionPrivate {
  * a Spice server.
  */
 
-/* ------------------------------------------------------------------ */
-/* gobject glue                                                       */
-
-#define SPICE_SESSION_GET_PRIVATE(obj) \
-    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), SPICE_TYPE_SESSION, SpiceSessionPrivate))
-
-G_DEFINE_TYPE (SpiceSession, spice_session, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_PRIVATE(SpiceSession, spice_session, G_TYPE_OBJECT);
 
 /* Properties */
 enum {
@@ -216,6 +211,7 @@ enum {
     SPICE_SESSION_CHANNEL_NEW,
     SPICE_SESSION_CHANNEL_DESTROY,
     SPICE_SESSION_MM_TIME_RESET,
+    SPICE_SESSION_DISCONNECTED,
     SPICE_SESSION_LAST_SIGNAL,
 };
 
@@ -286,10 +282,9 @@ static void spice_session_init(SpiceSession *session)
 {
     SpiceSessionPrivate *s;
     gchar *channels;
-    GError *err = NULL;
 
     SPICE_DEBUG("New session (compiled from package " PACKAGE_STRING ")");
-    s = session->priv = SPICE_SESSION_GET_PRIVATE(session);
+    s = session->priv = spice_session_get_instance_private(session);
 
     channels = spice_channel_supported_string();
     SPICE_DEBUG("Supported channels: %s", channels);
@@ -299,12 +294,6 @@ static void spice_session_init(SpiceSession *session)
     s->images = cache_image_new((GDestroyNotify)pixman_image_unref);
     s->glz_window = glz_decoder_window_new();
     update_proxy(session, NULL);
-
-    s->usb_manager = spice_usb_device_manager_get(session, &err);
-    if (err != NULL) {
-        SPICE_DEBUG("Could not initialize SpiceUsbDeviceManager - %s", err->message);
-        g_clear_error(&err);
-    }
 }
 
 static void
@@ -349,6 +338,8 @@ spice_session_dispose(GObject *gobject)
     g_warn_if_fail(s->migration_left == NULL);
     g_warn_if_fail(s->after_main_init == 0);
     g_warn_if_fail(s->disconnecting == 0);
+    g_warn_if_fail(s->channels_destroying == 0);
+    g_warn_if_fail(ring_is_empty(&s->channels));
 
     g_clear_object(&s->audio_manager);
     g_clear_object(&s->usb_manager);
@@ -397,6 +388,7 @@ spice_session_finalize(GObject *gobject)
 
 #define URI_SCHEME_SPICE "spice://"
 #define URI_SCHEME_SPICE_UNIX "spice+unix://"
+#define URI_SCHEME_SPICE_TLS "spice+tls://"
 #define URI_QUERY_START ";?"
 #define URI_QUERY_SEP   ";&"
 
@@ -407,19 +399,24 @@ static gchar* spice_uri_create(SpiceSession *session)
     if (s->unix_path != NULL) {
         return g_strdup_printf(URI_SCHEME_SPICE_UNIX "%s", s->unix_path);
     } else if (s->host != NULL) {
+        const char *port, *scheme;
         g_return_val_if_fail(s->port != NULL || s->tls_port != NULL, NULL);
 
-        GString *str = g_string_new(URI_SCHEME_SPICE);
+        if (s->tls_port && s->port) {
+            /* both set, use spice://foo?port=4390&tls-port= form */
+            return g_strdup_printf(URI_SCHEME_SPICE "%s?port=%s&tls-port=%s",
+                                   s->host, s->port, s->tls_port);
+        }
 
-        g_string_append(str, s->host);
-        g_string_append(str, "?");
-        if (s->port != NULL) {
-            g_string_append_printf(str, "port=%s&", s->port);
+        /* one set, use spice://foo:4390 or spice+tls://.. form */
+        if (s->tls_port) {
+            scheme = URI_SCHEME_SPICE_TLS;
+            port = s->tls_port;
+        } else {
+            scheme = URI_SCHEME_SPICE;
+            port = s->port;
         }
-        if (s->tls_port != NULL) {
-            g_string_append_printf(str, "tls-port=%s", s->tls_port);
-        }
-        return g_string_free(str, FALSE);
+        return g_strdup_printf("%s%s:%s", scheme, s->host, port);
     }
 
     g_return_val_if_reached(NULL);
@@ -433,6 +430,7 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
     gchar *authority = NULL;
     gchar *query = NULL;
     gchar *tmp = NULL;
+    bool tls_scheme = false;
 
     g_return_val_if_fail(original_uri != NULL, -1);
 
@@ -446,12 +444,16 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
     /* Break up the URI into its various parts, scheme, authority,
      * path (ignored) and query
      */
-    if (!g_str_has_prefix(uri, URI_SCHEME_SPICE)) {
+    if (g_str_has_prefix(uri, URI_SCHEME_SPICE)) {
+        authority = uri + strlen(URI_SCHEME_SPICE);
+    } else if (g_str_has_prefix(uri, URI_SCHEME_SPICE_TLS)) {
+        authority = uri + strlen(URI_SCHEME_SPICE_TLS);
+        tls_scheme = true;
+    } else {
         g_warning("Expected a URI scheme of '%s' in URI '%s'",
                   URI_SCHEME_SPICE, uri);
         goto fail;
     }
-    authority = uri + strlen(URI_SCHEME_SPICE);
 
     tmp = strchr(authority, '@');
     if (tmp) {
@@ -539,6 +541,11 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
         if (*query)
             query++;
 
+        if (tls_scheme && (g_str_equal(key, "port") || g_str_equal(key, "tls-port"))) {
+            g_warning(URI_SCHEME_SPICE_TLS " scheme doesn't accept '%s'", key);
+            continue;
+        }
+
         target_key = NULL;
         if (g_str_equal(key, "port")) {
             target_key = &port;
@@ -553,7 +560,7 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
         }
         if (target_key) {
             if (*target_key) {
-                g_warning("Double set of '%s' in URI '%s'", key, uri);
+                g_warning("Double set of '%s' in URI '%s'", key, original_uri);
                 goto fail;
             }
             *target_key = g_uri_unescape_string(value, NULL);
@@ -561,7 +568,7 @@ static int spice_parse_uri(SpiceSession *session, const char *original_uri)
     }
 
     if (port == NULL && tls_port == NULL) {
-        g_warning("Missing port or tls-port in spice URI '%s'", uri);
+        g_warning("Missing port or tls-port in spice URI '%s'", original_uri);
         goto fail;
     }
 
@@ -576,8 +583,12 @@ end:
     s->unix_path = g_strdup(path);
     g_free(uri);
     s->host = host;
-    s->port = port;
-    s->tls_port = tls_port;
+    if (tls_scheme) {
+        s->tls_port = port;
+    } else {
+        s->port = port;
+        s->tls_port = tls_port;
+    }
     s->username = username;
     s->password = password;
     return 0;
@@ -1356,6 +1367,23 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                      SPICE_TYPE_CHANNEL);
 
     /**
+     * SpiceSession::disconnected:
+     * @session: the session that emitted the signal
+     *
+     * The #SpiceSession::disconnected signal is emitted when all channels have been destroyed.
+     * Since: 0.35
+     **/
+    signals[SPICE_SESSION_DISCONNECTED] =
+        g_signal_new("disconnected",
+                     G_OBJECT_CLASS_TYPE(gobject_class),
+                     G_SIGNAL_RUN_FIRST,
+                     0, NULL, NULL,
+                     g_cclosure_marshal_VOID__VOID,
+                     G_TYPE_NONE,
+                     0,
+                     NULL);
+
+    /**
      * SpiceSession::mm-time-reset:
      * @session: the session that emitted the signal
      *
@@ -1519,8 +1547,6 @@ static void spice_session_class_init(SpiceSessionClass *klass)
                            SPICE_IMAGE_COMPRESSION_INVALID,
                            G_PARAM_READWRITE |
                            G_PARAM_STATIC_STRINGS));
-
-    g_type_class_add_private(klass, sizeof(SpiceSessionPrivate));
 }
 
 /* ------------------------------------------------------------------ */
@@ -2311,6 +2337,17 @@ void spice_session_channel_new(SpiceSession *session, SpiceChannel *channel)
     g_signal_emit(session, signals[SPICE_SESSION_CHANNEL_NEW], 0, channel);
 }
 
+static void channel_finally_destroyed(gpointer data, GObject *channel)
+{
+    SpiceSession *session = SPICE_SESSION(data);
+    SpiceSessionPrivate *s = session->priv;
+    s->channels_destroying--;
+    if (ring_is_empty(&s->channels) && (s->channels_destroying == 0)) {
+        g_signal_emit(session, signals[SPICE_SESSION_DISCONNECTED], 0);
+    }
+    g_object_unref(session);
+}
+
 static void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *channel)
 {
     g_return_if_fail(SPICE_IS_SESSION(session));
@@ -2344,6 +2381,12 @@ static void spice_session_channel_destroy(SpiceSession *session, SpiceChannel *c
 
     g_clear_object(&channel->priv->session);
     spice_channel_disconnect(channel, SPICE_CHANNEL_NONE);
+
+    /* Wait until the channel is properly freed so that we can emit a
+     * 'disconnected' signal */
+    s->channels_destroying++;
+    g_object_weak_ref(G_OBJECT(channel), channel_finally_destroyed, g_object_ref(session));
+
     g_object_unref(channel);
 }
 
