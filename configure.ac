@@ -4,7 +4,7 @@ AC_INIT([spice-gtk], [m4_esyscmd(build-aux/git-version-gen .tarball-version)],
         [spice-devel@lists.freedesktop.org])
 
 AC_CONFIG_MACRO_DIR([m4])
-m4_include([spice-common/m4/spice-deps.m4])
+m4_include([subprojects/spice-common/m4/spice-deps.m4])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_AUX_DIR([build-aux])
 
@@ -85,11 +85,14 @@ AS_IF([test "$have_egl" = "yes"],
 AC_CHECK_LIBM
 AC_SUBST(LIBM)
 
-AC_CONFIG_SUBDIRS([spice-common])
-PKG_CHECK_MODULES([SPICE_PROTOCOL], [spice-protocol >= 0.12.14])
+AC_CONFIG_SUBDIRS([subprojects/spice-common])
+PKG_CHECK_MODULES([SPICE_PROTOCOL], [spice-protocol >= 0.12.15])
 
-COMMON_CFLAGS='-I${top_builddir}/spice-common/ -I${top_srcdir}/spice-common/ ${SPICE_PROTOCOL_CFLAGS}'
+COMMON_CFLAGS='-I${top_builddir}/subprojects/spice-common/ -I${top_srcdir}/subprojects/spice-common/ ${SPICE_PROTOCOL_CFLAGS}'
 AC_SUBST(COMMON_CFLAGS)
+
+SPICE_COMMON_DIR='${top_builddir}/subprojects/spice-common'
+AC_SUBST(SPICE_COMMON_DIR)
 
 SPICE_GTK_MAJOR_VERSION=`echo $PACKAGE_VERSION | cut -d. -f1`
 SPICE_GTK_MINOR_VERSION=`echo $PACKAGE_VERSION | cut -d. -f2`
@@ -130,8 +133,8 @@ AC_ARG_WITH([gtk],
   [with_gtk=3.0])
 
 case "$with_gtk" in
-  3.0) GTK_REQUIRED=3.12
-       GTK_ENCODED_VERSION="GDK_VERSION_3_12"
+  3.0) GTK_REQUIRED=3.22
+       GTK_ENCODED_VERSION="GDK_VERSION_3_22"
        ;;
   no)
        AS_IF([test x$enable_gtk_doc = xyes],
@@ -148,18 +151,6 @@ AS_IF([test "x$with_gtk" != "xno"],
       [GTK_CFLAGS="$GTK_CFLAGS -DGDK_VERSION_MIN_REQUIRED=$GTK_ENCODED_VERSION \
                                -DGDK_VERSION_MAX_ALLOWED=$GTK_ENCODED_VERSION"])
 SPICE_GTK_REQUIRES="${SPICE_GTK_REQUIRES} gtk+-3.0 >= $GTK_REQUIRED"
-
-# Check for gdk_event_get_scancode function
-# This was added in Gdk 3.22
-# The check allows the usage of the function in case the function is
-# backported or in case of compilation from Gdk master branch
-old_LIBS="$LIBS"
-old_CFLAGS="$CFLAGS"
-CFLAGS="$CFLAGS $GTK_CFLAGS"
-LIBS="$LIBS $GTK_LIBS"
-AC_CHECK_FUNCS(gdk_event_get_scancode)
-LIBS="$old_LIBS"
-CFLAGS="$old_CFLAGS"
 
 PKG_CHECK_EXISTS([gtk+-x11-$with_gtk], [PKG_CHECK_MODULES(X11, x11)])
 AC_CHECK_HEADERS([X11/XKBlib.h])
@@ -260,8 +251,8 @@ AS_IF([test "x$enable_gstvideo" != "xno"],
          [missing_gstreamer_elements=""
           SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-base 1.0], [appsrc videoconvert appsink])
           SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-good 1.0], [jpegdec vp8dec vp9dec])
-          SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-bad 1.0], [h264parse])
-          SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gstreamer-libav 1.0], [avdec_h264])
+          SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gst-plugins-bad 1.0], [h264parse h265parse])
+          SPICE_CHECK_GSTREAMER_ELEMENTS($GST_INSPECT_1_0, [gstreamer-libav 1.0], [avdec_h264 avdec_h265])
           AS_IF([test x"$missing_gstreamer_elements" = "xyes"],
                 SPICE_WARNING([The GStreamer video decoder can be built but may not work.]))
          ],

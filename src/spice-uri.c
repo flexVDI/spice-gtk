@@ -49,7 +49,7 @@ struct _SpiceURIClass {
     GObjectClass parent_class;
 };
 
-G_DEFINE_TYPE(SpiceURI, spice_uri, G_TYPE_OBJECT);
+G_DEFINE_TYPE(SpiceURI, spice_uri, G_TYPE_OBJECT)
 
 enum  {
     SPICE_URI_DUMMY_PROPERTY,

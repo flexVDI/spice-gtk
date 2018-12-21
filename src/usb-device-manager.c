@@ -256,7 +256,7 @@ static guint signals[LAST_SIGNAL] = { 0, };
 
 G_DEFINE_TYPE_WITH_CODE(SpiceUsbDeviceManager, spice_usb_device_manager, G_TYPE_OBJECT,
      G_ADD_PRIVATE(SpiceUsbDeviceManager)
-     G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE, spice_usb_device_manager_initable_iface_init));
+     G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE, spice_usb_device_manager_initable_iface_init))
 
 static void spice_usb_device_manager_init(SpiceUsbDeviceManager *self)
 {

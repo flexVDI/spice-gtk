@@ -174,8 +174,8 @@ libspice_client_glib_2_0_la_LDFLAGS =	\
 	$(NULL)
 
 libspice_client_glib_2_0_la_LIBADD =					\
-	$(top_builddir)/spice-common/common/libspice-common.la		\
-	$(top_builddir)/spice-common/common/libspice-common-client.la	\
+	$(SPICE_COMMON_DIR)/common/libspice-common.la			\
+	$(SPICE_COMMON_DIR)/common/libspice-common-client.la		\
 	$(GLIB2_LIBS)							\
 	$(SOUP_LIBS)							\
 	$(GIO_LIBS)							\

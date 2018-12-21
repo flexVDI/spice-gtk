@@ -10,7 +10,7 @@ before_script:
 
 makecheck:
   script:
-  - ./autogen.sh --enable-static --disable-celt051
+  - ./autogen.sh --enable-static
   - make -j4
   - make check
 
@@ -27,6 +27,5 @@ makecheck_simple:
         --enable-smartcard=no
         --enable-usbredir=no
         --enable-dbus=no
-        --disable-celt051
   - make -j4
   - make check

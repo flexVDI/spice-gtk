@@ -308,19 +308,14 @@ gl_make_current(SpiceDisplay *display, GError **err)
         }
     }
 #endif
-#if GTK_CHECK_VERSION(3,16,0)
 #ifdef GDK_WINDOWING_X11
     else
 #endif
     {
-        /* Ignore GLib's too-new warnings */
-        G_GNUC_BEGIN_IGNORE_DEPRECATIONS
         GtkWidget *area = gtk_stack_get_child_by_name(d->stack, "gl-area");
 
         gtk_gl_area_make_current(GTK_GL_AREA(area));
-        G_GNUC_END_IGNORE_DEPRECATIONS
     }
-#endif
 
     return TRUE;
 }
@@ -600,9 +595,7 @@ void spice_egl_update_display(SpiceDisplay *display)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-#if !GTK_CHECK_VERSION(3,16,0)
     glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, (GLeglImageOES)d->egl.image);
-#endif
 
     glDisable(GL_BLEND);
     glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
@@ -686,13 +679,11 @@ gboolean spice_egl_update_scanout(SpiceDisplay *display,
 
     d->egl.scanout = *scanout;
 
-#if GTK_CHECK_VERSION(3,16,0)
     if (!gl_make_current(display, NULL))
         return FALSE;
 
     glBindTexture(GL_TEXTURE_2D, d->egl.tex_id);
     glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, (GLeglImageOES)d->egl.image);
-#endif
 
     return TRUE;
 }

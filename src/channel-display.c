@@ -788,7 +788,10 @@ static void image_put_lossy(SpiceImageCache *cache, uint64_t id,
 static void image_replace_lossy(SpiceImageCache *cache, uint64_t id,
                                 pixman_image_t *surface)
 {
-    image_put(cache, id, surface);
+    SpiceDisplayChannelPrivate *c =
+        SPICE_CONTAINEROF(cache, SpiceDisplayChannelPrivate, image_cache);
+
+    cache_replace_lossy(c->images, id, pixman_image_ref(surface), FALSE);
 }
 
 static pixman_image_t* image_get_lossless(SpiceImageCache *cache, uint64_t id)
@@ -1211,7 +1214,7 @@ static void report_invalid_stream(SpiceChannel *channel, uint32_t id)
         /* Send a special stream report (UINT_MAX dropped frames out of zero)
          * to indicate there is no such stream.
          */
-        spice_printerr("notify the server that stream %u does not exist", id);
+        g_warning("notify the server that stream %u does not exist", id);
         memset(&report, 0, sizeof(report));
         report.stream_id = id;
         report.num_frames = 0;
@@ -1269,7 +1272,7 @@ static display_stream *display_stream_create(SpiceChannel *channel,
         break;
     }
     if (st->video_decoder == NULL) {
-        spice_printerr("could not create a video decoder for codec %u", codec_type);
+        g_warning("could not create a video decoder for codec %u", codec_type);
         g_clear_pointer(&st, display_stream_destroy);
     }
     return st;
@@ -1310,7 +1313,7 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
                                                op->flags, op->codec_type,
                                                &op->dest, &op->clip);
     if (c->streams[op->id] == NULL) {
-        spice_printerr("could not create the %u video stream", op->id);
+        g_warning("could not create the %u video stream", op->id);
         destroy_stream(channel, op->id);
         report_invalid_stream(channel, op->id);
     }
@@ -1544,11 +1547,14 @@ static void display_handle_stream_data(SpiceChannel *channel, SpiceMsgIn *in)
 
     latency = op->multi_media_time - mmtime;
     if (latency < 0) {
-        CHANNEL_DEBUG(channel, "stream data too late by %u ms (ts: %u, mmtime: %u), dropping",
+        CHANNEL_DEBUG(channel, "stream data too late by %u ms (ts: %u, mmtime: %u)",
                       mmtime - op->multi_media_time, op->multi_media_time, mmtime);
         st->arrive_late_time += mmtime - op->multi_media_time;
         st->arrive_late_count++;
 
+        /* Late frames are counted as drops in the stats but aren't necessarily dropped - depends
+         * on codec and decoder
+         */
         if (!st->cur_drops_seq_stats.len) {
             st->cur_drops_seq_stats.start_mm_time = op->multi_media_time;
         }
@@ -1893,9 +1899,9 @@ static void display_handle_monitors_config(SpiceChannel *channel, SpiceMsgIn *in
         SpiceDisplayMonitorConfig *mc = &g_array_index(c->monitors, SpiceDisplayMonitorConfig, i);
         SpiceHead *head = &config->heads[i];
         CHANNEL_DEBUG(channel, "monitor id: %u, surface id: %u, +%u+%u-%ux%u",
-                    head->id, head->surface_id,
+                    head->monitor_id, head->surface_id,
                     head->x, head->y, head->width, head->height);
-        mc->id = head->id;
+        mc->id = head->monitor_id;
         mc->surface_id = head->surface_id;
         mc->x = head->x;
         mc->y = head->y;

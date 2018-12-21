@@ -47,7 +47,7 @@ static void g_udev_client_initable_iface_init(GInitableIface  *iface);
 
 G_DEFINE_TYPE_WITH_CODE(GUdevClient, g_udev_client, G_TYPE_OBJECT,
                         G_ADD_PRIVATE(GUdevClient)
-                        G_IMPLEMENT_INTERFACE(G_TYPE_INITABLE, g_udev_client_initable_iface_init));
+                        G_IMPLEMENT_INTERFACE(G_TYPE_INITABLE, g_udev_client_initable_iface_init))
 
 
 typedef struct _GUdevDeviceInfo GUdevDeviceInfo;
